@@ -27,6 +27,7 @@ export const projects = pgTable("projects", {
   endDate: timestamp("end_date"),
   budget: decimal("budget", { precision: 10, scale: 2 }),
   progress: integer("progress").default(0).notNull(),
+  estimatedEffort: integer("estimated_effort"), // in hours
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -45,6 +46,8 @@ export const tasks = pgTable("tasks", {
   assignedTo: uuid("assigned_to").references(() => users.id),
   dueDate: timestamp("due_date"),
   completedAt: timestamp("completed_at"),
+  estimatedEffort: integer("estimated_effort"), // in hours
+  completionPercentage: integer("completion_percentage").default(0).notNull(), // 0-100
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

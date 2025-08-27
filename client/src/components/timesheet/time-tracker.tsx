@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Play, Square, Clock, Trash2 } from "lucide-react";
+import { Play, Square, Clock, Trash2, TrendingUp } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDistanceToNow, format } from "date-fns";
+import { CompletionDialog } from "./completion-dialog";
 import type { TimeEntry, Task } from "@shared/schema";
 
 interface TimeTrackerProps {
@@ -16,6 +17,7 @@ interface TimeTrackerProps {
 export function TimeTracker({ task }: TimeTrackerProps) {
   const queryClient = useQueryClient();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
 
   // Get running time entry globally to prevent multiple running timers
   const { data: runningEntry } = useQuery<TimeEntry | null>({
@@ -47,14 +49,24 @@ export function TimeTracker({ task }: TimeTrackerProps) {
 
   // Stop time entry mutation
   const stopTimerMutation = useMutation({
-    mutationFn: async (entryId: string) => {
+    mutationFn: async ({ entryId, completionData }: { entryId: string; completionData?: { completionPercentage: number; notes?: string } }) => {
       const res = await apiRequest("POST", `/api/time-entries/${entryId}/stop`);
-      return await res.json();
+      
+      // Update task completion percentage if provided
+      if (completionData) {
+        await apiRequest("PUT", `/api/tasks/${task.id}`, {
+          completionPercentage: completionData.completionPercentage,
+        });
+      }
+      
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries/running"] });
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries/task", task.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      setShowCompletionDialog(false);
     },
   });
 
@@ -92,7 +104,13 @@ export function TimeTracker({ task }: TimeTrackerProps) {
 
   const handleStopTimer = () => {
     if (runningEntry) {
-      stopTimerMutation.mutate(runningEntry.id);
+      setShowCompletionDialog(true);
+    }
+  };
+
+  const handleCompletionSubmit = (completionData: { completionPercentage: number; notes?: string }) => {
+    if (runningEntry) {
+      stopTimerMutation.mutate({ entryId: runningEntry.id, completionData });
     }
   };
 
@@ -115,6 +133,28 @@ export function TimeTracker({ task }: TimeTrackerProps) {
   const totalTime = timeEntries.reduce((total, entry) => {
     return total + (entry.duration || 0);
   }, 0);
+
+  const totalHours = totalTime / 60;
+  const estimatedHours = task.estimatedEffort || 0;
+  const remainingHours = Math.max(0, estimatedHours - totalHours);
+  const progressPercentage = task.completionPercentage || 0;
+  
+  const calculateRemainingTime = () => {
+    if (!estimatedHours || progressPercentage === 0) return null;
+    
+    const expectedHours = (estimatedHours * progressPercentage) / 100;
+    const efficiency = totalHours > 0 ? expectedHours / totalHours : 1;
+    const projectedTotalHours = estimatedHours / efficiency;
+    const projectedRemaining = Math.max(0, projectedTotalHours - totalHours);
+    
+    return {
+      original: remainingHours,
+      projected: projectedRemaining,
+      efficiency: efficiency,
+    };
+  };
+
+  const remainingTimeData = calculateRemainingTime();
 
   return (
     <Card className="w-full">
@@ -161,15 +201,76 @@ export function TimeTracker({ task }: TimeTrackerProps) {
           )}
         </div>
 
-        {/* Total Time */}
-        {totalTime > 0 && (
-          <div className="bg-muted p-3 rounded-lg">
-            <div className="text-sm text-muted-foreground">Total Time Logged</div>
-            <div className="text-lg font-semibold" data-testid="text-total-time">
-              {formatDuration(totalTime)}
+        {/* Progress and Time Summary */}
+        <div className="space-y-3">
+          {totalTime > 0 && (
+            <div className="bg-muted p-3 rounded-lg">
+              <div className="text-sm text-muted-foreground">Total Time Logged</div>
+              <div className="text-lg font-semibold" data-testid="text-total-time">
+                {formatDuration(totalTime)}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {progressPercentage > 0 && (
+            <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
+              <div className="text-sm text-muted-foreground">Task Progress</div>
+              <div className="text-lg font-semibold text-blue-700 dark:text-blue-300">
+                {progressPercentage}% Complete
+              </div>
+            </div>
+          )}
+
+          {estimatedHours > 0 && (
+            <div className="bg-green-50 dark:bg-green-950 p-3 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <div className="text-sm text-muted-foreground">Effort Tracking</div>
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span>Estimated:</span>
+                  <span className="font-medium">{formatDuration(estimatedHours * 60)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Logged:</span>
+                  <span className="font-medium">{formatDuration(totalTime)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Remaining:</span>
+                  <span className="font-medium text-green-600 dark:text-green-400">
+                    {formatDuration(remainingHours * 60)}
+                  </span>
+                </div>
+                
+                {remainingTimeData && (
+                  <div className="pt-2 border-t border-green-200 dark:border-green-800">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Projected Remaining:</span>
+                      <span className={`font-medium ${
+                        remainingTimeData.projected > remainingTimeData.original 
+                          ? 'text-amber-600 dark:text-amber-400' 
+                          : 'text-green-600 dark:text-green-400'
+                      }`}>
+                        {formatDuration(remainingTimeData.projected * 60)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Efficiency:</span>
+                      <span className={`font-medium ${
+                        remainingTimeData.efficiency < 1 
+                          ? 'text-red-600 dark:text-red-400' 
+                          : 'text-green-600 dark:text-green-400'
+                      }`}>
+                        {(remainingTimeData.efficiency * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Time Entries List */}
         {timeEntries.length > 0 && (
@@ -228,6 +329,15 @@ export function TimeTracker({ task }: TimeTrackerProps) {
             No time entries yet. Start tracking time on this task!
           </div>
         )}
+
+        {/* Completion Dialog */}
+        <CompletionDialog
+          isOpen={showCompletionDialog}
+          onClose={() => setShowCompletionDialog(false)}
+          onSubmit={handleCompletionSubmit}
+          isLoading={stopTimerMutation.isPending}
+          currentPercentage={progressPercentage}
+        />
       </CardContent>
     </Card>
   );

@@ -17,6 +17,7 @@ const formSchema = insertProjectSchema.extend({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   budget: z.string().optional(),
+  estimatedEffort: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -47,6 +48,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
       endDate: "",
       budget: "",
       progress: 0,
+      estimatedEffort: "",
     },
   });
 
@@ -59,6 +61,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
         startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
         endDate: data.endDate ? new Date(data.endDate).toISOString() : null,
         budget: data.budget || null,
+        estimatedEffort: data.estimatedEffort ? parseInt(data.estimatedEffort) : null,
       };
       const res = await apiRequest("POST", "/api/projects", projectData);
       return res.json();
@@ -209,25 +212,46 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="budget"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Budget (Optional)</FormLabel>
-              <FormControl>
-                <Input 
-                  {...field} 
-                  type="number"
-                  step="0.01"
-                  data-testid="input-project-budget"
-                  placeholder="0.00"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="budget"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Budget (Optional)</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field} 
+                    type="number"
+                    step="0.01"
+                    data-testid="input-project-budget"
+                    placeholder="0.00"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="estimatedEffort"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Estimated Effort (Hours)</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field} 
+                    type="number"
+                    data-testid="input-project-effort"
+                    placeholder="0"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <div className="flex justify-end space-x-2 pt-4">
           <Button
