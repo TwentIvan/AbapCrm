@@ -23,15 +23,9 @@ export default function Sidebar() {
     <aside className="w-64 bg-card border-r border-border flex flex-col">
       {/* Logo and Brand */}
       <div className="p-6 border-b border-border">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-lg overflow-hidden">
-            <img src={hubUpLogo} alt="The Hub Up" className="w-full h-full object-contain" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold text-foreground" data-testid="text-app-title">
-              The Hub Up
-            </h1>
-            <p className="text-xs text-muted-foreground">SAP ABAP Hub</p>
+        <div className="flex justify-center">
+          <div className="w-16 h-16 rounded-lg overflow-hidden">
+            <img src={hubUpLogo} alt="The Hub Up" className="w-full h-full object-contain" data-testid="img-app-logo" />
           </div>
         </div>
       </div>

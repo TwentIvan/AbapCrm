@@ -76,10 +76,9 @@ export default function AuthPage() {
       <div className="flex items-center justify-center p-8 bg-background">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto w-12 h-12 rounded-lg overflow-hidden mb-4">
-              <img src={hubUpLogo} alt="The Hub Up" className="w-full h-full object-contain" />
+            <div className="mx-auto w-20 h-20 rounded-lg overflow-hidden mb-4">
+              <img src={hubUpLogo} alt="The Hub Up" className="w-full h-full object-contain" data-testid="img-auth-logo" />
             </div>
-            <CardTitle className="text-2xl font-bold">The Hub Up</CardTitle>
             <CardDescription>
               {activeTab === "login" 
                 ? "Sign in to your freelancer account" 
