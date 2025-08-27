@@ -24,8 +24,8 @@ export default function Sidebar() {
       {/* Logo and Brand */}
       <div className="p-6 border-b border-border">
         <div className="flex justify-center">
-          <div className="w-64 h-64 rounded-lg overflow-hidden">
-            <img src={hubUpLogo} alt="The Hub Up" className="w-full h-full object-contain" data-testid="img-app-logo" />
+          <div className="w-64 h-16 rounded-lg overflow-hidden">
+            <img src={hubUpLogo} alt="The Hub Up" className="w-full h-full object-cover" data-testid="img-app-logo" />
           </div>
         </div>
       </div>
