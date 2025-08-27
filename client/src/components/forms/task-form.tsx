@@ -95,6 +95,19 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="flex justify-end space-x-2 pb-4 border-b">
+          <Button
+            type="submit"
+            disabled={saveTaskMutation.isPending}
+            data-testid="button-submit-task"
+          >
+            {saveTaskMutation.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            {task ? "Update Task" : "Create Task"}
+          </Button>
+        </div>
+        
         <FormField
           control={form.control}
           name="title"
@@ -222,19 +235,6 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
             </FormItem>
           )}
         />
-
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button
-            type="submit"
-            disabled={saveTaskMutation.isPending}
-            data-testid="button-submit-task"
-          >
-            {saveTaskMutation.isPending && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            {task ? "Update Task" : "Create Task"}
-          </Button>
-        </div>
       </form>
     </Form>
   );
