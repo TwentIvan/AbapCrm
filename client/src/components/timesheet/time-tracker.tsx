@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,7 @@ interface TimeTrackerProps {
 
 export function TimeTracker({ task }: TimeTrackerProps) {
   const queryClient = useQueryClient();
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Get running time entry globally to prevent multiple running timers
   const { data: runningEntry } = useQuery<TimeEntry | null>({
@@ -68,6 +69,19 @@ export function TimeTracker({ task }: TimeTrackerProps) {
     },
   });
 
+  // Update current time every second when timer is running
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (runningEntry && runningEntry.taskId === task.id) {
+      interval = setInterval(() => {
+        setCurrentTime(new Date());
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [runningEntry, task.id]);
+
   const isCurrentTaskRunning = runningEntry && runningEntry.taskId === task.id;
   const hasRunningTimer = !!runningEntry;
 
@@ -89,6 +103,12 @@ export function TimeTracker({ task }: TimeTrackerProps) {
     const hours = Math.floor(minutes / 60);
     const mins = Math.round(minutes % 60);
     return `${hours}h ${mins}m`;
+  };
+
+  const getCurrentRunningTime = () => {
+    if (!isCurrentTaskRunning || !runningEntry) return "0h 0m";
+    const elapsed = (currentTime.getTime() - new Date(runningEntry.startTime).getTime()) / 1000 / 60;
+    return formatDuration(elapsed);
   };
 
   const totalTime = timeEntries.reduce((total, entry) => {
@@ -119,7 +139,7 @@ export function TimeTracker({ task }: TimeTrackerProps) {
               </Button>
               <Badge variant="secondary" className="animate-pulse">
                 <Clock className="h-3 w-3 mr-1" />
-                Running
+                {getCurrentRunningTime()}
               </Badge>
             </>
           ) : (
