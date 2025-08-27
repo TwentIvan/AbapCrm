@@ -13,6 +13,7 @@ import TasksPage from "@/pages/tasks-page";
 import DealsPage from "@/pages/deals-page";
 import PartnersPage from "@/pages/partners-page";
 import CalendarPage from "@/pages/calendar-page";
+import TimesheetPage from "@/pages/timesheet-page";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -24,6 +25,7 @@ function Router() {
       <ProtectedRoute path="/deals" component={DealsPage} />
       <ProtectedRoute path="/partners" component={PartnersPage} />
       <ProtectedRoute path="/calendar" component={CalendarPage} />
+      <ProtectedRoute path="/timesheet" component={TimesheetPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

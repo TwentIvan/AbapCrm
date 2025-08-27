@@ -103,6 +103,19 @@ export const calendarEvents = pgTable("calendar_events", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const timeEntries = pgTable("time_entries", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  taskId: uuid("task_id").references(() => tasks.id).notNull(),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  duration: integer("duration"), // in minutes
+  description: text("description"),
+  isRunning: boolean("is_running").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
@@ -111,6 +124,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   partners: many(partners),
   deals: many(deals),
   calendarEvents: many(calendarEvents),
+  timeEntries: many(timeEntries),
 }));
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({
@@ -120,10 +134,11 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   calendarEvents: many(calendarEvents),
 }));
 
-export const tasksRelations = relations(tasks, ({ one }) => ({
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
   user: one(users, { fields: [tasks.userId], references: [users.id] }),
   assignedUser: one(users, { fields: [tasks.assignedTo], references: [users.id], relationName: "assignedTasks" }),
   project: one(projects, { fields: [tasks.projectId], references: [projects.id] }),
+  timeEntries: many(timeEntries),
 }));
 
 export const partnersRelations = relations(partners, ({ one, many }) => ({
@@ -144,6 +159,11 @@ export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
   project: one(projects, { fields: [calendarEvents.projectId], references: [projects.id] }),
   partner: one(partners, { fields: [calendarEvents.partnerId], references: [partners.id] }),
   deal: one(deals, { fields: [calendarEvents.dealId], references: [deals.id] }),
+}));
+
+export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
+  user: one(users, { fields: [timeEntries.userId], references: [users.id] }),
+  task: one(tasks, { fields: [timeEntries.taskId], references: [tasks.id] }),
 }));
 
 // Insert schemas
@@ -184,6 +204,13 @@ export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit
   updatedAt: true,
 });
 
+export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  duration: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -197,3 +224,5 @@ export type Deal = typeof deals.$inferSelect;
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
+export type TimeEntry = typeof timeEntries.$inferSelect;
+export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;

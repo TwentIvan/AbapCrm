@@ -1,11 +1,12 @@
 import { 
-  users, projects, tasks, partners, deals, calendarEvents,
+  users, projects, tasks, partners, deals, calendarEvents, timeEntries,
   type User, type InsertUser,
   type Project, type InsertProject,
   type Task, type InsertTask,
   type Partner, type InsertPartner,
   type Deal, type InsertDeal,
-  type CalendarEvent, type InsertCalendarEvent
+  type CalendarEvent, type InsertCalendarEvent,
+  type TimeEntry, type InsertTimeEntry
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -56,6 +57,16 @@ export interface IStorage {
   createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
   updateCalendarEvent(id: string, event: Partial<InsertCalendarEvent>, userId: string): Promise<CalendarEvent | undefined>;
   deleteCalendarEvent(id: string, userId: string): Promise<boolean>;
+
+  // Time Entries
+  getTimeEntries(userId: string): Promise<TimeEntry[]>;
+  getTimeEntriesByTask(taskId: string, userId: string): Promise<TimeEntry[]>;
+  getTimeEntry(id: string, userId: string): Promise<TimeEntry | undefined>;
+  createTimeEntry(entry: InsertTimeEntry): Promise<TimeEntry>;
+  updateTimeEntry(id: string, entry: Partial<InsertTimeEntry>, userId: string): Promise<TimeEntry | undefined>;
+  deleteTimeEntry(id: string, userId: string): Promise<boolean>;
+  stopTimeEntry(id: string, userId: string): Promise<TimeEntry | undefined>;
+  getRunningTimeEntry(userId: string): Promise<TimeEntry | undefined>;
 
   sessionStore: session.SessionStore;
 }
@@ -288,6 +299,78 @@ export class DatabaseStorage implements IStorage {
       .delete(calendarEvents)
       .where(and(eq(calendarEvents.id, id), eq(calendarEvents.userId, userId)));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Time Entries
+  async getTimeEntries(userId: string): Promise<TimeEntry[]> {
+    return await db
+      .select()
+      .from(timeEntries)
+      .where(eq(timeEntries.userId, userId))
+      .orderBy(desc(timeEntries.startTime));
+  }
+
+  async getTimeEntriesByTask(taskId: string, userId: string): Promise<TimeEntry[]> {
+    return await db
+      .select()
+      .from(timeEntries)
+      .where(and(eq(timeEntries.taskId, taskId), eq(timeEntries.userId, userId)))
+      .orderBy(desc(timeEntries.startTime));
+  }
+
+  async getTimeEntry(id: string, userId: string): Promise<TimeEntry | undefined> {
+    const [entry] = await db
+      .select()
+      .from(timeEntries)
+      .where(and(eq(timeEntries.id, id), eq(timeEntries.userId, userId)));
+    return entry || undefined;
+  }
+
+  async createTimeEntry(entry: InsertTimeEntry): Promise<TimeEntry> {
+    const [newEntry] = await db
+      .insert(timeEntries)
+      .values(entry)
+      .returning();
+    return newEntry;
+  }
+
+  async updateTimeEntry(id: string, entry: Partial<InsertTimeEntry>, userId: string): Promise<TimeEntry | undefined> {
+    const [updated] = await db
+      .update(timeEntries)
+      .set({ ...entry, updatedAt: new Date() })
+      .where(and(eq(timeEntries.id, id), eq(timeEntries.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteTimeEntry(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(timeEntries)
+      .where(and(eq(timeEntries.id, id), eq(timeEntries.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async stopTimeEntry(id: string, userId: string): Promise<TimeEntry | undefined> {
+    const now = new Date();
+    const [updated] = await db
+      .update(timeEntries)
+      .set({ 
+        endTime: now,
+        isRunning: false,
+        duration: sql`EXTRACT(EPOCH FROM (${now}::timestamp - start_time)) / 60`,
+        updatedAt: now
+      })
+      .where(and(eq(timeEntries.id, id), eq(timeEntries.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getRunningTimeEntry(userId: string): Promise<TimeEntry | undefined> {
+    const [entry] = await db
+      .select()
+      .from(timeEntries)
+      .where(and(eq(timeEntries.userId, userId), eq(timeEntries.isRunning, true)));
+    return entry || undefined;
   }
 }
 

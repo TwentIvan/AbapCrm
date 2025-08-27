@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckSquare, Calendar, AlertCircle, Clock } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight } from "lucide-react";
 import { Task } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import TaskForm from "@/components/forms/task-form";
+import { TimeTracker } from "@/components/timesheet/time-tracker";
 import { useToast } from "@/hooks/use-toast";
 
 const statusColors = {
@@ -37,6 +39,7 @@ const statusLabels = {
 
 export default function TasksPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -69,6 +72,16 @@ export default function TasksPage() {
   const isOverdue = (dueDate: string | null) => {
     if (!dueDate) return false;
     return new Date(dueDate) < new Date();
+  };
+
+  const toggleTaskExpanded = (taskId: string) => {
+    const newExpanded = new Set(expandedTasks);
+    if (newExpanded.has(taskId)) {
+      newExpanded.delete(taskId);
+    } else {
+      newExpanded.add(taskId);
+    }
+    setExpandedTasks(newExpanded);
   };
 
   return (
@@ -138,6 +151,20 @@ export default function TasksPage() {
                           </h3>
                           
                           <div className="flex items-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleTaskExpanded(task.id)}
+                              data-testid={`button-toggle-timer-${task.id}`}
+                            >
+                              <Clock className="h-4 w-4 mr-1" />
+                              Timer
+                              {expandedTasks.has(task.id) ? (
+                                <ChevronDown className="h-3 w-3 ml-1" />
+                              ) : (
+                                <ChevronRight className="h-3 w-3 ml-1" />
+                              )}
+                            </Button>
                             <Badge 
                               className={priorityColors[task.priority]}
                               data-testid={`badge-task-priority-${task.id}`}
@@ -184,6 +211,13 @@ export default function TasksPage() {
                               Due: {new Date(task.dueDate).toLocaleDateString()}
                               {isOverdue(task.dueDate) && task.status !== "completed" && " (Overdue)"}
                             </span>
+                          </div>
+                        )}
+                        
+                        {/* Time Tracker Collapsible */}
+                        {expandedTasks.has(task.id) && (
+                          <div className="mt-4 pt-4 border-t border-border">
+                            <TimeTracker task={task} />
                           </div>
                         )}
                       </div>

@@ -4,7 +4,7 @@ import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { 
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, 
-  insertDealSchema, insertCalendarEventSchema 
+  insertDealSchema, insertCalendarEventSchema, insertTimeEntrySchema
 } from "@shared/schema";
 
 export function registerRoutes(app: Express): Server {
@@ -221,6 +221,61 @@ export function registerRoutes(app: Express): Server {
   app.delete("/api/calendar-events/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const deleted = await storage.deleteCalendarEvent(req.params.id, req.user!.id);
+    if (!deleted) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  // Time Entries
+  app.get("/api/time-entries", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const entries = await storage.getTimeEntries(req.user!.id);
+    res.json(entries);
+  });
+
+  app.get("/api/time-entries/task/:taskId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const entries = await storage.getTimeEntriesByTask(req.params.taskId, req.user!.id);
+    res.json(entries);
+  });
+
+  app.get("/api/time-entries/running", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const entry = await storage.getRunningTimeEntry(req.user!.id);
+    res.json(entry || null);
+  });
+
+  app.post("/api/time-entries", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const entryData = insertTimeEntrySchema.parse({ ...req.body, userId: req.user!.id });
+      const entry = await storage.createTimeEntry(entryData);
+      res.status(201).json(entry);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid time entry data" });
+    }
+  });
+
+  app.put("/api/time-entries/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const entry = await storage.updateTimeEntry(req.params.id, req.body, req.user!.id);
+      if (!entry) return res.sendStatus(404);
+      res.json(entry);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid time entry data" });
+    }
+  });
+
+  app.post("/api/time-entries/:id/stop", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const entry = await storage.stopTimeEntry(req.params.id, req.user!.id);
+    if (!entry) return res.sendStatus(404);
+    res.json(entry);
+  });
+
+  app.delete("/api/time-entries/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const deleted = await storage.deleteTimeEntry(req.params.id, req.user!.id);
     if (!deleted) return res.sendStatus(404);
     res.sendStatus(204);
   });

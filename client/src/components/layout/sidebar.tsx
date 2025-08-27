@@ -1,13 +1,14 @@
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, User, Settings } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: BarChart3, testId: "nav-dashboard" },
   { name: "Projects", href: "/projects", icon: FolderOpen, testId: "nav-projects" },
   { name: "Tasks", href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
+  { name: "Timesheet", href: "/timesheet", icon: Clock, testId: "nav-timesheet" },
   { name: "Deals", href: "/deals", icon: Handshake, testId: "nav-deals" },
   { name: "Partners", href: "/partners", icon: Building, testId: "nav-partners" },
   { name: "Calendar", href: "/calendar", icon: Calendar, testId: "nav-calendar" },
