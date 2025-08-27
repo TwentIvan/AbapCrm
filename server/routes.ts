@@ -88,6 +88,8 @@ export function registerRoutes(app: Express): Server {
         priority: req.body.priority,
         projectId: req.body.projectId,
         dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
+        estimatedEffort: req.body.estimatedEffort || null,
+        completionPercentage: req.body.completionPercentage || 0,
         userId: req.user!.id 
       });
       const task = await storage.createTask(taskData);
@@ -100,11 +102,22 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/tasks/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const task = await storage.updateTask(req.params.id, req.body, req.user!.id);
+      const taskData = insertTaskSchema.omit({ userId: true }).parse({ 
+        title: req.body.title,
+        description: req.body.description || null,
+        status: req.body.status,
+        priority: req.body.priority,
+        projectId: req.body.projectId,
+        dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
+        estimatedEffort: req.body.estimatedEffort || null,
+        completionPercentage: req.body.completionPercentage || 0,
+      });
+      const task = await storage.updateTask(req.params.id, taskData, req.user!.id);
       if (!task) return res.sendStatus(404);
       res.json(task);
     } catch (error) {
-      res.status(400).json({ error: "Invalid task data" });
+      console.error("Task update error:", error);
+      res.status(400).json({ error: "Invalid task data", details: error instanceof Error ? error.message : String(error) });
     }
   });
 
