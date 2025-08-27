@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertTaskSchema, Project } from "@shared/schema";
+import { insertTaskSchema, Project, Task } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -25,10 +25,11 @@ const formSchema = insertTaskSchema.omit({
 type FormData = z.infer<typeof formSchema>;
 
 interface TaskFormProps {
+  task?: Task;
   onSuccess?: () => void;
 }
 
-export default function TaskForm({ onSuccess }: TaskFormProps) {
+export default function TaskForm({ task, onSuccess }: TaskFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -42,17 +43,17 @@ export default function TaskForm({ onSuccess }: TaskFormProps) {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: "",
-      description: "",
-      status: "todo",
-      priority: "medium",
-      projectId: "none",
-      dueDate: "",
-      estimatedEffort: "",
+      title: task?.title || "",
+      description: task?.description || "",
+      status: task?.status || "todo",
+      priority: task?.priority || "medium",
+      projectId: task?.projectId || "none",
+      dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "",
+      estimatedEffort: task?.estimatedEffort?.toString() || "",
     },
   });
 
-  const createTaskMutation = useMutation({
+  const saveTaskMutation = useMutation({
     mutationFn: async (data: FormData) => {
       const taskData = {
         ...data,
@@ -61,17 +62,25 @@ export default function TaskForm({ onSuccess }: TaskFormProps) {
         dueDate: data.dueDate || null,
         estimatedEffort: data.estimatedEffort ? parseInt(data.estimatedEffort) : null,
       };
-      const res = await apiRequest("POST", "/api/tasks", taskData);
-      return res.json();
+      
+      if (task) {
+        // Edit existing task
+        const res = await apiRequest("PUT", `/api/tasks/${task.id}`, taskData);
+        return res.json();
+      } else {
+        // Create new task
+        const res = await apiRequest("POST", "/api/tasks", taskData);
+        return res.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({ title: "Task created successfully" });
+      toast({ title: task ? "Task updated successfully" : "Task created successfully" });
       onSuccess?.();
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to create task",
+        title: task ? "Failed to update task" : "Failed to create task",
         description: error.message,
         variant: "destructive",
       });
@@ -79,7 +88,7 @@ export default function TaskForm({ onSuccess }: TaskFormProps) {
   });
 
   const onSubmit = (data: FormData) => {
-    createTaskMutation.mutate(data);
+    saveTaskMutation.mutate(data);
   };
 
   return (
@@ -237,13 +246,13 @@ export default function TaskForm({ onSuccess }: TaskFormProps) {
         <div className="flex justify-end space-x-2 pt-4">
           <Button
             type="submit"
-            disabled={createTaskMutation.isPending}
+            disabled={saveTaskMutation.isPending}
             data-testid="button-submit-task"
           >
-            {createTaskMutation.isPending && (
+            {saveTaskMutation.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Create Task
+            {task ? "Update Task" : "Create Task"}
           </Button>
         </div>
       </form>

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertProjectSchema, Partner } from "@shared/schema";
+import { insertProjectSchema, Partner, Project } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -23,10 +23,11 @@ const formSchema = insertProjectSchema.extend({
 type FormData = z.infer<typeof formSchema>;
 
 interface ProjectFormProps {
+  project?: Project;
   onSuccess?: () => void;
 }
 
-export default function ProjectForm({ onSuccess }: ProjectFormProps) {
+export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -40,19 +41,19 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      status: "planning",
-      clientId: "none",
-      startDate: "",
-      endDate: "",
-      budget: "",
-      progress: 0,
-      estimatedEffort: "",
+      name: project?.name || "",
+      description: project?.description || "",
+      status: project?.status || "planning",
+      clientId: project?.clientId || "none",
+      startDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
+      endDate: project?.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "",
+      budget: project?.budget || "",
+      progress: project?.progress || 0,
+      estimatedEffort: project?.estimatedEffort?.toString() || "",
     },
   });
 
-  const createProjectMutation = useMutation({
+  const saveProjectMutation = useMutation({
     mutationFn: async (data: FormData) => {
       const projectData = {
         ...data,
@@ -63,17 +64,25 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
         budget: data.budget || null,
         estimatedEffort: data.estimatedEffort ? parseInt(data.estimatedEffort) : null,
       };
-      const res = await apiRequest("POST", "/api/projects", projectData);
-      return res.json();
+      
+      if (project) {
+        // Edit existing project
+        const res = await apiRequest("PUT", `/api/projects/${project.id}`, projectData);
+        return res.json();
+      } else {
+        // Create new project
+        const res = await apiRequest("POST", "/api/projects", projectData);
+        return res.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      toast({ title: "Project created successfully" });
+      toast({ title: project ? "Project updated successfully" : "Project created successfully" });
       onSuccess?.();
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to create project",
+        title: project ? "Failed to update project" : "Failed to create project",
         description: error.message,
         variant: "destructive",
       });
@@ -81,7 +90,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
   });
 
   const onSubmit = (data: FormData) => {
-    createProjectMutation.mutate(data);
+    saveProjectMutation.mutate(data);
   };
 
   return (
@@ -256,13 +265,13 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
         <div className="flex justify-end space-x-2 pt-4">
           <Button
             type="submit"
-            disabled={createProjectMutation.isPending}
+            disabled={saveProjectMutation.isPending}
             data-testid="button-submit-project"
           >
-            {createProjectMutation.isPending && (
+            {saveProjectMutation.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Create Project
+            {project ? "Update Project" : "Create Project"}
           </Button>
         </div>
       </form>

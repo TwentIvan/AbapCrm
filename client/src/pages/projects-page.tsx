@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Code, Calendar, DollarSign, User, MoreHorizontal } from "lucide-react";
+import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit } from "lucide-react";
 import { Project } from "@shared/schema";
 import ProjectForm from "@/components/forms/project-form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -30,10 +30,22 @@ const statusLabels = {
 
 export default function ProjectsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   const { data: projects, isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
+
+  const handleEditProject = (project: Project) => {
+    setEditingProject(project);
+    setShowEditDialog(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setShowEditDialog(false);
+    setEditingProject(null);
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -91,8 +103,13 @@ export default function ProjectsPage() {
                           </Badge>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleEditProject(project)}
+                        data-testid={`button-edit-project-${project.id}`}
+                      >
+                        <Edit className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardHeader>
@@ -147,6 +164,20 @@ export default function ProjectsPage() {
             <DialogTitle>Create New Project</DialogTitle>
           </DialogHeader>
           <ProjectForm onSuccess={() => setShowCreateDialog(false)} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showEditDialog} onOpenChange={handleCloseEditDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Project</DialogTitle>
+          </DialogHeader>
+          {editingProject && (
+            <ProjectForm 
+              project={editingProject} 
+              onSuccess={handleCloseEditDialog} 
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

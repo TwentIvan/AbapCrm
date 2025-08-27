@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight } from "lucide-react";
+import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit } from "lucide-react";
 import { Task } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import TaskForm from "@/components/forms/task-form";
@@ -39,6 +39,8 @@ const statusLabels = {
 
 export default function TasksPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -67,6 +69,16 @@ export default function TasksPage() {
       id: task.id, 
       data: { status: newStatus }
     });
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setShowEditDialog(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setShowEditDialog(false);
+    setEditingTask(null);
   };
 
   const isOverdue = (dueDate: string | Date | null) => {
@@ -155,6 +167,14 @@ export default function TasksPage() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => handleEditTask(task)}
+                              data-testid={`button-edit-task-${task.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => toggleTaskExpanded(task.id)}
                               data-testid={`button-toggle-timer-${task.id}`}
                             >
@@ -237,6 +257,20 @@ export default function TasksPage() {
             <DialogTitle>Create New Task</DialogTitle>
           </DialogHeader>
           <TaskForm onSuccess={() => setShowCreateDialog(false)} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showEditDialog} onOpenChange={handleCloseEditDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+          </DialogHeader>
+          {editingTask && (
+            <TaskForm 
+              task={editingTask} 
+              onSuccess={handleCloseEditDialog} 
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
