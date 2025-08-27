@@ -79,7 +79,11 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/tasks", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    console.log("Task creation request - Auth status:", req.isAuthenticated(), "User:", req.user?.id);
+    if (!req.isAuthenticated()) {
+      console.log("Not authenticated - session:", req.session);
+      return res.sendStatus(401);
+    }
     try {
       const taskData = insertTaskSchema.parse({ 
         title: req.body.title,
@@ -90,6 +94,7 @@ export function registerRoutes(app: Express): Server {
         dueDate: req.body.dueDate,
         userId: req.user!.id 
       });
+      console.log("Creating task with data:", taskData);
       const task = await storage.createTask(taskData);
       res.status(201).json(task);
     } catch (error) {

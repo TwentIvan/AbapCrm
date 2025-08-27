@@ -13,6 +13,7 @@ import { eq, and, desc, asc } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
+import { sql } from "drizzle-orm";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -68,11 +69,11 @@ export interface IStorage {
   stopTimeEntry(id: string, userId: string): Promise<TimeEntry | undefined>;
   getRunningTimeEntry(userId: string): Promise<TimeEntry | undefined>;
 
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 }
 
 export class DatabaseStorage implements IStorage {
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({ 
@@ -165,8 +166,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateTask(id: string, task: Partial<InsertTask>, userId: string): Promise<Task | undefined> {
-    const updateData = { ...task, updatedAt: new Date() };
-    if (task.status === 'completed' && !task.completedAt) {
+    const updateData: any = { ...task, updatedAt: new Date() };
+    if (task.status === 'completed') {
       updateData.completedAt = new Date();
     }
     
@@ -244,8 +245,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateDeal(id: string, deal: Partial<InsertDeal>, userId: string): Promise<Deal | undefined> {
-    const updateData = { ...deal, updatedAt: new Date() };
-    if ((deal.stage === 'won' || deal.stage === 'lost') && !deal.actualCloseDate) {
+    const updateData: any = { ...deal, updatedAt: new Date() };
+    if (deal.stage === 'won' || deal.stage === 'lost') {
       updateData.actualCloseDate = new Date();
     }
 
