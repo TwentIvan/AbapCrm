@@ -16,10 +16,10 @@ import { Loader2 } from "lucide-react";
 const formSchema = insertTaskSchema.omit({
   userId: true,
   assignedTo: true,
+  estimatedEffort: true,
 }).extend({
   dueDate: z.string().optional(),
   projectId: z.string().optional(),
-  estimatedEffort: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -49,7 +49,6 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       priority: task?.priority || "medium",
       projectId: task?.projectId || "none",
       dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "",
-      estimatedEffort: task?.estimatedEffort?.toString() || "",
     },
   });
 
@@ -60,7 +59,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         userId: user!.id,
         projectId: data.projectId && data.projectId !== "none" ? data.projectId : null,
         dueDate: data.dueDate || null,
-        estimatedEffort: data.estimatedEffort ? parseInt(data.estimatedEffort) : null,
+        estimatedEffort: task?.estimatedEffort || null,
         completionPercentage: task?.completionPercentage || 0,
         assignedTo: task?.assignedTo || null,
       };
@@ -206,44 +205,23 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="dueDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Due Date (Optional)</FormLabel>
-                <FormControl>
-                  <Input 
-                    {...field} 
-                    type="date"
-                    data-testid="input-task-due-date"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="estimatedEffort"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Estimated Effort (Hours)</FormLabel>
-                <FormControl>
-                  <Input 
-                    {...field} 
-                    type="number"
-                    data-testid="input-task-effort"
-                    placeholder="0"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="dueDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Due Date (Optional)</FormLabel>
+              <FormControl>
+                <Input 
+                  {...field} 
+                  type="date"
+                  data-testid="input-task-due-date"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="flex justify-end space-x-2 pt-4">
           <Button
