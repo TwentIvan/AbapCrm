@@ -61,6 +61,8 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         projectId: data.projectId && data.projectId !== "none" ? data.projectId : null,
         dueDate: data.dueDate || null,
         estimatedEffort: data.estimatedEffort ? parseInt(data.estimatedEffort) : null,
+        completionPercentage: task?.completionPercentage || 0,
+        assignedTo: task?.assignedTo || null,
       };
       
       if (task) {

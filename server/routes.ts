@@ -111,6 +111,7 @@ export function registerRoutes(app: Express): Server {
         dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
         estimatedEffort: req.body.estimatedEffort || null,
         completionPercentage: req.body.completionPercentage || 0,
+        assignedTo: req.body.assignedTo || null,
       });
       const task = await storage.updateTask(req.params.id, taskData, req.user!.id);
       if (!task) return res.sendStatus(404);
