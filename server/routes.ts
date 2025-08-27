@@ -79,11 +79,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/tasks", async (req, res) => {
-    console.log("Task creation request - Auth status:", req.isAuthenticated(), "User:", req.user?.id);
-    if (!req.isAuthenticated()) {
-      console.log("Not authenticated - session:", req.session);
-      return res.sendStatus(401);
-    }
+    if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const taskData = insertTaskSchema.parse({ 
         title: req.body.title,
@@ -91,14 +87,12 @@ export function registerRoutes(app: Express): Server {
         status: req.body.status,
         priority: req.body.priority,
         projectId: req.body.projectId,
-        dueDate: req.body.dueDate,
+        dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
         userId: req.user!.id 
       });
-      console.log("Creating task with data:", taskData);
       const task = await storage.createTask(taskData);
       res.status(201).json(task);
     } catch (error) {
-      console.error("Task creation error:", error);
       res.status(400).json({ error: "Invalid task data", details: error instanceof Error ? error.message : String(error) });
     }
   });

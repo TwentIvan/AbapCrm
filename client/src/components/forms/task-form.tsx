@@ -52,25 +52,21 @@ export default function TaskForm({ onSuccess }: TaskFormProps) {
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      console.log("Mutation starting with data:", data);
       const taskData = {
         ...data,
         userId: user!.id,
         projectId: data.projectId && data.projectId !== "none" ? data.projectId : null,
-        dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : null,
+        dueDate: data.dueDate || null,
       };
-      console.log("Sending task data to API:", taskData);
       const res = await apiRequest("POST", "/api/tasks", taskData);
       return res.json();
     },
     onSuccess: () => {
-      console.log("Task created successfully");
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       toast({ title: "Task created successfully" });
       onSuccess?.();
     },
     onError: (error: Error) => {
-      console.error("Task creation failed:", error);
       toast({
         title: "Failed to create task",
         description: error.message,
@@ -80,8 +76,6 @@ export default function TaskForm({ onSuccess }: TaskFormProps) {
   });
 
   const onSubmit = (data: FormData) => {
-    console.log("Form submitted with data:", data);
-    console.log("Form errors:", form.formState.errors);
     createTaskMutation.mutate(data);
   };
 
