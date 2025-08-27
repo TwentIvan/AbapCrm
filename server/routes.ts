@@ -27,11 +27,22 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/projects", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const projectData = insertProjectSchema.parse({ ...req.body, userId: req.user!.id });
+      const projectData = insertProjectSchema.parse({
+        name: req.body.name,
+        description: req.body.description || null,
+        status: req.body.status,
+        clientId: req.body.clientId,
+        startDate: req.body.startDate,
+        endDate: req.body.endDate,
+        budget: req.body.budget,
+        progress: req.body.progress,
+        userId: req.user!.id
+      });
       const project = await storage.createProject(projectData);
       res.status(201).json(project);
     } catch (error) {
-      res.status(400).json({ error: "Invalid project data" });
+      console.error("Project creation error:", error);
+      res.status(400).json({ error: "Invalid project data", details: error instanceof Error ? error.message : String(error) });
     }
   });
 
@@ -70,11 +81,20 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const taskData = insertTaskSchema.parse({ ...req.body, userId: req.user!.id });
+      const taskData = insertTaskSchema.parse({ 
+        title: req.body.title,
+        description: req.body.description || null,
+        status: req.body.status,
+        priority: req.body.priority,
+        projectId: req.body.projectId,
+        dueDate: req.body.dueDate,
+        userId: req.user!.id 
+      });
       const task = await storage.createTask(taskData);
       res.status(201).json(task);
     } catch (error) {
-      res.status(400).json({ error: "Invalid task data" });
+      console.error("Task creation error:", error);
+      res.status(400).json({ error: "Invalid task data", details: error instanceof Error ? error.message : String(error) });
     }
   });
 
@@ -113,11 +133,22 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/partners", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const partnerData = insertPartnerSchema.parse({ ...req.body, userId: req.user!.id });
+      const partnerData = insertPartnerSchema.parse({
+        name: req.body.name,
+        email: req.body.email || null,
+        phone: req.body.phone || null,
+        company: req.body.company || null,
+        position: req.body.position || null,
+        address: req.body.address || null,
+        type: req.body.type,
+        notes: req.body.notes || null,
+        userId: req.user!.id
+      });
       const partner = await storage.createPartner(partnerData);
       res.status(201).json(partner);
     } catch (error) {
-      res.status(400).json({ error: "Invalid partner data" });
+      console.error("Partner creation error:", error);
+      res.status(400).json({ error: "Invalid partner data", details: error instanceof Error ? error.message : String(error) });
     }
   });
 
@@ -156,11 +187,22 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/deals", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const dealData = insertDealSchema.parse({ ...req.body, userId: req.user!.id });
+      const dealData = insertDealSchema.parse({
+        title: req.body.title,
+        description: req.body.description || null,
+        value: req.body.value,
+        stage: req.body.stage,
+        probability: req.body.probability,
+        partnerId: req.body.partnerId,
+        expectedCloseDate: req.body.expectedCloseDate,
+        notes: req.body.notes || null,
+        userId: req.user!.id
+      });
       const deal = await storage.createDeal(dealData);
       res.status(201).json(deal);
     } catch (error) {
-      res.status(400).json({ error: "Invalid deal data" });
+      console.error("Deal creation error:", error);
+      res.status(400).json({ error: "Invalid deal data", details: error instanceof Error ? error.message : String(error) });
     }
   });
 
