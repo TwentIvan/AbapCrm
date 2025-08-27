@@ -13,7 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 
-const formSchema = insertTaskSchema.extend({
+const formSchema = insertTaskSchema.omit({
+  userId: true,
+  assignedTo: true,
+}).extend({
   dueDate: z.string().optional(),
   projectId: z.string().optional(),
 });
@@ -218,7 +221,6 @@ export default function TaskForm({ onSuccess }: TaskFormProps) {
             type="submit"
             disabled={createTaskMutation.isPending}
             data-testid="button-submit-task"
-            onClick={() => console.log("Button clicked!", form.formState.isValid, form.formState.errors)}
           >
             {createTaskMutation.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
