@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
+import { z } from "zod";
 import { 
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, 
   insertDealSchema, insertCalendarEventSchema, insertTimeEntrySchema
@@ -102,7 +103,9 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/tasks/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const taskData = insertTaskSchema.omit({ userId: true }).parse({ 
+      console.log("Raw request body:", JSON.stringify(req.body, null, 2));
+      
+      const rawData = { 
         title: req.body.title,
         description: req.body.description || null,
         status: req.body.status,
@@ -112,12 +115,19 @@ export function registerRoutes(app: Express): Server {
         estimatedEffort: req.body.estimatedEffort || null,
         completionPercentage: req.body.completionPercentage || 0,
         assignedTo: req.body.assignedTo || null,
-      });
+      };
+      
+      console.log("Processed data before validation:", JSON.stringify(rawData, null, 2));
+      
+      const taskData = insertTaskSchema.omit({ userId: true }).parse(rawData);
       const task = await storage.updateTask(req.params.id, taskData, req.user!.id);
       if (!task) return res.sendStatus(404);
       res.json(task);
     } catch (error) {
       console.error("Task update error:", error);
+      if (error instanceof z.ZodError) {
+        console.error("Validation errors:", error.errors);
+      }
       res.status(400).json({ error: "Invalid task data", details: error instanceof Error ? error.message : String(error) });
     }
   });
