@@ -42,7 +42,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
       name: "",
       description: "",
       status: "planning",
-      clientId: "",
+      clientId: "none",
       startDate: "",
       endDate: "",
       budget: "",
@@ -55,7 +55,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
       const projectData = {
         ...data,
         userId: user!.id,
-        clientId: data.clientId || null,
+        clientId: data.clientId && data.clientId !== "none" ? data.clientId : null,
         startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
         endDate: data.endDate ? new Date(data.endDate).toISOString() : null,
         budget: data.budget || null,
@@ -107,6 +107,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
               <FormControl>
                 <Textarea 
                   {...field} 
+                  value={field.value || ""}
                   data-testid="input-project-description"
                   placeholder="Describe the project..."
                   rows={3}
@@ -149,14 +150,14 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Client (Optional)</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value || "none"}>
                   <FormControl>
                     <SelectTrigger data-testid="select-project-client">
                       <SelectValue placeholder="Select client" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">No client</SelectItem>
+                    <SelectItem value="none">No client</SelectItem>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.name}

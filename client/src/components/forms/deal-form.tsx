@@ -40,7 +40,7 @@ export default function DealForm({ onSuccess }: DealFormProps) {
       value: "",
       stage: "prospecting",
       probability: 50,
-      partnerId: "",
+      partnerId: "none",
       expectedCloseDate: "",
       notes: "",
     },
@@ -51,6 +51,7 @@ export default function DealForm({ onSuccess }: DealFormProps) {
       const dealData = {
         ...data,
         userId: user!.id,
+        partnerId: data.partnerId && data.partnerId !== "none" ? data.partnerId : null,
         expectedCloseDate: data.expectedCloseDate ? new Date(data.expectedCloseDate).toISOString() : null,
       };
       const res = await apiRequest("POST", "/api/deals", dealData);
@@ -100,6 +101,7 @@ export default function DealForm({ onSuccess }: DealFormProps) {
               <FormControl>
                 <Textarea 
                   {...field} 
+                  value={field.value || ""}
                   data-testid="input-deal-description"
                   placeholder="Describe the opportunity..."
                   rows={3}
@@ -193,6 +195,7 @@ export default function DealForm({ onSuccess }: DealFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
+                    <SelectItem value="none">No partner</SelectItem>
                     {partners?.map((partner) => (
                       <SelectItem key={partner.id} value={partner.id}>
                         {partner.name} ({partner.type})
@@ -233,6 +236,7 @@ export default function DealForm({ onSuccess }: DealFormProps) {
               <FormControl>
                 <Textarea 
                   {...field} 
+                  value={field.value || ""}
                   data-testid="input-deal-notes"
                   placeholder="Additional notes about this deal..."
                   rows={3}

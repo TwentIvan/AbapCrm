@@ -41,7 +41,7 @@ export default function TaskForm({ onSuccess }: TaskFormProps) {
       description: "",
       status: "todo",
       priority: "medium",
-      projectId: "",
+      projectId: "none",
       dueDate: "",
     },
   });
@@ -51,7 +51,7 @@ export default function TaskForm({ onSuccess }: TaskFormProps) {
       const taskData = {
         ...data,
         userId: user!.id,
-        projectId: data.projectId || null,
+        projectId: data.projectId && data.projectId !== "none" ? data.projectId : null,
         dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : null,
       };
       const res = await apiRequest("POST", "/api/tasks", taskData);
@@ -101,6 +101,7 @@ export default function TaskForm({ onSuccess }: TaskFormProps) {
               <FormControl>
                 <Textarea 
                   {...field} 
+                  value={field.value || ""}
                   data-testid="input-task-description"
                   placeholder="Describe the task..."
                   rows={3}
@@ -167,14 +168,14 @@ export default function TaskForm({ onSuccess }: TaskFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Project (Optional)</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select onValueChange={field.onChange} value={field.value || "none"}>
                 <FormControl>
                   <SelectTrigger data-testid="select-task-project">
                     <SelectValue placeholder="Select project" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">No project</SelectItem>
+                  <SelectItem value="none">No project</SelectItem>
                   {activeProjects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}

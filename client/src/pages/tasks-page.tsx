@@ -69,9 +69,10 @@ export default function TasksPage() {
     });
   };
 
-  const isOverdue = (dueDate: string | null) => {
+  const isOverdue = (dueDate: string | Date | null) => {
     if (!dueDate) return false;
-    return new Date(dueDate) < new Date();
+    const date = dueDate instanceof Date ? dueDate : new Date(dueDate);
+    return date < new Date();
   };
 
   const toggleTaskExpanded = (taskId: string) => {

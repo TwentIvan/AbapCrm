@@ -97,6 +97,7 @@ export default function PartnerForm({ onSuccess }: PartnerFormProps) {
                 <FormControl>
                   <Input 
                     {...field} 
+                    value={field.value || ""}
                     type="email"
                     data-testid="input-partner-email" 
                     placeholder="email@example.com" 
@@ -116,6 +117,7 @@ export default function PartnerForm({ onSuccess }: PartnerFormProps) {
                 <FormControl>
                   <Input 
                     {...field} 
+                    value={field.value || ""}
                     type="tel"
                     data-testid="input-partner-phone" 
                     placeholder="+1234567890" 
@@ -137,6 +139,7 @@ export default function PartnerForm({ onSuccess }: PartnerFormProps) {
                 <FormControl>
                   <Input 
                     {...field} 
+                    value={field.value || ""}
                     data-testid="input-partner-company" 
                     placeholder="Company name" 
                   />
@@ -155,6 +158,7 @@ export default function PartnerForm({ onSuccess }: PartnerFormProps) {
                 <FormControl>
                   <Input 
                     {...field} 
+                    value={field.value || ""}
                     data-testid="input-partner-position" 
                     placeholder="Job title" 
                   />
@@ -198,6 +202,7 @@ export default function PartnerForm({ onSuccess }: PartnerFormProps) {
               <FormControl>
                 <Textarea 
                   {...field} 
+                  value={field.value || ""}
                   data-testid="input-partner-address"
                   placeholder="Full address..."
                   rows={2}
@@ -217,6 +222,7 @@ export default function PartnerForm({ onSuccess }: PartnerFormProps) {
               <FormControl>
                 <Textarea 
                   {...field} 
+                  value={field.value || ""}
                   data-testid="input-partner-notes"
                   placeholder="Additional notes about this partner..."
                   rows={3}
