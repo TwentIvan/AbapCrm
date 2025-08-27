@@ -28,9 +28,9 @@ export default function Sidebar() {
           </div>
           <div>
             <h1 className="text-lg font-semibold text-foreground" data-testid="text-app-title">
-              ABAP CRM
+              The Hub Up
             </h1>
-            <p className="text-xs text-muted-foreground">Freelancer Suite</p>
+            <p className="text-xs text-muted-foreground">SAP ABAP Hub</p>
           </div>
         </div>
       </div>

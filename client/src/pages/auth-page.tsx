@@ -78,7 +78,7 @@ export default function AuthPage() {
             <div className="mx-auto w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4">
               <Code className="h-6 w-6 text-primary-foreground" />
             </div>
-            <CardTitle className="text-2xl font-bold">ABAP CRM</CardTitle>
+            <CardTitle className="text-2xl font-bold">The Hub Up</CardTitle>
             <CardDescription>
               {activeTab === "login" 
                 ? "Sign in to your freelancer account" 
@@ -262,11 +262,11 @@ export default function AuthPage() {
       <div className="hidden lg:flex flex-col justify-center p-12 bg-gradient-to-br from-primary/10 via-primary/5 to-accent/10">
         <div className="max-w-lg">
           <h1 className="text-4xl font-bold text-foreground mb-6">
-            Manage Your SAP ABAP Freelance Business
+            The Hub Up - Your SAP ABAP Command Center
           </h1>
           <p className="text-xl text-muted-foreground mb-8">
-            Complete CRM solution designed specifically for SAP ABAP freelancers. 
-            Track projects, manage clients, and grow your business.
+            The ultimate hub for SAP ABAP freelancers. 
+            Track projects, manage clients, and power up your business.
           </p>
           
           <div className="space-y-4">
