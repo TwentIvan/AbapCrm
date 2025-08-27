@@ -88,6 +88,7 @@ export function TimeTracker({ task }: TimeTrackerProps) {
   const hasRunningTimer = !!runningEntry;
 
   const handleStartTimer = () => {
+    console.log("Start timer button clicked!");
     startTimerMutation.mutate();
   };
 
