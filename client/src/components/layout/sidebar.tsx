@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import hubUpLogo from "@assets/generated_images/The_Hub_Up_logo_ae8678a3.png";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: BarChart3, testId: "nav-dashboard" },
@@ -23,8 +24,8 @@ export default function Sidebar() {
       {/* Logo and Brand */}
       <div className="p-6 border-b border-border">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Code className="h-5 w-5 text-primary-foreground" />
+          <div className="w-8 h-8 rounded-lg overflow-hidden">
+            <img src={hubUpLogo} alt="The Hub Up" className="w-full h-full object-contain" />
           </div>
           <div>
             <h1 className="text-lg font-semibold text-foreground" data-testid="text-app-title">

@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, Users, Calendar, TrendingUp, Shield, Zap } from "lucide-react";
+import hubUpLogo from "@assets/generated_images/The_Hub_Up_logo_ae8678a3.png";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -75,8 +76,8 @@ export default function AuthPage() {
       <div className="flex items-center justify-center p-8 bg-background">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4">
-              <Code className="h-6 w-6 text-primary-foreground" />
+            <div className="mx-auto w-12 h-12 rounded-lg overflow-hidden mb-4">
+              <img src={hubUpLogo} alt="The Hub Up" className="w-full h-full object-contain" />
             </div>
             <CardTitle className="text-2xl font-bold">The Hub Up</CardTitle>
             <CardDescription>
