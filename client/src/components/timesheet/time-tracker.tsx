@@ -35,7 +35,6 @@ export function TimeTracker({ task }: TimeTrackerProps) {
         startTime: new Date().toISOString(),
         isRunning: true,
       };
-      console.log("Starting timer with data:", requestData);
       const res = await apiRequest("POST", "/api/time-entries", requestData);
       return await res.json();
     },
@@ -88,7 +87,6 @@ export function TimeTracker({ task }: TimeTrackerProps) {
   const hasRunningTimer = !!runningEntry;
 
   const handleStartTimer = () => {
-    console.log("Start timer button clicked!");
     startTimerMutation.mutate();
   };
 
