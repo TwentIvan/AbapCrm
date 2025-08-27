@@ -288,14 +288,16 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/time-entries", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
+      console.log("Time entry request body:", req.body);
       const entryData = insertTimeEntrySchema.parse({
         taskId: req.body.taskId,
         startTime: req.body.startTime ? new Date(req.body.startTime) : new Date(),
         endTime: req.body.endTime ? new Date(req.body.endTime) : null,
         description: req.body.description || null,
-        isRunning: req.body.isRunning || false,
+        isRunning: req.body.isRunning !== false,
         userId: req.user!.id
       });
+      console.log("Parsed entry data:", entryData);
       const entry = await storage.createTimeEntry(entryData);
       res.status(201).json(entry);
     } catch (error) {
