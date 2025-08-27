@@ -15,6 +15,7 @@ import { Loader2 } from "lucide-react";
 
 const formSchema = insertTaskSchema.extend({
   dueDate: z.string().optional(),
+  projectId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
