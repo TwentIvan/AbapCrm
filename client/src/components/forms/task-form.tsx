@@ -218,6 +218,7 @@ export default function TaskForm({ onSuccess }: TaskFormProps) {
             type="submit"
             disabled={createTaskMutation.isPending}
             data-testid="button-submit-task"
+            onClick={() => console.log("Button clicked!", form.formState.isValid, form.formState.errors)}
           >
             {createTaskMutation.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
