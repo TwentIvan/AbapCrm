@@ -30,11 +30,13 @@ export function TimeTracker({ task }: TimeTrackerProps) {
   // Create time entry mutation
   const startTimerMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/time-entries", {
+      const requestData = {
         taskId: task.id,
         startTime: new Date().toISOString(),
         isRunning: true,
-      });
+      };
+      console.log("Starting timer with data:", requestData);
+      const res = await apiRequest("POST", "/api/time-entries", requestData);
       return await res.json();
     },
     onSuccess: () => {

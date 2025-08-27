@@ -292,9 +292,9 @@ export function registerRoutes(app: Express): Server {
       const entryData = insertTimeEntrySchema.parse({
         taskId: req.body.taskId,
         startTime: req.body.startTime ? new Date(req.body.startTime) : new Date(),
-        endTime: req.body.endTime ? new Date(req.body.endTime) : null,
-        description: req.body.description || null,
-        isRunning: req.body.isRunning !== false,
+        endTime: req.body.endTime ? new Date(req.body.endTime) : undefined,
+        description: req.body.description || undefined,
+        isRunning: req.body.isRunning === true,
         userId: req.user!.id
       });
       console.log("Parsed entry data:", entryData);
