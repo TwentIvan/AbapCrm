@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { PlanningWindow } from "@shared/schema";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isWithinInterval, addDays, startOfWeek, endOfWeek } from "date-fns";
-import { it } from "date-fns/locale";
 
 interface PlanningCalendarProps {
   planningWindows: PlanningWindow[];
@@ -153,7 +152,7 @@ export default function PlanningCalendar({ planningWindows, onWindowSelect }: Pl
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="font-medium min-w-[140px] text-center">
-              {format(currentDate, 'MMMM yyyy', { locale: it })}
+              {format(currentDate, 'MMMM yyyy')}
             </span>
             <Button variant="outline" size="sm" onClick={() => navigateMonth('next')}>
               <ChevronRight className="h-4 w-4" />
