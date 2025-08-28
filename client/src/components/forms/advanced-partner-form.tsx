@@ -22,8 +22,8 @@ import type { UploadResult } from "@uppy/core";
 // Extended schema with validation for Italian CF and VAT
 const advancedPartnerSchema = insertPartnerSchema.extend({
   fiscalCode: z.string().optional().refine(
-    (val) => !val || val.length === 16,
-    "Il codice fiscale deve essere di 16 caratteri"
+    (val) => !val || val.length === 11 || val.length === 16,
+    "Codice fiscale non valido (11 caratteri per aziende, 16 per persone fisiche)"
   ),
   vatNumber: z.string().optional().refine(
     (val) => !val || /^(IT)?[0-9]{11}$/.test(val.replace(/\s/g, '')),
@@ -162,31 +162,31 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   }
 
   const selectCompanySuggestion = (company: CompanyInfo) => {
-    // Auto-populate all company fields using setValue to avoid focus issues
-    setTimeout(() => {
-      form.setValue('name', company.legalName || company.name);
-      form.setValue('company', company.name);
-      if (company.address) form.setValue('address', company.address);
-      if (company.city) form.setValue('city', company.city);
-      if (company.postalCode) form.setValue('postalCode', company.postalCode);
-      if (company.country) form.setValue('country', company.country);
-      if (company.fiscalCode) form.setValue('fiscalCode', company.fiscalCode);
-      if (company.vatNumber) form.setValue('vatNumber', company.vatNumber.replace('IT', ''));
-      if (company.website) form.setValue('website', company.website);
-      if (company.logoUrl) {
-        form.setValue('logoUrl', company.logoUrl);
-        setLogoPreview(company.logoUrl);
-      }
-      
-      // Close suggestions
-      setShowCompanySuggestions(false);
-      setCompanySuggestions([]);
-      
-      toast({ 
-        title: "Informazioni azienda caricate!", 
-        description: `Dati di ${company.name} inseriti automaticamente` 
-      });
-    }, 50);
+    // Close suggestions immediately to prevent focus issues
+    setShowCompanySuggestions(false);
+    setCompanySuggestions([]);
+    
+    // Auto-populate all company fields
+    form.setValue('name', company.legalName || company.name);
+    form.setValue('company', company.name);
+    if (company.address) form.setValue('address', company.address);
+    if (company.city) form.setValue('city', company.city);
+    if (company.postalCode) form.setValue('postalCode', company.postalCode);
+    if (company.country) form.setValue('country', company.country);
+    if (company.fiscalCode) form.setValue('fiscalCode', company.fiscalCode);
+    if (company.vatNumber) form.setValue('vatNumber', company.vatNumber.replace('IT', ''));
+    if (company.website) form.setValue('website', company.website);
+    
+    // Set logo preview immediately
+    if (company.logoUrl) {
+      form.setValue('logoUrl', company.logoUrl);
+      setLogoPreview(company.logoUrl);
+    }
+    
+    toast({ 
+      title: "Informazioni azienda caricate!", 
+      description: `Dati di ${company.name} inseriti automaticamente` 
+    });
   };
 
   // Fiscal code validation
@@ -327,25 +327,21 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                               field.onChange(e);
                               handleCompanySearch(e.target.value);
                             }}
-                            onBlur={() => {
-                              // Hide suggestions when field loses focus (after a delay)
-                              setTimeout(() => setShowCompanySuggestions(false), 200);
-                            }}
-                            onFocus={() => {
-                              // Show suggestions if we have them when field gains focus
-                              if (companySuggestions.length > 0) {
-                                setShowCompanySuggestions(true);
-                              }
-                            }}
+                            autoComplete="off"
                             data-testid="input-partner-name"
                           />
                           {showCompanySuggestions && (
                             <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-y-auto">
                               {companySuggestions.map((company, index) => (
-                                <div
+                                <button
                                   key={index}
-                                  className="px-3 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
-                                  onClick={() => selectCompanySuggestion(company)}
+                                  type="button"
+                                  className="w-full px-3 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 text-left"
+                                  onMouseDown={(e) => {
+                                    // Prevent default to avoid focus loss
+                                    e.preventDefault();
+                                    selectCompanySuggestion(company);
+                                  }}
                                   data-testid={`company-suggestion-${index}`}
                                 >
                                   <div className="flex items-center gap-3">
@@ -377,7 +373,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                                       )}
                                     </div>
                                   </div>
-                                </div>
+                                </button>
                               ))}
                             </div>
                           )}
@@ -468,52 +464,9 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                               field.onChange(e);
                               handleCompanySearch(e.target.value);
                             }}
+                            autoComplete="off"
                             data-testid="input-partner-company"
                           />
-                          {showCompanySuggestions && (
-                            <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-y-auto">
-                              {companySuggestions.map((company, index) => (
-                                <div
-                                  key={`company-${index}`}
-                                  className="px-3 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
-                                  onClick={() => selectCompanySuggestion(company)}
-                                  data-testid={`company-suggestion-company-${index}`}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    {company.logoUrl && (
-                                      <img 
-                                        src={company.logoUrl} 
-                                        alt={`${company.name} logo`}
-                                        className="w-8 h-8 object-contain rounded"
-                                      />
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                      <div className="font-medium text-sm text-gray-900 truncate">
-                                        {company.name}
-                                      </div>
-                                      {company.legalName && company.legalName !== company.name && (
-                                        <div className="text-xs text-gray-500 truncate">
-                                          {company.legalName}
-                                        </div>
-                                      )}
-                                      <div className="flex items-center gap-4 mt-1">
-                                        {company.sector && (
-                                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                                            {company.sector}
-                                          </span>
-                                        )}
-                                        {company.city && (
-                                          <span className="text-xs text-gray-500">
-                                            📍 {company.city}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -729,23 +682,36 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                   <label className="text-sm font-medium">Logo Aziendale</label>
                   <div className="flex items-center gap-4">
                     {logoPreview && (
-                      <img 
-                        src={logoPreview} 
-                        alt="Logo preview" 
-                        className="w-16 h-16 object-cover rounded-lg border"
-                      />
+                      <div className="w-16 h-16 border border-gray-200 rounded-lg p-2 bg-gray-50">
+                        <img 
+                          src={logoPreview} 
+                          alt="Logo preview" 
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            console.error('Logo preview error:', e);
+                            setLogoPreview("");
+                          }}
+                        />
+                      </div>
                     )}
-                    <ObjectUploader
-                      maxNumberOfFiles={1}
-                      maxFileSize={5242880} // 5MB
-                      onGetUploadParameters={handleGetLogoUploadParameters}
-                      onComplete={handleLogoUploadComplete}
-                      buttonClassName="w-full"
-                    >
-                      <Camera className="mr-2 h-4 w-4" />
-                      {logoPreview ? 'Cambia Logo' : 'Carica Logo'}
-                    </ObjectUploader>
+                    <div className="flex-1">
+                      <ObjectUploader
+                        maxNumberOfFiles={1}
+                        maxFileSize={5242880} // 5MB
+                        onGetUploadParameters={handleGetLogoUploadParameters}
+                        onComplete={handleLogoUploadComplete}
+                        buttonClassName="w-full"
+                      >
+                        <Camera className="mr-2 h-4 w-4" />
+                        {logoPreview ? 'Cambia Logo' : 'Carica Logo'}
+                      </ObjectUploader>
+                    </div>
                   </div>
+                  {form.getValues('logoUrl') && (
+                    <p className="text-xs text-gray-500">
+                      Logo: {form.getValues('logoUrl').split('/').pop()}
+                    </p>
+                  )}
                 </div>
 
                 <FormField
