@@ -109,7 +109,7 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
 
   // Update task mutation
   const updateTaskMutation = useMutation({
-    mutationFn: async (data: { taskId: string; updates: Partial<Task> }) => {
+    mutationFn: async (data: { taskId: string; updates: any }) => {
       const response = await apiRequest("PUT", `/api/tasks/${data.taskId}`, data.updates);
       return response.json();
     },

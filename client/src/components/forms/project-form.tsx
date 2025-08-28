@@ -13,11 +13,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 
-const formSchema = insertProjectSchema.extend({
+const formSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+  status: z.enum(["planning", "in_progress", "review", "completed", "on_hold"]),
+  clientId: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   budget: z.string().optional(),
   estimatedEffort: z.string().optional(),
+  progress: z.number().min(0).max(100),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -44,7 +49,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       name: project?.name || "",
       description: project?.description || "",
       status: project?.status || "planning",
-      clientId: project?.clientId || "none",
+      clientId: project?.clientId || "no-client",
       startDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
       endDate: project?.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "",
       budget: project?.budget || "",
@@ -58,7 +63,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       const projectData = {
         ...data,
         userId: user!.id,
-        clientId: data.clientId && data.clientId !== "none" ? data.clientId : null,
+        clientId: data.clientId && data.clientId !== "no-client" ? data.clientId : null,
         startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
         endDate: data.endDate ? new Date(data.endDate).toISOString() : null,
         budget: data.budget || null,
@@ -162,14 +167,14 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Client (Optional)</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || "none"}>
+                <Select onValueChange={field.onChange} value={field.value || "no-client"}>
                   <FormControl>
                     <SelectTrigger data-testid="select-project-client">
                       <SelectValue placeholder="Select client" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="none">No client</SelectItem>
+                    <SelectItem value="no-client">No client</SelectItem>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.name}
