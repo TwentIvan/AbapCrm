@@ -53,7 +53,7 @@ export default function EmailConfig() {
 
   const configureMutation = useMutation({
     mutationFn: (data: EmailConfigForm) => 
-      apiRequest("/api/email/configure", "POST", data),
+      apiRequest("POST", "/api/email/configure", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/email/status"] });
       toast({
@@ -73,7 +73,7 @@ export default function EmailConfig() {
   });
 
   const disconnectMutation = useMutation({
-    mutationFn: () => apiRequest("/api/email/disconnect", "POST"),
+    mutationFn: () => apiRequest("POST", "/api/email/disconnect"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/email/status"] });
       toast({
