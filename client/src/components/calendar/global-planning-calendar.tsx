@@ -9,7 +9,7 @@ import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, 
   isWithinInterval, addDays, startOfWeek, endOfWeek, startOfDay, endOfDay, addWeeks, 
   subWeeks, subDays, eachHourOfInterval, isSameHour, parseISO, setHours, setMinutes,
-  isAfter, isBefore, differenceInMinutes
+  isAfter, isBefore, differenceInMinutes, max, min
 } from "date-fns";
 
 interface PlanningWindowWithProject extends PlanningWindow {
@@ -106,14 +106,38 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
         if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
             isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
             (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
-          instances.push({
-            window,
-            project,
-            date: windowStart,
-            startTime: window.startTime || '09:00',
-            endTime: window.endTime || '17:00',
-            level: projectLevel
-          });
+          
+          // Per i progetti padre, creiamo istanze per ogni giorno nel range della planning window
+          // Questo assicura che il box padre sia continuo anche quando ci sono gap tra i progetti figlio
+          const hasChildProjects = planningWindowsWithProject.some(w => w.project.parentProjectId === project.id);
+          
+          if (hasChildProjects || projectLevel === 0) {
+            // Per progetti padre o progetti di primo livello, creiamo istanze per ogni giorno
+            const rangeStart = max([windowStart, calendarStart]);
+            const rangeEnd = min([windowEnd, calendarEnd]);
+            const dayRange = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
+            
+            dayRange.forEach(day => {
+              instances.push({
+                window,
+                project,
+                date: day,
+                startTime: window.startTime || '09:00',
+                endTime: window.endTime || '17:00',
+                level: projectLevel
+              });
+            });
+          } else {
+            // Per i progetti figlio senza sotto-progetti, manteniamo la logica originale
+            instances.push({
+              window,
+              project,
+              date: windowStart,
+              startTime: window.startTime || '09:00',
+              endTime: window.endTime || '17:00',
+              level: projectLevel
+            });
+          }
         }
       } else {
         const interval = window.recurrenceInterval || 1;
