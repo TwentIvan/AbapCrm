@@ -427,13 +427,57 @@ export default function MessagesPage() {
                           dangerouslySetInnerHTML={{ __html: selectedMessage.htmlBody }}
                         />
                       ) : (
-                        <pre className="whitespace-pre-wrap text-sm">
+                        <div className="whitespace-pre-wrap text-sm">
                           {selectedMessage.body || 'Nessun contenuto'}
-                        </pre>
+                        </div>
                       )}
                     </div>
                   </ScrollArea>
                 </div>
+
+                {/* Attachments Section */}
+                {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (
+                  <>
+                    <Separator />
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <h4 className="font-medium">
+                          Allegati ({selectedMessage.attachments.length})
+                        </h4>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {selectedMessage.attachments.map((filename, index) => (
+                          <div 
+                            key={index}
+                            className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <FileText className="h-4 w-4 flex-shrink-0" />
+                              <span 
+                                className="text-sm truncate"
+                                title={filename}
+                              >
+                                {filename}
+                              </span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                window.open(`/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`, '_blank');
+                              }}
+                              data-testid={`download-attachment-${index}`}
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              Scarica
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {/* AI Suggestions */}
                 {showSuggestions && analyzeMutation.data && (

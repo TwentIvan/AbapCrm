@@ -1,0 +1,98 @@
+import fs from 'fs';
+import path from 'path';
+import { storage } from './storage';
+
+export class AttachmentsService {
+  private static attachmentsDir = path.join(process.cwd(), 'stored_attachments');
+
+  static async initialize() {
+    // Crea directory degli allegati se non esiste
+    if (!fs.existsSync(this.attachmentsDir)) {
+      fs.mkdirSync(this.attachmentsDir, { recursive: true });
+      console.log('[ATTACHMENTS] Created attachments directory');
+    }
+  }
+
+  static async saveAttachment(attachment: any, messageId: string): Promise<string> {
+    await this.initialize();
+    
+    const filename = attachment.filename || 'unnamed_attachment';
+    const safeFilename = this.sanitizeFilename(filename);
+    const uniqueFilename = `${messageId}_${safeFilename}`;
+    const filePath = path.join(this.attachmentsDir, uniqueFilename);
+    
+    try {
+      fs.writeFileSync(filePath, attachment.content);
+      console.log(`[ATTACHMENTS] Saved attachment: ${uniqueFilename}`);
+      return uniqueFilename;
+    } catch (error) {
+      console.error('[ATTACHMENTS] Error saving attachment:', error);
+      throw error;
+    }
+  }
+
+  static async getAttachment(messageId: string, filename: string): Promise<{ data: Buffer, originalName: string } | null> {
+    await this.initialize();
+    
+    const uniqueFilename = `${messageId}_${filename}`;
+    const filePath = path.join(this.attachmentsDir, uniqueFilename);
+    
+    try {
+      if (!fs.existsSync(filePath)) {
+        console.log(`[ATTACHMENTS] File not found: ${uniqueFilename}`);
+        return null;
+      }
+      
+      const data = fs.readFileSync(filePath);
+      const originalName = filename.replace(/^[^_]+_/, ''); // Rimuove il prefixo messageId_
+      
+      return { data, originalName };
+    } catch (error) {
+      console.error('[ATTACHMENTS] Error reading attachment:', error);
+      return null;
+    }
+  }
+
+  static async listAttachments(messageId: string): Promise<string[]> {
+    await this.initialize();
+    
+    try {
+      const files = fs.readdirSync(this.attachmentsDir);
+      const messageAttachments = files.filter(file => file.startsWith(`${messageId}_`));
+      
+      return messageAttachments.map(file => file.replace(`${messageId}_`, ''));
+    } catch (error) {
+      console.error('[ATTACHMENTS] Error listing attachments:', error);
+      return [];
+    }
+  }
+
+  private static sanitizeFilename(filename: string): string {
+    // Rimuove caratteri pericolosi dal nome file
+    return filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  }
+
+  // Determina il tipo MIME dal nome file
+  static getMimeType(filename: string): string {
+    const ext = path.extname(filename).toLowerCase();
+    
+    const mimeTypes: { [key: string]: string } = {
+      '.pdf': 'application/pdf',
+      '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.xls': 'application/vnd.ms-excel',
+      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.ppt': 'application/vnd.ms-powerpoint',
+      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.txt': 'text/plain',
+      '.zip': 'application/zip',
+      '.rar': 'application/x-rar-compressed',
+    };
+    
+    return mimeTypes[ext] || 'application/octet-stream';
+  }
+}

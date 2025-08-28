@@ -166,7 +166,7 @@ export const messages = pgTable("messages", {
   htmlBody: text("html_body"),
   attachments: text("attachments").array(), // Array di nomi/paths allegati
   receivedAt: timestamp("received_at").notNull(),
-  // Thread e destinatari originali completi (commentato temporaneamente per problemi di schema)
+  // Thread e destinatari originali completi (commentato temporaneamente)
   // fullThreadContent: text("full_thread_content"), // Thread completo estratto dalle email inoltrate
   // originalToEmails: text("original_to_emails").array(), // Tutti i destinatari TO originali
   // originalCcEmails: text("original_cc_emails").array(), // Tutti i destinatari CC originali

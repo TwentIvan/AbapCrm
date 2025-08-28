@@ -499,6 +499,39 @@ export function registerRoutes(app: Express): Server {
     res.json(messages);
   });
 
+  // Download attachment endpoint
+  app.get("/api/messages/:messageId/attachments/:filename", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { messageId, filename } = req.params;
+      
+      // Verifica che il messaggio appartenga all'utente  
+      const message = await storage.getMessageById(messageId, req.user!.id);
+      if (!message) return res.sendStatus(404);
+      
+      // Verifica che l'allegato esista 
+      if (!message.attachments || !message.attachments.includes(filename)) {
+        return res.sendStatus(404);
+      }
+
+      // Per ora simula il download - verrà implementato completamente
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.json({ 
+        message: "Download simulato - in implementazione", 
+        filename,
+        messageId,
+        available: true,
+        size: "Dimensione non disponibile"
+      });
+      
+    } catch (error) {
+      console.error('Attachment download error:', error);
+      res.status(500).json({ error: "Failed to download attachment" });
+    }
+  });
+
   app.get("/api/messages/unread", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const messages = await storage.getUnreadMessages(req.user!.id);

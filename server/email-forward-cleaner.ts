@@ -394,35 +394,57 @@ export class EmailForwardCleaner {
     const result: { to: string[], cc: string[], bcc: string[] } = { to: [], cc: [], bcc: [] };
     
     try {
-      // Pattern per cercare destinatari nelle email inoltrate
-      const patterns = [
-        // Pattern italiani
-        /(?:^|\n)\s*A:\s*(.+?)(?=\n|\r|$)/gim,
-        /(?:^|\n)\s*To:\s*(.+?)(?=\n|\r|$)/gim,
-        /(?:^|\n)\s*CC:\s*(.+?)(?=\n|\r|$)/gim,
-        /(?:^|\n)\s*Cc:\s*(.+?)(?=\n|\r|$)/gim,
-        /(?:^|\n)\s*CCN:\s*(.+?)(?=\n|\r|$)/gim,
-        /(?:^|\n)\s*BCC:\s*(.+?)(?=\n|\r|$)/gim,
-        /(?:^|\n)\s*Bcc:\s*(.+?)(?=\n|\r|$)/gim,
+      console.log('[EMAIL-CLEANER] Extracting recipients from body...');
+      
+      // Pattern semplificati per cercare destinatari nei metadati degli inoltri
+      const toPatterns = [
+        /(?:^|\n)\s*A:\s*(.+?)(?=\n[A-Za-z]+:|$)/gim,
+        /(?:^|\n)\s*To:\s*(.+?)(?=\n[A-Za-z]+:|$)/gim,
+        /(?:^|\n)\s*An:\s*(.+?)(?=\n[A-Za-z]+:|$)/gim,
+      ];
+      
+      const ccPatterns = [
+        /(?:^|\n)\s*CC:\s*(.+?)(?=\n[A-Za-z]+:|$)/gim,
+        /(?:^|\n)\s*Cc:\s*(.+?)(?=\n[A-Za-z]+:|$)/gim,
+        /(?:^|\n)\s*CCN:\s*(.+?)(?=\n[A-Za-z]+:|$)/gim,
+      ];
+      
+      const bccPatterns = [
+        /(?:^|\n)\s*BCC:\s*(.+?)(?=\n[A-Za-z]+:|$)/gim,
+        /(?:^|\n)\s*Bcc:\s*(.+?)(?=\n[A-Za-z]+:|$)/gim,
+        /(?:^|\n)\s*Nascosta:\s*(.+?)(?=\n[A-Za-z]+:|$)/gim,
       ];
 
-      patterns.forEach(pattern => {
+      // Estrai TO
+      toPatterns.forEach(pattern => {
         let match;
         while ((match = pattern.exec(textBody)) !== null) {
           const emailLine = match[1].trim();
-          
-          // Estrae email dalla linea
           const emails = this.extractEmailsFromLine(emailLine);
-          
-          // Determina se è TO, CC o BCC in base al pattern
-          const label = match[0].toLowerCase();
-          if (label.includes('cc') && !label.includes('bcc')) {
-            result.cc.push(...emails);
-          } else if (label.includes('bcc') || label.includes('ccn')) {
-            result.bcc.push(...emails);
-          } else if (label.includes('to') || label.includes('a:')) {
-            result.to.push(...emails);
-          }
+          result.to.push(...emails);
+          console.log('[EMAIL-CLEANER] Found TO recipients:', emails);
+        }
+      });
+
+      // Estrai CC
+      ccPatterns.forEach(pattern => {
+        let match;
+        while ((match = pattern.exec(textBody)) !== null) {
+          const emailLine = match[1].trim();
+          const emails = this.extractEmailsFromLine(emailLine);
+          result.cc.push(...emails);
+          console.log('[EMAIL-CLEANER] Found CC recipients:', emails);
+        }
+      });
+
+      // Estrai BCC
+      bccPatterns.forEach(pattern => {
+        let match;
+        while ((match = pattern.exec(textBody)) !== null) {
+          const emailLine = match[1].trim();
+          const emails = this.extractEmailsFromLine(emailLine);
+          result.bcc.push(...emails);
+          console.log('[EMAIL-CLEANER] Found BCC recipients:', emails);
         }
       });
 
