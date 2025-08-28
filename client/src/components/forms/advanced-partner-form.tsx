@@ -391,16 +391,13 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             value={field.value || ""}
                             placeholder="Inizia a digitare il nome dell'azienda..."
                             onChange={(e) => {
-                              const value = e.target.value;
                               field.onChange(e);
-                              
-                              // Gestione ricerca con debounce semplificato
+                            }}
+                            onInput={(e) => {
+                              // Usa onInput invece di onKeyUp per catturare tutti i cambiamenti
+                              const value = (e.target as HTMLInputElement).value;
                               if (value.length >= 2) {
-                                setTimeout(() => {
-                                  if (field.value === value) { // Solo se valore non è cambiato
-                                    debouncedCompanySearch(value);
-                                  }
-                                }, 100);
+                                debouncedCompanySearch(value);
                               } else {
                                 setCompanySuggestions([]);
                                 setShowCompanySuggestions(false);
@@ -555,10 +552,13 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             onChange={(e) => {
                               field.onChange(e);
                             }}
-                            onKeyUp={(e) => {
+                            onInput={(e) => {
                               const value = (e.target as HTMLInputElement).value;
                               if (value.length >= 2) {
                                 debouncedCompanySearch(value);
+                              } else {
+                                setCompanySuggestions([]);
+                                setShowCompanySuggestions(false);
                               }
                             }}
                             autoComplete="off"
