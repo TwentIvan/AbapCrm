@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -33,6 +33,17 @@ export function CompletionDialog({
   currentPercentage = 0 
 }: CompletionDialogProps) {
   const [percentage, setPercentage] = useState(currentPercentage);
+  
+  // Update percentage when currentPercentage prop changes
+  useEffect(() => {
+    if (isOpen) {
+      setPercentage(currentPercentage);
+      form.reset({
+        completionPercentage: currentPercentage,
+        notes: "",
+      });
+    }
+  }, [isOpen, currentPercentage]);
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
