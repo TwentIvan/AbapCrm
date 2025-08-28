@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   Calendar, 
   Clock, 
@@ -16,13 +17,17 @@ import {
   AlertTriangle, 
   CheckCircle, 
   PlayCircle,
-  Calculator
+  Calculator,
+  Plus,
+  Edit,
+  Trash2
 } from "lucide-react";
 import { Project, Task, PlanningWindow, insertTaskSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays, differenceInDays, parseISO, isAfter, isBefore } from "date-fns";
 import { z } from "zod";
+import PlanningWindowForm from "@/components/forms/planning-window-form";
 
 interface TaskWithSchedule extends Task {
   scheduledStartDate?: Date;
@@ -43,6 +48,8 @@ const BUFFER_FACTOR = 1.2; // 20% buffer for estimates
 export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
   const [workingHoursPerDay, setWorkingHoursPerDay] = useState(WORKING_HOURS_PER_DAY);
   const [autoSchedule, setAutoSchedule] = useState(true);
+  const [showPlanningWindowDialog, setShowPlanningWindowDialog] = useState(false);
+  const [editingPlanningWindow, setEditingPlanningWindow] = useState<PlanningWindow | null>(null);
   const { toast } = useToast();
 
   // Fetch project data
@@ -167,6 +174,27 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
     },
   });
 
+  // Delete planning window mutation
+  const deletePlanningWindowMutation = useMutation({
+    mutationFn: async (windowId: string) => {
+      await apiRequest("DELETE", `/api/planning-windows/${windowId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/planning-windows"] });
+      toast({
+        title: "Planning window deleted",
+        description: "Planning window has been deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Delete failed",
+        description: error.message || "Failed to delete planning window",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Apply schedule to all tasks
   const applyScheduleToTasks = useCallback(() => {
     scheduledTasks.forEach((task) => {
@@ -180,6 +208,28 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
       }
     });
   }, [scheduledTasks, autoSchedule, updateTaskMutation]);
+
+  // Handle planning window dialog
+  const handleCreatePlanningWindow = () => {
+    setEditingPlanningWindow(null);
+    setShowPlanningWindowDialog(true);
+  };
+
+  const handleEditPlanningWindow = (window: PlanningWindow) => {
+    setEditingPlanningWindow(window);
+    setShowPlanningWindowDialog(true);
+  };
+
+  const handleClosePlanningWindowDialog = () => {
+    setShowPlanningWindowDialog(false);
+    setEditingPlanningWindow(null);
+  };
+
+  const handleDeletePlanningWindow = (windowId: string) => {
+    if (confirm("Are you sure you want to delete this planning window?")) {
+      deletePlanningWindowMutation.mutate(windowId);
+    }
+  };
 
   // Recalculate schedule when working hours change
   useEffect(() => {
@@ -226,6 +276,100 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
 
   return (
     <div className="space-y-6">
+      {/* Planning Windows */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Planning Windows ({planningWindows?.length || 0})
+            </CardTitle>
+            <Button
+              onClick={handleCreatePlanningWindow}
+              size="sm"
+              data-testid="button-create-planning-window"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Window
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {planningWindows && planningWindows.length > 0 ? (
+            <div className="space-y-3">
+              {planningWindows.map((window) => (
+                <div 
+                  key={window.id} 
+                  className={`p-4 border rounded-lg ${
+                    window.isActive ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-medium">{window.name}</h4>
+                        <Badge variant={window.isActive ? "default" : "secondary"}>
+                          {window.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Period: </span>
+                          <span>
+                            {format(new Date(window.startDate), 'MMM dd')} - {format(new Date(window.endDate), 'MMM dd')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Working Hours: </span>
+                          <span>{window.workingHoursPerDay}h/day</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Duration: </span>
+                          <span>{differenceInDays(new Date(window.endDate), new Date(window.startDate))} days</span>
+                        </div>
+                      </div>
+                      
+                      {window.notes && (
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          {window.notes}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2 ml-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditPlanningWindow(window)}
+                        data-testid={`button-edit-planning-window-${window.id}`}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeletePlanningWindow(window.id)}
+                        disabled={deletePlanningWindowMutation.isPending}
+                        data-testid={`button-delete-planning-window-${window.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No planning windows defined</p>
+              <p className="text-sm">Add planning windows to enable task scheduling</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Project Overview */}
       <Card>
         <CardHeader>
@@ -426,6 +570,22 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Planning Window Dialog */}
+      <Dialog open={showPlanningWindowDialog} onOpenChange={handleClosePlanningWindowDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingPlanningWindow ? "Edit Planning Window" : "Create Planning Window"}
+            </DialogTitle>
+          </DialogHeader>
+          <PlanningWindowForm
+            projectId={projectId}
+            planningWindow={editingPlanningWindow || undefined}
+            onSuccess={handleClosePlanningWindowDialog}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
