@@ -266,9 +266,16 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
 
   // Calculate continuous periods for month view
   const getContinuousPeriods = () => {
-    if (!planningWindowsWithProject) return [];
+    if (!planningWindowsWithProject) {
+      console.log('No planningWindowsWithProject data');
+      return [];
+    }
+    
+    console.log('planningWindowsWithProject:', planningWindowsWithProject.length, planningWindowsWithProject);
     
     const { start: calendarStart, end: calendarEnd } = getDateRange();
+    console.log('Date range:', { calendarStart, calendarEnd });
+    
     const periods: Array<{
       window: PlanningWindow;
       project: Project;
@@ -280,44 +287,42 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
       workingHours: number;
     }> = [];
     
+    // Semplifichiamo: per ora mostriamo TUTTI i progetti come barre continue
+    // Poi ottimizzeremo per distinguere padre/figlio
     planningWindowsWithProject.forEach(({ project, ...window }) => {
       const windowStart = new Date(window.startDate);
       const windowEnd = new Date(window.endDate);
       const projectLevel = projectHierarchy.get(project.id) || 0;
       
-      // Solo i progetti padre (che hanno sotto-progetti) o progetti di primo livello
-      const hasChildProjects = planningWindowsWithProject.some(w => w.project.parentProjectId === project.id);
-      const isRootProject = !project.parentProjectId;
+      console.log('Processing window:', {
+        project: project.name,
+        windowStart,
+        windowEnd,
+        recurrenceType: window.recurrenceType
+      });
       
-      if (hasChildProjects || isRootProject) {
-        // Calculate working hours per day
-        const startMinutes = window.startTime ? parseInt(window.startTime.split(':')[0]) * 60 + parseInt(window.startTime.split(':')[1]) : 9 * 60;
-        const endMinutes = window.endTime ? parseInt(window.endTime.split(':')[0]) * 60 + parseInt(window.endTime.split(':')[1]) : 17 * 60;
-        const workingHours = Math.max(1, (endMinutes - startMinutes) / 60);
-        
-        if (window.recurrenceType === 'none') {
-          if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
-              isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
-              (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
-            
-            const rangeStart = max([windowStart, calendarStart]);
-            const rangeEnd = min([windowEnd, calendarEnd]);
-            
-            periods.push({
-              window,
-              project,
-              level: projectLevel,
-              startDate: rangeStart,
-              endDate: rangeEnd,
-              startTime: window.startTime || '09:00',
-              endTime: window.endTime || '17:00',
-              workingHours
-            });
-          }
-        }
-      }
+      // Calculate working hours per day
+      const startMinutes = window.startTime ? parseInt(window.startTime.split(':')[0]) * 60 + parseInt(window.startTime.split(':')[1]) : 9 * 60;
+      const endMinutes = window.endTime ? parseInt(window.endTime.split(':')[0]) * 60 + parseInt(window.endTime.split(':')[1]) : 17 * 60;
+      const workingHours = Math.max(1, (endMinutes - startMinutes) / 60);
+      
+      // Rimuoviamo temporaneamente il controllo della ricorrenza
+      const rangeStart = max([windowStart, calendarStart]);
+      const rangeEnd = min([windowEnd, calendarEnd]);
+      
+      periods.push({
+        window,
+        project,
+        level: projectLevel,
+        startDate: rangeStart,
+        endDate: rangeEnd,
+        startTime: window.startTime || '09:00',
+        endTime: window.endTime || '17:00',
+        workingHours
+      });
     });
     
+    console.log('Continuous periods:', periods.length, periods); // Debug
     return periods.sort((a, b) => a.level - b.level);
   };
 
@@ -327,20 +332,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
     const continuousPeriods = getContinuousPeriods();
     
-    // Group instances by date for child projects (non-continuous)
-    const instancesByDate = expandedInstances
-      .filter(instance => {
-        // Solo progetti figlio che non hanno sotto-progetti (progetti leaf)
-        const hasChildProjects = planningWindowsWithProject?.some(w => w.project.parentProjectId === instance.project.id);
-        const isChildProject = !!instance.project.parentProjectId;
-        return isChildProject && !hasChildProjects;
-      })
-      .reduce((acc, instance) => {
-        const dateKey = format(instance.date, 'yyyy-MM-dd');
-        if (!acc[dateKey]) acc[dateKey] = [];
-        acc[dateKey].push(instance);
-        return acc;
-      }, {} as Record<string, ExpandedPlanningInstance[]>);
+    // Per ora non mostriamo nessun box normale, solo barre continue
+    const instancesByDate: Record<string, ExpandedPlanningInstance[]> = {};
 
     Object.keys(instancesByDate).forEach(dateKey => {
       instancesByDate[dateKey].sort((a, b) => a.level - b.level);
