@@ -347,16 +347,14 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
           <div className="w-20 p-2 text-center text-sm font-medium text-muted-foreground border-r border-border bg-muted/30 flex-shrink-0">
             Ora
           </div>
-          <div className="flex-1 grid grid-cols-7">
-            {weekDays.map(day => (
-              <div key={format(day, 'yyyy-MM-dd')} className="p-2 text-center text-sm font-medium text-muted-foreground border-r border-border/50">
-                <div>{format(day, 'EEE')}</div>
-                <div className={`${isSameDay(day, new Date()) ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}`}>
-                  {format(day, 'd')}
-                </div>
+          {weekDays.map(day => (
+            <div key={format(day, 'yyyy-MM-dd')} className="flex-1 p-2 text-center text-sm font-medium text-muted-foreground border-r border-border/50">
+              <div>{format(day, 'EEE')}</div>
+              <div className={`${isSameDay(day, new Date()) ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}`}>
+                {format(day, 'd')}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
         
         {/* Griglia oraria */}
@@ -379,13 +377,13 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
             </div>
             
             {/* Contenitore giorni */}
-            <div className="flex-1 grid grid-cols-7">
+            <div className="flex-1 flex">
               {weekDays.map(day => {
                 const dateKey = format(day, 'yyyy-MM-dd');
                 const dayInstances = instancesByDate[dateKey] || [];
                 
                 return (
-                  <div key={dateKey} className="border-r border-border/50 relative">
+                  <div key={dateKey} className="flex-1 border-r border-border/50 relative">
                     {/* Griglia di background */}
                     {hours.map(hour => (
                       <div 
