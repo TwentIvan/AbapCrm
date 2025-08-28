@@ -158,8 +158,18 @@ export class ImapEmailService {
       const fromAddr = getFirstAddress(parsed.from);
       const toAddr = getFirstAddress(parsed.to);
 
+      const messageId = parsed.messageId || `imap-${Date.now()}-${seqno}`;
+      const userId = '811b4ad2-6882-4a7d-afcd-57dfb7f0af51'; // TODO: Get from context
+
+      // Check if message already exists to avoid duplicates
+      const existingMessage = await storage.getMessageByMessageId(messageId, userId);
+      if (existingMessage) {
+        console.log(`[IMAP] Email already exists, skipping: ${messageId}`);
+        return;
+      }
+
       const messageData: InsertMessage = {
-        messageId: parsed.messageId || `imap-${Date.now()}-${seqno}`,
+        messageId,
         type: 'email',
         status: 'unread',
         fromEmail: fromAddr?.address || 'unknown@unknown.com',
@@ -171,7 +181,7 @@ export class ImapEmailService {
         htmlBody: parsed.html || null,
         attachments: attachments,
         receivedAt: parsed.date || new Date(),
-        userId: '811b4ad2-6882-4a7d-afcd-57dfb7f0af51', // TODO: Get from context
+        userId,
         projectId: null,
         taskId: null,
         partnerId: null,

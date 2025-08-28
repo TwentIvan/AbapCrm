@@ -84,6 +84,7 @@ export interface IStorage {
   // Messages
   getMessages(userId: string): Promise<Message[]>;
   getMessage(id: string, userId: string): Promise<Message | undefined>;
+  getMessageByMessageId(messageId: string, userId: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(id: string, message: Partial<InsertMessage>, userId: string): Promise<Message | undefined>;
   deleteMessage(id: string, userId: string): Promise<boolean>;
@@ -505,6 +506,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(messages)
       .where(and(eq(messages.id, id), eq(messages.userId, userId)));
+    return message || undefined;
+  }
+
+  async getMessageByMessageId(messageId: string, userId: string): Promise<Message | undefined> {
+    const [message] = await db
+      .select()
+      .from(messages)
+      .where(and(eq(messages.messageId, messageId), eq(messages.userId, userId)));
     return message || undefined;
   }
 
