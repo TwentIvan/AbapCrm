@@ -308,6 +308,12 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     return periods.sort((a, b) => a.level - b.level);
   };
 
+  // Funzione per convertire time string in minuti dall'inizio della giornata (come nella vista settimanale)
+  const timeToMinutes = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
   // Render functions for different views
   const renderMonthView = () => {
     const { start: calendarStart, end: calendarEnd } = getDateRange();
@@ -326,6 +332,23 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     Object.keys(instancesByDate).forEach(dateKey => {
       instancesByDate[dateKey].sort((a, b) => a.level - b.level);
     });
+
+    // Calcola l'altezza dinamica per ogni giorno basandosi sulle ore di lavoro
+    const getDayHeight = (dayInstances: ExpandedPlanningInstance[]) => {
+      if (dayInstances.length === 0) return 80; // Altezza minima
+      
+      // Calcola le ore totali di lavoro per questo giorno
+      const totalWorkingMinutes = dayInstances.reduce((total, instance) => {
+        const startMinutes = timeToMinutes(instance.startTime);
+        const endMinutes = timeToMinutes(instance.endTime);
+        return total + (endMinutes - startMinutes);
+      }, 0);
+      
+      // Converti in altezza pixel (simile alla vista settimanale ma ridimensionato per il mese)
+      const pixelsPerHour = 25; // Meno rispetto alla vista settimanale (60px) per adattarsi al mese
+      const calculatedHeight = Math.max(80, (totalWorkingMinutes / 60) * pixelsPerHour + 40); // +40 per header e margini
+      return Math.min(calculatedHeight, 180); // Altezza massima per non far diventare le celle troppo grandi
+    };
 
     return (
       <div className="grid grid-cols-7 gap-1">
@@ -346,14 +369,17 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
             day >= period.startDate && day <= period.endDate
           );
           
+          const cellHeight = getDayHeight(dayInstances);
+          
           return (
             <div 
               key={dateKey} 
               className={`
-                min-h-[120px] p-2 border border-border/50 relative
+                p-2 border border-border/50 relative
                 ${!isInCurrentMonth ? 'bg-muted/30 text-muted-foreground' : 'bg-background'}
                 ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800' : ''}
               `}
+              style={{ height: `${cellHeight}px` }}
             >
               <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-blue-600 dark:text-blue-400' : ''}`}>
                 {format(day, 'd')}
@@ -397,36 +423,51 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
                 );
               })}
               
-              {/* Box normali per tutti i progetti - DOPO le barre */}
-              <div className="space-y-1" style={{ marginTop: `${continuousPeriods.filter(p => p.project.name && p.project.name.trim() !== '' && p.window.name && p.window.name.trim() !== '').length * 24 + 4}px` }}>
-                {dayInstances.map((instance, idx) => (
-                  <div
-                    key={`${instance.window.id}-${idx}`}
-                    onClick={() => onWindowSelect?.(instance.window)}
-                    className="group cursor-pointer"
-                    style={{ 
-                      marginLeft: `${getLevelIndentation(instance.level)}px`,
-                      marginRight: `${getLevelIndentation(instance.level)}px`
-                    }}
-                  >
-                    <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-1 rounded border`}>
-                      <div className="font-medium truncate">
-                        {instance.window.name}
-                      </div>
-                      <div className="text-[10px] opacity-75">
-                        {instance.startTime} - {instance.endTime}
-                      </div>
-                      <div className="text-[10px] opacity-75 truncate">
-                        {instance.project.name}
-                        {instance.level > 0 && (
-                          <span className="ml-1">
-                            {'→'.repeat(instance.level)}
-                          </span>
-                        )}
+              {/* Box con posizionamento dinamico basato sugli orari (come nella vista settimanale) */}
+              <div className="relative" style={{ marginTop: `${continuousPeriods.filter(p => p.project.name && p.project.name.trim() !== '' && p.window.name && p.window.name.trim() !== '').length * 24 + 4}px` }}>
+                {dayInstances.map((instance, idx) => {
+                  const startMinutes = timeToMinutes(instance.startTime);
+                  const endMinutes = timeToMinutes(instance.endTime);
+                  const durationMinutes = endMinutes - startMinutes;
+                  
+                  // Calcola posizione e altezza proporzionali (ridimensionati per la vista mensile)
+                  const pixelsPerHour = 25;
+                  const topOffset = idx * 4; // Piccolo offset per evitare sovrapposizioni complete
+                  const height = Math.max(24, (durationMinutes / 60) * pixelsPerHour); // Altezza minima 24px
+                  
+                  return (
+                    <div
+                      key={`${instance.window.id}-${idx}`}
+                      onClick={() => onWindowSelect?.(instance.window)}
+                      className="absolute cursor-pointer"
+                      style={{ 
+                        top: `${topOffset}px`,
+                        height: `${height}px`,
+                        left: `${getLevelIndentation(instance.level)}px`,
+                        right: `${getLevelIndentation(instance.level)}px`,
+                      }}
+                    >
+                      <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden flex flex-col justify-between`}>
+                        <div>
+                          <div className="font-medium truncate">
+                            {instance.window.name}
+                          </div>
+                          <div className="text-[10px] opacity-75">
+                            {instance.startTime} - {instance.endTime}
+                          </div>
+                        </div>
+                        <div className="text-[9px] opacity-75 truncate">
+                          {instance.project.name}
+                          {instance.level > 0 && (
+                            <span className="ml-1">
+                              {'→'.repeat(instance.level)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
