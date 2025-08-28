@@ -166,10 +166,17 @@ export class EmailForwardCleaner {
     return cleanBody;
   }
 
-  private static cleanForwardedHtmlBody(htmlBody: string): string {
+  private static cleanForwardedHtmlBody(htmlBody: string): string | null {
     if (!htmlBody) return htmlBody;
 
     let cleanHtml = htmlBody;
+    const originalHtml = htmlBody;
+
+    // Se l'HTML contiene solo una signature/firma, restituisce null per usare il text body
+    if (this.isOnlySignatureHtml(cleanHtml)) {
+      console.log('[EMAIL-CLEANER] HTML contains only signature, preferring text body');
+      return null;
+    }
 
     // Pattern HTML per sezioni di inoltro
     const htmlForwardPatterns = [
@@ -195,6 +202,12 @@ export class EmailForwardCleaner {
 
     // Chiude eventuali tag aperti dopo la rimozione
     cleanHtml = this.closeOpenHtmlTags(cleanHtml);
+
+    // Se dopo la pulizia contiene solo signature, restituisce null
+    if (this.isOnlySignatureHtml(cleanHtml)) {
+      console.log('[EMAIL-CLEANER] After cleaning, HTML contains only signature, using text body');
+      return null;
+    }
 
     return cleanHtml.trim();
   }
@@ -324,5 +337,35 @@ export class EmailForwardCleaner {
     }
     
     return false;
+  }
+
+  private static isOnlySignatureHtml(html: string): boolean {
+    if (!html) return true;
+    
+    // Rimuove tutti i tag HTML per analizzare solo il testo
+    const textContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    
+    // Se il contenuto è molto corto, probabilmente è solo una firma
+    if (textContent.length < 50) return true;
+    
+    // Conta gli indicatori di firma nel testo
+    const signatureIndicators = [
+      /technical analyst/i,
+      /team head/i,
+      /www\./i,
+      /\+39\s*\d/i,
+      /@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
+      /p\.iva/i,
+      /great place to work/i,
+      /via\s+[a-z]/i,
+      /spa/i,
+      /lutech/i
+    ];
+    
+    const indicatorMatches = signatureIndicators.filter(pattern => pattern.test(textContent)).length;
+    const lines = textContent.split(/[\n\r]/).filter(line => line.trim().length > 3);
+    
+    // Se ha molti indicatori di firma e poche righe di contenuto significativo
+    return indicatorMatches >= 4 && lines.length < 8;
   }
 }
