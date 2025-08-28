@@ -7,6 +7,11 @@ interface ForwardedEmailData {
   originalFromEmail: string | null;
   originalFromName: string | null;
   isForwarded: boolean;
+  fullThreadContent: string | null;
+  originalToEmails: string[];
+  originalCcEmails: string[];
+  originalBccEmails: string[];
+  preservedHtmlFormatting: string | null;
 }
 
 export class EmailForwardCleaner {
@@ -18,7 +23,12 @@ export class EmailForwardCleaner {
       originalHtmlBody: htmlBody,
       originalFromEmail: null,
       originalFromName: null,
-      isForwarded: false
+      isForwarded: false,
+      fullThreadContent: null,
+      originalToEmails: [],
+      originalCcEmails: [],
+      originalBccEmails: [],
+      preservedHtmlFormatting: null
     };
 
     // Rileva se è un inoltro dal subject
@@ -39,8 +49,18 @@ export class EmailForwardCleaner {
         result.originalFromName = originalSender.name;
       }
       
+      // Extract original recipients
+      const originalRecipients = this.extractOriginalRecipients(textBody);
+      result.originalToEmails = originalRecipients.to;
+      result.originalCcEmails = originalRecipients.cc;
+      result.originalBccEmails = originalRecipients.bcc;
+      
+      // Extract full thread content
+      result.fullThreadContent = this.extractFullThread(textBody);
+      
       if (htmlBody) {
         result.originalHtmlBody = this.cleanForwardedHtmlBody(htmlBody);
+        result.preservedHtmlFormatting = this.preserveHtmlFormatting(htmlBody);
       }
     }
 
@@ -367,5 +387,130 @@ export class EmailForwardCleaner {
     
     // Se ha molti indicatori di firma e poche righe di contenuto significativo
     return indicatorMatches >= 4 && lines.length < 8;
+  }
+
+  // Estrae tutti i destinatari originali dalle email inoltrate
+  private static extractOriginalRecipients(textBody: string): { to: string[], cc: string[], bcc: string[] } {
+    const result: { to: string[], cc: string[], bcc: string[] } = { to: [], cc: [], bcc: [] };
+    
+    try {
+      // Pattern per cercare destinatari nelle email inoltrate
+      const patterns = [
+        // Pattern italiani
+        /(?:^|\n)\s*A:\s*(.+?)(?=\n|\r|$)/gim,
+        /(?:^|\n)\s*To:\s*(.+?)(?=\n|\r|$)/gim,
+        /(?:^|\n)\s*CC:\s*(.+?)(?=\n|\r|$)/gim,
+        /(?:^|\n)\s*Cc:\s*(.+?)(?=\n|\r|$)/gim,
+        /(?:^|\n)\s*CCN:\s*(.+?)(?=\n|\r|$)/gim,
+        /(?:^|\n)\s*BCC:\s*(.+?)(?=\n|\r|$)/gim,
+        /(?:^|\n)\s*Bcc:\s*(.+?)(?=\n|\r|$)/gim,
+      ];
+
+      patterns.forEach(pattern => {
+        let match;
+        while ((match = pattern.exec(textBody)) !== null) {
+          const emailLine = match[1].trim();
+          
+          // Estrae email dalla linea
+          const emails = this.extractEmailsFromLine(emailLine);
+          
+          // Determina se è TO, CC o BCC in base al pattern
+          const label = match[0].toLowerCase();
+          if (label.includes('cc') && !label.includes('bcc')) {
+            result.cc.push(...emails);
+          } else if (label.includes('bcc') || label.includes('ccn')) {
+            result.bcc.push(...emails);
+          } else if (label.includes('to') || label.includes('a:')) {
+            result.to.push(...emails);
+          }
+        }
+      });
+
+      // Rimuove duplicati
+      result.to = Array.from(new Set(result.to));
+      result.cc = Array.from(new Set(result.cc));
+      result.bcc = Array.from(new Set(result.bcc));
+
+    } catch (error) {
+      console.log('[EMAIL-CLEANER] Error extracting recipients:', error);
+    }
+
+    return result;
+  }
+
+  // Estrae thread completo dalle email inoltrate mantenendo l'ordine cronologico
+  private static extractFullThread(textBody: string): string | null {
+    try {
+      // Cerca pattern che indicano l'inizio di messaggi precedenti nel thread
+      const threadPatterns = [
+        /(?:Il .*?ha scritto:|On .*? wrote:|From:.*?Sent:.*?To:.*?Subject:)/i,
+        /(?:---------- Forwarded message ----------|---------- Messaggio inoltrato ----------)/i,
+        /(?:Begin forwarded message:|---------- Original Message ----------)/i
+      ];
+
+      let fullThread = textBody;
+      
+      // Trova il punto dove inizia il thread completo
+      for (const pattern of threadPatterns) {
+        const match = textBody.match(pattern);
+        if (match && match.index !== undefined) {
+          // Estrae tutto dal punto del thread in poi
+          const threadStart = match.index;
+          const threadPortion = textBody.substring(threadStart);
+          
+          // Pulisce leggermente mantenendo la struttura del thread
+          fullThread = threadPortion
+            .replace(/^-+\s*(?:Forwarded message|Messaggio inoltrato)\s*-+/gm, '')
+            .replace(/^-+\s*Original Message\s*-+/gm, '')
+            .replace(/^Begin forwarded message:\s*/gm, '')
+            .trim();
+
+          if (fullThread.length > 50) {
+            console.log('[EMAIL-CLEANER] Extracted thread content:', fullThread.length, 'characters');
+            return fullThread;
+          }
+        }
+      }
+
+      // Se non trova pattern specifici ma il contenuto è lungo, lo considera un thread
+      if (textBody.length > 500) {
+        return textBody;
+      }
+
+    } catch (error) {
+      console.log('[EMAIL-CLEANER] Error extracting thread:', error);
+    }
+
+    return null;
+  }
+
+  // Preserva formattazione HTML originale completa
+  private static preserveHtmlFormatting(htmlBody: string): string | null {
+    try {
+      if (!htmlBody || htmlBody.trim().length < 50) return null;
+
+      // Mantiene l'HTML originale completo senza pulizia aggressiva
+      let preserved = htmlBody;
+
+      // Rimuove solo i wrapper di inoltro più evidenti ma mantiene il contenuto
+      preserved = preserved.replace(/<div[^>]*>---------- Forwarded message ---------<\/div>/gi, '');
+      preserved = preserved.replace(/<div[^>]*>---------- Messaggio inoltrato ----------<\/div>/gi, '');
+      
+      // Mantiene tutte le formattazioni: grassetto, corsivo, colori, link, tabelle, etc.
+      console.log('[EMAIL-CLEANER] Preserved HTML formatting:', preserved.length, 'characters');
+      return preserved.trim();
+
+    } catch (error) {
+      console.log('[EMAIL-CLEANER] Error preserving HTML formatting:', error);
+    }
+
+    return null;
+  }
+
+  // Helper per estrarre emails da una linea di testo
+  private static extractEmailsFromLine(line: string): string[] {
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+    const matches = line.match(emailRegex);
+    return matches || [];
   }
 }
