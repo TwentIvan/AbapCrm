@@ -3,9 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Calendar, FolderTree } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, FolderTree, Clock } from "lucide-react";
 import { PlanningWindow, Project } from "@shared/schema";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isWithinInterval, addDays, startOfWeek, endOfWeek } from "date-fns";
+import { 
+  format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, 
+  isWithinInterval, addDays, startOfWeek, endOfWeek, startOfDay, endOfDay, addWeeks, 
+  subWeeks, subDays, eachHourOfInterval, isSameHour, parseISO, setHours, setMinutes,
+  isAfter, isBefore, differenceInMinutes
+} from "date-fns";
 
 interface PlanningWindowWithProject extends PlanningWindow {
   project: Project;
@@ -21,11 +26,14 @@ interface ExpandedPlanningInstance {
   date: Date;
   startTime: string;
   endTime: string;
-  level: number; // Profondità nella gerarchia (0 = root, 1 = child, 2 = grandchild, etc.)
+  level: number;
 }
+
+type CalendarView = 'month' | 'week' | 'day';
 
 export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlanningCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<CalendarView>('month');
   
   // Fetch all planning windows for the user
   const { data: planningWindowsWithProject, isLoading } = useQuery<PlanningWindowWithProject[]>({
@@ -39,12 +47,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     const hierarchy = new Map<string, number>();
     const projects = Array.from(new Set(planningWindowsWithProject.map(w => w.project)));
     
-    // Function to calculate project depth recursively
     const calculateDepth = (project: Project, visited = new Set<string>()): number => {
-      if (visited.has(project.id)) return 0; // Prevent infinite loops
+      if (visited.has(project.id)) return 0;
       visited.add(project.id);
       
-      if (!project.parentProjectId) return 0; // Root project
+      if (!project.parentProjectId) return 0;
       
       const parent = projects.find(p => p.id === project.parentProjectId);
       if (!parent) return 0;
@@ -59,15 +66,35 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     return hierarchy;
   }, [planningWindowsWithProject]);
 
-  // Espandi le finestre di pianificazione ricorsive per il mese corrente
+  // Get date range based on view
+  const getDateRange = () => {
+    switch (view) {
+      case 'day':
+        return {
+          start: startOfDay(currentDate),
+          end: endOfDay(currentDate)
+        };
+      case 'week':
+        return {
+          start: startOfWeek(currentDate, { weekStartsOn: 1 }),
+          end: endOfWeek(currentDate, { weekStartsOn: 1 })
+        };
+      case 'month':
+      default:
+        const monthStart = startOfMonth(currentDate);
+        const monthEnd = endOfMonth(currentDate);
+        return {
+          start: startOfWeek(monthStart, { weekStartsOn: 1 }),
+          end: endOfWeek(monthEnd, { weekStartsOn: 1 })
+        };
+    }
+  };
+
+  // Expand planning windows for current view
   const expandedInstances = useMemo(() => {
     if (!planningWindowsWithProject) return [];
     
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-    
+    const { start: calendarStart, end: calendarEnd } = getDateRange();
     const instances: ExpandedPlanningInstance[] = [];
     
     planningWindowsWithProject.forEach(({ project, ...window }) => {
@@ -76,7 +103,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
       const projectLevel = projectHierarchy.get(project.id) || 0;
       
       if (window.recurrenceType === 'none') {
-        // Finestra singola
         if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
             isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
             (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
@@ -90,7 +116,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
           });
         }
       } else {
-        // Finestra ricorsiva (stessa logica del calendario singolo)
         const interval = window.recurrenceInterval || 1;
         const endRecurrence = window.recurrenceEnd ? new Date(window.recurrenceEnd) : calendarEnd;
         
@@ -131,7 +156,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
             if (weekCount > 1000) break;
           }
         } else {
-          // Ricorrenze non settimanali
           let currentInstanceDate = new Date(windowStart);
           
           while (currentInstanceDate <= endRecurrence && currentInstanceDate <= calendarEnd) {
@@ -170,64 +194,285 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     });
     
     return instances;
-  }, [planningWindowsWithProject, currentDate, projectHierarchy]);
+  }, [planningWindowsWithProject, currentDate, view, projectHierarchy]);
 
-  // Raggruppa le istanze per data
-  const instancesByDate = useMemo(() => {
-    const groups: Record<string, ExpandedPlanningInstance[]> = {};
-    
-    expandedInstances.forEach(instance => {
-      const dateKey = format(instance.date, 'yyyy-MM-dd');
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
+  // Navigation functions
+  const navigate = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      switch (view) {
+        case 'day':
+          return direction === 'prev' ? subDays(prev, 1) : addDays(prev, 1);
+        case 'week':
+          return direction === 'prev' ? subWeeks(prev, 1) : addWeeks(prev, 1);
+        case 'month':
+        default:
+          return direction === 'prev' ? subMonths(prev, 1) : addMonths(prev, 1);
       }
-      groups[dateKey].push(instance);
     });
-    
-    // Ordina per livello gerarchico (genitori prima, figli dopo)
-    Object.keys(groups).forEach(dateKey => {
-      groups[dateKey].sort((a, b) => a.level - b.level);
-    });
-    
-    return groups;
-  }, [expandedInstances]);
-
-  // Genera i giorni del calendario
-  const calendarDays = useMemo(() => {
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-    
-    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
-  }, [currentDate]);
-
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    setCurrentDate(prev => direction === 'prev' ? subMonths(prev, 1) : addMonths(prev, 1));
   };
 
-  const isCurrentMonth = (day: Date) => {
-    return day.getMonth() === currentDate.getMonth();
-  };
-
-  const isToday = (day: Date) => {
-    return isSameDay(day, new Date());
-  };
-
-  // Funzione per ottenere il colore in base al livello gerarchico
+  // Helper functions
   const getLevelColor = (level: number) => {
     const colors = [
-      'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-950/30 dark:border-blue-700 dark:text-blue-300', // Level 0 (root)
-      'bg-green-100 border-green-300 text-green-800 dark:bg-green-950/30 dark:border-green-700 dark:text-green-300', // Level 1
-      'bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-950/30 dark:border-purple-700 dark:text-purple-300', // Level 2
-      'bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-950/30 dark:border-orange-700 dark:text-orange-300', // Level 3
+      'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-950/30 dark:border-blue-700 dark:text-blue-300',
+      'bg-green-100 border-green-300 text-green-800 dark:bg-green-950/30 dark:border-green-700 dark:text-green-300',
+      'bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-950/30 dark:border-purple-700 dark:text-purple-300',
+      'bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-950/30 dark:border-orange-700 dark:text-orange-300',
     ];
     return colors[Math.min(level, colors.length - 1)];
   };
 
-  // Funzione per ottenere l'indentazione in base al livello
   const getLevelIndentation = (level: number) => {
-    return level * 4; // 4px per livello
+    return level * 4;
+  };
+
+  const formatDateRange = () => {
+    switch (view) {
+      case 'day':
+        return format(currentDate, 'EEEE, dd MMMM yyyy');
+      case 'week':
+        const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
+        return `${format(weekStart, 'dd MMM')} - ${format(weekEnd, 'dd MMM yyyy')}`;
+      case 'month':
+      default:
+        return format(currentDate, 'MMMM yyyy');
+    }
+  };
+
+  // Render functions for different views
+  const renderMonthView = () => {
+    const { start: calendarStart, end: calendarEnd } = getDateRange();
+    const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+    
+    const instancesByDate = expandedInstances.reduce((acc, instance) => {
+      const dateKey = format(instance.date, 'yyyy-MM-dd');
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(instance);
+      return acc;
+    }, {} as Record<string, ExpandedPlanningInstance[]>);
+
+    Object.keys(instancesByDate).forEach(dateKey => {
+      instancesByDate[dateKey].sort((a, b) => a.level - b.level);
+    });
+
+    return (
+      <div className="grid grid-cols-7 gap-1">
+        {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(day => (
+          <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
+            {day}
+          </div>
+        ))}
+        
+        {calendarDays.map(day => {
+          const dateKey = format(day, 'yyyy-MM-dd');
+          const dayInstances = instancesByDate[dateKey] || [];
+          const isInCurrentMonth = day.getMonth() === currentDate.getMonth();
+          const isTodayDate = isSameDay(day, new Date());
+          
+          return (
+            <div 
+              key={dateKey} 
+              className={`
+                min-h-[120px] p-2 border border-border/50 
+                ${!isInCurrentMonth ? 'bg-muted/30 text-muted-foreground' : 'bg-background'}
+                ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800' : ''}
+              `}
+            >
+              <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+                {format(day, 'd')}
+              </div>
+              
+              <div className="space-y-1">
+                {dayInstances.map((instance, idx) => (
+                  <div
+                    key={`${instance.window.id}-${idx}`}
+                    onClick={() => onWindowSelect?.(instance.window)}
+                    className="group cursor-pointer"
+                    style={{ 
+                      marginLeft: `${getLevelIndentation(instance.level)}px`,
+                      marginRight: `${getLevelIndentation(instance.level)}px`
+                    }}
+                  >
+                    <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-1 rounded border`}>
+                      <div className="font-medium truncate">
+                        {instance.window.name}
+                      </div>
+                      <div className="text-[10px] opacity-75">
+                        {instance.startTime} - {instance.endTime}
+                      </div>
+                      <div className="text-[10px] opacity-75 truncate">
+                        {instance.project.name}
+                        {instance.level > 0 && (
+                          <span className="ml-1">
+                            {'→'.repeat(instance.level)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderWeekView = () => {
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+    const weekDays = eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) });
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+    
+    const instancesByDateAndHour = expandedInstances.reduce((acc, instance) => {
+      const dateKey = format(instance.date, 'yyyy-MM-dd');
+      const startHour = parseInt(instance.startTime.split(':')[0]);
+      const endHour = parseInt(instance.endTime.split(':')[0]);
+      
+      if (!acc[dateKey]) acc[dateKey] = {};
+      
+      for (let hour = startHour; hour <= endHour; hour++) {
+        if (!acc[dateKey][hour]) acc[dateKey][hour] = [];
+        acc[dateKey][hour].push(instance);
+      }
+      
+      return acc;
+    }, {} as Record<string, Record<number, ExpandedPlanningInstance[]>>);
+
+    return (
+      <div className="flex flex-col">
+        {/* Header giorni */}
+        <div className="grid grid-cols-8 border-b border-border">
+          <div className="p-2 text-center text-sm font-medium text-muted-foreground border-r border-border">
+            Ora
+          </div>
+          {weekDays.map(day => (
+            <div key={format(day, 'yyyy-MM-dd')} className="p-2 text-center text-sm font-medium text-muted-foreground border-r border-border">
+              <div>{format(day, 'EEE')}</div>
+              <div className={`${isSameDay(day, new Date()) ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}`}>
+                {format(day, 'd')}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Griglia oraria */}
+        <div className="flex-1 overflow-auto max-h-[600px]">
+          {hours.map(hour => (
+            <div key={hour} className="grid grid-cols-8 border-b border-border/50 min-h-[50px]">
+              <div className="p-2 text-xs text-muted-foreground border-r border-border bg-muted/30 text-right">
+                {hour.toString().padStart(2, '0')}:00
+              </div>
+              
+              {weekDays.map(day => {
+                const dateKey = format(day, 'yyyy-MM-dd');
+                const hourInstances = instancesByDateAndHour[dateKey]?.[hour] || [];
+                
+                return (
+                  <div key={`${dateKey}-${hour}`} className="border-r border-border/50 p-1 relative">
+                    {hourInstances.map((instance, idx) => (
+                      <div
+                        key={`${instance.window.id}-${hour}-${idx}`}
+                        onClick={() => onWindowSelect?.(instance.window)}
+                        className="cursor-pointer mb-1"
+                        style={{ 
+                          marginLeft: `${getLevelIndentation(instance.level)}px`,
+                        }}
+                      >
+                        <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-1 rounded border`}>
+                          <div className="font-medium truncate">
+                            {instance.window.name}
+                          </div>
+                          <div className="text-[9px] opacity-75 truncate">
+                            {instance.project.name}
+                            {instance.level > 0 && <span className="ml-1">{'→'.repeat(instance.level)}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderDayView = () => {
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+    const dayInstances = expandedInstances.filter(instance => 
+      isSameDay(instance.date, currentDate)
+    );
+    
+    const instancesByHour = dayInstances.reduce((acc, instance) => {
+      const startHour = parseInt(instance.startTime.split(':')[0]);
+      const endHour = parseInt(instance.endTime.split(':')[0]);
+      
+      for (let hour = startHour; hour <= endHour; hour++) {
+        if (!acc[hour]) acc[hour] = [];
+        acc[hour].push(instance);
+      }
+      
+      return acc;
+    }, {} as Record<number, ExpandedPlanningInstance[]>);
+
+    return (
+      <div className="flex flex-col">
+        <div className="border-b border-border p-4">
+          <h3 className="text-lg font-medium text-center">
+            {format(currentDate, 'EEEE, dd MMMM yyyy')}
+          </h3>
+        </div>
+        
+        <div className="flex-1 overflow-auto max-h-[600px]">
+          {hours.map(hour => (
+            <div key={hour} className="flex border-b border-border/50 min-h-[60px]">
+              <div className="w-20 p-3 text-sm text-muted-foreground border-r border-border bg-muted/30 text-right">
+                {hour.toString().padStart(2, '0')}:00
+              </div>
+              
+              <div className="flex-1 p-2">
+                {instancesByHour[hour]?.map((instance, idx) => (
+                  <div
+                    key={`${instance.window.id}-${hour}-${idx}`}
+                    onClick={() => onWindowSelect?.(instance.window)}
+                    className="cursor-pointer mb-2"
+                    style={{ 
+                      marginLeft: `${getLevelIndentation(instance.level)}px`,
+                    }}
+                  >
+                    <div className={`${getLevelColor(instance.level)} hover:opacity-80 p-3 rounded border`}>
+                      <div className="font-medium">
+                        {instance.window.name}
+                      </div>
+                      <div className="text-sm opacity-75 mt-1">
+                        {instance.startTime} - {instance.endTime}
+                      </div>
+                      <div className="text-sm opacity-75 mt-1">
+                        {instance.project.name}
+                        {instance.level > 0 && (
+                          <span className="ml-2">
+                            {'→'.repeat(instance.level)}
+                          </span>
+                        )}
+                      </div>
+                      {instance.project.description && (
+                        <div className="text-xs opacity-60 mt-2">
+                          {instance.project.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -248,87 +493,56 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
             <FolderTree className="h-5 w-5" />
             Global Planning Calendar
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigateMonth('prev')}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="font-medium min-w-[140px] text-center">
-              {format(currentDate, 'MMMM yyyy')}
-            </span>
-            <Button variant="outline" size="sm" onClick={() => navigateMonth('next')}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+          
+          <div className="flex items-center gap-4">
+            {/* View buttons */}
+            <div className="flex gap-1 bg-muted rounded-lg p-1">
+              <Button
+                variant={view === 'day' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setView('day')}
+                data-testid="button-day-view"
+              >
+                Giorno
+              </Button>
+              <Button
+                variant={view === 'week' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setView('week')}
+                data-testid="button-week-view"
+              >
+                Settimana
+              </Button>
+              <Button
+                variant={view === 'month' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setView('month')}
+                data-testid="button-month-view"
+              >
+                Mese
+              </Button>
+            </div>
+            
+            {/* Navigation */}
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigate('prev')} data-testid="button-prev">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="font-medium min-w-[200px] text-center">
+                {formatDateRange()}
+              </span>
+              <Button variant="outline" size="sm" onClick={() => navigate('next')} data-testid="button-next">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardTitle>
       </CardHeader>
+      
       <CardContent>
-        <div className="grid grid-cols-7 gap-1">
-          {/* Header giorni della settimana */}
-          {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(day => (
-            <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
-              {day}
-            </div>
-          ))}
-          
-          {/* Giorni del calendario */}
-          {calendarDays.map(day => {
-            const dateKey = format(day, 'yyyy-MM-dd');
-            const dayInstances = instancesByDate[dateKey] || [];
-            const isInCurrentMonth = isCurrentMonth(day);
-            const isTodayDate = isToday(day);
-            
-            return (
-              <div 
-                key={dateKey} 
-                className={`
-                  min-h-[120px] p-2 border border-border/50 
-                  ${!isInCurrentMonth ? 'bg-muted/30 text-muted-foreground' : 'bg-background'}
-                  ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800' : ''}
-                `}
-              >
-                <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-blue-600 dark:text-blue-400' : ''}`}>
-                  {format(day, 'd')}
-                </div>
-                
-                <div className="space-y-1">
-                  {dayInstances.map((instance, idx) => (
-                    <div
-                      key={`${instance.window.id}-${idx}`}
-                      onClick={() => onWindowSelect?.(instance.window)}
-                      className="group cursor-pointer"
-                      style={{ 
-                        marginLeft: `${getLevelIndentation(instance.level)}px`,
-                        marginRight: `${getLevelIndentation(instance.level)}px`
-                      }}
-                    >
-                      <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-1 rounded border`}>
-                        <div className="font-medium truncate">
-                          {instance.window.name}
-                        </div>
-                        <div className="text-[10px] opacity-75">
-                          {instance.startTime} - {instance.endTime}
-                        </div>
-                        <div className="text-[10px] opacity-75 truncate">
-                          {instance.project.name}
-                          {instance.level > 0 && (
-                            <span className="ml-1">
-                              {'→'.repeat(instance.level)}
-                            </span>
-                          )}
-                        </div>
-                        {instance.project.description && (
-                          <div className="text-[9px] opacity-60 truncate mt-1">
-                            {instance.project.description}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {view === 'month' && renderMonthView()}
+        {view === 'week' && renderWeekView()}
+        {view === 'day' && renderDayView()}
         
         {expandedInstances.length === 0 && (
           <div className="text-center text-muted-foreground py-8">
