@@ -1,5 +1,5 @@
 import { 
-  users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows,
+  users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments,
   type User, type InsertUser,
   type Project, type InsertProject,
   type Task, type InsertTask,
@@ -7,7 +7,9 @@ import {
   type Deal, type InsertDeal,
   type CalendarEvent, type InsertCalendarEvent,
   type PlanningWindow, type InsertPlanningWindow,
-  type TimeEntry, type InsertTimeEntry
+  type TimeEntry, type InsertTimeEntry,
+  type Message, type InsertMessage,
+  type Comment, type InsertComment
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -77,6 +79,25 @@ export interface IStorage {
   deleteTimeEntry(id: string, userId: string): Promise<boolean>;
   stopTimeEntry(id: string, userId: string): Promise<TimeEntry | undefined>;
   getRunningTimeEntry(userId: string): Promise<TimeEntry | undefined>;
+
+  // Messages
+  getMessages(userId: string): Promise<Message[]>;
+  getMessage(id: string, userId: string): Promise<Message | undefined>;
+  createMessage(message: InsertMessage): Promise<Message>;
+  updateMessage(id: string, message: Partial<InsertMessage>, userId: string): Promise<Message | undefined>;
+  deleteMessage(id: string, userId: string): Promise<boolean>;
+  getUnreadMessages(userId: string): Promise<Message[]>;
+  markMessageAsRead(id: string, userId: string): Promise<Message | undefined>;
+
+  // Comments
+  getComments(userId: string): Promise<Comment[]>;
+  getCommentsByProject(projectId: string, userId: string): Promise<Comment[]>;
+  getCommentsByTask(taskId: string, userId: string): Promise<Comment[]>;
+  getCommentsByMessage(messageId: string, userId: string): Promise<Comment[]>;
+  getComment(id: string, userId: string): Promise<Comment | undefined>;
+  createComment(comment: InsertComment): Promise<Comment>;
+  updateComment(id: string, comment: Partial<InsertComment>, userId: string): Promise<Comment | undefined>;
+  deleteComment(id: string, userId: string): Promise<boolean>;
 
   sessionStore: session.Store;
 }
@@ -458,6 +479,129 @@ export class DatabaseStorage implements IStorage {
       .from(timeEntries)
       .where(and(eq(timeEntries.userId, userId), eq(timeEntries.isRunning, true)));
     return entry || undefined;
+  }
+
+  // Messages
+  async getMessages(userId: string): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(eq(messages.userId, userId))
+      .orderBy(desc(messages.receivedAt));
+  }
+
+  async getMessage(id: string, userId: string): Promise<Message | undefined> {
+    const [message] = await db
+      .select()
+      .from(messages)
+      .where(and(eq(messages.id, id), eq(messages.userId, userId)));
+    return message || undefined;
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [newMessage] = await db
+      .insert(messages)
+      .values(message)
+      .returning();
+    return newMessage;
+  }
+
+  async updateMessage(id: string, message: Partial<InsertMessage>, userId: string): Promise<Message | undefined> {
+    const [updated] = await db
+      .update(messages)
+      .set({ ...message, updatedAt: new Date() })
+      .where(and(eq(messages.id, id), eq(messages.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteMessage(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(messages)
+      .where(and(eq(messages.id, id), eq(messages.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getUnreadMessages(userId: string): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(and(eq(messages.userId, userId), eq(messages.status, 'unread')))
+      .orderBy(desc(messages.receivedAt));
+  }
+
+  async markMessageAsRead(id: string, userId: string): Promise<Message | undefined> {
+    const [updated] = await db
+      .update(messages)
+      .set({ status: 'read', updatedAt: new Date() })
+      .where(and(eq(messages.id, id), eq(messages.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Comments
+  async getComments(userId: string): Promise<Comment[]> {
+    return await db
+      .select()
+      .from(comments)
+      .where(eq(comments.userId, userId))
+      .orderBy(desc(comments.createdAt));
+  }
+
+  async getCommentsByProject(projectId: string, userId: string): Promise<Comment[]> {
+    return await db
+      .select()
+      .from(comments)
+      .where(and(eq(comments.projectId, projectId), eq(comments.userId, userId)))
+      .orderBy(asc(comments.createdAt));
+  }
+
+  async getCommentsByTask(taskId: string, userId: string): Promise<Comment[]> {
+    return await db
+      .select()
+      .from(comments)
+      .where(and(eq(comments.taskId, taskId), eq(comments.userId, userId)))
+      .orderBy(asc(comments.createdAt));
+  }
+
+  async getCommentsByMessage(messageId: string, userId: string): Promise<Comment[]> {
+    return await db
+      .select()
+      .from(comments)
+      .where(and(eq(comments.messageId, messageId), eq(comments.userId, userId)))
+      .orderBy(asc(comments.createdAt));
+  }
+
+  async getComment(id: string, userId: string): Promise<Comment | undefined> {
+    const [comment] = await db
+      .select()
+      .from(comments)
+      .where(and(eq(comments.id, id), eq(comments.userId, userId)));
+    return comment || undefined;
+  }
+
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const [newComment] = await db
+      .insert(comments)
+      .values(comment)
+      .returning();
+    return newComment;
+  }
+
+  async updateComment(id: string, comment: Partial<InsertComment>, userId: string): Promise<Comment | undefined> {
+    const [updated] = await db
+      .update(comments)
+      .set({ ...comment, updatedAt: new Date() })
+      .where(and(eq(comments.id, id), eq(comments.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteComment(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(comments)
+      .where(and(eq(comments.id, id), eq(comments.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 

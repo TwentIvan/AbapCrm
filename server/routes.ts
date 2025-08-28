@@ -5,8 +5,10 @@ import { storage } from "./storage";
 import { z } from "zod";
 import { 
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, 
-  insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema
+  insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema,
+  insertMessageSchema, insertCommentSchema
 } from "@shared/schema";
+import { aiService } from "./ai-service";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -487,6 +489,174 @@ export function registerRoutes(app: Express): Server {
     const deleted = await storage.deleteTimeEntry(req.params.id, req.user!.id);
     if (!deleted) return res.sendStatus(404);
     res.sendStatus(204);
+  });
+
+  // Messages
+  app.get("/api/messages", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const messages = await storage.getMessages(req.user!.id);
+    res.json(messages);
+  });
+
+  app.get("/api/messages/unread", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const messages = await storage.getUnreadMessages(req.user!.id);
+    res.json(messages);
+  });
+
+  app.get("/api/messages/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const message = await storage.getMessage(req.params.id, req.user!.id);
+    if (!message) return res.sendStatus(404);
+    res.json(message);
+  });
+
+  app.post("/api/messages", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const messageData = insertMessageSchema.parse({
+        ...req.body,
+        userId: req.user!.id,
+        receivedAt: req.body.receivedAt ? new Date(req.body.receivedAt) : new Date()
+      });
+      const message = await storage.createMessage(messageData);
+      
+      // Run AI analysis in background
+      if (process.env.OPENAI_API_KEY) {
+        aiService.analyzeMessage(message, req.user!.id).then(analysis => {
+          if (analysis.bestMatch) {
+            aiService.updateMessageWithSuggestion(message.id, analysis.bestMatch, req.user!.id);
+          }
+        }).catch(console.error);
+      }
+      
+      res.status(201).json(message);
+    } catch (error) {
+      console.error("Message creation error:", error);
+      res.status(400).json({ error: "Invalid message data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.put("/api/messages/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const message = await storage.updateMessage(req.params.id, req.body, req.user!.id);
+      if (!message) return res.sendStatus(404);
+      res.json(message);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid message data" });
+    }
+  });
+
+  app.post("/api/messages/:id/read", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const message = await storage.markMessageAsRead(req.params.id, req.user!.id);
+    if (!message) return res.sendStatus(404);
+    res.json(message);
+  });
+
+  app.delete("/api/messages/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const deleted = await storage.deleteMessage(req.params.id, req.user!.id);
+    if (!deleted) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  // Comments
+  app.get("/api/comments", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const comments = await storage.getComments(req.user!.id);
+    res.json(comments);
+  });
+
+  app.get("/api/comments/project/:projectId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const comments = await storage.getCommentsByProject(req.params.projectId, req.user!.id);
+    res.json(comments);
+  });
+
+  app.get("/api/comments/task/:taskId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const comments = await storage.getCommentsByTask(req.params.taskId, req.user!.id);
+    res.json(comments);
+  });
+
+  app.get("/api/comments/message/:messageId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const comments = await storage.getCommentsByMessage(req.params.messageId, req.user!.id);
+    res.json(comments);
+  });
+
+  app.get("/api/comments/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const comment = await storage.getComment(req.params.id, req.user!.id);
+    if (!comment) return res.sendStatus(404);
+    res.json(comment);
+  });
+
+  app.post("/api/comments", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const commentData = insertCommentSchema.parse({
+        ...req.body,
+        userId: req.user!.id
+      });
+      const comment = await storage.createComment(commentData);
+      res.status(201).json(comment);
+    } catch (error) {
+      console.error("Comment creation error:", error);
+      res.status(400).json({ error: "Invalid comment data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.put("/api/comments/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const comment = await storage.updateComment(req.params.id, req.body, req.user!.id);
+      if (!comment) return res.sendStatus(404);
+      res.json(comment);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid comment data" });
+    }
+  });
+
+  app.delete("/api/comments/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const deleted = await storage.deleteComment(req.params.id, req.user!.id);
+    if (!deleted) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  // AI Analysis
+  app.post("/api/messages/:id/analyze", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const message = await storage.getMessage(req.params.id, req.user!.id);
+      if (!message) return res.sendStatus(404);
+      
+      const analysis = await aiService.analyzeMessage(message, req.user!.id);
+      res.json(analysis);
+    } catch (error) {
+      console.error("AI analysis error:", error);
+      res.status(500).json({ error: "Analysis failed" });
+    }
+  });
+
+  app.post("/api/messages/:id/apply-suggestion", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { suggestion } = req.body;
+      if (!suggestion) return res.status(400).json({ error: "Suggestion required" });
+      
+      await aiService.updateMessageWithSuggestion(req.params.id, suggestion, req.user!.id);
+      
+      // Return updated message
+      const updatedMessage = await storage.getMessage(req.params.id, req.user!.id);
+      res.json(updatedMessage);
+    } catch (error) {
+      console.error("Apply suggestion error:", error);
+      res.status(500).json({ error: "Failed to apply suggestion" });
+    }
   });
 
   const httpServer = createServer(app);
