@@ -67,8 +67,13 @@ export default function PlanningCalendar({ planningWindows, onWindowSelect }: Pl
                 const targetDate = addDays(currentWeek, dayOffset);
                 
                 // Controlla se la data è valida e nel range
-                if (targetDate >= windowStart && 
-                    targetDate <= endRecurrence && 
+                // Usa solo la parte date per il confronto (ignora ore/minuti/secondi)
+                const targetDateOnly = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+                const windowStartOnly = new Date(windowStart.getFullYear(), windowStart.getMonth(), windowStart.getDate());
+                const endRecurrenceOnly = new Date(endRecurrence.getFullYear(), endRecurrence.getMonth(), endRecurrence.getDate());
+                
+                if (targetDateOnly >= windowStartOnly && 
+                    targetDateOnly <= endRecurrenceOnly && 
                     targetDate >= calendarStart && 
                     targetDate <= calendarEnd) {
                   instances.push({
