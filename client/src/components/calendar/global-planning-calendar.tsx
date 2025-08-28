@@ -266,16 +266,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
 
   // Calculate continuous periods for month view
   const getContinuousPeriods = () => {
-    if (!planningWindowsWithProject) {
-      console.log('No planningWindowsWithProject data');
-      return [];
-    }
-    
-    console.log('planningWindowsWithProject:', planningWindowsWithProject.length, planningWindowsWithProject);
+    if (!planningWindowsWithProject) return [];
     
     const { start: calendarStart, end: calendarEnd } = getDateRange();
-    console.log('Date range:', { calendarStart, calendarEnd });
-    
     const periods: Array<{
       window: PlanningWindow;
       project: Project;
@@ -284,45 +277,34 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
       endDate: Date;
       startTime: string;
       endTime: string;
-      workingHours: number;
     }> = [];
     
-    // Semplifichiamo: per ora mostriamo TUTTI i progetti come barre continue
-    // Poi ottimizzeremo per distinguere padre/figlio
     planningWindowsWithProject.forEach(({ project, ...window }) => {
       const windowStart = new Date(window.startDate);
       const windowEnd = new Date(window.endDate);
       const projectLevel = projectHierarchy.get(project.id) || 0;
       
-      console.log('Processing window:', {
-        project: project.name,
-        windowStart,
-        windowEnd,
-        recurrenceType: window.recurrenceType
-      });
-      
-      // Calculate working hours per day
-      const startMinutes = window.startTime ? parseInt(window.startTime.split(':')[0]) * 60 + parseInt(window.startTime.split(':')[1]) : 9 * 60;
-      const endMinutes = window.endTime ? parseInt(window.endTime.split(':')[0]) * 60 + parseInt(window.endTime.split(':')[1]) : 17 * 60;
-      const workingHours = Math.max(1, (endMinutes - startMinutes) / 60);
-      
-      // Rimuoviamo temporaneamente il controllo della ricorrenza
-      const rangeStart = max([windowStart, calendarStart]);
-      const rangeEnd = min([windowEnd, calendarEnd]);
-      
-      periods.push({
-        window,
-        project,
-        level: projectLevel,
-        startDate: rangeStart,
-        endDate: rangeEnd,
-        startTime: window.startTime || '09:00',
-        endTime: window.endTime || '17:00',
-        workingHours
-      });
+      // Solo progetti padre o senza padre
+      const hasChildProjects = planningWindowsWithProject.some(w => w.project.parentProjectId === project.id);
+      if (hasChildProjects || !project.parentProjectId) {
+        // Intersect with calendar range
+        const rangeStart = max([windowStart, calendarStart]);
+        const rangeEnd = min([windowEnd, calendarEnd]);
+        
+        if (rangeStart <= rangeEnd) {
+          periods.push({
+            window,
+            project,
+            level: projectLevel,
+            startDate: rangeStart,
+            endDate: rangeEnd,
+            startTime: window.startTime || '09:00',
+            endTime: window.endTime || '17:00'
+          });
+        }
+      }
     });
     
-    console.log('Continuous periods:', periods.length, periods); // Debug
     return periods.sort((a, b) => a.level - b.level);
   };
 
@@ -376,31 +358,26 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
                 {dayPeriods.map((period, idx) => {
                   const isStartOfPeriod = isSameDay(day, period.startDate);
                   const isEndOfPeriod = isSameDay(day, period.endDate);
-                  const height = Math.max(16, period.workingHours * 3); // Altezza basata sulle ore di lavoro
                   
                   return (
                     <div
                       key={`period-${period.window.id}-${idx}`}
                       className={`
-                        absolute left-0 right-0 ${getLevelColor(period.level)} 
-                        opacity-30 border-t border-b
-                        ${isStartOfPeriod ? 'border-l rounded-l' : ''}
-                        ${isEndOfPeriod ? 'border-r rounded-r' : ''}
-                        cursor-pointer hover:opacity-50 transition-opacity
+                        absolute left-1 right-1 ${getLevelColor(period.level)} 
+                        opacity-60 border
+                        ${isStartOfPeriod ? 'rounded-l-md' : 'border-l-0'}
+                        ${isEndOfPeriod ? 'rounded-r-md' : 'border-r-0'}
+                        cursor-pointer hover:opacity-80 transition-opacity z-10
                       `}
                       style={{ 
-                        top: `${32 + period.level * (height + 2)}px`,
-                        height: `${height}px`,
-                        marginLeft: `${getLevelIndentation(period.level)}px`,
-                        marginRight: `${getLevelIndentation(period.level)}px`
+                        top: `${30 + period.level * 18}px`,
+                        height: '14px'
                       }}
                       onClick={() => onWindowSelect?.(period.window)}
                     >
                       {isStartOfPeriod && (
-                        <div className="absolute inset-0 flex items-center px-1">
-                          <div className="text-xs font-medium truncate text-opacity-100">
-                            {period.window.name}
-                          </div>
+                        <div className="text-xs font-medium px-1 leading-[14px] truncate">
+                          {period.project.name} {period.level > 0 && '→'.repeat(period.level)}
                         </div>
                       )}
                     </div>
@@ -408,7 +385,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
                 })}
                 
                 {/* Child project instances */}
-                <div className="space-y-1" style={{ marginTop: `${Math.max(0, continuousPeriods.length * 20)}px` }}>
+                <div className="space-y-1 mt-16">
                   {dayInstances.map((instance, idx) => (
                     <div
                       key={`${instance.window.id}-${idx}`}
