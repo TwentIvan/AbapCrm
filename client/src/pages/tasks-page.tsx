@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit } from "lucide-react";
+import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3 } from "lucide-react";
 import { Task } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import TaskForm from "@/components/forms/task-form";
@@ -213,6 +213,32 @@ export default function TasksPage() {
                             {task.description}
                           </p>
                         )}
+                        
+                        {/* Task Time Information */}
+                        <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                          {task.estimatedEffort && (
+                            <div className="flex items-center space-x-1">
+                              <Clock className="h-3 w-3" />
+                              <span>{task.estimatedEffort}h estimated</span>
+                            </div>
+                          )}
+                          
+                          {task.remainingEffort !== null && task.remainingEffort > 0 && task.completionPercentage > 0 && (
+                            <div className="flex items-center space-x-1">
+                              <TrendingDown className="h-3 w-3" />
+                              <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                {task.remainingEffort}h remaining
+                              </span>
+                            </div>
+                          )}
+                          
+                          {task.completionPercentage > 0 && (
+                            <div className="flex items-center space-x-1">
+                              <BarChart3 className="h-3 w-3" />
+                              <span>{task.completionPercentage}% complete</span>
+                            </div>
+                          )}
+                        </div>
                         
                         {task.dueDate && (
                           <div className="flex items-center space-x-1">

@@ -82,6 +82,16 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
+      const completionPercentage = req.body.completionPercentage || 0;
+      const estimatedEffort = req.body.estimatedEffort || null;
+      
+      // Calculate initial remaining effort
+      let remainingEffort = null;
+      if (estimatedEffort && completionPercentage < 100) {
+        const remainingPercentage = 100 - completionPercentage;
+        remainingEffort = Math.round((estimatedEffort * remainingPercentage) / 100);
+      }
+
       const taskData = insertTaskSchema.parse({ 
         title: req.body.title,
         description: req.body.description || null,
@@ -89,8 +99,9 @@ export function registerRoutes(app: Express): Server {
         priority: req.body.priority,
         projectId: req.body.projectId,
         dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
-        estimatedEffort: req.body.estimatedEffort || null,
-        completionPercentage: req.body.completionPercentage || 0,
+        estimatedEffort: estimatedEffort,
+        remainingEffort: remainingEffort,
+        completionPercentage: completionPercentage,
         userId: req.user!.id 
       });
       const task = await storage.createTask(taskData);
@@ -115,6 +126,17 @@ export function registerRoutes(app: Express): Server {
       if (req.body.estimatedEffort !== undefined) updateData.estimatedEffort = req.body.estimatedEffort || null;
       if (req.body.completionPercentage !== undefined) updateData.completionPercentage = req.body.completionPercentage;
       if (req.body.assignedTo !== undefined) updateData.assignedTo = req.body.assignedTo || null;
+
+      // Auto-calculate remaining effort when completion percentage changes
+      if (req.body.completionPercentage !== undefined) {
+        // Get current task to access estimated effort
+        const currentTask = await storage.getTask(req.params.id, req.user!.id);
+        if (currentTask && currentTask.estimatedEffort) {
+          const remainingPercentage = 100 - req.body.completionPercentage;
+          const remainingEffort = Math.round((currentTask.estimatedEffort * remainingPercentage) / 100);
+          updateData.remainingEffort = Math.max(0, remainingEffort); // Never negative
+        }
+      }
 
       const task = await storage.updateTask(req.params.id, updateData, req.user!.id);
       if (!task) return res.sendStatus(404);

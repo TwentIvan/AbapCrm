@@ -137,6 +137,7 @@ export function TimeTracker({ task }: TimeTrackerProps) {
   const totalHours = totalTime / 60;
   const estimatedHours = task.estimatedEffort || 0;
   const remainingHours = Math.max(0, estimatedHours - totalHours);
+  const calculatedRemainingHours = task.remainingEffort || 0; // Auto-calculated by server
   const progressPercentage = task.completionPercentage || 0;
   
   const calculateRemainingTime = () => {
@@ -237,11 +238,20 @@ export function TimeTracker({ task }: TimeTrackerProps) {
                   <span className="font-medium">{formatDuration(totalTime)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Remaining:</span>
+                  <span>Original Remaining:</span>
                   <span className="font-medium text-green-600 dark:text-green-400">
                     {formatDuration(remainingHours * 60)}
                   </span>
                 </div>
+                
+                {calculatedRemainingHours > 0 && progressPercentage > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span>Calculated Remaining:</span>
+                    <span className="font-medium text-blue-600 dark:text-blue-400">
+                      {formatDuration(calculatedRemainingHours * 60)}
+                    </span>
+                  </div>
+                )}
                 
                 {remainingTimeData && (
                   <div className="pt-2 border-t border-green-200 dark:border-green-800">

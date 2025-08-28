@@ -47,6 +47,7 @@ export const tasks = pgTable("tasks", {
   dueDate: timestamp("due_date"),
   completedAt: timestamp("completed_at"),
   estimatedEffort: integer("estimated_effort"), // in hours
+  remainingEffort: integer("remaining_effort"), // in hours - automatically calculated
   completionPercentage: integer("completion_percentage").default(0).notNull(), // 0-100
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
