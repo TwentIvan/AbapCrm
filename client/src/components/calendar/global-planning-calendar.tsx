@@ -353,6 +353,96 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
       return Math.min(calculatedHeight, 160); // Altezza massima
     };
 
+    // Funzione ricorsiva per renderizzare progetti padre -> figli
+    const renderHierarchicalProjects = (instances: ExpandedPlanningInstance[], availableHeight: number, parentBounds?: { start: number, end: number, level: number }) => {
+      const minutesInDay = 24 * 60; // 1440 minuti
+      
+      // Raggruppa per livello
+      const byLevel = instances.reduce((acc, instance) => {
+        if (!acc[instance.level]) acc[instance.level] = [];
+        acc[instance.level].push(instance);
+        return acc;
+      }, {} as Record<number, ExpandedPlanningInstance[]>);
+      
+      const levels = Object.keys(byLevel).map(Number).sort();
+      const result: JSX.Element[] = [];
+      
+      levels.forEach(level => {
+        const levelInstances = byLevel[level];
+        
+        levelInstances.forEach((instance, idx) => {
+          const startMinutes = timeToMinutes(instance.startTime);
+          const endMinutes = timeToMinutes(instance.endTime);
+          const durationMinutes = endMinutes - startMinutes;
+          
+          // Se c'è un parent bound, calcola le coordinate relative al padre
+          let relativeStart = startMinutes;
+          let relativeHeight = availableHeight;
+          let relativeTop = 0;
+          
+          if (parentBounds) {
+            relativeTop = ((parentBounds.start) / minutesInDay) * availableHeight;
+            relativeHeight = ((parentBounds.end - parentBounds.start) / minutesInDay) * availableHeight;
+            relativeStart = startMinutes - parentBounds.start; // Posizione relativa al padre
+          }
+          
+          const topPosition = relativeTop + (relativeStart / (parentBounds ? (parentBounds.end - parentBounds.start) : minutesInDay)) * relativeHeight;
+          const height = Math.max(16, (durationMinutes / (parentBounds ? (parentBounds.end - parentBounds.start) : minutesInDay)) * relativeHeight);
+          
+          // Determina se questo è un progetto padre (ha figli)
+          const hasChildren = instances.some(other => other.level > level && other.project.parentId === instance.project.id);
+          
+          result.push(
+            <div
+              key={`${instance.window.id}-${level}-${idx}`}
+              onClick={() => onWindowSelect?.(instance.window)}
+              className="absolute cursor-pointer"
+              style={{ 
+                top: `${topPosition}px`,
+                height: `${height}px`,
+                left: `${getLevelIndentation(level)}px`,
+                right: `${getLevelIndentation(level)}px`,
+                zIndex: hasChildren ? level : 10 + level,
+                opacity: hasChildren ? 0.4 : 1
+              }}
+            >
+              <div className={`${getLevelColor(level)} hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden flex flex-col justify-between ${hasChildren ? 'border-2 border-dashed' : ''}`}>
+                <div>
+                  <div className="font-medium truncate">
+                    {instance.window.name}
+                  </div>
+                  <div className="text-[10px] opacity-75">
+                    {instance.startTime} - {instance.endTime}
+                  </div>
+                </div>
+                <div className="text-[9px] opacity-75 truncate">
+                  {instance.project.name}
+                  {level > 0 && (
+                    <span className="ml-1">
+                      {'→'.repeat(level)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+          
+          // Se questo ha figli, renderizza i figli all'interno
+          if (hasChildren) {
+            const children = instances.filter(other => other.level > level && other.project.parentId === instance.project.id);
+            const childElements = renderHierarchicalProjects(children, availableHeight, {
+              start: startMinutes,
+              end: endMinutes,
+              level: level
+            });
+            result.push(...childElements);
+          }
+        });
+      });
+      
+      return result;
+    };
+
     return (
       <div className="grid grid-cols-7 gap-1">
         {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(day => (
@@ -388,119 +478,12 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
                 {format(day, 'd')}
               </div>
               
-              {/* Barre continue per progetti padre - con stesso posizionamento proporzionale */}
-              <div className="absolute inset-x-0" style={{ 
-                top: '28px', 
-                height: `${cellHeight - 60}px` // Stesso spazio disponibile dei box
-              }}>
-                {dayPeriods
-                  .filter(period => 
-                    period.project.name && 
-                    period.project.name.trim() !== '' &&
-                    (period.window.name && period.window.name.trim() !== '')
-                  )
-                  .map((period, idx) => {
-                  const isStartOfPeriod = isSameDay(day, period.startDate);
-                  const isEndOfPeriod = isSameDay(day, period.endDate);
-                  
-                  // Usa la stessa logica proporzionale dei box figli
-                  const availableHeight = cellHeight - 60;
-                  const minutesInDay = 24 * 60; // 1440 minuti
-                  
-                  // Calcola start/end per la barra padre basandosi sui figli
-                  const childrenInDay = dayInstances.filter(child => child.level > period.level);
-                  let barStart = 0, barEnd = minutesInDay;
-                  
-                  if (childrenInDay.length > 0) {
-                    const childStarts = childrenInDay.map(c => timeToMinutes(c.startTime));
-                    const childEnds = childrenInDay.map(c => timeToMinutes(c.endTime));
-                    barStart = Math.min(...childStarts);
-                    barEnd = Math.max(...childEnds);
-                  }
-                  
-                  const topPosition = (barStart / minutesInDay) * availableHeight;
-                  const height = Math.max(18, ((barEnd - barStart) / minutesInDay) * availableHeight);
-                  
-                  return (
-                    <div
-                      key={`period-${period.window.id}-${idx}`}
-                      className={`
-                        absolute ${getLevelColor(period.level)} 
-                        opacity-40 
-                        ${isStartOfPeriod ? 'rounded-l border-l' : ''}
-                        ${isEndOfPeriod ? 'rounded-r border-r' : ''}
-                        border-t border-b cursor-pointer hover:opacity-60 transition-opacity
-                      `}
-                      style={{ 
-                        top: `${topPosition}px`,
-                        height: `${height}px`,
-                        left: `${period.level * 4}px`,
-                        right: `${period.level * 4}px`,
-                        zIndex: period.level
-                      }}
-                      onClick={() => onWindowSelect?.(period.window)}
-                    >
-                      {isStartOfPeriod && (
-                        <div className="text-xs font-medium px-1 truncate" style={{ lineHeight: `${Math.max(18, height)}px` }}>
-                          {period.project.name}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              
-              {/* Box con posizionamento proporzionale alle 24 ore del giorno */}
+              {/* Renderizzazione ricorsiva progetti padre -> figli */}
               <div className="absolute inset-x-0" style={{ 
                 top: '28px',
-                height: `${cellHeight - 60}px` // Spazio disponibile per i box (cellHeight - header - margins)
+                height: `${cellHeight - 60}px`
               }}>
-                {dayInstances.map((instance, idx) => {
-                  const startMinutes = timeToMinutes(instance.startTime);
-                  const endMinutes = timeToMinutes(instance.endTime);
-                  const durationMinutes = endMinutes - startMinutes;
-                  
-                  // Calcola posizione e altezza come proporzione delle 24 ore (1440 minuti)
-                  const availableHeight = cellHeight - 60; // Altezza disponibile per i contenuti
-                  const minutesInDay = 24 * 60; // 1440 minuti in un giorno
-                  
-                  const topPosition = (startMinutes / minutesInDay) * availableHeight;
-                  const height = Math.max(16, (durationMinutes / minutesInDay) * availableHeight); // Altezza minima 16px
-                  
-                  return (
-                    <div
-                      key={`${instance.window.id}-${idx}`}
-                      onClick={() => onWindowSelect?.(instance.window)}
-                      className="absolute cursor-pointer"
-                      style={{ 
-                        top: `${topPosition}px`,
-                        height: `${height}px`,
-                        left: `${getLevelIndentation(instance.level)}px`,
-                        right: `${getLevelIndentation(instance.level)}px`,
-                        zIndex: 10 + idx
-                      }}
-                    >
-                      <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden flex flex-col justify-between`}>
-                        <div>
-                          <div className="font-medium truncate">
-                            {instance.window.name}
-                          </div>
-                          <div className="text-[10px] opacity-75">
-                            {instance.startTime} - {instance.endTime}
-                          </div>
-                        </div>
-                        <div className="text-[9px] opacity-75 truncate">
-                          {instance.project.name}
-                          {instance.level > 0 && (
-                            <span className="ml-1">
-                              {'→'.repeat(instance.level)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {renderHierarchicalProjects(dayInstances, cellHeight - 60)}
               </div>
             </div>
           );
