@@ -853,6 +853,11 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                     searchCompanyInDialog();
                   }
                 }}
+                autoFocus={false}
+                onFocus={(e) => {
+                  // Previeni la selezione automatica del testo
+                  e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+                }}
               />
               <Button
                 type="button"
