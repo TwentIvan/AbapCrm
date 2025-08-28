@@ -136,7 +136,7 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
         updateTaskMutation.mutate({
           taskId: task.id,
           updates: {
-            dueDate: task.scheduledEndDate?.toISOString() || null,
+            dueDate: task.scheduledEndDate ? task.scheduledEndDate.toISOString() : null,
           },
         });
       }
