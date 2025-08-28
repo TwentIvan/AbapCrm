@@ -147,6 +147,49 @@ export const timeEntries = pgTable("time_entries", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const messageStatusEnum = pgEnum("message_status", ["unread", "read", "processed", "archived"]);
+export const messageTypeEnum = pgEnum("message_type", ["email", "chat", "sms", "other"]);
+
+// Messaggi ricevuti dalla casella email dedicata
+export const messages = pgTable("messages", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  messageId: text("message_id"), // ID del messaggio originale (es. Message-ID email)
+  type: messageTypeEnum("type").default("email").notNull(),
+  status: messageStatusEnum("status").default("unread").notNull(),
+  fromEmail: text("from_email").notNull(),
+  fromName: text("from_name"),
+  toEmail: text("to_email").notNull(),
+  toName: text("to_name"),
+  subject: text("subject"),
+  body: text("body"),
+  htmlBody: text("html_body"),
+  attachments: text("attachments").array(), // Array di nomi/paths allegati
+  receivedAt: timestamp("received_at").notNull(),
+  // AI matching results
+  projectId: uuid("project_id").references(() => projects.id), // Associazione automatica AI
+  taskId: uuid("task_id").references(() => tasks.id), // Associazione automatica AI
+  partnerId: uuid("partner_id").references(() => partners.id), // Associazione automatica AI
+  confidenceScore: decimal("confidence_score", { precision: 3, scale: 2 }), // 0.00-1.00 - quanto è sicura l'AI del match
+  matchingReason: text("matching_reason"), // Spiegazione del perché dell'associazione
+  isManuallyVerified: boolean("is_manually_verified").default(false), // Se l'utente ha confermato il match AI
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Commenti collegati a progetti o task (generati da messaggi o inseriti manualmente)
+export const comments = pgTable("comments", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  projectId: uuid("project_id").references(() => projects.id),
+  taskId: uuid("task_id").references(() => tasks.id),
+  messageId: uuid("message_id").references(() => messages.id), // Collegamento al messaggio originale
+  content: text("content").notNull(),
+  isInternal: boolean("is_internal").default(true).notNull(), // Commento interno o comunicazione esterna
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
@@ -156,6 +199,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   deals: many(deals),
   calendarEvents: many(calendarEvents),
   timeEntries: many(timeEntries),
+  messages: many(messages),
+  comments: many(comments),
 }));
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({
@@ -166,6 +211,8 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   tasks: many(tasks),
   planningWindows: many(planningWindows),
   calendarEvents: many(calendarEvents),
+  messages: many(messages),
+  comments: many(comments),
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
@@ -175,6 +222,8 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   parentTask: one(tasks, { fields: [tasks.parentTaskId], references: [tasks.id], relationName: "TaskHierarchy" }),
   subTasks: many(tasks, { relationName: "TaskHierarchy" }),
   timeEntries: many(timeEntries),
+  messages: many(messages),
+  comments: many(comments),
 }));
 
 export const partnersRelations = relations(partners, ({ one, many }) => ({
@@ -182,6 +231,7 @@ export const partnersRelations = relations(partners, ({ one, many }) => ({
   projects: many(projects),
   deals: many(deals),
   calendarEvents: many(calendarEvents),
+  messages: many(messages),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({
@@ -204,6 +254,21 @@ export const planningWindowsRelations = relations(planningWindows, ({ one }) => 
 export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
   user: one(users, { fields: [timeEntries.userId], references: [users.id] }),
   task: one(tasks, { fields: [timeEntries.taskId], references: [tasks.id] }),
+}));
+
+export const messagesRelations = relations(messages, ({ one, many }) => ({
+  user: one(users, { fields: [messages.userId], references: [users.id] }),
+  project: one(projects, { fields: [messages.projectId], references: [projects.id] }),
+  task: one(tasks, { fields: [messages.taskId], references: [tasks.id] }),
+  partner: one(partners, { fields: [messages.partnerId], references: [partners.id] }),
+  comments: many(comments),
+}));
+
+export const commentsRelations = relations(comments, ({ one }) => ({
+  user: one(users, { fields: [comments.userId], references: [users.id] }),
+  project: one(projects, { fields: [comments.projectId], references: [projects.id] }),
+  task: one(tasks, { fields: [comments.taskId], references: [tasks.id] }),
+  message: one(messages, { fields: [comments.messageId], references: [messages.id] }),
 }));
 
 // Insert schemas
@@ -262,6 +327,20 @@ export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
   duration: true,
 });
 
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  attachments: z.array(z.string()).optional(),
+});
+
+export const insertCommentSchema = createInsertSchema(comments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -279,3 +358,7 @@ export type PlanningWindow = typeof planningWindows.$inferSelect;
 export type InsertPlanningWindow = z.infer<typeof insertPlanningWindowSchema>;
 export type TimeEntry = typeof timeEntries.$inferSelect;
 export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type Comment = typeof comments.$inferSelect;
+export type InsertComment = z.infer<typeof insertCommentSchema>;
