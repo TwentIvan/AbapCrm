@@ -389,10 +389,8 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             placeholder="Inizia a digitare il nome dell'azienda..."
                             onChange={(e) => {
                               field.onChange(e);
-                            }}
-                            onInput={(e) => {
-                              // Search immediata senza debounce
-                              const value = (e.target as HTMLInputElement).value;
+                              // Search integrata nell'onChange per evitare conflitti
+                              const value = e.target.value;
                               simpleCompanySearch(value);
                             }}
                             onBlur={() => {
@@ -543,10 +541,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             placeholder="Nome commerciale dell'azienda"
                             onChange={(e) => {
                               field.onChange(e);
-                            }}
-                            onInput={(e) => {
-                              const value = (e.target as HTMLInputElement).value;
-                              simpleCompanySearch(value);
+                              simpleCompanySearch(e.target.value);
                             }}
                             autoComplete="off"
                             data-testid="input-partner-company"

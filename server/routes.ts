@@ -223,6 +223,11 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/partners", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    console.log('=== PARTNER CREATION DEBUG ===');
+    console.log('Request body:', req.body);
+    console.log('User:', req.user);
+    
     try {
       const partnerData = insertPartnerSchema.parse({
         name: req.body.name,
@@ -242,7 +247,10 @@ export function registerRoutes(app: Express): Server {
         notes: req.body.notes || null,
         userId: req.user!.id
       });
+      
+      console.log('Parsed partner data:', partnerData);
       const partner = await storage.createPartner(partnerData);
+      console.log('Partner created successfully:', partner);
       res.status(201).json(partner);
     } catch (error) {
       console.error("Partner creation error:", error);
