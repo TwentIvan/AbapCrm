@@ -184,8 +184,9 @@ export class ImapEmailService {
         messageId,
         type: 'email',
         status: 'unread',
-        fromEmail: fromAddr?.address || 'unknown@unknown.com',
-        fromName: fromAddr?.name || null,
+        // Use original sender if it's a forwarded email, otherwise use parsed sender
+        fromEmail: cleanedEmail.originalFromEmail || fromAddr?.address || 'unknown@unknown.com',
+        fromName: cleanedEmail.originalFromName || fromAddr?.name || null,
         toEmail: toAddr?.address || this.config.user,
         toName: toAddr?.name || null,
         subject: cleanedEmail.originalSubject || null,

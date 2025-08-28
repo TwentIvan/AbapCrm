@@ -4,6 +4,8 @@ interface ForwardedEmailData {
   originalSubject: string;
   originalBody: string;
   originalHtmlBody: string | null;
+  originalFromEmail: string | null;
+  originalFromName: string | null;
   isForwarded: boolean;
 }
 
@@ -14,6 +16,8 @@ export class EmailForwardCleaner {
       originalSubject: subject,
       originalBody: textBody,
       originalHtmlBody: htmlBody,
+      originalFromEmail: null,
+      originalFromName: null,
       isForwarded: false
     };
 
@@ -27,6 +31,13 @@ export class EmailForwardCleaner {
       result.isForwarded = true;
       result.originalSubject = this.cleanForwardedSubject(subject);
       result.originalBody = this.cleanForwardedBody(textBody);
+      
+      // Extract original sender from forwarded content
+      const originalSender = this.extractOriginalSender(textBody);
+      if (originalSender) {
+        result.originalFromEmail = originalSender.email;
+        result.originalFromName = originalSender.name;
+      }
       
       if (htmlBody) {
         result.originalHtmlBody = this.cleanForwardedHtmlBody(htmlBody);
@@ -45,7 +56,9 @@ export class EmailForwardCleaner {
       /^Inoltro:\s*/i,
       /^I:\s*/i,
       /^TR:\s*/i,
-      /^WG:\s*/i
+      /^WG:\s*/i,
+      /^\[EXT\]/i,
+      /^Re:.*\[EXT\]/i
     ];
 
     return forwardPrefixes.some(prefix => prefix.test(subject));
@@ -63,6 +76,10 @@ export class EmailForwardCleaner {
       /====== Forwarded Message ======/i,
       /From:[\s\S]*?\nDate:[\s\S]*?\nSubject:[\s\S]*?\nTo:/,
       /Da:[\s\S]*?\nData:[\s\S]*?\nOggetto:[\s\S]*?\nA:/,
+      /_{20,}/,  // Outlook separator
+      /Von:[\s\S]*?\nGesendet:[\s\S]*?\nAn:/,  // German Outlook
+      /De:[\s\S]*?\nEnvoyé:[\s\S]*?\nÀ:/,     // French Outlook
+      /Inviato:[\s\S]*?\nA:/,                 // Italian Outlook short form
       /-{5,}.*Original.*Message.*-{5,}/i,
       /_{5,}.*Forwarded.*_{5,}/i
     ];
@@ -81,7 +98,9 @@ export class EmailForwardCleaner {
       /^Inoltro:\s*/i,
       /^I:\s*/i,
       /^TR:\s*/i,
-      /^WG:\s*/i
+      /^WG:\s*/i,
+      /^\[EXT\]\s*/i,
+      /^Re:\s*\[EXT\]\s*/i
     ];
 
     forwardPrefixes.forEach(prefix => {
@@ -106,8 +125,11 @@ export class EmailForwardCleaner {
       /====== Forwarded Message ======[\s\S]*/i,
       /-{5,}.*Original.*Message.*-{5,}[\s\S]*/i,
       /_{5,}.*Forwarded.*_{5,}[\s\S]*/i,
+      /_{20,}[\s\S]*/,  // Outlook separator
       /From:[\s\S]*?\nDate:[\s\S]*?\nSubject:[\s\S]*?\nTo:[\s\S]*/,
       /Da:[\s\S]*?\nData:[\s\S]*?\nOggetto:[\s\S]*?\nA:[\s\S]*/,
+      /Von:[\s\S]*?\nGesendet:[\s\S]*?\nAn:[\s\S]*/,  // German
+      /De:[\s\S]*?\nEnvoyé:[\s\S]*?\nÀ:[\s\S]*/,     // French
       /Il giorno.*ha scritto:[\s\S]*/i,
       /On.*wrote:[\s\S]*/i,
       /Le.*a écrit[\s\S]*/i,
@@ -199,5 +221,72 @@ export class EmailForwardCleaner {
     }
 
     return html;
+  }
+
+  private static extractOriginalSender(body: string): { email: string; name: string } | null {
+    if (!body) return null;
+
+    // Pattern per estrarre il mittente originale da diversi formati
+    const senderPatterns = [
+      // Outlook italiano: "Da: Nome Cognome <email@domain.com>"
+      /Da:\s*([^<\n]*?)\s*<([^>\n]+)>/i,
+      // Outlook inglese: "From: Name Surname <email@domain.com>"
+      /From:\s*([^<\n]*?)\s*<([^>\n]+)>/i,
+      // Outlook tedesco: "Von: Name Surname <email@domain.com>"
+      /Von:\s*([^<\n]*?)\s*<([^>\n]+)>/i,
+      // Outlook francese: "De: Name Surname <email@domain.com>"
+      /De:\s*([^<\n]*?)\s*<([^>\n]+)>/i,
+      // Solo email senza nome: "Da: email@domain.com"
+      /Da:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,
+      /From:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,
+      /Von:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,
+      /De:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i
+    ];
+
+    for (const pattern of senderPatterns) {
+      const match = body.match(pattern);
+      if (match) {
+        if (match[2]) {
+          // Pattern con nome e email
+          return {
+            name: match[1].trim(),
+            email: match[2].trim()
+          };
+        } else {
+          // Pattern solo email
+          return {
+            name: match[1].trim(),
+            email: match[1].trim()
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private static extractOriginalBody(body: string): string {
+    if (!body) return body;
+
+    // Cerca il contenuto del messaggio originale dopo i metadati
+    const contentPatterns = [
+      // Dopo "Oggetto:" cerca la prossima riga non vuota
+      /Oggetto:[^\n]*\n\s*([\s\S]*?)(?=_{20,}|Da:|From:|Von:|De:|$)/i,
+      // Dopo "Subject:" cerca la prossima riga non vuota  
+      /Subject:[^\n]*\n\s*([\s\S]*?)(?=_{20,}|Da:|From:|Von:|De:|$)/i,
+      // Dopo "Betreff:" (tedesco)
+      /Betreff:[^\n]*\n\s*([\s\S]*?)(?=_{20,}|Da:|From:|Von:|De:|$)/i,
+      // Contenuto dopo le intestazioni Outlook
+      /(?:Da|From|Von|De):[^\n]*\n(?:[^\n]*\n)*?\s*([\s\S]*?)(?=_{20,}|Da:|From:|Von:|De:|$)/i
+    ];
+
+    for (const pattern of contentPatterns) {
+      const match = body.match(pattern);
+      if (match && match[1] && match[1].trim().length > 10) {
+        return match[1].trim();
+      }
+    }
+
+    return body;
   }
 }
