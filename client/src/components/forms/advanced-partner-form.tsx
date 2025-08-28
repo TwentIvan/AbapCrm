@@ -151,7 +151,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
 
   // Debounced company search to avoid excessive API calls
   const debouncedCompanySearch = useCallback(
-    debounce((query: string) => handleCompanySearch(query), 300),
+    debounce((query: string) => handleCompanySearch(query), 500),
     [handleCompanySearch]
   );
 
@@ -252,10 +252,10 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     if (result.successful && result.successful.length > 0) {
       const uploadURL = result.successful[0].uploadURL;
       if (uploadURL) {
-        // Convert storage URL to local path
-        const logoPath = `/objects/logos/${uploadURL.split('/').pop()}`;
-        form.setValue('logoUrl', logoPath);
-        setLogoPreview(logoPath);
+        // Use the full upload URL directly for preview and storage
+        console.log('Logo uploaded to:', uploadURL);
+        form.setValue('logoUrl', uploadURL);
+        setLogoPreview(uploadURL);
         toast({ title: "Logo caricato con successo!" });
       }
     }
@@ -297,6 +297,18 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   });
 
   const onSubmit = (data: FormData) => {
+    console.log('Form submitted with data:', data);
+    console.log('User:', user);
+    
+    if (!user) {
+      toast({
+        title: "Errore di autenticazione", 
+        description: "Devi essere loggato per creare un partner",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     createPartnerMutation.mutate(data);
   };
 
@@ -569,7 +581,8 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                       <FormLabel>Città</FormLabel>
                       <FormControl>
                         <Input 
-                          {...field} 
+                          {...field}
+                          value={field.value || ""} 
                           placeholder="Milano"
                           data-testid="input-partner-city"
                         />
@@ -587,7 +600,8 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                       <FormLabel>CAP</FormLabel>
                       <FormControl>
                         <Input 
-                          {...field} 
+                          {...field}
+                          value={field.value || ""} 
                           placeholder="20121"
                           data-testid="input-partner-postal-code"
                         />
@@ -605,7 +619,8 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                       <FormLabel>Paese</FormLabel>
                       <FormControl>
                         <Input 
-                          {...field} 
+                          {...field}
+                          value={field.value || ""} 
                           placeholder="IT"
                           data-testid="input-partner-country"
                         />
