@@ -364,7 +364,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const { ObjectStorageService } = await import('./objectStorage');
       const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const uploadURL = await objectStorageService.getLogoUploadURL();
       res.json({ uploadURL });
     } catch (error) {
       console.error('Logo upload URL error:', error);
@@ -383,7 +383,7 @@ export function registerRoutes(app: Express): Server {
 
       const { ObjectStorageService } = await import('./objectStorage');
       const objectStorageService = new ObjectStorageService();
-      const normalizedPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+      const normalizedPath = objectStorageService.normalizeLogoPath(uploadURL);
       
       res.json({ normalizedPath });
     } catch (error) {

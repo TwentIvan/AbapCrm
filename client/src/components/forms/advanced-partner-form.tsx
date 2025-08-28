@@ -391,18 +391,19 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             value={field.value || ""}
                             placeholder="Inizia a digitare il nome dell'azienda..."
                             onChange={(e) => {
-                              // SOLO aggiorna il valore, niente altro
+                              const value = e.target.value;
                               field.onChange(e);
-                            }}
-                            onKeyUp={(e) => {
-                              // Separare la ricerca dall'onChange per evitare re-render
-                              const value = (e.target as HTMLInputElement).value;
+                              
+                              // Gestione ricerca con debounce semplificato
                               if (value.length >= 2) {
-                                debouncedCompanySearch(value);
+                                setTimeout(() => {
+                                  if (field.value === value) { // Solo se valore non è cambiato
+                                    debouncedCompanySearch(value);
+                                  }
+                                }, 100);
                               } else {
                                 setCompanySuggestions([]);
                                 setShowCompanySuggestions(false);
-                                lastSearchValueRef.current = '';
                               }
                             }}
                             onBlur={() => {
