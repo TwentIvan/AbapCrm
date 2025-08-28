@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,11 +32,13 @@ export default function EmailConfig() {
   const [showConfig, setShowConfig] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: emailStatus } = useQuery<EmailStatus | null>({
     queryKey: ["/api/email/status"],
-    refetchInterval: 5000, // Check status every 5 seconds
-    retry: false, // Don't retry on auth errors
+    enabled: !!user, // Only query when user is authenticated
+    refetchInterval: user ? 5000 : false, // Only poll when authenticated
+    retry: false,
     refetchOnWindowFocus: false,
   });
 
@@ -84,7 +87,7 @@ export default function EmailConfig() {
     configureMutation.mutate(data);
   };
 
-  const isConnected = emailStatus?.connected || false;
+  const isConnected = (emailStatus as EmailStatus)?.connected || false;
 
   return (
     <Card>
