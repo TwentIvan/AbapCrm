@@ -336,8 +336,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     // Altezza fissa per tutti i giorni per mantenere allineamento griglia
     // Per far stare il mese in una schermata: 6 settimane * 120px = 720px + headers
     const FIXED_DAY_HEIGHT = 120; // Altezza per fit in schermata
-    const CONTENT_HEIGHT = 90; // Spazio disponibile per contenuto (120 - 30 per header)
-    // Con 90px di contenuto: 8 ore = 1/3 = 30px, quindi 3.75px per ora
+    const HEADER_HEIGHT = 28; // Spazio per numero del giorno
+    const CONTENT_HEIGHT = FIXED_DAY_HEIGHT - HEADER_HEIGHT; // 92px effettivi
+    // Con 92px di contenuto: 8 ore = 1/3 = ~31px, quindi ~3.8px per ora
 
     // Funzione ricorsiva per renderizzare progetti padre -> figli
     const renderHierarchicalProjects = (instances: ExpandedPlanningInstance[], availableHeight: number, parentBounds?: { start: number, end: number, level: number }) => {
@@ -464,7 +465,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
               
               {/* Renderizzazione ricorsiva progetti padre -> figli */}
               <div className="absolute inset-x-0" style={{ 
-                top: '28px',
+                top: `${HEADER_HEIGHT}px`,
                 height: `${CONTENT_HEIGHT}px`
               }}>
                 {renderHierarchicalProjects(dayInstances, CONTENT_HEIGHT)}
