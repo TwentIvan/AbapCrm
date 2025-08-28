@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, decimal, pgEnum, boolean, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, decimal, pgEnum, boolean, uuid, time } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -55,15 +55,25 @@ export const tasks = pgTable("tasks", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Planning Windows - Multiple planning periods for a project
+export const recurrenceTypeEnum = pgEnum("recurrence_type", ["none", "daily", "weekly", "monthly", "yearly"]);
+
+// Planning Windows - Multiple planning periods for a project with recurrence support
 export const planningWindows = pgTable("planning_windows", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   projectId: uuid("project_id").references(() => projects.id).notNull(),
   name: text("name").notNull(), // e.g., "Sprint 1", "Phase A", "Q1 Development"
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
+  startTime: time("start_time").notNull().default('09:00'), // Start time of day
+  endTime: time("end_time").notNull().default('17:00'), // End time of day
   workingHoursPerDay: integer("working_hours_per_day").default(8).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  // Recurrence fields
+  recurrenceType: recurrenceTypeEnum("recurrence_type").default("none").notNull(),
+  daysOfWeek: integer("days_of_week").array(), // [1,2,3,4,5] for Mon-Fri (1=Monday, 7=Sunday)
+  recurrenceInterval: integer("recurrence_interval").default(1), // Every N days/weeks/months
+  recurrenceEnd: timestamp("recurrence_end"), // When recurrence stops
+  excludedDates: timestamp("excluded_dates").array(), // Specific dates to exclude
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -237,6 +247,11 @@ export const insertPlanningWindowSchema = createInsertSchema(planningWindows).om
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  daysOfWeek: z.array(z.number().min(1).max(7)).optional(),
+  excludedDates: z.array(z.string()).optional(),
 });
 
 export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({

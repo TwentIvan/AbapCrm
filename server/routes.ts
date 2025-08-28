@@ -377,8 +377,14 @@ export function registerRoutes(app: Express): Server {
         name: req.body.name,
         startDate: new Date(req.body.startDate),
         endDate: new Date(req.body.endDate),
+        startTime: req.body.startTime || '09:00',
+        endTime: req.body.endTime || '17:00',
         workingHoursPerDay: req.body.workingHoursPerDay || 8,
         isActive: req.body.isActive !== undefined ? req.body.isActive : true,
+        recurrenceType: req.body.recurrenceType || 'none',
+        daysOfWeek: req.body.daysOfWeek || [],
+        recurrenceInterval: req.body.recurrenceInterval || 1,
+        recurrenceEnd: req.body.recurrenceEnd ? new Date(req.body.recurrenceEnd) : null,
         notes: req.body.notes || null
       });
       const window = await storage.createPlanningWindow(windowData);
@@ -396,12 +402,14 @@ export function registerRoutes(app: Express): Server {
         ...req.body,
         startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
         endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+        recurrenceEnd: req.body.recurrenceEnd ? new Date(req.body.recurrenceEnd) : undefined,
       };
       const window = await storage.updatePlanningWindow(req.params.id, updateData, req.user!.id);
       if (!window) return res.sendStatus(404);
       res.json(window);
     } catch (error) {
-      res.status(400).json({ error: "Invalid planning window data" });
+      console.error("Planning window update error:", error);
+      res.status(400).json({ error: "Invalid planning window data", details: error instanceof Error ? error.message : String(error) });
     }
   });
 
