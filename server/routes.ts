@@ -364,11 +364,31 @@ export function registerRoutes(app: Express): Server {
     try {
       const { ObjectStorageService } = await import('./objectStorage');
       const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getLogoUploadURL();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
       res.json({ uploadURL });
     } catch (error) {
       console.error('Logo upload URL error:', error);
       res.status(500).json({ error: 'Failed to generate upload URL' });
+    }
+  });
+
+  // Normalize logo URL for proper access
+  app.post("/api/partners/logo/normalize", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { uploadURL } = req.body;
+      if (!uploadURL) {
+        return res.status(400).json({ error: "Upload URL is required" });
+      }
+
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const normalizedPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+      
+      res.json({ normalizedPath });
+    } catch (error) {
+      console.error('Error normalizing logo URL:', error);
+      res.status(500).json({ error: 'Failed to normalize logo URL' });
     }
   });
 

@@ -267,24 +267,45 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     };
   };
 
-  const handleLogoUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+  const handleLogoUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
     if (result.successful && result.successful.length > 0) {
       const uploadURL = result.successful[0].uploadURL;
       if (uploadURL) {
-        // Use the full upload URL directly for preview and storage
         console.log('Logo uploaded to:', uploadURL);
-        form.setValue('logoUrl', uploadURL);
-        setLogoPreview(uploadURL);
-        toast({ title: "Logo caricato con successo!" });
+        
+        // Invia l'URL di upload al server per normalizzarlo
+        try {
+          const response = await apiRequest("POST", "/api/partners/logo/normalize", { 
+            uploadURL: uploadURL 
+          });
+          const { normalizedPath } = await response.json();
+          
+          // Usa il percorso normalizzato per preview e storage
+          const previewURL = normalizedPath;
+          console.log('Normalized logo path:', previewURL);
+          
+          form.setValue('logoUrl', previewURL);
+          setLogoPreview(previewURL);
+          toast({ title: "Logo caricato con successo!" });
+        } catch (error) {
+          console.error('Error normalizing logo URL:', error);
+          // Fallback: usa l'URL originale
+          form.setValue('logoUrl', uploadURL);
+          setLogoPreview(uploadURL);
+          toast({ title: "Logo caricato (URL non ottimizzato)" });
+        }
       }
     }
   };
 
   const createPartnerMutation = useMutation({
-    mutationFn: async (data: FormData) => {
+    mutationFn: async (data: FormData & { userId?: string }) => {
+      console.log('Mutation function called with:', data);
+      
       const partnerData = {
-        ...data,
-        userId: user!.id,
+        name: data.name,
+        type: data.type,
+        userId: data.userId || user!.id,
         email: data.email || null,
         phone: data.phone || null,
         company: data.company || null,
@@ -292,12 +313,15 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
         address: data.address || null,
         city: data.city || null,
         postalCode: data.postalCode || null,
+        country: data.country || "IT",
         fiscalCode: data.fiscalCode || null,
         vatNumber: data.vatNumber || null,
         logoUrl: data.logoUrl || null,
         website: data.website || null,
         notes: data.notes || null,
       };
+      
+      console.log('Sending partner data to API:', partnerData);
       const res = await apiRequest("POST", "/api/partners", partnerData);
       return res.json();
     },
@@ -328,7 +352,15 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
       return;
     }
     
-    createPartnerMutation.mutate(data);
+    // Aggiungere valori di default mancanti
+    const completeData = {
+      ...data,
+      country: data.country || "IT", // Default Italia
+      userId: user.id
+    };
+    
+    console.log('Submitting complete data:', completeData);
+    createPartnerMutation.mutate(completeData);
   };
 
   return (
@@ -359,15 +391,15 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             value={field.value || ""}
                             placeholder="Inizia a digitare il nome dell'azienda..."
                             onChange={(e) => {
-                              // Solo aggiorna il valore del form, evita ricerche immediate
+                              // SOLO aggiorna il valore, niente altro
                               field.onChange(e);
-                              const value = e.target.value;
-                              
-                              // Debounce solo la ricerca, non il valore del form
+                            }}
+                            onKeyUp={(e) => {
+                              // Separare la ricerca dall'onChange per evitare re-render
+                              const value = (e.target as HTMLInputElement).value;
                               if (value.length >= 2) {
                                 debouncedCompanySearch(value);
                               } else {
-                                // Cancella suggerimenti immediatamente se < 2 caratteri
                                 setCompanySuggestions([]);
                                 setShowCompanySuggestions(false);
                                 lastSearchValueRef.current = '';
@@ -521,7 +553,12 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             placeholder="Nome commerciale dell'azienda"
                             onChange={(e) => {
                               field.onChange(e);
-                              debouncedCompanySearch(e.target.value);
+                            }}
+                            onKeyUp={(e) => {
+                              const value = (e.target as HTMLInputElement).value;
+                              if (value.length >= 2) {
+                                debouncedCompanySearch(value);
+                              }
                             }}
                             autoComplete="off"
                             data-testid="input-partner-company"
