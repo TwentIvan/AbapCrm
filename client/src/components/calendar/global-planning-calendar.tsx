@@ -324,21 +324,21 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekDays = eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) });
     const hours = Array.from({ length: 24 }, (_, i) => i);
+    const hourHeight = 60; // altezza in pixel di ogni ora
     
-    const instancesByDateAndHour = expandedInstances.reduce((acc, instance) => {
+    // Raggruppa le istanze per data
+    const instancesByDate = expandedInstances.reduce((acc, instance) => {
       const dateKey = format(instance.date, 'yyyy-MM-dd');
-      const startHour = parseInt(instance.startTime.split(':')[0]);
-      const endHour = parseInt(instance.endTime.split(':')[0]);
-      
-      if (!acc[dateKey]) acc[dateKey] = {};
-      
-      for (let hour = startHour; hour <= endHour; hour++) {
-        if (!acc[dateKey][hour]) acc[dateKey][hour] = [];
-        acc[dateKey][hour].push(instance);
-      }
-      
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(instance);
       return acc;
-    }, {} as Record<string, Record<number, ExpandedPlanningInstance[]>>);
+    }, {} as Record<string, ExpandedPlanningInstance[]>);
+
+    // Funzione per convertire time string in minuti dall'inizio della giornata
+    const timeToMinutes = (timeStr: string) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
 
     return (
       <div className="flex flex-col">
@@ -358,31 +358,73 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
         </div>
         
         {/* Griglia oraria */}
-        <div className="flex-1 overflow-auto max-h-[600px]">
-          {hours.map(hour => (
-            <div key={hour} className="grid grid-cols-8 border-b border-border/50 min-h-[50px]">
-              <div className="p-2 text-xs text-muted-foreground border-r border-border bg-muted/30 text-right">
-                {hour.toString().padStart(2, '0')}:00
-              </div>
+        <div className="flex-1 overflow-auto max-h-[600px] relative">
+          <div className="grid grid-cols-8">
+            {/* Colonna orari */}
+            <div className="border-r border-border bg-muted/30">
+              {hours.map(hour => (
+                <div key={hour} className="relative" style={{ height: `${hourHeight}px` }}>
+                  <div className="p-2 text-xs text-muted-foreground text-right border-b border-border/50">
+                    {hour.toString().padStart(2, '0')}:00
+                  </div>
+                  {/* Linea tratteggiata per la mezzora */}
+                  <div 
+                    className="absolute left-0 right-0 border-t border-dashed border-border/30"
+                    style={{ top: `${hourHeight / 2}px` }}
+                  />
+                </div>
+              ))}
+            </div>
+            
+            {/* Colonne giorni */}
+            {weekDays.map(day => {
+              const dateKey = format(day, 'yyyy-MM-dd');
+              const dayInstances = instancesByDate[dateKey] || [];
               
-              {weekDays.map(day => {
-                const dateKey = format(day, 'yyyy-MM-dd');
-                const hourInstances = instancesByDateAndHour[dateKey]?.[hour] || [];
-                
-                return (
-                  <div key={`${dateKey}-${hour}`} className="border-r border-border/50 p-1 relative">
-                    {hourInstances.map((instance, idx) => (
+              return (
+                <div key={dateKey} className="border-r border-border/50 relative">
+                  {/* Griglia di background */}
+                  {hours.map(hour => (
+                    <div 
+                      key={hour} 
+                      className="border-b border-border/50 relative"
+                      style={{ height: `${hourHeight}px` }}
+                    >
+                      {/* Linea tratteggiata per la mezzora */}
+                      <div 
+                        className="absolute left-0 right-0 border-t border-dashed border-border/30"
+                        style={{ top: `${hourHeight / 2}px` }}
+                      />
+                    </div>
+                  ))}
+                  
+                  {/* Eventi sovrapposti */}
+                  {dayInstances.map((instance, idx) => {
+                    const startMinutes = timeToMinutes(instance.startTime);
+                    const endMinutes = timeToMinutes(instance.endTime);
+                    const durationMinutes = endMinutes - startMinutes;
+                    
+                    const topPosition = (startMinutes / 60) * hourHeight;
+                    const height = (durationMinutes / 60) * hourHeight;
+                    
+                    return (
                       <div
-                        key={`${instance.window.id}-${hour}-${idx}`}
+                        key={`${instance.window.id}-${idx}`}
                         onClick={() => onWindowSelect?.(instance.window)}
-                        className="cursor-pointer mb-1"
+                        className="absolute cursor-pointer z-10"
                         style={{ 
-                          marginLeft: `${getLevelIndentation(instance.level)}px`,
+                          top: `${topPosition}px`,
+                          height: `${height}px`,
+                          left: `${2 + getLevelIndentation(instance.level)}px`,
+                          right: `${2 + getLevelIndentation(instance.level)}px`,
                         }}
                       >
-                        <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-1 rounded border`}>
+                        <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-2 rounded border h-full overflow-hidden`}>
                           <div className="font-medium truncate">
                             {instance.window.name}
+                          </div>
+                          <div className="text-[10px] opacity-75">
+                            {instance.startTime} - {instance.endTime}
                           </div>
                           <div className="text-[9px] opacity-75 truncate">
                             {instance.project.name}
@@ -390,12 +432,12 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -403,21 +445,16 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
 
   const renderDayView = () => {
     const hours = Array.from({ length: 24 }, (_, i) => i);
+    const hourHeight = 80; // altezza in pixel più grande per la vista giornaliera
     const dayInstances = expandedInstances.filter(instance => 
       isSameDay(instance.date, currentDate)
     );
     
-    const instancesByHour = dayInstances.reduce((acc, instance) => {
-      const startHour = parseInt(instance.startTime.split(':')[0]);
-      const endHour = parseInt(instance.endTime.split(':')[0]);
-      
-      for (let hour = startHour; hour <= endHour; hour++) {
-        if (!acc[hour]) acc[hour] = [];
-        acc[hour].push(instance);
-      }
-      
-      return acc;
-    }, {} as Record<number, ExpandedPlanningInstance[]>);
+    // Funzione per convertire time string in minuti dall'inizio della giornata
+    const timeToMinutes = (timeStr: string) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
 
     return (
       <div className="flex flex-col">
@@ -427,25 +464,64 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
           </h3>
         </div>
         
-        <div className="flex-1 overflow-auto max-h-[600px]">
-          {hours.map(hour => (
-            <div key={hour} className="flex border-b border-border/50 min-h-[60px]">
-              <div className="w-20 p-3 text-sm text-muted-foreground border-r border-border bg-muted/30 text-right">
-                {hour.toString().padStart(2, '0')}:00
-              </div>
+        <div className="flex-1 overflow-auto max-h-[700px] relative">
+          <div className="flex">
+            {/* Colonna orari */}
+            <div className="w-20 border-r border-border bg-muted/30 flex-shrink-0">
+              {hours.map(hour => (
+                <div key={hour} className="relative border-b border-border/50" style={{ height: `${hourHeight}px` }}>
+                  <div className="p-3 text-sm text-muted-foreground text-right">
+                    {hour.toString().padStart(2, '0')}:00
+                  </div>
+                  {/* Linea tratteggiata per la mezzora */}
+                  <div 
+                    className="absolute left-0 right-0 border-t border-dashed border-border/30"
+                    style={{ top: `${hourHeight / 2}px` }}
+                  />
+                </div>
+              ))}
+            </div>
+            
+            {/* Colonna eventi */}
+            <div className="flex-1 relative">
+              {/* Griglia di background */}
+              {hours.map(hour => (
+                <div 
+                  key={hour} 
+                  className="border-b border-border/50 relative"
+                  style={{ height: `${hourHeight}px` }}
+                >
+                  {/* Linea tratteggiata per la mezzora */}
+                  <div 
+                    className="absolute left-0 right-0 border-t border-dashed border-border/30"
+                    style={{ top: `${hourHeight / 2}px` }}
+                  />
+                </div>
+              ))}
               
-              <div className="flex-1 p-2">
-                {instancesByHour[hour]?.map((instance, idx) => (
+              {/* Eventi sovrapposti */}
+              {dayInstances.map((instance, idx) => {
+                const startMinutes = timeToMinutes(instance.startTime);
+                const endMinutes = timeToMinutes(instance.endTime);
+                const durationMinutes = endMinutes - startMinutes;
+                
+                const topPosition = (startMinutes / 60) * hourHeight;
+                const height = (durationMinutes / 60) * hourHeight;
+                
+                return (
                   <div
-                    key={`${instance.window.id}-${hour}-${idx}`}
+                    key={`${instance.window.id}-${idx}`}
                     onClick={() => onWindowSelect?.(instance.window)}
-                    className="cursor-pointer mb-2"
+                    className="absolute cursor-pointer z-10"
                     style={{ 
-                      marginLeft: `${getLevelIndentation(instance.level)}px`,
+                      top: `${topPosition}px`,
+                      height: `${height}px`,
+                      left: `${8 + getLevelIndentation(instance.level)}px`,
+                      right: `${8 + getLevelIndentation(instance.level)}px`,
                     }}
                   >
-                    <div className={`${getLevelColor(instance.level)} hover:opacity-80 p-3 rounded border`}>
-                      <div className="font-medium">
+                    <div className={`${getLevelColor(instance.level)} hover:opacity-80 p-3 rounded border h-full overflow-hidden flex flex-col`}>
+                      <div className="font-medium truncate">
                         {instance.window.name}
                       </div>
                       <div className="text-sm opacity-75 mt-1">
@@ -459,17 +535,17 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
                           </span>
                         )}
                       </div>
-                      {instance.project.description && (
-                        <div className="text-xs opacity-60 mt-2">
+                      {instance.project.description && height > 120 && (
+                        <div className="text-xs opacity-60 mt-2 flex-1 overflow-hidden">
                           {instance.project.description}
                         </div>
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          ))}
+          </div>
         </div>
       </div>
     );
