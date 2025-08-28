@@ -157,11 +157,16 @@ export class CompanyLookupService {
    * Search for companies by name (fuzzy search)
    */
   static async searchCompanies(query: string): Promise<CompanyInfo[]> {
+    console.log(`[COMPANY-SEARCH] Searching for: "${query}"`);
+    
     if (!query || query.length < 2) {
+      console.log('[COMPANY-SEARCH] Query too short, returning empty array');
       return [];
     }
 
     const normalizedQuery = query.toLowerCase().trim();
+    console.log(`[COMPANY-SEARCH] Normalized query: "${normalizedQuery}"`);
+    console.log(`[COMPANY-SEARCH] Available companies: ${MOCK_COMPANIES.length}`);
     
     // In production, this would call real APIs like:
     // - InfoCamere API for Italian businesses
@@ -172,15 +177,26 @@ export class CompanyLookupService {
     const results = MOCK_COMPANIES.filter(company => {
       const nameMatch = company.name.toLowerCase().includes(normalizedQuery);
       const legalNameMatch = company.legalName?.toLowerCase().includes(normalizedQuery);
-      return nameMatch || legalNameMatch;
+      const match = nameMatch || legalNameMatch;
+      
+      if (match) {
+        console.log(`[COMPANY-SEARCH] Match found: ${company.name}`);
+      }
+      
+      return match;
     });
 
+    console.log(`[COMPANY-SEARCH] Found ${results.length} results`);
+
     // Sort by relevance (exact matches first, then partial)
-    return results.sort((a, b) => {
+    const sortedResults = results.sort((a, b) => {
       const aExact = a.name.toLowerCase().startsWith(normalizedQuery) ? 1 : 0;
       const bExact = b.name.toLowerCase().startsWith(normalizedQuery) ? 1 : 0;
       return bExact - aExact;
     }).slice(0, 10); // Limit to 10 results
+    
+    console.log(`[COMPANY-SEARCH] Returning ${sortedResults.length} sorted results`);
+    return sortedResults;
   }
 
   /**

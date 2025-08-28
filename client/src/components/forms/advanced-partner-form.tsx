@@ -81,20 +81,20 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     resolver: zodResolver(advancedPartnerSchema),
     defaultValues: {
       name: "",
-      email: undefined,
-      phone: undefined,
-      company: undefined,
-      position: undefined,
-      address: undefined,
-      city: undefined,
-      postalCode: undefined,
+      email: "",
+      phone: "",
+      company: "",
+      position: "",
+      address: "",
+      city: "",
+      postalCode: "",
       country: "IT",
-      fiscalCode: undefined,
-      vatNumber: undefined,
-      logoUrl: undefined,
-      website: undefined,
+      fiscalCode: "",
+      vatNumber: "",
+      logoUrl: "",
+      website: "",
       type: "client",
-      notes: undefined,
+      notes: "",
     },
   });
 
@@ -127,49 +127,66 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     setAddressSuggestions([]);
   };
 
-  // Company autocomplete
-  const handleCompanySearch = useCallback(async (query: string) => {
-    if (query.length < 2) {
-      setCompanySuggestions([]);
-      setShowCompanySuggestions(false);
-      return;
-    }
+  // Company autocomplete with debouncing to avoid excessive API calls
+  const handleCompanySearch = useCallback(
+    debounce(async (query: string) => {
+      if (query.length < 2) {
+        setCompanySuggestions([]);
+        setShowCompanySuggestions(false);
+        return;
+      }
 
-    try {
-      const response = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`);
-      const companies = await response.json();
-      setCompanySuggestions(companies);
-      setShowCompanySuggestions(companies.length > 0);
-    } catch (error) {
-      console.error('Company search error:', error);
-      setCompanySuggestions([]);
-      setShowCompanySuggestions(false);
-    }
-  }, []);
+      try {
+        console.log(`Searching companies for: "${query}"`);
+        const response = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`);
+        const companies = await response.json();
+        console.log(`Found ${companies.length} companies:`, companies);
+        setCompanySuggestions(companies);
+        setShowCompanySuggestions(companies.length > 0);
+      } catch (error) {
+        console.error('Company search error:', error);
+        setCompanySuggestions([]);
+        setShowCompanySuggestions(false);
+      }
+    }, 300),
+    []
+  );
+
+  // Simple debounce function
+  function debounce<T extends (...args: any[]) => void>(func: T, delay: number): T {
+    let timeoutId: NodeJS.Timeout;
+    return ((...args: any[]) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func(...args), delay);
+    }) as T;
+  }
 
   const selectCompanySuggestion = (company: CompanyInfo) => {
-    // Auto-populate all company fields
-    form.setValue('name', company.legalName || company.name);
-    form.setValue('company', company.name);
-    if (company.address) form.setValue('address', company.address);
-    if (company.city) form.setValue('city', company.city);
-    if (company.postalCode) form.setValue('postalCode', company.postalCode);
-    if (company.country) form.setValue('country', company.country);
-    if (company.fiscalCode) form.setValue('fiscalCode', company.fiscalCode);
-    if (company.vatNumber) form.setValue('vatNumber', company.vatNumber.replace('IT', ''));
-    if (company.website) form.setValue('website', company.website);
-    if (company.logoUrl) {
-      form.setValue('logoUrl', company.logoUrl);
-      setLogoPreview(company.logoUrl);
-    }
-    
-    setShowCompanySuggestions(false);
-    setCompanySuggestions([]);
-    
-    toast({ 
-      title: "Informazioni azienda caricate!", 
-      description: `Dati di ${company.name} inseriti automaticamente` 
-    });
+    // Auto-populate all company fields using setValue to avoid focus issues
+    setTimeout(() => {
+      form.setValue('name', company.legalName || company.name);
+      form.setValue('company', company.name);
+      if (company.address) form.setValue('address', company.address);
+      if (company.city) form.setValue('city', company.city);
+      if (company.postalCode) form.setValue('postalCode', company.postalCode);
+      if (company.country) form.setValue('country', company.country);
+      if (company.fiscalCode) form.setValue('fiscalCode', company.fiscalCode);
+      if (company.vatNumber) form.setValue('vatNumber', company.vatNumber.replace('IT', ''));
+      if (company.website) form.setValue('website', company.website);
+      if (company.logoUrl) {
+        form.setValue('logoUrl', company.logoUrl);
+        setLogoPreview(company.logoUrl);
+      }
+      
+      // Close suggestions
+      setShowCompanySuggestions(false);
+      setCompanySuggestions([]);
+      
+      toast({ 
+        title: "Informazioni azienda caricate!", 
+        description: `Dati di ${company.name} inseriti automaticamente` 
+      });
+    }, 50);
   };
 
   // Fiscal code validation
@@ -309,6 +326,16 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             onChange={(e) => {
                               field.onChange(e);
                               handleCompanySearch(e.target.value);
+                            }}
+                            onBlur={() => {
+                              // Hide suggestions when field loses focus (after a delay)
+                              setTimeout(() => setShowCompanySuggestions(false), 200);
+                            }}
+                            onFocus={() => {
+                              // Show suggestions if we have them when field gains focus
+                              if (companySuggestions.length > 0) {
+                                setShowCompanySuggestions(true);
+                              }
                             }}
                             data-testid="input-partner-name"
                           />
