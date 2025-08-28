@@ -227,7 +227,7 @@ export default function TasksPage() {
                             <div className="flex items-center space-x-1">
                               <TrendingDown className="h-3 w-3" />
                               <span className="text-blue-600 dark:text-blue-400 font-medium">
-                                {task.remainingEffort}h remaining
+                                {Math.round((task.remainingEffort / 60) * 10) / 10}h remaining
                               </span>
                             </div>
                           )}

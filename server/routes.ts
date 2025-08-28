@@ -85,11 +85,12 @@ export function registerRoutes(app: Express): Server {
       const completionPercentage = req.body.completionPercentage || 0;
       const estimatedEffort = req.body.estimatedEffort || null;
       
-      // Calculate initial remaining effort
+      // Calculate initial remaining effort (in minutes to avoid decimal issues)  
       let remainingEffort = null;
       if (estimatedEffort && completionPercentage < 100) {
         const remainingPercentage = 100 - completionPercentage;
-        remainingEffort = Math.round((estimatedEffort * remainingPercentage) / 100);
+        const remainingHours = (estimatedEffort * remainingPercentage) / 100;
+        remainingEffort = Math.round(remainingHours * 60); // Convert to minutes
       }
 
       const taskData = insertTaskSchema.parse({ 
@@ -157,13 +158,14 @@ export function registerRoutes(app: Express): Server {
             
             console.log(`Projected remaining: ${projectedRemainingHours} hours`);
             
-            // Use Math.ceil to be more conservative and avoid tiny values
-            updateData.remainingEffort = Math.max(0, Math.ceil(projectedRemainingHours * 10) / 10); // Round to 1 decimal
+            // Convert to minutes and then round to integer (since DB field is integer)
+            const projectedRemainingMinutes = projectedRemainingHours * 60;
+            updateData.remainingEffort = Math.max(0, Math.round(projectedRemainingMinutes)); // Save as minutes, not hours!
           } else {
-            // Fallback to simple percentage if no time logged yet
+            // Fallback to simple percentage if no time logged yet (in minutes)
             const remainingPercentage = 100 - req.body.completionPercentage;
-            const remainingEffort = Math.round((currentTask.estimatedEffort * remainingPercentage) / 100);
-            updateData.remainingEffort = Math.max(0, remainingEffort);
+            const remainingHours = (currentTask.estimatedEffort * remainingPercentage) / 100;
+            updateData.remainingEffort = Math.max(0, Math.round(remainingHours * 60)); // Convert to minutes
           }
         }
       }

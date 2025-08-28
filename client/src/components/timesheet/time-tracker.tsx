@@ -138,7 +138,8 @@ export function TimeTracker({ task }: TimeTrackerProps) {
   const totalHours = totalTime / 60;
   const estimatedHours = task.estimatedEffort || 0;
   const remainingHours = Math.max(0, estimatedHours - totalHours);
-  const calculatedRemainingHours = task.remainingEffort || 0; // Auto-calculated by server
+  const calculatedRemainingMinutes = task.remainingEffort || 0; // Auto-calculated by server (in minutes)
+  const calculatedRemainingHours = calculatedRemainingMinutes / 60; // Convert to hours for display
   const progressPercentage = task.completionPercentage || 0;
   
   const calculateRemainingTime = () => {
