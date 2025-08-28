@@ -128,28 +128,31 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   };
 
   // Company autocomplete with debouncing to avoid excessive API calls
-  const handleCompanySearch = useCallback(
-    debounce(async (query: string) => {
-      if (query.length < 2) {
-        setCompanySuggestions([]);
-        setShowCompanySuggestions(false);
-        return;
-      }
+  const handleCompanySearch = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setCompanySuggestions([]);
+      setShowCompanySuggestions(false);
+      return;
+    }
 
-      try {
-        console.log(`Searching companies for: "${query}"`);
-        const response = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`);
-        const companies = await response.json();
-        console.log(`Found ${companies.length} companies:`, companies);
-        setCompanySuggestions(companies);
-        setShowCompanySuggestions(companies.length > 0);
-      } catch (error) {
-        console.error('Company search error:', error);
-        setCompanySuggestions([]);
-        setShowCompanySuggestions(false);
-      }
-    }, 300),
-    []
+    try {
+      console.log(`Searching companies for: "${query}"`);
+      const response = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`);
+      const companies = await response.json();
+      console.log(`Found ${companies.length} companies:`, companies);
+      setCompanySuggestions(companies);
+      setShowCompanySuggestions(companies.length > 0);
+    } catch (error) {
+      console.error('Company search error:', error);
+      setCompanySuggestions([]);
+      setShowCompanySuggestions(false);
+    }
+  }, []);
+
+  // Debounced company search to avoid excessive API calls
+  const debouncedCompanySearch = useCallback(
+    debounce((query: string) => handleCompanySearch(query), 300),
+    [handleCompanySearch]
   );
 
   // Simple debounce function
@@ -322,10 +325,19 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                         <div className="relative">
                           <Input 
                             {...field}
+                            value={field.value || ""}
                             placeholder="Inizia a digitare il nome dell'azienda..."
                             onChange={(e) => {
                               field.onChange(e);
-                              handleCompanySearch(e.target.value);
+                              debouncedCompanySearch(e.target.value);
+                            }}
+                            onBlur={() => {
+                              setTimeout(() => setShowCompanySuggestions(false), 150);
+                            }}
+                            onFocus={() => {
+                              if (companySuggestions.length > 0 && field.value && field.value.length >= 2) {
+                                setShowCompanySuggestions(true);
+                              }
                             }}
                             autoComplete="off"
                             data-testid="input-partner-name"
@@ -418,7 +430,8 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                       <FormLabel>Email</FormLabel>
                       <FormControl>
                         <Input 
-                          {...field} 
+                          {...field}
+                          value={field.value || ""} 
                           type="email" 
                           placeholder="mario@example.com"
                           data-testid="input-partner-email"
@@ -437,7 +450,8 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                       <FormLabel>Telefono</FormLabel>
                       <FormControl>
                         <Input 
-                          {...field} 
+                          {...field}
+                          value={field.value || ""} 
                           placeholder="+39 333 123 4567"
                           data-testid="input-partner-phone"
                         />
@@ -459,10 +473,11 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                         <div className="relative">
                           <Input 
                             {...field}
+                            value={field.value || ""}
                             placeholder="Nome commerciale dell'azienda"
                             onChange={(e) => {
                               field.onChange(e);
-                              handleCompanySearch(e.target.value);
+                              debouncedCompanySearch(e.target.value);
                             }}
                             autoComplete="off"
                             data-testid="input-partner-company"
@@ -482,7 +497,8 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                       <FormLabel>Ruolo / Posizione</FormLabel>
                       <FormControl>
                         <Input 
-                          {...field} 
+                          {...field}
+                          value={field.value || ""} 
                           placeholder="CTO, Project Manager..."
                           data-testid="input-partner-position"
                         />
@@ -514,6 +530,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                       <div className="relative">
                         <Input 
                           {...field}
+                          value={field.value || ""}
                           placeholder="Via Roma 123, Milano"
                           onChange={(e) => {
                             field.onChange(e);
@@ -707,9 +724,9 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                       </ObjectUploader>
                     </div>
                   </div>
-                  {form.getValues('logoUrl') && (
+                  {(form.getValues('logoUrl') || logoPreview) && (
                     <p className="text-xs text-gray-500">
-                      Logo: {form.getValues('logoUrl').split('/').pop()}
+                      Logo: {form.getValues('logoUrl')?.split('/').pop() || 'Logo caricato'}
                     </p>
                   )}
                 </div>
@@ -752,7 +769,8 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                     <FormLabel>Note aggiuntive</FormLabel>
                     <FormControl>
                       <Textarea 
-                        {...field} 
+                        {...field}
+                        value={field.value || ""} 
                         placeholder="Inserisci note, preferenze o informazioni aggiuntive..."
                         className="min-h-[100px]"
                         data-testid="textarea-partner-notes"
