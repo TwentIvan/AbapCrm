@@ -1,7 +1,7 @@
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, Settings, FolderTree, Mail } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import hubUpLogo from "@assets/generated_images/The_Hub_Up_logo_ae8678a3.png";
 
@@ -78,7 +78,7 @@ export default function Sidebar() {
             onClick={() => logoutMutation.mutate()}
             data-testid="button-logout"
           >
-            <Settings className="h-4 w-4 text-muted-foreground" />
+            <LogOut className="h-4 w-4 text-muted-foreground" />
           </Button>
         </div>
       </div>
