@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { autoInitializeEmailServices } from "./email-auto-init";
 
 const app = express();
 app.use(express.json());
@@ -67,5 +68,10 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Auto-initialize email services after server starts
+    setTimeout(async () => {
+      await autoInitializeEmailServices();
+    }, 2000); // Wait 2 seconds for server to fully start
   });
 })();

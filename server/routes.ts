@@ -6,7 +6,7 @@ import { z } from "zod";
 import { 
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, 
   insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema,
-  insertMessageSchema, insertCommentSchema
+  insertMessageSchema, insertCommentSchema, insertEmailConfigSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -664,19 +664,24 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/email/configure", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const { email, password, folder } = req.body;
+      const validatedData = insertEmailConfigSchema.parse({
+        ...req.body,
+        userId: req.user!.id
+      });
       
-      if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required" });
-      }
+      // Deactivate all existing configs for this user
+      await storage.deactivateAllEmailConfigs(req.user!.id);
+      
+      // Create new active config
+      const savedConfig = await storage.createEmailConfig(validatedData);
 
       const config = {
-        user: email,
-        password: password,
-        host: 'imap.gmail.com',
-        port: 993,
-        tls: true,
-        folder: folder || 'INBOX'
+        user: savedConfig.email,
+        password: savedConfig.password,
+        host: savedConfig.host,
+        port: savedConfig.port,
+        tls: savedConfig.tls,
+        folder: savedConfig.folder
       };
 
       // Disconnect existing service first
@@ -690,7 +695,8 @@ export function registerRoutes(app: Express): Server {
       res.json({ 
         message: "Email service configured successfully",
         status: "connected",
-        folder: config.folder
+        folder: config.folder,
+        configId: savedConfig.id
       });
     } catch (error) {
       console.error("Email configuration error:", error);
@@ -702,9 +708,18 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     const service = getEmailService();
+    const activeConfig = await storage.getActiveEmailConfig(req.user!.id);
+    
     res.json({
       connected: service !== null,
-      status: service ? "active" : "not_configured"
+      status: service ? "active" : (activeConfig ? "configured" : "not_configured"),
+      config: activeConfig ? {
+        id: activeConfig.id,
+        email: activeConfig.email,
+        folder: activeConfig.folder,
+        host: activeConfig.host,
+        port: activeConfig.port
+      } : null
     });
   });
 

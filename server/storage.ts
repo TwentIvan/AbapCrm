@@ -1,5 +1,5 @@
 import { 
-  users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments,
+  users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, emailConfigs,
   type User, type InsertUser,
   type Project, type InsertProject,
   type Task, type InsertTask,
@@ -9,7 +9,8 @@ import {
   type PlanningWindow, type InsertPlanningWindow,
   type TimeEntry, type InsertTimeEntry,
   type Message, type InsertMessage,
-  type Comment, type InsertComment
+  type Comment, type InsertComment,
+  type EmailConfig, type InsertEmailConfig
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -98,6 +99,15 @@ export interface IStorage {
   createComment(comment: InsertComment): Promise<Comment>;
   updateComment(id: string, comment: Partial<InsertComment>, userId: string): Promise<Comment | undefined>;
   deleteComment(id: string, userId: string): Promise<boolean>;
+
+  // Email Configs
+  getEmailConfigs(userId: string): Promise<EmailConfig[]>;
+  getEmailConfig(id: string, userId: string): Promise<EmailConfig | undefined>;
+  getActiveEmailConfig(userId: string): Promise<EmailConfig | undefined>;
+  createEmailConfig(config: InsertEmailConfig): Promise<EmailConfig>;
+  updateEmailConfig(id: string, config: Partial<InsertEmailConfig>, userId: string): Promise<EmailConfig | undefined>;
+  deleteEmailConfig(id: string, userId: string): Promise<boolean>;
+  deactivateAllEmailConfigs(userId: string): Promise<void>;
 
   sessionStore: session.Store;
 }
@@ -602,6 +612,63 @@ export class DatabaseStorage implements IStorage {
       .delete(comments)
       .where(and(eq(comments.id, id), eq(comments.userId, userId)));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Email Configs
+  async getEmailConfigs(userId: string): Promise<EmailConfig[]> {
+    return await db
+      .select()
+      .from(emailConfigs)
+      .where(eq(emailConfigs.userId, userId))
+      .orderBy(desc(emailConfigs.updatedAt));
+  }
+
+  async getEmailConfig(id: string, userId: string): Promise<EmailConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(emailConfigs)
+      .where(and(eq(emailConfigs.id, id), eq(emailConfigs.userId, userId)));
+    return config || undefined;
+  }
+
+  async getActiveEmailConfig(userId: string): Promise<EmailConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(emailConfigs)
+      .where(and(eq(emailConfigs.userId, userId), eq(emailConfigs.isActive, true)))
+      .orderBy(desc(emailConfigs.updatedAt));
+    return config || undefined;
+  }
+
+  async createEmailConfig(config: InsertEmailConfig): Promise<EmailConfig> {
+    const [newConfig] = await db
+      .insert(emailConfigs)
+      .values(config)
+      .returning();
+    return newConfig;
+  }
+
+  async updateEmailConfig(id: string, config: Partial<InsertEmailConfig>, userId: string): Promise<EmailConfig | undefined> {
+    const [updated] = await db
+      .update(emailConfigs)
+      .set({ ...config, updatedAt: new Date() })
+      .where(and(eq(emailConfigs.id, id), eq(emailConfigs.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteEmailConfig(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(emailConfigs)
+      .where(and(eq(emailConfigs.id, id), eq(emailConfigs.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async deactivateAllEmailConfigs(userId: string): Promise<void> {
+    await db
+      .update(emailConfigs)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(emailConfigs.userId, userId));
   }
 }
 

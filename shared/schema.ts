@@ -190,6 +190,21 @@ export const comments = pgTable("comments", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Configurazioni email IMAP salvate per ogni utente
+export const emailConfigs = pgTable("email_configs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  email: text("email").notNull(),
+  password: text("password").notNull(),
+  host: text("host").notNull().default("imap.gmail.com"),
+  port: integer("port").notNull().default(993),
+  tls: boolean("tls").notNull().default(true),
+  folder: text("folder").notNull().default("INBOX"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
@@ -201,6 +216,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   timeEntries: many(timeEntries),
   messages: many(messages),
   comments: many(comments),
+  emailConfigs: many(emailConfigs),
 }));
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({
@@ -269,6 +285,10 @@ export const commentsRelations = relations(comments, ({ one }) => ({
   project: one(projects, { fields: [comments.projectId], references: [projects.id] }),
   task: one(tasks, { fields: [comments.taskId], references: [tasks.id] }),
   message: one(messages, { fields: [comments.messageId], references: [messages.id] }),
+}));
+
+export const emailConfigsRelations = relations(emailConfigs, ({ one }) => ({
+  user: one(users, { fields: [emailConfigs.userId], references: [users.id] }),
 }));
 
 // Insert schemas
@@ -341,6 +361,12 @@ export const insertCommentSchema = createInsertSchema(comments).omit({
   updatedAt: true,
 });
 
+export const insertEmailConfigSchema = createInsertSchema(emailConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -362,3 +388,5 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
+export type EmailConfig = typeof emailConfigs.$inferSelect;
+export type InsertEmailConfig = z.infer<typeof insertEmailConfigSchema>;
