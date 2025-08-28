@@ -391,8 +391,12 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                               const name = form.getValues('name');
                               if (name && name.length >= 2) {
                                 console.log('Manual search for:', name);
+                                console.log('Current suggestions:', companySuggestions);
+                                console.log('Show suggestions:', showCompanySuggestions);
                                 manualCompanySearch(name);
+                                // Forza sempre l'apertura
                                 setShowCompanySuggestions(true);
+                                console.log('Forced show suggestions to true');
                               } else {
                                 console.log('Nome troppo corto per la ricerca:', name);
                               }
@@ -401,8 +405,9 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                           >
                             🔍 Cerca Azienda
                           </Button>
-                          {showCompanySuggestions && companySuggestions.length > 0 && (
-                            <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-y-auto">
+                          {/* Debug: Always show suggestions container when there are suggestions */}
+                          {companySuggestions.length > 0 && (
+                            <div className="absolute z-50 w-full mt-16 bg-white border-2 border-red-500 rounded-md shadow-lg max-h-64 overflow-y-auto">
                               {companySuggestions.map((company, index) => (
                                 <button
                                   key={index}
