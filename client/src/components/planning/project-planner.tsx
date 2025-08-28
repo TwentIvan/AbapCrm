@@ -406,6 +406,7 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
         <TabsContent value="calendar-view" className="space-y-6">
           <PlanningCalendar 
             planningWindows={planningWindows || []} 
+            project={project}
             onWindowSelect={(window) => {
               setEditingPlanningWindow(window);
               setShowPlanningWindowDialog(true);

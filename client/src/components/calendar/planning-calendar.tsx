@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
-import { PlanningWindow } from "@shared/schema";
+import { PlanningWindow, Project } from "@shared/schema";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isWithinInterval, addDays, startOfWeek, endOfWeek } from "date-fns";
 
 interface PlanningCalendarProps {
   planningWindows: PlanningWindow[];
+  project?: Project;
   onWindowSelect?: (window: PlanningWindow) => void;
 }
 
@@ -18,7 +19,7 @@ interface ExpandedPlanningInstance {
   endTime: string;
 }
 
-export default function PlanningCalendar({ planningWindows, onWindowSelect }: PlanningCalendarProps) {
+export default function PlanningCalendar({ planningWindows, project, onWindowSelect }: PlanningCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   
   // Espandi le finestre di pianificazione ricorsive per il mese corrente (+ buffer)
@@ -235,10 +236,10 @@ export default function PlanningCalendar({ planningWindows, onWindowSelect }: Pl
                         <div className="text-muted-foreground">
                           {instance.startTime} - {instance.endTime}
                         </div>
-                        {instance.window.recurrenceType !== 'none' && (
-                          <Badge variant="outline" className="text-[10px] h-4 mt-1">
-                            {instance.window.recurrenceType}
-                          </Badge>
+                        {project?.description && (
+                          <div className="text-[10px] text-muted-foreground mt-1 truncate">
+                            {project.description}
+                          </div>
                         )}
                       </div>
                     </div>
