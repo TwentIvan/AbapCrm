@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { z } from "zod";
 import { 
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, 
-  insertDealSchema, insertCalendarEventSchema, insertTimeEntrySchema
+  insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema
 } from "@shared/schema";
 
 export function registerRoutes(app: Express): Server {
@@ -351,6 +351,63 @@ export function registerRoutes(app: Express): Server {
   app.delete("/api/calendar-events/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const deleted = await storage.deleteCalendarEvent(req.params.id, req.user!.id);
+    if (!deleted) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  // Planning Windows
+  app.get("/api/planning-windows/project/:projectId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const windows = await storage.getPlanningWindows(req.params.projectId, req.user!.id);
+    res.json(windows);
+  });
+
+  app.get("/api/planning-windows/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const window = await storage.getPlanningWindow(req.params.id, req.user!.id);
+    if (!window) return res.sendStatus(404);
+    res.json(window);
+  });
+
+  app.post("/api/planning-windows", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const windowData = insertPlanningWindowSchema.parse({
+        projectId: req.body.projectId,
+        name: req.body.name,
+        startDate: new Date(req.body.startDate),
+        endDate: new Date(req.body.endDate),
+        workingHoursPerDay: req.body.workingHoursPerDay || 8,
+        isActive: req.body.isActive !== undefined ? req.body.isActive : true,
+        notes: req.body.notes || null
+      });
+      const window = await storage.createPlanningWindow(windowData);
+      res.status(201).json(window);
+    } catch (error) {
+      console.error("Planning window creation error:", error);
+      res.status(400).json({ error: "Invalid planning window data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.put("/api/planning-windows/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const updateData = {
+        ...req.body,
+        startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+      };
+      const window = await storage.updatePlanningWindow(req.params.id, updateData, req.user!.id);
+      if (!window) return res.sendStatus(404);
+      res.json(window);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid planning window data" });
+    }
+  });
+
+  app.delete("/api/planning-windows/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const deleted = await storage.deletePlanningWindow(req.params.id, req.user!.id);
     if (!deleted) return res.sendStatus(404);
     res.sendStatus(204);
   });

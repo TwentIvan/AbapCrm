@@ -18,7 +18,7 @@ import {
   PlayCircle,
   Calculator
 } from "lucide-react";
-import { Project, Task, insertTaskSchema } from "@shared/schema";
+import { Project, Task, PlanningWindow, insertTaskSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays, differenceInDays, parseISO, isAfter, isBefore } from "date-fns";
@@ -55,15 +55,25 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
     queryKey: ["/api/tasks", "project", projectId],
   });
 
-  // Calculate project schedule
-  const calculateSchedule = (projectData: Project, taskList: Task[]): TaskWithSchedule[] => {
-    if (!projectData.startDate || !projectData.endDate || !taskList.length) {
+  // Fetch planning windows for this project
+  const { data: planningWindows, isLoading: windowsLoading } = useQuery<PlanningWindow[]>({
+    queryKey: ["/api/planning-windows", "project", projectId],
+  });
+
+  // Calculate project schedule using planning windows
+  const calculateSchedule = (taskList: Task[], windows: PlanningWindow[]): TaskWithSchedule[] => {
+    if (!taskList.length || !windows.length) {
       return taskList;
     }
 
-    const projectStart = new Date(projectData.startDate);
-    const projectEnd = new Date(projectData.endDate);
-    const totalProjectDays = differenceInDays(projectEnd, projectStart);
+    // Filter active windows and sort by start date
+    const activeWindows = windows.filter(w => w.isActive).sort((a, b) => 
+      new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+    );
+
+    if (!activeWindows.length) {
+      return taskList;
+    }
     
     // Sort tasks by priority (urgent > high > medium > low) then by estimated effort
     const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
@@ -73,39 +83,67 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
       return (b.estimatedEffort || 0) - (a.estimatedEffort || 0);
     });
 
-    let currentDate = new Date(projectStart);
-    const scheduledTasks: TaskWithSchedule[] = [];
+    const tasksWithSchedule: TaskWithSchedule[] = [];
+    let currentWindowIndex = 0;
+    let currentDateInWindow = new Date(activeWindows[0].startDate);
 
     for (const task of sortedTasks) {
-      const estimatedHours = task.remainingEffort || task.estimatedEffort || 4;
-      const bufferedHours = Math.ceil(estimatedHours * BUFFER_FACTOR);
-      const workingDays = Math.ceil(bufferedHours / workingHoursPerDay);
-      
-      const scheduledStartDate = new Date(currentDate);
-      const scheduledEndDate = addDays(currentDate, Math.max(1, workingDays));
-      
-      // Check if task fits within project timeline
-      const isOverdue = isAfter(scheduledEndDate, projectEnd);
-      const canStart = !isBefore(scheduledStartDate, projectStart);
+      if (task.status === 'completed') {
+        tasksWithSchedule.push({ ...task, isOverdue: false, canStart: true });
+        continue;
+      }
 
-      scheduledTasks.push({
+      const estimatedHours = (task.estimatedEffort || 0) * BUFFER_FACTOR;
+      
+      // Find available window with enough capacity
+      let assignedWindow = null;
+      let scheduledStartDate = null;
+      let scheduledEndDate = null;
+      let workingDays = 0;
+
+      for (let i = currentWindowIndex; i < activeWindows.length; i++) {
+        const window = activeWindows[i];
+        const windowStart = new Date(window.startDate);
+        const windowEnd = new Date(window.endDate);
+        const dailyHours = window.workingHoursPerDay;
+        
+        workingDays = Math.max(1, Math.ceil(estimatedHours / dailyHours));
+        scheduledStartDate = i === currentWindowIndex ? new Date(currentDateInWindow) : new Date(windowStart);
+        scheduledEndDate = addDays(scheduledStartDate, workingDays);
+
+        // Check if task fits in this window
+        if (!isAfter(scheduledEndDate, windowEnd)) {
+          assignedWindow = window;
+          currentWindowIndex = i;
+          currentDateInWindow = addDays(scheduledEndDate, 1);
+          break;
+        }
+      }
+
+      if (!assignedWindow) {
+        // Task doesn't fit in any window - assign to last window with warning
+        const lastWindow = activeWindows[activeWindows.length - 1];
+        scheduledStartDate = new Date(currentDateInWindow);
+        scheduledEndDate = new Date(lastWindow.endDate);
+      }
+
+      const isOverdue = task.dueDate ? isAfter(new Date(), new Date(task.dueDate)) : false;
+
+      tasksWithSchedule.push({
         ...task,
-        scheduledStartDate,
-        scheduledEndDate,
+        scheduledStartDate: scheduledStartDate || undefined,
+        scheduledEndDate: scheduledEndDate || undefined,
         workingDays,
         isOverdue,
-        canStart,
+        canStart: Boolean(assignedWindow),
       });
-
-      // Move current date forward for next task
-      currentDate = addDays(scheduledEndDate, 1);
     }
 
-    return scheduledTasks;
+    return tasksWithSchedule;
   };
 
   // Auto-schedule tasks when data changes
-  const scheduledTasks = project && tasks ? calculateSchedule(project, tasks) : [];
+  const scheduledTasks = tasks && planningWindows ? calculateSchedule(tasks, planningWindows) : [];
 
   // Update task mutation
   const updateTaskMutation = useMutation({
@@ -154,7 +192,7 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
     }
   }, [workingHoursPerDay, autoSchedule]); // Removed applyScheduleToTasks to prevent loops
 
-  if (projectLoading || tasksLoading) {
+  if (projectLoading || tasksLoading || windowsLoading) {
     return (
       <Card>
         <CardHeader>

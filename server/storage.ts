@@ -1,11 +1,12 @@
 import { 
-  users, projects, tasks, partners, deals, calendarEvents, timeEntries,
+  users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows,
   type User, type InsertUser,
   type Project, type InsertProject,
   type Task, type InsertTask,
   type Partner, type InsertPartner,
   type Deal, type InsertDeal,
   type CalendarEvent, type InsertCalendarEvent,
+  type PlanningWindow, type InsertPlanningWindow,
   type TimeEntry, type InsertTimeEntry
 } from "@shared/schema";
 import { db } from "./db";
@@ -58,6 +59,13 @@ export interface IStorage {
   createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
   updateCalendarEvent(id: string, event: Partial<InsertCalendarEvent>, userId: string): Promise<CalendarEvent | undefined>;
   deleteCalendarEvent(id: string, userId: string): Promise<boolean>;
+
+  // Planning Windows
+  getPlanningWindows(projectId: string, userId: string): Promise<PlanningWindow[]>;
+  getPlanningWindow(id: string, userId: string): Promise<PlanningWindow | undefined>;
+  createPlanningWindow(window: InsertPlanningWindow): Promise<PlanningWindow>;
+  updatePlanningWindow(id: string, window: Partial<InsertPlanningWindow>, userId: string): Promise<PlanningWindow | undefined>;
+  deletePlanningWindow(id: string, userId: string): Promise<boolean>;
 
   // Time Entries
   getTimeEntries(userId: string): Promise<TimeEntry[]>;
@@ -299,6 +307,58 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(calendarEvents)
       .where(and(eq(calendarEvents.id, id), eq(calendarEvents.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Planning Windows
+  async getPlanningWindows(projectId: string, userId: string): Promise<PlanningWindow[]> {
+    // Verify project belongs to user first
+    const project = await this.getProject(projectId, userId);
+    if (!project) return [];
+    
+    return await db.select().from(planningWindows)
+      .where(eq(planningWindows.projectId, projectId))
+      .orderBy(asc(planningWindows.startDate));
+  }
+
+  async getPlanningWindow(id: string, userId: string): Promise<PlanningWindow | undefined> {
+    const [window] = await db
+      .select()
+      .from(planningWindows)
+      .innerJoin(projects, eq(projects.id, planningWindows.projectId))
+      .where(and(eq(planningWindows.id, id), eq(projects.userId, userId)));
+    return window?.planning_windows || undefined;
+  }
+
+  async createPlanningWindow(window: InsertPlanningWindow): Promise<PlanningWindow> {
+    const [newWindow] = await db
+      .insert(planningWindows)
+      .values(window)
+      .returning();
+    return newWindow;
+  }
+
+  async updatePlanningWindow(id: string, window: Partial<InsertPlanningWindow>, userId: string): Promise<PlanningWindow | undefined> {
+    // Verify ownership first
+    const existingWindow = await this.getPlanningWindow(id, userId);
+    if (!existingWindow) return undefined;
+    
+    const [updated] = await db
+      .update(planningWindows)
+      .set({ ...window, updatedAt: new Date() })
+      .where(eq(planningWindows.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deletePlanningWindow(id: string, userId: string): Promise<boolean> {
+    // Verify ownership first
+    const existingWindow = await this.getPlanningWindow(id, userId);
+    if (!existingWindow) return false;
+    
+    const result = await db
+      .delete(planningWindows)
+      .where(eq(planningWindows.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 

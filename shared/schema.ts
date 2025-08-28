@@ -55,6 +55,20 @@ export const tasks = pgTable("tasks", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Planning Windows - Multiple planning periods for a project
+export const planningWindows = pgTable("planning_windows", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").references(() => projects.id).notNull(),
+  name: text("name").notNull(), // e.g., "Sprint 1", "Phase A", "Q1 Development"
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  workingHoursPerDay: integer("working_hours_per_day").default(8).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const partnerTypeEnum = pgEnum("partner_type", ["client", "vendor", "consultant", "other"]);
 
 export const partners = pgTable("partners", {
@@ -139,6 +153,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   parentProject: one(projects, { fields: [projects.parentProjectId], references: [projects.id], relationName: "ProjectHierarchy" }),
   subProjects: many(projects, { relationName: "ProjectHierarchy" }),
   tasks: many(tasks),
+  planningWindows: many(planningWindows),
   calendarEvents: many(calendarEvents),
 }));
 
@@ -169,6 +184,10 @@ export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
   project: one(projects, { fields: [calendarEvents.projectId], references: [projects.id] }),
   partner: one(partners, { fields: [calendarEvents.partnerId], references: [partners.id] }),
   deal: one(deals, { fields: [calendarEvents.dealId], references: [deals.id] }),
+}));
+
+export const planningWindowsRelations = relations(planningWindows, ({ one }) => ({
+  project: one(projects, { fields: [planningWindows.projectId], references: [projects.id] }),
 }));
 
 export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
@@ -214,6 +233,12 @@ export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit
   updatedAt: true,
 });
 
+export const insertPlanningWindowSchema = createInsertSchema(planningWindows).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
   id: true,
   createdAt: true,
@@ -234,5 +259,7 @@ export type Deal = typeof deals.$inferSelect;
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
+export type PlanningWindow = typeof planningWindows.$inferSelect;
+export type InsertPlanningWindow = z.infer<typeof insertPlanningWindowSchema>;
 export type TimeEntry = typeof timeEntries.$inferSelect;
 export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
