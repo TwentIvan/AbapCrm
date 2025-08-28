@@ -50,6 +50,8 @@ export default function MessagesPage() {
 
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
+    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchIntervalInBackground: true, // Continue refreshing in background
   });
 
   const { data: projects = [] } = useQuery<Project[]>({
