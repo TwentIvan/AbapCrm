@@ -95,7 +95,7 @@ export default function MessagesPage() {
   const analyzeMutation = useMutation<AnalysisResult, Error, string>({
     mutationFn: async (messageId: string) => {
       const response = await apiRequest("POST", `/api/messages/${messageId}/analyze`);
-      return response as AnalysisResult;
+      return response as unknown as AnalysisResult;
     },
     onSuccess: () => {
       setShowSuggestions(true);
@@ -162,6 +162,31 @@ export default function MessagesPage() {
     if (confidence >= 0.8) return 'text-green-600';
     if (confidence >= 0.6) return 'text-yellow-600';
     return 'text-red-600';
+  };
+
+  const getFileType = (filename: string): { isImage: boolean; icon: string; type: string } => {
+    const ext = filename.toLowerCase().split('.').pop() || '';
+    
+    const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+    const isImage = imageExts.includes(ext);
+    
+    if (isImage) return { isImage: true, icon: '🖼️', type: 'Immagine' };
+    
+    // Altri tipi di file
+    const fileTypes: { [key: string]: { icon: string; type: string } } = {
+      'pdf': { icon: '📄', type: 'PDF' },
+      'doc': { icon: '📝', type: 'Word' },
+      'docx': { icon: '📝', type: 'Word' },
+      'xls': { icon: '📊', type: 'Excel' },
+      'xlsx': { icon: '📊', type: 'Excel' },
+      'ppt': { icon: '📈', type: 'PowerPoint' },
+      'pptx': { icon: '📈', type: 'PowerPoint' },
+      'txt': { icon: '📃', type: 'Testo' },
+      'zip': { icon: '🗜️', type: 'Archivio' },
+      'rar': { icon: '🗜️', type: 'Archivio' }
+    };
+    
+    return fileTypes[ext] || { isImage: false, icon: '📁', type: 'File' };
   };
 
   const getLinkedObjectName = (message: Message) => {
@@ -402,7 +427,7 @@ export default function MessagesPage() {
                       })()}
                       {selectedMessage.confidenceScore && (
                         <Badge variant="secondary">
-                          Confidenza: {Math.round(selectedMessage.confidenceScore * 100)}%
+                          Confidenza: {Math.round((selectedMessage.confidenceScore || 0) * 100)}%
                         </Badge>
                       )}
                     </div>
@@ -446,34 +471,94 @@ export default function MessagesPage() {
                           Allegati ({selectedMessage.attachments.length})
                         </h4>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {selectedMessage.attachments.map((filename, index) => (
-                          <div 
-                            key={index}
-                            className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                          >
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <FileText className="h-4 w-4 flex-shrink-0" />
-                              <span 
-                                className="text-sm truncate"
-                                title={filename}
-                              >
-                                {filename}
-                              </span>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                window.open(`/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`, '_blank');
-                              }}
-                              data-testid={`download-attachment-${index}`}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {selectedMessage.attachments.map((filename, index) => {
+                          const fileInfo = getFileType(filename);
+                          return (
+                            <div 
+                              key={index}
+                              className="border rounded-lg p-3 hover:bg-muted/50 transition-colors"
                             >
-                              <FileText className="h-3 w-3 mr-1" />
-                              Scarica
-                            </Button>
-                          </div>
-                        ))}
+                              {fileInfo.isImage ? (
+                                // Anteprima per immagini
+                                <div className="space-y-3">
+                                  <div className="aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center">
+                                    <img
+                                      src={`/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`}
+                                      alt={filename}
+                                      className="max-w-full max-h-full object-contain"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        const parent = target.parentElement;
+                                        if (parent) {
+                                          parent.innerHTML = `<div class="text-muted-foreground text-sm">❌ Anteprima non disponibile</div>`;
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <span className="text-lg">{fileInfo.icon}</span>
+                                      <div className="min-w-0 flex-1">
+                                        <div className="text-xs text-muted-foreground">{fileInfo.type}</div>
+                                        <div 
+                                          className="text-sm truncate font-medium"
+                                          title={filename}
+                                        >
+                                          {filename}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        const link = document.createElement('a');
+                                        link.href = `/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`;
+                                        link.download = filename;
+                                        link.click();
+                                      }}
+                                      data-testid={`download-attachment-${index}`}
+                                    >
+                                      <FileText className="h-3 w-3 mr-1" />
+                                      Scarica
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                // Layout normale per altri file
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="text-center flex-shrink-0">
+                                      <div className="text-2xl">{fileInfo.icon}</div>
+                                      <div className="text-xs text-muted-foreground mt-1">{fileInfo.type}</div>
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div 
+                                        className="text-sm font-medium truncate"
+                                        title={filename}
+                                      >
+                                        {filename}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => {
+                                      window.open(`/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`, '_blank');
+                                    }}
+                                    data-testid={`download-attachment-${index}`}
+                                  >
+                                    <FileText className="h-3 w-3 mr-1" />
+                                    Scarica
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </>

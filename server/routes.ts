@@ -515,16 +515,63 @@ export function registerRoutes(app: Express): Server {
         return res.sendStatus(404);
       }
 
-      // Per ora simula il download - verrà implementato completamente
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Type', 'application/octet-stream');
-      res.json({ 
-        message: "Download simulato - in implementazione", 
-        filename,
-        messageId,
-        available: true,
-        size: "Dimensione non disponibile"
-      });
+      // Determina il tipo MIME dal file
+      const getMimeType = (filename: string): string => {
+        const ext = filename.toLowerCase().split('.').pop();
+        const mimeTypes: { [key: string]: string } = {
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg', 
+          'png': 'image/png',
+          'gif': 'image/gif',
+          'pdf': 'application/pdf',
+          'doc': 'application/msword',
+          'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'txt': 'text/plain'
+        };
+        return mimeTypes[ext || ''] || 'application/octet-stream';
+      };
+
+      const mimeType = getMimeType(filename);
+      const isImage = mimeType.startsWith('image/');
+
+      if (isImage) {
+        // Per le immagini, servi direttamente per l'anteprima
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache 24h
+      } else {
+        // Per altri file, forza il download
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Type', mimeType);
+      }
+
+      // Per ora simula i dati dell'immagine - in futuro leggerà i file reali
+      if (isImage) {
+        // Genera una semplice immagine placeholder SVG per il test
+        const svgContent = `
+          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#f0f0f0"/>
+            <text x="50%" y="50%" text-anchor="middle" dy="0.3em" font-family="Arial" font-size="14" fill="#666">
+              📷 ${filename}
+            </text>
+            <text x="50%" y="65%" text-anchor="middle" dy="0.3em" font-family="Arial" font-size="12" fill="#999">
+              Anteprima allegato
+            </text>
+          </svg>
+        `;
+        
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.send(svgContent);
+      } else {
+        // Per altri file, restituisce info JSON
+        res.json({ 
+          message: "Download disponibile", 
+          filename,
+          messageId,
+          mimeType,
+          available: true,
+          size: "File simulato"
+        });
+      }
       
     } catch (error) {
       console.error('Attachment download error:', error);
