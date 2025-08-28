@@ -114,6 +114,13 @@ export class EmailForwardCleaner {
     if (!body) return body;
 
     let cleanBody = body;
+    const originalBody = body;
+
+    // Prima prova a estrarre il contenuto originale
+    const extractedContent = this.extractOriginalBody(body);
+    if (extractedContent && extractedContent !== body && extractedContent.length > 20) {
+      return extractedContent;
+    }
 
     // Pattern per identificare l'inizio della sezione di inoltro
     const forwardSeparators = [
@@ -149,6 +156,12 @@ export class EmailForwardCleaner {
       .replace(/\n{3,}/g, '\n\n')  // Max 2 newlines consecutive
       .replace(/\s+$/g, '')         // Rimuove whitespace finale
       .trim();
+
+    // Se il risultato è troppo corto o solo una firma, restituisce il body originale
+    if (cleanBody.length < 20 || this.isOnlySignature(cleanBody)) {
+      console.log('[EMAIL-CLEANER] Content too short after cleaning, keeping original');
+      return originalBody;
+    }
 
     return cleanBody;
   }
@@ -288,5 +301,28 @@ export class EmailForwardCleaner {
     }
 
     return body;
+  }
+
+  private static isOnlySignature(text: string): boolean {
+    if (!text) return true;
+    
+    const signatureIndicators = [
+      /technical analyst/i,
+      /team head/i,
+      /www\./i,
+      /\+39\s*\d/i,
+      /@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
+      /p\.iva/i,
+      /great place to work/i,
+      /via\s+[a-z]/i
+    ];
+    
+    const lines = text.split('\n').filter(line => line.trim().length > 0);
+    if (lines.length < 10) {
+      const indicatorMatches = signatureIndicators.filter(pattern => pattern.test(text)).length;
+      return indicatorMatches >= 3; // Se ha almeno 3 indicatori di firma e poche righe
+    }
+    
+    return false;
   }
 }

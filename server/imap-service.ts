@@ -206,7 +206,7 @@ export class ImapEmailService {
       console.log(`[IMAP] Saving email from: ${messageData.fromEmail}`);
       const savedMessage = await storage.createMessage(messageData);
 
-      // Run AI analysis in background
+      // Run AI analysis in background - with error handling for quota limits
       if (process.env.OPENAI_API_KEY) {
         try {
           const analysis = await aiService.analyzeMessage(savedMessage, messageData.userId);
