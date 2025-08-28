@@ -333,24 +333,16 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
       instancesByDate[dateKey].sort((a, b) => a.level - b.level);
     });
 
-    // Calcola l'altezza dinamica per ogni giorno basandosi sulle 24 ore
+    // Calcola l'altezza fissa per ogni giorno basandosi sulle 24 ore complete
     const getDayHeight = (dayInstances: ExpandedPlanningInstance[]) => {
       if (dayInstances.length === 0) return 80; // Altezza minima per giorni vuoti
       
-      // Trova la finestra di ore utilizzate (dal primo al ultimo evento)
-      const startTimes = dayInstances.map(instance => timeToMinutes(instance.startTime));
-      const endTimes = dayInstances.map(instance => timeToMinutes(instance.endTime));
-      
-      const earliestStart = Math.min(...startTimes);
-      const latestEnd = Math.max(...endTimes);
-      
-      // Calcola la finestra di lavoro in ore
-      const workingWindowMinutes = latestEnd - earliestStart;
-      
-      // Converti in altezza pixel (rappresenta la finestra di lavoro + margini)
-      const pixelsPerHour = 4; // Più compatto per la vista mensile
-      const calculatedHeight = Math.max(80, (workingWindowMinutes / 60) * pixelsPerHour + 60); // +60 per header e spazio
-      return Math.min(calculatedHeight, 160); // Altezza massima
+      // Altezza fissa che rappresenta le 24 ore complete
+      // Se 8 ore devono essere 1/3, allora 24 ore = 3 * (8 ore visuali)
+      // Usando 6 pixel per ora = 24 * 6 = 144px per contenuto + 60 per header = 204px
+      const pixelsPerHour = 6;
+      const totalHeight = (24 * pixelsPerHour) + 60; // 24 ore * 6px + 60px per header e margini
+      return totalHeight; // 204px fissi
     };
 
     // Funzione ricorsiva per renderizzare progetti padre -> figli
