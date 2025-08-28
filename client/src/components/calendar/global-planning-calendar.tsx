@@ -344,11 +344,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
       <div className="flex flex-col">
         {/* Header giorni */}
         <div className="grid grid-cols-8 border-b border-border">
-          <div className="p-2 text-center text-sm font-medium text-muted-foreground border-r border-border">
+          <div className="p-2 text-center text-sm font-medium text-muted-foreground border-r border-border bg-muted/30">
             Ora
           </div>
           {weekDays.map(day => (
-            <div key={format(day, 'yyyy-MM-dd')} className="p-2 text-center text-sm font-medium text-muted-foreground border-r border-border">
+            <div key={format(day, 'yyyy-MM-dd')} className="p-2 text-center text-sm font-medium text-muted-foreground border-r border-border/50">
               <div>{format(day, 'EEE')}</div>
               <div className={`${isSameDay(day, new Date()) ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}`}>
                 {format(day, 'd')}
