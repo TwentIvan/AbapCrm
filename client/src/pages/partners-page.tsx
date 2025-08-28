@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Building, Mail, Phone, MapPin, MoreHorizontal } from "lucide-react";
 import { Partner } from "@shared/schema";
-import PartnerForm from "@/components/forms/partner-form";
+import AdvancedPartnerForm from "@/components/forms/advanced-partner-form";
 
 const typeColors = {
   client: "bg-blue-100 text-blue-800",
@@ -159,11 +159,11 @@ export default function PartnersPage() {
       </main>
       
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Partner</DialogTitle>
+            <DialogTitle>Crea Nuovo Partner</DialogTitle>
           </DialogHeader>
-          <PartnerForm onSuccess={() => setShowCreateDialog(false)} />
+          <AdvancedPartnerForm onSuccess={() => setShowCreateDialog(false)} />
         </DialogContent>
       </Dialog>
     </div>

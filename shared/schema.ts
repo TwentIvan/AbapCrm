@@ -90,6 +90,13 @@ export const partners = pgTable("partners", {
   company: text("company"),
   position: text("position"),
   address: text("address"),
+  city: text("city"),
+  postalCode: text("postal_code"),
+  country: text("country").default("IT"),
+  fiscalCode: text("fiscal_code"), // Codice fiscale
+  vatNumber: text("vat_number"), // Partita IVA
+  logoUrl: text("logo_url"), // URL del logo
+  website: text("website"),
   type: partnerTypeEnum("type").default("client").notNull(),
   userId: uuid("user_id").references(() => users.id).notNull(),
   notes: text("notes"),

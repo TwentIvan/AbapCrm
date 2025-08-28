@@ -231,6 +231,13 @@ export function registerRoutes(app: Express): Server {
         company: req.body.company || null,
         position: req.body.position || null,
         address: req.body.address || null,
+        city: req.body.city || null,
+        postalCode: req.body.postalCode || null,
+        country: req.body.country || 'IT',
+        fiscalCode: req.body.fiscalCode || null,
+        vatNumber: req.body.vatNumber || null,
+        logoUrl: req.body.logoUrl || null,
+        website: req.body.website || null,
         type: req.body.type,
         notes: req.body.notes || null,
         userId: req.user!.id
@@ -259,6 +266,91 @@ export function registerRoutes(app: Express): Server {
     const deleted = await storage.deletePartner(req.params.id, req.user!.id);
     if (!deleted) return res.sendStatus(404);
     res.sendStatus(204);
+  });
+
+  // Address suggestions endpoint
+  app.get("/api/address/suggestions", async (req, res) => {
+    const { q } = req.query;
+    if (!q || typeof q !== 'string') {
+      return res.json([]);
+    }
+
+    try {
+      const { AddressService } = await import('./address-service');
+      const suggestions = await AddressService.getAddressSuggestions(q);
+      res.json(suggestions);
+    } catch (error) {
+      console.error('Address suggestions error:', error);
+      res.json([]);
+    }
+  });
+
+  // City suggestions endpoint
+  app.get("/api/address/cities", async (req, res) => {
+    const { q } = req.query;
+    if (!q || typeof q !== 'string') {
+      return res.json([]);
+    }
+
+    try {
+      const { AddressService } = await import('./address-service');
+      const suggestions = await AddressService.getCitySuggestions(q);
+      res.json(suggestions);
+    } catch (error) {
+      console.error('City suggestions error:', error);
+      res.json([]);
+    }
+  });
+
+  // Validate Italian fiscal code
+  app.post("/api/validate/fiscal-code", async (req, res) => {
+    const { fiscalCode } = req.body;
+    try {
+      const { ItalianValidationService } = await import('./italian-validation');
+      const result = ItalianValidationService.validateFiscalCode(fiscalCode);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ valid: false, error: 'Errore di validazione' });
+    }
+  });
+
+  // Validate Italian VAT number
+  app.post("/api/validate/vat-number", async (req, res) => {
+    const { vatNumber } = req.body;
+    try {
+      const { ItalianValidationService } = await import('./italian-validation');
+      const result = ItalianValidationService.validateVatNumber(vatNumber);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ valid: false, error: 'Errore di validazione' });
+    }
+  });
+
+  // Logo upload endpoint
+  app.post("/api/partners/logo/upload", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getLogoUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error('Logo upload URL error:', error);
+      res.status(500).json({ error: 'Failed to generate upload URL' });
+    }
+  });
+
+  // Serve logo files
+  app.get("/objects/logos/:logoId", async (req, res) => {
+    try {
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const logoFile = await objectStorageService.getLogoFile(`/objects/logos/${req.params.logoId}`);
+      objectStorageService.downloadObject(logoFile, res);
+    } catch (error) {
+      console.error('Logo download error:', error);
+      res.sendStatus(404);
+    }
   });
 
   // Deals
