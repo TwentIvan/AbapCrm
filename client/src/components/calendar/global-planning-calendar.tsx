@@ -235,19 +235,70 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     });
   };
 
-  // Helper functions
-  const getLevelColor = (level: number) => {
-    const colors = [
-      'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-950/30 dark:border-blue-700 dark:text-blue-300',
-      'bg-green-100 border-green-300 text-green-800 dark:bg-green-950/30 dark:border-green-700 dark:text-green-300',
-      'bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-950/30 dark:border-purple-700 dark:text-purple-300',
-      'bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-950/30 dark:border-orange-700 dark:text-orange-300',
-    ];
-    return colors[Math.min(level, colors.length - 1)];
+  // Helper functions per colori gerarchici
+  // Utility per convertire hex a rgb
+  const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  };
+
+  // Utility per convertire rgb a hex
+  const rgbToHex = (r: number, g: number, b: number): string => {
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  };
+
+  // Funzione per schiarire un colore in base al livello gerarchico
+  const getLighterColor = (baseColor: string, level: number): string => {
+    const rgb = hexToRgb(baseColor);
+    if (!rgb) return baseColor;
+    
+    // Aumenta la luminosità del 20% per ogni livello
+    const factor = level * 0.2;
+    const newR = Math.min(255, Math.round(rgb.r + (255 - rgb.r) * factor));
+    const newG = Math.min(255, Math.round(rgb.g + (255 - rgb.g) * factor));
+    const newB = Math.min(255, Math.round(rgb.b + (255 - rgb.b) * factor));
+    
+    return rgbToHex(newR, newG, newB);
+  };
+
+  // Funzione per generare gli stili inline per un progetto e livello
+  const getProjectColorStyle = (projectColor: string, level: number): { backgroundColor: string; borderColor: string; color: string } => {
+    const lightColor = getLighterColor(projectColor, level);
+    const rgb = hexToRgb(lightColor);
+    if (!rgb) return { backgroundColor: '#E5E7EB', borderColor: '#D1D5DB', color: '#374151' };
+    
+    // Calcola luminosità per determinare il colore del testo
+    const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+    const textColor = luminance > 0.6 ? '#374151' : '#FFFFFF';
+    
+    return {
+      backgroundColor: lightColor,
+      borderColor: projectColor, // Il bordo usa sempre il colore base del progetto
+      color: textColor
+    };
   };
 
   const getLevelIndentation = (level: number) => {
     return level * 4;
+  };
+
+  // Funzione per trovare il colore del progetto padre nella gerarchia
+  const getProjectHierarchyColor = (project: Project): string => {
+    // Se il progetto ha un padre, cerca ricorsivamente il colore del progetto root
+    if (project.parentProjectId && planningWindowsWithProject) {
+      const parentProject = planningWindowsWithProject
+        .map(pwp => pwp.project)
+        .find((p: Project) => p.id === project.parentProjectId);
+      if (parentProject) {
+        return getProjectHierarchyColor(parentProject);
+      }
+    }
+    // Questo è il progetto root, restituisce il suo colore
+    return project.color || '#3B82F6';
   };
 
   const formatDateRange = () => {
@@ -396,7 +447,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
                 opacity: hasChildren ? 0.4 : 1
               }}
             >
-              <div className={`${getLevelColor(level)} hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden flex flex-col justify-between ${hasChildren ? 'border-2 border-dashed' : ''}`}>
+              <div 
+                className={`hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden flex flex-col justify-between ${hasChildren ? 'border-2 border-dashed' : ''}`}
+                style={getProjectColorStyle(getProjectHierarchyColor(instance.project), level)}
+              >
                 <div>
                   <div className="font-medium truncate">
                     {instance.window.name}
@@ -577,7 +631,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
                           right: `${2 + getLevelIndentation(instance.level)}px`,
                         }}
                       >
-                        <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-2 rounded border h-full overflow-hidden`}>
+                        <div 
+                          className={`hover:opacity-80 text-xs p-2 rounded border h-full overflow-hidden`}
+                          style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level)}
+                        >
                           <div className="font-medium truncate">
                             {instance.window.name}
                           </div>
@@ -678,7 +735,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
                       right: `${8 + getLevelIndentation(instance.level)}px`,
                     }}
                   >
-                    <div className={`${getLevelColor(instance.level)} hover:opacity-80 p-3 rounded border h-full overflow-hidden flex flex-col`}>
+                    <div 
+                      className={`hover:opacity-80 p-3 rounded border h-full overflow-hidden flex flex-col`}
+                      style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level)}
+                    >
                       <div className="font-medium truncate">
                         {instance.window.name}
                       </div>

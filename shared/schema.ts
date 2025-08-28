@@ -29,6 +29,7 @@ export const projects = pgTable("projects", {
   budget: decimal("budget", { precision: 10, scale: 2 }),
   progress: integer("progress").default(0).notNull(),
   estimatedEffort: integer("estimated_effort"), // in hours
+  color: text("color").default("#3B82F6").notNull(), // Colore esadecimale per il progetto
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
