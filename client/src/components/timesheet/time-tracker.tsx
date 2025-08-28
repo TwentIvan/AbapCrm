@@ -109,6 +109,59 @@ export function TimeTracker({ task }: TimeTrackerProps) {
     }
   };
 
+  // Calculate suggested completion percentage based on time worked
+  const calculateSuggestedPercentage = () => {
+    if (!runningEntry) return task.completionPercentage || 0;
+
+    // Calculate time worked in this session (in minutes)
+    const sessionStartTime = new Date(runningEntry.startTime);
+    const sessionDuration = (currentTime.getTime() - sessionStartTime.getTime()) / (1000 * 60);
+    
+    const currentCompletion = task.completionPercentage || 0;
+    const remainingMinutes = task.remainingEffort || 0; // Time remaining before this session
+    const estimatedMinutes = (task.estimatedEffort || 0) * 60; // Convert hours to minutes
+    
+    console.log('Percentage calculation:', {
+      sessionDuration,
+      currentCompletion,
+      remainingMinutes,
+      estimatedMinutes
+    });
+
+    // If we have remaining effort data, use it for intelligent calculation
+    if (remainingMinutes > 0 && currentCompletion > 0) {
+      // Calculate progress: time worked / time remaining before this session
+      const progressFromSession = Math.min(sessionDuration / remainingMinutes, 1); // Cap at 100%
+      const remainingWork = 100 - currentCompletion;
+      const suggestedIncrease = progressFromSession * remainingWork;
+      
+      const suggestedPercentage = Math.min(100, Math.round(currentCompletion + suggestedIncrease));
+      
+      console.log('Smart calculation:', {
+        progressFromSession: progressFromSession * 100,
+        suggestedIncrease,
+        suggestedPercentage
+      });
+      
+      return suggestedPercentage;
+    } 
+    // Fallback: use estimated effort for calculation
+    else if (estimatedMinutes > 0) {
+      const totalTimeSpent = totalTime + sessionDuration; // Previous time + current session
+      const suggestedPercentage = Math.min(100, Math.round((totalTimeSpent / estimatedMinutes) * 100));
+      
+      console.log('Fallback calculation:', {
+        totalTimeSpent,
+        suggestedPercentage
+      });
+      
+      return Math.max(currentCompletion, suggestedPercentage); // Never go backwards
+    }
+    
+    // Default: slight increase from current
+    return Math.min(100, currentCompletion + 10);
+  };
+
   const handleCompletionSubmit = (completionData: { completionPercentage: number; notes?: string }) => {
     if (runningEntry) {
       stopTimerMutation.mutate({ entryId: runningEntry.id, completionData });
@@ -351,7 +404,7 @@ export function TimeTracker({ task }: TimeTrackerProps) {
           onClose={() => setShowCompletionDialog(false)}
           onSubmit={handleCompletionSubmit}
           isLoading={stopTimerMutation.isPending}
-          currentPercentage={progressPercentage}
+          currentPercentage={calculateSuggestedPercentage()}
         />
       </CardContent>
     </Card>
