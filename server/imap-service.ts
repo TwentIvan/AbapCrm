@@ -27,8 +27,11 @@ export class ImapEmailService {
       host: config.host,
       port: config.port,
       tls: config.tls,
-      authTimeout: 3000,
-      connTimeout: 30000
+      tlsOptions: {
+        rejectUnauthorized: false
+      },
+      authTimeout: 10000,
+      connTimeout: 60000
     });
 
     this.setupEventHandlers();

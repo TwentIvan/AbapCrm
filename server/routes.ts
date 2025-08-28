@@ -679,6 +679,12 @@ export function registerRoutes(app: Express): Server {
         folder: folder || 'INBOX'
       };
 
+      // Disconnect existing service first
+      const existingService = getEmailService();
+      if (existingService) {
+        existingService.disconnect();
+      }
+      
       initializeEmailService(config);
       
       res.json({ 
