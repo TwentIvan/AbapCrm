@@ -61,6 +61,7 @@ export interface IStorage {
   deleteCalendarEvent(id: string, userId: string): Promise<boolean>;
 
   // Planning Windows
+  getAllPlanningWindowsForUser(userId: string): Promise<(PlanningWindow & { project: Project })[]>;
   getPlanningWindows(projectId: string, userId: string): Promise<PlanningWindow[]>;
   getPlanningWindow(id: string, userId: string): Promise<PlanningWindow | undefined>;
   createPlanningWindow(window: InsertPlanningWindow): Promise<PlanningWindow>;
@@ -311,6 +312,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Planning Windows
+  async getAllPlanningWindowsForUser(userId: string): Promise<(PlanningWindow & { project: Project })[]> {
+    const result = await db
+      .select()
+      .from(planningWindows)
+      .innerJoin(projects, eq(projects.id, planningWindows.projectId))
+      .where(eq(projects.userId, userId))
+      .orderBy(asc(planningWindows.startDate));
+    
+    return result.map(row => ({
+      ...row.planning_windows,
+      project: row.projects
+    }));
+  }
+
   async getPlanningWindows(projectId: string, userId: string): Promise<PlanningWindow[]> {
     // Verify project belongs to user first
     const project = await this.getProject(projectId, userId);

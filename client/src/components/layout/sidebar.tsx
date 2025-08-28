@@ -1,7 +1,7 @@
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, Settings } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, Settings, FolderTree } from "lucide-react";
 import { cn } from "@/lib/utils";
 import hubUpLogo from "@assets/generated_images/The_Hub_Up_logo_ae8678a3.png";
 
@@ -13,6 +13,7 @@ const navigation = [
   { name: "Deals", href: "/deals", icon: Handshake, testId: "nav-deals" },
   { name: "Partners", href: "/partners", icon: Building, testId: "nav-partners" },
   { name: "Calendar", href: "/calendar", icon: Calendar, testId: "nav-calendar" },
+  { name: "Planning Calendar", href: "/planning-calendar", icon: FolderTree, testId: "nav-planning-calendar" },
 ];
 
 export default function Sidebar() {

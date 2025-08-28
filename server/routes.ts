@@ -356,6 +356,12 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Planning Windows
+  app.get("/api/planning-windows/user", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const windows = await storage.getAllPlanningWindowsForUser(req.user!.id);
+    res.json(windows);
+  });
+
   app.get("/api/planning-windows/project/:projectId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const windows = await storage.getPlanningWindows(req.params.projectId, req.user!.id);
