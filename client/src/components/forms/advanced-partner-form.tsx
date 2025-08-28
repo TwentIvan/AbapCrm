@@ -129,7 +129,6 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
 
   // Ref per mantenere l'ultimo valore di ricerca senza causare re-render
   const lastSearchValueRef = useRef<string>('');
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Company autocomplete ottimizzato per evitare perdita focus
   const handleCompanySearch = useCallback(async (query: string) => {
@@ -161,33 +160,13 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     }
   }, []);
 
-  // Timeout basato - evita chiamate multiple  
-  const stableCompanySearch = useCallback((query: string) => {
-    // Cancella ricerca precedente
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    
-    if (query.length < 2) {
-      setCompanySuggestions([]);
-      setShowCompanySuggestions(false);
-      return;
-    }
-    
-    // Debounce di 500ms per evitare chiamate multiple
-    searchTimeoutRef.current = setTimeout(() => {
+  // Ricerca manuale - SOLO quando richiesta esplicitamente
+  const manualCompanySearch = useCallback((query: string) => {
+    if (query && query.length >= 2) {
       handleCompanySearch(query);
-    }, 500);
+    }
   }, [handleCompanySearch]);
 
-  // Cleanup al unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const selectCompanySuggestion = (company: CompanyInfo) => {
     // Close suggestions immediately to prevent focus issues
@@ -411,8 +390,11 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             onClick={() => {
                               const name = form.getValues('name');
                               if (name && name.length >= 2) {
-                                handleCompanySearch(name);
+                                console.log('Manual search for:', name);
+                                manualCompanySearch(name);
                                 setShowCompanySuggestions(true);
+                              } else {
+                                console.log('Nome troppo corto per la ricerca:', name);
                               }
                             }}
                             data-testid="button-search-company"
