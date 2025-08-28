@@ -333,21 +333,24 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
       instancesByDate[dateKey].sort((a, b) => a.level - b.level);
     });
 
-    // Calcola l'altezza dinamica per ogni giorno basandosi sulle ore di lavoro
+    // Calcola l'altezza dinamica per ogni giorno basandosi sulle 24 ore
     const getDayHeight = (dayInstances: ExpandedPlanningInstance[]) => {
-      if (dayInstances.length === 0) return 80; // Altezza minima
+      if (dayInstances.length === 0) return 80; // Altezza minima per giorni vuoti
       
-      // Calcola le ore totali di lavoro per questo giorno
-      const totalWorkingMinutes = dayInstances.reduce((total, instance) => {
-        const startMinutes = timeToMinutes(instance.startTime);
-        const endMinutes = timeToMinutes(instance.endTime);
-        return total + (endMinutes - startMinutes);
-      }, 0);
+      // Trova la finestra di ore utilizzate (dal primo al ultimo evento)
+      const startTimes = dayInstances.map(instance => timeToMinutes(instance.startTime));
+      const endTimes = dayInstances.map(instance => timeToMinutes(instance.endTime));
       
-      // Converti in altezza pixel (simile alla vista settimanale ma ridimensionato per il mese)
-      const pixelsPerHour = 25; // Meno rispetto alla vista settimanale (60px) per adattarsi al mese
-      const calculatedHeight = Math.max(80, (totalWorkingMinutes / 60) * pixelsPerHour + 40); // +40 per header e margini
-      return Math.min(calculatedHeight, 180); // Altezza massima per non far diventare le celle troppo grandi
+      const earliestStart = Math.min(...startTimes);
+      const latestEnd = Math.max(...endTimes);
+      
+      // Calcola la finestra di lavoro in ore
+      const workingWindowMinutes = latestEnd - earliestStart;
+      
+      // Converti in altezza pixel (rappresenta la finestra di lavoro + margini)
+      const pixelsPerHour = 4; // Più compatto per la vista mensile
+      const calculatedHeight = Math.max(80, (workingWindowMinutes / 60) * pixelsPerHour + 60); // +60 per header e spazio
+      return Math.min(calculatedHeight, 160); // Altezza massima
     };
 
     return (
@@ -423,17 +426,22 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
                 );
               })}
               
-              {/* Box con posizionamento dinamico basato sugli orari (come nella vista settimanale) */}
-              <div className="relative" style={{ marginTop: `${continuousPeriods.filter(p => p.project.name && p.project.name.trim() !== '' && p.window.name && p.window.name.trim() !== '').length * 24 + 4}px` }}>
+              {/* Box con posizionamento proporzionale alle 24 ore del giorno */}
+              <div className="relative" style={{ 
+                marginTop: `${continuousPeriods.filter(p => p.project.name && p.project.name.trim() !== '' && p.window.name && p.window.name.trim() !== '').length * 24 + 4}px`,
+                height: `${cellHeight - 60}px` // Spazio disponibile per i box (cellHeight - header - margins)
+              }}>
                 {dayInstances.map((instance, idx) => {
                   const startMinutes = timeToMinutes(instance.startTime);
                   const endMinutes = timeToMinutes(instance.endTime);
                   const durationMinutes = endMinutes - startMinutes;
                   
-                  // Calcola posizione e altezza proporzionali (ridimensionati per la vista mensile)
-                  const pixelsPerHour = 25;
-                  const topOffset = idx * 4; // Piccolo offset per evitare sovrapposizioni complete
-                  const height = Math.max(24, (durationMinutes / 60) * pixelsPerHour); // Altezza minima 24px
+                  // Calcola posizione e altezza come proporzione delle 24 ore (1440 minuti)
+                  const availableHeight = cellHeight - 60; // Altezza disponibile per i contenuti
+                  const minutesInDay = 24 * 60; // 1440 minuti in un giorno
+                  
+                  const topPosition = (startMinutes / minutesInDay) * availableHeight;
+                  const height = Math.max(16, (durationMinutes / minutesInDay) * availableHeight); // Altezza minima 16px
                   
                   return (
                     <div
@@ -441,10 +449,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
                       onClick={() => onWindowSelect?.(instance.window)}
                       className="absolute cursor-pointer"
                       style={{ 
-                        top: `${topOffset}px`,
+                        top: `${topPosition}px`,
                         height: `${height}px`,
                         left: `${getLevelIndentation(instance.level)}px`,
                         right: `${getLevelIndentation(instance.level)}px`,
+                        zIndex: 10 + idx
                       }}
                     >
                       <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden flex flex-col justify-between`}>
