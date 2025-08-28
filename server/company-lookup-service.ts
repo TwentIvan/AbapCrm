@@ -154,7 +154,7 @@ const MOCK_COMPANIES: CompanyInfo[] = [
 export class CompanyLookupService {
   
   /**
-   * Search for companies by name (fuzzy search)
+   * Search for companies by name using OpenCorporates API + mock fallback
    */
   static async searchCompanies(query: string): Promise<CompanyInfo[]> {
     console.log(`[COMPANY-SEARCH] Searching for: "${query}"`);
@@ -166,13 +166,21 @@ export class CompanyLookupService {
 
     const normalizedQuery = query.toLowerCase().trim();
     console.log(`[COMPANY-SEARCH] Normalized query: "${normalizedQuery}"`);
-    console.log(`[COMPANY-SEARCH] Available companies: ${MOCK_COMPANIES.length}`);
     
-    // In production, this would call real APIs like:
-    // - InfoCamere API for Italian businesses
-    // - Camera di Commercio databases
-    // - Agenzia delle Entrate for fiscal data
-    // - Clearbit or similar for logos and enhanced data
+    try {
+      // First try OpenCorporates API for real data
+      const openCorpResults = await this.searchOpenCorporates(normalizedQuery);
+      if (openCorpResults.length > 0) {
+        console.log(`[COMPANY-SEARCH] OpenCorporates found ${openCorpResults.length} results`);
+        return openCorpResults;
+      }
+    } catch (error) {
+      console.error('[COMPANY-SEARCH] OpenCorporates API error:', error);
+    }
+    
+    // Fallback to mock database for well-known companies
+    console.log(`[COMPANY-SEARCH] Falling back to mock database`);
+    console.log(`[COMPANY-SEARCH] Available mock companies: ${MOCK_COMPANIES.length}`);
     
     const results = MOCK_COMPANIES.filter(company => {
       const nameMatch = company.name.toLowerCase().includes(normalizedQuery);
@@ -180,13 +188,13 @@ export class CompanyLookupService {
       const match = nameMatch || legalNameMatch;
       
       if (match) {
-        console.log(`[COMPANY-SEARCH] Match found: ${company.name}`);
+        console.log(`[COMPANY-SEARCH] Mock match found: ${company.name}`);
       }
       
       return match;
     });
 
-    console.log(`[COMPANY-SEARCH] Found ${results.length} results`);
+    console.log(`[COMPANY-SEARCH] Found ${results.length} mock results`);
 
     // Sort by relevance (exact matches first, then partial)
     const sortedResults = results.sort((a, b) => {
@@ -200,17 +208,142 @@ export class CompanyLookupService {
   }
 
   /**
+   * Search companies using OpenCorporates API
+   */
+  private static async searchOpenCorporates(query: string): Promise<CompanyInfo[]> {
+    // OpenCorporates API - Free tier: 500 requests/month
+    const apiUrl = `https://api.opencorporates.com/v0.4/companies/search`;
+    const params = new URLSearchParams({
+      q: query,
+      jurisdiction_code: 'it', // Focus on Italian companies
+      format: 'json',
+      per_page: '10'
+    });
+
+    console.log(`[OPENCORPORATES] Searching: ${apiUrl}?${params}`);
+    
+    const response = await fetch(`${apiUrl}?${params}`, {
+      headers: {
+        'User-Agent': 'ReplicCRM/1.0 (Business CRM Application)',
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenCorporates API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log(`[OPENCORPORATES] Response:`, data);
+    
+    if (!data.results || !data.results.companies) {
+      return [];
+    }
+
+    // Transform OpenCorporates data to our format
+    return data.results.companies.map((item: any) => {
+      const company = item.company;
+      return {
+        name: company.name,
+        legalName: company.name,
+        address: this.formatAddress(company),
+        city: company.registered_address?.locality,
+        postalCode: company.registered_address?.postal_code,
+        country: 'IT',
+        fiscalCode: company.company_number, // In Italy, this might be the fiscal code
+        vatNumber: company.company_number ? `IT${company.company_number}` : undefined,
+        website: company.home_page_url,
+        description: `${company.company_type || 'Azienda'} registrata in ${company.jurisdiction_code?.toUpperCase()}`,
+        sector: company.company_type,
+        // Note: OpenCorporates doesn't provide logos, would need another service for that
+      } as CompanyInfo;
+    }).slice(0, 10);
+  }
+
+  /**
+   * Format address from OpenCorporates data
+   */
+  private static formatAddress(company: any): string | undefined {
+    const addr = company.registered_address;
+    if (!addr) return undefined;
+    
+    const parts = [
+      addr.street_address,
+      addr.locality,
+      addr.region,
+      addr.postal_code
+    ].filter(Boolean);
+    
+    return parts.length > 0 ? parts.join(', ') : undefined;
+  }
+
+  /**
    * Get detailed company information by exact name or fiscal code
    */
   static async getCompanyDetails(identifier: string): Promise<CompanyInfo | null> {
     const normalizedId = identifier.toLowerCase().trim();
     
+    try {
+      // First try to get details from OpenCorporates
+      const openCorpResult = await this.getOpenCorporatesDetails(identifier);
+      if (openCorpResult) {
+        return openCorpResult;
+      }
+    } catch (error) {
+      console.error('[COMPANY-DETAILS] OpenCorporates API error:', error);
+    }
+    
+    // Fallback to mock database
     return MOCK_COMPANIES.find(company => 
       company.name.toLowerCase() === normalizedId ||
       company.legalName?.toLowerCase() === normalizedId ||
       company.fiscalCode === identifier ||
       company.vatNumber === identifier
     ) || null;
+  }
+
+  /**
+   * Get company details from OpenCorporates by company number or name
+   */
+  private static async getOpenCorporatesDetails(identifier: string): Promise<CompanyInfo | null> {
+    // Try direct company lookup first (if identifier looks like a company number)
+    if (/^[0-9]{11}$/.test(identifier)) {
+      try {
+        const apiUrl = `https://api.opencorporates.com/v0.4/companies/it/${identifier}`;
+        const response = await fetch(apiUrl, {
+          headers: {
+            'User-Agent': 'ReplicCRM/1.0 (Business CRM Application)',
+            'Accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.results && data.results.company) {
+            const company = data.results.company;
+            return {
+              name: company.name,
+              legalName: company.name,
+              address: this.formatAddress(company),
+              city: company.registered_address?.locality,
+              postalCode: company.registered_address?.postal_code,
+              country: 'IT',
+              fiscalCode: company.company_number,
+              vatNumber: `IT${company.company_number}`,
+              website: company.home_page_url,
+              description: `${company.company_type || 'Azienda'} registrata in ${company.jurisdiction_code?.toUpperCase()}`,
+              sector: company.company_type,
+            } as CompanyInfo;
+          }
+        }
+      } catch (error) {
+        console.error('[OPENCORPORATES-DETAILS] Direct lookup error:', error);
+      }
+    }
+    
+    // If direct lookup fails, try search
+    const searchResults = await this.searchOpenCorporates(identifier);
+    return searchResults.length > 0 ? searchResults[0] : null;
   }
 
   /**
