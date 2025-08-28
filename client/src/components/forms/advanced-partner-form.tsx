@@ -400,25 +400,26 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                               // SOLO aggiorna il campo - niente ricerca qui
                               field.onChange(e);
                             }}
-                            onKeyUp={(e) => {
-                              // Ricerca SEPARATA con debounce stabile
-                              const value = (e.target as HTMLInputElement).value;
-                              stableCompanySearch(value);
-                            }}
-                            onBlur={() => {
-                              // Ritarda la chiusura per permettere il clic sui suggerimenti
-                              setTimeout(() => setShowCompanySuggestions(false), 200);
-                            }}
-                            onFocus={() => {
-                              // Riapri suggerimenti solo se ci sono già risultati
-                              if (companySuggestions.length > 0 && field.value && field.value.length >= 2) {
-                                setShowCompanySuggestions(true);
-                              }
-                            }}
                             autoComplete="off"
                             data-testid="input-partner-name"
                           />
-                          {showCompanySuggestions && (
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-2 w-full"
+                            onClick={() => {
+                              const name = form.getValues('name');
+                              if (name && name.length >= 2) {
+                                handleCompanySearch(name);
+                                setShowCompanySuggestions(true);
+                              }
+                            }}
+                            data-testid="button-search-company"
+                          >
+                            🔍 Cerca Azienda
+                          </Button>
+                          {showCompanySuggestions && companySuggestions.length > 0 && (
                             <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-y-auto">
                               {companySuggestions.map((company, index) => (
                                 <button
@@ -553,10 +554,6 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             placeholder="Nome commerciale dell'azienda"
                             onChange={(e) => {
                               field.onChange(e);
-                            }}
-                            onKeyUp={(e) => {
-                              const value = (e.target as HTMLInputElement).value;
-                              stableCompanySearch(value);
                             }}
                             autoComplete="off"
                             data-testid="input-partner-company"
