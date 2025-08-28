@@ -22,14 +22,21 @@ const emailConfigSchema = z.object({
 
 type EmailConfigForm = z.infer<typeof emailConfigSchema>;
 
+interface EmailStatus {
+  connected: boolean;
+  status: string;
+}
+
 export default function EmailConfig() {
   const [showConfig, setShowConfig] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: emailStatus } = useQuery({
+  const { data: emailStatus } = useQuery<EmailStatus | null>({
     queryKey: ["/api/email/status"],
     refetchInterval: 5000, // Check status every 5 seconds
+    retry: false, // Don't retry on auth errors
+    refetchOnWindowFocus: false,
   });
 
   const form = useForm<EmailConfigForm>({
@@ -77,7 +84,7 @@ export default function EmailConfig() {
     configureMutation.mutate(data);
   };
 
-  const isConnected = emailStatus?.connected;
+  const isConnected = emailStatus?.connected || false;
 
   return (
     <Card>
