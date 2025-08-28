@@ -71,8 +71,10 @@ export default function MessagesPage() {
   });
 
   const analyzeMutation = useMutation<AnalysisResult, Error, string>({
-    mutationFn: (messageId: string) => 
-      apiRequest(`/api/messages/${messageId}/analyze`, "POST"),
+    mutationFn: async (messageId: string) => {
+      const response = await apiRequest(`/api/messages/${messageId}/analyze`, "POST");
+      return response as AnalysisResult;
+    },
     onSuccess: () => {
       setShowSuggestions(true);
     }
@@ -232,7 +234,7 @@ export default function MessagesPage() {
                               {message.subject || 'Nessun oggetto'}
                             </p>
                             <p className="text-xs text-muted-foreground truncate mb-2">
-                              {message.body?.substring(0, 80)}...
+                              {message.body ? message.body.substring(0, 80) + '...' : 'Nessun contenuto'}
                             </p>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3" />
@@ -248,8 +250,8 @@ export default function MessagesPage() {
                             )}
                             {message.confidenceScore && (
                               <div className="mt-1">
-                                <span className={`text-xs font-medium ${getConfidenceColor(message.confidenceScore)}`}>
-                                  Confidenza: {Math.round(message.confidenceScore * 100)}%
+                                <span className={`text-xs font-medium ${getConfidenceColor(message.confidenceScore || 0)}`}>
+                                  Confidenza: {Math.round((message.confidenceScore || 0) * 100)}%
                                 </span>
                               </div>
                             )}
@@ -426,8 +428,8 @@ export default function MessagesPage() {
                                        suggestion.type === 'task' ? 'Task' : 'Partner'}
                                     </Badge>
                                     <span className="font-medium">{suggestion.name}</span>
-                                    <span className={`text-sm font-medium ${getConfidenceColor(suggestion.confidence)}`}>
-                                      {Math.round(suggestion.confidence * 100)}%
+                                    <span className={`text-sm font-medium ${getConfidenceColor(suggestion.confidence || 0)}`}>
+                                      {Math.round((suggestion.confidence || 0) * 100)}%
                                     </span>
                                   </div>
                                   <p className="text-sm text-muted-foreground mb-3">
