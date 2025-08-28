@@ -103,18 +103,20 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/tasks/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const taskData = insertTaskSchema.omit({ userId: true }).parse({ 
-        title: req.body.title,
-        description: req.body.description || null,
-        status: req.body.status,
-        priority: req.body.priority,
-        projectId: req.body.projectId,
-        dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
-        estimatedEffort: req.body.estimatedEffort || null,
-        completionPercentage: req.body.completionPercentage || 0,
-        assignedTo: req.body.assignedTo || null,
-      });
-      const task = await storage.updateTask(req.params.id, taskData, req.user!.id);
+      // Create a partial update schema that makes all fields optional
+      const updateData: any = {};
+      
+      if (req.body.title !== undefined) updateData.title = req.body.title;
+      if (req.body.description !== undefined) updateData.description = req.body.description || null;
+      if (req.body.status !== undefined) updateData.status = req.body.status;
+      if (req.body.priority !== undefined) updateData.priority = req.body.priority;
+      if (req.body.projectId !== undefined) updateData.projectId = req.body.projectId;
+      if (req.body.dueDate !== undefined) updateData.dueDate = req.body.dueDate ? new Date(req.body.dueDate) : null;
+      if (req.body.estimatedEffort !== undefined) updateData.estimatedEffort = req.body.estimatedEffort || null;
+      if (req.body.completionPercentage !== undefined) updateData.completionPercentage = req.body.completionPercentage;
+      if (req.body.assignedTo !== undefined) updateData.assignedTo = req.body.assignedTo || null;
+
+      const task = await storage.updateTask(req.params.id, updateData, req.user!.id);
       if (!task) return res.sendStatus(404);
       res.json(task);
     } catch (error) {
