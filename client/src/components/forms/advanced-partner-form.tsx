@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -127,8 +127,16 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     setAddressSuggestions([]);
   };
 
-  // Company autocomplete with debouncing to avoid excessive API calls
+  // Ref per mantenere l'ultimo valore di ricerca senza causare re-render
+  const lastSearchValueRef = useRef<string>('');
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // Company autocomplete ottimizzato per evitare perdita focus
   const handleCompanySearch = useCallback(async (query: string) => {
+    // Evita ricerche duplicate
+    if (lastSearchValueRef.current === query) return;
+    lastSearchValueRef.current = query;
+
     if (query.length < 2) {
       setCompanySuggestions([]);
       setShowCompanySuggestions(false);
@@ -140,7 +148,11 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
       const response = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`);
       const companies = await response.json();
       console.log(`Found ${companies.length} companies:`, companies);
-      setCompanySuggestions(companies);
+      
+      // Aggiorna gli stati solo se necessario
+      setCompanySuggestions(prev => 
+        JSON.stringify(prev) !== JSON.stringify(companies) ? companies : prev
+      );
       setShowCompanySuggestions(companies.length > 0);
     } catch (error) {
       console.error('Company search error:', error);
@@ -149,20 +161,27 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     }
   }, []);
 
-  // Debounced company search to avoid excessive API calls
-  const debouncedCompanySearch = useCallback(
-    debounce((query: string) => handleCompanySearch(query), 500),
-    [handleCompanySearch]
-  );
+  // Debounced company search ottimizzato
+  const debouncedCompanySearch = useCallback((query: string) => {
+    // Cancella il timeout precedente
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Imposta nuovo timeout
+    searchTimeoutRef.current = setTimeout(() => {
+      handleCompanySearch(query);
+    }, 800); // Aumentato a 800ms per ridurre le chiamate
+  }, [handleCompanySearch]);
 
-  // Simple debounce function
-  function debounce<T extends (...args: any[]) => void>(func: T, delay: number): T {
-    let timeoutId: NodeJS.Timeout;
-    return ((...args: any[]) => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => func(...args), delay);
-    }) as T;
-  }
+  // Cleanup al unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const selectCompanySuggestion = (company: CompanyInfo) => {
     // Close suggestions immediately to prevent focus issues
@@ -340,13 +359,26 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             value={field.value || ""}
                             placeholder="Inizia a digitare il nome dell'azienda..."
                             onChange={(e) => {
+                              // Solo aggiorna il valore del form, evita ricerche immediate
                               field.onChange(e);
-                              debouncedCompanySearch(e.target.value);
+                              const value = e.target.value;
+                              
+                              // Debounce solo la ricerca, non il valore del form
+                              if (value.length >= 2) {
+                                debouncedCompanySearch(value);
+                              } else {
+                                // Cancella suggerimenti immediatamente se < 2 caratteri
+                                setCompanySuggestions([]);
+                                setShowCompanySuggestions(false);
+                                lastSearchValueRef.current = '';
+                              }
                             }}
                             onBlur={() => {
-                              setTimeout(() => setShowCompanySuggestions(false), 150);
+                              // Ritarda la chiusura per permettere il clic sui suggerimenti
+                              setTimeout(() => setShowCompanySuggestions(false), 200);
                             }}
                             onFocus={() => {
+                              // Riapri suggerimenti solo se ci sono già risultati
                               if (companySuggestions.length > 0 && field.value && field.value.length >= 2) {
                                 setShowCompanySuggestions(true);
                               }
