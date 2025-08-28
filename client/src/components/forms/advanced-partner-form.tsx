@@ -161,17 +161,14 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     }
   }, []);
 
-  // Debounced company search ottimizzato
-  const debouncedCompanySearch = useCallback((query: string) => {
-    // Cancella il timeout precedente
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    
-    // Imposta nuovo timeout
-    searchTimeoutRef.current = setTimeout(() => {
+  // Simple company search - NO debounce per evitare problemi
+  const simpleCompanySearch = useCallback((query: string) => {
+    if (query.length >= 2) {
       handleCompanySearch(query);
-    }, 800); // Aumentato a 800ms per ridurre le chiamate
+    } else {
+      setCompanySuggestions([]);
+      setShowCompanySuggestions(false);
+    }
   }, [handleCompanySearch]);
 
   // Cleanup al unmount
@@ -394,14 +391,9 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                               field.onChange(e);
                             }}
                             onInput={(e) => {
-                              // Usa onInput invece di onKeyUp per catturare tutti i cambiamenti
+                              // Search immediata senza debounce
                               const value = (e.target as HTMLInputElement).value;
-                              if (value.length >= 2) {
-                                debouncedCompanySearch(value);
-                              } else {
-                                setCompanySuggestions([]);
-                                setShowCompanySuggestions(false);
-                              }
+                              simpleCompanySearch(value);
                             }}
                             onBlur={() => {
                               // Ritarda la chiusura per permettere il clic sui suggerimenti
@@ -554,12 +546,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             }}
                             onInput={(e) => {
                               const value = (e.target as HTMLInputElement).value;
-                              if (value.length >= 2) {
-                                debouncedCompanySearch(value);
-                              } else {
-                                setCompanySuggestions([]);
-                                setShowCompanySuggestions(false);
-                              }
+                              simpleCompanySearch(value);
                             }}
                             autoComplete="off"
                             data-testid="input-partner-company"
