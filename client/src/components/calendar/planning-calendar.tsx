@@ -51,19 +51,47 @@ export default function PlanningCalendar({ planningWindows, onWindowSelect }: Pl
         const interval = window.recurrenceInterval || 1;
         const endRecurrence = window.recurrenceEnd ? new Date(window.recurrenceEnd) : calendarEnd;
         
-        let currentInstanceDate = new Date(windowStart);
-        
-        while (currentInstanceDate <= endRecurrence && currentInstanceDate <= calendarEnd) {
-          if (currentInstanceDate >= calendarStart) {
-            // Verifica se questa istanza dovrebbe essere inclusa in base al tipo di ricorsività
-            let shouldInclude = true;
-            
-            if (window.recurrenceType === 'weekly' && window.daysOfWeek && window.daysOfWeek.length > 0) {
-              const dayOfWeek = currentInstanceDate.getDay() === 0 ? 7 : currentInstanceDate.getDay(); // Domenica = 7
-              shouldInclude = window.daysOfWeek.includes(dayOfWeek);
+        if (window.recurrenceType === 'weekly' && window.daysOfWeek && window.daysOfWeek.length > 0) {
+          // Logica speciale per ricorrenze settimanali con giorni specifici
+          const startWeek = startOfWeek(windowStart, { weekStartsOn: 1 });
+          let currentWeek = startWeek;
+          let weekCount = 0;
+          
+          while (currentWeek <= endRecurrence && currentWeek <= calendarEnd) {
+            // Solo nelle settimane che rispettano l'intervallo
+            if (weekCount % interval === 0) {
+              // Per ogni giorno selezionato della settimana
+              window.daysOfWeek.forEach(dayOfWeekNumber => {
+                const dayOffset = dayOfWeekNumber === 7 ? 0 : dayOfWeekNumber; // Domenica = 0
+                const targetDate = addDays(currentWeek, dayOffset);
+                
+                // Controlla se la data è valida e nel range
+                if (targetDate >= windowStart && 
+                    targetDate <= endRecurrence && 
+                    targetDate >= calendarStart && 
+                    targetDate <= calendarEnd) {
+                  instances.push({
+                    window,
+                    date: new Date(targetDate),
+                    startTime: window.startTime || '09:00',
+                    endTime: window.endTime || '17:00'
+                  });
+                }
+              });
             }
             
-            if (shouldInclude) {
+            currentWeek = addDays(currentWeek, 7);
+            weekCount++;
+            
+            // Protezione da loop infiniti
+            if (weekCount > 1000) break;
+          }
+        } else {
+          // Logica standard per altre ricorrenze
+          let currentInstanceDate = new Date(windowStart);
+          
+          while (currentInstanceDate <= endRecurrence && currentInstanceDate <= calendarEnd) {
+            if (currentInstanceDate >= calendarStart) {
               instances.push({
                 window,
                 date: new Date(currentInstanceDate),
@@ -71,29 +99,27 @@ export default function PlanningCalendar({ planningWindows, onWindowSelect }: Pl
                 endTime: window.endTime || '17:00'
               });
             }
-          }
-          
-          // Calcola la prossima istanza
-          switch (window.recurrenceType) {
-            case 'daily':
-              currentInstanceDate = addDays(currentInstanceDate, interval);
+            
+            // Calcola la prossima istanza
+            switch (window.recurrenceType) {
+              case 'daily':
+                currentInstanceDate = addDays(currentInstanceDate, interval);
+                break;
+              case 'monthly':
+                currentInstanceDate = new Date(currentInstanceDate.setMonth(currentInstanceDate.getMonth() + interval));
+                break;
+              case 'yearly':
+                currentInstanceDate = new Date(currentInstanceDate.setFullYear(currentInstanceDate.getFullYear() + interval));
+                break;
+              default:
+                currentInstanceDate = addDays(currentInstanceDate, 1);
+                break;
+            }
+            
+            // Protezione da loop infiniti
+            if (currentInstanceDate.getTime() <= new Date(windowStart).getTime()) {
               break;
-            case 'weekly':
-              currentInstanceDate = addDays(currentInstanceDate, 7 * interval);
-              break;
-            case 'monthly':
-              currentInstanceDate = new Date(currentInstanceDate.setMonth(currentInstanceDate.getMonth() + interval));
-              break;
-            case 'yearly':
-              currentInstanceDate = new Date(currentInstanceDate.setFullYear(currentInstanceDate.getFullYear() + interval));
-              break;
-            default:
-              break;
-          }
-          
-          // Protezione da loop infiniti
-          if (currentInstanceDate.getTime() <= new Date(windowStart).getTime()) {
-            break;
+            }
           }
         }
       }
