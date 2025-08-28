@@ -161,14 +161,23 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     }
   }, []);
 
-  // Simple company search - NO debounce per evitare problemi
-  const simpleCompanySearch = useCallback((query: string) => {
-    if (query.length >= 2) {
-      handleCompanySearch(query);
-    } else {
+  // Timeout basato - evita chiamate multiple  
+  const stableCompanySearch = useCallback((query: string) => {
+    // Cancella ricerca precedente
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    if (query.length < 2) {
       setCompanySuggestions([]);
       setShowCompanySuggestions(false);
+      return;
     }
+    
+    // Debounce di 500ms per evitare chiamate multiple
+    searchTimeoutRef.current = setTimeout(() => {
+      handleCompanySearch(query);
+    }, 500);
   }, [handleCompanySearch]);
 
   // Cleanup al unmount
@@ -388,10 +397,13 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             value={field.value || ""}
                             placeholder="Inizia a digitare il nome dell'azienda..."
                             onChange={(e) => {
+                              // SOLO aggiorna il campo - niente ricerca qui
                               field.onChange(e);
-                              // Search integrata nell'onChange per evitare conflitti
-                              const value = e.target.value;
-                              simpleCompanySearch(value);
+                            }}
+                            onKeyUp={(e) => {
+                              // Ricerca SEPARATA con debounce stabile
+                              const value = (e.target as HTMLInputElement).value;
+                              stableCompanySearch(value);
                             }}
                             onBlur={() => {
                               // Ritarda la chiusura per permettere il clic sui suggerimenti
@@ -541,7 +553,10 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             placeholder="Nome commerciale dell'azienda"
                             onChange={(e) => {
                               field.onChange(e);
-                              simpleCompanySearch(e.target.value);
+                            }}
+                            onKeyUp={(e) => {
+                              const value = (e.target as HTMLInputElement).value;
+                              stableCompanySearch(value);
                             }}
                             autoComplete="off"
                             data-testid="input-partner-company"
