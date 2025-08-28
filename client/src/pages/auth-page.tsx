@@ -52,12 +52,12 @@ export default function AuthPage() {
     },
   });
 
-  // Redirect if already logged in - usando useEffect per evitare problemi con gli hook
-  useEffect(() => {
-    if (user) {
-      setLocation("/");
-    }
-  }, [user, setLocation]);
+  // Redirect automatico rimosso - ora puoi accedere alla pagina di login anche se già loggato
+  // useEffect(() => {
+  //   if (user) {
+  //     setLocation("/");
+  //   }
+  // }, [user, setLocation]);
 
   const onLogin = async (data: LoginForm) => {
     loginMutation.mutate(data, {
