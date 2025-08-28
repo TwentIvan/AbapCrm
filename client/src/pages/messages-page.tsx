@@ -173,17 +173,17 @@ export default function MessagesPage() {
     if (isImage) return { isImage: true, icon: '🖼️', type: 'Immagine' };
     
     // Altri tipi di file
-    const fileTypes: { [key: string]: { icon: string; type: string } } = {
-      'pdf': { icon: '📄', type: 'PDF' },
-      'doc': { icon: '📝', type: 'Word' },
-      'docx': { icon: '📝', type: 'Word' },
-      'xls': { icon: '📊', type: 'Excel' },
-      'xlsx': { icon: '📊', type: 'Excel' },
-      'ppt': { icon: '📈', type: 'PowerPoint' },
-      'pptx': { icon: '📈', type: 'PowerPoint' },
-      'txt': { icon: '📃', type: 'Testo' },
-      'zip': { icon: '🗜️', type: 'Archivio' },
-      'rar': { icon: '🗜️', type: 'Archivio' }
+    const fileTypes: { [key: string]: { isImage: boolean; icon: string; type: string } } = {
+      'pdf': { isImage: false, icon: '📄', type: 'PDF' },
+      'doc': { isImage: false, icon: '📝', type: 'Word' },
+      'docx': { isImage: false, icon: '📝', type: 'Word' },
+      'xls': { isImage: false, icon: '📊', type: 'Excel' },
+      'xlsx': { isImage: false, icon: '📊', type: 'Excel' },
+      'ppt': { isImage: false, icon: '📈', type: 'PowerPoint' },
+      'pptx': { isImage: false, icon: '📈', type: 'PowerPoint' },
+      'txt': { isImage: false, icon: '📃', type: 'Testo' },
+      'zip': { isImage: false, icon: '🗜️', type: 'Archivio' },
+      'rar': { isImage: false, icon: '🗜️', type: 'Archivio' }
     };
     
     return fileTypes[ext] || { isImage: false, icon: '📁', type: 'File' };
@@ -310,8 +310,8 @@ export default function MessagesPage() {
                             )}
                             {message.confidenceScore && (
                               <div className="mt-1">
-                                <span className={`text-xs font-medium ${getConfidenceColor(message.confidenceScore || 0)}`}>
-                                  Confidenza: {Math.round((message.confidenceScore || 0) * 100)}%
+                                <span className={`text-xs font-medium ${getConfidenceColor(message.confidenceScore ? Number(message.confidenceScore) : 0)}`}>
+                                  Confidenza: {Math.round((message.confidenceScore ? Number(message.confidenceScore) : 0) * 100)}%
                                 </span>
                               </div>
                             )}
@@ -409,6 +409,69 @@ export default function MessagesPage() {
                     </div>
                   </div>
 
+                  {/* Destinatari Originali Estratti */}
+                  {((selectedMessage.originalToEmails && selectedMessage.originalToEmails.length > 0) || 
+                    (selectedMessage.originalCcEmails && selectedMessage.originalCcEmails.length > 0) || 
+                    (selectedMessage.originalBccEmails && selectedMessage.originalBccEmails.length > 0)) && (
+                    <>
+                      <Separator />
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          <h4 className="font-medium">Destinatari Originali</h4>
+                          <Badge variant="outline" className="text-xs">
+                            Estratti dall'email inoltrata
+                          </Badge>
+                        </div>
+                        
+                        {selectedMessage.originalToEmails && selectedMessage.originalToEmails.length > 0 && (
+                          <div className="space-y-2">
+                            <span className="text-sm font-medium text-muted-foreground">
+                              TO ({selectedMessage.originalToEmails.length}):
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedMessage.originalToEmails.map((email, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs">
+                                  {email}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {selectedMessage.originalCcEmails && selectedMessage.originalCcEmails.length > 0 && (
+                          <div className="space-y-2">
+                            <span className="text-sm font-medium text-muted-foreground">
+                              CC ({selectedMessage.originalCcEmails.length}):
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedMessage.originalCcEmails.map((email, index) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {email}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {selectedMessage.originalBccEmails && selectedMessage.originalBccEmails.length > 0 && (
+                          <div className="space-y-2">
+                            <span className="text-sm font-medium text-muted-foreground">
+                              BCC ({selectedMessage.originalBccEmails.length}):
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedMessage.originalBccEmails.map((email, index) => (
+                                <Badge key={index} variant="destructive" className="text-xs">
+                                  {email}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+
                   {/* Current Associations */}
                   <div className="space-y-2">
                     <span className="font-medium text-muted-foreground">Collegamenti attuali:</span>
@@ -427,7 +490,7 @@ export default function MessagesPage() {
                       })()}
                       {selectedMessage.confidenceScore && (
                         <Badge variant="secondary">
-                          Confidenza: {Math.round((selectedMessage.confidenceScore || 0) * 100)}%
+                          Confidenza: {Math.round((selectedMessage.confidenceScore ? Number(selectedMessage.confidenceScore) : 0) * 100)}%
                         </Badge>
                       )}
                     </div>
