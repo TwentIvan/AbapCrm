@@ -130,17 +130,9 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   // Ref per mantenere l'ultimo valore di ricerca senza causare re-render
   const lastSearchValueRef = useRef<string>('');
 
-  // Company autocomplete ottimizzato per evitare perdita focus
-  const handleCompanySearch = useCallback(async (query: string) => {
-    // Evita ricerche duplicate
-    if (lastSearchValueRef.current === query) return;
-    lastSearchValueRef.current = query;
-
-    if (query.length < 2) {
-      setCompanySuggestions([]);
-      setShowCompanySuggestions(false);
-      return;
-    }
+  // Company search SEMPLIFICATA - no useCallback per evitare re-render  
+  const handleCompanySearch = async (query: string) => {
+    if (query.length < 2) return;
 
     try {
       console.log(`Searching companies for: "${query}"`);
@@ -148,24 +140,19 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
       const companies = await response.json();
       console.log(`Found ${companies.length} companies:`, companies);
       
-      // Aggiorna gli stati solo se necessario
-      setCompanySuggestions(prev => 
-        JSON.stringify(prev) !== JSON.stringify(companies) ? companies : prev
-      );
-      setShowCompanySuggestions(companies.length > 0);
+      setCompanySuggestions(companies);
     } catch (error) {
       console.error('Company search error:', error);
       setCompanySuggestions([]);
-      setShowCompanySuggestions(false);
     }
-  }, []);
+  };
 
-  // Ricerca manuale - SOLO quando richiesta esplicitamente
-  const manualCompanySearch = useCallback((query: string) => {
+  // Ricerca manuale semplificata
+  const manualCompanySearch = (query: string) => {
     if (query && query.length >= 2) {
       handleCompanySearch(query);
     }
-  }, [handleCompanySearch]);
+  };
 
 
   const selectCompanySuggestion = (company: CompanyInfo) => {
@@ -597,7 +584,6 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                           placeholder="Via Roma 123, Milano"
                           onChange={(e) => {
                             field.onChange(e);
-                            handleAddressSearch(e.target.value);
                           }}
                           data-testid="input-partner-address"
                         />
