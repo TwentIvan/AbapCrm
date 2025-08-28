@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Building, Mail, Phone, MapPin, MoreHorizontal } from "lucide-react";
 import { Partner } from "@shared/schema";
 import AdvancedPartnerForm from "@/components/forms/advanced-partner-form";
+import SimplePartnerForm from "@/components/forms/simple-partner-form";
 
 const typeColors = {
   client: "bg-blue-100 text-blue-800",
@@ -163,6 +164,9 @@ export default function PartnersPage() {
           <DialogHeader>
             <DialogTitle>Crea Nuovo Partner</DialogTitle>
           </DialogHeader>
+          <SimplePartnerForm onSuccess={() => setShowCreateDialog(false)} />
+          <hr className="my-8" />
+          <p className="text-sm text-gray-500 mb-4">Form avanzato (con problemi):</p>
           <AdvancedPartnerForm onSuccess={() => setShowCreateDialog(false)} />
         </DialogContent>
       </Dialog>

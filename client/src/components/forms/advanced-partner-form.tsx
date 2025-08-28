@@ -69,12 +69,6 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
-  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
-  const [companySuggestions, setCompanySuggestions] = useState<CompanyInfo[]>([]);
-  const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
-  const [isValidatingFiscalCode, setIsValidatingFiscalCode] = useState(false);
-  const [isValidatingVatNumber, setIsValidatingVatNumber] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string>("");
 
   const form = useForm<FormData>({
@@ -362,79 +356,10 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             {...field}
                             value={field.value || ""}
                             placeholder="Inizia a digitare il nome dell'azienda..."
-                            onChange={(e) => {
-                              // SOLO aggiorna il campo - niente ricerca qui
-                              field.onChange(e);
-                            }}
+                            onChange={field.onChange}
                             autoComplete="off"
                             data-testid="input-partner-name"
                           />
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            size="sm" 
-                            className="mt-2 w-full"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              const name = form.getValues('name');
-                              if (name && name.length >= 2) {
-                                console.log('Single manual search for:', name);
-                                manualCompanySearch(name);
-                              }
-                            }}
-                            data-testid="button-search-company"
-                          >
-                            🔍 Cerca Azienda
-                          </Button>
-                          {/* SUGGERIMENTI SEMPRE VISIBILI PER DEBUG */}
-                          {companySuggestions.length > 0 && (
-                            <div className="fixed top-20 left-4 right-4 z-[9999] bg-yellow-100 border-4 border-red-500 rounded-md shadow-xl max-h-64 overflow-y-auto p-4">
-                              {companySuggestions.map((company, index) => (
-                                <button
-                                  key={index}
-                                  type="button"
-                                  className="w-full px-3 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 text-left"
-                                  onMouseDown={(e) => {
-                                    // Prevent default to avoid focus loss
-                                    e.preventDefault();
-                                    selectCompanySuggestion(company);
-                                  }}
-                                  data-testid={`company-suggestion-${index}`}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    {company.logoUrl && (
-                                      <img 
-                                        src={company.logoUrl} 
-                                        alt={`${company.name} logo`}
-                                        className="w-8 h-8 object-contain rounded"
-                                      />
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                      <div className="font-medium text-sm text-gray-900 truncate">
-                                        {company.name}
-                                      </div>
-                                      {company.legalName && company.legalName !== company.name && (
-                                        <div className="text-xs text-gray-500 truncate">
-                                          {company.legalName}
-                                        </div>
-                                      )}
-                                      {company.sector && (
-                                        <div className="text-xs text-blue-600">
-                                          {company.sector}
-                                        </div>
-                                      )}
-                                      {company.city && (
-                                        <div className="text-xs text-gray-500">
-                                          📍 {company.city}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       </FormControl>
                       <FormMessage />
