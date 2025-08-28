@@ -361,7 +361,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
               
               {/* Barre continue per progetti padre - PRIMA dei box normali */}
               {dayPeriods
-                .filter(period => period.project.name && period.project.name.trim() !== '')
+                .filter(period => 
+                  period.project.name && 
+                  period.project.name.trim() !== '' &&
+                  (period.window.name && period.window.name.trim() !== '')
+                )
                 .map((period, idx) => {
                 const isStartOfPeriod = isSameDay(day, period.startDate);
                 const isEndOfPeriod = isSameDay(day, period.endDate);
@@ -394,7 +398,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
               })}
               
               {/* Box normali per tutti i progetti - DOPO le barre */}
-              <div className="space-y-1" style={{ marginTop: `${continuousPeriods.filter(p => p.project.name && p.project.name.trim() !== '').length * 24 + 4}px` }}>
+              <div className="space-y-1" style={{ marginTop: `${continuousPeriods.filter(p => p.project.name && p.project.name.trim() !== '' && p.window.name && p.window.name.trim() !== '').length * 24 + 4}px` }}>
                 {dayInstances.map((instance, idx) => (
                   <div
                     key={`${instance.window.id}-${idx}`}
