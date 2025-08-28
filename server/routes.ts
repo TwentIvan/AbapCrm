@@ -507,7 +507,7 @@ export function registerRoutes(app: Express): Server {
       const { messageId, filename } = req.params;
       
       // Verifica che il messaggio appartenga all'utente  
-      const message = await storage.getMessageById(messageId, req.user!.id);
+      const message = await storage.getMessage(messageId, req.user!.id);
       if (!message) return res.sendStatus(404);
       
       // Verifica che l'allegato esista 
