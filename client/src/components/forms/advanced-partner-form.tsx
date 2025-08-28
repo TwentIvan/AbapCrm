@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Loader2, Upload, MapPin, Building2, Globe, CreditCard, FileText, Camera, Search } from "lucide-react";
@@ -888,7 +889,6 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                         <div className="flex items-center gap-4 text-sm text-gray-500">
                           {company.city && <span>📍 {company.city}</span>}
                           {company.sector && <span>🏢 {company.sector}</span>}
-                          {company.employees && <span>👥 {company.employees}</span>}
                         </div>
                         {company.description && (
                           <div className="text-sm text-gray-600 mt-2 line-clamp-2">
