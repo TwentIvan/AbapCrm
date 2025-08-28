@@ -333,17 +333,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
       instancesByDate[dateKey].sort((a, b) => a.level - b.level);
     });
 
-    // Calcola l'altezza fissa per ogni giorno basandosi sulle 24 ore complete
-    const getDayHeight = (dayInstances: ExpandedPlanningInstance[]) => {
-      if (dayInstances.length === 0) return 80; // Altezza minima per giorni vuoti
-      
-      // Altezza fissa che rappresenta le 24 ore complete
-      // Se 8 ore devono essere 1/3, allora 24 ore = 3 * (8 ore visuali)
-      // Usando 6 pixel per ora = 24 * 6 = 144px per contenuto + 60 per header = 204px
-      const pixelsPerHour = 6;
-      const totalHeight = (24 * pixelsPerHour) + 60; // 24 ore * 6px + 60px per header e margini
-      return totalHeight; // 204px fissi
-    };
+    // Altezza fissa per tutti i giorni per mantenere allineamento griglia
+    const FIXED_DAY_HEIGHT = 280; // Altezza fissa per tutti i giorni
+    const CONTENT_HEIGHT = 220; // Spazio disponibile per contenuto (280 - 60 per header)
 
     // Funzione ricorsiva per renderizzare progetti padre -> figli
     const renderHierarchicalProjects = (instances: ExpandedPlanningInstance[], availableHeight: number, parentBounds?: { start: number, end: number, level: number }) => {
@@ -381,8 +373,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
           const topPosition = relativeTop + (relativeStart / (parentBounds ? (parentBounds.end - parentBounds.start) : minutesInDay)) * relativeHeight;
           const height = Math.max(16, (durationMinutes / (parentBounds ? (parentBounds.end - parentBounds.start) : minutesInDay)) * relativeHeight);
           
-          // Determina se questo è un progetto padre (ha figli)
-          const hasChildren = instances.some(other => other.level > level && other.project.parentId === instance.project.id);
+          // Determina se questo è un progetto padre (ha figli) - per ora tutti i progetti level 0 sono padri
+          const hasChildren = level === 0 && instances.some(other => other.level > level);
           
           result.push(
             <div
@@ -421,7 +413,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
           
           // Se questo ha figli, renderizza i figli all'interno
           if (hasChildren) {
-            const children = instances.filter(other => other.level > level && other.project.parentId === instance.project.id);
+            const children = instances.filter(other => other.level > level);
             const childElements = renderHierarchicalProjects(children, availableHeight, {
               start: startMinutes,
               end: endMinutes,
@@ -454,8 +446,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
             day >= period.startDate && day <= period.endDate
           );
           
-          const cellHeight = getDayHeight(dayInstances);
-          
           return (
             <div 
               key={dateKey} 
@@ -464,7 +454,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
                 ${!isInCurrentMonth ? 'bg-muted/30 text-muted-foreground' : 'bg-background'}
                 ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800' : ''}
               `}
-              style={{ height: `${cellHeight}px` }}
+              style={{ height: `${FIXED_DAY_HEIGHT}px` }}
             >
               <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-blue-600 dark:text-blue-400' : ''}`}>
                 {format(day, 'd')}
@@ -473,9 +463,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
               {/* Renderizzazione ricorsiva progetti padre -> figli */}
               <div className="absolute inset-x-0" style={{ 
                 top: '28px',
-                height: `${cellHeight - 60}px`
+                height: `${CONTENT_HEIGHT}px`
               }}>
-                {renderHierarchicalProjects(dayInstances, cellHeight - 60)}
+                {renderHierarchicalProjects(dayInstances, CONTENT_HEIGHT)}
               </div>
             </div>
           );
