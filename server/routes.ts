@@ -326,6 +326,38 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Company lookup endpoints
+  app.get("/api/companies/search", async (req, res) => {
+    const { q } = req.query;
+    if (!q || typeof q !== 'string') {
+      return res.json([]);
+    }
+
+    try {
+      const { CompanyLookupService } = await import('./company-lookup-service');
+      const companies = await CompanyLookupService.searchCompanies(q);
+      res.json(companies);
+    } catch (error) {
+      console.error('Company search error:', error);
+      res.json([]);
+    }
+  });
+
+  app.get("/api/companies/details/:identifier", async (req, res) => {
+    try {
+      const { CompanyLookupService } = await import('./company-lookup-service');
+      const company = await CompanyLookupService.getCompanyDetails(req.params.identifier);
+      if (company) {
+        res.json(company);
+      } else {
+        res.status(404).json({ error: 'Company not found' });
+      }
+    } catch (error) {
+      console.error('Company details error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // Logo upload endpoint
   app.post("/api/partners/logo/upload", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

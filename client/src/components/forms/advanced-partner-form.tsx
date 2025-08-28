@@ -45,6 +45,21 @@ interface AddressSuggestion {
   country?: string;
 }
 
+interface CompanyInfo {
+  name: string;
+  legalName?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  fiscalCode?: string;
+  vatNumber?: string;
+  website?: string;
+  logoUrl?: string;
+  description?: string;
+  sector?: string;
+}
+
 interface AdvancedPartnerFormProps {
   onSuccess?: () => void;
 }
@@ -56,6 +71,8 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [companySuggestions, setCompanySuggestions] = useState<CompanyInfo[]>([]);
+  const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
   const [isValidatingFiscalCode, setIsValidatingFiscalCode] = useState(false);
   const [isValidatingVatNumber, setIsValidatingVatNumber] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string>("");
@@ -108,6 +125,51 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     if (suggestion.country) form.setValue('country', suggestion.country === 'Italy' ? 'IT' : suggestion.country);
     setShowAddressSuggestions(false);
     setAddressSuggestions([]);
+  };
+
+  // Company autocomplete
+  const handleCompanySearch = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setCompanySuggestions([]);
+      setShowCompanySuggestions(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`);
+      const companies = await response.json();
+      setCompanySuggestions(companies);
+      setShowCompanySuggestions(companies.length > 0);
+    } catch (error) {
+      console.error('Company search error:', error);
+      setCompanySuggestions([]);
+      setShowCompanySuggestions(false);
+    }
+  }, []);
+
+  const selectCompanySuggestion = (company: CompanyInfo) => {
+    // Auto-populate all company fields
+    form.setValue('name', company.legalName || company.name);
+    form.setValue('company', company.name);
+    if (company.address) form.setValue('address', company.address);
+    if (company.city) form.setValue('city', company.city);
+    if (company.postalCode) form.setValue('postalCode', company.postalCode);
+    if (company.country) form.setValue('country', company.country);
+    if (company.fiscalCode) form.setValue('fiscalCode', company.fiscalCode);
+    if (company.vatNumber) form.setValue('vatNumber', company.vatNumber.replace('IT', ''));
+    if (company.website) form.setValue('website', company.website);
+    if (company.logoUrl) {
+      form.setValue('logoUrl', company.logoUrl);
+      setLogoPreview(company.logoUrl);
+    }
+    
+    setShowCompanySuggestions(false);
+    setCompanySuggestions([]);
+    
+    toast({ 
+      title: "Informazioni azienda caricate!", 
+      description: `Dati di ${company.name} inseriti automaticamente` 
+    });
   };
 
   // Fiscal code validation
@@ -240,11 +302,59 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                     <FormItem>
                       <FormLabel>Nome / Denominazione *</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder="Mario Rossi / Acme S.r.l."
-                          data-testid="input-partner-name"
-                        />
+                        <div className="relative">
+                          <Input 
+                            {...field}
+                            placeholder="Inizia a digitare il nome dell'azienda..."
+                            onChange={(e) => {
+                              field.onChange(e);
+                              handleCompanySearch(e.target.value);
+                            }}
+                            data-testid="input-partner-name"
+                          />
+                          {showCompanySuggestions && (
+                            <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-y-auto">
+                              {companySuggestions.map((company, index) => (
+                                <div
+                                  key={index}
+                                  className="px-3 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
+                                  onClick={() => selectCompanySuggestion(company)}
+                                  data-testid={`company-suggestion-${index}`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    {company.logoUrl && (
+                                      <img 
+                                        src={company.logoUrl} 
+                                        alt={`${company.name} logo`}
+                                        className="w-8 h-8 object-contain rounded"
+                                      />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-medium text-sm text-gray-900 truncate">
+                                        {company.name}
+                                      </div>
+                                      {company.legalName && company.legalName !== company.name && (
+                                        <div className="text-xs text-gray-500 truncate">
+                                          {company.legalName}
+                                        </div>
+                                      )}
+                                      {company.sector && (
+                                        <div className="text-xs text-blue-600">
+                                          {company.sector}
+                                        </div>
+                                      )}
+                                      {company.city && (
+                                        <div className="text-xs text-gray-500">
+                                          📍 {company.city}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -323,11 +433,61 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                     <FormItem>
                       <FormLabel>Azienda</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder="Acme S.r.l."
-                          data-testid="input-partner-company"
-                        />
+                        <div className="relative">
+                          <Input 
+                            {...field}
+                            placeholder="Nome commerciale dell'azienda"
+                            onChange={(e) => {
+                              field.onChange(e);
+                              handleCompanySearch(e.target.value);
+                            }}
+                            data-testid="input-partner-company"
+                          />
+                          {showCompanySuggestions && (
+                            <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-y-auto">
+                              {companySuggestions.map((company, index) => (
+                                <div
+                                  key={`company-${index}`}
+                                  className="px-3 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
+                                  onClick={() => selectCompanySuggestion(company)}
+                                  data-testid={`company-suggestion-company-${index}`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    {company.logoUrl && (
+                                      <img 
+                                        src={company.logoUrl} 
+                                        alt={`${company.name} logo`}
+                                        className="w-8 h-8 object-contain rounded"
+                                      />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-medium text-sm text-gray-900 truncate">
+                                        {company.name}
+                                      </div>
+                                      {company.legalName && company.legalName !== company.name && (
+                                        <div className="text-xs text-gray-500 truncate">
+                                          {company.legalName}
+                                        </div>
+                                      )}
+                                      <div className="flex items-center gap-4 mt-1">
+                                        {company.sector && (
+                                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                                            {company.sector}
+                                          </span>
+                                        )}
+                                        {company.city && (
+                                          <span className="text-xs text-gray-500">
+                                            📍 {company.city}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
