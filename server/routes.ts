@@ -130,42 +130,40 @@ export function registerRoutes(app: Express): Server {
 
       // Auto-calculate remaining effort when completion percentage changes
       if (req.body.completionPercentage !== undefined) {
-        // Get current task and time entries to calculate intelligent remaining time
+        // Get current task to access previous remaining effort and estimated effort
         const currentTask = await storage.getTask(req.params.id, req.user!.id);
-        const timeEntries = await storage.getTimeEntriesByTask(req.params.id, req.user!.id);
         
         if (currentTask && currentTask.estimatedEffort && req.body.completionPercentage > 0) {
-          // Calculate total time spent (in hours)
-          const totalMinutesSpent = timeEntries.reduce((total, entry) => total + (entry.duration || 0), 0);
-          const totalHoursSpent = totalMinutesSpent / 60;
+          const newCompletionPercentage = req.body.completionPercentage;
+          const oldCompletionPercentage = currentTask.completionPercentage || 0;
           
-          if (totalHoursSpent > 0) {
-            // Intelligent calculation based on actual efficiency
-            const completionPercentage = req.body.completionPercentage;
-            const remainingPercentage = 100 - completionPercentage;
+          // Debug logging
+          console.log(`Smart remaining effort calculation:`, {
+            oldCompletion: oldCompletionPercentage,
+            newCompletion: newCompletionPercentage,
+            currentRemainingEffort: currentTask.remainingEffort,
+            estimatedEffort: currentTask.estimatedEffort
+          });
+          
+          if (currentTask.remainingEffort !== null && oldCompletionPercentage > 0) {
+            // Update existing remaining effort incrementally
+            const remainingPercentage = 100 - newCompletionPercentage;
+            const oldRemainingPercentage = 100 - oldCompletionPercentage;
             
-            // Debug logging
-            console.log(`Time calculation debug:`, {
-              totalHoursSpent,
-              completionPercentage,
-              remainingPercentage,
-              estimatedEffort: currentTask.estimatedEffort
-            });
+            // Proportionally adjust remaining effort based on new completion
+            const currentRemainingMinutes = currentTask.remainingEffort;
+            const adjustedRemainingMinutes = (currentRemainingMinutes * remainingPercentage) / oldRemainingPercentage;
             
-            // Calculate projected remaining time based on current efficiency
-            // If 65% done in X hours, remaining 35% should take: (X * 35) / 65 hours
-            const projectedRemainingHours = (totalHoursSpent * remainingPercentage) / completionPercentage;
+            updateData.remainingEffort = Math.max(0, Math.round(adjustedRemainingMinutes));
             
-            console.log(`Projected remaining: ${projectedRemainingHours} hours`);
-            
-            // Convert to minutes and then round to integer (since DB field is integer)
-            const projectedRemainingMinutes = projectedRemainingHours * 60;
-            updateData.remainingEffort = Math.max(0, Math.round(projectedRemainingMinutes)); // Save as minutes, not hours!
+            console.log(`Adjusted remaining: ${Math.round(adjustedRemainingMinutes)} minutes (${(adjustedRemainingMinutes/60).toFixed(1)}h)`);
           } else {
-            // Fallback to simple percentage if no time logged yet (in minutes)
-            const remainingPercentage = 100 - req.body.completionPercentage;
+            // Initial calculation based on estimated effort (in minutes)
+            const remainingPercentage = 100 - newCompletionPercentage;
             const remainingHours = (currentTask.estimatedEffort * remainingPercentage) / 100;
             updateData.remainingEffort = Math.max(0, Math.round(remainingHours * 60)); // Convert to minutes
+            
+            console.log(`Initial remaining: ${Math.round(remainingHours * 60)} minutes (${remainingHours.toFixed(1)}h)`);
           }
         }
       }
