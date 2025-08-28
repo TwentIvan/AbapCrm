@@ -164,7 +164,7 @@ export default function PartnersPage() {
           <DialogHeader>
             <DialogTitle>Crea Nuovo Partner</DialogTitle>
           </DialogHeader>
-          <SimplePartnerForm onSuccess={() => setShowCreateDialog(false)} />
+          <AdvancedPartnerForm onSuccess={() => setShowCreateDialog(false)} />
         </DialogContent>
       </Dialog>
     </div>
