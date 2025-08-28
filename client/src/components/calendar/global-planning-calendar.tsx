@@ -343,6 +343,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     // Funzione ricorsiva per renderizzare progetti padre -> figli
     const renderHierarchicalProjects = (instances: ExpandedPlanningInstance[], availableHeight: number, parentBounds?: { start: number, end: number, level: number }) => {
       const minutesInDay = 24 * 60; // 1440 minuti
+      // IMPORTANTE: Usa l'altezza totale della cella (140px) per calcoli proporzioni corrette
+      const totalCellHeight = FIXED_DAY_HEIGHT; // 140px per proporzioni corrette
       
       // Raggruppa per livello
       const byLevel = instances.reduce((acc, instance) => {
@@ -364,15 +366,16 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
           
           // Se c'è un parent bound, calcola le coordinate relative al padre
           let relativeStart = startMinutes;
-          let relativeHeight = availableHeight;
+          let relativeHeight = totalCellHeight; // Usa altezza totale per proporzioni corrette
           let relativeTop = 0;
           
           if (parentBounds) {
-            relativeTop = ((parentBounds.start) / minutesInDay) * availableHeight;
-            relativeHeight = ((parentBounds.end - parentBounds.start) / minutesInDay) * availableHeight;
+            relativeTop = ((parentBounds.start) / minutesInDay) * totalCellHeight;
+            relativeHeight = ((parentBounds.end - parentBounds.start) / minutesInDay) * totalCellHeight;
             relativeStart = startMinutes - parentBounds.start; // Posizione relativa al padre
           }
           
+          // Calcola proporzioni usando altezza totale cella (140px): 8 ore = 1/3 = ~47px
           const topPosition = relativeTop + (relativeStart / (parentBounds ? (parentBounds.end - parentBounds.start) : minutesInDay)) * relativeHeight;
           const height = Math.max(16, (durationMinutes / (parentBounds ? (parentBounds.end - parentBounds.start) : minutesInDay)) * relativeHeight);
           
@@ -417,7 +420,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
           // Se questo ha figli, renderizza i figli all'interno
           if (hasChildren) {
             const children = instances.filter(other => other.level > level);
-            const childElements = renderHierarchicalProjects(children, availableHeight, {
+            const childElements = renderHierarchicalProjects(children, totalCellHeight, {
               start: startMinutes,
               end: endMinutes,
               level: level
@@ -465,10 +468,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
               
               {/* Renderizzazione ricorsiva progetti padre -> figli */}
               <div className="absolute inset-x-0" style={{ 
-                top: `${HEADER_HEIGHT}px`,
-                height: `${CONTENT_HEIGHT}px`
+                top: `0px`, // Inizia dall'alto della cella per proporzioni corrette
+                height: `${FIXED_DAY_HEIGHT}px` // Usa altezza totale per proporzioni corrette
               }}>
-                {renderHierarchicalProjects(dayInstances, CONTENT_HEIGHT)}
+                {renderHierarchicalProjects(dayInstances, FIXED_DAY_HEIGHT)}
               </div>
             </div>
           );
