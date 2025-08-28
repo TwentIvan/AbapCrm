@@ -88,6 +88,8 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   const [companySuggestions, setCompanySuggestions] = useState<CompanyInfo[]>([]);
   const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
   const [isSearchingCompany, setIsSearchingCompany] = useState(false);
+  const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isValidatingFiscalCode, setIsValidatingFiscalCode] = useState(false);
   const [isValidatingVatNumber, setIsValidatingVatNumber] = useState(false);
 
@@ -144,10 +146,17 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   // Ref per mantenere l'ultimo valore di ricerca senza causare re-render
   const lastSearchValueRef = useRef<string>('');
 
-  // Company search solo su richiesta
-  const searchCompany = async () => {
-    const query = form.getValues('name');
-    if (!query || query.length < 2) {
+  // Apri dialog di ricerca
+  const openSearchDialog = () => {
+    setShowSearchDialog(true);
+    setSearchQuery("");
+    setCompanySuggestions([]);
+    setShowCompanySuggestions(false);
+  };
+
+  // Company search dal dialog
+  const searchCompanyInDialog = async () => {
+    if (!searchQuery || searchQuery.length < 2) {
       toast({ 
         title: "Inserisci almeno 2 caratteri per cercare", 
         variant: "destructive" 
@@ -156,16 +165,14 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     }
 
     setIsSearchingCompany(true);
-    setShowCompanySuggestions(false);
     
     try {
-      console.log(`Manual search for: ${query}`);
-      const response = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`);
+      console.log(`Manual search for: ${searchQuery}`);
+      const response = await fetch(`/api/companies/search?q=${encodeURIComponent(searchQuery)}`);
       const companies = await response.json();
       console.log(`Found ${companies.length} companies:`, companies);
       
       setCompanySuggestions(companies);
-      setShowCompanySuggestions(companies.length > 0);
       
       if (companies.length === 0) {
         toast({ 
@@ -176,7 +183,6 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     } catch (error) {
       console.error('Company search error:', error);
       setCompanySuggestions([]);
-      setShowCompanySuggestions(false);
       toast({ 
         title: "Errore nella ricerca", 
         description: "Impossibile cercare le aziende al momento",
@@ -189,10 +195,6 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
 
 
   const selectCompanySuggestion = (company: CompanyInfo) => {
-    // Close suggestions immediately to prevent focus issues
-    setShowCompanySuggestions(false);
-    setCompanySuggestions([]);
-    
     // Auto-populate all company fields
     form.setValue('name', company.legalName || company.name);
     form.setValue('company', company.name);
@@ -209,6 +211,11 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
       form.setValue('logoUrl', company.logoUrl);
       setLogoPreview(company.logoUrl);
     }
+    
+    // Close search dialog
+    setShowSearchDialog(false);
+    setCompanySuggestions([]);
+    setSearchQuery("");
     
     toast({ 
       title: "Informazioni azienda caricate!", 
@@ -393,54 +400,26 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                     <FormItem>
                       <FormLabel>Nome / Denominazione *</FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <div className="flex gap-2">
-                            <Input 
-                              {...field}
-                              value={field.value || ""}
-                              placeholder="Nome azienda o persona"
-                              onChange={field.onChange}
-                              autoComplete="off"
-                              data-testid="input-partner-name"
-                              className="flex-1"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              onClick={searchCompany}
-                              disabled={isSearchingCompany}
-                              data-testid="button-search-company"
-                              title="Cerca azienda"
-                            >
-                              {isSearchingCompany ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Search className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                          {showCompanySuggestions && companySuggestions.length > 0 && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                              {companySuggestions.map((company, index) => (
-                                <button
-                                  key={index}
-                                  type="button"
-                                  className="w-full px-4 py-3 text-left hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
-                                  onClick={() => selectCompanySuggestion(company)}
-                                  data-testid={`suggestion-company-${index}`}
-                                >
-                                  <div className="font-medium text-sm">{company.name}</div>
-                                  {company.legalName && company.legalName !== company.name && (
-                                    <div className="text-xs text-gray-500">{company.legalName}</div>
-                                  )}
-                                  {company.city && (
-                                    <div className="text-xs text-gray-400">{company.city}</div>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          )}
+                        <div className="flex gap-2">
+                          <Input 
+                            {...field}
+                            value={field.value || ""}
+                            placeholder="Nome azienda o persona"
+                            onChange={field.onChange}
+                            autoComplete="off"
+                            data-testid="input-partner-name"
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={openSearchDialog}
+                            data-testid="button-search-company"
+                            title="Cerca azienda"
+                          >
+                            <Search className="h-4 w-4" />
+                          </Button>
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -852,6 +831,95 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
           </div>
         </form>
       </Form>
+
+      {/* Dialog di ricerca azienda */}
+      <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Cerca Azienda</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Digita il nome dell'azienda da cercare..."
+                className="flex-1"
+                data-testid="input-search-company"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchCompanyInDialog();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                onClick={searchCompanyInDialog}
+                disabled={isSearchingCompany}
+                data-testid="button-search-in-dialog"
+              >
+                {isSearchingCompany ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="mr-2 h-4 w-4" />
+                )}
+                Cerca
+              </Button>
+            </div>
+
+            {/* Risultati ricerca */}
+            {companySuggestions.length > 0 && (
+              <div className="border border-gray-200 rounded-lg max-h-80 overflow-y-auto">
+                {companySuggestions.map((company, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    className="w-full px-4 py-4 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                    onClick={() => selectCompanySuggestion(company)}
+                    data-testid={`dialog-suggestion-${index}`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="font-medium text-base mb-1">{company.name}</div>
+                        {company.legalName && company.legalName !== company.name && (
+                          <div className="text-sm text-gray-600 mb-1">{company.legalName}</div>
+                        )}
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          {company.city && <span>📍 {company.city}</span>}
+                          {company.sector && <span>🏢 {company.sector}</span>}
+                          {company.employees && <span>👥 {company.employees}</span>}
+                        </div>
+                        {company.description && (
+                          <div className="text-sm text-gray-600 mt-2 line-clamp-2">
+                            {company.description}
+                          </div>
+                        )}
+                      </div>
+                      {company.logoUrl && (
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg p-1 ml-4">
+                          <img 
+                            src={company.logoUrl} 
+                            alt={`Logo ${company.name}`}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {!isSearchingCompany && companySuggestions.length === 0 && searchQuery && (
+              <div className="text-center py-8 text-gray-500">
+                <Building2 className="mx-auto h-12 w-12 mb-2 text-gray-300" />
+                <p>Nessuna azienda trovata per "{searchQuery}"</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
