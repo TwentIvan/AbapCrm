@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ObjectUploader } from "@/components/ObjectUploader";
-import { Loader2, Upload, MapPin, Building2, Globe, CreditCard, FileText, Camera } from "lucide-react";
+import { Loader2, Upload, MapPin, Building2, Globe, CreditCard, FileText, Camera, Search } from "lucide-react";
 import type { UploadResult } from "@uppy/core";
 
 // Extended schema with validation for Italian CF and VAT
@@ -87,6 +87,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   const [companySuggestions, setCompanySuggestions] = useState<CompanyInfo[]>([]);
   const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
+  const [isSearchingCompany, setIsSearchingCompany] = useState(false);
   const [isValidatingFiscalCode, setIsValidatingFiscalCode] = useState(false);
   const [isValidatingVatNumber, setIsValidatingVatNumber] = useState(false);
 
@@ -143,27 +144,46 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   // Ref per mantenere l'ultimo valore di ricerca senza causare re-render
   const lastSearchValueRef = useRef<string>('');
 
-  // Company search SEMPLIFICATA - no useCallback per evitare re-render  
-  const handleCompanySearch = async (query: string) => {
-    if (query.length < 2) return;
+  // Company search solo su richiesta
+  const searchCompany = async () => {
+    const query = form.getValues('name');
+    if (!query || query.length < 2) {
+      toast({ 
+        title: "Inserisci almeno 2 caratteri per cercare", 
+        variant: "destructive" 
+      });
+      return;
+    }
 
+    setIsSearchingCompany(true);
+    setShowCompanySuggestions(false);
+    
     try {
-      console.log(`Searching companies for: "${query}"`);
+      console.log(`Manual search for: ${query}`);
       const response = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`);
       const companies = await response.json();
       console.log(`Found ${companies.length} companies:`, companies);
       
       setCompanySuggestions(companies);
+      setShowCompanySuggestions(companies.length > 0);
+      
+      if (companies.length === 0) {
+        toast({ 
+          title: "Nessuna azienda trovata", 
+          description: "Nessun risultato per la ricerca effettuata" 
+        });
+      }
     } catch (error) {
       console.error('Company search error:', error);
       setCompanySuggestions([]);
-    }
-  };
-
-  // Ricerca manuale semplificata
-  const manualCompanySearch = (query: string) => {
-    if (query && query.length >= 2) {
-      handleCompanySearch(query);
+      setShowCompanySuggestions(false);
+      toast({ 
+        title: "Errore nella ricerca", 
+        description: "Impossibile cercare le aziende al momento",
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSearchingCompany(false);
     }
   };
 
@@ -374,14 +394,53 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                       <FormLabel>Nome / Denominazione *</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Input 
-                            {...field}
-                            value={field.value || ""}
-                            placeholder="Inizia a digitare il nome dell'azienda..."
-                            onChange={field.onChange}
-                            autoComplete="off"
-                            data-testid="input-partner-name"
-                          />
+                          <div className="flex gap-2">
+                            <Input 
+                              {...field}
+                              value={field.value || ""}
+                              placeholder="Nome azienda o persona"
+                              onChange={field.onChange}
+                              autoComplete="off"
+                              data-testid="input-partner-name"
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={searchCompany}
+                              disabled={isSearchingCompany}
+                              data-testid="button-search-company"
+                              title="Cerca azienda"
+                            >
+                              {isSearchingCompany ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Search className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                          {showCompanySuggestions && companySuggestions.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                              {companySuggestions.map((company, index) => (
+                                <button
+                                  key={index}
+                                  type="button"
+                                  className="w-full px-4 py-3 text-left hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+                                  onClick={() => selectCompanySuggestion(company)}
+                                  data-testid={`suggestion-company-${index}`}
+                                >
+                                  <div className="font-medium text-sm">{company.name}</div>
+                                  {company.legalName && company.legalName !== company.name && (
+                                    <div className="text-xs text-gray-500">{company.legalName}</div>
+                                  )}
+                                  {company.city && (
+                                    <div className="text-xs text-gray-400">{company.city}</div>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </FormControl>
                       <FormMessage />
