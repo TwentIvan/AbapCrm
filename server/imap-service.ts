@@ -62,7 +62,32 @@ export class ImapEmailService {
         return;
       }
       console.log(`[IMAP] Opened folder: ${this.config.folder}`);
+      // First check for existing emails from the last 30 days
+      this.checkForExistingEmails();
+      // Then check for new unread emails
       this.checkForNewEmails();
+    });
+  }
+
+  private checkForExistingEmails() {
+    // Search for emails from the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const searchDate = thirtyDaysAgo.toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    this.imap.search([['SINCE', searchDate]], (err: Error | null, results: number[]) => {
+      if (err) {
+        console.error('[IMAP] Search error for existing emails:', err);
+        return;
+      }
+
+      if (results.length === 0) {
+        console.log('[IMAP] No existing emails found in the last 30 days');
+        return;
+      }
+
+      console.log(`[IMAP] Found ${results.length} existing emails from the last 30 days`);
+      this.processEmails(results, false); // Don't mark as seen for existing emails
     });
   }
 
@@ -80,12 +105,12 @@ export class ImapEmailService {
       }
 
       console.log(`[IMAP] Found ${results.length} new emails`);
-      this.processEmails(results);
+      this.processEmails(results, true); // Mark new emails as seen
     });
   }
 
-  private processEmails(uids: number[]) {
-    const fetch = this.imap.fetch(uids, { bodies: '', markSeen: true });
+  private processEmails(uids: number[], markSeen: boolean = true) {
+    const fetch = this.imap.fetch(uids, { bodies: '', markSeen });
 
     fetch.on('message', (msg, seqno) => {
       let body = '';

@@ -19,7 +19,8 @@ import {
   Bot,
   Link,
   Plus,
-  Eye
+  Eye,
+  RefreshCw
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Message, Project, Task, Partner } from "@shared/schema";
@@ -63,9 +64,27 @@ export default function MessagesPage() {
     queryKey: ["/api/partners"],
   });
 
+  const syncMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/email/sync"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      toast({
+        title: "Sincronizzazione avviata",
+        description: "Il sistema sta recuperando le email dalla cartella.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore di sincronizzazione",
+        description: error.message || "Errore durante la sincronizzazione delle email.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const markAsReadMutation = useMutation({
     mutationFn: (messageId: string) => 
-      apiRequest(`/api/messages/${messageId}/read`, "POST"),
+      apiRequest("POST", `/api/messages/${messageId}/read`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
     }
@@ -73,7 +92,7 @@ export default function MessagesPage() {
 
   const analyzeMutation = useMutation<AnalysisResult, Error, string>({
     mutationFn: async (messageId: string) => {
-      const response = await apiRequest(`/api/messages/${messageId}/analyze`, "POST");
+      const response = await apiRequest("POST", `/api/messages/${messageId}/analyze`);
       return response as AnalysisResult;
     },
     onSuccess: () => {
@@ -83,7 +102,7 @@ export default function MessagesPage() {
 
   const applySuggestionMutation = useMutation({
     mutationFn: ({ messageId, suggestion }: { messageId: string, suggestion: AISuggestion }) =>
-      apiRequest(`/api/messages/${messageId}/apply-suggestion`, "POST", { suggestion }),
+      apiRequest("POST", `/api/messages/${messageId}/apply-suggestion`, { suggestion }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
       setShowSuggestions(false);
@@ -174,6 +193,16 @@ export default function MessagesPage() {
           <Badge variant="secondary" className="text-sm">
             {unreadCount} non letti
           </Badge>
+          <Button 
+            onClick={() => syncMutation.mutate()}
+            disabled={syncMutation.isPending}
+            size="sm"
+            variant="outline"
+            data-testid="button-sync-emails"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+            Sincronizza
+          </Button>
           <Dialog open={showNewMessageDialog} onOpenChange={setShowNewMessageDialog}>
             <DialogTrigger asChild>
               <Button data-testid="button-new-message">

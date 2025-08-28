@@ -734,6 +734,26 @@ export function registerRoutes(app: Express): Server {
     res.json({ message: "Email service disconnected" });
   });
 
+  // Email sync endpoint for manual refresh
+  app.post("/api/email/sync", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const service = getEmailService();
+    if (!service) {
+      return res.status(400).json({ error: "Email service not configured" });
+    }
+
+    try {
+      // Force a sync by checking for both existing and new emails
+      (service as any).checkForExistingEmails();
+      (service as any).checkForNewEmails();
+      res.json({ message: "Sync initiated" });
+    } catch (error) {
+      console.error("Email sync error:", error);
+      res.status(500).json({ error: "Failed to sync emails" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
