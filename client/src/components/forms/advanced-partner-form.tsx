@@ -323,7 +323,10 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   });
 
   const onSubmit = (data: FormData) => {
+    console.log('=== FORM SUBMISSION ===');
     console.log('Form submitted with data:', data);
+    console.log('Form errors:', form.formState.errors);
+    console.log('Form is valid:', form.formState.isValid);
     console.log('User:', user);
     
     if (!user) {
