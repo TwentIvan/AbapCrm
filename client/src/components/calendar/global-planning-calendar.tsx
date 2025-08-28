@@ -264,82 +264,184 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     }
   };
 
+  // Calculate continuous periods for month view
+  const getContinuousPeriods = () => {
+    if (!planningWindowsWithProject) return [];
+    
+    const { start: calendarStart, end: calendarEnd } = getDateRange();
+    const periods: Array<{
+      window: PlanningWindow;
+      project: Project;
+      level: number;
+      startDate: Date;
+      endDate: Date;
+      startTime: string;
+      endTime: string;
+      workingHours: number;
+    }> = [];
+    
+    planningWindowsWithProject.forEach(({ project, ...window }) => {
+      const windowStart = new Date(window.startDate);
+      const windowEnd = new Date(window.endDate);
+      const projectLevel = projectHierarchy.get(project.id) || 0;
+      
+      // Calculate working hours per day
+      const startMinutes = window.startTime ? parseInt(window.startTime.split(':')[0]) * 60 + parseInt(window.startTime.split(':')[1]) : 9 * 60;
+      const endMinutes = window.endTime ? parseInt(window.endTime.split(':')[0]) * 60 + parseInt(window.endTime.split(':')[1]) : 17 * 60;
+      const workingHours = Math.max(1, (endMinutes - startMinutes) / 60);
+      
+      if (window.recurrenceType === 'none') {
+        if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
+            isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
+            (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
+          
+          const rangeStart = max([windowStart, calendarStart]);
+          const rangeEnd = min([windowEnd, calendarEnd]);
+          
+          periods.push({
+            window,
+            project,
+            level: projectLevel,
+            startDate: rangeStart,
+            endDate: rangeEnd,
+            startTime: window.startTime || '09:00',
+            endTime: window.endTime || '17:00',
+            workingHours
+          });
+        }
+      }
+    });
+    
+    return periods.sort((a, b) => a.level - b.level);
+  };
+
   // Render functions for different views
   const renderMonthView = () => {
     const { start: calendarStart, end: calendarEnd } = getDateRange();
     const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+    const continuousPeriods = getContinuousPeriods();
     
-    const instancesByDate = expandedInstances.reduce((acc, instance) => {
-      const dateKey = format(instance.date, 'yyyy-MM-dd');
-      if (!acc[dateKey]) acc[dateKey] = [];
-      acc[dateKey].push(instance);
-      return acc;
-    }, {} as Record<string, ExpandedPlanningInstance[]>);
+    // Group instances by date for child projects (non-continuous)
+    const instancesByDate = expandedInstances
+      .filter(instance => {
+        // Solo progetti figlio senza periodi continui
+        const hasChildProjects = planningWindowsWithProject?.some(w => w.project.parentProjectId === instance.project.id);
+        return !hasChildProjects && instance.level > 0;
+      })
+      .reduce((acc, instance) => {
+        const dateKey = format(instance.date, 'yyyy-MM-dd');
+        if (!acc[dateKey]) acc[dateKey] = [];
+        acc[dateKey].push(instance);
+        return acc;
+      }, {} as Record<string, ExpandedPlanningInstance[]>);
 
     Object.keys(instancesByDate).forEach(dateKey => {
       instancesByDate[dateKey].sort((a, b) => a.level - b.level);
     });
 
     return (
-      <div className="grid grid-cols-7 gap-1">
-        {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(day => (
-          <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
-            {day}
-          </div>
-        ))}
-        
-        {calendarDays.map(day => {
-          const dateKey = format(day, 'yyyy-MM-dd');
-          const dayInstances = instancesByDate[dateKey] || [];
-          const isInCurrentMonth = day.getMonth() === currentDate.getMonth();
-          const isTodayDate = isSameDay(day, new Date());
+      <div className="relative">
+        <div className="grid grid-cols-7 gap-1">
+          {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(day => (
+            <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
+              {day}
+            </div>
+          ))}
           
-          return (
-            <div 
-              key={dateKey} 
-              className={`
-                min-h-[120px] p-2 border border-border/50 
-                ${!isInCurrentMonth ? 'bg-muted/30 text-muted-foreground' : 'bg-background'}
-                ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800' : ''}
-              `}
-            >
-              <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-blue-600 dark:text-blue-400' : ''}`}>
-                {format(day, 'd')}
-              </div>
-              
-              <div className="space-y-1">
-                {dayInstances.map((instance, idx) => (
-                  <div
-                    key={`${instance.window.id}-${idx}`}
-                    onClick={() => onWindowSelect?.(instance.window)}
-                    className="group cursor-pointer"
-                    style={{ 
-                      marginLeft: `${getLevelIndentation(instance.level)}px`,
-                      marginRight: `${getLevelIndentation(instance.level)}px`
-                    }}
-                  >
-                    <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-1 rounded border`}>
-                      <div className="font-medium truncate">
-                        {instance.window.name}
-                      </div>
-                      <div className="text-[10px] opacity-75">
-                        {instance.startTime} - {instance.endTime}
-                      </div>
-                      <div className="text-[10px] opacity-75 truncate">
-                        {instance.project.name}
-                        {instance.level > 0 && (
-                          <span className="ml-1">
-                            {'→'.repeat(instance.level)}
-                          </span>
-                        )}
+          {calendarDays.map(day => {
+            const dateKey = format(day, 'yyyy-MM-dd');
+            const dayInstances = instancesByDate[dateKey] || [];
+            const isInCurrentMonth = day.getMonth() === currentDate.getMonth();
+            const isTodayDate = isSameDay(day, new Date());
+            
+            // Find continuous periods that include this day
+            const dayPeriods = continuousPeriods.filter(period => 
+              day >= period.startDate && day <= period.endDate
+            );
+            
+            return (
+              <div 
+                key={dateKey} 
+                className={`
+                  min-h-[120px] p-2 border border-border/50 relative
+                  ${!isInCurrentMonth ? 'bg-muted/30 text-muted-foreground' : 'bg-background'}
+                  ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800' : ''}
+                `}
+              >
+                <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+                  {format(day, 'd')}
+                </div>
+                
+                {/* Continuous periods background bars */}
+                {dayPeriods.map((period, idx) => {
+                  const isStartOfPeriod = isSameDay(day, period.startDate);
+                  const isEndOfPeriod = isSameDay(day, period.endDate);
+                  const height = Math.max(16, period.workingHours * 3); // Altezza basata sulle ore di lavoro
+                  
+                  return (
+                    <div
+                      key={`period-${period.window.id}-${idx}`}
+                      className={`
+                        absolute left-0 right-0 ${getLevelColor(period.level)} 
+                        opacity-30 border-t border-b
+                        ${isStartOfPeriod ? 'border-l rounded-l' : ''}
+                        ${isEndOfPeriod ? 'border-r rounded-r' : ''}
+                        cursor-pointer hover:opacity-50 transition-opacity
+                      `}
+                      style={{ 
+                        top: `${32 + period.level * (height + 2)}px`,
+                        height: `${height}px`,
+                        marginLeft: `${getLevelIndentation(period.level)}px`,
+                        marginRight: `${getLevelIndentation(period.level)}px`
+                      }}
+                      onClick={() => onWindowSelect?.(period.window)}
+                    >
+                      {isStartOfPeriod && (
+                        <div className="absolute inset-0 flex items-center px-1">
+                          <div className="text-xs font-medium truncate text-opacity-100">
+                            {period.window.name}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                
+                {/* Child project instances */}
+                <div className="space-y-1" style={{ marginTop: `${Math.max(0, continuousPeriods.length * 20)}px` }}>
+                  {dayInstances.map((instance, idx) => (
+                    <div
+                      key={`${instance.window.id}-${idx}`}
+                      onClick={() => onWindowSelect?.(instance.window)}
+                      className="group cursor-pointer"
+                      style={{ 
+                        marginLeft: `${getLevelIndentation(instance.level)}px`,
+                        marginRight: `${getLevelIndentation(instance.level)}px`
+                      }}
+                    >
+                      <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-1 rounded border`}>
+                        <div className="font-medium truncate">
+                          {instance.window.name}
+                        </div>
+                        <div className="text-[10px] opacity-75">
+                          {instance.startTime} - {instance.endTime}
+                        </div>
+                        <div className="text-[10px] opacity-75 truncate">
+                          {instance.project.name}
+                          {instance.level > 0 && (
+                            <span className="ml-1">
+                              {'→'.repeat(instance.level)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     );
   };
