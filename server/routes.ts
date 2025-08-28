@@ -79,6 +79,13 @@ export function registerRoutes(app: Express): Server {
     res.json(task);
   });
 
+  // Get tasks by project
+  app.get("/api/tasks/project/:projectId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const tasks = await storage.getTasksByProject(req.params.projectId, req.user!.id);
+    res.json(tasks);
+  });
+
   app.post("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {

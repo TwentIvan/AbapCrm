@@ -7,9 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit } from "lucide-react";
+import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target } from "lucide-react";
 import { Project } from "@shared/schema";
 import ProjectForm from "@/components/forms/project-form";
+import ProjectPlanner from "@/components/planning/project-planner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const statusColors = {
@@ -32,6 +33,8 @@ export default function ProjectsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [showPlanner, setShowPlanner] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   const { data: projects, isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -45,6 +48,16 @@ export default function ProjectsPage() {
   const handleCloseEditDialog = () => {
     setShowEditDialog(false);
     setEditingProject(null);
+  };
+
+  const handleOpenPlanner = (project: Project) => {
+    setSelectedProject(project);
+    setShowPlanner(true);
+  };
+
+  const handleClosePlanner = () => {
+    setShowPlanner(false);
+    setSelectedProject(null);
   };
 
   return (
@@ -103,14 +116,26 @@ export default function ProjectsPage() {
                           </Badge>
                         </div>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => handleEditProject(project)}
-                        data-testid={`button-edit-project-${project.id}`}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleOpenPlanner(project)}
+                          data-testid={`button-plan-project-${project.id}`}
+                          title="Project Planner"
+                        >
+                          <Target className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleEditProject(project)}
+                          data-testid={`button-edit-project-${project.id}`}
+                          title="Edit Project"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   
@@ -177,6 +202,17 @@ export default function ProjectsPage() {
               project={editingProject} 
               onSuccess={handleCloseEditDialog} 
             />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPlanner} onOpenChange={handleClosePlanner}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Project Schedule Planner</DialogTitle>
+          </DialogHeader>
+          {selectedProject && (
+            <ProjectPlanner projectId={selectedProject.id} />
           )}
         </DialogContent>
       </Dialog>
