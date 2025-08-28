@@ -782,6 +782,12 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
               disabled={createPartnerMutation.isPending}
               className="w-full md:w-auto"
               data-testid="button-submit-partner"
+              onClick={(e) => {
+                console.log('Button clicked!');
+                console.log('Form state:', form.formState);
+                console.log('Form values:', form.getValues());
+                // Non preventDefault così il form normale continua
+              }}
             >
               {createPartnerMutation.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
