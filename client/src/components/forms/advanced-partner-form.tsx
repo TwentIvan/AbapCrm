@@ -782,12 +782,6 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
               disabled={createPartnerMutation.isPending}
               className="w-full md:w-auto"
               data-testid="button-submit-partner"
-              onClick={(e) => {
-                alert('Pulsante cliccato! Nome: ' + form.getValues().name);
-                if (Object.keys(form.formState.errors).length > 0) {
-                  alert('Errori nel form: ' + JSON.stringify(form.formState.errors));
-                }
-              }}
             >
               {createPartnerMutation.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
