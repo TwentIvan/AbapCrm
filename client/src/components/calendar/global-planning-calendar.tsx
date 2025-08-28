@@ -343,25 +343,27 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     return (
       <div className="flex flex-col">
         {/* Header giorni */}
-        <div className="grid grid-cols-8 border-b border-border">
-          <div className="p-2 text-center text-sm font-medium text-muted-foreground border-r border-border bg-muted/30">
+        <div className="flex border-b border-border">
+          <div className="w-20 p-2 text-center text-sm font-medium text-muted-foreground border-r border-border bg-muted/30 flex-shrink-0">
             Ora
           </div>
-          {weekDays.map(day => (
-            <div key={format(day, 'yyyy-MM-dd')} className="p-2 text-center text-sm font-medium text-muted-foreground border-r border-border/50">
-              <div>{format(day, 'EEE')}</div>
-              <div className={`${isSameDay(day, new Date()) ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}`}>
-                {format(day, 'd')}
+          <div className="flex-1 grid grid-cols-7">
+            {weekDays.map(day => (
+              <div key={format(day, 'yyyy-MM-dd')} className="p-2 text-center text-sm font-medium text-muted-foreground border-r border-border/50">
+                <div>{format(day, 'EEE')}</div>
+                <div className={`${isSameDay(day, new Date()) ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}`}>
+                  {format(day, 'd')}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
         
         {/* Griglia oraria */}
         <div className="flex-1 overflow-auto max-h-[600px] relative">
-          <div className="grid grid-cols-8">
+          <div className="flex">
             {/* Colonna orari */}
-            <div className="border-r border-border bg-muted/30">
+            <div className="w-20 border-r border-border bg-muted/30 flex-shrink-0">
               {hours.map(hour => (
                 <div key={hour} className="relative border-b border-border/50" style={{ height: `${hourHeight}px` }}>
                   <div className="p-2 text-xs text-muted-foreground text-right">
@@ -376,67 +378,69 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
               ))}
             </div>
             
-            {/* Colonne giorni */}
-            {weekDays.map(day => {
-              const dateKey = format(day, 'yyyy-MM-dd');
-              const dayInstances = instancesByDate[dateKey] || [];
-              
-              return (
-                <div key={dateKey} className="border-r border-border/50 relative">
-                  {/* Griglia di background */}
-                  {hours.map(hour => (
-                    <div 
-                      key={hour} 
-                      className="border-b border-border/50 relative"
-                      style={{ height: `${hourHeight}px` }}
-                    >
-                      {/* Linea tratteggiata per la mezzora */}
+            {/* Contenitore giorni */}
+            <div className="flex-1 grid grid-cols-7">
+              {weekDays.map(day => {
+                const dateKey = format(day, 'yyyy-MM-dd');
+                const dayInstances = instancesByDate[dateKey] || [];
+                
+                return (
+                  <div key={dateKey} className="border-r border-border/50 relative">
+                    {/* Griglia di background */}
+                    {hours.map(hour => (
                       <div 
-                        className="absolute left-0 right-0 border-t border-dashed border-border/30"
-                        style={{ top: `${hourHeight / 2}px` }}
-                      />
-                    </div>
-                  ))}
-                  
-                  {/* Eventi sovrapposti */}
-                  {dayInstances.map((instance, idx) => {
-                    const startMinutes = timeToMinutes(instance.startTime);
-                    const endMinutes = timeToMinutes(instance.endTime);
-                    const durationMinutes = endMinutes - startMinutes;
-                    
-                    const topPosition = (startMinutes / 60) * hourHeight;
-                    const height = (durationMinutes / 60) * hourHeight;
-                    
-                    return (
-                      <div
-                        key={`${instance.window.id}-${idx}`}
-                        onClick={() => onWindowSelect?.(instance.window)}
-                        className="absolute cursor-pointer z-10"
-                        style={{ 
-                          top: `${topPosition}px`,
-                          height: `${height}px`,
-                          left: `${2 + getLevelIndentation(instance.level)}px`,
-                          right: `${2 + getLevelIndentation(instance.level)}px`,
-                        }}
+                        key={hour} 
+                        className="border-b border-border/50 relative"
+                        style={{ height: `${hourHeight}px` }}
                       >
-                        <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-2 rounded border h-full overflow-hidden`}>
-                          <div className="font-medium truncate">
-                            {instance.window.name}
-                          </div>
-                          <div className="text-[10px] opacity-75">
-                            {instance.startTime} - {instance.endTime}
-                          </div>
-                          <div className="text-[9px] opacity-75 truncate">
-                            {instance.project.name}
-                            {instance.level > 0 && <span className="ml-1">{'→'.repeat(instance.level)}</span>}
+                        {/* Linea tratteggiata per la mezzora */}
+                        <div 
+                          className="absolute left-0 right-0 border-t border-dashed border-border/30"
+                          style={{ top: `${hourHeight / 2}px` }}
+                        />
+                      </div>
+                    ))}
+                    
+                    {/* Eventi sovrapposti */}
+                    {dayInstances.map((instance, idx) => {
+                      const startMinutes = timeToMinutes(instance.startTime);
+                      const endMinutes = timeToMinutes(instance.endTime);
+                      const durationMinutes = endMinutes - startMinutes;
+                      
+                      const topPosition = (startMinutes / 60) * hourHeight;
+                      const height = (durationMinutes / 60) * hourHeight;
+                      
+                      return (
+                        <div
+                          key={`${instance.window.id}-${idx}`}
+                          onClick={() => onWindowSelect?.(instance.window)}
+                          className="absolute cursor-pointer z-10"
+                          style={{ 
+                            top: `${topPosition}px`,
+                            height: `${height}px`,
+                            left: `${2 + getLevelIndentation(instance.level)}px`,
+                            right: `${2 + getLevelIndentation(instance.level)}px`,
+                          }}
+                        >
+                          <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-2 rounded border h-full overflow-hidden`}>
+                            <div className="font-medium truncate">
+                              {instance.window.name}
+                            </div>
+                            <div className="text-[10px] opacity-75">
+                              {instance.startTime} - {instance.endTime}
+                            </div>
+                            <div className="text-[9px] opacity-75 truncate">
+                              {instance.project.name}
+                              {instance.level > 0 && <span className="ml-1">{'→'.repeat(instance.level)}</span>}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
