@@ -346,9 +346,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPlanningWindow(window: InsertPlanningWindow): Promise<PlanningWindow> {
+    // Transform the data to match database schema
+    const insertData = {
+      ...window,
+      excludedDates: window.excludedDates ? window.excludedDates.map(date => new Date(date)) : null,
+    };
     const [newWindow] = await db
       .insert(planningWindows)
-      .values(window)
+      .values(insertData)
       .returning();
     return newWindow;
   }
@@ -358,9 +363,15 @@ export class DatabaseStorage implements IStorage {
     const existingWindow = await this.getPlanningWindow(id, userId);
     if (!existingWindow) return undefined;
     
+    // Transform the data to match database schema
+    const updateData = {
+      ...window,
+      excludedDates: window.excludedDates ? window.excludedDates.map(date => new Date(date)) : undefined,
+      updatedAt: new Date()
+    };
     const [updated] = await db
       .update(planningWindows)
-      .set({ ...window, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(planningWindows.id, id))
       .returning();
     return updated || undefined;
