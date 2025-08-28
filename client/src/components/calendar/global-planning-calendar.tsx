@@ -363,8 +363,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
             {/* Colonna orari */}
             <div className="border-r border-border bg-muted/30">
               {hours.map(hour => (
-                <div key={hour} className="relative" style={{ height: `${hourHeight}px` }}>
-                  <div className="p-2 text-xs text-muted-foreground text-right border-b border-border/50">
+                <div key={hour} className="relative border-b border-border/50" style={{ height: `${hourHeight}px` }}>
+                  <div className="p-2 text-xs text-muted-foreground text-right">
                     {hour.toString().padStart(2, '0')}:00
                   </div>
                   {/* Linea tratteggiata per la mezzora */}
