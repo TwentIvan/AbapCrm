@@ -130,16 +130,23 @@ export function TimeTracker({ task }: TimeTrackerProps) {
 
     // If we have remaining effort data, use it for intelligent calculation
     if (remainingMinutes > 0 && currentCompletion > 0) {
-      // Calculate progress: time worked / time remaining before this session
-      const progressFromSession = Math.min(sessionDuration / remainingMinutes, 1); // Cap at 100%
-      const remainingWork = 100 - currentCompletion;
-      const suggestedIncrease = progressFromSession * remainingWork;
+      // More practical approach: treat every work session as meaningful progress
+      let suggestedIncrease = 0;
+      
+      if (sessionDuration >= 15) { // 15+ minutes = significant work
+        suggestedIncrease = Math.max(5, Math.min(15, sessionDuration / 4)); // 5-15% increase
+      } else if (sessionDuration >= 5) { // 5-14 minutes = moderate work  
+        suggestedIncrease = Math.max(2, sessionDuration / 2); // 2-7% increase
+      } else { // Less than 5 minutes = small adjustment
+        suggestedIncrease = 1; // 1% increase
+      }
       
       const suggestedPercentage = Math.min(100, Math.round(currentCompletion + suggestedIncrease));
       
-      console.log('Smart calculation:', {
-        progressFromSession: progressFromSession * 100,
+      console.log('Practical calculation:', {
+        sessionMinutes: Math.round(sessionDuration),
         suggestedIncrease,
+        currentCompletion,
         suggestedPercentage
       });
       

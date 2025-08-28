@@ -34,17 +34,6 @@ export function CompletionDialog({
 }: CompletionDialogProps) {
   const [percentage, setPercentage] = useState(currentPercentage);
   
-  // Update percentage when currentPercentage prop changes
-  useEffect(() => {
-    if (isOpen) {
-      setPercentage(currentPercentage);
-      form.reset({
-        completionPercentage: currentPercentage,
-        notes: "",
-      });
-    }
-  }, [isOpen, currentPercentage]);
-  
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -52,6 +41,18 @@ export function CompletionDialog({
       notes: "",
     },
   });
+
+  // Update percentage when dialog opens with new suggested percentage
+  useEffect(() => {
+    if (isOpen) {
+      console.log('Dialog opening with suggested percentage:', currentPercentage);
+      setPercentage(currentPercentage);
+      form.reset({
+        completionPercentage: currentPercentage,
+        notes: "",
+      });
+    }
+  }, [isOpen, currentPercentage, form]);
 
   const handleSubmit = (data: FormData) => {
     onSubmit({
