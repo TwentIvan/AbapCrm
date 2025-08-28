@@ -285,29 +285,35 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
       const windowEnd = new Date(window.endDate);
       const projectLevel = projectHierarchy.get(project.id) || 0;
       
-      // Calculate working hours per day
-      const startMinutes = window.startTime ? parseInt(window.startTime.split(':')[0]) * 60 + parseInt(window.startTime.split(':')[1]) : 9 * 60;
-      const endMinutes = window.endTime ? parseInt(window.endTime.split(':')[0]) * 60 + parseInt(window.endTime.split(':')[1]) : 17 * 60;
-      const workingHours = Math.max(1, (endMinutes - startMinutes) / 60);
+      // Solo i progetti padre (che hanno sotto-progetti) o progetti di primo livello
+      const hasChildProjects = planningWindowsWithProject.some(w => w.project.parentProjectId === project.id);
+      const isRootProject = !project.parentProjectId;
       
-      if (window.recurrenceType === 'none') {
-        if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
-            isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
-            (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
-          
-          const rangeStart = max([windowStart, calendarStart]);
-          const rangeEnd = min([windowEnd, calendarEnd]);
-          
-          periods.push({
-            window,
-            project,
-            level: projectLevel,
-            startDate: rangeStart,
-            endDate: rangeEnd,
-            startTime: window.startTime || '09:00',
-            endTime: window.endTime || '17:00',
-            workingHours
-          });
+      if (hasChildProjects || isRootProject) {
+        // Calculate working hours per day
+        const startMinutes = window.startTime ? parseInt(window.startTime.split(':')[0]) * 60 + parseInt(window.startTime.split(':')[1]) : 9 * 60;
+        const endMinutes = window.endTime ? parseInt(window.endTime.split(':')[0]) * 60 + parseInt(window.endTime.split(':')[1]) : 17 * 60;
+        const workingHours = Math.max(1, (endMinutes - startMinutes) / 60);
+        
+        if (window.recurrenceType === 'none') {
+          if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
+              isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
+              (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
+            
+            const rangeStart = max([windowStart, calendarStart]);
+            const rangeEnd = min([windowEnd, calendarEnd]);
+            
+            periods.push({
+              window,
+              project,
+              level: projectLevel,
+              startDate: rangeStart,
+              endDate: rangeEnd,
+              startTime: window.startTime || '09:00',
+              endTime: window.endTime || '17:00',
+              workingHours
+            });
+          }
         }
       }
     });
@@ -324,9 +330,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     // Group instances by date for child projects (non-continuous)
     const instancesByDate = expandedInstances
       .filter(instance => {
-        // Solo progetti figlio senza periodi continui
+        // Solo progetti figlio che non hanno sotto-progetti (progetti leaf)
         const hasChildProjects = planningWindowsWithProject?.some(w => w.project.parentProjectId === instance.project.id);
-        return !hasChildProjects && instance.level > 0;
+        const isChildProject = !!instance.project.parentProjectId;
+        return isChildProject && !hasChildProjects;
       })
       .reduce((acc, instance) => {
         const dateKey = format(instance.date, 'yyyy-MM-dd');
