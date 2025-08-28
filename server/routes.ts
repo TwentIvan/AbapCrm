@@ -28,18 +28,22 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/projects", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const projectData = insertProjectSchema.parse({
+      // Convert data before validation
+      const processedData = {
         name: req.body.name,
         description: req.body.description || null,
-        status: req.body.status,
-        clientId: req.body.clientId,
+        status: req.body.status || "planning",
+        clientId: req.body.clientId || null,
         startDate: req.body.startDate ? new Date(req.body.startDate) : null,
         endDate: req.body.endDate ? new Date(req.body.endDate) : null,
-        budget: req.body.budget,
-        progress: req.body.progress,
-        estimatedEffort: req.body.estimatedEffort,
+        budget: req.body.budget || null,
+        progress: req.body.progress || 0,
+        estimatedEffort: req.body.estimatedEffort || null,
         userId: req.user!.id
-      });
+      };
+      
+      console.log("Processing project data:", processedData);
+      const projectData = insertProjectSchema.parse(processedData);
       const project = await storage.createProject(projectData);
       res.status(201).json(project);
     } catch (error) {
