@@ -62,7 +62,8 @@ export default function PlanningCalendar({ planningWindows, onWindowSelect }: Pl
             if (weekCount % interval === 0) {
               // Per ogni giorno selezionato della settimana
               window.daysOfWeek.forEach(dayOfWeekNumber => {
-                const dayOffset = dayOfWeekNumber === 7 ? 0 : dayOfWeekNumber; // Domenica = 0
+                // Conversione: 1=Lunedì(offset 0), 2=Martedì(offset 1), ..., 7=Domenica(offset 6)
+                const dayOffset = dayOfWeekNumber === 7 ? 6 : dayOfWeekNumber - 1;
                 const targetDate = addDays(currentWeek, dayOffset);
                 
                 // Controlla se la data è valida e nel range
