@@ -33,10 +33,11 @@ export function registerRoutes(app: Express): Server {
         description: req.body.description || null,
         status: req.body.status,
         clientId: req.body.clientId,
-        startDate: req.body.startDate,
-        endDate: req.body.endDate,
+        startDate: req.body.startDate ? new Date(req.body.startDate) : null,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : null,
         budget: req.body.budget,
         progress: req.body.progress,
+        estimatedEffort: req.body.estimatedEffort,
         userId: req.user!.id
       });
       const project = await storage.createProject(projectData);
@@ -50,7 +51,12 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/projects/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const project = await storage.updateProject(req.params.id, req.body, req.user!.id);
+      const updateData = {
+        ...req.body,
+        startDate: req.body.startDate ? new Date(req.body.startDate) : null,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : null,
+      };
+      const project = await storage.updateProject(req.params.id, updateData, req.user!.id);
       if (!project) return res.sendStatus(404);
       res.json(project);
     } catch (error) {
