@@ -9,6 +9,7 @@ import {
   insertMessageSchema, insertCommentSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
+import { initializeEmailService, getEmailService } from "./imap-service";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -657,6 +658,59 @@ export function registerRoutes(app: Express): Server {
       console.error("Apply suggestion error:", error);
       res.status(500).json({ error: "Failed to apply suggestion" });
     }
+  });
+
+  // Email Configuration
+  app.post("/api/email/configure", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { email, password, folder } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+
+      const config = {
+        user: email,
+        password: password,
+        host: 'imap.gmail.com',
+        port: 993,
+        tls: true,
+        folder: folder || 'INBOX'
+      };
+
+      initializeEmailService(config);
+      
+      res.json({ 
+        message: "Email service configured successfully",
+        status: "connected",
+        folder: config.folder
+      });
+    } catch (error) {
+      console.error("Email configuration error:", error);
+      res.status(500).json({ error: "Failed to configure email service" });
+    }
+  });
+
+  app.get("/api/email/status", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const service = getEmailService();
+    res.json({
+      connected: service !== null,
+      status: service ? "active" : "not_configured"
+    });
+  });
+
+  app.post("/api/email/disconnect", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const service = getEmailService();
+    if (service) {
+      service.disconnect();
+    }
+    
+    res.json({ message: "Email service disconnected" });
   });
 
   const httpServer = createServer(app);

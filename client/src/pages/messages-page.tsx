@@ -25,6 +25,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Message, Project, Task, Partner } from "@shared/schema";
 import { format } from "date-fns";
 import MessageForm from "@/components/forms/message-form";
+import EmailConfig from "@/components/email-config";
 
 interface AISuggestion {
   type: 'project' | 'task' | 'partner';
@@ -191,6 +192,9 @@ export default function MessagesPage() {
           </Dialog>
         </div>
       </div>
+
+      {/* Email Configuration */}
+      <EmailConfig />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Message List */}
