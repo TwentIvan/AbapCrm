@@ -165,9 +165,6 @@ export default function PartnersPage() {
             <DialogTitle>Crea Nuovo Partner</DialogTitle>
           </DialogHeader>
           <SimplePartnerForm onSuccess={() => setShowCreateDialog(false)} />
-          <hr className="my-8" />
-          <p className="text-sm text-gray-500 mb-4">Form avanzato (con problemi):</p>
-          <AdvancedPartnerForm onSuccess={() => setShowCreateDialog(false)} />
         </DialogContent>
       </Dialog>
     </div>
