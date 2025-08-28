@@ -2,6 +2,7 @@ import Imap from "imap";
 import { simpleParser } from "mailparser";
 import { storage } from "./storage";
 import { aiService } from "./ai-service";
+import { EmailForwardCleaner } from "./email-forward-cleaner";
 import type { InsertMessage } from "@shared/schema";
 
 interface ImapConfig {
@@ -168,6 +169,17 @@ export class ImapEmailService {
         return;
       }
 
+      // Clean forwarded email content
+      const cleanedEmail = EmailForwardCleaner.cleanForwardedEmail(
+        parsed.subject || '',
+        parsed.text || '',
+        parsed.html || null
+      );
+
+      if (cleanedEmail.isForwarded) {
+        console.log(`[IMAP] Cleaned forwarded email from: ${fromAddr?.address} - Original subject: "${cleanedEmail.originalSubject}"`);
+      }
+
       const messageData: InsertMessage = {
         messageId,
         type: 'email',
@@ -176,9 +188,9 @@ export class ImapEmailService {
         fromName: fromAddr?.name || null,
         toEmail: toAddr?.address || this.config.user,
         toName: toAddr?.name || null,
-        subject: parsed.subject || null,
-        body: parsed.text || null,
-        htmlBody: parsed.html || null,
+        subject: cleanedEmail.originalSubject || null,
+        body: cleanedEmail.originalBody || null,
+        htmlBody: cleanedEmail.originalHtmlBody || null,
         attachments: attachments,
         receivedAt: parsed.date || new Date(),
         userId,
