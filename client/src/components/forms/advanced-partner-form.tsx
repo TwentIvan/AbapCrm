@@ -21,6 +21,15 @@ import type { UploadResult } from "@uppy/core";
 
 // Extended schema with validation for Italian CF and VAT
 const advancedPartnerSchema = insertPartnerSchema.extend({
+  // Rendi tutti i campi opzionali tranne il nome
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  company: z.string().optional(),
+  position: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  postalCode: z.string().optional(),
+  country: z.string().optional(),
   fiscalCode: z.string().optional().refine(
     (val) => !val || val.length === 11 || val.length === 16,
     "Codice fiscale non valido (11 caratteri per aziende, 16 per persone fisiche)"
@@ -29,10 +38,12 @@ const advancedPartnerSchema = insertPartnerSchema.extend({
     (val) => !val || /^(IT)?[0-9]{11}$/.test(val.replace(/\s/g, '')),
     "Partita IVA non valida (deve essere di 11 cifre)"
   ),
+  logoUrl: z.string().optional(),
   website: z.string().optional().refine(
     (val) => !val || val.startsWith('http'),
     "Il sito web deve iniziare con http:// o https://"
   ),
+  notes: z.string().optional(),
 });
 
 type FormData = z.infer<typeof advancedPartnerSchema>;
