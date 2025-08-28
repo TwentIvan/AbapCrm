@@ -143,10 +143,22 @@ export function registerRoutes(app: Express): Server {
             const completionPercentage = req.body.completionPercentage;
             const remainingPercentage = 100 - completionPercentage;
             
+            // Debug logging
+            console.log(`Time calculation debug:`, {
+              totalHoursSpent,
+              completionPercentage,
+              remainingPercentage,
+              estimatedEffort: currentTask.estimatedEffort
+            });
+            
             // Calculate projected remaining time based on current efficiency
-            // If 70% done in X hours, remaining 30% should take: (X * 30) / 70 hours
+            // If 65% done in X hours, remaining 35% should take: (X * 35) / 65 hours
             const projectedRemainingHours = (totalHoursSpent * remainingPercentage) / completionPercentage;
-            updateData.remainingEffort = Math.max(0, Math.round(projectedRemainingHours));
+            
+            console.log(`Projected remaining: ${projectedRemainingHours} hours`);
+            
+            // Use Math.ceil to be more conservative and avoid tiny values
+            updateData.remainingEffort = Math.max(0, Math.ceil(projectedRemainingHours * 10) / 10); // Round to 1 decimal
           } else {
             // Fallback to simple percentage if no time logged yet
             const remainingPercentage = 100 - req.body.completionPercentage;

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import { Play, Square, Clock, Trash2, TrendingUp } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDistanceToNow, format } from "date-fns";
@@ -215,9 +216,12 @@ export function TimeTracker({ task }: TimeTrackerProps) {
 
           {progressPercentage > 0 && (
             <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
-              <div className="text-sm text-muted-foreground">Task Progress</div>
-              <div className="text-lg font-semibold text-blue-700 dark:text-blue-300">
-                {progressPercentage}% Complete
+              <div className="text-sm text-muted-foreground mb-2">Task Progress</div>
+              <div className="space-y-2">
+                <Progress value={progressPercentage} className="h-2" />
+                <div className="text-lg font-semibold text-blue-700 dark:text-blue-300">
+                  {progressPercentage}% Complete
+                </div>
               </div>
             </div>
           )}
