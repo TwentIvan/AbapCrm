@@ -312,113 +312,119 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
   const renderMonthView = () => {
     const { start: calendarStart, end: calendarEnd } = getDateRange();
     const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+    
+    const instancesByDate = expandedInstances.reduce((acc, instance) => {
+      const dateKey = format(instance.date, 'yyyy-MM-dd');
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(instance);
+      return acc;
+    }, {} as Record<string, ExpandedPlanningInstance[]>);
+
+    // Aggiungi i periodi continui per i progetti padre
     const continuousPeriods = getContinuousPeriods();
     
-    // Per ora non mostriamo nessun box normale, solo barre continue
-    const instancesByDate: Record<string, ExpandedPlanningInstance[]> = {};
-
     Object.keys(instancesByDate).forEach(dateKey => {
       instancesByDate[dateKey].sort((a, b) => a.level - b.level);
     });
 
     return (
-      <div className="relative">
-        <div className="grid grid-cols-7 gap-1">
-          {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(day => (
-            <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
-              {day}
-            </div>
-          ))}
+      <div className="grid grid-cols-7 gap-1">
+        {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(day => (
+          <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
+            {day}
+          </div>
+        ))}
+        
+        {calendarDays.map(day => {
+          const dateKey = format(day, 'yyyy-MM-dd');
+          const dayInstances = instancesByDate[dateKey] || [];
+          const isInCurrentMonth = day.getMonth() === currentDate.getMonth();
+          const isTodayDate = isSameDay(day, new Date());
           
-          {calendarDays.map(day => {
-            const dateKey = format(day, 'yyyy-MM-dd');
-            const dayInstances = instancesByDate[dateKey] || [];
-            const isInCurrentMonth = day.getMonth() === currentDate.getMonth();
-            const isTodayDate = isSameDay(day, new Date());
-            
-            // Find continuous periods that include this day
-            const dayPeriods = continuousPeriods.filter(period => 
-              day >= period.startDate && day <= period.endDate
-            );
-            
-            return (
-              <div 
-                key={dateKey} 
-                className={`
-                  min-h-[120px] p-2 border border-border/50 relative
-                  ${!isInCurrentMonth ? 'bg-muted/30 text-muted-foreground' : 'bg-background'}
-                  ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800' : ''}
-                `}
-              >
-                <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-blue-600 dark:text-blue-400' : ''}`}>
-                  {format(day, 'd')}
-                </div>
+          // Find continuous periods that include this day  
+          const dayPeriods = continuousPeriods.filter(period => 
+            day >= period.startDate && day <= period.endDate
+          );
+          
+          return (
+            <div 
+              key={dateKey} 
+              className={`
+                min-h-[120px] p-2 border border-border/50 relative
+                ${!isInCurrentMonth ? 'bg-muted/30 text-muted-foreground' : 'bg-background'}
+                ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800' : ''}
+              `}
+            >
+              <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+                {format(day, 'd')}
+              </div>
+              
+              {/* Barre continue per progetti padre - PRIMA dei box normali */}
+              {dayPeriods.map((period, idx) => {
+                const isStartOfPeriod = isSameDay(day, period.startDate);
+                const isEndOfPeriod = isSameDay(day, period.endDate);
                 
-                {/* Continuous periods background bars */}
-                {dayPeriods.map((period, idx) => {
-                  const isStartOfPeriod = isSameDay(day, period.startDate);
-                  const isEndOfPeriod = isSameDay(day, period.endDate);
-                  
-                  return (
-                    <div
-                      key={`period-${period.window.id}-${idx}`}
-                      className={`
-                        absolute left-1 right-1 ${getLevelColor(period.level)} 
-                        opacity-60 border
-                        ${isStartOfPeriod ? 'rounded-l-md' : 'border-l-0'}
-                        ${isEndOfPeriod ? 'rounded-r-md' : 'border-r-0'}
-                        cursor-pointer hover:opacity-80 transition-opacity z-10
-                      `}
-                      style={{ 
-                        top: `${30 + period.level * 18}px`,
-                        height: '14px'
-                      }}
-                      onClick={() => onWindowSelect?.(period.window)}
-                    >
-                      {isStartOfPeriod && (
-                        <div className="text-xs font-medium px-1 leading-[14px] truncate">
-                          {period.project.name} {period.level > 0 && '→'.repeat(period.level)}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                
-                {/* Child project instances */}
-                <div className="space-y-1 mt-16">
-                  {dayInstances.map((instance, idx) => (
-                    <div
-                      key={`${instance.window.id}-${idx}`}
-                      onClick={() => onWindowSelect?.(instance.window)}
-                      className="group cursor-pointer"
-                      style={{ 
-                        marginLeft: `${getLevelIndentation(instance.level)}px`,
-                        marginRight: `${getLevelIndentation(instance.level)}px`
-                      }}
-                    >
-                      <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-1 rounded border`}>
-                        <div className="font-medium truncate">
-                          {instance.window.name}
-                        </div>
-                        <div className="text-[10px] opacity-75">
-                          {instance.startTime} - {instance.endTime}
-                        </div>
-                        <div className="text-[10px] opacity-75 truncate">
-                          {instance.project.name}
-                          {instance.level > 0 && (
-                            <span className="ml-1">
-                              {'→'.repeat(instance.level)}
-                            </span>
-                          )}
-                        </div>
+                return (
+                  <div
+                    key={`period-${period.window.id}-${idx}`}
+                    className={`
+                      absolute left-0 right-0 ${getLevelColor(period.level)} 
+                      opacity-40 
+                      ${isStartOfPeriod ? 'rounded-l border-l' : ''}
+                      ${isEndOfPeriod ? 'rounded-r border-r' : ''}
+                      border-t border-b cursor-pointer hover:opacity-60 transition-opacity
+                    `}
+                    style={{ 
+                      top: `${28 + period.level * 22}px`,
+                      height: '18px',
+                      marginLeft: `${period.level * 4}px`,
+                      marginRight: `${period.level * 4}px`
+                    }}
+                    onClick={() => onWindowSelect?.(period.window)}
+                  >
+                    {isStartOfPeriod && (
+                      <div className="text-xs font-medium px-1 leading-[18px] truncate">
+                        {period.project.name}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              
+              {/* Box normali per tutti i progetti - DOPO le barre */}
+              <div className="space-y-1" style={{ marginTop: `${continuousPeriods.length * 24 + 4}px` }}>
+                {dayInstances.map((instance, idx) => (
+                  <div
+                    key={`${instance.window.id}-${idx}`}
+                    onClick={() => onWindowSelect?.(instance.window)}
+                    className="group cursor-pointer"
+                    style={{ 
+                      marginLeft: `${getLevelIndentation(instance.level)}px`,
+                      marginRight: `${getLevelIndentation(instance.level)}px`
+                    }}
+                  >
+                    <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-1 rounded border`}>
+                      <div className="font-medium truncate">
+                        {instance.window.name}
+                      </div>
+                      <div className="text-[10px] opacity-75">
+                        {instance.startTime} - {instance.endTime}
+                      </div>
+                      <div className="text-[10px] opacity-75 truncate">
+                        {instance.project.name}
+                        {instance.level > 0 && (
+                          <span className="ml-1">
+                            {'→'.repeat(instance.level)}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
     );
   };
