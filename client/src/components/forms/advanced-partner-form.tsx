@@ -70,6 +70,12 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   const queryClient = useQueryClient();
   
   const [logoPreview, setLogoPreview] = useState<string>("");
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [companySuggestions, setCompanySuggestions] = useState<CompanyInfo[]>([]);
+  const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
+  const [isValidatingFiscalCode, setIsValidatingFiscalCode] = useState(false);
+  const [isValidatingVatNumber, setIsValidatingVatNumber] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(advancedPartnerSchema),
