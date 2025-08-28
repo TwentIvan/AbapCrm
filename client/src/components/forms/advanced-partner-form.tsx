@@ -783,10 +783,10 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
               className="w-full md:w-auto"
               data-testid="button-submit-partner"
               onClick={(e) => {
-                console.log('Button clicked!');
-                console.log('Form state:', form.formState);
-                console.log('Form values:', form.getValues());
-                // Non preventDefault così il form normale continua
+                alert('Pulsante cliccato! Nome: ' + form.getValues().name);
+                if (Object.keys(form.formState.errors).length > 0) {
+                  alert('Errori nel form: ' + JSON.stringify(form.formState.errors));
+                }
               }}
             >
               {createPartnerMutation.isPending && (
