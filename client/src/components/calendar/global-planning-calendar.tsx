@@ -324,7 +324,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekDays = eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) });
     const hours = Array.from({ length: 24 }, (_, i) => i);
-    const hourHeight = 60; // altezza in pixel di ogni ora
+    const hourHeight = 60;
     
     // Raggruppa le istanze per data
     const instancesByDate = expandedInstances.reduce((acc, instance) => {
@@ -341,106 +341,98 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
     };
 
     return (
-      <div className="flex flex-col">
-        {/* Header giorni */}
-        <div className="flex border-b border-border">
-          <div className="w-20 p-2 text-center text-sm font-medium text-muted-foreground border-r border-border bg-muted/30 flex-shrink-0">
-            Ora
-          </div>
-          {weekDays.map(day => (
-            <div key={format(day, 'yyyy-MM-dd')} className="flex-1 p-2 text-center text-sm font-medium text-muted-foreground border-r border-border/50">
-              <div>{format(day, 'EEE')}</div>
-              <div className={`${isSameDay(day, new Date()) ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}`}>
-                {format(day, 'd')}
-              </div>
-            </div>
-          ))}
+      <div className="grid grid-cols-8 gap-1">
+        {/* Header con stessa logica della vista mese */}
+        <div className="p-2 text-center text-sm font-medium text-muted-foreground">
+          Ora
         </div>
+        {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(day => (
+          <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
+            {day}
+          </div>
+        ))}
         
-        {/* Griglia oraria */}
-        <div className="flex-1 overflow-auto max-h-[600px] relative">
-          <div className="flex">
-            {/* Colonna orari */}
-            <div className="w-20 border-r border-border bg-muted/30 flex-shrink-0">
-              {hours.map(hour => (
-                <div key={hour} className="relative border-b border-border/50" style={{ height: `${hourHeight}px` }}>
-                  <div className="p-2 text-xs text-muted-foreground text-right">
-                    {hour.toString().padStart(2, '0')}:00
-                  </div>
-                  {/* Linea tratteggiata per la mezzora */}
-                  <div 
-                    className="absolute left-0 right-0 border-t border-dashed border-border/30"
-                    style={{ top: `${hourHeight / 2}px` }}
-                  />
-                </div>
-              ))}
+        {/* Corpo griglia */}
+        {hours.map(hour => [
+          // Colonna orari
+          <div key={`hour-${hour}`} className="border border-border/50 bg-muted/30 relative" style={{ minHeight: `${hourHeight}px` }}>
+            <div className="p-2 text-xs text-muted-foreground text-right">
+              {hour.toString().padStart(2, '0')}:00
             </div>
+            {/* Linea tratteggiata per la mezzora */}
+            <div 
+              className="absolute left-0 right-0 border-t border-dashed border-border/30"
+              style={{ top: `${hourHeight / 2}px` }}
+            />
+          </div>,
+          
+          // Colonne giorni
+          ...weekDays.map(day => {
+            const dateKey = format(day, 'yyyy-MM-dd');
+            const dayInstances = instancesByDate[dateKey] || [];
+            const isTodayDate = isSameDay(day, new Date());
             
-            {/* Contenitore giorni */}
-            <div className="flex-1 flex">
-              {weekDays.map(day => {
-                const dateKey = format(day, 'yyyy-MM-dd');
-                const dayInstances = instancesByDate[dateKey] || [];
+            // Trova le istanze che iniziano in questa ora
+            const hourInstances = dayInstances.filter(instance => {
+              const startHour = parseInt(instance.startTime.split(':')[0]);
+              return startHour === hour;
+            });
+            
+            return (
+              <div 
+                key={`${dateKey}-${hour}`} 
+                className={`
+                  border border-border/50 p-1 relative
+                  ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800' : 'bg-background'}
+                `}
+                style={{ minHeight: `${hourHeight}px` }}
+              >
+                {/* Linea tratteggiata per la mezzora */}
+                <div 
+                  className="absolute left-0 right-0 border-t border-dashed border-border/30"
+                  style={{ top: `${hourHeight / 2}px` }}
+                />
                 
-                return (
-                  <div key={dateKey} className="flex-1 border-r border-border/50 relative">
-                    {/* Griglia di background */}
-                    {hours.map(hour => (
-                      <div 
-                        key={hour} 
-                        className="border-b border-border/50 relative"
-                        style={{ height: `${hourHeight}px` }}
-                      >
-                        {/* Linea tratteggiata per la mezzora */}
-                        <div 
-                          className="absolute left-0 right-0 border-t border-dashed border-border/30"
-                          style={{ top: `${hourHeight / 2}px` }}
-                        />
-                      </div>
-                    ))}
-                    
-                    {/* Eventi sovrapposti */}
-                    {dayInstances.map((instance, idx) => {
-                      const startMinutes = timeToMinutes(instance.startTime);
-                      const endMinutes = timeToMinutes(instance.endTime);
-                      const durationMinutes = endMinutes - startMinutes;
-                      
-                      const topPosition = (startMinutes / 60) * hourHeight;
-                      const height = (durationMinutes / 60) * hourHeight;
-                      
-                      return (
-                        <div
-                          key={`${instance.window.id}-${idx}`}
-                          onClick={() => onWindowSelect?.(instance.window)}
-                          className="absolute cursor-pointer z-10"
-                          style={{ 
-                            top: `${topPosition}px`,
-                            height: `${height}px`,
-                            left: `${2 + getLevelIndentation(instance.level)}px`,
-                            right: `${2 + getLevelIndentation(instance.level)}px`,
-                          }}
-                        >
-                          <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-2 rounded border h-full overflow-hidden`}>
-                            <div className="font-medium truncate">
-                              {instance.window.name}
-                            </div>
-                            <div className="text-[10px] opacity-75">
-                              {instance.startTime} - {instance.endTime}
-                            </div>
-                            <div className="text-[9px] opacity-75 truncate">
-                              {instance.project.name}
-                              {instance.level > 0 && <span className="ml-1">{'→'.repeat(instance.level)}</span>}
-                            </div>
-                          </div>
+                {/* Eventi che iniziano in questa ora */}
+                {hourInstances.map((instance, idx) => {
+                  const startMinutes = timeToMinutes(instance.startTime);
+                  const endMinutes = timeToMinutes(instance.endTime);
+                  const durationMinutes = endMinutes - startMinutes;
+                  
+                  const startOffset = (startMinutes % 60) / 60 * hourHeight;
+                  const height = Math.min((durationMinutes / 60) * hourHeight, hourHeight - startOffset);
+                  
+                  return (
+                    <div
+                      key={`${instance.window.id}-${idx}`}
+                      onClick={() => onWindowSelect?.(instance.window)}
+                      className="absolute cursor-pointer z-10"
+                      style={{ 
+                        top: `${startOffset}px`,
+                        height: `${height}px`,
+                        left: `${2 + getLevelIndentation(instance.level)}px`,
+                        right: `${2 + getLevelIndentation(instance.level)}px`,
+                      }}
+                    >
+                      <div className={`${getLevelColor(instance.level)} hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden`}>
+                        <div className="font-medium truncate">
+                          {instance.window.name}
                         </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+                        <div className="text-[10px] opacity-75">
+                          {instance.startTime} - {instance.endTime}
+                        </div>
+                        <div className="text-[9px] opacity-75 truncate">
+                          {instance.project.name}
+                          {instance.level > 0 && <span className="ml-1">{'→'.repeat(instance.level)}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })
+        ]).flat()}
       </div>
     );
   };
