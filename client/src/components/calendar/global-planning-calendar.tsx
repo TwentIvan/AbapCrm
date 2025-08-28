@@ -388,47 +388,71 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
                 {format(day, 'd')}
               </div>
               
-              {/* Barre continue per progetti padre - PRIMA dei box normali */}
-              {dayPeriods
-                .filter(period => 
-                  period.project.name && 
-                  period.project.name.trim() !== '' &&
-                  (period.window.name && period.window.name.trim() !== '')
-                )
-                .map((period, idx) => {
-                const isStartOfPeriod = isSameDay(day, period.startDate);
-                const isEndOfPeriod = isSameDay(day, period.endDate);
-                
-                return (
-                  <div
-                    key={`period-${period.window.id}-${idx}`}
-                    className={`
-                      absolute left-0 right-0 ${getLevelColor(period.level)} 
-                      opacity-40 
-                      ${isStartOfPeriod ? 'rounded-l border-l' : ''}
-                      ${isEndOfPeriod ? 'rounded-r border-r' : ''}
-                      border-t border-b cursor-pointer hover:opacity-60 transition-opacity
-                    `}
-                    style={{ 
-                      top: `${28 + period.level * 22}px`,
-                      height: '18px',
-                      marginLeft: `${period.level * 4}px`,
-                      marginRight: `${period.level * 4}px`
-                    }}
-                    onClick={() => onWindowSelect?.(period.window)}
-                  >
-                    {isStartOfPeriod && (
-                      <div className="text-xs font-medium px-1 leading-[18px] truncate">
-                        {period.project.name}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {/* Barre continue per progetti padre - con stesso posizionamento proporzionale */}
+              <div className="absolute inset-x-0" style={{ 
+                top: '28px', 
+                height: `${cellHeight - 60}px` // Stesso spazio disponibile dei box
+              }}>
+                {dayPeriods
+                  .filter(period => 
+                    period.project.name && 
+                    period.project.name.trim() !== '' &&
+                    (period.window.name && period.window.name.trim() !== '')
+                  )
+                  .map((period, idx) => {
+                  const isStartOfPeriod = isSameDay(day, period.startDate);
+                  const isEndOfPeriod = isSameDay(day, period.endDate);
+                  
+                  // Usa la stessa logica proporzionale dei box figli
+                  const availableHeight = cellHeight - 60;
+                  const minutesInDay = 24 * 60; // 1440 minuti
+                  
+                  // Calcola start/end per la barra padre basandosi sui figli
+                  const childrenInDay = dayInstances.filter(child => child.level > period.level);
+                  let barStart = 0, barEnd = minutesInDay;
+                  
+                  if (childrenInDay.length > 0) {
+                    const childStarts = childrenInDay.map(c => timeToMinutes(c.startTime));
+                    const childEnds = childrenInDay.map(c => timeToMinutes(c.endTime));
+                    barStart = Math.min(...childStarts);
+                    barEnd = Math.max(...childEnds);
+                  }
+                  
+                  const topPosition = (barStart / minutesInDay) * availableHeight;
+                  const height = Math.max(18, ((barEnd - barStart) / minutesInDay) * availableHeight);
+                  
+                  return (
+                    <div
+                      key={`period-${period.window.id}-${idx}`}
+                      className={`
+                        absolute ${getLevelColor(period.level)} 
+                        opacity-40 
+                        ${isStartOfPeriod ? 'rounded-l border-l' : ''}
+                        ${isEndOfPeriod ? 'rounded-r border-r' : ''}
+                        border-t border-b cursor-pointer hover:opacity-60 transition-opacity
+                      `}
+                      style={{ 
+                        top: `${topPosition}px`,
+                        height: `${height}px`,
+                        left: `${period.level * 4}px`,
+                        right: `${period.level * 4}px`,
+                        zIndex: period.level
+                      }}
+                      onClick={() => onWindowSelect?.(period.window)}
+                    >
+                      {isStartOfPeriod && (
+                        <div className="text-xs font-medium px-1 truncate" style={{ lineHeight: `${Math.max(18, height)}px` }}>
+                          {period.project.name}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
               
               {/* Box con posizionamento proporzionale alle 24 ore del giorno */}
-              <div className="relative" style={{ 
-                marginTop: `${continuousPeriods.filter(p => p.project.name && p.project.name.trim() !== '' && p.window.name && p.window.name.trim() !== '').length * 24 + 4}px`,
+              <div className="absolute inset-x-0" style={{ 
+                top: '28px',
                 height: `${cellHeight - 60}px` // Spazio disponibile per i box (cellHeight - header - margins)
               }}>
                 {dayInstances.map((instance, idx) => {
