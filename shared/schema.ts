@@ -22,6 +22,7 @@ export const projects = pgTable("projects", {
   description: text("description"),
   status: projectStatusEnum("status").default("planning").notNull(),
   clientId: uuid("client_id").references(() => partners.id),
+  parentProjectId: uuid("parent_project_id"), // Self-reference for project hierarchy
   userId: uuid("user_id").references(() => users.id).notNull(),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
@@ -42,6 +43,7 @@ export const tasks = pgTable("tasks", {
   status: taskStatusEnum("status").default("todo").notNull(),
   priority: taskPriorityEnum("priority").default("medium").notNull(),
   projectId: uuid("project_id").references(() => projects.id),
+  parentTaskId: uuid("parent_task_id"), // Self-reference for task hierarchy
   userId: uuid("user_id").references(() => users.id).notNull(),
   assignedTo: uuid("assigned_to").references(() => users.id),
   dueDate: timestamp("due_date"),
@@ -134,6 +136,8 @@ export const usersRelations = relations(users, ({ many }) => ({
 export const projectsRelations = relations(projects, ({ one, many }) => ({
   user: one(users, { fields: [projects.userId], references: [users.id] }),
   client: one(partners, { fields: [projects.clientId], references: [partners.id] }),
+  parentProject: one(projects, { fields: [projects.parentProjectId], references: [projects.id], relationName: "ProjectHierarchy" }),
+  subProjects: many(projects, { relationName: "ProjectHierarchy" }),
   tasks: many(tasks),
   calendarEvents: many(calendarEvents),
 }));
@@ -142,6 +146,8 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   user: one(users, { fields: [tasks.userId], references: [users.id] }),
   assignedUser: one(users, { fields: [tasks.assignedTo], references: [users.id], relationName: "assignedTasks" }),
   project: one(projects, { fields: [tasks.projectId], references: [projects.id] }),
+  parentTask: one(tasks, { fields: [tasks.parentTaskId], references: [tasks.id], relationName: "TaskHierarchy" }),
+  subTasks: many(tasks, { relationName: "TaskHierarchy" }),
   timeEntries: many(timeEntries),
 }));
 

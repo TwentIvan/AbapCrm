@@ -34,6 +34,7 @@ export function registerRoutes(app: Express): Server {
         description: req.body.description || null,
         status: req.body.status || "planning",
         clientId: req.body.clientId || null,
+        parentProjectId: req.body.parentProjectId || null,
         startDate: req.body.startDate ? new Date(req.body.startDate) : null,
         endDate: req.body.endDate ? new Date(req.body.endDate) : null,
         budget: req.body.budget || null,
@@ -57,6 +58,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const updateData = {
         ...req.body,
+        parentProjectId: req.body.parentProjectId || null,
         startDate: req.body.startDate ? new Date(req.body.startDate) : null,
         endDate: req.body.endDate ? new Date(req.body.endDate) : null,
       };
@@ -116,6 +118,7 @@ export function registerRoutes(app: Express): Server {
         status: req.body.status,
         priority: req.body.priority,
         projectId: req.body.projectId,
+        parentTaskId: req.body.parentTaskId,
         dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
         estimatedEffort: estimatedEffort,
         remainingEffort: remainingEffort,

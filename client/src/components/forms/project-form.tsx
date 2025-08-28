@@ -18,6 +18,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   status: z.enum(["planning", "in_progress", "review", "completed", "on_hold"]),
   clientId: z.string().optional(),
+  parentProjectId: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   budget: z.string().optional(),
@@ -41,7 +42,12 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
     queryKey: ["/api/partners"],
   });
 
+  const { data: projects } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+  });
+
   const clients = partners?.filter(partner => partner.type === "client") || [];
+  const parentProjects = projects?.filter(p => p.id !== project?.id) || []; // Exclude current project
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -50,6 +56,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       description: project?.description || "",
       status: project?.status || "planning",
       clientId: project?.clientId || "no-client",
+      parentProjectId: project?.parentProjectId || "no-parent",
       startDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
       endDate: project?.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "",
       budget: project?.budget || "",
@@ -64,6 +71,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
         ...data,
         userId: user!.id,
         clientId: data.clientId && data.clientId !== "no-client" ? data.clientId : null,
+        parentProjectId: data.parentProjectId && data.parentProjectId !== "no-parent" ? data.parentProjectId : null,
         startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
         endDate: data.endDate ? new Date(data.endDate).toISOString() : null,
         budget: data.budget || null,
@@ -178,6 +186,32 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="parentProjectId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Parent Project (Optional)</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || "no-parent"}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-parent-project">
+                      <SelectValue placeholder="Select parent project" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="no-parent">No parent project</SelectItem>
+                    {parentProjects.map((parentProject) => (
+                      <SelectItem key={parentProject.id} value={parentProject.id}>
+                        {parentProject.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

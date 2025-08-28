@@ -19,6 +19,7 @@ const formSchema = insertTaskSchema.omit({
 }).extend({
   dueDate: z.string().optional(),
   projectId: z.string().optional(),
+  parentTaskId: z.string().optional(),
   estimatedEffort: z.string().optional(),
 });
 
@@ -38,7 +39,12 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
     queryKey: ["/api/projects"],
   });
 
+  const { data: tasks } = useQuery<Task[]>({
+    queryKey: ["/api/tasks"],
+  });
+
   const activeProjects = projects?.filter(project => project.status !== "completed") || [];
+  const parentTasks = tasks?.filter(t => t.id !== task?.id) || []; // Exclude current task
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -48,6 +54,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       status: task?.status || "todo",
       priority: task?.priority || "medium",
       projectId: task?.projectId || "none",
+      parentTaskId: task?.parentTaskId || "no-parent",
       dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "",
       estimatedEffort: task?.estimatedEffort?.toString() || "",
     },
@@ -59,6 +66,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         ...data,
         userId: user!.id,
         projectId: data.projectId && data.projectId !== "none" ? data.projectId : null,
+        parentTaskId: data.parentTaskId && data.parentTaskId !== "no-parent" ? data.parentTaskId : null,
         dueDate: data.dueDate || null,
         estimatedEffort: data.estimatedEffort ? parseInt(data.estimatedEffort) : null,
         completionPercentage: task?.completionPercentage || 0,
@@ -229,6 +237,32 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                   {activeProjects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="parentTaskId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Parent Task (Optional)</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || "no-parent"}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-parent-task">
+                    <SelectValue placeholder="Select parent task" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="no-parent">No parent task</SelectItem>
+                  {parentTasks.map((parentTask) => (
+                    <SelectItem key={parentTask.id} value={parentTask.id}>
+                      {parentTask.title}
                     </SelectItem>
                   ))}
                 </SelectContent>
