@@ -374,27 +374,22 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             variant="outline" 
                             size="sm" 
                             className="mt-2 w-full"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
                               const name = form.getValues('name');
                               if (name && name.length >= 2) {
-                                console.log('Manual search for:', name);
-                                console.log('Current suggestions:', companySuggestions);
-                                console.log('Show suggestions:', showCompanySuggestions);
+                                console.log('Single manual search for:', name);
                                 manualCompanySearch(name);
-                                // Forza sempre l'apertura
-                                setShowCompanySuggestions(true);
-                                console.log('Forced show suggestions to true');
-                              } else {
-                                console.log('Nome troppo corto per la ricerca:', name);
                               }
                             }}
                             data-testid="button-search-company"
                           >
                             🔍 Cerca Azienda
                           </Button>
-                          {/* Debug: Always show suggestions container when there are suggestions */}
+                          {/* SUGGERIMENTI SEMPRE VISIBILI PER DEBUG */}
                           {companySuggestions.length > 0 && (
-                            <div className="absolute z-50 w-full mt-16 bg-white border-2 border-red-500 rounded-md shadow-lg max-h-64 overflow-y-auto">
+                            <div className="fixed top-20 left-4 right-4 z-[9999] bg-yellow-100 border-4 border-red-500 rounded-md shadow-xl max-h-64 overflow-y-auto p-4">
                               {companySuggestions.map((company, index) => (
                                 <button
                                   key={index}
