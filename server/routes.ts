@@ -129,12 +129,30 @@ export function registerRoutes(app: Express): Server {
 
       // Auto-calculate remaining effort when completion percentage changes
       if (req.body.completionPercentage !== undefined) {
-        // Get current task to access estimated effort
+        // Get current task and time entries to calculate intelligent remaining time
         const currentTask = await storage.getTask(req.params.id, req.user!.id);
-        if (currentTask && currentTask.estimatedEffort) {
-          const remainingPercentage = 100 - req.body.completionPercentage;
-          const remainingEffort = Math.round((currentTask.estimatedEffort * remainingPercentage) / 100);
-          updateData.remainingEffort = Math.max(0, remainingEffort); // Never negative
+        const timeEntries = await storage.getTimeEntriesByTask(req.params.id, req.user!.id);
+        
+        if (currentTask && currentTask.estimatedEffort && req.body.completionPercentage > 0) {
+          // Calculate total time spent (in hours)
+          const totalMinutesSpent = timeEntries.reduce((total, entry) => total + (entry.duration || 0), 0);
+          const totalHoursSpent = totalMinutesSpent / 60;
+          
+          if (totalHoursSpent > 0) {
+            // Intelligent calculation based on actual efficiency
+            const completionPercentage = req.body.completionPercentage;
+            const remainingPercentage = 100 - completionPercentage;
+            
+            // Calculate projected remaining time based on current efficiency
+            // If 70% done in X hours, remaining 30% should take: (X * 30) / 70 hours
+            const projectedRemainingHours = (totalHoursSpent * remainingPercentage) / completionPercentage;
+            updateData.remainingEffort = Math.max(0, Math.round(projectedRemainingHours));
+          } else {
+            // Fallback to simple percentage if no time logged yet
+            const remainingPercentage = 100 - req.body.completionPercentage;
+            const remainingEffort = Math.round((currentTask.estimatedEffort * remainingPercentage) / 100);
+            updateData.remainingEffort = Math.max(0, remainingEffort);
+          }
         }
       }
 
