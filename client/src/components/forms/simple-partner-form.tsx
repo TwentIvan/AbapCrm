@@ -9,9 +9,10 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Building2 } from "lucide-react";
+import { Loader2, Building2, User, Globe, FileText } from "lucide-react";
 
 const simplePartnerSchema = insertPartnerSchema.extend({
   name: z.string().min(1, "Nome richiesto"),
@@ -36,8 +37,16 @@ export default function SimplePartnerForm({ onSuccess }: SimplePartnerFormProps)
       email: "",
       phone: "",
       company: "",
-      type: "client",
+      position: "",
+      address: "",
+      city: "",
+      postalCode: "",
       country: "IT",
+      fiscalCode: "",
+      vatNumber: "",
+      website: "",
+      notes: "",
+      type: "client",
     },
   });
 
@@ -53,7 +62,15 @@ export default function SimplePartnerForm({ onSuccess }: SimplePartnerFormProps)
         email: data.email || null,
         phone: data.phone || null,
         company: data.company || null,
+        position: data.position || null,
+        address: data.address || null,
+        city: data.city || null,
+        postalCode: data.postalCode || null,
         country: data.country || "IT",
+        fiscalCode: data.fiscalCode || null,
+        vatNumber: data.vatNumber || null,
+        website: data.website || null,
+        notes: data.notes || null,
         userId: user!.id
       };
       
@@ -104,7 +121,7 @@ export default function SimplePartnerForm({ onSuccess }: SimplePartnerFormProps)
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building2 className="h-5 w-5" />
-                Partner Semplice (Test)
+                Informazioni Base
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -212,7 +229,228 @@ export default function SimplePartnerForm({ onSuccess }: SimplePartnerFormProps)
                   )}
                 />
 
+                {/* Posizione */}
+                <FormField
+                  control={form.control}
+                  name="position"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Posizione / Ruolo</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          placeholder="CEO, Manager, etc."
+                          data-testid="input-partner-position"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Indirizzo */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Indirizzo e Localizzazione
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Indirizzo */}
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Indirizzo</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          placeholder="Via Roma 123"
+                          data-testid="input-partner-address"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Città */}
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Città</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          placeholder="Milano"
+                          data-testid="input-partner-city"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* CAP */}
+                <FormField
+                  control={form.control}
+                  name="postalCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CAP</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          placeholder="20100"
+                          data-testid="input-partner-postal-code"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Paese */}
+                <FormField
+                  control={form.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Paese</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-partner-country">
+                            <SelectValue placeholder="Seleziona paese" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="IT">Italia</SelectItem>
+                          <SelectItem value="US">Stati Uniti</SelectItem>
+                          <SelectItem value="DE">Germania</SelectItem>
+                          <SelectItem value="FR">Francia</SelectItem>
+                          <SelectItem value="ES">Spagna</SelectItem>
+                          <SelectItem value="GB">Regno Unito</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dati Fiscali */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Dati Fiscali e Website
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Codice Fiscale */}
+                <FormField
+                  control={form.control}
+                  name="fiscalCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Codice Fiscale</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          placeholder="RSSMRA85M01H501Z"
+                          data-testid="input-partner-fiscal-code"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Partita IVA */}
+                <FormField
+                  control={form.control}
+                  name="vatNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Partita IVA</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          placeholder="IT12345678901"
+                          data-testid="input-partner-vat-number"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Website */}
+                <FormField
+                  control={form.control}
+                  name="website"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Sito Web</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          type="url"
+                          placeholder="https://www.esempio.com"
+                          data-testid="input-partner-website"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Note */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                Note e Osservazioni
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Note</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        placeholder="Note aggiuntive, preferenze, requisiti speciali..."
+                        className="min-h-[80px]"
+                        data-testid="textarea-partner-notes"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
 
