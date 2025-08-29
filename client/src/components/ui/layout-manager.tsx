@@ -25,6 +25,7 @@ export function LayoutManager({
   onRenameLayout,
   onDeleteLayout,
 }: LayoutManagerProps) {
+  console.log('🎯 LayoutManager received savedLayouts:', savedLayouts);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [layoutToDelete, setLayoutToDelete] = useState<SavedLayout | null>(null);
   const [editingLayoutId, setEditingLayoutId] = useState<string | null>(null);
