@@ -71,25 +71,35 @@ export function CompletionDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent 
+        className="sm:max-w-md"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <DialogHeader>
           <DialogTitle>Update Task Progress</DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+          <form 
+            onSubmit={form.handleSubmit(handleSubmit)} 
+            className="space-y-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="space-y-4">
               <div>
                 <FormLabel>Completion Percentage</FormLabel>
                 <div className="space-y-4 mt-2">
-                  <Slider
-                    value={[percentage]}
-                    onValueChange={(value) => setPercentage(value[0])}
-                    max={100}
-                    step={5}
-                    className="w-full"
-                    data-testid="slider-completion"
-                  />
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Slider
+                      value={[percentage]}
+                      onValueChange={(value) => setPercentage(value[0])}
+                      max={100}
+                      step={5}
+                      className="w-full"
+                      data-testid="slider-completion"
+                    />
+                  </div>
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>0%</span>
                     <span className="font-medium text-foreground">{percentage}%</span>
@@ -109,6 +119,8 @@ export function CompletionDialog({
                         {...field} 
                         placeholder="Add notes about the work completed..."
                         data-testid="input-progress-notes"
+                        onClick={(e) => e.stopPropagation()}
+                        onFocus={(e) => e.stopPropagation()}
                       />
                     </FormControl>
                     <FormMessage />
@@ -121,7 +133,10 @@ export function CompletionDialog({
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={handleClose}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClose();
+                }}
                 disabled={isLoading}
                 data-testid="button-cancel-completion"
               >
@@ -131,6 +146,7 @@ export function CompletionDialog({
                 type="submit" 
                 disabled={isLoading}
                 data-testid="button-submit-completion"
+                onClick={(e) => e.stopPropagation()}
               >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Stop Timer

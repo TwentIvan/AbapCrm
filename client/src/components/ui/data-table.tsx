@@ -513,33 +513,17 @@ export function DataTable<TData, TValue>({
                     // Don't trigger row click if clicking on interactive elements
                     const target = e.target as HTMLElement;
                     
-                    console.log('Table row clicked, target:', target.tagName);
-                    console.log('Has timer button attr:', !!target.closest('[data-timer-button="true"]'));
-                    console.log('Has button:', !!target.closest('button'));
-                    console.log('Timer button element:', target.closest('[data-timer-button="true"]'));
-                    console.log('Button element:', target.closest('button'));
-                    
-                    // Check if clicked element is inside a timer button
-                    const timerButton = target.closest('[data-timer-button="true"]');
-                    const anyButton = target.closest('button');
-                    
+                    // Check if clicked element is inside a timer button or other interactive element
                     if (target.closest('[role="checkbox"]') || 
-                        timerButton ||
-                        anyButton || 
+                        target.closest('[data-timer-button="true"]') ||
+                        target.closest('button') || 
                         target.closest('[role="button"]') ||
                         target.closest('input') ||
                         target.closest('select') ||
                         target.closest('.progress-root') ||
                         target.closest('[data-radix-progress-root]')) {
-                      console.log('Row click blocked due to interactive element:', {
-                        hasTimerButton: !!timerButton,
-                        hasAnyButton: !!anyButton,
-                        targetTag: target.tagName
-                      });
                       return;
                     }
-                    
-                    console.log('Row click proceeding to onRowClick');
                     onRowClick?.(row.original);
                   }}
                   data-testid={`row-${row.id}`}
