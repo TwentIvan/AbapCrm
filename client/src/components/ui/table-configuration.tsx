@@ -204,15 +204,11 @@ export function TableConfiguration({
   };
 
   const handleSaveConfiguration = () => {
-    console.log('handleSaveConfiguration called with layoutName:', layoutName);
-    
     if (!layoutName.trim()) {
-      console.log('Layout name is empty, returning');
       return;
     }
 
     const layout = userPreferences.getTableLayout(tableId);
-    console.log('Current layout before save:', layout);
     
     // Build sorting from columns with sortDirection
     const sortedColumn = columns.find(col => col.sortDirection);

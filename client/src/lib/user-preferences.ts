@@ -117,12 +117,10 @@ class UserPreferencesService {
     const tableConfig = preferences.tables[tableId];
     
     if (!tableConfig || !tableConfig.currentLayout || !tableConfig.layouts[tableConfig.currentLayout]) {
-      console.log(`No saved layout found for ${tableId}, using default`);
       return this.getDefaultLayout();
     }
     
     const { name, createdAt, updatedAt, ...layout } = tableConfig.layouts[tableConfig.currentLayout];
-    console.log(`Loaded layout for ${tableId}:`, layout.viewMode);
     return layout;
   }
 
@@ -144,7 +142,6 @@ class UserPreferencesService {
     const tableConfig = preferences.tables[tableId];
     
     if (!tableConfig || !tableConfig.layouts) {
-      console.log(`No layouts found for table ${tableId}`);
       return [];
     }
     
@@ -153,7 +150,6 @@ class UserPreferencesService {
       id,
     }));
     
-    console.log(`Retrieved ${layouts.length} layouts for ${tableId}:`, layouts.map(l => l.name));
     return layouts;
   }
 
@@ -225,8 +221,6 @@ class UserPreferencesService {
 
   // Save current layout with a new name
   saveLayoutAs(tableId: string, layoutName: string, isDefault: boolean = false): string {
-    console.log(`Saving layout "${layoutName}" for table ${tableId}, isDefault: ${isDefault}`);
-    
     const preferences = this.loadFromStorage();
     const currentLayout = this.getTableLayout(tableId);
     
@@ -250,9 +244,6 @@ class UserPreferencesService {
     
     preferences.tables[tableId].layouts[layoutId] = savedLayout;
     
-    console.log(`Layout object created:`, savedLayout);
-    console.log(`Total layouts for ${tableId}:`, Object.keys(preferences.tables[tableId].layouts).length);
-    
     // If this layout should be default, remove default flag from other layouts
     if (isDefault) {
       this.setDefaultLayout(tableId, layoutId);
@@ -263,7 +254,6 @@ class UserPreferencesService {
       this.saveToStorage(preferences);
     }
     
-    console.log(`Layout "${layoutName}" saved successfully with ID: ${layoutId}`);
     return layoutId;
   }
 
@@ -356,8 +346,6 @@ class UserPreferencesService {
   private saveTimeouts = new Map<string, NodeJS.Timeout>();
   
   autoSaveTableLayout(tableId: string, layout: Partial<TableLayout>, delay = 1000): void {
-    console.log(`Auto-saving layout for ${tableId}:`, layout);
-    
     // Clear existing timeout for this table
     const existingTimeout = this.saveTimeouts.get(tableId);
     if (existingTimeout) {
@@ -368,7 +356,6 @@ class UserPreferencesService {
     const timeout = setTimeout(() => {
       this.saveTableLayout(tableId, layout);
       this.saveTimeouts.delete(tableId);
-      console.log(`Layout saved for ${tableId}`);
     }, delay);
     
     this.saveTimeouts.set(tableId, timeout);
