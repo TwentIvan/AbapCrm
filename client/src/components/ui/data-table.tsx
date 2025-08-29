@@ -100,16 +100,8 @@ export function DataTable<TData, TValue>({
   useEffect(() => {
     setIsInitialSync(true);
     
-    // Force update all states to match layout with a direct replacement
-    setColumnVisibility(prev => {
-      const newVis = { ...layout.columnVisibility };
-      console.log('🔄 Column visibility update:', {
-        before: Object.keys(prev).filter(k => prev[k]),
-        after: Object.keys(newVis).filter(k => newVis[k])
-      });
-      return newVis;
-    });
-    
+    // Force update all states to match layout
+    setColumnVisibility({ ...layout.columnVisibility });
     setAdvancedFilters(layout.filters || []);
     setColumnOrder(layout.columnOrder || []);
     
@@ -126,7 +118,7 @@ export function DataTable<TData, TValue>({
     
     // Reset sync flag after a brief delay
     setTimeout(() => setIsInitialSync(false), 100);
-  }, [layout.id, layout.columnVisibility]);
+  }, [layout.id]);
   
   // Auto-save layout changes (but not during initial sync from layout)
   const [isInitialSync, setIsInitialSync] = useState(true);
