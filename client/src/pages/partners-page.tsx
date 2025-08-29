@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Building, Mail, Phone, MapPin, MoreHorizontal } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DataTable, createImageColumn, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import ImageContainer from "@/components/ui/image-container";
+import { Building, Mail, Phone, MapPin, MoreHorizontal, Grid3X3, List, Edit, Trash2 } from "lucide-react";
 import { Partner } from "@shared/schema";
 import AdvancedPartnerForm from "@/components/forms/advanced-partner-form";
 import SimplePartnerForm from "@/components/forms/simple-partner-form";
@@ -28,10 +34,112 @@ const typeLabels = {
 
 export default function PartnersPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
+  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: partners, isLoading } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (partnerId: string) => apiRequest(`/api/partners/${partnerId}`, 'DELETE'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      toast({
+        title: "Partner eliminato",
+        description: "Il partner è stato eliminato con successo.",
+      });
+      setShowDeleteDialog(false);
+      setSelectedPartner(null);
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Non è stato possibile eliminare il partner.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEdit = (partner: Partner) => {
+    setSelectedPartner(partner);
+    setShowEditDialog(true);
+  };
+
+  const handleDelete = (partner: Partner) => {
+    setSelectedPartner(partner);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (selectedPartner) {
+      deleteMutation.mutate(selectedPartner.id);
+    }
+  };
+
+  // Define table columns for list view
+  const tableColumns = [
+    createImageColumn('logoUrl', 'Logo', 'logo'),
+    {
+      accessorKey: 'name',
+      header: 'Name',
+      cell: ({ row }: any) => (
+        <div className="font-medium" data-testid={`text-partner-name-${row.original.id}`}>
+          {row.original.name}
+        </div>
+      ),
+    },
+    createBadgeColumn('type', 'Type', {
+      client: 'default',
+      vendor: 'secondary', 
+      consultant: 'outline',
+      other: 'destructive'
+    }),
+    createTextColumn('company', 'Company', 30),
+    createTextColumn('email', 'Email', 25),
+    createTextColumn('phone', 'Phone', 15),
+    createTextColumn('address', 'Address', 40),
+    createTextColumn('fiscalCode', 'CF', 16),
+    createTextColumn('vatNumber', 'P.IVA', 16),
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }: any) => {
+        const partner = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" data-testid={`button-partner-menu-${partner.id}`}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={() => handleEdit(partner)}
+                data-testid={`menu-edit-partner-${partner.id}`}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Modifica
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => handleDelete(partner)}
+                className="text-destructive"
+                data-testid={`menu-delete-partner-${partner.id}`}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Elimina
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -44,20 +152,51 @@ export default function PartnersPage() {
         />
         
         <div className="p-6">
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <Card key={i}>
-                  <CardHeader>
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-16 w-full" />
-                  </CardContent>
-                </Card>
-              ))}
+          {/* View Toggle */}
+          <div className="flex justify-end mb-4">
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('cards')}
+                data-testid="button-view-cards"
+              >
+                <Grid3X3 className="mr-2 h-4 w-4" />
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                data-testid="button-view-list"
+              >
+                <List className="mr-2 h-4 w-4" />
+                List
+              </Button>
             </div>
+          </div>
+          {isLoading ? (
+            viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i}>
+                    <CardHeader>
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </CardHeader>
+                    <CardContent>
+                      <Skeleton className="h-16 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            )
           ) : partners?.length === 0 ? (
             <div className="text-center py-12">
               <Building className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -67,6 +206,13 @@ export default function PartnersPage() {
                 Add Partner
               </Button>
             </div>
+          ) : viewMode === 'list' ? (
+            <DataTable
+              columns={tableColumns}
+              data={partners || []}
+              searchPlaceholder="Search partners..."
+              onRowClick={handleEdit}
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {partners?.map((partner) => (
@@ -74,9 +220,19 @@ export default function PartnersPage() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                          <Building className="h-5 w-5 text-primary" />
-                        </div>
+                        {partner.logoUrl ? (
+                          <ImageContainer
+                            src={partner.logoUrl}
+                            alt={`${partner.name} logo`}
+                            fallbackType="logo"
+                            size="md"
+                            data-testid={`img-partner-logo-${partner.id}`}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <Building className="h-5 w-5 text-primary" />
+                          </div>
+                        )}
                         <div>
                           <CardTitle className="text-lg" data-testid={`text-partner-name-${partner.id}`}>
                             {partner.name}
@@ -89,9 +245,30 @@ export default function PartnersPage() {
                           </Badge>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" data-testid={`button-partner-menu-card-${partner.id}`}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={() => handleEdit(partner)}
+                            data-testid={`menu-edit-partner-card-${partner.id}`}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Modifica
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDelete(partner)}
+                            className="text-destructive"
+                            data-testid={`menu-delete-partner-card-${partner.id}`}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Elimina
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </CardHeader>
                   
@@ -144,6 +321,13 @@ export default function PartnersPage() {
                       )}
                     </div>
                     
+                    {partner.fiscalCode && (
+                      <div className="text-xs text-muted-foreground">
+                        <span>CF: {partner.fiscalCode}</span>
+                        {partner.vatNumber && <span className="ml-3">P.IVA: {partner.vatNumber}</span>}
+                      </div>
+                    )}
+                    
                     {partner.notes && (
                       <div className="pt-2 border-t border-border">
                         <p className="text-xs text-muted-foreground line-clamp-2" data-testid={`text-partner-notes-${partner.id}`}>
@@ -159,6 +343,7 @@ export default function PartnersPage() {
         </div>
       </main>
       
+      {/* Create Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -167,6 +352,50 @@ export default function PartnersPage() {
           <AdvancedPartnerForm onSuccess={() => setShowCreateDialog(false)} />
         </DialogContent>
       </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Modifica Partner</DialogTitle>
+          </DialogHeader>
+          {selectedPartner && (
+            <AdvancedPartnerForm 
+              existingPartner={selectedPartner}
+              onSuccess={() => {
+                setShowEditDialog(false);
+                setSelectedPartner(null);
+              }} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma Eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare "{selectedPartner?.name}"? 
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Eliminando..." : "Elimina"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

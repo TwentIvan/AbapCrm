@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertPartnerSchema } from "@shared/schema";
+import { insertPartnerSchema, Partner } from "@shared/schema";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -77,9 +77,10 @@ interface CompanyInfo {
 
 interface AdvancedPartnerFormProps {
   onSuccess?: () => void;
+  existingPartner?: Partner;
 }
 
-export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormProps) {
+export default function AdvancedPartnerForm({ onSuccess, existingPartner }: AdvancedPartnerFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -98,23 +99,30 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   const form = useForm<FormData>({
     resolver: zodResolver(advancedPartnerSchema),
     defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      company: "",
-      position: "",
-      address: "",
-      city: "",
-      postalCode: "",
-      country: "IT",
-      fiscalCode: "",
-      vatNumber: "",
-      logoUrl: "",
-      website: "",
-      type: "client",
-      notes: "",
+      name: existingPartner?.name || "",
+      email: existingPartner?.email || "",
+      phone: existingPartner?.phone || "",
+      company: existingPartner?.company || "",
+      position: existingPartner?.position || "",
+      address: existingPartner?.address || "",
+      city: existingPartner?.city || "",
+      postalCode: existingPartner?.postalCode || "",
+      country: existingPartner?.country || "IT",
+      fiscalCode: existingPartner?.fiscalCode || "",
+      vatNumber: existingPartner?.vatNumber || "",
+      logoUrl: existingPartner?.logoUrl || "",
+      website: existingPartner?.website || "",
+      type: existingPartner?.type || "client",
+      notes: existingPartner?.notes || "",
     },
   });
+
+  // Update logo preview when editing existing partner
+  useEffect(() => {
+    if (existingPartner?.logoUrl) {
+      setLogoPreview(existingPartner.logoUrl);
+    }
+  }, [existingPartner]);
 
   // Address autocomplete
   const handleAddressSearch = useCallback(async (query: string) => {
@@ -364,7 +372,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     }
   };
 
-  const createPartnerMutation = useMutation({
+  const savePartnerMutation = useMutation({
     mutationFn: async (data: FormData & { userId?: string }) => {
       console.log('Mutation function called with:', data);
       
@@ -388,17 +396,27 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
       };
       
       console.log('Sending partner data to API:', partnerData);
-      const res = await apiRequest("POST", "/api/partners", partnerData);
-      return res.json();
+      
+      if (existingPartner) {
+        // Update existing partner
+        const res = await apiRequest(`/api/partners/${existingPartner.id}`, "PUT", partnerData);
+        return res.json();
+      } else {
+        // Create new partner
+        const res = await apiRequest("/api/partners", "POST", partnerData);
+        return res.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
-      toast({ title: "Partner creato con successo!" });
+      toast({ 
+        title: existingPartner ? "Partner aggiornato con successo!" : "Partner creato con successo!" 
+      });
       onSuccess?.();
     },
     onError: (error: Error) => {
       toast({
-        title: "Errore nella creazione del partner",
+        title: existingPartner ? "Errore nell'aggiornamento del partner" : "Errore nella creazione del partner",
         description: error.message,
         variant: "destructive",
       });
@@ -429,7 +447,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     };
     
     console.log('Submitting complete data:', completeData);
-    createPartnerMutation.mutate(completeData);
+    savePartnerMutation.mutate(completeData);
   };
 
   return (
@@ -869,14 +887,14 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
           <div className="flex justify-end">
             <Button
               type="submit"
-              disabled={createPartnerMutation.isPending}
+              disabled={savePartnerMutation.isPending}
               className="w-full md:w-auto"
               data-testid="button-submit-partner"
             >
-              {createPartnerMutation.isPending && (
+              {savePartnerMutation.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Crea Partner
+              {existingPartner ? "Aggiorna Partner" : "Crea Partner"}
             </Button>
           </div>
         </form>
