@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -168,10 +168,17 @@ export function TableConfiguration({
     return layout.aggregations.enabled ?? true;
   });
 
-  const [layoutName, setLayoutName] = useState('');
+  const [layoutName, setLayoutName] = useState(editingLayout?.name || '');
   const [saveAsDefault, setSaveAsDefault] = useState(false);
   
   const isEditingExisting = !!editingLayout;
+  
+  // Update layout name when editingLayout changes
+  useEffect(() => {
+    if (editingLayout?.name) {
+      setLayoutName(editingLayout.name);
+    }
+  }, [editingLayout]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -473,10 +480,13 @@ export function TableConfiguration({
           <CardHeader>
             <CardTitle className="text-base flex items-center">
               <Save className="mr-2 h-4 w-4" />
-              Salva Layout
+              {isEditingExisting ? 'Modifica Layout' : 'Salva Layout'}
             </CardTitle>
             <CardDescription>
-              Salva la configurazione corrente come layout personalizzato
+              {isEditingExisting 
+                ? 'Aggiorna la configurazione del layout esistente' 
+                : 'Salva la configurazione corrente come layout personalizzato'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -485,20 +495,24 @@ export function TableConfiguration({
                 <Label htmlFor="layout-name">Nome Layout</Label>
                 <Input
                   id="layout-name"
-                  placeholder="es. Vista Clienti Principali"
+                  placeholder={isEditingExisting ? "" : "es. Vista Clienti Principali"}
                   value={layoutName}
                   onChange={(e) => setLayoutName(e.target.value)}
+                  readOnly={isEditingExisting}
+                  className={isEditingExisting ? "bg-muted" : ""}
                   data-testid="input-layout-name"
                 />
               </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={saveAsDefault}
-                  onCheckedChange={setSaveAsDefault}
-                  data-testid="switch-save-as-default"
-                />
-                <Label htmlFor="save-as-default">Imposta come layout predefinito</Label>
-              </div>
+              {!isEditingExisting && (
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={saveAsDefault}
+                    onCheckedChange={setSaveAsDefault}
+                    data-testid="switch-save-as-default"
+                  />
+                  <Label htmlFor="save-as-default">Imposta come layout predefinito</Label>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -525,7 +539,7 @@ export function TableConfiguration({
               data-testid="button-save-configuration"
               disabled={!layoutName.trim()}
             >
-              Salva Layout
+              {isEditingExisting ? 'Aggiorna Layout' : 'Salva Layout'}
             </Button>
           </div>
         </div>
