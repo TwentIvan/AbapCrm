@@ -371,6 +371,7 @@ export class CompanyLookupService {
     });
 
     console.log(`[GOOGLE-PLACES] Searching: ${query}`);
+    console.log(`[GOOGLE-PLACES] API URL: ${apiUrl}?${params}`);
     
     const response = await fetch(`${apiUrl}?${params}`);
 
@@ -379,6 +380,8 @@ export class CompanyLookupService {
     }
 
     const data = await response.json();
+    console.log(`[GOOGLE-PLACES] Response status:`, data.status);
+    console.log(`[GOOGLE-PLACES] Full response:`, JSON.stringify(data, null, 2));
     console.log(`[GOOGLE-PLACES] Found ${data.results?.length || 0} results`);
     
     if (!data.results || data.results.length === 0) {
