@@ -227,8 +227,28 @@ export function DataTable<TData, TValue>({
     let layoutColumns = layout.columns || {};
     
     console.log(`🔍 DEBUG - Layout: "${currentLayoutName}", Columns:`, layoutColumns);
+    console.log(`🔍 DEBUG - columnVisibility:`, layout.columnVisibility);
     
-    // AUTO-POPULATE: Only for DEFAULT layout, not saved layouts
+    // SYNC FIX: Update layout.columns from columnVisibility if they don't match
+    if (layout.columnVisibility && Object.keys(layout.columnVisibility).length > 0) {
+      console.log(`🔄 SYNC: Updating columns from columnVisibility`);
+      
+      // Update layoutColumns from columnVisibility
+      Object.entries(layout.columnVisibility).forEach(([colId, visible]) => {
+        if (layoutColumns[colId]) {
+          layoutColumns[colId] = { 
+            ...layoutColumns[colId], 
+            visible: visible as boolean 
+          };
+        }
+      });
+      
+      // Save the synced columns back to layout
+      updateLayout({ columns: layoutColumns });
+      console.log(`✅ SYNC: Updated columns:`, layoutColumns);
+    }
+    
+    // AUTO-POPULATE: Only for DEFAULT layout if still empty
     if (Object.keys(layoutColumns).length === 0) {
       console.log(`⚠️  Layout "${currentLayoutName}" has empty columns - needs configuration!`);
       
