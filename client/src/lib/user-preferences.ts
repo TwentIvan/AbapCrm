@@ -248,9 +248,7 @@ class UserPreferencesService {
     if (isDefault) {
       this.setDefaultLayout(tableId, layoutId);
     } else {
-      preferences.tables[tableId].currentLayout = layoutId;
-      preferences.tables[tableId].lastUsed = new Date();
-      
+      // Just save without changing current layout
       this.saveToStorage(preferences);
     }
     
@@ -494,18 +492,12 @@ export function useTableLayout(tableId: string) {
   }, [tableId]);
 
   const saveLayoutAs = useCallback((layoutName: string) => {
-    console.log('🎯 Hook saveLayoutAs called with:', layoutName);
     const layoutId = userPreferences.saveLayoutAs(tableId, layoutName);
-    console.log('📋 Layout ID returned:', layoutId);
     
     // Refresh state
     const newCurrentName = userPreferences.getCurrentLayoutName(tableId);
     const newSavedLayouts = userPreferences.getSavedLayouts(tableId);
     
-    console.log('🔄 Updating hook state:');
-    console.log('- Current layout name:', newCurrentName);
-    console.log('- Saved layouts full objects:', newSavedLayouts);
-    console.log('- Saved layouts names:', newSavedLayouts.map(l => l.name));
     
     setCurrentLayoutName(newCurrentName);
     setSavedLayouts(newSavedLayouts);

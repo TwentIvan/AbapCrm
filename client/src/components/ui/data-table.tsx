@@ -418,7 +418,6 @@ export function DataTable<TData, TValue>({
                 }
               }}
               onSaveLayout={(layoutName, isDefault) => {
-                console.log('🎯 DataTable onSaveLayout called:', layoutName);
                 return saveLayoutAs(layoutName);
               }}
             />

@@ -56,8 +56,6 @@ export default function PartnersPage() {
     renameLayout,
     deleteLayout,
   } = useTableLayout('partners');
-  console.log('🔎 Partners page - Current savedLayouts:', savedLayouts.map(l => l.name));
-  console.log('🔎 Partners page - savedLayouts length:', savedLayouts.length);
   const viewMode = layout.viewMode;
 
   const { data: partners, isLoading } = useQuery<Partner[]>({
