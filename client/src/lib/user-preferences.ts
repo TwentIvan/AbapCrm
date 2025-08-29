@@ -529,19 +529,12 @@ export function useTableLayout(tableId: string) {
   }, [tableId]);
 
   const loadLayout = useCallback((layoutId: string) => {
-    console.log('🔄 Loading layout:', layoutId);
     const success = userPreferences.loadLayout(tableId, layoutId);
     if (success) {
       // Force immediate state update
       const newLayout = userPreferences.getTableLayout(tableId);
       const newCurrentName = userPreferences.getCurrentLayoutName(tableId);
       const newSavedLayouts = userPreferences.getSavedLayouts(tableId);
-      
-      console.log('📊 Layout loaded:', {
-        name: newCurrentName,
-        visibleColumns: Object.keys(newLayout.columnVisibility || {}).filter(k => newLayout.columnVisibility[k]),
-        viewMode: newLayout.viewMode
-      });
       
       // Create completely new objects to force re-render
       setLayout({
