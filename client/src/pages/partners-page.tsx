@@ -331,6 +331,7 @@ export default function PartnersPage() {
             </div>
           ) : viewMode === 'list' ? (
             <DataTable
+              key={`partners-table-${currentLayoutName}-${JSON.stringify(layout.columns)}`}
               columns={tableColumns}
               data={partners || []}
               searchPlaceholder="Search partners..."
