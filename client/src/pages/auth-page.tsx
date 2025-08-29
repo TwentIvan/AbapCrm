@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, Users, Calendar, TrendingUp, Shield, Zap } from "lucide-react";
-import hubUpLogo from "@assets/generated_images/The_Hub_Up_logo_ae8678a3.png";
+import hubUpLogo from "@assets/generated_images/hub_up_logo.png";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),

@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
-import hubUpLogo from "@assets/generated_images/The_Hub_Up_logo_ae8678a3.png";
+import hubUpLogo from "@assets/generated_images/hub_up_logo.png";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: BarChart3, testId: "nav-dashboard" },
