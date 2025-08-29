@@ -52,6 +52,7 @@ function TaskTimerButtons({ task }: { task: Task }) {
   // Get running entry globally
   const { data: runningEntry } = useQuery<any>({
     queryKey: ["/api/time-entries/running"],
+    refetchInterval: 1000, // Refresh every second to get timer updates
   });
 
   // Start timer mutation
@@ -69,6 +70,8 @@ function TaskTimerButtons({ task }: { task: Task }) {
       console.log('Timer started successfully');
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries/running"] });
+      // Force refetch of running entry
+      queryClient.refetchQueries({ queryKey: ["/api/time-entries/running"] });
     },
   });
 
@@ -111,7 +114,7 @@ function TaskTimerButtons({ task }: { task: Task }) {
   const hasRunningTimer = !!runningEntry;
 
   const handleStart = (e?: any) => {
-    console.log('Start clicked, event:', e);
+    console.log('Start clicked for task:', task.id);
     e?.stopPropagation(); // Prevent event bubbling
     startTimerMutation.mutate();
   };
