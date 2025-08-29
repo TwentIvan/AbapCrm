@@ -31,6 +31,7 @@ interface TableConfigurationProps {
   currentAggregations?: any[];
   onConfigurationChange?: (config: any) => void;
   onSaveLayout?: (layoutName: string, isDefault?: boolean) => string;
+  editingLayout?: any; // Layout being edited
 }
 
 interface SortableColumnItemProps {

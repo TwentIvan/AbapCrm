@@ -60,6 +60,7 @@ interface DataTableProps<TData, TValue> {
   }>;
   enableColumnReordering?: boolean;
   enableClipboardCopy?: boolean; // New option to automatically add copy functionality
+  editingLayout?: any; // Layout being edited
 }
 
 export function DataTable<TData, TValue>({
@@ -78,7 +79,8 @@ export function DataTable<TData, TValue>({
   enableAggregation = false,
   aggregationColumns = [],
   enableColumnReordering = false,
-  enableClipboardCopy = false
+  enableClipboardCopy = false,
+  editingLayout = null // Layout being edited
 }: DataTableProps<TData, TValue>) {
   // Load and manage table layout preferences
   const { layout, updateLayout, resetLayout, saveLayoutAs } = useTableLayout(tableId);
@@ -435,6 +437,7 @@ export function DataTable<TData, TValue>({
               onSaveLayout={(layoutName, isDefault) => {
                 return saveLayoutAs(layoutName);
               }}
+              editingLayout={editingLayout}
             />
           )}
           

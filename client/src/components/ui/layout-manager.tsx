@@ -16,6 +16,7 @@ interface LayoutManagerProps {
   onLoadLayout: (layoutId: string) => void;
   onRenameLayout: (layoutId: string, newName: string) => void;
   onDeleteLayout: (layoutId: string) => void;
+  onEditLayout?: (layout: SavedLayout) => void;
 }
 
 export function LayoutManager({
@@ -24,6 +25,7 @@ export function LayoutManager({
   onLoadLayout,
   onRenameLayout,
   onDeleteLayout,
+  onEditLayout,
 }: LayoutManagerProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [layoutToDelete, setLayoutToDelete] = useState<SavedLayout | null>(null);
@@ -169,6 +171,17 @@ export function LayoutManager({
                       </div>
                     </div>
                     <div className="flex space-x-1">
+                      {onEditLayout && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0"
+                          onClick={() => onEditLayout(layout)}
+                          data-testid={`button-edit-layout-${index}`}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                      )}
                       {savedLayouts.length > 1 && (
                         <Button
                           size="sm"

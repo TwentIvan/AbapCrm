@@ -41,6 +41,7 @@ export default function PartnersPage() {
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   const [selectedPartners, setSelectedPartners] = useState<Partner[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [editingLayout, setEditingLayout] = useState<any>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -266,6 +267,7 @@ export default function PartnersPage() {
               onLoadLayout={loadLayout}
               onRenameLayout={renameLayout}
               onDeleteLayout={deleteLayout}
+              onEditLayout={(layout) => setEditingLayout(layout)}
             />
 
             {/* View Toggle */}
@@ -338,6 +340,7 @@ export default function PartnersPage() {
               aggregationColumns={aggregationColumns}
               enableColumnReordering={true}
               enableClipboardCopy={true}
+              editingLayout={editingLayout}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
