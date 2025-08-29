@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Settings, Search, Eye, EyeOff, Trash2, X, Filter, SlidersHorizontal } from "lucide-react";
 import ImageContainer from "@/components/ui/image-container";
+import { useToast } from "@/hooks/use-toast";
 import { AdvancedFilters, type FilterRule, type FilterColumn } from "@/components/ui/advanced-filters";
 import { useTableLayout, userPreferences, type TableLayout } from "@/lib/user-preferences";
 import { SortableHeader } from "@/components/ui/sortable-header";
@@ -45,7 +46,7 @@ interface DataTableProps<TData, TValue> {
   bulkActions?: Array<{
     label: string;
     icon?: React.ComponentType<{ className?: string }>;
-    onClick: (selectedRows: TData[]) => void;
+    onClick: (selectedRows: TData[], visibleColumns?: ColumnDef<TData, TValue>[]) => void;
     variant?: 'default' | 'destructive';
   }>;
   tableId: string; // Required for persistence
@@ -58,6 +59,7 @@ interface DataTableProps<TData, TValue> {
     label?: string;
   }>;
   enableColumnReordering?: boolean;
+  enableClipboardCopy?: boolean; // New option to automatically add copy functionality
 }
 
 export function DataTable<TData, TValue>({
@@ -75,7 +77,8 @@ export function DataTable<TData, TValue>({
   filterColumns = [],
   enableAggregation = false,
   aggregationColumns = [],
-  enableColumnReordering = false
+  enableColumnReordering = false,
+  enableClipboardCopy = false
 }: DataTableProps<TData, TValue>) {
   // Load and manage table layout preferences
   const { layout, updateLayout, resetLayout } = useTableLayout(tableId);
@@ -275,6 +278,27 @@ export function DataTable<TData, TValue>({
 
   // Calculate selected rows
   const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
+  const { toast } = useToast();
+
+  // Add automatic clipboard copy action if enabled
+  const allBulkActions = useMemo(() => {
+    const actions = [...bulkActions];
+    if (enableClipboardCopy) {
+      actions.unshift({
+        label: 'Copia negli Appunti',
+        icon: ({ className }: { className?: string }) => (
+          <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+        ),
+        onClick: (selectedData: TData[]) => {
+          copySelectedDataToClipboard(selectedData, orderedColumns, toast);
+        },
+        variant: 'default' as const,
+      });
+    }
+    return actions;
+  }, [bulkActions, enableClipboardCopy, orderedColumns, toast]);
 
   // Initialize column order
   useEffect(() => {
@@ -324,12 +348,12 @@ export function DataTable<TData, TValue>({
             </Button>
           </div>
           <div className="flex items-center gap-2">
-            {bulkActions.map((action, index) => (
+            {allBulkActions.map((action, index) => (
               <Button
                 key={index}
                 variant={action.variant || 'default'}
                 size="sm"
-                onClick={() => action.onClick(selectedRows)}
+                onClick={() => action.onClick(selectedRows, orderedColumns)}
                 data-testid={`button-bulk-${action.label.toLowerCase().replace(/\s+/g, '-')}`}
               >
                 {action.icon && <action.icon className="mr-2 h-4 w-4" />}
@@ -523,6 +547,92 @@ export function DataTable<TData, TValue>({
       </div>
     </div>
   );
+}
+
+// Helper function to copy selected data to clipboard in TSV format
+export function copySelectedDataToClipboard<TData>(
+  selectedData: TData[],
+  visibleColumns: any[],
+  toast: any
+) {
+  if (selectedData.length === 0) {
+    toast({
+      title: "Nessun dato selezionato",
+      description: "Seleziona almeno una riga per copiare i dati.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  try {
+    // Get only visible columns (exclude select and actions columns)
+    const dataColumns = visibleColumns.filter(col => {
+      const colId = col.id || (col as any).accessorKey;
+      return colId && colId !== 'select' && colId !== 'actions';
+    });
+
+    // Create header row with column names
+    const headers = dataColumns.map(col => {
+      const colHeader = typeof col.header === 'function' ? 
+        (col.id || (col as any).accessorKey) : 
+        (col.header || col.id || (col as any).accessorKey);
+      return String(colHeader);
+    });
+
+    // Create data rows
+    const dataRows = selectedData.map(row => {
+      return dataColumns.map(col => {
+        const colId = col.id || (col as any).accessorKey;
+        const cellValue = (row as any)[colId];
+        
+        // Handle different data types
+        if (cellValue === null || cellValue === undefined) {
+          return '';
+        }
+        
+        // Convert to string and clean up for TSV format
+        let value = String(cellValue);
+        
+        // Replace tabs and newlines to avoid breaking TSV format
+        value = value.replace(/\t/g, ' ').replace(/\n/g, ' ').replace(/\r/g, '');
+        
+        return value;
+      });
+    });
+
+    // Combine headers and data into TSV format
+    const tsvContent = [headers, ...dataRows]
+      .map(row => row.join('\t'))
+      .join('\n');
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(tsvContent).then(() => {
+      toast({
+        title: "Dati copiati negli appunti",
+        description: `${selectedData.length} ${selectedData.length === 1 ? 'riga copiata' : 'righe copiate'} nel formato Excel.`,
+      });
+    }).catch(() => {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = tsvContent;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      toast({
+        title: "Dati copiati negli appunti",
+        description: `${selectedData.length} ${selectedData.length === 1 ? 'riga copiata' : 'righe copiate'} nel formato Excel.`,
+      });
+    });
+
+  } catch (error) {
+    toast({
+      title: "Errore nella copia",
+      description: "Impossibile copiare i dati negli appunti.",
+      variant: "destructive",
+    });
+  }
 }
 
 // Helper function to create image column
