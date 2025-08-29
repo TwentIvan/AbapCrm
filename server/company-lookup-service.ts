@@ -785,15 +785,33 @@ export class CompanyLookupService {
       if (companyData.website) {
         console.log(`[WEB-SEARCH] Extracting data from official website: ${companyData.website}`);
         
-        const websiteData = await this.extractDataFromWebsite(companyData.website);
-        if (websiteData.fiscalCode) enrichedData.fiscalCode = websiteData.fiscalCode;
-        if (websiteData.vatNumber) enrichedData.vatNumber = websiteData.vatNumber;
-        if (websiteData.logoUrl) enrichedData.logoUrl = websiteData.logoUrl;
-        
-        // If we found all the data we need, return early
-        if (enrichedData.fiscalCode && enrichedData.vatNumber && enrichedData.logoUrl) {
-          return enrichedData;
+        try {
+          const websiteData = await this.extractDataFromWebsite(companyData.website);
+          console.log(`[WEB-SEARCH] Website extraction result:`, websiteData);
+          
+          if (websiteData.fiscalCode) {
+            enrichedData.fiscalCode = websiteData.fiscalCode;
+            console.log(`[WEB-SEARCH] Found CF from website: ${websiteData.fiscalCode}`);
+          }
+          if (websiteData.vatNumber) {
+            enrichedData.vatNumber = websiteData.vatNumber;
+            console.log(`[WEB-SEARCH] Found P.IVA from website: ${websiteData.vatNumber}`);
+          }
+          if (websiteData.logoUrl) {
+            enrichedData.logoUrl = websiteData.logoUrl;
+            console.log(`[WEB-SEARCH] Found logo from website: ${websiteData.logoUrl}`);
+          }
+          
+          // If we found all the data we need, return early
+          if (enrichedData.fiscalCode && enrichedData.vatNumber && enrichedData.logoUrl) {
+            console.log(`[WEB-SEARCH] Complete data found from website!`);
+            return enrichedData;
+          }
+        } catch (error) {
+          console.error(`[WEB-SEARCH] Error extracting from website ${companyData.website}:`, error);
         }
+      } else {
+        console.log(`[WEB-SEARCH] No website URL available for: ${companyData.name}`);
       }
 
       // If we still need fiscal data, search for it specifically
