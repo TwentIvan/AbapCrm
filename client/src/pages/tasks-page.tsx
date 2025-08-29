@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal } from "lucide-react";
+import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square } from "lucide-react";
 import { Task } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import TaskForm from "@/components/forms/task-form";
@@ -41,6 +41,87 @@ const statusLabels = {
   review: "Review",
   completed: "Completed",
 };
+
+// Compact Timer Buttons Component
+function TaskTimerButtons({ task }: { task: Task }) {
+  const queryClient = useQueryClient();
+  
+  // Get running entry globally
+  const { data: runningEntry } = useQuery<any>({
+    queryKey: ["/api/time-entries/running"],
+  });
+
+  // Start timer mutation
+  const startTimerMutation = useMutation({
+    mutationFn: async () => {
+      const requestData = {
+        taskId: task.id,
+        startTime: new Date().toISOString(),
+        isRunning: true,
+      };
+      const res = await apiRequest("POST", "/api/time-entries", requestData);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/running"] });
+    },
+  });
+
+  // Stop timer mutation
+  const stopTimerMutation = useMutation({
+    mutationFn: async (entryId: string) => {
+      const res = await apiRequest("POST", `/api/time-entries/${entryId}/stop`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/running"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+  });
+
+  const isCurrentTaskRunning = runningEntry && runningEntry.taskId === task.id;
+  const hasRunningTimer = !!runningEntry;
+
+  const handleStart = () => {
+    startTimerMutation.mutate();
+  };
+
+  const handleStop = () => {
+    if (runningEntry) {
+      stopTimerMutation.mutate(runningEntry.id);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      {isCurrentTaskRunning ? (
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={handleStop}
+          disabled={stopTimerMutation.isPending}
+          data-testid={`button-stop-timer-${task.id}`}
+        >
+          <Square className="h-3 w-3 mr-1" />
+          Stop
+        </Button>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleStart}
+          disabled={startTimerMutation.isPending || hasRunningTimer}
+          data-testid={`button-start-timer-${task.id}`}
+        >
+          <Play className="h-3 w-3 mr-1" />
+          Start
+        </Button>
+      )}
+    </div>
+  );
+}
 
 export default function TasksPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -183,6 +264,14 @@ export default function TasksPage() {
             {dueDate.toLocaleDateString()}
           </div>
         );
+      },
+    },
+    {
+      id: 'timeTracker',
+      header: 'Timer',
+      cell: ({ row }: any) => {
+        const task = row.original;
+        return <TaskTimerButtons task={task} />;
       },
     },
     {
@@ -504,6 +593,8 @@ export default function TasksPage() {
           { id: 'assigneeId', label: 'Assignee' },
           { id: 'dueDate', label: 'Due Date' },
           { id: 'estimatedEffort', label: 'Estimated Effort' },
+          { id: 'timeTracker', label: 'Timer' },
+          { id: 'actions', label: 'Actions' },
         ]}
         open={showConfigDialog}
         onOpenChange={setShowConfigDialog}
