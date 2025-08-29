@@ -193,12 +193,11 @@ function TaskTimerButtons({ task }: { task: Task }) {
       
       {/* Completion Dialog */}
       <CompletionDialog
-        open={showCompletionDialog}
-        onOpenChange={setShowCompletionDialog}
-        suggestedPercentage={calculateSuggestedPercentage()}
+        isOpen={showCompletionDialog}
+        onClose={() => setShowCompletionDialog(false)}
+        currentPercentage={calculateSuggestedPercentage()}
         onSubmit={handleCompletionSubmit}
-        onCancel={() => setShowCompletionDialog(false)}
-        isSubmitting={stopTimerMutation.isPending}
+        isLoading={stopTimerMutation.isPending}
       />
     </>
   );
