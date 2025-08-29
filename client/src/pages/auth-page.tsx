@@ -77,7 +77,7 @@ export default function AuthPage() {
       <div className="flex items-center justify-center p-8 bg-background">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto w-80 h-40 rounded-lg overflow-hidden mb-6">
+            <div className="mx-auto w-80 h-48 rounded-lg overflow-hidden mb-6">
               <img src={hubUpLogo} alt="The Hub Up" className="w-full h-full object-cover" data-testid="img-auth-logo" />
             </div>
             <CardDescription>
