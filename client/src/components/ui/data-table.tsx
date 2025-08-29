@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { flexRender, getCoreRowModel, getSortedRowModel, getFilteredRowModel, getPaginationRowModel, useReactTable, type ColumnDef, type SortingState, type ColumnFiltersState } from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, getSortedRowModel, getFilteredRowModel, getPaginationRowModel, useReactTable, type ColumnDef, type SortingState, type ColumnFiltersState, type RowSelectionState } from "@tanstack/react-table";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Settings, Search, Eye, EyeOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, Search, Eye, EyeOff, Trash2, X } from "lucide-react";
 import ImageContainer from "@/components/ui/image-container";
 
 interface DataTableProps<TData, TValue> {
@@ -15,6 +16,14 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string;
   onRowClick?: (row: TData) => void;
   configurableColumns?: boolean;
+  enableSelection?: boolean;
+  onSelectionChange?: (selectedRows: TData[]) => void;
+  bulkActions?: Array<{
+    label: string;
+    icon?: React.ComponentType<{ className?: string }>;
+    onClick: (selectedRows: TData[]) => void;
+    variant?: 'default' | 'destructive';
+  }>;
 }
 
 export function DataTable<TData, TValue>({
@@ -23,16 +32,45 @@ export function DataTable<TData, TValue>({
   searchKey = "name",
   searchPlaceholder = "Search...",
   onRowClick,
-  configurableColumns = true
+  configurableColumns = true,
+  enableSelection = false,
+  onSelectionChange,
+  bulkActions = []
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  // Selection columns setup
+  const selectionColumn = enableSelection ? [{
+    id: "select",
+    header: ({ table }: any) => (
+      <Checkbox
+        checked={table.getIsAllPageRowsSelected()}
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+        data-testid="checkbox-select-all"
+      />
+    ),
+    cell: ({ row }: any) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+        data-testid={`checkbox-select-${row.id}`}
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  }] : [];
+
+  const allColumns = [...selectionColumn, ...columns];
 
   const table = useReactTable({
     data,
-    columns,
+    columns: allColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -41,17 +79,60 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: setGlobalFilter,
+    onRowSelectionChange: setRowSelection,
     globalFilterFn: "includesString",
+    enableRowSelection: enableSelection,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       globalFilter,
+      rowSelection,
     },
   });
 
+  // Notify parent about selection changes
+  const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
+  if (onSelectionChange && selectedRows.length !== table.getFilteredSelectedRowModel().rows.length) {
+    onSelectionChange(selectedRows);
+  }
+
   return (
     <div className="space-y-4">
+      {/* Bulk Actions Toolbar */}
+      {enableSelection && selectedRows.length > 0 && (
+        <div className="flex items-center justify-between bg-muted/50 px-4 py-2 rounded-lg border">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">
+              {selectedRows.length} elemento{selectedRows.length !== 1 ? 'i' : ''} selezionat{selectedRows.length !== 1 ? 'i' : 'o'}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => table.toggleAllRowsSelected(false)}
+              data-testid="button-clear-selection"
+            >
+              <X className="h-4 w-4" />
+              Deseleziona
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            {bulkActions.map((action, index) => (
+              <Button
+                key={index}
+                variant={action.variant || 'default'}
+                size="sm"
+                onClick={() => action.onClick(selectedRows)}
+                data-testid={`button-bulk-${action.label.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                {action.icon && <action.icon className="mr-2 h-4 w-4" />}
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Search and Column Visibility */}
       <div className="flex items-center justify-between">
         <div className="relative max-w-sm">
@@ -138,8 +219,14 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className={onRowClick ? "cursor-pointer hover:bg-muted/50" : ""}
-                  onClick={() => onRowClick?.(row.original)}
+                  className={`${onRowClick ? "cursor-pointer hover:bg-muted/50" : ""} ${row.getIsSelected() ? "bg-muted/50" : ""}`}
+                  onClick={(e) => {
+                    // Don't trigger row click if clicking on checkbox
+                    if ((e.target as HTMLElement).closest('[role="checkbox"]')) {
+                      return;
+                    }
+                    onRowClick?.(row.original);
+                  }}
                   data-testid={`row-${row.id}`}
                 >
                   {row.getVisibleCells().map((cell) => (

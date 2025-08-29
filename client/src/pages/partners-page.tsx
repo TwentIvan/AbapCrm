@@ -37,7 +37,9 @@ export default function PartnersPage() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  const [selectedPartners, setSelectedPartners] = useState<Partner[]>([]);
   const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -47,7 +49,16 @@ export default function PartnersPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (partnerId: string) => apiRequest(`/api/partners/${partnerId}`, 'DELETE'),
+    mutationFn: async (partnerId: string) => {
+      const response = await fetch(`/api/partners/${partnerId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete partner');
+      }
+      return response;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
       toast({
@@ -61,6 +72,41 @@ export default function PartnersPage() {
       toast({
         title: "Errore",
         description: "Non è stato possibile eliminare il partner.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (partnerIds: string[]) => {
+      const promises = partnerIds.map(id => 
+        fetch(`/api/partners/${id}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        })
+      );
+      const responses = await Promise.all(promises);
+      
+      // Check if all deletions were successful
+      const failed = responses.filter(res => !res.ok);
+      if (failed.length > 0) {
+        throw new Error(`Failed to delete ${failed.length} partner(s)`);
+      }
+      return responses;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      toast({
+        title: "Partners eliminati",
+        description: `${selectedPartners.length} partner eliminati con successo.`,
+      });
+      setSelectedPartners([]);
+      setShowBulkDeleteDialog(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -81,6 +127,24 @@ export default function PartnersPage() {
       deleteMutation.mutate(selectedPartner.id);
     }
   };
+
+  const handleBulkDelete = () => {
+    setShowBulkDeleteDialog(true);
+  };
+
+  const confirmBulkDelete = () => {
+    const partnerIds = selectedPartners.map(p => p.id);
+    bulkDeleteMutation.mutate(partnerIds);
+  };
+
+  const bulkActions = [
+    {
+      label: 'Elimina Selezionati',
+      icon: Trash2,
+      onClick: handleBulkDelete,
+      variant: 'destructive' as const,
+    },
+  ];
 
   // Define table columns for list view
   const tableColumns = [
@@ -212,6 +276,9 @@ export default function PartnersPage() {
               data={partners || []}
               searchPlaceholder="Search partners..."
               onRowClick={handleEdit}
+              enableSelection={true}
+              onSelectionChange={setSelectedPartners}
+              bulkActions={bulkActions}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -392,6 +459,32 @@ export default function PartnersPage() {
               data-testid="button-confirm-delete"
             >
               {deleteMutation.isPending ? "Eliminando..." : "Elimina"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma Eliminazione Multipla</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare {selectedPartners.length} partner selezionati? 
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-bulk-delete">
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkDeleteMutation.isPending}
+              data-testid="button-confirm-bulk-delete"
+            >
+              {bulkDeleteMutation.isPending ? "Eliminando..." : `Elimina ${selectedPartners.length} Partner`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
