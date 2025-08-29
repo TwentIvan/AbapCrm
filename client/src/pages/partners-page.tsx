@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DataTable, createImageColumn, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
+import { TableConfiguration } from "@/components/ui/table-configuration";
 import ImageContainer from "@/components/ui/image-container";
 import { Building, Mail, Phone, MapPin, MoreHorizontal, Grid3X3, List, Edit, Trash2 } from "lucide-react";
 import { Partner } from "@shared/schema";
@@ -259,14 +260,21 @@ export default function PartnersPage() {
         <div className="p-6">
           {/* Layout Management and View Toggle */}
           <div className="flex justify-between items-center mb-4">
-            {/* Layout Manager */}
-            <LayoutManager
-              currentLayoutName={currentLayoutName}
-              savedLayouts={savedLayouts}
-              onLoadLayout={loadLayout}
-              onRenameLayout={renameLayout}
-              onDeleteLayout={deleteLayout}
-            />
+            {/* Layout Manager and Configuration */}
+            <div className="flex items-center gap-2">
+              <LayoutManager
+                currentLayoutName={currentLayoutName}
+                savedLayouts={savedLayouts}
+                onLoadLayout={loadLayout}
+                onRenameLayout={renameLayout}
+                onDeleteLayout={deleteLayout}
+              />
+              <TableConfiguration
+                tableId="partners"
+                availableColumns={filterColumns}
+                onConfigurationChange={(newLayout) => updateLayout(newLayout)}
+              />
+            </div>
 
             {/* View Toggle */}
             <div className="flex bg-muted rounded-lg p-1">
