@@ -117,10 +117,12 @@ class UserPreferencesService {
     const tableConfig = preferences.tables[tableId];
     
     if (!tableConfig || !tableConfig.currentLayout || !tableConfig.layouts[tableConfig.currentLayout]) {
+      console.log(`No saved layout found for ${tableId}, using default`);
       return this.getDefaultLayout();
     }
     
     const { name, createdAt, updatedAt, ...layout } = tableConfig.layouts[tableConfig.currentLayout];
+    console.log(`Loaded layout for ${tableId}:`, layout.viewMode);
     return layout;
   }
 
@@ -344,6 +346,8 @@ class UserPreferencesService {
   private saveTimeouts = new Map<string, NodeJS.Timeout>();
   
   autoSaveTableLayout(tableId: string, layout: Partial<TableLayout>, delay = 1000): void {
+    console.log(`Auto-saving layout for ${tableId}:`, layout);
+    
     // Clear existing timeout for this table
     const existingTimeout = this.saveTimeouts.get(tableId);
     if (existingTimeout) {
@@ -354,6 +358,7 @@ class UserPreferencesService {
     const timeout = setTimeout(() => {
       this.saveTableLayout(tableId, layout);
       this.saveTimeouts.delete(tableId);
+      console.log(`Layout saved for ${tableId}`);
     }, delay);
     
     this.saveTimeouts.set(tableId, timeout);
@@ -471,6 +476,17 @@ export function useTableLayout(tableId: string) {
   const [savedLayouts, setSavedLayouts] = useState<SavedLayout[]>(() => 
     userPreferences.getSavedLayouts(tableId)
   );
+
+  // Sync with localStorage on component mount and when the component re-renders
+  useEffect(() => {
+    const loadedLayout = userPreferences.getTableLayout(tableId);
+    const loadedLayoutName = userPreferences.getCurrentLayoutName(tableId);
+    const loadedSavedLayouts = userPreferences.getSavedLayouts(tableId);
+    
+    setLayout(loadedLayout);
+    setCurrentLayoutName(loadedLayoutName);
+    setSavedLayouts(loadedSavedLayouts);
+  }, [tableId]);
 
   const updateLayout = useCallback((updates: Partial<TableLayout>) => {
     setLayout(prevLayout => {
