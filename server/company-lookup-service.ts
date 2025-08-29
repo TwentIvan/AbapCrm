@@ -22,6 +22,54 @@ export interface CompanyInfo {
 // Mock database of Italian companies - in production this would be replaced with real APIs
 const MOCK_COMPANIES: CompanyInfo[] = [
   {
+    name: "Hera S.p.A.",
+    legalName: "Hera Società per Azioni", 
+    address: "Viale Carlo Berti Pichat 2/4",
+    city: "Bologna",
+    postalCode: "40127",
+    country: "IT",
+    fiscalCode: "04245520376",
+    vatNumber: "IT04245520376",
+    website: "https://www.gruppohera.it",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Hera_logo.svg/1200px-Hera_logo.svg.png",
+    description: "Utility multiservizi nei settori ambiente, energia e idrico",
+    sector: "Servizi pubblici",
+    employees: "9,000+",
+    founded: 2002
+  },
+  {
+    name: "A2A S.p.A.",
+    legalName: "A2A Società per Azioni",
+    address: "Corso di Porta Vittoria 4", 
+    city: "Milano",
+    postalCode: "20122",
+    country: "IT",
+    fiscalCode: "11957540153",
+    vatNumber: "IT11957540153",
+    website: "https://www.a2a.eu",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/A2A_logo.svg/1200px-A2A_logo.svg.png",
+    description: "Life Company leader nei servizi ambientali ed energetici",
+    sector: "Servizi pubblici",
+    employees: "13,000+",
+    founded: 2008
+  },
+  {
+    name: "IREN S.p.A.",
+    legalName: "IREN Società per Azioni",
+    address: "Via Nubi di Magellano 30",
+    city: "Reggio Emilia", 
+    postalCode: "42123",
+    country: "IT",
+    fiscalCode: "01916920365",
+    vatNumber: "IT01916920365",
+    website: "https://www.gruppoiren.it",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/IREN_logo.svg/1200px-IREN_logo.svg.png",
+    description: "Multiutility leader nei settori energia, ambiente e reti",
+    sector: "Servizi pubblici",
+    employees: "8,500+",
+    founded: 2010
+  },
+  {
     name: "Eni S.p.A.",
     legalName: "Eni Società per Azioni",
     address: "Piazzale Enrico Mattei 1",
@@ -361,86 +409,87 @@ export class CompanyLookupService {
       return [];
     }
 
-    // Text Search API - good for finding businesses by name
-    const apiUrl = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
+    // New Places API (Text Search)
+    const apiUrl = 'https://places.googleapis.com/v1/places:searchText';
     
     // Try multiple search variations for better results
     const searchQueries = [
       `${query} Italia`,
-      `${query} Italy`,
+      `${query} Italy`, 
       query,
       `${query} azienda`,
       `${query} spa srl`
     ];
 
-    console.log(`[GOOGLE-PLACES] Starting search for: ${query}`);
+    console.log(`[GOOGLE-PLACES] Starting NEW API search for: ${query}`);
     console.log(`[GOOGLE-PLACES] API Key present: ${apiKey ? 'YES' : 'NO'}`);  
-    console.log(`[GOOGLE-PLACES] API Key length: ${apiKey?.length || 0}`);
-
+    
     // Try each search query until we find results
     for (let i = 0; i < searchQueries.length; i++) {
       const searchQuery = searchQueries[i];
-      console.log(`[GOOGLE-PLACES] Attempt ${i + 1}/5: "${searchQuery}"`);
+      console.log(`[GOOGLE-PLACES] NEW API Attempt ${i + 1}/5: "${searchQuery}"`);
       
-      const params = new URLSearchParams({
-        query: searchQuery,
-        key: apiKey,
-        language: 'it',
-        region: 'it'
-      });
+      const requestBody = {
+        textQuery: searchQuery,
+        languageCode: 'it',
+        regionCode: 'IT',
+        maxResultCount: 10,
+        includedType: 'establishment',
+        locationBias: {
+          rectangle: {
+            low: { latitude: 36.0, longitude: 6.0 },  // Sud Italia
+            high: { latitude: 47.0, longitude: 19.0 } // Nord Italia
+          }
+        }
+      };
 
-      console.log(`[GOOGLE-PLACES] Full URL: ${apiUrl}?${params}`);
+      console.log(`[GOOGLE-PLACES] NEW API URL: ${apiUrl}`);
+      console.log(`[GOOGLE-PLACES] Request body:`, JSON.stringify(requestBody, null, 2));
     
       try {
-        const response = await fetch(`${apiUrl}?${params}`);
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.websiteUri,places.nationalPhoneNumber,places.types,places.businessStatus'
+          },
+          body: JSON.stringify(requestBody)
+        });
         
-        console.log(`[GOOGLE-PLACES] HTTP Status: ${response.status} ${response.statusText}`);
+        console.log(`[GOOGLE-PLACES] NEW API HTTP Status: ${response.status} ${response.statusText}`);
         
         if (!response.ok) {
-          console.log(`[GOOGLE-PLACES] HTTP Error: ${response.status} ${response.statusText}`);
+          console.log(`[GOOGLE-PLACES] NEW API HTTP Error: ${response.status} ${response.statusText}`);
+          const errorText = await response.text();
+          console.log(`[GOOGLE-PLACES] Error response:`, errorText);
           if (i === searchQueries.length - 1) {
-            throw new Error(`Google Places API error: ${response.status} ${response.statusText}`);
+            throw new Error(`Google Places NEW API error: ${response.status} ${response.statusText}`);
           }
           continue; // Try next query
         }
 
         const data = await response.json();
-        console.log(`[GOOGLE-PLACES] API Status: ${data.status}`);
-        console.log(`[GOOGLE-PLACES] Error message: ${data.error_message || 'none'}`);
-        console.log(`[GOOGLE-PLACES] Results count: ${data.results?.length || 0}`);
+        console.log(`[GOOGLE-PLACES] NEW API Response:`, JSON.stringify(data, null, 2));
+        console.log(`[GOOGLE-PLACES] Results count: ${data.places?.length || 0}`);
         
-        if (data.status !== 'OK') {
-          console.log(`[GOOGLE-PLACES] API Error: ${data.status} - ${data.error_message || 'Unknown error'}`);
-          if (i === searchQueries.length - 1) {
-            throw new Error(`Google Places API returned status: ${data.status}`);
-          }
-          continue; // Try next query
-        }
-        
-        if (data.results && data.results.length > 0) {
-          console.log(`[GOOGLE-PLACES] SUCCESS! Found ${data.results.length} results for "${searchQuery}"`);
-          console.log(`[GOOGLE-PLACES] First result: ${data.results[0].name}`);
+        if (data.places && data.places.length > 0) {
+          console.log(`[GOOGLE-PLACES] SUCCESS! Found ${data.places.length} results for "${searchQuery}"`);
+          console.log(`[GOOGLE-PLACES] First result: ${data.places[0].displayName?.text}`);
           
-          // Transform and return results
-          const results = await Promise.all(
-            data.results.slice(0, 10).map(async (place: any) => {
-              // Get additional details for each place
-              const details = await this.getPlaceDetails(place.place_id, apiKey);
-              
-              return {
-                name: place.name,
-                legalName: place.name,
-                address: place.formatted_address,
-                city: this.extractCityFromAddress(place.formatted_address),
-                postalCode: this.extractPostalCodeFromAddress(place.formatted_address),
-                country: this.extractCountryFromAddress(place.formatted_address),
-                website: details?.website || place.website,
-                description: this.generateBusinessDescription(place),
-                sector: this.extractSectorFromTypes(place.types),
-                // Note: Google Places doesn't provide fiscal codes or VAT numbers
-              } as CompanyInfo;
-            })
-          );
+          // Transform NEW API results to our format
+          const results = data.places.slice(0, 10).map((place: any) => ({
+            name: place.displayName?.text || 'Nome non disponibile',
+            legalName: place.displayName?.text || 'Nome non disponibile',
+            address: place.formattedAddress || '',
+            city: this.extractCityFromAddress(place.formattedAddress || ''),
+            postalCode: this.extractPostalCodeFromAddress(place.formattedAddress || ''),
+            country: this.extractCountryFromAddress(place.formattedAddress || ''),
+            website: place.websiteUri,
+            description: this.generateBusinessDescription(place),
+            sector: this.extractSectorFromTypes(place.types || []),
+            // Note: Google Places doesn't provide fiscal codes or VAT numbers
+          } as CompanyInfo));
           
           return results;
         } else {
@@ -448,7 +497,7 @@ export class CompanyLookupService {
         }
         
       } catch (error) {
-        console.log(`[GOOGLE-PLACES] Fetch error for "${searchQuery}":`, error);
+        console.log(`[GOOGLE-PLACES] NEW API Fetch error for "${searchQuery}":`, error);
         if (i === searchQueries.length - 1) {
           throw error;
         }
