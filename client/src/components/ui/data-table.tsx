@@ -200,14 +200,6 @@ export function DataTable<TData, TValue>({
   
   const allColumns = orderedColumns;
 
-  // Debug layout changes after allColumns is defined
-  useEffect(() => {
-    const columnIds = allColumns.map(col => col.id || (col as any).accessorKey).filter(Boolean);
-    const visibilityKeys = Object.keys(layout.columnVisibility || {});
-    console.log('🔍 Column IDs:', columnIds);
-    console.log('🔍 Visibility keys:', visibilityKeys);
-    console.log('🔍 Layout columnVisibility:', layout.columnVisibility);
-  }, [layout, allColumns]);
 
   // Apply advanced filters to data (before table creation)
   const filteredData = useMemo(() => {
@@ -293,7 +285,11 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
+    onColumnVisibilityChange: (updater) => {
+      if (!isInitialSync) {
+        setColumnVisibility(updater);
+      }
+    },
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     globalFilterFn: "includesString",
@@ -307,11 +303,6 @@ export function DataTable<TData, TValue>({
     },
   });
 
-  // Debug React Table state
-  useEffect(() => {
-    console.log('🔍 React Table columnVisibility state:', columnVisibility);
-    console.log('🔍 React Table visible columns:', table.getVisibleLeafColumns().map(col => col.id));
-  }, [columnVisibility, table]);
 
   // Calculate selected rows
   const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
