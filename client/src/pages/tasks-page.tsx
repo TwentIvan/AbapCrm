@@ -50,10 +50,30 @@ function TaskTimerButtons({ task }: { task: Task }) {
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   
   // Get running entry globally
-  const { data: runningEntry } = useQuery<any>({
+  const { data: runningEntry, error: runningEntryError } = useQuery<any>({
     queryKey: ["/api/time-entries/running"],
+    queryFn: async () => {
+      const res = await fetch("/api/time-entries/running", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch running entry');
+      return res.json();
+    },
     refetchInterval: 1000, // Refresh every second to get timer updates
+    onSuccess: (data) => {
+      console.log('Running entry query success:', data);
+    },
+    onError: (error) => {
+      console.log('Running entry query error:', error);
+    }
   });
+
+  // Debug running entry
+  useEffect(() => {
+    console.log('TaskTimerButtons runningEntry updated:', {
+      runningEntry,
+      taskId: task.id,
+      isCurrentTaskRunning: runningEntry && runningEntry.taskId === task.id
+    });
+  }, [runningEntry, task.id]);
 
   // Start timer mutation
   const startTimerMutation = useMutation({
@@ -66,8 +86,8 @@ function TaskTimerButtons({ task }: { task: Task }) {
       const res = await apiRequest("POST", "/api/time-entries", requestData);
       return await res.json();
     },
-    onSuccess: () => {
-      console.log('Timer started successfully');
+    onSuccess: (data) => {
+      console.log('Timer started successfully, response:', data);
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries/running"] });
       // Force refetch of running entry
