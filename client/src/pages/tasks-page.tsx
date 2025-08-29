@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
@@ -15,6 +15,7 @@ import { Task } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import TaskForm from "@/components/forms/task-form";
 import { TimeTracker } from "@/components/timesheet/time-tracker";
+import { CompletionDialog } from "@/components/timesheet/completion-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
@@ -45,6 +46,8 @@ const statusLabels = {
 // Compact Timer Buttons Component
 function TaskTimerButtons({ task }: { task: Task }) {
   const queryClient = useQueryClient();
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   
   // Get running entry globally
   const { data: runningEntry } = useQuery<any>({
@@ -70,16 +73,38 @@ function TaskTimerButtons({ task }: { task: Task }) {
 
   // Stop timer mutation
   const stopTimerMutation = useMutation({
-    mutationFn: async (entryId: string) => {
+    mutationFn: async ({ entryId, completionData }: { entryId: string; completionData?: { completionPercentage: number; notes?: string } }) => {
       const res = await apiRequest("POST", `/api/time-entries/${entryId}/stop`);
+      
+      // Update task completion percentage if provided
+      if (completionData) {
+        await apiRequest("PUT", `/api/tasks/${task.id}`, {
+          completionPercentage: completionData.completionPercentage,
+        });
+      }
+      
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries/running"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      setShowCompletionDialog(false);
     },
   });
+
+  // Update current time every second when timer is running
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (runningEntry && runningEntry.taskId === task.id) {
+      interval = setInterval(() => {
+        setCurrentTime(new Date());
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [runningEntry, task.id]);
 
   const isCurrentTaskRunning = runningEntry && runningEntry.taskId === task.id;
   const hasRunningTimer = !!runningEntry;
@@ -90,36 +115,92 @@ function TaskTimerButtons({ task }: { task: Task }) {
 
   const handleStop = () => {
     if (runningEntry) {
-      stopTimerMutation.mutate(runningEntry.id);
+      setShowCompletionDialog(true);
+    }
+  };
+
+  // Calculate elapsed time for display
+  const getElapsedTime = () => {
+    if (!isCurrentTaskRunning || !runningEntry) return "";
+    
+    const startTime = new Date(runningEntry.startTime);
+    const elapsed = Math.floor((currentTime.getTime() - startTime.getTime()) / 1000);
+    const hours = Math.floor(elapsed / 3600);
+    const minutes = Math.floor((elapsed % 3600) / 60);
+    const seconds = elapsed % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Calculate suggested completion percentage 
+  const calculateSuggestedPercentage = () => {
+    if (!runningEntry) return task.completionPercentage || 0;
+
+    const sessionStartTime = new Date(runningEntry.startTime);
+    const sessionDuration = (currentTime.getTime() - sessionStartTime.getTime()) / (1000 * 60);
+    const currentCompletion = task.completionPercentage || 0;
+    
+    // Simple practical approach: meaningful increments based on time worked
+    let suggestedIncrease = 0;
+    
+    if (sessionDuration >= 15) { // 15+ minutes = significant work
+      suggestedIncrease = Math.max(5, Math.min(15, sessionDuration / 4)); // 5-15% increase
+    } else if (sessionDuration >= 5) { // 5-14 minutes = moderate work  
+      suggestedIncrease = Math.max(2, sessionDuration / 2); // 2-7% increase
+    } else { // Less than 5 minutes = small adjustment
+      suggestedIncrease = 1; // 1% increase
+    }
+    
+    return Math.min(100, Math.round(currentCompletion + suggestedIncrease));
+  };
+
+  const handleCompletionSubmit = (completionData: { completionPercentage: number; notes?: string }) => {
+    if (runningEntry) {
+      stopTimerMutation.mutate({ entryId: runningEntry.id, completionData });
     }
   };
 
   return (
-    <div className="flex items-center gap-1">
-      {isCurrentTaskRunning ? (
-        <Button
-          size="sm"
-          variant="destructive"
-          onClick={handleStop}
-          disabled={stopTimerMutation.isPending}
-          data-testid={`button-stop-timer-${task.id}`}
-        >
-          <Square className="h-3 w-3 mr-1" />
-          Stop
-        </Button>
-      ) : (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleStart}
-          disabled={startTimerMutation.isPending || hasRunningTimer}
-          data-testid={`button-start-timer-${task.id}`}
-        >
-          <Play className="h-3 w-3 mr-1" />
-          Start
-        </Button>
-      )}
-    </div>
+    <>
+      <div className="flex items-center gap-1">
+        {isCurrentTaskRunning ? (
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={handleStop}
+            disabled={stopTimerMutation.isPending}
+            data-testid={`button-stop-timer-${task.id}`}
+          >
+            <Square className="h-3 w-3 mr-1" />
+            {getElapsedTime()}
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleStart}
+            disabled={startTimerMutation.isPending || hasRunningTimer}
+            data-testid={`button-start-timer-${task.id}`}
+          >
+            <Play className="h-3 w-3 mr-1" />
+            Start
+          </Button>
+        )}
+      </div>
+      
+      {/* Completion Dialog */}
+      <CompletionDialog
+        open={showCompletionDialog}
+        onOpenChange={setShowCompletionDialog}
+        suggestedPercentage={calculateSuggestedPercentage()}
+        onSubmit={handleCompletionSubmit}
+        onCancel={() => setShowCompletionDialog(false)}
+        isSubmitting={stopTimerMutation.isPending}
+      />
+    </>
   );
 }
 
