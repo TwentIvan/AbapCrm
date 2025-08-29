@@ -154,7 +154,10 @@ export function LayoutManager({
                   <>
                     <div className="flex-1">
                       <button
-                        onClick={() => onLoadLayout(layout.id)}
+                        onClick={() => {
+                          console.log('🎯 Layout clicked:', layout.name);
+                          onLoadLayout(layout.id);
+                        }}
                         className="text-left hover:underline focus:underline text-sm font-medium"
                         data-testid={`button-load-layout-${index}`}
                       >

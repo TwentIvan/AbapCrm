@@ -93,8 +93,12 @@ export function DataTable<TData, TValue>({
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>(layout.filters || []);
   const [columnOrder, setColumnOrder] = useState<string[]>(layout.columnOrder || []);
   
+  // Force table re-render when layout changes
+  const tableKey = `table-${tableId}`;
+  
   // Sync local state with layout changes (when loading different layouts)
   useEffect(() => {
+    console.log('🔄 Layout effect triggered');
     setIsInitialSync(true);
     
     // Force update all states to match layout - use direct values
@@ -285,11 +289,7 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: (updater) => {
-      if (!isInitialSync) {
-        setColumnVisibility(updater);
-      }
-    },
+    onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     globalFilterFn: "includesString",
