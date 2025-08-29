@@ -83,7 +83,7 @@ export function DataTable<TData, TValue>({
   editingLayout = null // Layout being edited
 }: DataTableProps<TData, TValue>) {
   // Load and manage table layout preferences
-  const { layout, updateLayout, resetLayout, saveLayoutAs } = useTableLayout(tableId);
+  const { layout, updateLayout, resetLayout, saveLayoutAs, currentLayoutName } = useTableLayout(tableId);
   
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
