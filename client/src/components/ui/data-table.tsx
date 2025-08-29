@@ -513,12 +513,11 @@ export function DataTable<TData, TValue>({
                     // Don't trigger row click if clicking on interactive elements
                     const target = e.target as HTMLElement;
                     
-                    console.log('Table row clicked, checking target:', {
-                      tagName: target.tagName,
-                      hasTimerButton: !!target.closest('[data-timer-button="true"]'),
-                      hasButton: !!target.closest('button'),
-                      targetElement: target
-                    });
+                    console.log('Table row clicked, target:', target.tagName);
+                    console.log('Has timer button attr:', !!target.closest('[data-timer-button="true"]'));
+                    console.log('Has button:', !!target.closest('button'));
+                    console.log('Timer button element:', target.closest('[data-timer-button="true"]'));
+                    console.log('Button element:', target.closest('button'));
                     
                     if (target.closest('[role="checkbox"]') || 
                         target.closest('[data-timer-button="true"]') ||
