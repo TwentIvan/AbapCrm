@@ -898,7 +898,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                           <div className="text-sm text-gray-600 mb-1">{company.legalName}</div>
                         )}
                         <div className="flex items-center gap-4 text-sm text-gray-500">
-                          {company.city && <span>📍 {company.city}</span>}
+                          {company.address && <span>📍 {company.address}</span>}
                           {company.sector && <span>🏢 {company.sector}</span>}
                         </div>
                         {company.description && (
