@@ -178,10 +178,7 @@ function TaskTimerButtons({ task }: { task: Task }) {
 
   return (
     <>
-      <div 
-        className="flex items-center gap-1"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="flex items-center gap-1">
         {isCurrentTaskRunning ? (
           <Button
             size="sm"
@@ -189,7 +186,6 @@ function TaskTimerButtons({ task }: { task: Task }) {
             onClick={handleStop}
             disabled={stopTimerMutation.isPending}
             data-testid={`button-stop-timer-${task.id}`}
-            onClickCapture={(e) => e.stopPropagation()}
           >
             <Square className="h-3 w-3 mr-1" />
             {getElapsedTime()}
@@ -201,7 +197,6 @@ function TaskTimerButtons({ task }: { task: Task }) {
             onClick={handleStart}
             disabled={startTimerMutation.isPending || hasRunningTimer}
             data-testid={`button-start-timer-${task.id}`}
-            onClickCapture={(e) => e.stopPropagation()}
           >
             <Play className="h-3 w-3 mr-1" />
             Start
