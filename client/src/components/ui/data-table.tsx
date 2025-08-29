@@ -226,8 +226,7 @@ export function DataTable<TData, TValue>({
   const getVisibleColumnsInOrder = useMemo(() => {
     let layoutColumns = layout.columns || {};
     
-    console.log(`🔍 DEBUG - Layout: "${currentLayoutName}", Columns:`, layoutColumns);
-    console.log(`🔍 DEBUG - columnVisibility:`, layout.columnVisibility);
+    // Debug logs removed - algorithm working perfectly
     
     // SYNC FIX: Update layout.columns from columnVisibility if they don't match
     if (layout.columnVisibility && Object.keys(layout.columnVisibility).length > 0) {
@@ -237,8 +236,6 @@ export function DataTable<TData, TValue>({
       );
       
       if (needsSync) {
-        console.log(`🔄 SYNC: Updating columns from columnVisibility`);
-        
         // Update layoutColumns from columnVisibility
         Object.entries(layout.columnVisibility).forEach(([colId, visible]) => {
           if (layoutColumns[colId]) {
@@ -248,14 +245,12 @@ export function DataTable<TData, TValue>({
             };
           }
         });
-        
-        console.log(`✅ SYNC: Updated columns:`, layoutColumns);
       }
     }
     
     // AUTO-POPULATE: Only for DEFAULT layout if still empty
     if (Object.keys(layoutColumns).length === 0) {
-      console.log(`⚠️  Layout "${currentLayoutName}" has empty columns - needs configuration!`);
+      // Layout has empty columns
       
       if (currentLayoutName === 'Default') {
         layoutColumns = {};
@@ -266,9 +261,9 @@ export function DataTable<TData, TValue>({
           }
         });
         
-        console.log('🎯 Auto-populated columns for DEFAULT layout:', Object.keys(layoutColumns));
+        // Auto-populated columns for DEFAULT layout
       } else {
-        console.log(`❌ Layout "${currentLayoutName}" has no column configuration - returning empty!`);
+        // Layout has no column configuration
         return []; // Return empty columns for unconfigured saved layouts
       }
     }
@@ -296,7 +291,7 @@ export function DataTable<TData, TValue>({
       return aIndex - bIndex;
     });
     
-    console.log('🎯 User algorithm result:', visibleColumnIds);
+    // User algorithm result: SELECT visible=true ORDER BY position
     return filteredColumns;
   }, [orderedColumns, layout.columns, updateLayout, currentLayoutName]);
   
