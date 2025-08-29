@@ -7,11 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target } from "lucide-react";
+import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List } from "lucide-react";
 import { Project } from "@shared/schema";
 import ProjectForm from "@/components/forms/project-form";
 import ProjectPlanner from "@/components/planning/project-planner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const statusColors = {
   planning: "bg-blue-100 text-blue-800",
@@ -35,6 +37,8 @@ export default function ProjectsPage() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [showPlanner, setShowPlanner] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
+  const [selectedProjects, setSelectedProjects] = useState<Project[]>([]);
 
   const { data: projects, isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -60,6 +64,110 @@ export default function ProjectsPage() {
     setSelectedProject(null);
   };
 
+  // Define filter columns for advanced filtering
+  const filterColumns = [
+    { id: 'name', label: 'Nome', type: 'text' as const },
+    { id: 'status', label: 'Status', type: 'select' as const, options: [
+      { value: 'planning', label: 'Planning' },
+      { value: 'in_progress', label: 'In Progress' },
+      { value: 'review', label: 'Review' },
+      { value: 'completed', label: 'Completed' },
+      { value: 'on_hold', label: 'On Hold' },
+    ]},
+    { id: 'description', label: 'Descrizione', type: 'text' as const },
+    { id: 'budget', label: 'Budget', type: 'number' as const },
+    { id: 'startDate', label: 'Data Inizio', type: 'date' as const },
+    { id: 'endDate', label: 'Data Fine', type: 'date' as const },
+  ];
+
+  // Define aggregation columns 
+  const aggregationColumns = [
+    { id: 'name', type: 'count' as const, label: 'Totale Progetti' },
+    { id: 'budget', type: 'sum' as const, label: 'Budget Totale' },
+    { id: 'budget', type: 'avg' as const, label: 'Budget Medio' },
+  ];
+
+  // Define table columns for list view
+  const tableColumns = [
+    {
+      accessorKey: 'name',
+      header: 'Name',
+      cell: ({ row }: any) => (
+        <div className="font-medium" data-testid={`text-project-name-${row.original.id}`}>
+          {row.original.name}
+        </div>
+      ),
+    },
+    createBadgeColumn('status', 'Status', {
+      planning: 'secondary',
+      in_progress: 'default', 
+      review: 'outline',
+      completed: 'secondary',
+      on_hold: 'destructive'
+    }),
+    createTextColumn('description', 'Description', 50),
+    {
+      accessorKey: 'budget',
+      header: 'Budget',
+      cell: ({ row }: any) => {
+        const amount = parseFloat(row.getValue('budget') || '0');
+        return (
+          <div className="font-medium" data-testid={`text-project-budget-${row.original.id}`}>
+            €{amount.toLocaleString()}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'startDate', 
+      header: 'Start Date',
+      cell: ({ row }: any) => {
+        const date = row.getValue('startDate');
+        return date ? new Date(date).toLocaleDateString() : '-';
+      },
+    },
+    {
+      accessorKey: 'endDate',
+      header: 'End Date', 
+      cell: ({ row }: any) => {
+        const date = row.getValue('endDate');
+        return date ? new Date(date).toLocaleDateString() : '-';
+      },
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }: any) => {
+        const project = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" data-testid={`button-project-menu-${project.id}`}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={() => handleEditProject(project)}
+                data-testid={`menu-edit-project-${project.id}`}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Modifica
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => handleOpenPlanner(project)}
+                data-testid={`menu-planner-project-${project.id}`}
+              >
+                <Target className="mr-2 h-4 w-4" />
+                Planner
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
@@ -71,20 +179,52 @@ export default function ProjectsPage() {
         />
         
         <div className="p-6">
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <Card key={i}>
-                  <CardHeader>
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-16 w-full" />
-                  </CardContent>
-                </Card>
-              ))}
+          {/* View Toggle */}
+          <div className="flex justify-end mb-4">
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('cards')}
+                data-testid="button-view-cards"
+              >
+                <Grid3X3 className="mr-2 h-4 w-4" />
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                data-testid="button-view-list"
+              >
+                <List className="mr-2 h-4 w-4" />
+                List
+              </Button>
             </div>
+          </div>
+
+          {isLoading ? (
+            viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i}>
+                    <CardHeader>
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </CardHeader>
+                    <CardContent>
+                      <Skeleton className="h-16 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            )
           ) : projects?.length === 0 ? (
             <div className="text-center py-12">
               <Code className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -94,6 +234,21 @@ export default function ProjectsPage() {
                 Create Project
               </Button>
             </div>
+          ) : viewMode === 'list' ? (
+            <DataTable
+              columns={tableColumns}
+              data={projects || []}
+              searchPlaceholder="Search projects..."
+              onRowClick={handleEditProject}
+              enableSelection={true}
+              onSelectionChange={setSelectedProjects}
+              tableId="projects"
+              enableAdvancedFilters={true}
+              filterColumns={filterColumns}
+              enableAggregation={true}
+              aggregationColumns={aggregationColumns}
+              enableColumnReordering={true}
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {projects?.map((project) => (

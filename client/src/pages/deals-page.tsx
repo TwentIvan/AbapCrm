@@ -7,9 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Handshake, DollarSign, Calendar, TrendingUp, MoreHorizontal } from "lucide-react";
+import { Handshake, DollarSign, Calendar, TrendingUp, MoreHorizontal, Grid3X3, List, Edit } from "lucide-react";
 import { Deal } from "@shared/schema";
 import DealForm from "@/components/forms/deal-form";
+import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const stageColors = {
   prospecting: "bg-blue-100 text-blue-800",
@@ -31,6 +33,10 @@ const stageLabels = {
 
 export default function DealsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
+  const [selectedDeals, setSelectedDeals] = useState<Deal[]>([]);
 
   const { data: deals, isLoading } = useQuery<Deal[]>({
     queryKey: ["/api/deals"],
@@ -42,6 +48,108 @@ export default function DealsPage() {
   const totalValue = activeDeals?.reduce((sum, deal) => sum + parseFloat(deal.value), 0) || 0;
   const wonValue = closedDeals?.filter(deal => deal.stage === "won")
     .reduce((sum, deal) => sum + parseFloat(deal.value), 0) || 0;
+
+  const handleEditDeal = (deal: Deal) => {
+    setEditingDeal(deal);
+    setShowEditDialog(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setShowEditDialog(false);
+    setEditingDeal(null);
+  };
+
+  // Define filter columns for advanced filtering
+  const filterColumns = [
+    { id: 'title', label: 'Titolo', type: 'text' as const },
+    { id: 'stage', label: 'Stage', type: 'select' as const, options: [
+      { value: 'prospecting', label: 'Prospecting' },
+      { value: 'proposal', label: 'Proposal' },
+      { value: 'negotiation', label: 'Negotiation' },
+      { value: 'closing', label: 'Closing' },
+      { value: 'won', label: 'Won' },
+      { value: 'lost', label: 'Lost' },
+    ]},
+    { id: 'value', label: 'Valore', type: 'number' as const },
+    { id: 'company', label: 'Azienda', type: 'text' as const },
+    { id: 'contactPerson', label: 'Contatto', type: 'text' as const },
+    { id: 'closingDate', label: 'Data Chiusura', type: 'date' as const },
+  ];
+
+  // Define aggregation columns 
+  const aggregationColumns = [
+    { id: 'title', type: 'count' as const, label: 'Totale Deals' },
+    { id: 'value', type: 'sum' as const, label: 'Valore Totale' },
+    { id: 'value', type: 'avg' as const, label: 'Valore Medio' },
+  ];
+
+  // Define table columns for list view
+  const tableColumns = [
+    {
+      accessorKey: 'title',
+      header: 'Title',
+      cell: ({ row }: any) => (
+        <div className="font-medium" data-testid={`text-deal-title-${row.original.id}`}>
+          {row.original.title}
+        </div>
+      ),
+    },
+    createBadgeColumn('stage', 'Stage', {
+      prospecting: 'default',
+      proposal: 'outline',
+      negotiation: 'secondary',
+      closing: 'destructive',
+      won: 'default',
+      lost: 'destructive'
+    }),
+    {
+      accessorKey: 'value',
+      header: 'Value',
+      cell: ({ row }: any) => {
+        const amount = parseFloat(row.getValue('value') || '0');
+        return (
+          <div className="font-medium" data-testid={`text-deal-value-${row.original.id}`}>
+            €{amount.toLocaleString()}
+          </div>
+        );
+      },
+    },
+    createTextColumn('company', 'Company'),
+    createTextColumn('contactPerson', 'Contact'),
+    {
+      accessorKey: 'closingDate',
+      header: 'Closing Date',
+      cell: ({ row }: any) => {
+        const date = row.getValue('closingDate');
+        return date ? new Date(date).toLocaleDateString() : '-';
+      },
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }: any) => {
+        const deal = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" data-testid={`button-deal-menu-${deal.id}`}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={() => handleEditDeal(deal)}
+                data-testid={`menu-edit-deal-${deal.id}`}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Modifica
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -99,20 +207,52 @@ export default function DealsPage() {
             </Card>
           </div>
 
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <Card key={i}>
-                  <CardHeader>
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-16 w-full" />
-                  </CardContent>
-                </Card>
-              ))}
+          {/* View Toggle */}
+          <div className="flex justify-end">
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('cards')}
+                data-testid="button-view-cards"
+              >
+                <Grid3X3 className="mr-2 h-4 w-4" />
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                data-testid="button-view-list"
+              >
+                <List className="mr-2 h-4 w-4" />
+                List
+              </Button>
             </div>
+          </div>
+
+          {isLoading ? (
+            viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i}>
+                    <CardHeader>
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </CardHeader>
+                    <CardContent>
+                      <Skeleton className="h-16 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            )
           ) : deals?.length === 0 ? (
             <div className="text-center py-12">
               <Handshake className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -122,6 +262,21 @@ export default function DealsPage() {
                 Create Deal
               </Button>
             </div>
+          ) : viewMode === 'list' ? (
+            <DataTable
+              columns={tableColumns}
+              data={deals || []}
+              searchPlaceholder="Search deals..."
+              onRowClick={handleEditDeal}
+              enableSelection={true}
+              onSelectionChange={setSelectedDeals}
+              tableId="deals"
+              enableAdvancedFilters={true}
+              filterColumns={filterColumns}
+              enableAggregation={true}
+              aggregationColumns={aggregationColumns}
+              enableColumnReordering={true}
+            />
           ) : (
             <div>
               {activeDeals && activeDeals.length > 0 && (
@@ -143,9 +298,22 @@ export default function DealsPage() {
                                 {stageLabels[deal.stage]}
                               </Badge>
                             </div>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" data-testid={`button-deal-menu-${deal.id}`}>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                  onClick={() => handleEditDeal(deal)}
+                                  data-testid={`menu-edit-deal-${deal.id}`}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Modifica
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </CardHeader>
                         
@@ -234,6 +402,20 @@ export default function DealsPage() {
             <DialogTitle>Create New Deal</DialogTitle>
           </DialogHeader>
           <DealForm onSuccess={() => setShowCreateDialog(false)} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showEditDialog} onOpenChange={handleCloseEditDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Deal</DialogTitle>
+          </DialogHeader>
+          {editingDeal && (
+            <DealForm 
+              deal={editingDeal} 
+              onSuccess={handleCloseEditDialog} 
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

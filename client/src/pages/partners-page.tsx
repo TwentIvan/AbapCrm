@@ -146,6 +146,28 @@ export default function PartnersPage() {
     },
   ];
 
+  // Define filter columns for advanced filtering
+  const filterColumns = [
+    { id: 'name', label: 'Nome', type: 'text' as const },
+    { id: 'type', label: 'Tipo', type: 'select' as const, options: [
+      { value: 'client', label: 'Client' },
+      { value: 'vendor', label: 'Vendor' },
+      { value: 'consultant', label: 'Consultant' },
+      { value: 'other', label: 'Other' },
+    ]},
+    { id: 'company', label: 'Azienda', type: 'text' as const },
+    { id: 'email', label: 'Email', type: 'text' as const },
+    { id: 'phone', label: 'Telefono', type: 'text' as const },
+    { id: 'address', label: 'Indirizzo', type: 'text' as const },
+    { id: 'fiscalCode', label: 'Codice Fiscale', type: 'text' as const },
+    { id: 'vatNumber', label: 'P.IVA', type: 'text' as const },
+  ];
+
+  // Define aggregation columns (example for counting)
+  const aggregationColumns = [
+    { id: 'name', type: 'count' as const, label: 'Totale Partners' },
+  ];
+
   // Define table columns for list view
   const tableColumns = [
     createImageColumn('logoUrl', 'Logo', 'logo'),
@@ -279,6 +301,12 @@ export default function PartnersPage() {
               enableSelection={true}
               onSelectionChange={setSelectedPartners}
               bulkActions={bulkActions}
+              tableId="partners"
+              enableAdvancedFilters={true}
+              filterColumns={filterColumns}
+              enableAggregation={true}
+              aggregationColumns={aggregationColumns}
+              enableColumnReordering={true}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

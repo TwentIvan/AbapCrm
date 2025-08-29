@@ -9,12 +9,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3 } from "lucide-react";
+import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal } from "lucide-react";
 import { Task } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import TaskForm from "@/components/forms/task-form";
 import { TimeTracker } from "@/components/timesheet/time-tracker";
 import { useToast } from "@/hooks/use-toast";
+import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const statusColors = {
   todo: "bg-gray-100 text-gray-800",
@@ -42,6 +44,8 @@ export default function TasksPage() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
+  const [selectedTasks, setSelectedTasks] = useState<Task[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -81,6 +85,110 @@ export default function TasksPage() {
     setEditingTask(null);
   };
 
+  // Define filter columns for advanced filtering
+  const filterColumns = [
+    { id: 'title', label: 'Titolo', type: 'text' as const },
+    { id: 'status', label: 'Status', type: 'select' as const, options: [
+      { value: 'todo', label: 'To Do' },
+      { value: 'in_progress', label: 'In Progress' },
+      { value: 'review', label: 'Review' },
+      { value: 'completed', label: 'Completed' },
+    ]},
+    { id: 'priority', label: 'Priorità', type: 'select' as const, options: [
+      { value: 'low', label: 'Low' },
+      { value: 'medium', label: 'Medium' },
+      { value: 'high', label: 'High' },
+      { value: 'urgent', label: 'Urgent' },
+    ]},
+    { id: 'description', label: 'Descrizione', type: 'text' as const },
+    { id: 'dueDate', label: 'Scadenza', type: 'date' as const },
+  ];
+
+  // Define aggregation columns 
+  const aggregationColumns = [
+    { id: 'title', type: 'count' as const, label: 'Totale Tasks' },
+  ];
+
+  // Define table columns for list view
+  const tableColumns = [
+    {
+      accessorKey: 'completed',
+      header: '',
+      cell: ({ row }: any) => {
+        const task = row.original;
+        return (
+          <Checkbox
+            checked={task.status === 'completed'}
+            onCheckedChange={() => toggleTaskComplete(task)}
+            data-testid={`checkbox-task-${task.id}`}
+          />
+        );
+      },
+    },
+    {
+      accessorKey: 'title',
+      header: 'Title',
+      cell: ({ row }: any) => (
+        <div className="font-medium" data-testid={`text-task-title-${row.original.id}`}>
+          {row.original.title}
+        </div>
+      ),
+    },
+    createBadgeColumn('status', 'Status', {
+      todo: 'secondary',
+      in_progress: 'default',
+      review: 'outline',
+      completed: 'secondary'
+    }),
+    createBadgeColumn('priority', 'Priority', {
+      low: 'secondary',
+      medium: 'outline',
+      high: 'destructive',
+      urgent: 'destructive'
+    }),
+    createTextColumn('description', 'Description', 50),
+    {
+      accessorKey: 'dueDate',
+      header: 'Due Date',
+      cell: ({ row }: any) => {
+        const date = row.getValue('dueDate');
+        if (!date) return '-';
+        const dueDate = new Date(date);
+        const isOverdue = dueDate < new Date() && row.original.status !== 'completed';
+        return (
+          <div className={isOverdue ? 'text-red-600 font-medium' : ''}>
+            {dueDate.toLocaleDateString()}
+          </div>
+        );
+      },
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }: any) => {
+        const task = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" data-testid={`button-task-menu-${task.id}`}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={() => handleEditTask(task)}
+                data-testid={`menu-edit-task-${task.id}`}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Modifica
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
   const isOverdue = (dueDate: string | Date | null) => {
     if (!dueDate) return false;
     const date = dueDate instanceof Date ? dueDate : new Date(dueDate);
@@ -108,20 +216,52 @@ export default function TasksPage() {
         />
         
         <div className="p-6">
-          {isLoading ? (
-            <div className="space-y-4">
-              {[...Array(8)].map((_, i) => (
-                <Card key={i}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-3">
-                      <Skeleton className="h-4 w-4" />
-                      <Skeleton className="h-4 flex-1" />
-                      <Skeleton className="h-6 w-20" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+          {/* View Toggle */}
+          <div className="flex justify-end mb-4">
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('cards')}
+                data-testid="button-view-cards"
+              >
+                <Grid3X3 className="mr-2 h-4 w-4" />
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                data-testid="button-view-list"
+              >
+                <List className="mr-2 h-4 w-4" />
+                List
+              </Button>
             </div>
+          </div>
+
+          {isLoading ? (
+            viewMode === 'cards' ? (
+              <div className="space-y-4">
+                {[...Array(8)].map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3">
+                        <Skeleton className="h-4 w-4" />
+                        <Skeleton className="h-4 flex-1" />
+                        <Skeleton className="h-6 w-20" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            )
           ) : tasks?.length === 0 ? (
             <div className="text-center py-12">
               <CheckSquare className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -131,6 +271,21 @@ export default function TasksPage() {
                 Create Task
               </Button>
             </div>
+          ) : viewMode === 'list' ? (
+            <DataTable
+              columns={tableColumns}
+              data={tasks || []}
+              searchPlaceholder="Search tasks..."
+              onRowClick={handleEditTask}
+              enableSelection={true}
+              onSelectionChange={setSelectedTasks}
+              tableId="tasks"
+              enableAdvancedFilters={true}
+              filterColumns={filterColumns}
+              enableAggregation={true}
+              aggregationColumns={aggregationColumns}
+              enableColumnReordering={true}
+            />
           ) : (
             <div className="space-y-4">
               {tasks?.map((task) => (
