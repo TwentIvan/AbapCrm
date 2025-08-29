@@ -316,25 +316,14 @@ export function DataTable<TData, TValue>({
     return actions;
   }, [bulkActions, enableClipboardCopy, orderedColumns, toast]);
 
-  // Initialize column order
-  useEffect(() => {
-    if (enableColumnReordering && columnOrder.length === 0) {
-      const initialOrder = allColumns.map(col => col.id || (col as any).accessorKey as string).filter(Boolean);
-      setColumnOrder(initialOrder);
-    }
-  }, [allColumns, enableColumnReordering, columnOrder.length]);
+  // Column order initialization disabled - using layout.columns now
+  // useEffect(() => {
+  //   // Disabled
+  // }, []);
   
-  // Handle column drag end
+  // Handle column drag end - DISABLED (using layout.columns now)
   const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (active.id !== over?.id) {
-      setColumnOrder((items) => {
-        const oldIndex = items.indexOf(active.id as string);
-        const newIndex = items.indexOf(over?.id as string);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
+    // Drag & drop disabled for now
   };
 
   // Notify parent about selection changes
@@ -423,12 +412,7 @@ export function DataTable<TData, TValue>({
               currentAggregations={aggregationColumns}
               onConfigurationChange={(config) => {
                 // Apply configuration changes immediately
-                if (config.columnVisibility) {
-                  setColumnVisibility(config.columnVisibility);
-                }
-                if (config.columnOrder && config.columnOrder.length > 0) {
-                  setColumnOrder(config.columnOrder);
-                }
+                // NOTE: columnVisibility and columnOrder disabled - using layout.columns now
                 if (config.sorting && config.sorting.length > 0) {
                   setSorting(config.sorting.map((sort: any) => ({ id: sort.id, desc: sort.desc })));
                 }
