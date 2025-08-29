@@ -177,8 +177,8 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
       
       if (companies.length === 0) {
         toast({ 
-          title: "Nessuna azienda trovata", 
-          description: "Nessun risultato per la ricerca effettuata" 
+          title: "Azienda non presente nel database", 
+          description: "Puoi compilare i dati manualmente nel form" 
         });
       }
     } catch (error) {
@@ -417,7 +417,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             size="icon"
                             onClick={openSearchDialog}
                             data-testid="button-search-company"
-                            title="Cerca azienda"
+                            title="Cerca tra le aziende famose italiane (opzionale)"
                           >
                             <Search className="h-4 w-4" />
                           </Button>
@@ -837,7 +837,10 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
       <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Cerca Azienda</DialogTitle>
+            <DialogTitle>Cerca tra le Aziende Italiane Famose</DialogTitle>
+            <p className="text-sm text-gray-600 mt-2">
+              Questo database contiene le principali aziende italiane. Se non trovi la tua azienda, chiudi questo popup e compila i dati manualmente.
+            </p>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex gap-2">
@@ -917,9 +920,17 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
             )}
 
             {!isSearchingCompany && companySuggestions.length === 0 && searchQuery && (
-              <div className="text-center py-8 text-gray-500">
-                <Building2 className="mx-auto h-12 w-12 mb-2 text-gray-300" />
-                <p>Nessuna azienda trovata per "{searchQuery}"</p>
+              <div className="text-center py-8">
+                <Building2 className="mx-auto h-12 w-12 mb-4 text-gray-300" />
+                <p className="text-gray-600 mb-2">Nessuna azienda trovata per "{searchQuery}"</p>
+                <p className="text-sm text-gray-500 mb-4">Il database contiene solo le principali aziende italiane famose</p>
+                <Button 
+                  onClick={() => setShowSearchDialog(false)}
+                  variant="outline"
+                  className="mt-2"
+                >
+                  Chiudi e compila manualmente
+                </Button>
               </div>
             )}
           </div>
