@@ -360,15 +360,20 @@ export function DataTable<TData, TValue>({
             <TableConfiguration
               tableId={tableId}
               availableColumns={allColumns
-                .filter(col => col.id !== 'select' && col.id !== 'actions')
+                .filter(col => col.id && col.id !== 'select' && col.id !== 'actions')
                 .map(col => ({
                   id: col.id as string,
-                  label: (col.header as string) || (col.id as string),
+                  label: typeof col.header === 'function' ? col.id as string : (col.header as string) || (col.id as string),
                 }))}
               currentAggregations={aggregations}
               onConfigurationChange={(config) => {
-                // Handle configuration changes if needed
-                console.log('Table configuration updated:', config);
+                // Apply configuration changes immediately
+                if (config.columnVisibility) {
+                  setColumnVisibility(config.columnVisibility);
+                }
+                if (config.columnOrder && config.columnOrder.length > 0) {
+                  setColumnOrder(config.columnOrder);
+                }
               }}
             />
           )}
@@ -385,39 +390,6 @@ export function DataTable<TData, TValue>({
             </Button>
           )}
           
-          {configurableColumns && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" data-testid="button-configure-columns">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Columns
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
-                {table
-                  .getAllColumns()
-                  .filter((column) => column.getCanHide())
-                  .map((column) => {
-                    return (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
-                        className="capitalize"
-                        checked={column.getIsVisible()}
-                        onCheckedChange={(value) =>
-                          column.toggleVisibility(!!value)
-                        }
-                        data-testid={`checkbox-column-${column.id}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {column.getIsVisible() ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                          {column.id}
-                        </div>
-                      </DropdownMenuCheckboxItem>
-                    );
-                  })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
         </div>
       </div>
 
@@ -505,12 +477,7 @@ export function DataTable<TData, TValue>({
       {/* Pagination */}
       <div className="flex items-center justify-between space-x-2 py-4">
         <div className="text-sm text-muted-foreground">
-          Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{" "}
-          {Math.min(
-            (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-            table.getFilteredRowModel().rows.length
-          )}{" "}
-          of {table.getFilteredRowModel().rows.length} entries
+          {table.getFilteredRowModel().rows.length} {tableId?.includes('partner') ? 'partner' : tableId?.includes('project') ? 'progetti' : tableId?.includes('task') ? 'task' : tableId?.includes('deal') ? 'deal' : tableId?.includes('timesheet') ? 'time entries' : 'elementi'} visualizzati
         </div>
 
         <div className="flex items-center space-x-2">
