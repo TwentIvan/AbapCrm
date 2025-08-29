@@ -1,9 +1,15 @@
 // User preferences management for table layouts and configurations
 
+// New structure: ID Layout + Column Name + Attributes (as suggested by user)
+export interface ColumnConfig {
+  visible: boolean;
+  position: number;
+  width?: number;
+}
+
 export interface TableLayout {
   viewMode: 'cards' | 'list';
-  columnVisibility: Record<string, boolean>;
-  columnOrder: string[];
+  columns: Record<string, ColumnConfig>; // Column name -> attributes
   sorting: Array<{
     id: string;
     desc: boolean;
@@ -56,8 +62,7 @@ class UserPreferencesService {
   private getDefaultLayout(): TableLayout {
     return {
       viewMode: 'list',
-      columnVisibility: {},
-      columnOrder: [],
+      columns: {}, // Will be populated with actual columns when first used
       sorting: [],
       filters: [],
       aggregations: {
@@ -539,10 +544,9 @@ export function useTableLayout(tableId: string) {
       // Create completely new objects to force re-render
       setLayout({
         ...newLayout,
-        columnVisibility: { ...newLayout.columnVisibility },
+        columns: { ...newLayout.columns },
         filters: [...newLayout.filters],
-        sorting: [...newLayout.sorting],
-        columnOrder: [...newLayout.columnOrder]
+        sorting: [...newLayout.sorting]
       });
       setCurrentLayoutName(newCurrentName);
       setSavedLayouts(newSavedLayouts);

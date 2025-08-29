@@ -87,11 +87,11 @@ export function DataTable<TData, TValue>({
   
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState(layout.columnVisibility || {});
+  // No longer needed - using layout.columns instead
+  // const [columnVisibility, setColumnVisibility] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>(layout.filters || []);
-  const [columnOrder, setColumnOrder] = useState<string[]>(layout.columnOrder || []);
   
   // Simple table key to avoid loops
   const tableKey = `table-${tableId}`;
@@ -244,8 +244,53 @@ export function DataTable<TData, TValue>({
     return results;
   }, [filteredData, aggregationColumns, enableAggregation]);
 
-  // SIMPLIFIED: Just use all columns and let React Table handle visibility
-  const visibleColumns = orderedColumns;
+  // USER'S ALGORITHM: SELECT visible columns ORDER BY position
+  const getVisibleColumnsInOrder = useMemo(() => {
+    let layoutColumns = layout.columns || {};
+    
+    // AUTO-POPULATE: If no columns configured, create default visibility for all columns
+    if (Object.keys(layoutColumns).length === 0) {
+      layoutColumns = {};
+      orderedColumns.forEach((col, index) => {
+        const colId = (col as any).accessorKey || col.id;
+        if (colId && colId !== 'actions' && colId !== 'select') { // Skip special columns
+          layoutColumns[colId] = { visible: true, position: index + 1 };
+        }
+      });
+      
+      // Auto-save the populated columns to layout
+      updateLayout({ columns: layoutColumns });
+      console.log('🎯 Auto-populated columns:', Object.keys(layoutColumns));
+    }
+    
+    // 1. SELECT: Get all columns with visible: true
+    const visibleColumnConfigs = Object.entries(layoutColumns)
+      .filter(([_, config]) => config.visible === true)
+      .sort(([_, a], [__, b]) => a.position - b.position); // 2. ORDER BY: Sort by position
+    
+    // 3. RENDER: Map to actual column definitions
+    const visibleColumnIds = visibleColumnConfigs.map(([columnId]) => columnId);
+    
+    // Filter original columns to keep only visible ones in correct order
+    const filteredColumns = orderedColumns.filter(col => {
+      const colId = (col as any).accessorKey || col.id;
+      return visibleColumnIds.includes(colId);
+    });
+    
+    // Sort filtered columns according to layout position
+    filteredColumns.sort((a, b) => {
+      const aId = (a as any).accessorKey || a.id;
+      const bId = (b as any).accessorKey || b.id;
+      const aIndex = visibleColumnIds.indexOf(aId);
+      const bIndex = visibleColumnIds.indexOf(bId);
+      return aIndex - bIndex;
+    });
+    
+    console.log('🎯 User algorithm result:', visibleColumnIds);
+    return filteredColumns;
+  }, [orderedColumns, layout.columns, updateLayout]);
+  
+  const visibleColumns = getVisibleColumnsInOrder;
 
   const table = useReactTable({
     data: filteredData,
@@ -263,7 +308,6 @@ export function DataTable<TData, TValue>({
     state: {
       sorting,
       columnFilters,
-      columnVisibility,
       globalFilter,
       rowSelection,
     },
