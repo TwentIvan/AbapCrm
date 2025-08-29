@@ -494,11 +494,12 @@ export function useTableLayout(tableId: string) {
   const saveLayoutAs = useCallback((layoutName: string) => {
     const layoutId = userPreferences.saveLayoutAs(tableId, layoutName);
     
-    // Refresh state
+    // Refresh state immediately
+    const newLayout = userPreferences.getTableLayout(tableId);
     const newCurrentName = userPreferences.getCurrentLayoutName(tableId);
     const newSavedLayouts = userPreferences.getSavedLayouts(tableId);
     
-    
+    setLayout(newLayout);
     setCurrentLayoutName(newCurrentName);
     setSavedLayouts(newSavedLayouts);
     return layoutId;
@@ -507,9 +508,14 @@ export function useTableLayout(tableId: string) {
   const loadLayout = useCallback((layoutId: string) => {
     const success = userPreferences.loadLayout(tableId, layoutId);
     if (success) {
-      setLayout(userPreferences.getTableLayout(tableId));
-      setCurrentLayoutName(userPreferences.getCurrentLayoutName(tableId));
-      setSavedLayouts(userPreferences.getSavedLayouts(tableId));
+      // Force immediate state update
+      const newLayout = userPreferences.getTableLayout(tableId);
+      const newCurrentName = userPreferences.getCurrentLayoutName(tableId);
+      const newSavedLayouts = userPreferences.getSavedLayouts(tableId);
+      
+      setLayout(newLayout);
+      setCurrentLayoutName(newCurrentName);
+      setSavedLayouts(newSavedLayouts);
     }
     return success;
   }, [tableId]);
