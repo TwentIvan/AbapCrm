@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,11 +39,14 @@ export default function PartnersPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   const [selectedPartners, setSelectedPartners] = useState<Partner[]>([]);
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Use the table layout hook for persistent preferences
+  const { layout, updateLayout } = useTableLayout('partners');
+  const viewMode = layout.viewMode;
 
   const { data: partners, isLoading } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
@@ -249,7 +253,7 @@ export default function PartnersPage() {
               <Button
                 variant={viewMode === 'cards' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => setViewMode('cards')}
+                onClick={() => updateLayout({ viewMode: 'cards' })}
                 data-testid="button-view-cards"
               >
                 <Grid3X3 className="mr-2 h-4 w-4" />
@@ -258,7 +262,7 @@ export default function PartnersPage() {
               <Button
                 variant={viewMode === 'list' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => setViewMode('list')}
+                onClick={() => updateLayout({ viewMode: 'list' })}
                 data-testid="button-view-list"
               >
                 <List className="mr-2 h-4 w-4" />
