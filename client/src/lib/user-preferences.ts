@@ -144,13 +144,17 @@ class UserPreferencesService {
     const tableConfig = preferences.tables[tableId];
     
     if (!tableConfig || !tableConfig.layouts) {
+      console.log(`No layouts found for table ${tableId}`);
       return [];
     }
     
-    return Object.entries(tableConfig.layouts).map(([id, layout]) => ({
+    const layouts = Object.entries(tableConfig.layouts).map(([id, layout]) => ({
       ...layout,
       id,
     }));
+    
+    console.log(`Retrieved ${layouts.length} layouts for ${tableId}:`, layouts.map(l => l.name));
+    return layouts;
   }
 
   // Update current layout for a specific table
@@ -221,6 +225,8 @@ class UserPreferencesService {
 
   // Save current layout with a new name
   saveLayoutAs(tableId: string, layoutName: string, isDefault: boolean = false): string {
+    console.log(`Saving layout "${layoutName}" for table ${tableId}, isDefault: ${isDefault}`);
+    
     const preferences = this.loadFromStorage();
     const currentLayout = this.getTableLayout(tableId);
     
@@ -244,6 +250,9 @@ class UserPreferencesService {
     
     preferences.tables[tableId].layouts[layoutId] = savedLayout;
     
+    console.log(`Layout object created:`, savedLayout);
+    console.log(`Total layouts for ${tableId}:`, Object.keys(preferences.tables[tableId].layouts).length);
+    
     // If this layout should be default, remove default flag from other layouts
     if (isDefault) {
       this.setDefaultLayout(tableId, layoutId);
@@ -254,6 +263,7 @@ class UserPreferencesService {
       this.saveToStorage(preferences);
     }
     
+    console.log(`Layout "${layoutName}" saved successfully with ID: ${layoutId}`);
     return layoutId;
   }
 
