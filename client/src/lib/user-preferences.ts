@@ -55,7 +55,7 @@ class UserPreferencesService {
 
   private getDefaultLayout(): TableLayout {
     return {
-      viewMode: 'cards',
+      viewMode: 'list',
       columnVisibility: {},
       columnOrder: [],
       sorting: [],
@@ -105,6 +105,7 @@ class UserPreferencesService {
   private saveToStorage(preferences: UserPreferences): void {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(preferences));
+      console.log('User preferences saved to localStorage');
     } catch (error) {
       console.error('Failed to save user preferences:', error);
     }
@@ -421,10 +422,37 @@ class UserPreferencesService {
     
     this.saveToStorage(preferences);
   }
+
+  // Update all existing layouts to use list view as default
+  updateAllAreasToListView(): void {
+    const preferences = this.loadFromStorage();
+    let updated = false;
+    
+    Object.keys(preferences.tables).forEach(tableId => {
+      const tableConfig = preferences.tables[tableId];
+      Object.keys(tableConfig.layouts).forEach(layoutId => {
+        const layout = tableConfig.layouts[layoutId];
+        if (layout.viewMode === 'cards') {
+          layout.viewMode = 'list';
+          layout.updatedAt = new Date();
+          updated = true;
+          console.log(`Updated ${tableId} layout ${layoutId} to list view`);
+        }
+      });
+    });
+    
+    if (updated) {
+      this.saveToStorage(preferences);
+      console.log('All areas updated to use list view as default');
+    }
+  }
 }
 
 // Export singleton instance
 export const userPreferences = new UserPreferencesService();
+
+// Auto-update existing layouts to use list view (one-time migration)
+userPreferences.updateAllAreasToListView();
 
 // React hooks for easier integration
 import { useState, useEffect, useCallback } from 'react';
