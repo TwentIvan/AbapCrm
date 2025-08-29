@@ -254,6 +254,10 @@ export function TableConfiguration({
     
     onConfigurationChange?.(updatedLayout);
     
+    // Trigger page refresh to update saved layouts list
+    console.log('🔄 Refreshing page to show new layout...');
+    window.location.reload();
+    
     // Reset form
     setLayoutName('');
     setSaveAsDefault(false);
