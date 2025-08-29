@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,10 +45,13 @@ export default function TasksPage() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
   const [selectedTasks, setSelectedTasks] = useState<Task[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Use the table layout hook for persistent preferences
+  const { layout, updateLayout } = useTableLayout('tasks');
+  const viewMode = layout.viewMode;
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -227,7 +231,7 @@ export default function TasksPage() {
               <Button
                 variant={viewMode === 'cards' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => setViewMode('cards')}
+                onClick={() => updateLayout({ viewMode: 'cards' })}
                 data-testid="button-view-cards"
               >
                 <Grid3X3 className="mr-2 h-4 w-4" />
@@ -236,7 +240,7 @@ export default function TasksPage() {
               <Button
                 variant={viewMode === 'list' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => setViewMode('list')}
+                onClick={() => updateLayout({ viewMode: 'list' })}
                 data-testid="button-view-list"
               >
                 <List className="mr-2 h-4 w-4" />

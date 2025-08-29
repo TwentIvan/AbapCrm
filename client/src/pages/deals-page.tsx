@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,8 +36,11 @@ export default function DealsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
   const [selectedDeals, setSelectedDeals] = useState<Deal[]>([]);
+
+  // Use the table layout hook for persistent preferences
+  const { layout, updateLayout } = useTableLayout('deals');
+  const viewMode = layout.viewMode;
 
   const { data: deals, isLoading } = useQuery<Deal[]>({
     queryKey: ["/api/deals"],
@@ -218,7 +222,7 @@ export default function DealsPage() {
               <Button
                 variant={viewMode === 'cards' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => setViewMode('cards')}
+                onClick={() => updateLayout({ viewMode: 'cards' })}
                 data-testid="button-view-cards"
               >
                 <Grid3X3 className="mr-2 h-4 w-4" />
@@ -227,7 +231,7 @@ export default function DealsPage() {
               <Button
                 variant={viewMode === 'list' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => setViewMode('list')}
+                onClick={() => updateLayout({ viewMode: 'list' })}
                 data-testid="button-view-list"
               >
                 <List className="mr-2 h-4 w-4" />
