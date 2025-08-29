@@ -751,6 +751,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                         onGetUploadParameters={handleGetLogoUploadParameters}
                         onComplete={handleLogoUploadComplete}
                         buttonClassName="w-full"
+                        hideBrowseButton={true}
                       >
                         <Camera className="mr-2 h-4 w-4" />
                         {logoPreview ? 'Cambia Logo' : 'Carica Logo'}
@@ -857,10 +858,6 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                   }
                 }}
                 autoFocus={false}
-                onFocus={(e) => {
-                  // Previeni la selezione automatica del testo
-                  e.target.setSelectionRange(e.target.value.length, e.target.value.length);
-                }}
               />
               <Button
                 type="button"
