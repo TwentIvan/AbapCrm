@@ -186,6 +186,7 @@ function TaskTimerButtons({ task }: { task: Task }) {
             onClick={handleStop}
             disabled={stopTimerMutation.isPending}
             data-testid={`button-stop-timer-${task.id}`}
+            data-timer-button="true"
           >
             <Square className="h-3 w-3 mr-1" />
             {getElapsedTime()}
@@ -197,6 +198,7 @@ function TaskTimerButtons({ task }: { task: Task }) {
             onClick={handleStart}
             disabled={startTimerMutation.isPending || hasRunningTimer}
             data-testid={`button-start-timer-${task.id}`}
+            data-timer-button="true"
           >
             <Play className="h-3 w-3 mr-1" />
             Start

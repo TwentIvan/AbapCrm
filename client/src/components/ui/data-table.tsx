@@ -510,8 +510,9 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && "selected"}
                   className={`${onRowClick ? "cursor-pointer hover:bg-muted/50" : ""} ${row.getIsSelected() ? "bg-muted/50" : ""}`}
                   onClick={(e) => {
-                    // Don't trigger row click if clicking on checkbox
-                    if ((e.target as HTMLElement).closest('[role="checkbox"]')) {
+                    // Don't trigger row click if clicking on checkbox or timer button
+                    const target = e.target as HTMLElement;
+                    if (target.closest('[role="checkbox"]') || target.closest('[data-timer-button="true"]')) {
                       return;
                     }
                     onRowClick?.(row.original);
