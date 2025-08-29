@@ -124,7 +124,14 @@ function TaskTimerButtons({ task }: { task: Task }) {
 
   const handleStop = (e?: any) => {
     console.log('Stop clicked, opening completion dialog');
+    console.log('Event details:', { 
+      type: e?.type, 
+      target: e?.target?.tagName,
+      currentTarget: e?.currentTarget?.tagName,
+      bubbles: e?.bubbles 
+    });
     e?.stopPropagation(); // Prevent event bubbling
+    e?.preventDefault(); // Also prevent default behavior
     if (runningEntry) {
       setShowCompletionDialog(true);
       console.log('Completion dialog should be open:', true);
@@ -289,6 +296,8 @@ export default function TasksPage() {
   };
 
   const handleEditTask = (task: Task) => {
+    console.log('handleEditTask called for task:', task.id);
+    console.log('Stack trace:', new Error().stack);
     setEditingTask(task);
     setShowEditDialog(true);
   };
