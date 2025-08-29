@@ -93,6 +93,7 @@ export function DataTable<TData, TValue>({
   
   // Sync local state with layout changes (when loading different layouts)
   useEffect(() => {
+    setIsInitialSync(true);
     setColumnVisibility(layout.columnVisibility || {});
     setAdvancedFilters(layout.filters || []);
     setColumnOrder(layout.columnOrder || []);
@@ -109,8 +110,15 @@ export function DataTable<TData, TValue>({
     }
   }, [layout]);
   
-  // Auto-save layout changes
+  // Auto-save layout changes (but not during initial sync from layout)
+  const [isInitialSync, setIsInitialSync] = useState(true);
+  
   useEffect(() => {
+    if (isInitialSync) {
+      setIsInitialSync(false);
+      return;
+    }
+    
     const layoutSorting = sorting.map((sort, index) => ({
       id: sort.id,
       desc: sort.desc,
@@ -123,7 +131,7 @@ export function DataTable<TData, TValue>({
       filters: advancedFilters,
       columnOrder,
     });
-  }, [sorting, columnVisibility, advancedFilters, columnOrder]);
+  }, [sorting, columnVisibility, advancedFilters, columnOrder, isInitialSync]);
 
   // Drag and drop sensors
   const sensors = useSensors(

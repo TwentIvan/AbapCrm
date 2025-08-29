@@ -169,15 +169,6 @@ export function LayoutManager({
                       </div>
                     </div>
                     <div className="flex space-x-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0"
-                        onClick={() => handleRenameStart(layout)}
-                        data-testid={`button-rename-layout-${index}`}
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
                       {savedLayouts.length > 1 && (
                         <Button
                           size="sm"
