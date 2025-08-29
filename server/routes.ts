@@ -613,6 +613,12 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/time-entries", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    // LOG: Chi sta creando timer
+    console.log(`🟢 NEW TIMER REQUEST: User ${req.user!.id} creating timer for task ${req.body.taskId}`);
+    console.log(`🟢 Request headers: ${JSON.stringify(req.headers['user-agent'])}`);
+    console.log(`🟢 Request body: ${JSON.stringify(req.body)}`);
+    
     try {
       const entryData = insertTimeEntrySchema.parse({
         taskId: req.body.taskId,
@@ -628,11 +634,12 @@ export function registerRoutes(app: Express): Server {
         const existingRunning = await storage.getRunningTimeEntry(req.user!.id);
         if (existingRunning) {
           await storage.stopTimeEntry(existingRunning.id, req.user!.id);
-          console.log(`Stopped existing running timer ${existingRunning.id} before starting new one`);
+          console.log(`🔴 Stopped existing running timer ${existingRunning.id} before starting new one`);
         }
       }
 
       const entry = await storage.createTimeEntry(entryData);
+      console.log(`✅ NEW TIMER CREATED: ${entry.id} for task ${entry.taskId}`);
       res.status(201).json(entry);
     } catch (error) {
       console.error("Time entry creation error:", error);
