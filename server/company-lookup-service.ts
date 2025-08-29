@@ -718,7 +718,7 @@ export class CompanyLookupService {
   }
 
   /**
-   * Enrich Google Places result with Italian fiscal data from local database
+   * Enrich Google Places result with Italian fiscal data from local database and web search
    */
   static async enrichWithItalianFiscalData(companyData: CompanyInfo): Promise<CompanyInfo> {
     console.log(`[ENRICH-FISCAL] Trying to enrich data for: ${companyData.name}`);
@@ -729,7 +729,7 @@ export class CompanyLookupService {
 
     const normalizedName = companyData.name.toLowerCase().trim();
     
-    // Try to find matching company in our mock database that has fiscal data
+    // First try to find matching company in our local database
     const fiscalMatch = MOCK_COMPANIES.find(company => {
       const companyName = company.name.toLowerCase();
       const companyLegalName = company.legalName?.toLowerCase() || '';
@@ -743,7 +743,7 @@ export class CompanyLookupService {
     });
 
     if (fiscalMatch) {
-      console.log(`[ENRICH-FISCAL] Found fiscal match: ${fiscalMatch.name}`);
+      console.log(`[ENRICH-FISCAL] Found local match: ${fiscalMatch.name}`);
       console.log(`[ENRICH-FISCAL] CF: ${fiscalMatch.fiscalCode}, P.IVA: ${fiscalMatch.vatNumber}`);
       
       // Merge the fiscal data and logo
@@ -757,8 +757,359 @@ export class CompanyLookupService {
       };
     }
 
-    console.log(`[ENRICH-FISCAL] No fiscal match found for: ${companyData.name}`);
+    // If no local match found, try web search for fiscal data and logo
+    console.log(`[ENRICH-FISCAL] No local match found, trying web search for: ${companyData.name}`);
+    
+    try {
+      const webEnrichedData = await this.searchCompanyDataOnWeb(companyData);
+      if (webEnrichedData.fiscalCode || webEnrichedData.vatNumber || webEnrichedData.logoUrl) {
+        console.log(`[ENRICH-FISCAL] Web search successful for: ${companyData.name}`);
+        return webEnrichedData;
+      }
+    } catch (error) {
+      console.error(`[ENRICH-FISCAL] Web search failed for ${companyData.name}:`, error);
+    }
+
+    console.log(`[ENRICH-FISCAL] No enrichment found for: ${companyData.name}`);
     return companyData;
+  }
+
+  /**
+   * Search the web for company fiscal data and logo
+   */
+  private static async searchCompanyDataOnWeb(companyData: CompanyInfo): Promise<CompanyInfo> {
+    let enrichedData = { ...companyData };
+
+    try {
+      // First, try to extract data from the company's official website if we have it
+      if (companyData.website) {
+        console.log(`[WEB-SEARCH] Extracting data from official website: ${companyData.website}`);
+        
+        const websiteData = await this.extractDataFromWebsite(companyData.website);
+        if (websiteData.fiscalCode) enrichedData.fiscalCode = websiteData.fiscalCode;
+        if (websiteData.vatNumber) enrichedData.vatNumber = websiteData.vatNumber;
+        if (websiteData.logoUrl) enrichedData.logoUrl = websiteData.logoUrl;
+        
+        // If we found all the data we need, return early
+        if (enrichedData.fiscalCode && enrichedData.vatNumber && enrichedData.logoUrl) {
+          return enrichedData;
+        }
+      }
+
+      // If we still need fiscal data, search for it specifically
+      if (!enrichedData.fiscalCode || !enrichedData.vatNumber) {
+        console.log(`[WEB-SEARCH] Searching for fiscal data for: ${companyData.name}`);
+        
+        const fiscalData = await this.searchFiscalDataOnWeb(companyData.name);
+        if (fiscalData.fiscalCode && !enrichedData.fiscalCode) {
+          enrichedData.fiscalCode = fiscalData.fiscalCode;
+        }
+        if (fiscalData.vatNumber && !enrichedData.vatNumber) {
+          enrichedData.vatNumber = fiscalData.vatNumber;
+        }
+      }
+
+      // If we still need logo, search for it
+      if (!enrichedData.logoUrl) {
+        console.log(`[WEB-SEARCH] Searching for logo for: ${companyData.name}`);
+        
+        const logoUrl = await this.searchLogoOnWeb(companyData.name, companyData.website);
+        if (logoUrl) {
+          enrichedData.logoUrl = logoUrl;
+        }
+      }
+
+    } catch (error) {
+      console.error(`[WEB-SEARCH] Error during web search for ${companyData.name}:`, error);
+    }
+
+    return enrichedData;
+  }
+
+  /**
+   * Search for fiscal data using web search
+   */
+  private static async searchFiscalDataOnWeb(companyName: string): Promise<{ fiscalCode?: string; vatNumber?: string }> {
+    try {
+      const queries = [
+        `${companyName} codice fiscale partita iva`,
+        `${companyName} CF P.IVA sito ufficiale`,
+        `"${companyName}" registro imprese camera commercio`
+      ];
+      
+      for (const query of queries) {
+        console.log(`[FISCAL-SEARCH] Searching web for: ${query}`);
+        
+        try {
+          // Use web search to find fiscal information
+          const searchResults = await this.performWebSearch(query);
+          if (searchResults.length > 0) {
+            // Try to extract fiscal data from search results
+            const fiscalData = await this.extractFiscalDataFromSearchResults(searchResults);
+            if (fiscalData.fiscalCode || fiscalData.vatNumber) {
+              console.log(`[FISCAL-SEARCH] Found fiscal data via web search`);
+              return fiscalData;
+            }
+          }
+        } catch (error) {
+          console.log(`[FISCAL-SEARCH] Error with query "${query}":`, error);
+          continue; // Try next query
+        }
+      }
+      
+      return {};
+      
+    } catch (error) {
+      console.error(`[FISCAL-SEARCH] Error searching fiscal data:`, error);
+      return {};
+    }
+  }
+
+  /**
+   * Perform web search (placeholder for actual web search implementation)
+   */
+  private static async performWebSearch(query: string): Promise<any[]> {
+    // In a real implementation, this would use web_search tool
+    // For now, return empty array
+    console.log(`[WEB-SEARCH] Would search for: ${query}`);
+    return [];
+  }
+
+  /**
+   * Extract fiscal data from web search results
+   */
+  private static async extractFiscalDataFromSearchResults(results: any[]): Promise<{ fiscalCode?: string; vatNumber?: string }> {
+    const fiscalData: { fiscalCode?: string; vatNumber?: string } = {};
+    
+    for (const result of results) {
+      if (result.url) {
+        try {
+          // Extract data from each result URL
+          const extractedData = await this.extractDataFromWebsite(result.url);
+          if (extractedData.fiscalCode && !fiscalData.fiscalCode) {
+            fiscalData.fiscalCode = extractedData.fiscalCode;
+          }
+          if (extractedData.vatNumber && !fiscalData.vatNumber) {
+            fiscalData.vatNumber = extractedData.vatNumber;
+          }
+          
+          // If we found both, return early
+          if (fiscalData.fiscalCode && fiscalData.vatNumber) {
+            break;
+          }
+        } catch (error) {
+          console.error(`[FISCAL-EXTRACT] Error extracting from ${result.url}:`, error);
+          continue;
+        }
+      }
+    }
+    
+    return fiscalData;
+  }
+
+  /**
+   * Search for company logo using web search
+   */
+  private static async searchLogoOnWeb(companyName: string, websiteUrl?: string): Promise<string | null> {
+    try {
+      if (websiteUrl) {
+        // Try to extract logo from the company website
+        return await this.extractLogoFromWebsite(websiteUrl);
+      }
+      
+      // Search for logo using web search
+      const query = `${companyName} logo ufficiale`;
+      console.log(`[LOGO-SEARCH] Searching web for: ${query}`);
+      
+      // Note: In a real implementation, you would use web_search tool here
+      // and then extract logo URLs from image search results
+      
+      return null;
+      
+    } catch (error) {
+      console.error(`[LOGO-SEARCH] Error searching logo:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Extract all data from a company website
+   */
+  private static async extractDataFromWebsite(websiteUrl: string): Promise<{ fiscalCode?: string; vatNumber?: string; logoUrl?: string }> {
+    try {
+      console.log(`[WEBSITE-EXTRACT] Extracting data from: ${websiteUrl}`);
+      
+      // Use native fetch to get HTML content
+      const response = await fetch(websiteUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        },
+        signal: AbortSignal.timeout(10000) // 10 second timeout
+      });
+      
+      if (!response.ok) {
+        console.log(`[WEBSITE-EXTRACT] HTTP ${response.status} for ${websiteUrl}`);
+        return {};
+      }
+      
+      const html = await response.text();
+      console.log(`[WEBSITE-EXTRACT] Downloaded ${html.length} characters from ${websiteUrl}`);
+      
+      const result: { fiscalCode?: string; vatNumber?: string; logoUrl?: string } = {};
+      
+      // Extract fiscal code using regex patterns
+      const fiscalCodePatterns = [
+        // 16-character personal fiscal code: RSSMRA80A01H501Z
+        /\b[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]\b/g,
+        // 11-digit company fiscal code
+        /(?:codice\s+fiscale|c\.?\s*f\.?|cf)[\s\:]*(\d{11})\b/gi,
+        /\bC\.F\.?\s*(\d{11})\b/gi,
+        /\bCF\s*(\d{11})\b/gi
+      ];
+      
+      for (const pattern of fiscalCodePatterns) {
+        const matches = html.match(pattern);
+        if (matches && matches.length > 0) {
+          const fiscalCode = matches[0].replace(/[^\dA-Z]/gi, '');
+          if (fiscalCode.length === 11 || fiscalCode.length === 16) {
+            result.fiscalCode = fiscalCode;
+            console.log(`[WEBSITE-EXTRACT] Found CF: ${fiscalCode}`);
+            break;
+          }
+        }
+      }
+      
+      // Extract VAT number using regex patterns
+      const vatPatterns = [
+        /(?:partita\s+iva|p\.?\s*iva|p\.?\s*i\.?|vat)[\s\:]*(?:IT)?(\d{11})\b/gi,
+        /\bP\.IVA\s*(?:IT)?(\d{11})\b/gi,
+        /\bP\.I\.\s*(?:IT)?(\d{11})\b/gi,
+        /\bVAT\s*(?:IT)?(\d{11})\b/gi,
+        /\bIT(\d{11})\b/gi
+      ];
+      
+      for (const pattern of vatPatterns) {
+        const match = pattern.exec(html);
+        if (match && match[1]) {
+          const vatNumber = match[1]; // Get the captured group
+          if (vatNumber && vatNumber.length === 11) {
+            result.vatNumber = vatNumber;
+            console.log(`[WEBSITE-EXTRACT] Found P.IVA: ${vatNumber}`);
+            break;
+          }
+        }
+      }
+      
+      // Extract logo URL
+      const logoUrl = this.extractLogoFromHTML(html, websiteUrl);
+      if (logoUrl) {
+        result.logoUrl = logoUrl;
+        console.log(`[WEBSITE-EXTRACT] Found logo: ${logoUrl}`);
+      }
+      
+      return result;
+      
+    } catch (error) {
+      console.error(`[WEBSITE-EXTRACT] Error extracting from ${websiteUrl}:`, error);
+      return {};
+    }
+  }
+
+  /**
+   * Extract logo URL from HTML content
+   */
+  private static extractLogoFromHTML(html: string, baseUrl: string): string | null {
+    try {
+      // Look for common logo patterns in HTML
+      const logoPatterns = [
+        // Meta tags
+        /<meta[^>]+property=['"]og:image['"][^>]+content=['"]([^'"]+)/gi,
+        /<meta[^>]+name=['"]twitter:image['"][^>]+content=['"]([^'"]+)/gi,
+        /<link[^>]+rel=['"]icon['"][^>]+href=['"]([^'"]+)/gi,
+        /<link[^>]+rel=['"]apple-touch-icon['"][^>]+href=['"]([^'"]+)/gi,
+        // Common logo selectors
+        /<img[^>]+(?:class|id)=['"][^'"]*logo[^'"]*['"][^>]+src=['"]([^'"]+)/gi,
+        /<img[^>]+src=['"]([^'"]+)['"][^>]+(?:class|id)=['"][^'"]*logo[^'"]*['"][^>]*/gi,
+        // Header images
+        /<header[^>]*>[\s\S]*?<img[^>]+src=['"]([^'"]+)/gi
+      ];
+      
+      for (const pattern of logoPatterns) {
+        const match = pattern.exec(html);
+        if (match && match[1]) {
+          let logoUrl = match[1];
+          
+          // Convert relative URLs to absolute
+          if (logoUrl.startsWith('/')) {
+            const url = new URL(baseUrl);
+            logoUrl = `${url.protocol}//${url.host}${logoUrl}`;
+          } else if (!logoUrl.startsWith('http')) {
+            const url = new URL(baseUrl);
+            logoUrl = `${url.protocol}//${url.host}/${logoUrl}`;
+          }
+          
+          // Filter out common non-logo images
+          if (logoUrl.includes('favicon') || logoUrl.includes('icon') || logoUrl.includes('logo')) {
+            return logoUrl;
+          }
+        }
+      }
+      
+      return null;
+      
+    } catch (error) {
+      console.error(`[LOGO-EXTRACT] Error extracting logo from HTML:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Extract logo URL from company website
+   */
+  private static async extractLogoFromWebsite(websiteUrl: string): Promise<string | null> {
+    try {
+      console.log(`[LOGO-EXTRACT] Trying to extract logo from: ${websiteUrl}`);
+      
+      // In a real implementation, you would:
+      // 1. Fetch the website HTML
+      // 2. Parse for logo images in header/nav sections
+      // 3. Look for meta tags with logo information
+      // 4. Check for favicon or apple-touch-icon
+      // 5. Use AI vision to identify company logos
+      
+      // For now, return null (placeholder implementation)
+      return null;
+      
+    } catch (error) {
+      console.error(`[LOGO-EXTRACT] Error extracting logo from ${websiteUrl}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Extract fiscal codes from company website
+   */
+  private static async extractFiscalDataFromWebsite(websiteUrl: string): Promise<{ fiscalCode?: string; vatNumber?: string }> {
+    try {
+      console.log(`[FISCAL-EXTRACT] Trying to extract fiscal data from: ${websiteUrl}`);
+      
+      // In a real implementation, you would:
+      // 1. Fetch the website content
+      // 2. Look for patterns like "CF: 12345678901" or "P.IVA: IT12345678901"
+      // 3. Check footer sections, legal pages, contact pages
+      // 4. Use regex patterns to extract valid fiscal codes
+      
+      // Common regex patterns for Italian fiscal codes:
+      // CF: 11 or 16 digits
+      // P.IVA: IT + 11 digits or just 11 digits
+      
+      // For now, return empty (placeholder implementation)
+      return {};
+      
+    } catch (error) {
+      console.error(`[FISCAL-EXTRACT] Error extracting fiscal data from ${websiteUrl}:`, error);
+      return {};
+    }
   }
 
   /**
