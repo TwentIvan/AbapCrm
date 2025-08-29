@@ -534,13 +534,16 @@ export function useTableLayout(tableId: string) {
       const testLayout = {
         id: 'test-minimal',
         name: 'Test Minimal',
+        viewMode: 'list' as const,
         columnVisibility: { name: true, logoUrl: true },
         sorting: [],
         filters: [],
         columnOrder: [],
+        pageSize: 10,
+        aggregations: { enabled: false, position: 'bottom' as const, columns: [], subtotals: { enabled: false, groupBy: [] } },
         isDefault: false
       };
-      console.log('🧪 Loading MINIMAL test layout');
+      console.log('🧪 Loading MINIMAL test layout - only name + logoUrl');
       setLayout(testLayout);
       setCurrentLayoutName('Test Minimal');
       return true;
@@ -550,6 +553,7 @@ export function useTableLayout(tableId: string) {
       const testLayout = {
         id: 'test-all',
         name: 'Test All',
+        viewMode: 'list' as const,
         columnVisibility: { 
           name: true, logoUrl: true, type: true, company: true, 
           vatNumber: true, fiscalCode: true, address: true, email: true, phone: true 
@@ -557,9 +561,11 @@ export function useTableLayout(tableId: string) {
         sorting: [],
         filters: [],
         columnOrder: [],
+        pageSize: 10,
+        aggregations: { enabled: false, position: 'bottom' as const, columns: [], subtotals: { enabled: false, groupBy: [] } },
         isDefault: false
       };
-      console.log('🧪 Loading ALL COLUMNS test layout');
+      console.log('🧪 Loading ALL COLUMNS test layout - all 9 columns visible');
       setLayout(testLayout);
       setCurrentLayoutName('Test All');
       return true;
