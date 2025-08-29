@@ -31,6 +31,11 @@ export default function CalendarPage() {
 
   const { data: events, isLoading } = useQuery<CalendarEvent[]>({
     queryKey: ["/api/calendar-events"],
+    queryFn: async () => {
+      const res = await fetch("/api/calendar-events", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch calendar events');
+      return res.json();
+    },
   });
 
   const today = new Date();

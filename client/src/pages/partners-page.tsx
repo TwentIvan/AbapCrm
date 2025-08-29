@@ -46,6 +46,11 @@ export default function PartnersPage() {
 
   const { data: partners, isLoading } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
+    queryFn: async () => {
+      const res = await fetch("/api/partners", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch partners');
+      return res.json();
+    },
   });
 
   const deleteMutation = useMutation({

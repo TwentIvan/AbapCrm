@@ -19,18 +19,38 @@ export default function TimesheetPage() {
 
   const { data: timeEntries = [] } = useQuery<TimeEntry[]>({
     queryKey: ["/api/time-entries"],
+    queryFn: async () => {
+      const res = await fetch("/api/time-entries", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch time entries');
+      return res.json();
+    },
   });
 
   const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
+    queryFn: async () => {
+      const res = await fetch("/api/tasks", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch tasks');
+      return res.json();
+    },
   });
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+    queryFn: async () => {
+      const res = await fetch("/api/projects", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch projects');
+      return res.json();
+    },
   });
 
   const { data: runningEntry } = useQuery<TimeEntry | null>({
     queryKey: ["/api/time-entries/running"],
+    queryFn: async () => {
+      const res = await fetch("/api/time-entries/running", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch running entry');
+      return res.json();
+    },
   });
 
   // Filter entries by period

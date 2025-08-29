@@ -42,6 +42,11 @@ export default function ProjectsPage() {
 
   const { data: projects, isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+    queryFn: async () => {
+      const res = await fetch("/api/projects", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch projects');
+      return res.json();
+    },
   });
 
   const handleEditProject = (project: Project) => {

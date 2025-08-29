@@ -20,29 +20,35 @@ const formSchema = insertDealSchema.extend({
 type FormData = z.infer<typeof formSchema>;
 
 interface DealFormProps {
+  deal?: any;
   onSuccess?: () => void;
 }
 
-export default function DealForm({ onSuccess }: DealFormProps) {
+export default function DealForm({ deal, onSuccess }: DealFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: partners } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
+    queryFn: async () => {
+      const res = await fetch("/api/partners", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch partners');
+      return res.json();
+    },
   });
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: "",
-      description: "",
-      value: "",
-      stage: "prospecting",
-      probability: 50,
-      partnerId: "none",
-      expectedCloseDate: "",
-      notes: "",
+      title: deal?.title || "",
+      description: deal?.description || "",
+      value: deal?.value || "",
+      stage: deal?.stage || "prospecting",
+      probability: deal?.probability || 50,
+      partnerId: deal?.partnerId || "none",
+      expectedCloseDate: deal?.expectedCloseDate ? new Date(deal.expectedCloseDate).toISOString().split('T')[0] : "",
+      notes: deal?.notes || "",
     },
   });
 
@@ -54,17 +60,25 @@ export default function DealForm({ onSuccess }: DealFormProps) {
         partnerId: data.partnerId && data.partnerId !== "none" ? data.partnerId : null,
         expectedCloseDate: data.expectedCloseDate ? new Date(data.expectedCloseDate).toISOString() : null,
       };
-      const res = await apiRequest("POST", "/api/deals", dealData);
-      return res.json();
+      
+      if (deal) {
+        // Update existing deal
+        const res = await apiRequest("PUT", `/api/deals/${deal.id}`, dealData);
+        return res.json();
+      } else {
+        // Create new deal
+        const res = await apiRequest("POST", "/api/deals", dealData);
+        return res.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
-      toast({ title: "Deal created successfully" });
+      toast({ title: deal ? "Deal updated successfully" : "Deal created successfully" });
       onSuccess?.();
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to create deal",
+        title: deal ? "Failed to update deal" : "Failed to create deal",
         description: error.message,
         variant: "destructive",
       });

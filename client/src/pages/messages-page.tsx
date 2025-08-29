@@ -50,20 +50,40 @@ export default function MessagesPage() {
 
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
+    queryFn: async () => {
+      const res = await fetch("/api/messages", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch messages');
+      return res.json();
+    },
     refetchInterval: 30000, // Refresh every 30 seconds
     refetchIntervalInBackground: true, // Continue refreshing in background
   });
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+    queryFn: async () => {
+      const res = await fetch("/api/projects", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch projects');
+      return res.json();
+    },
   });
 
   const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
+    queryFn: async () => {
+      const res = await fetch("/api/tasks", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch tasks');
+      return res.json();
+    },
   });
 
   const { data: partners = [] } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
+    queryFn: async () => {
+      const res = await fetch("/api/partners", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch partners');
+      return res.json();
+    },
   });
 
   const syncMutation = useMutation({

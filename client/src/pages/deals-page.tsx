@@ -40,6 +40,11 @@ export default function DealsPage() {
 
   const { data: deals, isLoading } = useQuery<Deal[]>({
     queryKey: ["/api/deals"],
+    queryFn: async () => {
+      const res = await fetch("/api/deals", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch deals');
+      return res.json();
+    },
   });
 
   const activeDeals = deals?.filter(deal => !["won", "lost"].includes(deal.stage));
