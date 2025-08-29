@@ -512,6 +512,14 @@ export function DataTable<TData, TValue>({
                   onClick={(e) => {
                     // Don't trigger row click if clicking on interactive elements
                     const target = e.target as HTMLElement;
+                    
+                    console.log('Table row clicked, checking target:', {
+                      tagName: target.tagName,
+                      hasTimerButton: !!target.closest('[data-timer-button="true"]'),
+                      hasButton: !!target.closest('button'),
+                      targetElement: target
+                    });
+                    
                     if (target.closest('[role="checkbox"]') || 
                         target.closest('[data-timer-button="true"]') ||
                         target.closest('button') || 
@@ -520,8 +528,11 @@ export function DataTable<TData, TValue>({
                         target.closest('select') ||
                         target.closest('.progress-root') ||
                         target.closest('[data-radix-progress-root]')) {
+                      console.log('Row click blocked due to interactive element');
                       return;
                     }
+                    
+                    console.log('Row click proceeding to onRowClick');
                     onRowClick?.(row.original);
                   }}
                   data-testid={`row-${row.id}`}
