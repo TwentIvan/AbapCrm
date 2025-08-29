@@ -430,15 +430,17 @@ class UserPreferencesService {
     
     Object.keys(preferences.tables).forEach(tableId => {
       const tableConfig = preferences.tables[tableId];
-      Object.keys(tableConfig.layouts).forEach(layoutId => {
-        const layout = tableConfig.layouts[layoutId];
-        if (layout.viewMode === 'cards') {
-          layout.viewMode = 'list';
-          layout.updatedAt = new Date();
-          updated = true;
-          console.log(`Updated ${tableId} layout ${layoutId} to list view`);
-        }
-      });
+      if (tableConfig && tableConfig.layouts) {
+        Object.keys(tableConfig.layouts).forEach(layoutId => {
+          const layout = tableConfig.layouts[layoutId];
+          if (layout && layout.viewMode === 'cards') {
+            layout.viewMode = 'list';
+            layout.updatedAt = new Date();
+            updated = true;
+            console.log(`Updated ${tableId} layout ${layoutId} to list view`);
+          }
+        });
+      }
     });
     
     if (updated) {
