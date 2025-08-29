@@ -43,7 +43,7 @@ const statusLabels = {
   completed: "Completed",
 };
 
-// Compact Timer Buttons Component
+// Compact Timer Buttons Component  
 function TaskTimerButtons({ task }: { task: Task }) {
   const queryClient = useQueryClient();
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -66,6 +66,7 @@ function TaskTimerButtons({ task }: { task: Task }) {
       return await res.json();
     },
     onSuccess: () => {
+      console.log('Timer started successfully');
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries/running"] });
     },
@@ -110,10 +111,17 @@ function TaskTimerButtons({ task }: { task: Task }) {
   const hasRunningTimer = !!runningEntry;
 
   const handleStart = () => {
+    console.log('Starting timer, showCompletionDialog:', showCompletionDialog);
+    console.log('All dialog states:', {
+      showCompletionDialog,
+      isCurrentTaskRunning,
+      hasRunningTimer
+    });
     startTimerMutation.mutate();
   };
 
   const handleStop = () => {
+    console.log('Stopping timer, setting dialog to true');
     if (runningEntry) {
       setShowCompletionDialog(true);
     }
@@ -191,14 +199,16 @@ function TaskTimerButtons({ task }: { task: Task }) {
         )}
       </div>
       
-      {/* Completion Dialog */}
-      <CompletionDialog
-        isOpen={showCompletionDialog}
-        onClose={() => setShowCompletionDialog(false)}
-        currentPercentage={calculateSuggestedPercentage()}
-        onSubmit={handleCompletionSubmit}
-        isLoading={stopTimerMutation.isPending}
-      />
+      {/* Completion Dialog - Only render when needed */}
+      {showCompletionDialog && (
+        <CompletionDialog
+          isOpen={showCompletionDialog}
+          onClose={() => setShowCompletionDialog(false)}
+          currentPercentage={calculateSuggestedPercentage()}
+          onSubmit={handleCompletionSubmit}
+          isLoading={stopTimerMutation.isPending}
+        />
+      )}
     </>
   );
 }
