@@ -195,8 +195,8 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
   };
 
 
-  const selectCompanySuggestion = (company: CompanyInfo) => {
-    // Auto-populate all company fields
+  const selectCompanySuggestion = async (company: CompanyInfo) => {
+    // First, auto-populate all company fields with Google Places data
     form.setValue('name', company.legalName || company.name);
     form.setValue('company', company.name);
     if (company.address) form.setValue('address', company.address);
@@ -207,7 +207,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     if (company.vatNumber) form.setValue('vatNumber', company.vatNumber.replace('IT', ''));
     if (company.website) form.setValue('website', company.website);
     
-    // Set logo preview immediately
+    // Set logo preview immediately if available
     if (company.logoUrl) {
       form.setValue('logoUrl', company.logoUrl);
       setLogoPreview(company.logoUrl);
@@ -218,10 +218,62 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
     setCompanySuggestions([]);
     setSearchQuery("");
     
-    toast({ 
-      title: "Informazioni azienda caricate!", 
-      description: `Dati di ${company.name} inseriti automaticamente` 
-    });
+    // Try to enrich the data with Italian fiscal information
+    try {
+      console.log('Enriching company data with Italian fiscal information...');
+      const response = await fetch('/api/companies/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(company),
+      });
+      
+      if (response.ok) {
+        const enrichedData = await response.json();
+        console.log('Enriched data received:', enrichedData);
+        
+        // Update fields with enriched data (fiscal codes and logo)
+        if (enrichedData.fiscalCode && !company.fiscalCode) {
+          form.setValue('fiscalCode', enrichedData.fiscalCode);
+          console.log('Updated fiscalCode:', enrichedData.fiscalCode);
+        }
+        if (enrichedData.vatNumber && !company.vatNumber) {
+          const cleanVatNumber = enrichedData.vatNumber.replace('IT', '');
+          form.setValue('vatNumber', cleanVatNumber);
+          console.log('Updated vatNumber:', cleanVatNumber);
+        }
+        if (enrichedData.logoUrl && !company.logoUrl) {
+          form.setValue('logoUrl', enrichedData.logoUrl);
+          setLogoPreview(enrichedData.logoUrl);
+          console.log('Updated logoUrl:', enrichedData.logoUrl);
+        }
+        
+        // Show enhanced success message if fiscal data was found
+        if (enrichedData.fiscalCode || enrichedData.vatNumber) {
+          toast({ 
+            title: "Dati azienda completati!", 
+            description: `${company.name} - Codice Fiscale e P.IVA aggiunti automaticamente` 
+          });
+        } else {
+          toast({ 
+            title: "Informazioni azienda caricate!", 
+            description: `Dati di ${company.name} inseriti automaticamente` 
+          });
+        }
+      } else {
+        // Fallback to original success message
+        toast({ 
+          title: "Informazioni azienda caricate!", 
+          description: `Dati di ${company.name} inseriti automaticamente` 
+        });
+      }
+    } catch (error) {
+      console.error('Error enriching company data:', error);
+      // Still show success for the basic data that was loaded
+      toast({ 
+        title: "Informazioni azienda caricate!", 
+        description: `Dati di ${company.name} inseriti automaticamente` 
+      });
+    }
   };
 
   // Fiscal code validation

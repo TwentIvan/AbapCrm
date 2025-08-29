@@ -702,6 +702,74 @@ export class CompanyLookupService {
   }
 
   /**
+   * Enrich Google Places result with Italian fiscal data from local database
+   */
+  static async enrichWithItalianFiscalData(companyData: CompanyInfo): Promise<CompanyInfo> {
+    console.log(`[ENRICH-FISCAL] Trying to enrich data for: ${companyData.name}`);
+    
+    if (!companyData.name) {
+      return companyData;
+    }
+
+    const normalizedName = companyData.name.toLowerCase().trim();
+    
+    // Try to find matching company in our mock database that has fiscal data
+    const fiscalMatch = MOCK_COMPANIES.find(company => {
+      const companyName = company.name.toLowerCase();
+      const companyLegalName = company.legalName?.toLowerCase() || '';
+      
+      // Try various matching strategies
+      const exactMatch = companyName === normalizedName || companyLegalName === normalizedName;
+      const partialMatch = companyName.includes(normalizedName) || normalizedName.includes(companyName);
+      const wordMatch = this.containsSignificantWords(normalizedName, companyName);
+      
+      return exactMatch || partialMatch || wordMatch;
+    });
+
+    if (fiscalMatch) {
+      console.log(`[ENRICH-FISCAL] Found fiscal match: ${fiscalMatch.name}`);
+      console.log(`[ENRICH-FISCAL] CF: ${fiscalMatch.fiscalCode}, P.IVA: ${fiscalMatch.vatNumber}`);
+      
+      // Merge the fiscal data and logo
+      return {
+        ...companyData,
+        fiscalCode: fiscalMatch.fiscalCode,
+        vatNumber: fiscalMatch.vatNumber,
+        logoUrl: fiscalMatch.logoUrl,
+        sector: fiscalMatch.sector || companyData.sector,
+        description: fiscalMatch.description || companyData.description
+      };
+    }
+
+    console.log(`[ENRICH-FISCAL] No fiscal match found for: ${companyData.name}`);
+    return companyData;
+  }
+
+  /**
+   * Check if two company names contain significant matching words
+   */
+  private static containsSignificantWords(name1: string, name2: string): boolean {
+    // Remove common business suffixes and connectors
+    const removeCommon = (name: string) => name
+      .replace(/\b(spa|s\.p\.a\.|srl|s\.r\.l\.|snc|sas|ss|s\.s\.|di|della|del|e|&|and|group|gruppo|consulting|consulenza)\b/gi, '')
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    const words1 = removeCommon(name1).split(' ').filter(w => w.length > 2);
+    const words2 = removeCommon(name2).split(' ').filter(w => w.length > 2);
+    
+    if (words1.length === 0 || words2.length === 0) return false;
+    
+    const matchingWords = words1.filter(w1 => 
+      words2.some(w2 => w1.includes(w2) || w2.includes(w1))
+    );
+    
+    // Consider it a match if more than 50% of significant words match
+    return matchingWords.length / Math.max(words1.length, words2.length) > 0.5;
+  }
+
+  /**
    * Get company logo URL (in production would fetch from various logo APIs)
    */
   static async getCompanyLogo(companyName: string): Promise<string | null> {

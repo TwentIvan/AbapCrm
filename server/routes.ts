@@ -366,6 +366,24 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Enrich company data with Italian fiscal information
+  app.post("/api/companies/enrich", async (req, res) => {
+    try {
+      const { CompanyLookupService } = await import('./company-lookup-service');
+      const companyData = req.body;
+      
+      if (!companyData || !companyData.name) {
+        return res.status(400).json({ error: 'Company name is required' });
+      }
+      
+      const enrichedData = await CompanyLookupService.enrichWithItalianFiscalData(companyData);
+      res.json(enrichedData);
+    } catch (error) {
+      console.error('Company enrich error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // Logo upload endpoint
   app.post("/api/partners/logo/upload", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
