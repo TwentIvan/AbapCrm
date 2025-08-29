@@ -503,16 +503,14 @@ export function TableConfiguration({
                   data-testid="input-layout-name"
                 />
               </div>
-              {!isEditingExisting && (
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={saveAsDefault}
-                    onCheckedChange={setSaveAsDefault}
-                    data-testid="switch-save-as-default"
-                  />
-                  <Label htmlFor="save-as-default">Imposta come layout predefinito</Label>
-                </div>
-              )}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={saveAsDefault}
+                  onCheckedChange={setSaveAsDefault}
+                  data-testid="switch-save-as-default"
+                />
+                <Label htmlFor="save-as-default">Imposta come layout predefinito</Label>
+              </div>
             </div>
           </CardContent>
         </Card>

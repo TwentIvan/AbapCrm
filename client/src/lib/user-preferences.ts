@@ -536,7 +536,8 @@ export function useTableLayout(tableId: string) {
       const newCurrentName = userPreferences.getCurrentLayoutName(tableId);
       const newSavedLayouts = userPreferences.getSavedLayouts(tableId);
       
-      setLayout(newLayout);
+      // Force a completely new object to trigger React re-render
+      setLayout({ ...newLayout });
       setCurrentLayoutName(newCurrentName);
       setSavedLayouts(newSavedLayouts);
     }
