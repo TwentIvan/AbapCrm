@@ -1,5 +1,5 @@
-// Company lookup service for Italian businesses
-// This service can be extended with real APIs like InfoCamere, Agenzia delle Entrate, etc.
+// Company lookup service for businesses
+// Supports multiple sources: Google Places API, Mock Database, Manual entry
 
 export interface CompanyInfo {
   name: string;
@@ -298,7 +298,7 @@ const MOCK_COMPANIES: CompanyInfo[] = [
 export class CompanyLookupService {
   
   /**
-   * Search for companies by name using OpenCorporates API + mock fallback
+   * Search for companies by name using multiple sources
    */
   static async searchCompanies(query: string): Promise<CompanyInfo[]> {
     console.log(`[COMPANY-SEARCH] Searching for: "${query}"`);
@@ -311,18 +311,18 @@ export class CompanyLookupService {
     const normalizedQuery = query.toLowerCase().trim();
     console.log(`[COMPANY-SEARCH] Normalized query: "${normalizedQuery}"`);
     
+    // Try Google Places API first for comprehensive results
     try {
-      // First try OpenCorporates API for real data
-      const openCorpResults = await this.searchOpenCorporates(normalizedQuery);
-      if (openCorpResults.length > 0) {
-        console.log(`[COMPANY-SEARCH] OpenCorporates found ${openCorpResults.length} results`);
-        return openCorpResults;
+      const placesResults = await this.searchGooglePlaces(query);
+      if (placesResults.length > 0) {
+        console.log(`[COMPANY-SEARCH] Google Places found ${placesResults.length} results`);
+        return placesResults;
       }
     } catch (error) {
-      console.error('[COMPANY-SEARCH] OpenCorporates API error:', error);
+      console.error('[COMPANY-SEARCH] Google Places API error:', error);
     }
     
-    // Fallback to mock database for well-known companies
+    // Fallback to mock database for well-known Italian companies
     console.log(`[COMPANY-SEARCH] Falling back to mock database`);
     console.log(`[COMPANY-SEARCH] Available mock companies: ${MOCK_COMPANIES.length}`);
     
@@ -352,73 +352,161 @@ export class CompanyLookupService {
   }
 
   /**
-   * Search companies using OpenCorporates API
+   * Search companies using Google Places API
    */
-  private static async searchOpenCorporates(query: string): Promise<CompanyInfo[]> {
-    // OpenCorporates API - Free tier: 500 requests/month
-    const apiUrl = `https://api.opencorporates.com/v0.4/companies/search`;
-    const params = new URLSearchParams({
-      q: query,
-      jurisdiction_code: 'it', // Focus on Italian companies
-      format: 'json',
-      per_page: '10'
-    });
-
-    console.log(`[OPENCORPORATES] Searching: ${apiUrl}?${params}`);
-    
-    const response = await fetch(`${apiUrl}?${params}`, {
-      headers: {
-        'User-Agent': 'ReplicCRM/1.0 (Business CRM Application)',
-        'Accept': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenCorporates API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    console.log(`[OPENCORPORATES] Response:`, data);
-    
-    if (!data.results || !data.results.companies) {
+  private static async searchGooglePlaces(query: string): Promise<CompanyInfo[]> {
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    if (!apiKey) {
+      console.log('[GOOGLE-PLACES] API key not configured');
       return [];
     }
 
-    // Transform OpenCorporates data to our format
-    return data.results.companies.map((item: any) => {
-      const company = item.company;
-      return {
-        name: company.name,
-        legalName: company.name,
-        address: this.formatAddress(company),
-        city: company.registered_address?.locality,
-        postalCode: company.registered_address?.postal_code,
-        country: 'IT',
-        fiscalCode: company.company_number, // In Italy, this might be the fiscal code
-        vatNumber: company.company_number ? `IT${company.company_number}` : undefined,
-        website: company.home_page_url,
-        description: `${company.company_type || 'Azienda'} registrata in ${company.jurisdiction_code?.toUpperCase()}`,
-        sector: company.company_type,
-        // Note: OpenCorporates doesn't provide logos, would need another service for that
-      } as CompanyInfo;
-    }).slice(0, 10);
+    // Text Search API - good for finding businesses by name
+    const apiUrl = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
+    const params = new URLSearchParams({
+      query: query,
+      key: apiKey,
+      type: 'establishment',
+      fields: 'place_id,name,formatted_address,website,phone,rating,types'
+    });
+
+    console.log(`[GOOGLE-PLACES] Searching: ${query}`);
+    
+    const response = await fetch(`${apiUrl}?${params}`);
+
+    if (!response.ok) {
+      throw new Error(`Google Places API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log(`[GOOGLE-PLACES] Found ${data.results?.length || 0} results`);
+    
+    if (!data.results || data.results.length === 0) {
+      return [];
+    }
+
+    // Transform Google Places data to our format
+    const results = await Promise.all(
+      data.results.slice(0, 10).map(async (place: any) => {
+        // Get additional details for each place
+        const details = await this.getPlaceDetails(place.place_id, apiKey);
+        
+        return {
+          name: place.name,
+          legalName: place.name,
+          address: place.formatted_address,
+          city: this.extractCityFromAddress(place.formatted_address),
+          postalCode: this.extractPostalCodeFromAddress(place.formatted_address),
+          country: this.extractCountryFromAddress(place.formatted_address),
+          website: details?.website || place.website,
+          description: this.generateBusinessDescription(place),
+          sector: this.extractSectorFromTypes(place.types),
+          // Note: Google Places doesn't provide fiscal codes or VAT numbers
+        } as CompanyInfo;
+      })
+    );
+
+    return results;
   }
 
   /**
-   * Format address from OpenCorporates data
+   * Get detailed information for a Google Place
    */
-  private static formatAddress(company: any): string | undefined {
-    const addr = company.registered_address;
-    if (!addr) return undefined;
+  private static async getPlaceDetails(placeId: string, apiKey: string): Promise<any> {
+    try {
+      const detailsUrl = 'https://maps.googleapis.com/maps/api/place/details/json';
+      const params = new URLSearchParams({
+        place_id: placeId,
+        key: apiKey,
+        fields: 'website,international_phone_number,formatted_phone_number,business_status'
+      });
+
+      const response = await fetch(`${detailsUrl}?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.result;
+      }
+    } catch (error) {
+      console.error('[GOOGLE-PLACES] Error getting place details:', error);
+    }
+    return null;
+  }
+
+  /**
+   * Extract city from formatted address
+   */
+  private static extractCityFromAddress(address: string): string | undefined {
+    if (!address) return undefined;
+    // Look for Italian city patterns
+    const match = address.match(/,\s*([^,]+),\s*\d{5}/);
+    return match ? match[1].trim() : undefined;
+  }
+
+  /**
+   * Extract postal code from formatted address
+   */
+  private static extractPostalCodeFromAddress(address: string): string | undefined {
+    if (!address) return undefined;
+    const match = address.match(/\b(\d{5})\b/);
+    return match ? match[1] : undefined;
+  }
+
+  /**
+   * Extract country from formatted address
+   */
+  private static extractCountryFromAddress(address: string): string {
+    if (!address) return 'IT';
+    if (address.includes('Italy') || address.includes('Italia')) return 'IT';
+    // Default to Italy for now
+    return 'IT';
+  }
+
+  /**
+   * Generate business description from place types
+   */
+  private static generateBusinessDescription(place: any): string {
+    const types = place.types || [];
+    const businessTypes = types.filter((type: string) => 
+      !['establishment', 'point_of_interest'].includes(type)
+    );
     
-    const parts = [
-      addr.street_address,
-      addr.locality,
-      addr.region,
-      addr.postal_code
-    ].filter(Boolean);
+    if (businessTypes.length > 0) {
+      const mainType = businessTypes[0].replace(/_/g, ' ');
+      return `${mainType.charAt(0).toUpperCase() + mainType.slice(1)} business`;
+    }
     
-    return parts.length > 0 ? parts.join(', ') : undefined;
+    return 'Business establishment';
+  }
+
+  /**
+   * Extract sector from Google Places types
+   */
+  private static extractSectorFromTypes(types: string[]): string | undefined {
+    if (!types) return undefined;
+    
+    const sectorMap: { [key: string]: string } = {
+      'restaurant': 'Food & Beverage',
+      'store': 'Retail',
+      'bank': 'Financial Services',
+      'hospital': 'Healthcare',
+      'school': 'Education',
+      'lawyer': 'Legal Services',
+      'accounting': 'Professional Services',
+      'real_estate_agency': 'Real Estate',
+      'car_dealer': 'Automotive',
+      'gym': 'Fitness & Wellness',
+      'beauty_salon': 'Beauty & Personal Care',
+      'lodging': 'Hospitality',
+      'gas_station': 'Energy & Fuel'
+    };
+    
+    for (const type of types) {
+      if (sectorMap[type]) {
+        return sectorMap[type];
+      }
+    }
+    
+    return undefined;
   }
 
   /**
@@ -468,7 +556,7 @@ export class CompanyLookupService {
             return {
               name: company.name,
               legalName: company.name,
-              address: this.formatAddress(company),
+              address: company.registered_address?.street_address,
               city: company.registered_address?.locality,
               postalCode: company.registered_address?.postal_code,
               country: 'IT',
@@ -485,8 +573,8 @@ export class CompanyLookupService {
       }
     }
     
-    // If direct lookup fails, try search
-    const searchResults = await this.searchOpenCorporates(identifier);
+    // If direct lookup fails, try Google Places search
+    const searchResults = await this.searchGooglePlaces(identifier);
     return searchResults.length > 0 ? searchResults[0] : null;
   }
 

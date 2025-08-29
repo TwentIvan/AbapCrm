@@ -417,7 +417,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                             size="icon"
                             onClick={openSearchDialog}
                             data-testid="button-search-company"
-                            title="Cerca tra le aziende famose italiane (opzionale)"
+                            title="Cerca aziende (Google Places + database italiano)"
                           >
                             <Search className="h-4 w-4" />
                           </Button>
@@ -837,9 +837,9 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
       <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Cerca tra le Aziende Italiane Famose</DialogTitle>
+            <DialogTitle>Cerca Aziende</DialogTitle>
             <p className="text-sm text-gray-600 mt-2">
-              Questo database contiene le principali aziende italiane. Se non trovi la tua azienda, chiudi questo popup e compila i dati manualmente.
+              Ricerca tramite Google Places (qualsiasi azienda) + database aziende italiane famose. Se non trovi risultati, compila i dati manualmente.
             </p>
           </DialogHeader>
           <div className="space-y-4">
@@ -923,7 +923,7 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
               <div className="text-center py-8">
                 <Building2 className="mx-auto h-12 w-12 mb-4 text-gray-300" />
                 <p className="text-gray-600 mb-2">Nessuna azienda trovata per "{searchQuery}"</p>
-                <p className="text-sm text-gray-500 mb-4">Il database contiene solo le principali aziende italiane famose</p>
+                <p className="text-sm text-gray-500 mb-4">Prova con un nome diverso o più specifico</p>
                 <Button 
                   onClick={() => setShowSearchDialog(false)}
                   variant="outline"
