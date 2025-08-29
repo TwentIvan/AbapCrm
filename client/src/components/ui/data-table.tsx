@@ -91,16 +91,23 @@ export function DataTable<TData, TValue>({
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>(layout.filters || []);
   const [columnOrder, setColumnOrder] = useState<string[]>(layout.columnOrder || []);
   
-  // Convert layout sorting to react-table sorting format
+  // Sync local state with layout changes (when loading different layouts)
   useEffect(() => {
+    setColumnVisibility(layout.columnVisibility || {});
+    setAdvancedFilters(layout.filters || []);
+    setColumnOrder(layout.columnOrder || []);
+    
+    // Convert layout sorting to react-table sorting format
     if (layout.sorting && layout.sorting.length > 0) {
       const reactTableSorting = layout.sorting.map(sort => ({
         id: sort.id,
         desc: sort.desc
       }));
       setSorting(reactTableSorting);
+    } else {
+      setSorting([]);
     }
-  }, [layout.sorting]);
+  }, [layout]);
   
   // Auto-save layout changes
   useEffect(() => {
