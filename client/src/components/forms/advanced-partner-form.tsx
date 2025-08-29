@@ -177,10 +177,8 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
     setIsSearchingCompany(true);
     
     try {
-      console.log(`Manual search for: ${searchQuery}`);
       const response = await fetch(`/api/companies/search?q=${encodeURIComponent(searchQuery)}`);
       const companies = await response.json();
-      console.log(`Found ${companies.length} companies:`, companies);
       
       setCompanySuggestions(companies);
       
@@ -191,7 +189,6 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
         });
       }
     } catch (error) {
-      console.error('Company search error:', error);
       setCompanySuggestions([]);
       toast({ 
         title: "Errore nella ricerca", 
@@ -229,7 +226,6 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
     
     // Try to enrich the data with Italian fiscal information
     try {
-      console.log('Enriching company data with Italian fiscal information...');
       const response = await fetch('/api/companies/enrich', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -238,22 +234,18 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
       
       if (response.ok) {
         const enrichedData = await response.json();
-        console.log('Enriched data received:', enrichedData);
         
         // Update fields with enriched data (fiscal codes and logo)
         if (enrichedData.fiscalCode && !company.fiscalCode) {
           form.setValue('fiscalCode', enrichedData.fiscalCode);
-          console.log('Updated fiscalCode:', enrichedData.fiscalCode);
         }
         if (enrichedData.vatNumber && !company.vatNumber) {
           const cleanVatNumber = enrichedData.vatNumber.replace('IT', '');
           form.setValue('vatNumber', cleanVatNumber);
-          console.log('Updated vatNumber:', cleanVatNumber);
         }
         if (enrichedData.logoUrl && !company.logoUrl) {
           form.setValue('logoUrl', enrichedData.logoUrl);
           setLogoPreview(enrichedData.logoUrl);
-          console.log('Updated logoUrl:', enrichedData.logoUrl);
         }
         
         // Show enhanced success message if fiscal data was found
@@ -276,7 +268,6 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
         });
       }
     } catch (error) {
-      console.error('Error enriching company data:', error);
       // Still show success for the basic data that was loaded
       toast({ 
         title: "Informazioni azienda caricate!", 
@@ -302,7 +293,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
         form.setError('fiscalCode', { message: result.error });
       }
     } catch (error) {
-      console.error('Fiscal code validation error:', error);
+      // Ignore validation errors silently
     } finally {
       setIsValidatingFiscalCode(false);
     }
@@ -325,7 +316,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
         form.setError('vatNumber', { message: result.error });
       }
     } catch (error) {
-      console.error('VAT number validation error:', error);
+      // Ignore validation errors silently
     } finally {
       setIsValidatingVatNumber(false);
     }
@@ -374,36 +365,32 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
 
   const savePartnerMutation = useMutation({
     mutationFn: async (data: FormData & { userId?: string }) => {
-      console.log('Mutation function called with:', data);
-      
       const partnerData = {
         name: data.name,
         type: data.type,
         userId: data.userId || user!.id,
-        email: data.email || null,
-        phone: data.phone || null,
-        company: data.company || null,
-        position: data.position || null,
-        address: data.address || null,
-        city: data.city || null,
-        postalCode: data.postalCode || null,
+        email: data.email?.trim() || null,
+        phone: data.phone?.trim() || null,
+        company: data.company?.trim() || null,
+        position: data.position?.trim() || null,
+        address: data.address?.trim() || null,
+        city: data.city?.trim() || null,
+        postalCode: data.postalCode?.trim() || null,
         country: data.country || "IT",
-        fiscalCode: data.fiscalCode || null,
-        vatNumber: data.vatNumber || null,
-        logoUrl: data.logoUrl || null,
-        website: data.website || null,
-        notes: data.notes || null,
+        fiscalCode: data.fiscalCode?.trim() || null,
+        vatNumber: data.vatNumber?.trim() || null,
+        logoUrl: data.logoUrl?.trim() || null,
+        website: data.website?.trim() || null,
+        notes: data.notes?.trim() || null,
       };
-      
-      console.log('Sending partner data to API:', partnerData);
       
       if (existingPartner) {
         // Update existing partner
-        const res = await apiRequest(`/api/partners/${existingPartner.id}`, "PUT", partnerData);
+        const res = await apiRequest("PUT", `/api/partners/${existingPartner.id}`, partnerData);
         return res.json();
       } else {
         // Create new partner
-        const res = await apiRequest("/api/partners", "POST", partnerData);
+        const res = await apiRequest("POST", "/api/partners", partnerData);
         return res.json();
       }
     },
@@ -424,12 +411,6 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
   });
 
   const onSubmit = (data: FormData) => {
-    console.log('=== FORM SUBMISSION ===');
-    console.log('Form submitted with data:', data);
-    console.log('Form errors:', form.formState.errors);
-    console.log('Form is valid:', form.formState.isValid);
-    console.log('User:', user);
-    
     if (!user) {
       toast({
         title: "Errore di autenticazione", 
