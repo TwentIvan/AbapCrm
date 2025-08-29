@@ -103,7 +103,12 @@ export function DataTable<TData, TValue>({
     setIsInitialSync(true);
     
     // Force update all states to match layout
-    setColumnVisibility(layout.columnVisibility || {});
+    console.log('📊 Before state update:', { oldColumnVisibility: columnVisibility });
+    setColumnVisibility(prev => {
+      const newVisibility = { ...layout.columnVisibility };
+      console.log('📊 Setting new columnVisibility:', newVisibility);
+      return newVisibility;
+    });
     setAdvancedFilters(layout.filters || []);
     setColumnOrder(layout.columnOrder || []);
     
