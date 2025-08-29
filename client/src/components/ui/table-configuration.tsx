@@ -133,7 +133,8 @@ export function TableConfiguration({
   currentFilters = [], 
   currentAggregations = [],
   onConfigurationChange,
-  onSaveLayout 
+  onSaveLayout,
+  editingLayout
 }: TableConfigurationProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [columns, setColumns] = useState<ColumnConfig[]>(() => {
@@ -169,6 +170,8 @@ export function TableConfiguration({
 
   const [layoutName, setLayoutName] = useState('');
   const [saveAsDefault, setSaveAsDefault] = useState(false);
+  
+  const isEditingExisting = !!editingLayout;
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;

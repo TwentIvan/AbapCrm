@@ -58,6 +58,7 @@ export default function PartnersPage() {
     loadLayout,
     renameLayout,
     deleteLayout,
+    updateExistingLayout,
   } = useTableLayout('partners');
   const viewMode = layout.viewMode;
 
@@ -586,10 +587,22 @@ export default function PartnersPage() {
               updateLayout(config);
             }}
             onSaveLayout={(layoutName, isDefault) => {
-              // Save as new layout or update existing
-              const newLayoutId = saveLayoutAs(layoutName);
-              setShowConfigDialog(false);
-              return newLayoutId;
+              // If editing existing layout, update it instead of creating new
+              const isEditingExisting = !!editingLayout;
+              if (isEditingExisting && editingLayout) {
+                updateExistingLayout(editingLayout.id, {
+                  columnVisibility: layout.columnVisibility,
+                  sorting: layout.sorting,
+                  filters: layout.filters
+                });
+                setShowConfigDialog(false);
+                return editingLayout.id;
+              } else {
+                // Save as new layout
+                const newLayoutId = saveLayoutAs(layoutName);
+                setShowConfigDialog(false);
+                return newLayoutId;
+              }
             }}
           />
         </DialogContent>

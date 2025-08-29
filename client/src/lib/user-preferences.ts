@@ -340,6 +340,29 @@ class UserPreferencesService {
     return true;
   }
 
+  // Update an existing layout
+  updateLayout(tableId: string, layoutId: string, newConfig: any): boolean {
+    const preferences = this.loadFromStorage();
+    const tableConfig = preferences.tables[tableId];
+    
+    if (!tableConfig || !tableConfig.layouts[layoutId]) {
+      return false;
+    }
+    
+    // Update the existing layout with new configuration
+    const existingLayout = tableConfig.layouts[layoutId];
+    tableConfig.layouts[layoutId] = {
+      ...existingLayout,
+      ...newConfig,
+      id: layoutId, // Keep the same ID
+      name: existingLayout.name, // Keep the same name
+      updatedAt: new Date()
+    };
+    
+    this.saveToStorage(preferences);
+    return true;
+  }
+
   // Auto-save layout changes with debouncing
   private saveTimeouts = new Map<string, NodeJS.Timeout>();
   
@@ -520,9 +543,11 @@ export function useTableLayout(tableId: string) {
         sorting: newLayout.sorting
       });
       
+      console.log('⚠️ About to trigger layout update...');
       setLayout(newLayout);
       setCurrentLayoutName(newCurrentName);
       setSavedLayouts(newSavedLayouts);
+      console.log('✅ Layout state updated');
     }
     return success;
   }, [tableId]);
@@ -538,6 +563,16 @@ export function useTableLayout(tableId: string) {
 
   const deleteLayout = useCallback((layoutId: string) => {
     const success = userPreferences.deleteLayout(tableId, layoutId);
+    if (success) {
+      setLayout(userPreferences.getTableLayout(tableId));
+      setCurrentLayoutName(userPreferences.getCurrentLayoutName(tableId));
+      setSavedLayouts(userPreferences.getSavedLayouts(tableId));
+    }
+    return success;
+  }, [tableId]);
+
+  const updateExistingLayout = useCallback((layoutId: string, newConfig: any) => {
+    const success = userPreferences.updateLayout(tableId, layoutId, newConfig);
     if (success) {
       setLayout(userPreferences.getTableLayout(tableId));
       setCurrentLayoutName(userPreferences.getCurrentLayoutName(tableId));
@@ -562,6 +597,7 @@ export function useTableLayout(tableId: string) {
     loadLayout,
     renameLayout,
     deleteLayout,
+    updateExistingLayout,
     resetLayout,
   };
 }
