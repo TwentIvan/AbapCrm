@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DataTable, createImageColumn, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import { LayoutManager } from "@/components/ui/layout-manager";
 import ImageContainer from "@/components/ui/image-container";
 import { Building, Mail, Phone, MapPin, MoreHorizontal, Grid3X3, List, Edit, Trash2 } from "lucide-react";
 import { Partner } from "@shared/schema";
@@ -45,7 +46,16 @@ export default function PartnersPage() {
   const queryClient = useQueryClient();
 
   // Use the table layout hook for persistent preferences
-  const { layout, updateLayout } = useTableLayout('partners');
+  const { 
+    layout, 
+    currentLayoutName,
+    savedLayouts,
+    updateLayout, 
+    saveLayoutAs,
+    loadLayout,
+    renameLayout,
+    deleteLayout,
+  } = useTableLayout('partners');
   const viewMode = layout.viewMode;
 
   const { data: partners, isLoading } = useQuery<Partner[]>({
@@ -247,8 +257,19 @@ export default function PartnersPage() {
         />
         
         <div className="p-6">
-          {/* View Toggle */}
-          <div className="flex justify-end mb-4">
+          {/* Layout Management and View Toggle */}
+          <div className="flex justify-between items-center mb-4">
+            {/* Layout Manager */}
+            <LayoutManager
+              currentLayoutName={currentLayoutName}
+              savedLayouts={savedLayouts}
+              onSaveLayoutAs={saveLayoutAs}
+              onLoadLayout={loadLayout}
+              onRenameLayout={renameLayout}
+              onDeleteLayout={deleteLayout}
+            />
+
+            {/* View Toggle */}
             <div className="flex bg-muted rounded-lg p-1">
               <Button
                 variant={viewMode === 'cards' ? 'default' : 'ghost'}
