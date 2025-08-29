@@ -363,53 +363,101 @@ export class CompanyLookupService {
 
     // Text Search API - good for finding businesses by name
     const apiUrl = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
-    const params = new URLSearchParams({
-      query: query,
-      key: apiKey,
-      type: 'establishment',
-      fields: 'place_id,name,formatted_address,website,phone,rating,types'
-    });
-
-    console.log(`[GOOGLE-PLACES] Searching: ${query}`);
-    console.log(`[GOOGLE-PLACES] API URL: ${apiUrl}?${params}`);
     
-    const response = await fetch(`${apiUrl}?${params}`);
+    // Try multiple search variations for better results
+    const searchQueries = [
+      `${query} Italia`,
+      `${query} Italy`,
+      query,
+      `${query} azienda`,
+      `${query} spa srl`
+    ];
 
-    if (!response.ok) {
-      throw new Error(`Google Places API error: ${response.status} ${response.statusText}`);
-    }
+    console.log(`[GOOGLE-PLACES] Starting search for: ${query}`);
+    console.log(`[GOOGLE-PLACES] API Key present: ${apiKey ? 'YES' : 'NO'}`);  
+    console.log(`[GOOGLE-PLACES] API Key length: ${apiKey?.length || 0}`);
 
-    const data = await response.json();
-    console.log(`[GOOGLE-PLACES] Response status:`, data.status);
-    console.log(`[GOOGLE-PLACES] Full response:`, JSON.stringify(data, null, 2));
-    console.log(`[GOOGLE-PLACES] Found ${data.results?.length || 0} results`);
+    // Try each search query until we find results
+    for (let i = 0; i < searchQueries.length; i++) {
+      const searchQuery = searchQueries[i];
+      console.log(`[GOOGLE-PLACES] Attempt ${i + 1}/5: "${searchQuery}"`);
+      
+      const params = new URLSearchParams({
+        query: searchQuery,
+        key: apiKey,
+        language: 'it',
+        region: 'it'
+      });
+
+      console.log(`[GOOGLE-PLACES] Full URL: ${apiUrl}?${params}`);
     
-    if (!data.results || data.results.length === 0) {
-      return [];
-    }
-
-    // Transform Google Places data to our format
-    const results = await Promise.all(
-      data.results.slice(0, 10).map(async (place: any) => {
-        // Get additional details for each place
-        const details = await this.getPlaceDetails(place.place_id, apiKey);
+      try {
+        const response = await fetch(`${apiUrl}?${params}`);
         
-        return {
-          name: place.name,
-          legalName: place.name,
-          address: place.formatted_address,
-          city: this.extractCityFromAddress(place.formatted_address),
-          postalCode: this.extractPostalCodeFromAddress(place.formatted_address),
-          country: this.extractCountryFromAddress(place.formatted_address),
-          website: details?.website || place.website,
-          description: this.generateBusinessDescription(place),
-          sector: this.extractSectorFromTypes(place.types),
-          // Note: Google Places doesn't provide fiscal codes or VAT numbers
-        } as CompanyInfo;
-      })
-    );
+        console.log(`[GOOGLE-PLACES] HTTP Status: ${response.status} ${response.statusText}`);
+        
+        if (!response.ok) {
+          console.log(`[GOOGLE-PLACES] HTTP Error: ${response.status} ${response.statusText}`);
+          if (i === searchQueries.length - 1) {
+            throw new Error(`Google Places API error: ${response.status} ${response.statusText}`);
+          }
+          continue; // Try next query
+        }
 
-    return results;
+        const data = await response.json();
+        console.log(`[GOOGLE-PLACES] API Status: ${data.status}`);
+        console.log(`[GOOGLE-PLACES] Error message: ${data.error_message || 'none'}`);
+        console.log(`[GOOGLE-PLACES] Results count: ${data.results?.length || 0}`);
+        
+        if (data.status !== 'OK') {
+          console.log(`[GOOGLE-PLACES] API Error: ${data.status} - ${data.error_message || 'Unknown error'}`);
+          if (i === searchQueries.length - 1) {
+            throw new Error(`Google Places API returned status: ${data.status}`);
+          }
+          continue; // Try next query
+        }
+        
+        if (data.results && data.results.length > 0) {
+          console.log(`[GOOGLE-PLACES] SUCCESS! Found ${data.results.length} results for "${searchQuery}"`);
+          console.log(`[GOOGLE-PLACES] First result: ${data.results[0].name}`);
+          
+          // Transform and return results
+          const results = await Promise.all(
+            data.results.slice(0, 10).map(async (place: any) => {
+              // Get additional details for each place
+              const details = await this.getPlaceDetails(place.place_id, apiKey);
+              
+              return {
+                name: place.name,
+                legalName: place.name,
+                address: place.formatted_address,
+                city: this.extractCityFromAddress(place.formatted_address),
+                postalCode: this.extractPostalCodeFromAddress(place.formatted_address),
+                country: this.extractCountryFromAddress(place.formatted_address),
+                website: details?.website || place.website,
+                description: this.generateBusinessDescription(place),
+                sector: this.extractSectorFromTypes(place.types),
+                // Note: Google Places doesn't provide fiscal codes or VAT numbers
+              } as CompanyInfo;
+            })
+          );
+          
+          return results;
+        } else {
+          console.log(`[GOOGLE-PLACES] No results for "${searchQuery}"`);
+        }
+        
+      } catch (error) {
+        console.log(`[GOOGLE-PLACES] Fetch error for "${searchQuery}":`, error);
+        if (i === searchQueries.length - 1) {
+          throw error;
+        }
+      }
+    }
+    
+    console.log(`[GOOGLE-PLACES] No results found for any search variation`);
+    return [];
+
   }
 
   /**

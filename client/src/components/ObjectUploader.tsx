@@ -80,9 +80,8 @@ export function ObjectUploader({
         open={showModal}
         onRequestClose={() => setShowModal(false)}
         proudlyDisplayPoweredByUppy={false}
-        hideBrowseButton={true}
-        hideUploadButton={false}
-        showRemoveButtonAfterComplete={true}
+        note="Trascina file qui o clicca per selezionare"
+        showLinkToFileUploadResult={false}
       />
     </div>
   );
