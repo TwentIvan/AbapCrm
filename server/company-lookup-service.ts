@@ -340,6 +340,22 @@ const MOCK_COMPANIES: CompanyInfo[] = [
     sector: "Food & Beverages",
     employees: "4,000+",
     founded: 1860
+  },
+  {
+    name: "Derga Consulting Spa",
+    legalName: "Derga Consulting Società per Azioni",
+    address: "Via Gianni Brida 4",
+    city: "Bolzano",
+    postalCode: "39100",
+    country: "IT",
+    fiscalCode: "02345678901",
+    vatNumber: "IT02345678901",
+    website: "https://www.derga.it",
+    logoUrl: "https://via.placeholder.com/200x100/2563eb/ffffff?text=DERGA",
+    description: "Società di consulenza informatica e servizi digitali",
+    sector: "IT Services",
+    employees: "50-100",
+    founded: 2010
   }
 ];
 
@@ -751,7 +767,7 @@ export class CompanyLookupService {
   private static containsSignificantWords(name1: string, name2: string): boolean {
     // Remove common business suffixes and connectors
     const removeCommon = (name: string) => name
-      .replace(/\b(spa|s\.p\.a\.|srl|s\.r\.l\.|snc|sas|ss|s\.s\.|di|della|del|e|&|and|group|gruppo|consulting|consulenza)\b/gi, '')
+      .replace(/\b(spa|s\.p\.a\.|srl|s\.r\.l\.|snc|sas|ss|s\.s\.|di|della|del|e|&|and|group|gruppo|consulting|consulenza|società|per|azioni|stabilimento|store|flagship|international)\b/gi, '')
       .replace(/[^\w\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
@@ -761,12 +777,52 @@ export class CompanyLookupService {
     
     if (words1.length === 0 || words2.length === 0) return false;
     
+    // Check for exact word matches and fuzzy matches
     const matchingWords = words1.filter(w1 => 
-      words2.some(w2 => w1.includes(w2) || w2.includes(w1))
+      words2.some(w2 => {
+        // Exact match
+        if (w1.toLowerCase() === w2.toLowerCase()) return true;
+        // Substring match (one contains the other)
+        if (w1.toLowerCase().includes(w2.toLowerCase()) || w2.toLowerCase().includes(w1.toLowerCase())) return true;
+        // Levenshtein distance for typos
+        if (this.levenshteinDistance(w1.toLowerCase(), w2.toLowerCase()) <= 1 && Math.min(w1.length, w2.length) > 3) return true;
+        return false;
+      })
     );
     
-    // Consider it a match if more than 50% of significant words match
-    return matchingWords.length / Math.max(words1.length, words2.length) > 0.5;
+    // Consider it a match if more than 40% of significant words match (lowered threshold)
+    return matchingWords.length / Math.max(words1.length, words2.length) > 0.4;
+  }
+
+  /**
+   * Calculate Levenshtein distance between two strings
+   */
+  private static levenshteinDistance(str1: string, str2: string): number {
+    const matrix = [];
+    
+    for (let i = 0; i <= str2.length; i++) {
+      matrix[i] = [i];
+    }
+    
+    for (let j = 0; j <= str1.length; j++) {
+      matrix[0][j] = j;
+    }
+    
+    for (let i = 1; i <= str2.length; i++) {
+      for (let j = 1; j <= str1.length; j++) {
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    
+    return matrix[str2.length][str1.length];
   }
 
   /**
