@@ -174,14 +174,31 @@ class UserPreferencesService {
     
     const tableConfig = preferences.tables[tableId];
     const currentLayoutId = tableConfig.currentLayout || 'default';
+    
+    // Ensure layouts object exists
+    if (!tableConfig.layouts) {
+      tableConfig.layouts = {};
+    }
+    
     const currentLayout = tableConfig.layouts[currentLayoutId];
     
     if (!currentLayout) {
-      return;
+      // If current layout doesn't exist, create it with default values
+      const defaultLayout = this.getDefaultLayout();
+      tableConfig.layouts[currentLayoutId] = {
+        ...defaultLayout,
+        id: currentLayoutId,
+        name: currentLayoutId === 'default' ? 'Default' : 'Layout',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
     }
     
+    // Get the current layout (after ensuring it exists)
+    const finalCurrentLayout = tableConfig.layouts[currentLayoutId];
+    
     // Update current layout
-    const { name, createdAt, updatedAt, ...existingLayout } = currentLayout;
+    const { name, createdAt, updatedAt, ...existingLayout } = finalCurrentLayout;
     tableConfig.layouts[currentLayoutId] = {
       ...existingLayout,
       ...layout,
