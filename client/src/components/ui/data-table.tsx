@@ -118,7 +118,7 @@ export function DataTable<TData, TValue>({
     
     // Reset sync flag after a brief delay
     setTimeout(() => setIsInitialSync(false), 100);
-  }, [layout.id]);
+  }, [layout]);
   
   // Auto-save layout changes (but not during initial sync from layout)
   const [isInitialSync, setIsInitialSync] = useState(true);
@@ -286,15 +286,15 @@ export function DataTable<TData, TValue>({
     
     // Filter columns to only visible ones based on layout
     const filtered = orderedColumns.filter(col => {
-      const colId = typeof col.accessorKey === 'string' ? col.accessorKey : col.id;
+      const colId = (col as any).accessorKey || col.id;
       return layoutCols[colId] === true;
     });
     
     // Sort according to layout order if specified
     if (orderCols.length > 0) {
       filtered.sort((a, b) => {
-        const aId = typeof a.accessorKey === 'string' ? a.accessorKey : a.id;
-        const bId = typeof b.accessorKey === 'string' ? b.accessorKey : b.id;
+        const aId = (a as any).accessorKey || a.id;
+        const bId = (b as any).accessorKey || b.id;
         const aIndex = orderCols.indexOf(aId);
         const bIndex = orderCols.indexOf(bId);
         
@@ -305,8 +305,9 @@ export function DataTable<TData, TValue>({
       });
     }
     
+    console.log('🎯 Visible columns generated:', filtered.map(c => (c as any).accessorKey || c.id));
     return filtered;
-  }, [orderedColumns, layout.columnVisibility, layout.columnOrder, layout.id]);
+  }, [orderedColumns, layout.columnVisibility, layout.columnOrder]);
 
   const table = useReactTable({
     data: filteredData,
