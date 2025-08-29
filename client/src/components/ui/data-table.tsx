@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { flexRender, getCoreRowModel, getSortedRowModel, getFilteredRowModel, getPaginationRowModel, useReactTable, type ColumnDef, type SortingState, type ColumnFiltersState, type RowSelectionState } from "@tanstack/react-table";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -92,10 +92,12 @@ export function DataTable<TData, TValue>({
   });
 
   // Notify parent about selection changes
-  const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
-  if (onSelectionChange && selectedRows.length !== table.getFilteredSelectedRowModel().rows.length) {
-    onSelectionChange(selectedRows);
-  }
+  useEffect(() => {
+    if (onSelectionChange) {
+      const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
+      onSelectionChange(selectedRows);
+    }
+  }, [rowSelection, onSelectionChange, table]);
 
   return (
     <div className="space-y-4">
