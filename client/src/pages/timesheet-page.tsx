@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Clock, Calendar, TrendingUp, Filter, List, LayoutGrid } from "lucide-react";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import type { TimeEntry, Task, Project } from "@shared/schema";
-import { DataTable, createBadgeColumn } from "@/components/ui/data-table";
+import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import { LayoutManager } from "@/components/ui/layout-manager";
+import { TableConfiguration } from "@/components/ui/table-configuration";
 import type { ColumnDef } from "@tanstack/react-table";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
@@ -16,8 +18,21 @@ import { useTableLayout } from "@/lib/user-preferences";
 
 export default function TimesheetPage() {
   const [filterPeriod, setFilterPeriod] = useState<"week" | "month" | "all">("week");
+  const [editingLayout, setEditingLayout] = useState<any>(null);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
   
-  const { layout, updateLayout } = useTableLayout('timesheet');
+  // Use the table layout hook for persistent preferences
+  const { 
+    layout, 
+    currentLayoutName,
+    savedLayouts,
+    updateLayout, 
+    saveLayoutAs,
+    loadLayout,
+    renameLayout,
+    deleteLayout,
+    updateExistingLayout,
+  } = useTableLayout('timesheet');
   const viewMode = layout.viewMode;
 
   const { data: timeEntries = [] } = useQuery<TimeEntry[]>({
@@ -194,26 +209,6 @@ export default function TimesheetPage() {
               <h2 className="text-lg font-semibold">Time Tracking Overview</h2>
             </div>
             <div className="flex items-center gap-2">
-              {/* View Toggle */}
-              <div className="flex border rounded-lg p-1">
-                <Button
-                  variant={viewMode === "cards" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => updateLayout({ viewMode: "cards" })}
-                  data-testid="button-view-cards"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => updateLayout({ viewMode: "list" })}
-                  data-testid="button-view-list"
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </div>
-              
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={filterPeriod} onValueChange={(value: any) => setFilterPeriod(value)}>
                 <SelectTrigger className="w-[140px]" data-testid="select-time-period">
@@ -225,6 +220,42 @@ export default function TimesheetPage() {
                   <SelectItem value="all">All Time</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* Layout Management and View Toggle */}
+          <div className="flex justify-between items-center mb-4">
+            {/* Layout Manager */}
+            <LayoutManager
+              currentLayoutName={currentLayoutName}
+              savedLayouts={savedLayouts}
+              onLoadLayout={loadLayout}
+              onRenameLayout={renameLayout}
+              onDeleteLayout={deleteLayout}
+              onEditLayout={(layout) => {
+                setEditingLayout(layout);
+                setShowConfigDialog(true);
+              }}
+            />
+
+            {/* View Toggle */}
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === "cards" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => updateLayout({ viewMode: "cards" })}
+                data-testid="button-view-cards"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => updateLayout({ viewMode: "list" })}
+                data-testid="button-view-list"
+              >
+                <List className="h-4 w-4" />
+              </Button>
             </div>
           </div>
 
@@ -292,6 +323,7 @@ export default function TimesheetPage() {
       {/* Time Entries Content */}
       {viewMode === "list" ? (
         <DataTable
+          key={`timesheet-${currentLayoutName}`}
           tableId="timesheet-entries"
           columns={columns}
           data={tableData}
@@ -400,6 +432,21 @@ export default function TimesheetPage() {
           )}
         </div>
       </main>
+      {/* Table Configuration Dialog */}
+      <TableConfiguration
+        open={showConfigDialog}
+        onOpenChange={setShowConfigDialog}
+        layout={editingLayout}
+        onSave={(updatedLayout) => {
+          updateExistingLayout(updatedLayout);
+          setEditingLayout(null);
+          setShowConfigDialog(false);
+        }}
+        onCancel={() => {
+          setEditingLayout(null);
+          setShowConfigDialog(false);
+        }}
+      />
     </div>
   );
 }

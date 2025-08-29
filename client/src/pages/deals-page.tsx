@@ -12,6 +12,8 @@ import { Handshake, DollarSign, Calendar, TrendingUp, MoreHorizontal, Grid3X3, L
 import { Deal } from "@shared/schema";
 import DealForm from "@/components/forms/deal-form";
 import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import { LayoutManager } from "@/components/ui/layout-manager";
+import { TableConfiguration } from "@/components/ui/table-configuration";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const stageColors = {
@@ -37,9 +39,21 @@ export default function DealsPage() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [selectedDeals, setSelectedDeals] = useState<Deal[]>([]);
+  const [editingLayout, setEditingLayout] = useState<any>(null);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
 
   // Use the table layout hook for persistent preferences
-  const { layout, updateLayout } = useTableLayout('deals');
+  const { 
+    layout, 
+    currentLayoutName,
+    savedLayouts,
+    updateLayout, 
+    saveLayoutAs,
+    loadLayout,
+    renameLayout,
+    deleteLayout,
+    updateExistingLayout,
+  } = useTableLayout('deals');
   const viewMode = layout.viewMode;
 
   const { data: deals, isLoading } = useQuery<Deal[]>({
@@ -216,8 +230,22 @@ export default function DealsPage() {
             </Card>
           </div>
 
-          {/* View Toggle */}
-          <div className="flex justify-end">
+          {/* Layout Management and View Toggle */}
+          <div className="flex justify-between items-center mb-4">
+            {/* Layout Manager */}
+            <LayoutManager
+              currentLayoutName={currentLayoutName}
+              savedLayouts={savedLayouts}
+              onLoadLayout={loadLayout}
+              onRenameLayout={renameLayout}
+              onDeleteLayout={deleteLayout}
+              onEditLayout={(layout) => {
+                setEditingLayout(layout);
+                setShowConfigDialog(true);
+              }}
+            />
+
+            {/* View Toggle */}
             <div className="flex bg-muted rounded-lg p-1">
               <Button
                 variant={viewMode === 'cards' ? 'default' : 'ghost'}
@@ -273,6 +301,7 @@ export default function DealsPage() {
             </div>
           ) : viewMode === 'list' ? (
             <DataTable
+              key={`deals-${currentLayoutName}`}
               columns={tableColumns}
               data={deals || []}
               searchPlaceholder="Search deals..."
@@ -427,6 +456,22 @@ export default function DealsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Table Configuration Dialog */}
+      <TableConfiguration
+        open={showConfigDialog}
+        onOpenChange={setShowConfigDialog}
+        layout={editingLayout}
+        onSave={(updatedLayout) => {
+          updateExistingLayout(updatedLayout);
+          setEditingLayout(null);
+          setShowConfigDialog(false);
+        }}
+        onCancel={() => {
+          setEditingLayout(null);
+          setShowConfigDialog(false);
+        }}
+      />
     </div>
   );
 }

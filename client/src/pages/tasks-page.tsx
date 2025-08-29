@@ -17,6 +17,8 @@ import TaskForm from "@/components/forms/task-form";
 import { TimeTracker } from "@/components/timesheet/time-tracker";
 import { useToast } from "@/hooks/use-toast";
 import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import { LayoutManager } from "@/components/ui/layout-manager";
+import { TableConfiguration } from "@/components/ui/table-configuration";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const statusColors = {
@@ -46,11 +48,23 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [selectedTasks, setSelectedTasks] = useState<Task[]>([]);
+  const [editingLayout, setEditingLayout] = useState<any>(null);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Use the table layout hook for persistent preferences
-  const { layout, updateLayout } = useTableLayout('tasks');
+  const { 
+    layout, 
+    currentLayoutName,
+    savedLayouts,
+    updateLayout, 
+    saveLayoutAs,
+    loadLayout,
+    renameLayout,
+    deleteLayout,
+    updateExistingLayout,
+  } = useTableLayout('tasks');
   const viewMode = layout.viewMode;
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
@@ -225,8 +239,22 @@ export default function TasksPage() {
         />
         
         <div className="p-6">
-          {/* View Toggle */}
-          <div className="flex justify-end mb-4">
+          {/* Layout Management and View Toggle */}
+          <div className="flex justify-between items-center mb-4">
+            {/* Layout Manager */}
+            <LayoutManager
+              currentLayoutName={currentLayoutName}
+              savedLayouts={savedLayouts}
+              onLoadLayout={loadLayout}
+              onRenameLayout={renameLayout}
+              onDeleteLayout={deleteLayout}
+              onEditLayout={(layout) => {
+                setEditingLayout(layout);
+                setShowConfigDialog(true);
+              }}
+            />
+
+            {/* View Toggle */}
             <div className="flex bg-muted rounded-lg p-1">
               <Button
                 variant={viewMode === 'cards' ? 'default' : 'ghost'}
@@ -282,6 +310,7 @@ export default function TasksPage() {
             </div>
           ) : viewMode === 'list' ? (
             <DataTable
+              key={`tasks-${currentLayoutName}`}
               columns={tableColumns}
               data={tasks || []}
               searchPlaceholder="Search tasks..."
@@ -463,6 +492,22 @@ export default function TasksPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Table Configuration Dialog */}
+      <TableConfiguration
+        open={showConfigDialog}
+        onOpenChange={setShowConfigDialog}
+        layout={editingLayout}
+        onSave={(updatedLayout) => {
+          updateExistingLayout(updatedLayout);
+          setEditingLayout(null);
+          setShowConfigDialog(false);
+        }}
+        onCancel={() => {
+          setEditingLayout(null);
+          setShowConfigDialog(false);
+        }}
+      />
     </div>
   );
 }
