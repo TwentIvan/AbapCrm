@@ -5,12 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Calendar, TrendingUp, Filter } from "lucide-react";
+import { Clock, Calendar, TrendingUp, Filter, List, LayoutGrid } from "lucide-react";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import type { TimeEntry, Task, Project } from "@shared/schema";
+import { DataTable, createBadgeColumn } from "@/components/ui/data-table";
+import type { ColumnDef } from "@tanstack/react-table";
 
 export default function TimesheetPage() {
   const [filterPeriod, setFilterPeriod] = useState<"week" | "month" | "all">("week");
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
 
   const { data: timeEntries = [] } = useQuery<TimeEntry[]>({
     queryKey: ["/api/time-entries"],
@@ -96,6 +99,60 @@ export default function TimesheetPage() {
     }
   };
 
+  // Prepare data for table view - flatten time entries with task/project info
+  const tableData = filteredEntries.map(entry => {
+    const task = taskMap.get(entry.taskId);
+    const project = task?.projectId ? projectMap.get(task.projectId) : null;
+    return {
+      ...entry,
+      taskTitle: task?.title || "Unknown Task",
+      projectName: project?.name || "No Project",
+      formattedDuration: formatDuration(entry.duration || 0),
+      formattedDate: format(new Date(entry.startTime), "MMM d, yyyy"),
+      formattedTime: format(new Date(entry.startTime), "HH:mm") + 
+        (entry.endTime ? ` - ${format(new Date(entry.endTime), "HH:mm")}` : " - Running"),
+      status: entry.isRunning ? "Running" : "Completed"
+    };
+  });
+
+  // Table columns
+  const columns: ColumnDef<typeof tableData[0]>[] = [
+    {
+      accessorKey: "formattedDate",
+      header: "Data",
+    },
+    {
+      accessorKey: "formattedTime", 
+      header: "Orario",
+    },
+    {
+      accessorKey: "taskTitle",
+      header: "Task",
+    },
+    {
+      accessorKey: "projectName",
+      header: "Progetto",
+    },
+    {
+      accessorKey: "formattedDuration",
+      header: "Durata",
+    },
+    createBadgeColumn(
+      "status",
+      "Stato",
+      (value: string) => value === "Running" ? "secondary" : "outline"
+    ),
+    {
+      accessorKey: "description",
+      header: "Descrizione",
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">
+          {row.original.description || "Nessuna descrizione"}
+        </span>
+      )
+    }
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -106,6 +163,26 @@ export default function TimesheetPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* View Toggle */}
+          <div className="flex border rounded-lg p-1">
+            <Button
+              variant={viewMode === "cards" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("cards")}
+              data-testid="button-view-cards"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+              data-testid="button-view-list"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+          
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={filterPeriod} onValueChange={(value: any) => setFilterPeriod(value)}>
             <SelectTrigger className="w-[140px]" data-testid="select-time-period">
@@ -181,12 +258,31 @@ export default function TimesheetPage() {
         </Card>
       </div>
 
-      {/* Time Entries by Task */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Time Entries by Task</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Time Entries Content */}
+      {viewMode === "list" ? (
+        <DataTable
+          tableId="timesheet-entries"
+          columns={columns}
+          data={tableData}
+          searchPlaceholder="Cerca time entries..."
+          configurableColumns={true}
+          enableAdvancedFilters={true}
+          enableColumnReordering={true}
+          enableAggregation={true}
+          aggregationColumns={[
+            {
+              id: "duration",
+              type: "sum" as const,
+              label: "Durata Totale"
+            }
+          ]}
+        />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Time Entries by Task</CardTitle>
+          </CardHeader>
+          <CardContent>
           {Object.keys(entriesByTask).length > 0 ? (
             <div className="space-y-6">
               {Object.entries(entriesByTask).map(([taskId, entries]) => {
@@ -268,8 +364,9 @@ export default function TimesheetPage() {
               </p>
             </div>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

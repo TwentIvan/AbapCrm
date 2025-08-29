@@ -216,7 +216,7 @@ export function TableConfiguration({
                 </div>
                 <Switch
                   checked={enableAdvancedFilters}
-                  onCheckedChange={setEnableAdvancedFilters}
+                  onCheckedChange={(checked) => setEnableAdvancedFilters(checked)}
                   data-testid="switch-advanced-filters"
                 />
               </div>
@@ -232,7 +232,7 @@ export function TableConfiguration({
                 </div>
                 <Switch
                   checked={enableColumnReordering}
-                  onCheckedChange={setEnableColumnReordering}
+                  onCheckedChange={(checked) => setEnableColumnReordering(checked)}
                   data-testid="switch-column-reordering"
                 />
               </div>
@@ -248,7 +248,7 @@ export function TableConfiguration({
                 </div>
                 <Switch
                   checked={enableAggregation}
-                  onCheckedChange={setEnableAggregation}
+                  onCheckedChange={(checked) => setEnableAggregation(checked)}
                   data-testid="switch-aggregation"
                 />
               </div>

@@ -363,7 +363,7 @@ export function DataTable<TData, TValue>({
                 .filter(col => col.id !== 'select' && col.id !== 'actions')
                 .map(col => ({
                   id: col.id as string,
-                  label: col.id as string,
+                  label: (col.header as string) || (col.id as string),
                 }))}
               currentAggregations={aggregations}
               onConfigurationChange={(config) => {
