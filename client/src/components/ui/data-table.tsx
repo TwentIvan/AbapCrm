@@ -113,7 +113,7 @@ export function DataTable<TData, TValue>({
       filters: advancedFilters,
       columnOrder,
     });
-  }, [sorting, columnVisibility, advancedFilters, columnOrder, updateLayout]);
+  }, [sorting, columnVisibility, advancedFilters, columnOrder]);
 
   // Drag and drop sensors
   const sensors = useSensors(
