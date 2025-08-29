@@ -149,19 +149,30 @@ export function DataTable<TData, TValue>({
   // Apply column ordering if enabled
   const orderedColumns = useMemo(() => {
     const baseColumns = [...selectionColumn, ...columns];
+    console.log('DataTable - Building orderedColumns:', {
+      enableColumnReordering,
+      columnOrderLength: columnOrder.length,
+      columnOrder,
+      baseColumns: baseColumns.map(c => ({ id: c.id, accessorKey: (c as any).accessorKey }))
+    });
+    
     if (!enableColumnReordering || !columnOrder.length) {
+      console.log('DataTable - Using baseColumns (no reordering)');
       return baseColumns;
     }
     
     const ordered = [...baseColumns].sort((a, b) => {
-      const aIndex = columnOrder.indexOf(a.id as string);
-      const bIndex = columnOrder.indexOf(b.id as string);
+      const aId = a.id || (a as any).accessorKey;
+      const bId = b.id || (b as any).accessorKey;
+      const aIndex = columnOrder.indexOf(aId as string);
+      const bIndex = columnOrder.indexOf(bId as string);
       if (aIndex === -1 && bIndex === -1) return 0;
       if (aIndex === -1) return 1;
       if (bIndex === -1) return -1;
       return aIndex - bIndex;
     });
     
+    console.log('DataTable - Using ordered columns:', ordered.map(c => ({ id: c.id, accessorKey: (c as any).accessorKey })));
     return ordered;
   }, [selectionColumn, columns, columnOrder, enableColumnReordering]);
   
@@ -271,7 +282,8 @@ export function DataTable<TData, TValue>({
   // Initialize column order
   useEffect(() => {
     if (enableColumnReordering && columnOrder.length === 0) {
-      const initialOrder = allColumns.map(col => col.id as string).filter(Boolean);
+      const initialOrder = allColumns.map(col => col.id || (col as any).accessorKey as string).filter(Boolean);
+      console.log('DataTable - Initializing columnOrder:', initialOrder);
       setColumnOrder(initialOrder);
     }
   }, [allColumns, enableColumnReordering, columnOrder.length]);
@@ -374,11 +386,14 @@ export function DataTable<TData, TValue>({
                 })}
               currentAggregations={aggregationColumns}
               onConfigurationChange={(config) => {
+                console.log('DataTable - Configuration changed:', config);
                 // Apply configuration changes immediately
                 if (config.columnVisibility) {
+                  console.log('DataTable - Updating columnVisibility:', config.columnVisibility);
                   setColumnVisibility(config.columnVisibility);
                 }
                 if (config.columnOrder && config.columnOrder.length > 0) {
+                  console.log('DataTable - Updating columnOrder:', config.columnOrder);
                   setColumnOrder(config.columnOrder);
                 }
               }}
