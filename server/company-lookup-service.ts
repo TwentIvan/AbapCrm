@@ -31,7 +31,6 @@ const MOCK_COMPANIES: CompanyInfo[] = [
     fiscalCode: "04245520376",
     vatNumber: "IT04245520376",
     website: "https://www.gruppohera.it",
-    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Hera_logo.svg/1200px-Hera_logo.svg.png",
     description: "Utility multiservizi nei settori ambiente, energia e idrico",
     sector: "Servizi pubblici",
     employees: "9,000+",
