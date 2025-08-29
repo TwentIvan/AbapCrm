@@ -279,16 +279,45 @@ export function DataTable<TData, TValue>({
     return results;
   }, [filteredData, aggregationColumns, enableAggregation]);
 
+  // Generate visible columns based on layout configuration
+  const visibleColumns = useMemo(() => {
+    const layoutCols = layout.columnVisibility || {};
+    const orderCols = layout.columnOrder || [];
+    
+    // Filter columns to only visible ones based on layout
+    const filtered = orderedColumns.filter(col => {
+      const colId = typeof col.accessorKey === 'string' ? col.accessorKey : col.id;
+      return layoutCols[colId] === true;
+    });
+    
+    // Sort according to layout order if specified
+    if (orderCols.length > 0) {
+      filtered.sort((a, b) => {
+        const aId = typeof a.accessorKey === 'string' ? a.accessorKey : a.id;
+        const bId = typeof b.accessorKey === 'string' ? b.accessorKey : b.id;
+        const aIndex = orderCols.indexOf(aId);
+        const bIndex = orderCols.indexOf(bId);
+        
+        if (aIndex === -1 && bIndex === -1) return 0;
+        if (aIndex === -1) return 1;
+        if (bIndex === -1) return -1;
+        return aIndex - bIndex;
+      });
+    }
+    
+    console.log('🎯 Visible columns generated:', filtered.map(c => c.accessorKey || c.id));
+    return filtered;
+  }, [orderedColumns, layout.columnVisibility, layout.columnOrder]);
+
   const table = useReactTable({
     data: filteredData,
-    columns: orderedColumns,
+    columns: visibleColumns, // Use filtered columns instead of all columns
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     globalFilterFn: "includesString",
@@ -296,7 +325,6 @@ export function DataTable<TData, TValue>({
     state: {
       sorting,
       columnFilters,
-      columnVisibility,
       globalFilter,
       rowSelection,
     },
