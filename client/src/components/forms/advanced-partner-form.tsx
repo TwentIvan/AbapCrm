@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import ImageContainer from "@/components/ui/image-container";
 import { Loader2, Upload, MapPin, Building2, Globe, CreditCard, FileText, Camera, Search } from "lucide-react";
 import type { UploadResult } from "@uppy/core";
 
@@ -784,17 +785,13 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                   <label className="text-sm font-medium">Logo Aziendale</label>
                   <div className="flex items-center gap-4">
                     {logoPreview && (
-                      <div className="w-16 h-16 border border-gray-200 rounded-lg p-2 bg-gray-50">
-                        <img 
-                          src={logoPreview} 
-                          alt="Logo preview" 
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            console.error('Logo preview error:', e);
-                            setLogoPreview("");
-                          }}
-                        />
-                      </div>
+                      <ImageContainer
+                        src={logoPreview}
+                        alt="Logo preview"
+                        fallbackType="logo"
+                        size="lg"
+                        data-testid="img-logo-preview"
+                      />
                     )}
                     <div className="flex-1">
                       <ObjectUploader

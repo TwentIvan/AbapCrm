@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import hubUpLogo from "@assets/generated_images/hub_up_logo.png";
+import ImageContainer from "@/components/ui/image-container";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: BarChart3, testId: "nav-dashboard" },
@@ -26,9 +27,14 @@ export default function Sidebar() {
       {/* Logo and Brand */}
       <div className="p-6 border-b border-border">
         <div className="flex justify-center">
-          <div className="w-64 h-44 rounded-lg overflow-hidden">
-            <img src={hubUpLogo} alt="The Hub Up" className="w-full h-full object-cover" data-testid="img-app-logo" />
-          </div>
+          <ImageContainer
+            src={hubUpLogo}
+            alt="The Hub Up"
+            fallbackType="logo"
+            size="custom"
+            containerClassName="w-64 h-44"
+            data-testid="img-app-logo"
+          />
         </div>
       </div>
 
