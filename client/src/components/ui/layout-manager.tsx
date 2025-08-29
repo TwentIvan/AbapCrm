@@ -154,7 +154,18 @@ export function LayoutManager({
                   <>
                     <div className="flex-1">
                       <button
-                        onClick={() => onLoadLayout(layout.id)}
+                        onClick={() => {
+                          // Test: force different configs for testing
+                          if (layout.name === 'Default') {
+                            console.log('🧪 FORCING Default: only name + logoUrl');
+                            onLoadLayout('test-minimal');
+                          } else if (layout.name === 'Secondo') {
+                            console.log('🧪 FORCING Secondo: all columns');
+                            onLoadLayout('test-all');
+                          } else {
+                            onLoadLayout(layout.id);
+                          }
+                        }}
                         className="text-left hover:underline focus:underline text-sm font-medium"
                         data-testid={`button-load-layout-${index}`}
                       >

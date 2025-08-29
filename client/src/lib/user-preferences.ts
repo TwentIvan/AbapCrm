@@ -529,6 +529,42 @@ export function useTableLayout(tableId: string) {
   }, [tableId]);
 
   const loadLayout = useCallback((layoutId: string) => {
+    // Test layouts with dramatic differences
+    if (layoutId === 'test-minimal') {
+      const testLayout = {
+        id: 'test-minimal',
+        name: 'Test Minimal',
+        columnVisibility: { name: true, logoUrl: true },
+        sorting: [],
+        filters: [],
+        columnOrder: [],
+        isDefault: false
+      };
+      console.log('🧪 Loading MINIMAL test layout');
+      setLayout(testLayout);
+      setCurrentLayoutName('Test Minimal');
+      return true;
+    }
+    
+    if (layoutId === 'test-all') {
+      const testLayout = {
+        id: 'test-all',
+        name: 'Test All',
+        columnVisibility: { 
+          name: true, logoUrl: true, type: true, company: true, 
+          vatNumber: true, fiscalCode: true, address: true, email: true, phone: true 
+        },
+        sorting: [],
+        filters: [],
+        columnOrder: [],
+        isDefault: false
+      };
+      console.log('🧪 Loading ALL COLUMNS test layout');
+      setLayout(testLayout);
+      setCurrentLayoutName('Test All');
+      return true;
+    }
+    
     const success = userPreferences.loadLayout(tableId, layoutId);
     if (success) {
       // Force immediate state update

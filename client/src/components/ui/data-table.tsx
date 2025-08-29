@@ -100,24 +100,8 @@ export function DataTable<TData, TValue>({
   useEffect(() => {
     setIsInitialSync(true);
     
-    // Test: force a very obvious change
-    console.log('⚡ Layout change - BEFORE:', Object.keys(columnVisibility).filter(k => columnVisibility[k]));
-    console.log('⚡ Layout from storage:', Object.keys(layout.columnVisibility || {}).filter(k => layout.columnVisibility[k]));
-    
-    // Force a DRAMATIC test change first
-    setColumnVisibility(prev => {
-      const testChange = { logoUrl: true, name: true, type: false, company: false };
-      console.log('🧪 TEST: Setting dramatic change:', Object.keys(testChange).filter(k => testChange[k]));
-      return testChange;
-    });
-    
-    // Then set the actual layout after a delay
-    setTimeout(() => {
-      const newVisibility = { ...layout.columnVisibility };
-      setColumnVisibility(newVisibility);
-      console.log('⚡ FINAL: Setting layout visibility:', Object.keys(newVisibility).filter(k => newVisibility[k]));
-    }, 500);
-    
+    // Force update all states to match layout
+    setColumnVisibility({ ...layout.columnVisibility });
     setAdvancedFilters(layout.filters || []);
     setColumnOrder(layout.columnOrder || []);
     
