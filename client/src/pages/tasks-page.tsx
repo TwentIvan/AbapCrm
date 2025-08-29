@@ -58,22 +58,8 @@ function TaskTimerButtons({ task }: { task: Task }) {
       return res.json();
     },
     refetchInterval: 1000, // Refresh every second to get timer updates
-    onSuccess: (data) => {
-      console.log('Running entry query success:', data);
-    },
-    onError: (error) => {
-      console.log('Running entry query error:', error);
-    }
   });
 
-  // Debug running entry
-  useEffect(() => {
-    console.log('TaskTimerButtons runningEntry updated:', {
-      runningEntry,
-      taskId: task.id,
-      isCurrentTaskRunning: runningEntry && runningEntry.taskId === task.id
-    });
-  }, [runningEntry, task.id]);
 
   // Start timer mutation
   const startTimerMutation = useMutation({
@@ -86,11 +72,9 @@ function TaskTimerButtons({ task }: { task: Task }) {
       const res = await apiRequest("POST", "/api/time-entries", requestData);
       return await res.json();
     },
-    onSuccess: (data) => {
-      console.log('Timer started successfully, response:', data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries/running"] });
-      // Force refetch of running entry
       queryClient.refetchQueries({ queryKey: ["/api/time-entries/running"] });
     },
   });
@@ -134,13 +118,11 @@ function TaskTimerButtons({ task }: { task: Task }) {
   const hasRunningTimer = !!runningEntry;
 
   const handleStart = (e?: any) => {
-    console.log('Start clicked for task:', task.id);
     e?.stopPropagation(); // Prevent event bubbling
     startTimerMutation.mutate();
   };
 
   const handleStop = () => {
-    console.log('Stopping timer, setting dialog to true');
     if (runningEntry) {
       setShowCompletionDialog(true);
     }
@@ -189,6 +171,7 @@ function TaskTimerButtons({ task }: { task: Task }) {
       stopTimerMutation.mutate({ entryId: runningEntry.id, completionData });
     }
   };
+
 
   return (
     <>
@@ -241,14 +224,6 @@ export default function TasksPage() {
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   
-  // Debug all dialog states
-  useEffect(() => {
-    console.log('Main page dialogs:', {
-      showCreateDialog,
-      showEditDialog, 
-      showConfigDialog
-    });
-  }, [showCreateDialog, showEditDialog, showConfigDialog]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
