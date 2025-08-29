@@ -600,8 +600,8 @@ export function copySelectedDataToClipboard<TData>(
       });
     });
 
-    // Combine headers and data into TSV format
-    const tsvContent = [headers, ...dataRows]
+    // Create TSV format without headers (only data rows)
+    const tsvContent = dataRows
       .map(row => row.join('\t'))
       .join('\n');
 
