@@ -519,15 +519,23 @@ export function DataTable<TData, TValue>({
                     console.log('Timer button element:', target.closest('[data-timer-button="true"]'));
                     console.log('Button element:', target.closest('button'));
                     
+                    // Check if clicked element is inside a timer button
+                    const timerButton = target.closest('[data-timer-button="true"]');
+                    const anyButton = target.closest('button');
+                    
                     if (target.closest('[role="checkbox"]') || 
-                        target.closest('[data-timer-button="true"]') ||
-                        target.closest('button') || 
+                        timerButton ||
+                        anyButton || 
                         target.closest('[role="button"]') ||
                         target.closest('input') ||
                         target.closest('select') ||
                         target.closest('.progress-root') ||
                         target.closest('[data-radix-progress-root]')) {
-                      console.log('Row click blocked due to interactive element');
+                      console.log('Row click blocked due to interactive element:', {
+                        hasTimerButton: !!timerButton,
+                        hasAnyButton: !!anyButton,
+                        targetTag: target.tagName
+                      });
                       return;
                     }
                     

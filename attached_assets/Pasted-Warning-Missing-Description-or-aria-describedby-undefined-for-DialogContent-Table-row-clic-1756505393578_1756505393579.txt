@@ -1,0 +1,22 @@
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+Table row clicked, target: SPAN
+Has timer button attr: false
+Has button: false
+Timer button element: null
+Button element: null
+Row click proceeding to onRowClick
+handleEditTask called for task: 984e9011-fa39-4dcc-af91-12e0ef56aeed
+Stack trace: Error
+    at handleEditTask (https://222ddc3c-f6cd-467a-8853-1f2a3dfc443a-00-1aqu7f7d7h2mr.picard.replit.dev/src/pages/tasks-page.tsx?t=1756505345324:323:33)
+    at onClick (https://222ddc3c-f6cd-467a-8853-1f2a3dfc443a-00-1aqu7f7d7h2mr.picard.replit.dev/src/components/ui/data-table.tsx?t=1756505345324:597:31)
+    at HTMLUnknownElement.callCallback2 (https://222ddc3c-f6cd-467a-8853-1f2a3dfc443a-00-1aqu7f7d7h2mr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=e3e18c07:3674:22)
+    at Object.invokeGuardedCallbackDev (https://222ddc3c-f6cd-467a-8853-1f2a3dfc443a-00-1aqu7f7d7h2mr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=e3e18c07:3699:24)
+    at invokeGuardedCallback (https://222ddc3c-f6cd-467a-8853-1f2a3dfc443a-00-1aqu7f7d7h2mr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=e3e18c07:3733:39)
+    at invokeGuardedCallbackAndCatchFirstError (https://222ddc3c-f6cd-467a-8853-1f2a3dfc443a-00-1aqu7f7d7h2mr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=e3e18c07:3736:33)
+    at executeDispatch (https://222ddc3c-f6cd-467a-8853-1f2a3dfc443a-00-1aqu7f7d7h2mr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=e3e18c07:7014:11)
+    at processDispatchQueueItemsInOrder (https://222ddc3c-f6cd-467a-8853-1f2a3dfc443a-00-1aqu7f7d7h2mr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=e3e18c07:7034:15)
+    at processDispatchQueue (https://222ddc3c-f6cd-467a-8853-1f2a3dfc443a-00-1aqu7f7d7h2mr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=e3e18c07:7043:13)
+    at dispatchEventsForPlugins (https://222ddc3c-f6cd-467a-8853-1f2a3dfc443a-00-1aqu7f7d7h2mr.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=e3e18c07:7051:11)
+Main dialogs changed: 
+Object {showCreateDialog: false, showEditDialog: true, showConfigDialog: false}
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
