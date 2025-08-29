@@ -279,33 +279,12 @@ export function DataTable<TData, TValue>({
     return results;
   }, [filteredData, aggregationColumns, enableAggregation]);
 
-  // Generate visible columns based on layout configuration
-  const visibleColumns = useMemo(() => {
-    const layoutCols = layout.columnVisibility || {};
-    
-    // If no specific visibility set, return all columns
-    const visibleKeys = Object.keys(layoutCols).filter(key => layoutCols[key] === true);
-    if (visibleKeys.length === 0) {
-      return orderedColumns;
-    }
-    
-    // Filter columns to only visible ones based on layout
-    const filtered = orderedColumns.filter(col => {
-      const colId = (col as any).accessorKey || col.id;
-      return layoutCols[colId] === true;
-    });
-    
-    return filtered;
-  }, [JSON.stringify(layout.columnVisibility)]);
+  // SIMPLIFIED: Just use all columns and let React Table handle visibility
+  const visibleColumns = orderedColumns;
 
-  // Clean sorting and column order to only include visible columns
-  const visibleColumnIds = visibleColumns.map(col => (col as any).accessorKey || col.id);
-  const cleanSorting = sorting.filter(sort => visibleColumnIds.includes(sort.id));
-  const cleanColumnOrder = columnOrder.filter(id => visibleColumnIds.includes(id));
-  
   const table = useReactTable({
     data: filteredData,
-    columns: visibleColumns, // Use filtered columns instead of all columns
+    columns: visibleColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -317,8 +296,9 @@ export function DataTable<TData, TValue>({
     globalFilterFn: "includesString",
     enableRowSelection: enableSelection,
     state: {
-      sorting: cleanSorting,
+      sorting,
       columnFilters,
+      columnVisibility,
       globalFilter,
       rowSelection,
     },
