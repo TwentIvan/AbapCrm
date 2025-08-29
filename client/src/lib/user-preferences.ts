@@ -529,54 +529,19 @@ export function useTableLayout(tableId: string) {
   }, [tableId]);
 
   const loadLayout = useCallback((layoutId: string) => {
-    // Test layouts with dramatic differences
-    if (layoutId === 'test-minimal') {
-      const testLayout = {
-        id: 'test-minimal',
-        name: 'Test Minimal',
-        viewMode: 'list' as const,
-        columnVisibility: { name: true, logoUrl: true },
-        sorting: [],
-        filters: [],
-        columnOrder: [],
-        pageSize: 10,
-        aggregations: { enabled: false, position: 'bottom' as const, columns: [], subtotals: { enabled: false, groupBy: [] } },
-        isDefault: false
-      };
-      console.log('🧪 Loading MINIMAL test layout - only name + logoUrl');
-      setLayout(testLayout);
-      setCurrentLayoutName('Test Minimal');
-      return true;
-    }
-    
-    if (layoutId === 'test-all') {
-      const testLayout = {
-        id: 'test-all',
-        name: 'Test All',
-        viewMode: 'list' as const,
-        columnVisibility: { 
-          name: true, logoUrl: true, type: true, company: true, 
-          vatNumber: true, fiscalCode: true, address: true, email: true, phone: true 
-        },
-        sorting: [],
-        filters: [],
-        columnOrder: [],
-        pageSize: 10,
-        aggregations: { enabled: false, position: 'bottom' as const, columns: [], subtotals: { enabled: false, groupBy: [] } },
-        isDefault: false
-      };
-      console.log('🧪 Loading ALL COLUMNS test layout - all 9 columns visible');
-      setLayout(testLayout);
-      setCurrentLayoutName('Test All');
-      return true;
-    }
-    
+    console.log('🔄 Loading layout:', layoutId);
     const success = userPreferences.loadLayout(tableId, layoutId);
     if (success) {
       // Force immediate state update
       const newLayout = userPreferences.getTableLayout(tableId);
       const newCurrentName = userPreferences.getCurrentLayoutName(tableId);
       const newSavedLayouts = userPreferences.getSavedLayouts(tableId);
+      
+      console.log('📊 Layout loaded:', {
+        name: newCurrentName,
+        visibleColumns: Object.keys(newLayout.columnVisibility || {}).filter(k => newLayout.columnVisibility[k]),
+        viewMode: newLayout.viewMode
+      });
       
       // Create completely new objects to force re-render
       setLayout({
