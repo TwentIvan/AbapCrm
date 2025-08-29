@@ -231,21 +231,26 @@ export function DataTable<TData, TValue>({
     
     // SYNC FIX: Update layout.columns from columnVisibility if they don't match
     if (layout.columnVisibility && Object.keys(layout.columnVisibility).length > 0) {
-      console.log(`🔄 SYNC: Updating columns from columnVisibility`);
+      // Check if sync is needed (avoid infinite loops)
+      const needsSync = Object.entries(layout.columnVisibility).some(([colId, visible]) => 
+        layoutColumns[colId] && layoutColumns[colId].visible !== visible
+      );
       
-      // Update layoutColumns from columnVisibility
-      Object.entries(layout.columnVisibility).forEach(([colId, visible]) => {
-        if (layoutColumns[colId]) {
-          layoutColumns[colId] = { 
-            ...layoutColumns[colId], 
-            visible: visible as boolean 
-          };
-        }
-      });
-      
-      // Save the synced columns back to layout
-      updateLayout({ columns: layoutColumns });
-      console.log(`✅ SYNC: Updated columns:`, layoutColumns);
+      if (needsSync) {
+        console.log(`🔄 SYNC: Updating columns from columnVisibility`);
+        
+        // Update layoutColumns from columnVisibility
+        Object.entries(layout.columnVisibility).forEach(([colId, visible]) => {
+          if (layoutColumns[colId]) {
+            layoutColumns[colId] = { 
+              ...layoutColumns[colId], 
+              visible: visible as boolean 
+            };
+          }
+        });
+        
+        console.log(`✅ SYNC: Updated columns:`, layoutColumns);
+      }
     }
     
     // AUTO-POPULATE: Only for DEFAULT layout if still empty
@@ -261,8 +266,6 @@ export function DataTable<TData, TValue>({
           }
         });
         
-        // Auto-save the populated columns to layout
-        updateLayout({ columns: layoutColumns });
         console.log('🎯 Auto-populated columns for DEFAULT layout:', Object.keys(layoutColumns));
       } else {
         console.log(`❌ Layout "${currentLayoutName}" has no column configuration - returning empty!`);
