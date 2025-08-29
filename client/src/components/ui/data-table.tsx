@@ -226,19 +226,28 @@ export function DataTable<TData, TValue>({
   const getVisibleColumnsInOrder = useMemo(() => {
     let layoutColumns = layout.columns || {};
     
+    console.log(`🔍 DEBUG - Layout: "${currentLayoutName}", Columns:`, layoutColumns);
+    
     // AUTO-POPULATE: Only for DEFAULT layout, not saved layouts
-    if (Object.keys(layoutColumns).length === 0 && currentLayoutName === 'Default') {
-      layoutColumns = {};
-      orderedColumns.forEach((col, index) => {
-        const colId = (col as any).accessorKey || col.id;
-        if (colId && colId !== 'actions' && colId !== 'select') { // Skip special columns
-          layoutColumns[colId] = { visible: true, position: index + 1 };
-        }
-      });
+    if (Object.keys(layoutColumns).length === 0) {
+      console.log(`⚠️  Layout "${currentLayoutName}" has empty columns - needs configuration!`);
       
-      // Auto-save the populated columns to layout
-      updateLayout({ columns: layoutColumns });
-      console.log('🎯 Auto-populated columns for DEFAULT layout:', Object.keys(layoutColumns));
+      if (currentLayoutName === 'Default') {
+        layoutColumns = {};
+        orderedColumns.forEach((col, index) => {
+          const colId = (col as any).accessorKey || col.id;
+          if (colId && colId !== 'actions' && colId !== 'select') { // Skip special columns
+            layoutColumns[colId] = { visible: true, position: index + 1 };
+          }
+        });
+        
+        // Auto-save the populated columns to layout
+        updateLayout({ columns: layoutColumns });
+        console.log('🎯 Auto-populated columns for DEFAULT layout:', Object.keys(layoutColumns));
+      } else {
+        console.log(`❌ Layout "${currentLayoutName}" has no column configuration - returning empty!`);
+        return []; // Return empty columns for unconfigured saved layouts
+      }
     }
     
     // 1. SELECT: Get all columns with visible: true
