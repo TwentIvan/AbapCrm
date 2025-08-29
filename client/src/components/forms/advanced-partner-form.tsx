@@ -751,7 +751,6 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                         onGetUploadParameters={handleGetLogoUploadParameters}
                         onComplete={handleLogoUploadComplete}
                         buttonClassName="w-full"
-                        hideBrowseButton={true}
                       >
                         <Camera className="mr-2 h-4 w-4" />
                         {logoPreview ? 'Cambia Logo' : 'Carica Logo'}
@@ -851,6 +850,13 @@ export default function AdvancedPartnerForm({ onSuccess }: AdvancedPartnerFormPr
                 placeholder="Digita il nome dell'azienda da cercare..."
                 className="flex-1"
                 data-testid="input-search-company"
+                onFocus={(e) => {
+                  // Previeni la selezione automatica del testo
+                  e.preventDefault();
+                  setTimeout(() => {
+                    e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+                  }, 0);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
