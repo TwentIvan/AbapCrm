@@ -81,7 +81,7 @@ export function DataTable<TData, TValue>({
   enableClipboardCopy = false
 }: DataTableProps<TData, TValue>) {
   // Load and manage table layout preferences
-  const { layout, updateLayout, resetLayout } = useTableLayout(tableId);
+  const { layout, updateLayout, resetLayout, saveLayoutAs } = useTableLayout(tableId);
   
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -416,6 +416,10 @@ export function DataTable<TData, TValue>({
                 if (config.sorting && config.sorting.length > 0) {
                   setSorting(config.sorting.map((sort: any) => ({ id: sort.id, desc: sort.desc })));
                 }
+              }}
+              onSaveLayout={(layoutName, isDefault) => {
+                console.log('🎯 DataTable onSaveLayout called:', layoutName);
+                return saveLayoutAs(layoutName);
               }}
             />
           )}

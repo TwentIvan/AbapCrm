@@ -30,6 +30,7 @@ interface TableConfigurationProps {
   currentFilters?: any[];
   currentAggregations?: any[];
   onConfigurationChange?: (config: any) => void;
+  onSaveLayout?: (layoutName: string, isDefault?: boolean) => string;
 }
 
 interface SortableColumnItemProps {
@@ -130,7 +131,8 @@ export function TableConfiguration({
   availableColumns, 
   currentFilters = [], 
   currentAggregations = [],
-  onConfigurationChange 
+  onConfigurationChange,
+  onSaveLayout 
 }: TableConfigurationProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [columns, setColumns] = useState<ColumnConfig[]>(() => {
@@ -245,7 +247,9 @@ export function TableConfiguration({
 
     // Save as new layout with specified name
     console.log('💾 About to save layout...');
-    const layoutId = userPreferences.saveLayoutAs(tableId, layoutName, saveAsDefault);
+    const layoutId = onSaveLayout ? 
+      onSaveLayout(layoutName, saveAsDefault) : 
+      userPreferences.saveLayoutAs(tableId, layoutName, saveAsDefault);
     console.log('✅ Layout saved with ID:', layoutId);
     
     // Update current layout with new configuration
@@ -253,10 +257,6 @@ export function TableConfiguration({
     console.log('🔄 Layout updated');
     
     onConfigurationChange?.(updatedLayout);
-    
-    // Trigger page refresh to update saved layouts list
-    console.log('🔄 Refreshing page to show new layout...');
-    window.location.reload();
     
     // Reset form
     setLayoutName('');

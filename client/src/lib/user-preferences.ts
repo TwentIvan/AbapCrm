@@ -494,10 +494,20 @@ export function useTableLayout(tableId: string) {
   }, [tableId]);
 
   const saveLayoutAs = useCallback((layoutName: string) => {
+    console.log('🎯 Hook saveLayoutAs called with:', layoutName);
     const layoutId = userPreferences.saveLayoutAs(tableId, layoutName);
+    console.log('📋 Layout ID returned:', layoutId);
+    
     // Refresh state
-    setCurrentLayoutName(layoutName);
-    setSavedLayouts(userPreferences.getSavedLayouts(tableId));
+    const newCurrentName = userPreferences.getCurrentLayoutName(tableId);
+    const newSavedLayouts = userPreferences.getSavedLayouts(tableId);
+    
+    console.log('🔄 Updating hook state:');
+    console.log('- Current layout name:', newCurrentName);
+    console.log('- Saved layouts:', newSavedLayouts.map(l => l.name));
+    
+    setCurrentLayoutName(newCurrentName);
+    setSavedLayouts(newSavedLayouts);
     return layoutId;
   }, [tableId]);
 
