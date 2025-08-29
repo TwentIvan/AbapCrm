@@ -746,8 +746,8 @@ export class CompanyLookupService {
       console.log(`[ENRICH-FISCAL] Found local match: ${fiscalMatch.name}`);
       console.log(`[ENRICH-FISCAL] CF: ${fiscalMatch.fiscalCode}, P.IVA: ${fiscalMatch.vatNumber}`);
       
-      // Merge the fiscal data and logo
-      return {
+      // Merge the fiscal data first
+      let enrichedData = {
         ...companyData,
         fiscalCode: fiscalMatch.fiscalCode,
         vatNumber: fiscalMatch.vatNumber,
@@ -755,6 +755,22 @@ export class CompanyLookupService {
         sector: fiscalMatch.sector || companyData.sector,
         description: fiscalMatch.description || companyData.description
       };
+
+      // Even if we found fiscal data locally, try to get real logo from website
+      if (companyData.website && (!fiscalMatch.logoUrl || fiscalMatch.logoUrl.includes('placeholder'))) {
+        console.log(`[ENRICH-FISCAL] Attempting to extract real logo from website: ${companyData.website}`);
+        try {
+          const websiteData = await this.extractDataFromWebsite(companyData.website);
+          if (websiteData.logoUrl) {
+            enrichedData.logoUrl = websiteData.logoUrl;
+            console.log(`[ENRICH-FISCAL] Real logo found: ${websiteData.logoUrl}`);
+          }
+        } catch (error) {
+          console.error(`[ENRICH-FISCAL] Error extracting logo from ${companyData.website}:`, error);
+        }
+      }
+      
+      return enrichedData;
     }
 
     // If no local match found, try web search for fiscal data and logo
