@@ -226,8 +226,8 @@ export function DataTable<TData, TValue>({
   const getVisibleColumnsInOrder = useMemo(() => {
     let layoutColumns = layout.columns || {};
     
-    // AUTO-POPULATE: If no columns configured, create default visibility for all columns
-    if (Object.keys(layoutColumns).length === 0) {
+    // AUTO-POPULATE: Only for DEFAULT layout, not saved layouts
+    if (Object.keys(layoutColumns).length === 0 && currentLayoutName === 'Default') {
       layoutColumns = {};
       orderedColumns.forEach((col, index) => {
         const colId = (col as any).accessorKey || col.id;
@@ -238,7 +238,7 @@ export function DataTable<TData, TValue>({
       
       // Auto-save the populated columns to layout
       updateLayout({ columns: layoutColumns });
-      console.log('🎯 Auto-populated columns:', Object.keys(layoutColumns));
+      console.log('🎯 Auto-populated columns for DEFAULT layout:', Object.keys(layoutColumns));
     }
     
     // 1. SELECT: Get all columns with visible: true
@@ -266,7 +266,7 @@ export function DataTable<TData, TValue>({
     
     console.log('🎯 User algorithm result:', visibleColumnIds);
     return filteredColumns;
-  }, [orderedColumns, layout.columns, updateLayout]);
+  }, [orderedColumns, layout.columns, updateLayout, currentLayoutName]);
   
   const visibleColumns = getVisibleColumnsInOrder;
 
