@@ -434,7 +434,7 @@ export class CompanyLookupService {
         languageCode: 'it',
         regionCode: 'IT',
         maxResultCount: 10,
-        includedType: 'establishment',
+        // Removed includedType - not supported in new API
         locationBias: {
           rectangle: {
             low: { latitude: 36.0, longitude: 6.0 },  // Sud Italia
