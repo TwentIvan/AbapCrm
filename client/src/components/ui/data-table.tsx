@@ -244,7 +244,7 @@ export function DataTable<TData, TValue>({
 
   const table = useReactTable({
     data: filteredData,
-    columns: allColumns,
+    columns: orderedColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
