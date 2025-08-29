@@ -122,9 +122,12 @@ function TaskTimerButtons({ task }: { task: Task }) {
     startTimerMutation.mutate();
   };
 
-  const handleStop = () => {
+  const handleStop = (e?: any) => {
+    console.log('Stop clicked, opening completion dialog');
+    e?.stopPropagation(); // Prevent event bubbling
     if (runningEntry) {
       setShowCompletionDialog(true);
+      console.log('Completion dialog should be open:', true);
     }
   };
 
@@ -223,6 +226,17 @@ export default function TasksPage() {
   const [selectedTasks, setSelectedTasks] = useState<Task[]>([]);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+
+  // Debug dialog states when they change
+  useEffect(() => {
+    if (showCreateDialog || showEditDialog || showConfigDialog) {
+      console.log('Main dialogs changed:', {
+        showCreateDialog,
+        showEditDialog,
+        showConfigDialog
+      });
+    }
+  }, [showCreateDialog, showEditDialog, showConfigDialog]);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
