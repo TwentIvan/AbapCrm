@@ -434,9 +434,18 @@ export default function TimesheetPage() {
       </main>
       {/* Table Configuration Dialog */}
       <TableConfiguration
+        tableId="timesheet"
+        availableColumns={[
+          { id: 'taskId', label: 'Task' },
+          { id: 'projectId', label: 'Project' },
+          { id: 'startTime', label: 'Start Time' },
+          { id: 'endTime', label: 'End Time' },
+          { id: 'duration', label: 'Duration' },
+          { id: 'description', label: 'Description' },
+        ]}
         open={showConfigDialog}
         onOpenChange={setShowConfigDialog}
-        layout={editingLayout}
+        editingLayout={editingLayout}
         onSave={(updatedLayout) => {
           updateExistingLayout(updatedLayout);
           setEditingLayout(null);

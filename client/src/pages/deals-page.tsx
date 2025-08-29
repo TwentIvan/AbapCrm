@@ -459,9 +459,18 @@ export default function DealsPage() {
 
       {/* Table Configuration Dialog */}
       <TableConfiguration
+        tableId="deals"
+        availableColumns={[
+          { id: 'title', label: 'Title' },
+          { id: 'stage', label: 'Stage' },
+          { id: 'value', label: 'Value' },
+          { id: 'partnerId', label: 'Partner' },
+          { id: 'probability', label: 'Probability' },
+          { id: 'expectedCloseDate', label: 'Expected Close Date' },
+        ]}
         open={showConfigDialog}
         onOpenChange={setShowConfigDialog}
-        layout={editingLayout}
+        editingLayout={editingLayout}
         onSave={(updatedLayout) => {
           updateExistingLayout(updatedLayout);
           setEditingLayout(null);

@@ -150,22 +150,22 @@ export function TableConfiguration({
 
   const [aggregationPosition, setAggregationPosition] = useState<'top' | 'bottom'>(() => {
     const layout = userPreferences.getTableLayout(tableId);
-    return layout.aggregations.position || 'bottom';
+    return layout.aggregations?.position || 'bottom';
   });
 
   const [enableAdvancedFilters, setEnableAdvancedFilters] = useState<boolean>(() => {
     const layout = userPreferences.getTableLayout(tableId);
-    return layout.filters.length > 0 || true;
+    return (layout.filters && layout.filters.length > 0) || true;
   });
 
   const [enableColumnReordering, setEnableColumnReordering] = useState<boolean>(() => {
     const layout = userPreferences.getTableLayout(tableId);
-    return layout.columnOrder.length > 0 || true;
+    return (layout.columnOrder && layout.columnOrder.length > 0) || true;
   });
 
   const [enableAggregation, setEnableAggregation] = useState<boolean>(() => {
     const layout = userPreferences.getTableLayout(tableId);
-    return layout.aggregations.enabled ?? true;
+    return layout.aggregations?.enabled ?? true;
   });
 
   const [layoutName, setLayoutName] = useState(editingLayout?.name || '');

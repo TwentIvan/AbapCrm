@@ -495,9 +495,19 @@ export default function TasksPage() {
 
       {/* Table Configuration Dialog */}
       <TableConfiguration
+        tableId="tasks"
+        availableColumns={[
+          { id: 'title', label: 'Title' },
+          { id: 'status', label: 'Status' },
+          { id: 'priority', label: 'Priority' },
+          { id: 'projectId', label: 'Project' },
+          { id: 'assigneeId', label: 'Assignee' },
+          { id: 'dueDate', label: 'Due Date' },
+          { id: 'estimatedEffort', label: 'Estimated Effort' },
+        ]}
         open={showConfigDialog}
         onOpenChange={setShowConfigDialog}
-        layout={editingLayout}
+        editingLayout={editingLayout}
         onSave={(updatedLayout) => {
           updateExistingLayout(updatedLayout);
           setEditingLayout(null);

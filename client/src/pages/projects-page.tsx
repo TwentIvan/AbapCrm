@@ -412,9 +412,18 @@ export default function ProjectsPage() {
 
       {/* Table Configuration Dialog */}
       <TableConfiguration
+        tableId="projects"
+        availableColumns={[
+          { id: 'name', label: 'Name' },
+          { id: 'status', label: 'Status' },
+          { id: 'client', label: 'Client' },
+          { id: 'startDate', label: 'Start Date' },
+          { id: 'endDate', label: 'End Date' },
+          { id: 'budget', label: 'Budget' },
+        ]}
         open={showConfigDialog}
         onOpenChange={setShowConfigDialog}
-        layout={editingLayout}
+        editingLayout={editingLayout}
         onSave={(updatedLayout) => {
           updateExistingLayout(updatedLayout);
           setEditingLayout(null);
