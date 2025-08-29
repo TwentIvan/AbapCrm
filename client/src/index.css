@@ -99,3 +99,12 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* Hide Uppy dashboard browse button */
+.uppy-Dashboard-browse {
+  display: none !important;
+}
+
+.uppy-Dashboard-AddFiles-title {
+  display: none !important;
+}
