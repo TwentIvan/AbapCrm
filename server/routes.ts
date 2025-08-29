@@ -622,6 +622,16 @@ export function registerRoutes(app: Express): Server {
         isRunning: req.body.isRunning === true,
         userId: req.user!.id
       });
+
+      // If creating a running timer, stop any existing running timer first
+      if (entryData.isRunning) {
+        const existingRunning = await storage.getRunningTimeEntry(req.user!.id);
+        if (existingRunning) {
+          await storage.stopTimeEntry(existingRunning.id, req.user!.id);
+          console.log(`Stopped existing running timer ${existingRunning.id} before starting new one`);
+        }
+      }
+
       const entry = await storage.createTimeEntry(entryData);
       res.status(201).json(entry);
     } catch (error) {
