@@ -118,7 +118,7 @@ export function DataTable<TData, TValue>({
     
     // Reset sync flag after a brief delay
     setTimeout(() => setIsInitialSync(false), 100);
-  }, [layout]);
+  }, [layout.name, JSON.stringify(layout.columnVisibility), JSON.stringify(layout.sorting)]);
   
   // Auto-save layout changes (but not during initial sync from layout)
   const [isInitialSync, setIsInitialSync] = useState(true);
@@ -282,7 +282,12 @@ export function DataTable<TData, TValue>({
   // Generate visible columns based on layout configuration
   const visibleColumns = useMemo(() => {
     const layoutCols = layout.columnVisibility || {};
-    const orderCols = layout.columnOrder || [];
+    
+    // If no specific visibility set, return all columns
+    const visibleKeys = Object.keys(layoutCols).filter(key => layoutCols[key] === true);
+    if (visibleKeys.length === 0) {
+      return orderedColumns;
+    }
     
     // Filter columns to only visible ones based on layout
     const filtered = orderedColumns.filter(col => {
@@ -290,25 +295,14 @@ export function DataTable<TData, TValue>({
       return layoutCols[colId] === true;
     });
     
-    // Sort according to layout order if specified
-    if (orderCols.length > 0) {
-      filtered.sort((a, b) => {
-        const aId = (a as any).accessorKey || a.id;
-        const bId = (b as any).accessorKey || b.id;
-        const aIndex = orderCols.indexOf(aId);
-        const bIndex = orderCols.indexOf(bId);
-        
-        if (aIndex === -1 && bIndex === -1) return 0;
-        if (aIndex === -1) return 1;
-        if (bIndex === -1) return -1;
-        return aIndex - bIndex;
-      });
-    }
-    
-    console.log('🎯 Visible columns generated:', filtered.map(c => (c as any).accessorKey || c.id));
     return filtered;
-  }, [orderedColumns, layout.columnVisibility, layout.columnOrder]);
+  }, [JSON.stringify(layout.columnVisibility)]);
 
+  // Clean sorting and column order to only include visible columns
+  const visibleColumnIds = visibleColumns.map(col => (col as any).accessorKey || col.id);
+  const cleanSorting = sorting.filter(sort => visibleColumnIds.includes(sort.id));
+  const cleanColumnOrder = columnOrder.filter(id => visibleColumnIds.includes(id));
+  
   const table = useReactTable({
     data: filteredData,
     columns: visibleColumns, // Use filtered columns instead of all columns
@@ -323,7 +317,7 @@ export function DataTable<TData, TValue>({
     globalFilterFn: "includesString",
     enableRowSelection: enableSelection,
     state: {
-      sorting,
+      sorting: cleanSorting,
       columnFilters,
       globalFilter,
       rowSelection,
