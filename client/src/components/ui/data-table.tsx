@@ -95,6 +95,11 @@ export function DataTable<TData, TValue>({
   
   // Sync local state with layout changes (when loading different layouts)
   useEffect(() => {
+    console.log('🎯 DataTable: layout effect triggered', {
+      columnVisibility: layout.columnVisibility,
+      sorting: layout.sorting
+    });
+    
     setIsInitialSync(true);
     
     // Force update all states to match layout
@@ -112,6 +117,8 @@ export function DataTable<TData, TValue>({
     } else {
       setSorting([]);
     }
+    
+    console.log('✅ DataTable: layout states updated');
     
     // Reset sync flag after a brief delay
     setTimeout(() => setIsInitialSync(false), 100);
