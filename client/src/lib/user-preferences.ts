@@ -34,6 +34,7 @@ export interface TableLayout {
 export interface SavedLayout extends TableLayout {
   id: string;
   name: string;
+  isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -163,6 +164,7 @@ class UserPreferencesService {
             ...defaultLayout,
             id: defaultId,
             name: 'Default',
+            isDefault: true,
             createdAt: new Date(),
             updatedAt: new Date(),
           }
@@ -189,6 +191,7 @@ class UserPreferencesService {
         ...defaultLayout,
         id: currentLayoutId,
         name: currentLayoutId === 'default' ? 'Default' : 'Layout',
+        isDefault: currentLayoutId === 'default',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -214,7 +217,7 @@ class UserPreferencesService {
   }
 
   // Save current layout with a new name
-  saveLayoutAs(tableId: string, layoutName: string): string {
+  saveLayoutAs(tableId: string, layoutName: string, isDefault: boolean = false): string {
     const preferences = this.loadFromStorage();
     const currentLayout = this.getTableLayout(tableId);
     
@@ -231,15 +234,23 @@ class UserPreferencesService {
       ...currentLayout,
       id: layoutId,
       name: layoutName,
+      isDefault,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
     
     preferences.tables[tableId].layouts[layoutId] = savedLayout;
-    preferences.tables[tableId].currentLayout = layoutId;
-    preferences.tables[tableId].lastUsed = new Date();
     
-    this.saveToStorage(preferences);
+    // If this layout should be default, remove default flag from other layouts
+    if (isDefault) {
+      this.setDefaultLayout(tableId, layoutId);
+    } else {
+      preferences.tables[tableId].currentLayout = layoutId;
+      preferences.tables[tableId].lastUsed = new Date();
+      
+      this.saveToStorage(preferences);
+    }
+    
     return layoutId;
   }
 
@@ -270,6 +281,32 @@ class UserPreferencesService {
     
     tableConfig.layouts[layoutId].name = newName;
     tableConfig.layouts[layoutId].updatedAt = new Date();
+    
+    this.saveToStorage(preferences);
+    return true;
+  }
+
+  // Set a layout as default (removes default flag from others)
+  setDefaultLayout(tableId: string, layoutId: string): boolean {
+    const preferences = this.loadFromStorage();
+    const tableConfig = preferences.tables[tableId];
+    
+    if (!tableConfig || !tableConfig.layouts[layoutId]) {
+      return false;
+    }
+    
+    // Remove default flag from all layouts
+    Object.values(tableConfig.layouts).forEach(layout => {
+      layout.isDefault = false;
+    });
+    
+    // Set the specified layout as default
+    tableConfig.layouts[layoutId].isDefault = true;
+    tableConfig.layouts[layoutId].updatedAt = new Date();
+    
+    // Set as current layout
+    tableConfig.currentLayout = layoutId;
+    tableConfig.lastUsed = new Date();
     
     this.saveToStorage(preferences);
     return true;
@@ -339,6 +376,7 @@ class UserPreferencesService {
           ...defaultLayout,
           id: defaultId,
           name: 'Default',
+          isDefault: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         }

@@ -263,7 +263,6 @@ export default function PartnersPage() {
             <LayoutManager
               currentLayoutName={currentLayoutName}
               savedLayouts={savedLayouts}
-              onSaveLayoutAs={saveLayoutAs}
               onLoadLayout={loadLayout}
               onRenameLayout={renameLayout}
               onDeleteLayout={deleteLayout}

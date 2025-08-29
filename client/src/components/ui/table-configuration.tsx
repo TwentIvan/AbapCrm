@@ -4,10 +4,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Settings, Eye, EyeOff, GripVertical, BarChart3, Filter, ArrowUp, ArrowDown, Calculator } from "lucide-react";
+import { Settings, Eye, EyeOff, GripVertical, BarChart3, Filter, ArrowUp, ArrowDown, Calculator, Save } from "lucide-react";
 import { DndContext, closestCenter, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
@@ -163,6 +164,9 @@ export function TableConfiguration({
     return layout.aggregations.enabled ?? true;
   });
 
+  const [layoutName, setLayoutName] = useState('');
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -200,6 +204,10 @@ export function TableConfiguration({
   };
 
   const handleSaveConfiguration = () => {
+    if (!layoutName.trim()) {
+      return;
+    }
+
     const layout = userPreferences.getTableLayout(tableId);
     
     // Build sorting from columns with sortDirection
@@ -231,8 +239,17 @@ export function TableConfiguration({
       },
     };
 
-    userPreferences.autoSaveTableLayout(tableId, updatedLayout);
+    // Save as new layout with specified name
+    const layoutId = userPreferences.saveLayoutAs(tableId, layoutName, saveAsDefault);
+    
+    // Update current layout with new configuration
+    userPreferences.saveTableLayout(tableId, updatedLayout);
+    
     onConfigurationChange?.(updatedLayout);
+    
+    // Reset form
+    setLayoutName('');
+    setSaveAsDefault(false);
     setIsOpen(false);
   };
 
@@ -435,6 +452,41 @@ export function TableConfiguration({
           )}
         </div>
 
+        {/* Layout Save Options */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center">
+              <Save className="mr-2 h-4 w-4" />
+              Salva Layout
+            </CardTitle>
+            <CardDescription>
+              Salva la configurazione corrente come layout personalizzato
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="layout-name">Nome Layout</Label>
+                <Input
+                  id="layout-name"
+                  placeholder="es. Vista Clienti Principali"
+                  value={layoutName}
+                  onChange={(e) => setLayoutName(e.target.value)}
+                  data-testid="input-layout-name"
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={saveAsDefault}
+                  onCheckedChange={setSaveAsDefault}
+                  data-testid="switch-save-as-default"
+                />
+                <Label htmlFor="save-as-default">Imposta come layout predefinito</Label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Action Buttons */}
         <div className="flex justify-between pt-4 border-t">
           <Button 
@@ -455,8 +507,9 @@ export function TableConfiguration({
             <Button 
               onClick={handleSaveConfiguration}
               data-testid="button-save-configuration"
+              disabled={!layoutName.trim()}
             >
-              Salva Configurazione
+              Salva Layout
             </Button>
           </div>
         </div>

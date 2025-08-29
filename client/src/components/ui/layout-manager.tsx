@@ -13,7 +13,6 @@ import type { SavedLayout } from "@/lib/user-preferences";
 interface LayoutManagerProps {
   currentLayoutName: string;
   savedLayouts: SavedLayout[];
-  onSaveLayoutAs: (name: string) => void;
   onLoadLayout: (layoutId: string) => void;
   onRenameLayout: (layoutId: string, newName: string) => void;
   onDeleteLayout: (layoutId: string) => void;
@@ -22,51 +21,16 @@ interface LayoutManagerProps {
 export function LayoutManager({
   currentLayoutName,
   savedLayouts,
-  onSaveLayoutAs,
   onLoadLayout,
   onRenameLayout,
   onDeleteLayout,
 }: LayoutManagerProps) {
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [newLayoutName, setNewLayoutName] = useState("");
   const [layoutToDelete, setLayoutToDelete] = useState<SavedLayout | null>(null);
   const [editingLayoutId, setEditingLayoutId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const { toast } = useToast();
 
-  const handleSaveLayout = () => {
-    if (!newLayoutName.trim()) {
-      toast({
-        title: "Nome richiesto",
-        description: "Inserisci un nome per il layout",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check if name already exists
-    const existingLayout = savedLayouts.find(layout => 
-      layout.name.toLowerCase() === newLayoutName.trim().toLowerCase()
-    );
-    
-    if (existingLayout) {
-      toast({
-        title: "Nome già in uso",
-        description: "Scegli un nome diverso per il layout",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    onSaveLayoutAs(newLayoutName.trim());
-    setNewLayoutName("");
-    setShowSaveDialog(false);
-    toast({
-      title: "Layout salvato",
-      description: `Layout "${newLayoutName.trim()}" salvato con successo`,
-    });
-  };
 
   const handleRenameStart = (layout: SavedLayout) => {
     setEditingLayoutId(layout.id);
@@ -196,6 +160,9 @@ export function LayoutManager({
                         {layout.name === currentLayoutName && (
                           <span className="ml-2 text-xs text-green-600">(corrente)</span>
                         )}
+                        {layout.isDefault && (
+                          <span className="ml-2 text-xs text-blue-600">(default)</span>
+                        )}
                       </button>
                       <div className="text-xs text-muted-foreground">
                         {layout.updatedAt.toLocaleDateString()}
@@ -231,56 +198,6 @@ export function LayoutManager({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Save Layout Button */}
-      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-        <DialogTrigger asChild>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="h-8"
-            data-testid="button-save-layout"
-          >
-            <Save className="h-4 w-4 mr-1" />
-            Salva Layout
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Salva Layout Corrente</DialogTitle>
-            <DialogDescription>
-              Dai un nome al layout corrente per salvarlo e poterlo riutilizzare in seguito.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="layout-name">Nome Layout</Label>
-              <Input
-                id="layout-name"
-                placeholder="es. Vista Clienti Principali"
-                value={newLayoutName}
-                onChange={(e) => setNewLayoutName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSaveLayout()}
-                data-testid="input-layout-name"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowSaveDialog(false)}
-              data-testid="button-cancel-save"
-            >
-              Annulla
-            </Button>
-            <Button 
-              onClick={handleSaveLayout}
-              data-testid="button-confirm-save"
-            >
-              Salva Layout
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
