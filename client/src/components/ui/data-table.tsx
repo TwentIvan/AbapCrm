@@ -95,8 +95,16 @@ export function DataTable<TData, TValue>({
   
   // Sync local state with layout changes (when loading different layouts)
   useEffect(() => {
+    console.log('🔄 DataTable syncing with layout:', layout);
     setIsInitialSync(true);
-    setColumnVisibility(layout.columnVisibility || {});
+    
+    // Force update all states to match layout
+    setColumnVisibility(prev => {
+      const newVis = layout.columnVisibility || {};
+      console.log('📊 Column visibility update:', prev, '→', newVis);
+      return newVis;
+    });
+    
     setAdvancedFilters(layout.filters || []);
     setColumnOrder(layout.columnOrder || []);
     
@@ -106,10 +114,14 @@ export function DataTable<TData, TValue>({
         id: sort.id,
         desc: sort.desc
       }));
+      console.log('📊 Sorting update:', reactTableSorting);
       setSorting(reactTableSorting);
     } else {
       setSorting([]);
     }
+    
+    // Reset sync flag after a brief delay
+    setTimeout(() => setIsInitialSync(false), 100);
   }, [layout]);
   
   // Auto-save layout changes (but not during initial sync from layout)

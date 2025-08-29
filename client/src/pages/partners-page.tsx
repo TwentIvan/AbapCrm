@@ -9,11 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DataTable, createImageColumn, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
+import { TableConfiguration } from "@/components/ui/table-configuration";
 import ImageContainer from "@/components/ui/image-container";
 import { Building, Mail, Phone, MapPin, MoreHorizontal, Grid3X3, List, Edit, Trash2 } from "lucide-react";
 import { Partner } from "@shared/schema";
@@ -42,6 +43,7 @@ export default function PartnersPage() {
   const [selectedPartners, setSelectedPartners] = useState<Partner[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -267,7 +269,10 @@ export default function PartnersPage() {
               onLoadLayout={loadLayout}
               onRenameLayout={renameLayout}
               onDeleteLayout={deleteLayout}
-              onEditLayout={(layout) => setEditingLayout(layout)}
+              onEditLayout={(layout) => {
+                setEditingLayout(layout);
+                setShowConfigDialog(true);
+              }}
             />
 
             {/* View Toggle */}
@@ -551,6 +556,44 @@ export default function PartnersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Layout Configuration Dialog */}
+      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Modifica Layout: {editingLayout?.name || 'Layout'}
+            </DialogTitle>
+            <DialogDescription>
+              Configura la visibilità delle colonne, ordinamento e filtri per questo layout.
+            </DialogDescription>
+          </DialogHeader>
+          <TableConfiguration
+            tableId="partners"
+            availableColumns={[
+              { id: 'logoUrl', label: 'Logo' },
+              { id: 'name', label: 'Nome' },
+              { id: 'type', label: 'Tipo' },
+              { id: 'company', label: 'Azienda' },
+              { id: 'email', label: 'Email' },
+              { id: 'phone', label: 'Telefono' },
+              { id: 'address', label: 'Indirizzo' },
+              { id: 'fiscalCode', label: 'Codice Fiscale' },
+              { id: 'vatNumber', label: 'Partita IVA' },
+            ]}
+            editingLayout={editingLayout}
+            onConfigurationChange={(config) => {
+              // Apply configuration immediately
+              updateLayout(config);
+            }}
+            onSaveLayout={(layoutName, isDefault) => {
+              // Save as new layout or update existing
+              const newLayoutId = saveLayoutAs(layoutName);
+              setShowConfigDialog(false);
+              return newLayoutId;
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
