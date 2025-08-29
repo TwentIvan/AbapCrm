@@ -95,20 +95,10 @@ export function DataTable<TData, TValue>({
   
   // Sync local state with layout changes (when loading different layouts)
   useEffect(() => {
-    console.log('🎯 DataTable: layout effect triggered', {
-      columnVisibility: layout.columnVisibility,
-      sorting: layout.sorting
-    });
-    
     setIsInitialSync(true);
     
-    // Force update all states to match layout
-    console.log('📊 Before state update:', { oldColumnVisibility: columnVisibility });
-    setColumnVisibility(prev => {
-      const newVisibility = { ...layout.columnVisibility };
-      console.log('📊 Setting new columnVisibility:', newVisibility);
-      return newVisibility;
-    });
+    // Force update all states to match layout - use direct values
+    setColumnVisibility({ ...layout.columnVisibility });
     setAdvancedFilters(layout.filters || []);
     setColumnOrder(layout.columnOrder || []);
     
@@ -118,12 +108,10 @@ export function DataTable<TData, TValue>({
         id: sort.id,
         desc: sort.desc
       }));
-      setSorting(reactTableSorting);
+      setSorting([...reactTableSorting]);
     } else {
       setSorting([]);
     }
-    
-    console.log('✅ DataTable: layout states updated');
     
     // Reset sync flag after a brief delay
     setTimeout(() => setIsInitialSync(false), 100);
