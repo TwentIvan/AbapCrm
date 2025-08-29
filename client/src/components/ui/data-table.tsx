@@ -99,7 +99,7 @@ export function DataTable<TData, TValue>({
     if (onSelectionChange) {
       onSelectionChange(selectedRows);
     }
-  }, [rowSelection, onSelectionChange, selectedRows]);
+  }, [rowSelection, onSelectionChange, table]);
 
   return (
     <div className="space-y-4">
