@@ -284,10 +284,18 @@ export function DataTable<TData, TValue>({
     const layoutCols = layout.columnVisibility || {};
     const orderCols = layout.columnOrder || [];
     
+    console.log('🔧 useMemo triggered for visibleColumns:', {
+      layoutId: layout.id,
+      layoutCols: Object.keys(layoutCols).filter(k => layoutCols[k]),
+      totalColumns: orderedColumns.length
+    });
+    
     // Filter columns to only visible ones based on layout
     const filtered = orderedColumns.filter(col => {
       const colId = typeof col.accessorKey === 'string' ? col.accessorKey : col.id;
-      return layoutCols[colId] === true;
+      const isVisible = layoutCols[colId] === true;
+      console.log(`  Column ${colId}: ${isVisible ? 'VISIBLE' : 'HIDDEN'}`);
+      return isVisible;
     });
     
     // Sort according to layout order if specified
@@ -305,9 +313,9 @@ export function DataTable<TData, TValue>({
       });
     }
     
-    console.log('🎯 Visible columns generated:', filtered.map(c => c.accessorKey || c.id));
+    console.log('🎯 Final visible columns:', filtered.map(c => c.accessorKey || c.id));
     return filtered;
-  }, [orderedColumns, layout.columnVisibility, layout.columnOrder]);
+  }, [orderedColumns, layout.columnVisibility, layout.columnOrder, layout.id]);
 
   const table = useReactTable({
     data: filteredData,
