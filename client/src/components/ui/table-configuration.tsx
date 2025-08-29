@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -102,17 +102,17 @@ export function TableConfiguration({
     return layout.aggregations.position || 'bottom';
   });
 
-  const [enableAdvancedFilters, setEnableAdvancedFilters] = useState(() => {
+  const [enableAdvancedFilters, setEnableAdvancedFilters] = useState<boolean>(() => {
     const layout = userPreferences.getTableLayout(tableId);
     return layout.filters.length > 0 || true;
   });
 
-  const [enableColumnReordering, setEnableColumnReordering] = useState(() => {
+  const [enableColumnReordering, setEnableColumnReordering] = useState<boolean>(() => {
     const layout = userPreferences.getTableLayout(tableId);
     return layout.columnOrder.length > 0 || true;
   });
 
-  const [enableAggregation, setEnableAggregation] = useState(() => {
+  const [enableAggregation, setEnableAggregation] = useState<boolean>(() => {
     const layout = userPreferences.getTableLayout(tableId);
     return layout.aggregations.enabled ?? true;
   });

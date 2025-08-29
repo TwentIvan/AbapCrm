@@ -185,18 +185,20 @@ class UserPreferencesService {
 export const userPreferences = new UserPreferencesService();
 
 // React hooks for easier integration
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export function useTableLayout(tableId: string) {
   const [layout, setLayout] = useState<TableLayout>(() => 
     userPreferences.getTableLayout(tableId)
   );
 
-  const updateLayout = (updates: Partial<TableLayout>) => {
-    const newLayout = { ...layout, ...updates };
-    setLayout(newLayout);
-    userPreferences.autoSaveTableLayout(tableId, newLayout);
-  };
+  const updateLayout = useCallback((updates: Partial<TableLayout>) => {
+    setLayout(prevLayout => {
+      const newLayout = { ...prevLayout, ...updates };
+      userPreferences.autoSaveTableLayout(tableId, newLayout);
+      return newLayout;
+    });
+  }, [tableId]);
 
   const resetLayout = () => {
     userPreferences.resetTableLayout(tableId);

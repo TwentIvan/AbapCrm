@@ -10,8 +10,8 @@ import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endO
 import type { TimeEntry, Task, Project } from "@shared/schema";
 import { DataTable, createBadgeColumn } from "@/components/ui/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Sidebar } from "@/components/sidebar";
-import { Header } from "@/components/header";
+import Sidebar from "@/components/layout/sidebar";
+import Header from "@/components/layout/header";
 
 export default function TimesheetPage() {
   const [filterPeriod, setFilterPeriod] = useState<"week" | "month" | "all">("week");
@@ -142,7 +142,7 @@ export default function TimesheetPage() {
     createBadgeColumn(
       "status",
       "Stato",
-      (value: string) => value === "Running" ? "secondary" : "outline"
+      { "Running": "secondary", "Completed": "outline" }
     ),
     {
       accessorKey: "description",
@@ -162,6 +162,7 @@ export default function TimesheetPage() {
         <Header 
           title="Timesheet" 
           subtitle="Track and manage your time entries across all tasks"
+          onNewClick={() => {}}
         />
         
         <div className="p-6 space-y-6">

@@ -365,7 +365,7 @@ export function DataTable<TData, TValue>({
                   id: col.id as string,
                   label: typeof col.header === 'function' ? col.id as string : (col.header as string) || (col.id as string),
                 }))}
-              currentAggregations={aggregations}
+              currentAggregations={aggregationColumns}
               onConfigurationChange={(config) => {
                 // Apply configuration changes immediately
                 if (config.columnVisibility) {
