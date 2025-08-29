@@ -139,32 +139,10 @@ export function DataTable<TData, TValue>({
     enableHiding: false,
   }] : [];
 
-  // Apply column ordering if enabled
+  // Apply column ordering - SIMPLIFIED since we now use layout.columns positions
   const orderedColumns = useMemo(() => {
-    if (!enableColumnReordering || !columnOrder.length) {
-      return [...selectionColumn, ...columns];
-    }
-    
-    // Separate special columns from regular columns
-    const specialColumns = [...selectionColumn];
-    const actionColumns = columns.filter(col => col.id === 'actions');
-    const regularColumns = columns.filter(col => col.id !== 'actions');
-    
-    // Order only regular columns
-    const orderedRegularColumns = [...regularColumns].sort((a, b) => {
-      const aId = a.id || (a as any).accessorKey;
-      const bId = b.id || (b as any).accessorKey;
-      const aIndex = columnOrder.indexOf(aId as string);
-      const bIndex = columnOrder.indexOf(bId as string);
-      if (aIndex === -1 && bIndex === -1) return 0;
-      if (aIndex === -1) return 1;
-      if (bIndex === -1) return -1;
-      return aIndex - bIndex;
-    });
-    
-    // Combine: select + ordered regular columns + actions
-    return [...specialColumns, ...orderedRegularColumns, ...actionColumns];
-  }, [selectionColumn, columns, columnOrder, enableColumnReordering]);
+    return [...selectionColumn, ...columns];
+  }, [selectionColumn, columns]);
   
   const allColumns = orderedColumns;
 
