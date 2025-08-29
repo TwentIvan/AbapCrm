@@ -98,7 +98,6 @@ export function DataTable<TData, TValue>({
   
   // Sync local state with layout changes (when loading different layouts)
   useEffect(() => {
-    console.log('🔄 Layout effect triggered');
     setIsInitialSync(true);
     
     // Force update all states to match layout - use direct values
