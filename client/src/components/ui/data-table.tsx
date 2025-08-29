@@ -96,14 +96,20 @@ export function DataTable<TData, TValue>({
   // Force table re-render when layout changes
   const tableKey = `table-${tableId}`;
   
-  // Sync local state with layout changes (when loading different layouts)
+  // Sync local state with layout changes (when loading different layouts)  
   useEffect(() => {
     setIsInitialSync(true);
     
+    // Test: force a very obvious change
+    console.log('⚡ Layout change - BEFORE:', Object.keys(columnVisibility).filter(k => columnVisibility[k]));
+    
     // Force update all states to match layout - use direct values
-    setColumnVisibility({ ...layout.columnVisibility });
+    const newVisibility = { ...layout.columnVisibility };
+    setColumnVisibility(newVisibility);
     setAdvancedFilters(layout.filters || []);
     setColumnOrder(layout.columnOrder || []);
+    
+    console.log('⚡ Layout change - AFTER:', Object.keys(newVisibility).filter(k => newVisibility[k]));
     
     // Convert layout sorting to react-table sorting format
     if (layout.sorting && layout.sorting.length > 0) {
