@@ -93,12 +93,15 @@ export function DataTable<TData, TValue>({
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>(layout.filters || []);
   const [columnOrder, setColumnOrder] = useState<string[]>(layout.columnOrder || []);
   
-  // Force table re-render when layout changes
-  const tableKey = `table-${tableId}`;
+  // Force table re-render when layout changes - use layout ID + visible columns hash
+  const visibleColumns = Object.keys(layout.columnVisibility || {}).filter(k => layout.columnVisibility[k]).sort().join(',');
+  const tableKey = `table-${tableId}-${layout.id || 'default'}-${visibleColumns}`;
   
   // Sync local state with layout changes (when loading different layouts)  
   useEffect(() => {
     setIsInitialSync(true);
+    
+    console.log('🔄 DataTable useEffect triggered - forcing state update');
     
     // Force update all states to match layout
     setColumnVisibility({ ...layout.columnVisibility });
