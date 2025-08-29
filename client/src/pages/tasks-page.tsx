@@ -110,13 +110,9 @@ function TaskTimerButtons({ task }: { task: Task }) {
   const isCurrentTaskRunning = runningEntry && runningEntry.taskId === task.id;
   const hasRunningTimer = !!runningEntry;
 
-  const handleStart = () => {
-    console.log('Starting timer, showCompletionDialog:', showCompletionDialog);
-    console.log('All dialog states:', {
-      showCompletionDialog,
-      isCurrentTaskRunning,
-      hasRunningTimer
-    });
+  const handleStart = (e?: any) => {
+    console.log('Start clicked, event:', e);
+    e?.stopPropagation(); // Prevent event bubbling
     startTimerMutation.mutate();
   };
 
@@ -221,6 +217,15 @@ export default function TasksPage() {
   const [selectedTasks, setSelectedTasks] = useState<Task[]>([]);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  
+  // Debug all dialog states
+  useEffect(() => {
+    console.log('Main page dialogs:', {
+      showCreateDialog,
+      showEditDialog, 
+      showConfigDialog
+    });
+  }, [showCreateDialog, showEditDialog, showConfigDialog]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
