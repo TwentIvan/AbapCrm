@@ -8,33 +8,42 @@ export async function autoInitializeEmailServices() {
   try {
     console.log('[EMAIL-INIT] Checking for saved email configurations...');
     
-    // Get all users with active email configs
-    const allUsers = await db.select().from(users);
-    
-    for (const user of allUsers) {
-      const activeConfig = await storage.getActiveEmailConfig(user.id);
+    // Test database connection first
+    try {
+      const allUsers = await db.select().from(users);
       
-      if (activeConfig) {
-        console.log(`[EMAIL-INIT] Restoring email service for user: ${activeConfig.email}`);
-        
-        const config = {
-          user: activeConfig.email,
-          password: activeConfig.password,
-          host: activeConfig.host,
-          port: activeConfig.port,
-          tls: activeConfig.tls,
-          folder: activeConfig.folder
-        };
-        
+      for (const user of allUsers) {
         try {
-          initializeEmailService(config);
-          console.log(`[EMAIL-INIT] ✓ Email service restored for ${activeConfig.email}`);
+          const activeConfig = await storage.getActiveEmailConfig(user.id);
+          
+          if (activeConfig) {
+            console.log(`[EMAIL-INIT] Restoring email service for user: ${activeConfig.email}`);
+            
+            const config = {
+              user: activeConfig.email,
+              password: activeConfig.password,
+              host: activeConfig.host,
+              port: activeConfig.port,
+              tls: activeConfig.tls,
+              folder: activeConfig.folder
+            };
+            
+            try {
+              initializeEmailService(config);
+              console.log(`[EMAIL-INIT] ✓ Email service restored for ${activeConfig.email}`);
+            } catch (error) {
+              console.error(`[EMAIL-INIT] ✗ Failed to restore email service for ${activeConfig.email}:`, error);
+            }
+          }
         } catch (error) {
-          console.error(`[EMAIL-INIT] ✗ Failed to restore email service for ${activeConfig.email}:`, error);
+          console.error(`[EMAIL-INIT] ✗ Failed to get email config for user ${user.id}:`, error);
         }
       }
+    } catch (dbError) {
+      console.warn('[EMAIL-INIT] Database not ready yet, skipping email auto-initialization:', (dbError as Error).message);
+      return;
     }
   } catch (error) {
-    console.error('[EMAIL-INIT] Error during auto-initialization:', error);
+    console.warn('[EMAIL-INIT] Error during auto-initialization, continuing server startup:', (error as Error).message);
   }
 }
