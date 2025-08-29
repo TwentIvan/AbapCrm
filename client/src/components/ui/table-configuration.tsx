@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Settings, Eye, EyeOff, GripVertical, BarChart3, Filter } from "lucide-react";
+import { Settings, Eye, EyeOff, GripVertical, BarChart3, Filter, ArrowUp, ArrowDown, Calculator } from "lucide-react";
 import { DndContext, closestCenter, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
@@ -19,6 +19,8 @@ interface ColumnConfig {
   label: string;
   visible: boolean;
   width?: number;
+  sortDirection?: 'asc' | 'desc' | null;
+  enableSubtotal?: boolean;
 }
 
 interface TableConfigurationProps {
@@ -32,9 +34,11 @@ interface TableConfigurationProps {
 interface SortableColumnItemProps {
   column: ColumnConfig;
   onVisibilityChange: (id: string, visible: boolean) => void;
+  onSortChange: (id: string, direction: 'asc' | 'desc' | null) => void;
+  onSubtotalChange: (id: string, enabled: boolean) => void;
 }
 
-function SortableColumnItem({ column, onVisibilityChange }: SortableColumnItemProps) {
+function SortableColumnItem({ column, onVisibilityChange, onSortChange, onSubtotalChange }: SortableColumnItemProps) {
   const {
     attributes,
     listeners,
@@ -52,30 +56,70 @@ function SortableColumnItem({ column, onVisibilityChange }: SortableColumnItemPr
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg"
+      className="flex flex-col space-y-2 p-3 bg-muted/50 rounded-lg"
       data-testid={`column-config-${column.id}`}
     >
-      <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing"
-      >
-        <GripVertical className="h-4 w-4 text-muted-foreground" />
+      <div className="flex items-center space-x-3">
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing"
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+        
+        <div className="flex items-center space-x-2 flex-1">
+          <Switch
+            checked={column.visible}
+            onCheckedChange={(checked) => onVisibilityChange(column.id, checked)}
+            data-testid={`switch-column-${column.id}`}
+          />
+          <Label className="flex-1 font-medium">{column.label}</Label>
+          {column.visible ? (
+            <Eye className="h-4 w-4 text-green-600" />
+          ) : (
+            <EyeOff className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
       </div>
       
-      <div className="flex items-center space-x-2 flex-1">
-        <Switch
-          checked={column.visible}
-          onCheckedChange={(checked) => onVisibilityChange(column.id, checked)}
-          data-testid={`switch-column-${column.id}`}
-        />
-        <Label className="flex-1">{column.label}</Label>
-        {column.visible ? (
-          <Eye className="h-4 w-4 text-green-600" />
-        ) : (
-          <EyeOff className="h-4 w-4 text-muted-foreground" />
-        )}
-      </div>
+      {/* Sort and Subtotal Controls */}
+      {column.visible && (
+        <div className="flex items-center justify-between space-x-2 ml-7">
+          <div className="flex items-center space-x-1">
+            <Button
+              variant={column.sortDirection === 'asc' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onSortChange(column.id, column.sortDirection === 'asc' ? null : 'asc')}
+              data-testid={`button-sort-asc-${column.id}`}
+              className="h-7 px-2"
+            >
+              <ArrowUp className="h-3 w-3" />
+            </Button>
+            <Button
+              variant={column.sortDirection === 'desc' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onSortChange(column.id, column.sortDirection === 'desc' ? null : 'desc')}
+              data-testid={`button-sort-desc-${column.id}`}
+              className="h-7 px-2"
+            >
+              <ArrowDown className="h-3 w-3" />
+            </Button>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Switch
+              checked={column.enableSubtotal || false}
+              onCheckedChange={(checked) => onSubtotalChange(column.id, checked)}
+              data-testid={`switch-subtotal-${column.id}`}
+            />
+            <Label className="text-sm text-muted-foreground flex items-center space-x-1">
+              <Calculator className="h-3 w-3" />
+              <span>Subtotali</span>
+            </Label>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -94,6 +138,8 @@ export function TableConfiguration({
       id: col.id,
       label: col.label,
       visible: layout.columnVisibility?.[col.id] ?? true,
+      sortDirection: layout.sorting?.find(s => s.id === col.id)?.desc === false ? 'asc' : layout.sorting?.find(s => s.id === col.id)?.desc === true ? 'desc' : null,
+      enableSubtotal: layout.aggregations?.subtotals?.groupBy?.includes(col.id) || false,
     }));
   });
 
@@ -137,18 +183,51 @@ export function TableConfiguration({
     );
   };
 
+  const handleSortChange = (columnId: string, direction: 'asc' | 'desc' | null) => {
+    setColumns(prev => 
+      prev.map(col => 
+        col.id === columnId ? { ...col, sortDirection: direction } : { ...col, sortDirection: null }
+      )
+    );
+  };
+
+  const handleSubtotalChange = (columnId: string, enabled: boolean) => {
+    setColumns(prev => 
+      prev.map(col => 
+        col.id === columnId ? { ...col, enableSubtotal: enabled } : col
+      )
+    );
+  };
+
   const handleSaveConfiguration = () => {
     const layout = userPreferences.getTableLayout(tableId);
+    
+    // Build sorting from columns with sortDirection
+    const sortedColumn = columns.find(col => col.sortDirection);
+    const sorting = sortedColumn ? [{
+      id: sortedColumn.id,
+      desc: sortedColumn.sortDirection === 'desc',
+      priority: 0
+    }] : [];
+    
+    // Build subtotals groupBy from columns with enableSubtotal
+    const subtotalColumns = columns.filter(col => col.enableSubtotal).map(col => col.id);
+    
     const updatedLayout = {
       ...layout,
       columnOrder: columns.map(col => col.id),
       columnVisibility: Object.fromEntries(
         columns.map(col => [col.id, col.visible])
       ),
+      sorting,
       aggregations: {
         ...layout.aggregations,
         position: aggregationPosition,
         enabled: enableAggregation,
+        subtotals: {
+          enabled: subtotalColumns.length > 0,
+          groupBy: subtotalColumns,
+        },
       },
     };
 
@@ -162,6 +241,8 @@ export function TableConfiguration({
       id: col.id,
       label: col.label,
       visible: true,
+      sortDirection: null,
+      enableSubtotal: false,
     })));
     setAggregationPosition('bottom');
     setEnableAdvancedFilters(true);
@@ -322,6 +403,8 @@ export function TableConfiguration({
                         key={column.id}
                         column={column}
                         onVisibilityChange={handleVisibilityChange}
+                        onSortChange={handleSortChange}
+                        onSubtotalChange={handleSubtotalChange}
                       />
                     ))}
                   </div>

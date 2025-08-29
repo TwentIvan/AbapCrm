@@ -148,20 +148,25 @@ export function DataTable<TData, TValue>({
 
   // Apply column ordering if enabled
   const orderedColumns = useMemo(() => {
-    const baseColumns = [...selectionColumn, ...columns];
     console.log('DataTable - Building orderedColumns:', {
       enableColumnReordering,
       columnOrderLength: columnOrder.length,
       columnOrder,
-      baseColumns: baseColumns.map(c => ({ id: c.id, accessorKey: (c as any).accessorKey }))
+      baseColumns: [...selectionColumn, ...columns].map(c => ({ id: c.id, accessorKey: (c as any).accessorKey }))
     });
     
     if (!enableColumnReordering || !columnOrder.length) {
       console.log('DataTable - Using baseColumns (no reordering)');
-      return baseColumns;
+      return [...selectionColumn, ...columns];
     }
     
-    const ordered = [...baseColumns].sort((a, b) => {
+    // Separate special columns from regular columns
+    const specialColumns = [...selectionColumn];
+    const actionColumns = columns.filter(col => col.id === 'actions');
+    const regularColumns = columns.filter(col => col.id !== 'actions');
+    
+    // Order only regular columns
+    const orderedRegularColumns = [...regularColumns].sort((a, b) => {
       const aId = a.id || (a as any).accessorKey;
       const bId = b.id || (b as any).accessorKey;
       const aIndex = columnOrder.indexOf(aId as string);
@@ -172,8 +177,10 @@ export function DataTable<TData, TValue>({
       return aIndex - bIndex;
     });
     
-    console.log('DataTable - Using ordered columns:', ordered.map(c => ({ id: c.id, accessorKey: (c as any).accessorKey })));
-    return ordered;
+    // Combine: select + ordered regular columns + actions
+    const result = [...specialColumns, ...orderedRegularColumns, ...actionColumns];
+    console.log('DataTable - Using ordered columns:', result.map(c => ({ id: c.id, accessorKey: (c as any).accessorKey })));
+    return result;
   }, [selectionColumn, columns, columnOrder, enableColumnReordering]);
   
   const allColumns = orderedColumns;
