@@ -80,6 +80,7 @@ export interface IStorage {
   deleteTimeEntry(id: string, userId: string): Promise<boolean>;
   stopTimeEntry(id: string, userId: string): Promise<TimeEntry | undefined>;
   getRunningTimeEntry(userId: string): Promise<TimeEntry | undefined>;
+  getAllRunningTimeEntries(userId: string): Promise<TimeEntry[]>;
 
   // Messages
   getMessages(userId: string): Promise<Message[]>;
@@ -490,6 +491,14 @@ export class DatabaseStorage implements IStorage {
       .from(timeEntries)
       .where(and(eq(timeEntries.userId, userId), eq(timeEntries.isRunning, true)));
     return entry || undefined;
+  }
+
+  async getAllRunningTimeEntries(userId: string): Promise<TimeEntry[]> {
+    return await db
+      .select()
+      .from(timeEntries)
+      .where(and(eq(timeEntries.userId, userId), eq(timeEntries.isRunning, true)))
+      .orderBy(desc(timeEntries.startTime));
   }
 
   // Messages
