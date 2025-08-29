@@ -91,13 +91,15 @@ export function DataTable<TData, TValue>({
     },
   });
 
+  // Calculate selected rows
+  const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
+
   // Notify parent about selection changes
   useEffect(() => {
     if (onSelectionChange) {
-      const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
       onSelectionChange(selectedRows);
     }
-  }, [rowSelection, onSelectionChange, table]);
+  }, [rowSelection, onSelectionChange, selectedRows]);
 
   return (
     <div className="space-y-4">
