@@ -96,52 +96,17 @@ export function DataTable<TData, TValue>({
   // Simple table key to avoid loops
   const tableKey = `table-${tableId}`;
   
-  // Sync local state with layout changes (when loading different layouts)  
-  useEffect(() => {
-    setIsInitialSync(true);
-    
-    // Force update all states to match layout
-    setColumnVisibility({ ...layout.columnVisibility });
-    setAdvancedFilters(layout.filters || []);
-    setColumnOrder(layout.columnOrder || []);
-    
-    // Convert layout sorting to react-table sorting format
-    if (layout.sorting && layout.sorting.length > 0) {
-      const reactTableSorting = layout.sorting.map(sort => ({
-        id: sort.id,
-        desc: sort.desc
-      }));
-      setSorting([...reactTableSorting]);
-    } else {
-      setSorting([]);
-    }
-    
-    // Reset sync flag after a brief delay
-    setTimeout(() => setIsInitialSync(false), 100);
-  }, [layout.name, JSON.stringify(layout.columnVisibility), JSON.stringify(layout.sorting)]);
+  // DISABLED: Layout sync to prevent infinite loops
+  // useEffect(() => {
+  //   // Layout sync disabled 
+  // }, []);
   
-  // Auto-save layout changes (but not during initial sync from layout)
-  const [isInitialSync, setIsInitialSync] = useState(true);
+  // DISABLED: Auto-save layout changes to prevent infinite loops
+  const [isInitialSync, setIsInitialSync] = useState(false);
   
-  useEffect(() => {
-    if (isInitialSync) {
-      setIsInitialSync(false);
-      return;
-    }
-    
-    const layoutSorting = sorting.map((sort, index) => ({
-      id: sort.id,
-      desc: sort.desc,
-      priority: index
-    }));
-    
-    updateLayout({
-      sorting: layoutSorting,
-      columnVisibility,
-      filters: advancedFilters,
-      columnOrder,
-    });
-  }, [sorting, columnVisibility, advancedFilters, columnOrder, isInitialSync]);
+  // useEffect(() => {
+  //   // Auto-save disabled
+  // }, []);
 
   // Drag and drop sensors
   const sensors = useSensors(
