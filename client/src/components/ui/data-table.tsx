@@ -148,15 +148,7 @@ export function DataTable<TData, TValue>({
 
   // Apply column ordering if enabled
   const orderedColumns = useMemo(() => {
-    console.log('DataTable - Building orderedColumns:', {
-      enableColumnReordering,
-      columnOrderLength: columnOrder.length,
-      columnOrder,
-      baseColumns: [...selectionColumn, ...columns].map(c => ({ id: c.id, accessorKey: (c as any).accessorKey }))
-    });
-    
     if (!enableColumnReordering || !columnOrder.length) {
-      console.log('DataTable - Using baseColumns (no reordering)');
       return [...selectionColumn, ...columns];
     }
     
@@ -178,9 +170,7 @@ export function DataTable<TData, TValue>({
     });
     
     // Combine: select + ordered regular columns + actions
-    const result = [...specialColumns, ...orderedRegularColumns, ...actionColumns];
-    console.log('DataTable - Using ordered columns:', result.map(c => ({ id: c.id, accessorKey: (c as any).accessorKey })));
-    return result;
+    return [...specialColumns, ...orderedRegularColumns, ...actionColumns];
   }, [selectionColumn, columns, columnOrder, enableColumnReordering]);
   
   const allColumns = orderedColumns;
@@ -290,7 +280,6 @@ export function DataTable<TData, TValue>({
   useEffect(() => {
     if (enableColumnReordering && columnOrder.length === 0) {
       const initialOrder = allColumns.map(col => col.id || (col as any).accessorKey as string).filter(Boolean);
-      console.log('DataTable - Initializing columnOrder:', initialOrder);
       setColumnOrder(initialOrder);
     }
   }, [allColumns, enableColumnReordering, columnOrder.length]);
@@ -393,15 +382,15 @@ export function DataTable<TData, TValue>({
                 })}
               currentAggregations={aggregationColumns}
               onConfigurationChange={(config) => {
-                console.log('DataTable - Configuration changed:', config);
                 // Apply configuration changes immediately
                 if (config.columnVisibility) {
-                  console.log('DataTable - Updating columnVisibility:', config.columnVisibility);
                   setColumnVisibility(config.columnVisibility);
                 }
                 if (config.columnOrder && config.columnOrder.length > 0) {
-                  console.log('DataTable - Updating columnOrder:', config.columnOrder);
                   setColumnOrder(config.columnOrder);
+                }
+                if (config.sorting && config.sorting.length > 0) {
+                  setSorting(config.sorting.map((sort: any) => ({ id: sort.id, desc: sort.desc })));
                 }
               }}
             />

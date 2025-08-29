@@ -17,6 +17,18 @@ import { Loader2, Building2, User, Globe, FileText } from "lucide-react";
 const simplePartnerSchema = insertPartnerSchema.extend({
   name: z.string().min(1, "Nome richiesto"),
   type: z.enum(["client", "vendor", "supplier", "partner"]),
+  email: z.string().optional().default(""),
+  phone: z.string().optional().default(""),
+  company: z.string().optional().default(""),
+  position: z.string().optional().default(""),
+  address: z.string().optional().default(""),
+  city: z.string().optional().default(""),
+  postalCode: z.string().optional().default(""),
+  country: z.string().default("IT"),
+  fiscalCode: z.string().optional().default(""),
+  vatNumber: z.string().optional().default(""),
+  website: z.string().optional().default(""),
+  notes: z.string().optional().default(""),
 });
 
 type FormData = z.infer<typeof simplePartnerSchema>;
@@ -52,41 +64,34 @@ export default function SimplePartnerForm({ onSuccess }: SimplePartnerFormProps)
 
   const createPartnerMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      console.log('🚀 === SIMPLE FORM SUBMIT ===');
-      console.log('📋 Data:', data);
-      console.log('👤 User:', user);
-      
       const partnerData = {
         name: data.name,
         type: data.type,
-        email: data.email || null,
-        phone: data.phone || null,
-        company: data.company || null,
-        position: data.position || null,
-        address: data.address || null,
-        city: data.city || null,
-        postalCode: data.postalCode || null,
+        email: data.email?.trim() || null,
+        phone: data.phone?.trim() || null,
+        company: data.company?.trim() || null,
+        position: data.position?.trim() || null,
+        address: data.address?.trim() || null,
+        city: data.city?.trim() || null,
+        postalCode: data.postalCode?.trim() || null,
         country: data.country || "IT",
-        fiscalCode: data.fiscalCode || null,
-        vatNumber: data.vatNumber || null,
-        website: data.website || null,
-        notes: data.notes || null,
+        fiscalCode: data.fiscalCode?.trim() || null,
+        vatNumber: data.vatNumber?.trim() || null,
+        website: data.website?.trim() || null,
+        notes: data.notes?.trim() || null,
         userId: user!.id
       };
       
-      console.log('📤 Sending to API:', partnerData);
       const res = await apiRequest("POST", "/api/partners", partnerData);
       return res.json();
     },
     onSuccess: () => {
-      console.log('✅ Partner created successfully!');
       queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
       toast({ title: "Partner creato con successo!" });
       form.reset();
       onSuccess?.();
     },
     onError: (error: Error) => {
-      console.log('❌ Partner creation failed:', error);
       toast({
         title: "Errore nella creazione del partner",
         description: error.message,
@@ -96,10 +101,7 @@ export default function SimplePartnerForm({ onSuccess }: SimplePartnerFormProps)
   });
 
   const onSubmit = (data: FormData) => {
-    console.log('🎯 Form submit triggered');
-    
     if (!user) {
-      console.log('❌ No user authenticated');
       toast({
         title: "Errore di autenticazione", 
         description: "Devi essere loggato per creare un partner",
@@ -108,7 +110,6 @@ export default function SimplePartnerForm({ onSuccess }: SimplePartnerFormProps)
       return;
     }
 
-    console.log('🚀 Starting mutation...');
     createPartnerMutation.mutate(data);
   };
 
