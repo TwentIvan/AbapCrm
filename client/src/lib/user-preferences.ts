@@ -529,12 +529,19 @@ export function useTableLayout(tableId: string) {
   }, [tableId]);
 
   const loadLayout = useCallback((layoutId: string) => {
+    console.log('🔄 loadLayout called with ID:', layoutId);
     const success = userPreferences.loadLayout(tableId, layoutId);
+    console.log('🔄 loadLayout success:', success);
     if (success) {
       // Force immediate state update
       const newLayout = userPreferences.getTableLayout(tableId);
       const newCurrentName = userPreferences.getCurrentLayoutName(tableId);
       const newSavedLayouts = userPreferences.getSavedLayouts(tableId);
+      
+      console.log('🔄 New layout loaded:', { 
+        name: newCurrentName, 
+        columnVisibility: newLayout.columnVisibility 
+      });
       
       // Force a completely new object to trigger React re-render
       setLayout({ ...newLayout });
