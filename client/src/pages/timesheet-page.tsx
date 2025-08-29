@@ -10,6 +10,8 @@ import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endO
 import type { TimeEntry, Task, Project } from "@shared/schema";
 import { DataTable, createBadgeColumn } from "@/components/ui/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Sidebar } from "@/components/sidebar";
+import { Header } from "@/components/header";
 
 export default function TimesheetPage() {
   const [filterPeriod, setFilterPeriod] = useState<"week" | "month" | "all">("week");
@@ -154,48 +156,53 @@ export default function TimesheetPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Timesheet</h1>
-          <p className="text-muted-foreground">
-            Track and manage your time entries across all tasks
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* View Toggle */}
-          <div className="flex border rounded-lg p-1">
-            <Button
-              variant={viewMode === "cards" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("cards")}
-              data-testid="button-view-cards"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-              data-testid="button-view-list"
-            >
-              <List className="h-4 w-4" />
-            </Button>
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 overflow-auto">
+        <Header 
+          title="Timesheet" 
+          subtitle="Track and manage your time entries across all tasks"
+        />
+        
+        <div className="p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold">Time Tracking Overview</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* View Toggle */}
+              <div className="flex border rounded-lg p-1">
+                <Button
+                  variant={viewMode === "cards" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("cards")}
+                  data-testid="button-view-cards"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                  data-testid="button-view-list"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={filterPeriod} onValueChange={(value: any) => setFilterPeriod(value)}>
+                <SelectTrigger className="w-[140px]" data-testid="select-time-period">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="all">All Time</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={filterPeriod} onValueChange={(value: any) => setFilterPeriod(value)}>
-            <SelectTrigger className="w-[140px]" data-testid="select-time-period">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="week">This Week</SelectItem>
-              <SelectItem value="month">This Month</SelectItem>
-              <SelectItem value="all">All Time</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
 
       {/* Running Timer Alert */}
       {runningEntry && (
@@ -366,7 +373,9 @@ export default function TimesheetPage() {
           )}
           </CardContent>
         </Card>
-      )}
+          )}
+        </div>
+      </main>
     </div>
   );
 }

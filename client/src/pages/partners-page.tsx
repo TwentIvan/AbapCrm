@@ -302,6 +302,7 @@ export default function PartnersPage() {
               onSelectionChange={setSelectedPartners}
               bulkActions={bulkActions}
               tableId="partners"
+              configurableColumns={true}
               enableAdvancedFilters={true}
               filterColumns={filterColumns}
               enableAggregation={true}
