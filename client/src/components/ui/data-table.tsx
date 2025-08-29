@@ -360,11 +360,18 @@ export function DataTable<TData, TValue>({
             <TableConfiguration
               tableId={tableId}
               availableColumns={allColumns
-                .filter(col => col.id && col.id !== 'select' && col.id !== 'actions')
-                .map(col => ({
-                  id: col.id as string,
-                  label: typeof col.header === 'function' ? col.id as string : (col.header as string) || (col.id as string),
-                }))}
+                .filter(col => {
+                  const colId = col.id || (col as any).accessorKey;
+                  return colId && colId !== 'select' && colId !== 'actions';
+                })
+                .map(col => {
+                  const colId = col.id || (col as any).accessorKey;
+                  const colHeader = typeof col.header === 'function' ? colId : (col.header || colId);
+                  return {
+                    id: colId as string,
+                    label: colHeader as string,
+                  };
+                })}
               currentAggregations={aggregationColumns}
               onConfigurationChange={(config) => {
                 // Apply configuration changes immediately
