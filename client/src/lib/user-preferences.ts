@@ -504,7 +504,8 @@ export function useTableLayout(tableId: string) {
     
     console.log('🔄 Updating hook state:');
     console.log('- Current layout name:', newCurrentName);
-    console.log('- Saved layouts:', newSavedLayouts.map(l => l.name));
+    console.log('- Saved layouts full objects:', newSavedLayouts);
+    console.log('- Saved layouts names:', newSavedLayouts.map(l => l.name));
     
     setCurrentLayoutName(newCurrentName);
     setSavedLayouts(newSavedLayouts);
