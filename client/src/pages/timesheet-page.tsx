@@ -12,10 +12,13 @@ import { DataTable, createBadgeColumn } from "@/components/ui/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
+import { useTableLayout } from "@/lib/user-preferences";
 
 export default function TimesheetPage() {
   const [filterPeriod, setFilterPeriod] = useState<"week" | "month" | "all">("week");
-  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
+  
+  const { layout, updateLayout } = useTableLayout('timesheet');
+  const viewMode = layout.viewMode;
 
   const { data: timeEntries = [] } = useQuery<TimeEntry[]>({
     queryKey: ["/api/time-entries"],
@@ -196,7 +199,7 @@ export default function TimesheetPage() {
                 <Button
                   variant={viewMode === "cards" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setViewMode("cards")}
+                  onClick={() => updateLayout({ viewMode: "cards" })}
                   data-testid="button-view-cards"
                 >
                   <LayoutGrid className="h-4 w-4" />
@@ -204,7 +207,7 @@ export default function TimesheetPage() {
                 <Button
                   variant={viewMode === "list" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setViewMode("list")}
+                  onClick={() => updateLayout({ viewMode: "list" })}
                   data-testid="button-view-list"
                 >
                   <List className="h-4 w-4" />

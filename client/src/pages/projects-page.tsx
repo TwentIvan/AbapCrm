@@ -14,6 +14,7 @@ import ProjectPlanner from "@/components/planning/project-planner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useTableLayout } from "@/lib/user-preferences";
 
 const statusColors = {
   planning: "bg-blue-100 text-blue-800",
@@ -37,8 +38,10 @@ export default function ProjectsPage() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [showPlanner, setShowPlanner] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
   const [selectedProjects, setSelectedProjects] = useState<Project[]>([]);
+  
+  const { layout, updateLayout } = useTableLayout('projects');
+  const viewMode = layout.viewMode;
 
   const { data: projects, isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -190,7 +193,7 @@ export default function ProjectsPage() {
               <Button
                 variant={viewMode === 'cards' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => setViewMode('cards')}
+                onClick={() => updateLayout({ viewMode: 'cards' })}
                 data-testid="button-view-cards"
               >
                 <Grid3X3 className="mr-2 h-4 w-4" />
@@ -199,7 +202,7 @@ export default function ProjectsPage() {
               <Button
                 variant={viewMode === 'list' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => setViewMode('list')}
+                onClick={() => updateLayout({ viewMode: 'list' })}
                 data-testid="button-view-list"
               >
                 <List className="mr-2 h-4 w-4" />
