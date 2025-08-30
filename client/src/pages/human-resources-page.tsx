@@ -1,23 +1,50 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
+import { useTableLayout } from "@/lib/user-preferences";
+import Sidebar from "@/components/layout/sidebar";
+import Header from "@/components/layout/header";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DataTable, createTextColumn, createBadgeColumn } from "@/components/ui/data-table";
+import { LayoutManager } from "@/components/ui/layout-manager";
+import { TableConfiguration } from "@/components/ui/table-configuration";
+import { Users, Plus, Search, Edit, Trash2, DollarSign, Calendar, User as UserIcon, MoreHorizontal, Grid3X3, List } from "lucide-react";
 import { HumanResourceForm } from "@/components/forms/human-resource-form";
-import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import type { HumanResource } from "@shared/schema";
-import { Users, Plus, Search, Edit, Trash2, DollarSign, Calendar, User as UserIcon } from "lucide-react";
 
 export function HumanResourcesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedResource, setSelectedResource] = useState<HumanResource | null>(null);
+  const [selectedResources, setSelectedResources] = useState<HumanResource[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [editingLayout, setEditingLayout] = useState<any>(null);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Use the table layout hook for persistent preferences
+  const { 
+    layout, 
+    currentLayoutName,
+    savedLayouts,
+    updateLayout, 
+    saveLayoutAs,
+    loadLayout,
+    renameLayout,
+    deleteLayout,
+    updateExistingLayout,
+  } = useTableLayout('human-resources');
+  const viewMode = layout.viewMode;
 
   const { data: resources = [], isLoading } = useQuery<HumanResource[]>({
     queryKey: ["/api/human-resources"],
@@ -45,6 +72,132 @@ export function HumanResourcesPage() {
     }
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (resourceIds: string[]) => {
+      const promises = resourceIds.map(id => 
+        apiRequest("DELETE", `/api/human-resources/${id}`)
+      );
+      await Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/human-resources"] });
+      toast({
+        title: "Risorse eliminate",
+        description: `${selectedResources.length} risorse eliminate con successo.`,
+      });
+      setShowBulkDeleteDialog(false);
+      setSelectedResources([]);
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Non è stato possibile eliminare alcune risorse.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Table columns configuration
+  const groupingColumns = [
+    { id: 'role', label: 'Ruolo', type: 'select' as const, options: [
+      { value: 'developer', label: 'Developer' },
+      { value: 'analyst', label: 'Analyst' },
+      { value: 'consultant', label: 'Consultant' },
+      { value: 'designer', label: 'Designer' },
+      { value: 'manager', label: 'Manager' },
+      { value: 'architect', label: 'Architect' },
+      { value: 'tester', label: 'Tester' },
+    ]},
+    { id: 'skillLevel', label: 'Livello', type: 'select' as const, options: [
+      { value: 'junior', label: 'Junior' },
+      { value: 'mid', label: 'Mid' },
+      { value: 'senior', label: 'Senior' },
+      { value: 'lead', label: 'Lead' },
+      { value: 'principal', label: 'Principal' },
+    ]},
+    { id: 'department', label: 'Dipartimento', type: 'text' as const },
+    { id: 'costCenter', label: 'Centro di Costo', type: 'text' as const },
+    { id: 'name', label: 'Nome', type: 'text' as const },
+  ];
+
+  const aggregationColumns = [
+    { id: 'name', type: 'count' as const, label: 'Totale Risorse' },
+  ];
+
+  // Table columns for list view
+  const tableColumns = [
+    {
+      accessorKey: 'name',
+      header: 'Nome',
+      cell: ({ row }: any) => (
+        <div className="font-medium" data-testid={`text-resource-name-${row.original.id}`}>
+          {row.original.name}
+        </div>
+      ),
+    },
+    createBadgeColumn('role', 'Ruolo', {
+      developer: 'default',
+      analyst: 'secondary',
+      consultant: 'outline',
+      designer: 'default',
+      manager: 'secondary',
+      architect: 'outline',
+      tester: 'default'
+    }),
+    createBadgeColumn('skillLevel', 'Livello', {
+      junior: 'secondary',
+      mid: 'default',
+      senior: 'outline',
+      lead: 'default',
+      principal: 'secondary'
+    }),
+    createTextColumn('department', 'Dipartimento', 20),
+    createTextColumn('costCenter', 'Centro di Costo', 15),
+    createTextColumn('baseHourlyRate', 'Tariffa (€/h)', 10),
+    {
+      accessorKey: 'isActive',
+      header: 'Stato',
+      cell: ({ row }: any) => (
+        <Badge variant={row.original.isActive ? 'default' : 'secondary'}>
+          {row.original.isActive ? 'Attiva' : 'Inattiva'}
+        </Badge>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Azioni',
+      cell: ({ row }: any) => {
+        const resource = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" data-testid={`button-resource-menu-${resource.id}`}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={() => handleEdit(resource)}
+                data-testid={`menu-edit-resource-${resource.id}`}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Modifica
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => handleDelete(resource)}
+                className="text-destructive"
+                data-testid={`menu-delete-resource-${resource.id}`}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Elimina
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
   const filteredResources = resources.filter(resource => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -54,11 +207,6 @@ export function HumanResourcesPage() {
            (resource.department && resource.department.toLowerCase().includes(term));
   });
 
-  const handleEdit = (resource: HumanResource) => {
-    setSelectedResource(resource);
-    setIsFormOpen(true);
-  };
-
   const handleCreate = () => {
     setSelectedResource(null);
     setIsFormOpen(true);
@@ -67,6 +215,22 @@ export function HumanResourcesPage() {
   const handleFormSuccess = () => {
     setIsFormOpen(false);
     setSelectedResource(null);
+  };
+
+  const handleEdit = (resource: HumanResource) => {
+    setSelectedResource(resource);
+    setIsFormOpen(true);
+  };
+
+  const handleDelete = (resource: HumanResource) => {
+    setSelectedResource(resource);
+    deleteMutation.mutate(resource.id);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedResources.length > 0) {
+      bulkDeleteMutation.mutate(selectedResources.map(r => r.id));
+    }
   };
 
   const getSkillLevelColor = (level: string) => {
@@ -102,246 +266,349 @@ export function HumanResourcesPage() {
       : '0.00'
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/3 mb-6"></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-24 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="h-6 w-6" />
-            Risorse Umane
-          </h1>
-          <p className="text-muted-foreground">
-            Gestisci le risorse umane e collega gli utenti alle attività
-          </p>
-        </div>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleCreate} data-testid="button-add-resource">
-              <Plus className="h-4 w-4 mr-2" />
-              Aggiungi Risorsa
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {selectedResource ? "Modifica Risorsa" : "Nuova Risorsa"}
-              </DialogTitle>
-              <DialogDescription>
-                {selectedResource 
-                  ? "Aggiorna le informazioni della risorsa umana selezionata" 
-                  : "Inserisci i dati per creare una nuova risorsa umana"
-                }
-              </DialogDescription>
-            </DialogHeader>
-            <HumanResourceForm
-              humanResource={selectedResource || undefined}
-              onSuccess={handleFormSuccess}
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 overflow-auto">
+        <Header 
+          title="Risorse Umane" 
+          subtitle="Gestisci le risorse umane e collega gli utenti alle attività"
+          onNewClick={() => setIsFormOpen(true)}
+        />
+        
+        <div className="p-6">
+          {/* Layout Management and View Toggle */}
+          <div className="flex justify-between items-center mb-4">
+            {/* Layout Manager */}
+            <LayoutManager
+              currentLayoutName={currentLayoutName}
+              savedLayouts={savedLayouts}
+              onLoadLayout={loadLayout}
+              onRenameLayout={renameLayout}
+              onDeleteLayout={deleteLayout}
+              onEditLayout={(layout) => {
+                setEditingLayout(layout);
+                setShowConfigDialog(true);
+              }}
             />
-          </DialogContent>
-        </Dialog>
-      </div>
 
-      {/* Statistiche */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Totale Risorse</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
-              <Users className="h-8 w-8 text-blue-500" />
+            {/* View Toggle */}
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => updateLayout({ viewMode: 'cards' })}
+                data-testid="button-view-cards"
+              >
+                <Grid3X3 className="mr-2 h-4 w-4" />
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => updateLayout({ viewMode: 'list' })}
+                data-testid="button-view-list"
+              >
+                <List className="mr-2 h-4 w-4" />
+                List
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Risorse Attive</p>
-                <p className="text-2xl font-bold text-green-600">{stats.active}</p>
-              </div>
-              <UserIcon className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Tariffa Media</p>
-                <p className="text-2xl font-bold">€{stats.avgRate}</p>
-              </div>
-              <DollarSign className="h-8 w-8 text-orange-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Ricerca */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Cerca per nome, ruolo, livello o dipartimento..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-              data-testid="input-search"
-            />
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Lista Risorse */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredResources.map((resource) => (
-          <Card key={resource.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">{getRoleIcon(resource.role)}</span>
-                  <div>
-                    <CardTitle className="text-lg">{resource.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {resource.role} • {resource.skillLevel}
-                    </p>
-                  </div>
+          {/* Form Dialog */}
+          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {selectedResource ? "Modifica Risorsa" : "Nuova Risorsa"}
+                </DialogTitle>
+                <DialogDescription>
+                  {selectedResource 
+                    ? "Aggiorna le informazioni della risorsa umana selezionata" 
+                    : "Inserisci i dati per creare una nuova risorsa umana"
+                  }
+                </DialogDescription>
+              </DialogHeader>
+              <HumanResourceForm
+                humanResource={selectedResource || undefined}
+                onSuccess={handleFormSuccess}
+              />
+            </DialogContent>
+          </Dialog>
+
+          {isLoading ? (
+            viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i}>
+                    <CardHeader>
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </CardHeader>
+                    <CardContent>
+                      <Skeleton className="h-16 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            )
+          ) : resources?.length === 0 ? (
+            <div className="text-center py-12">
+              <Users className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-semibold text-gray-900">Nessuna risorsa</h3>
+              <p className="mt-1 text-sm text-gray-500">Inizia creando la tua prima risorsa umana.</p>
+              <div className="mt-6">
+                <Button onClick={() => setIsFormOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Aggiungi Risorsa
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Search */}
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cerca per nome, ruolo, livello o dipartimento..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-search"
+                  />
                 </div>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(resource)}
-                    data-testid={`button-edit-${resource.id}`}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                        data-testid={`button-delete-${resource.id}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Sei sicuro di voler eliminare la risorsa "{resource.name}"? 
-                          Questa azione non può essere annullata.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annulla</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => deleteMutation.mutate(resource.id)}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          Elimina
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+              </div>
+
+              {/* Statistics Cards */}
+              {viewMode === 'cards' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Totale Risorse</p>
+                          <p className="text-2xl font-bold">{stats.total}</p>
+                        </div>
+                        <Users className="h-8 w-8 text-blue-500" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Risorse Attive</p>
+                          <p className="text-2xl font-bold text-green-600">{stats.active}</p>
+                        </div>
+                        <UserIcon className="h-8 w-8 text-green-500" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Tariffa Media</p>
+                          <p className="text-2xl font-bold">€{stats.avgRate}</p>
+                        </div>
+                        <DollarSign className="h-8 w-8 text-orange-500" />
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {/* Badges */}
-              <div className="flex flex-wrap gap-2">
-                <Badge className={getSkillLevelColor(resource.skillLevel)}>
-                  {resource.skillLevel}
-                </Badge>
-                {resource.department && (
-                  <Badge variant="outline">{resource.department}</Badge>
-                )}
-                <Badge variant={resource.isActive ? "default" : "secondary"}>
-                  {resource.isActive ? "Attiva" : "Inattiva"}
-                </Badge>
-              </div>
-
-              {/* Informazioni */}
-              <div className="space-y-2 text-sm">
-                {resource.baseHourlyRate && (
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    <span>€{resource.baseHourlyRate}/ora</span>
-                  </div>
-                )}
-                
-                {resource.costCenter && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">CC:</span>
-                    <span>{resource.costCenter}</span>
-                  </div>
-                )}
-
-                {resource.startDate && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>Dal {new Date(resource.startDate).toLocaleDateString('it-IT')}</span>
-                  </div>
-                )}
-
-                {resource.linkedUserId && (
-                  <div className="flex items-center gap-2">
-                    <UserIcon className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-blue-600">Utente collegato</span>
-                  </div>
-                )}
-              </div>
-
-              {resource.notes && (
-                <p className="text-sm text-muted-foreground border-t pt-2 mt-2">
-                  {resource.notes}
-                </p>
               )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
-      {filteredResources.length === 0 && (
-        <Card className="p-12 text-center">
-          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">Nessuna risorsa trovata</h3>
-          <p className="text-muted-foreground mb-4">
-            {searchTerm 
-              ? "Nessuna risorsa corrisponde ai criteri di ricerca"
-              : "Non hai ancora creato nessuna risorsa umana"
-            }
-          </p>
-          {!searchTerm && (
-            <Button onClick={handleCreate}>
-              <Plus className="h-4 w-4 mr-2" />
-              Crea la tua prima risorsa
-            </Button>
+              {/* Content based on view mode */}
+              {viewMode === 'cards' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredResources.map((resource) => (
+                    <Card key={resource.id} className="hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">{getRoleIcon(resource.role)}</span>
+                            <div>
+                              <CardTitle className="text-lg">{resource.name}</CardTitle>
+                              <p className="text-sm text-muted-foreground capitalize">
+                                {resource.role} • {resource.skillLevel}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(resource)}
+                              data-testid={`button-edit-${resource.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700"
+                                  data-testid={`button-delete-${resource.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Sei sicuro di voler eliminare la risorsa "{resource.name}"? 
+                                    Questa azione non può essere annullata.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteMutation.mutate(resource.id)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Elimina
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {/* Badges */}
+                        <div className="flex flex-wrap gap-2">
+                          <Badge className={getSkillLevelColor(resource.skillLevel)}>
+                            {resource.skillLevel}
+                          </Badge>
+                          {resource.department && (
+                            <Badge variant="outline">{resource.department}</Badge>
+                          )}
+                          <Badge variant={resource.isActive ? "default" : "secondary"}>
+                            {resource.isActive ? "Attiva" : "Inattiva"}
+                          </Badge>
+                        </div>
+
+                        {/* Informazioni */}
+                        <div className="space-y-2 text-sm">
+                          {resource.baseHourlyRate && (
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-muted-foreground" />
+                              <span>€{resource.baseHourlyRate}/ora</span>
+                            </div>
+                          )}
+                          
+                          {resource.costCenter && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground">CC:</span>
+                              <span>{resource.costCenter}</span>
+                            </div>
+                          )}
+
+                          {resource.startDate && (
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <span>Dal {new Date(resource.startDate).toLocaleDateString('it-IT')}</span>
+                            </div>
+                          )}
+
+                          {resource.linkedUserId && (
+                            <div className="flex items-center gap-2">
+                              <UserIcon className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-blue-600">Utente collegato</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {resource.notes && (
+                          <p className="text-sm text-muted-foreground border-t pt-2 mt-2">
+                            {resource.notes}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <DataTable
+                  data={filteredResources}
+                  columns={tableColumns}
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  selectedRows={selectedResources}
+                  onSelectionChange={setSelectedResources}
+                  onBulkDelete={selectedResources.length > 0 ? () => setShowBulkDeleteDialog(true) : undefined}
+                />
+              )}
+
+              {filteredResources.length === 0 && searchTerm && (
+                <div className="text-center py-12">
+                  <Search className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-semibold text-gray-900">Nessun risultato</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Nessuna risorsa corrisponde alla ricerca "{searchTerm}"
+                  </p>
+                </div>
+              )}
+            </>
           )}
-        </Card>
-      )}
+
+          {/* Bulk Delete Dialog */}
+          <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Conferma eliminazione multipla</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Sei sicuro di voler eliminare {selectedResources.length} risorse? 
+                  Questa azione non può essere annullata.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleBulkDelete}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Elimina {selectedResources.length} risorse
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Table Configuration Dialog */}
+          <TableConfiguration
+            isOpen={showConfigDialog}
+            onClose={() => setShowConfigDialog(false)}
+            layout={editingLayout || layout}
+            groupingColumns={groupingColumns}
+            aggregationColumns={aggregationColumns}
+            onSave={(newLayout) => {
+              if (editingLayout) {
+                updateExistingLayout(editingLayout.name, newLayout);
+              } else {
+                updateLayout(newLayout);
+              }
+              setShowConfigDialog(false);
+              setEditingLayout(null);
+            }}
+            onSaveAs={(name, newLayout) => {
+              saveLayoutAs(name, newLayout);
+              setShowConfigDialog(false);
+              setEditingLayout(null);
+            }}
+          />
+        </div>
+      </main>
     </div>
   );
 }
