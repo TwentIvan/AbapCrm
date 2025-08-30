@@ -175,7 +175,7 @@ export default function TimesheetsPage() {
       accessorKey: "totalEntries",
       header: "Voci",
       cell: ({ row }: { row: any }) => (
-        <span className="text-sm font-mono">
+        <span className="text-sm">
           {row.getValue("totalEntries")} entry
         </span>
       ),
@@ -188,7 +188,7 @@ export default function TimesheetsPage() {
         const hours = Math.floor(duration / 60);
         const minutes = duration % 60;
         return (
-          <span className="text-sm font-mono">
+          <span className="text-sm">
             {hours}h {minutes}m
           </span>
         );
@@ -773,11 +773,9 @@ function TimesheetGroupRow({
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    // Apply normalization only when saving
-                    const normalizedTotal = normalizeDuration(editedTotal);
-                    // Update display immediately for responsive UI
-                    setDisplayDuration(normalizedTotal);
-                    onGroupTotalUpdate?.(normalizedTotal);
+                    // Use the exact value entered by user (no normalization)
+                    setDisplayDuration(editedTotal);
+                    onGroupTotalUpdate?.(editedTotal);
                     setIsEditingTotal(false);
                   }}
                   className="h-5 w-5 p-0 text-green-600"
@@ -798,7 +796,7 @@ function TimesheetGroupRow({
               </div>
             ) : (
               <div 
-                className="font-mono font-medium text-green-600 cursor-pointer hover:bg-green-50 px-2 py-1 rounded"
+                className="font-medium text-green-600 cursor-pointer hover:bg-green-50 px-2 py-1 rounded"
                 onClick={() => {
                   // Start editing with current raw value
                   setEditedTotal(displayDuration);
@@ -936,7 +934,7 @@ function TimesheetEntryCard({
             </div>
           ) : (
             <div className="space-y-1">
-              <div className="text-xs font-mono bg-blue-50 px-2 py-1 rounded w-fit">
+              <div className="text-xs bg-blue-50 px-2 py-1 rounded w-fit">
                 ⏱️ {formatDuration(calculateEntryDuration(entry))}
               </div>
               {entry.description && (
