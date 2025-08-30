@@ -148,20 +148,28 @@ function TaskTimerButtons({ task }: { task: Task }) {
     }
   };
 
-  // Calculate elapsed time for display
+  // Calculate elapsed time for display (total time including previous sessions)
   const getElapsedTime = () => {
     if (!isCurrentTaskRunning || !runningEntry) return "";
     
-    const startTime = new Date(runningEntry.startTime);
-    const elapsed = Math.floor((currentTime.getTime() - startTime.getTime()) / 1000);
-    const hours = Math.floor(elapsed / 3600);
-    const minutes = Math.floor((elapsed % 3600) / 60);
-    const seconds = elapsed % 60;
+    // Get previous total time from completed time entries
+    const previousTotal = timeEntries.reduce((total, entry) => {
+      return total + (entry.duration || 0);
+    }, 0);
     
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    // Get current session time in minutes
+    const startTime = new Date(runningEntry.startTime);
+    const currentSessionMinutes = (currentTime.getTime() - startTime.getTime()) / (1000 * 60);
+    
+    // Total time = previous + current session
+    const totalMinutes = previousTotal + currentSessionMinutes;
+    const totalHours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = Math.floor(totalMinutes % 60);
+    
+    if (totalHours > 0) {
+      return `${totalHours}h ${remainingMinutes}m`;
     }
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${remainingMinutes}m`;
   };
 
   // Calculate suggested completion percentage 
@@ -226,11 +234,6 @@ function TaskTimerButtons({ task }: { task: Task }) {
               <Square className="h-3 w-3 mr-1" />
               {getElapsedTime()}
             </Button>
-            {timeEntries.length > 0 && (
-              <span className="text-xs text-muted-foreground font-medium">
-                Total: {getTotalTime()}
-              </span>
-            )}
           </div>
         ) : (
           <div className="flex items-center gap-2">
