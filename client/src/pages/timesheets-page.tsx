@@ -568,7 +568,20 @@ function TimesheetDetailDialog({
                 }, 0);
                 
                 // Apply 15-minute normalization to group totals
-                const totalDuration = Math.round(rawTotalDuration / 15) * 15;
+                let totalDuration = Math.round(rawTotalDuration / 15) * 15;
+                
+                // Check for group overrides in timesheet
+                let groupOverrides: Record<string, number> = {};
+                try {
+                  groupOverrides = JSON.parse(timesheet.groupOverrides || '{}');
+                } catch (e) {
+                  // Ignore parse errors
+                }
+                
+                // Use override if available
+                if (groupOverrides[groupKey] !== undefined) {
+                  totalDuration = groupOverrides[groupKey];
+                }
                 
                 return (
                   <TimesheetGroupRow
@@ -579,14 +592,28 @@ function TimesheetDetailDialog({
                     onEntryDelete={(entryId) => deleteEntryMutation.mutate(entryId)}
                     onEntryUpdate={(entryId, data) => updateEntryMutation.mutate({ id: entryId, data })}
                     onGroupTotalUpdate={(newTotal) => {
-                      // Update the timesheet total duration
+                      // Update group overrides and total duration
+                      let groupOverrides: Record<string, number> = {};
+                      try {
+                        groupOverrides = JSON.parse(timesheet.groupOverrides || '{}');
+                      } catch (e) {
+                        // Ignore parse errors
+                      }
+                      
+                      // Set the override for this group
+                      groupOverrides[groupKey] = newTotal;
+                      
+                      // Calculate new total timesheet duration
                       const currentTotal = timesheet.totalDuration || 0;
                       const oldGroupTotal = totalDuration;
                       const newTimesheetTotal = currentTotal - oldGroupTotal + newTotal;
                       
                       updateTimesheetMutation.mutate({
                         id: timesheet.id,
-                        data: { totalDuration: newTimesheetTotal }
+                        data: { 
+                          totalDuration: newTimesheetTotal,
+                          groupOverrides: JSON.stringify(groupOverrides)
+                        }
                       });
                     }}
                   />
