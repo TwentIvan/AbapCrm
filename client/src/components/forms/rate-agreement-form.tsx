@@ -546,7 +546,12 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
             type="submit"
             disabled={saveMutation.isPending}
             data-testid="button-submit"
-            onClick={() => console.log("🎯 SUBMIT BUTTON CLICKED!")}
+            onClick={() => {
+              console.log("🎯 SUBMIT BUTTON CLICKED!");
+              console.log("🔍 Form state:", form.formState);
+              console.log("🔍 Form errors:", form.formState.errors);
+              console.log("🔍 Current form values:", form.getValues());
+            }}
           >
             {saveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {rateAgreement ? "Aggiorna Accordo" : "Crea Accordo"}
