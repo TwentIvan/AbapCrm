@@ -38,9 +38,17 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: partners } = useQuery<Partner[]>({
+  const { data: partners, isLoading: isLoadingPartners, error: partnersError } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
     enabled: !!user,
+  });
+
+  // Debug log per vedere cosa succede con la query
+  console.log('Partners query debug:', { 
+    user: !!user, 
+    partners: partners?.length, 
+    isLoadingPartners, 
+    error: partnersError 
   });
 
   const { data: projects } = useQuery<Project[]>({
