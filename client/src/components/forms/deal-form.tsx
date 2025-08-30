@@ -290,7 +290,9 @@ export default function DealForm({ deal, onSuccess }: DealFormProps) {
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="none">No partner</SelectItem>
-                    {partners?.map((partner) => (
+                    {partners
+                      ?.filter(partner => partner.id && partner.id.trim() !== '')
+                      ?.map((partner) => (
                       <SelectItem key={partner.id} value={partner.id}>
                         {partner.name} ({partner.type})
                       </SelectItem>

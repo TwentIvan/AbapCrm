@@ -174,7 +174,7 @@ export function HumanResourceForm({ humanResource, onSuccess }: HumanResourceFor
                           <SelectValue placeholder="Seleziona utente (opzionale)" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nessun utente collegato</SelectItem>
+                          <SelectItem value="none">Nessun utente collegato</SelectItem>
                           {users.map(user => (
                             <SelectItem key={user.id} value={user.id}>
                               {user.username} - {user.firstName} {user.lastName}
@@ -252,7 +252,7 @@ export function HumanResourceForm({ humanResource, onSuccess }: HumanResourceFor
                           <SelectValue placeholder="Seleziona dipartimento" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nessun dipartimento</SelectItem>
+                          <SelectItem value="none">Nessun dipartimento</SelectItem>
                           {DEPARTMENTS.map(dept => (
                             <SelectItem key={dept.value} value={dept.value}>
                               {dept.label}

@@ -225,7 +225,7 @@ function FilterRule({ filter, columns, isFirst, onUpdate, onRemove }: FilterRule
       onUpdate({
         field: fieldId,
         type: column.type,
-        operator: OPERATORS[column.type]?.[0]?.value || 'contains',
+        operator: (OPERATORS[column.type]?.[0]?.value || 'contains') as FilterOperator,
         value: column.type === 'boolean' ? false : '',
       });
     }
@@ -306,7 +306,9 @@ function FilterRule({ filter, columns, isFirst, onUpdate, onRemove }: FilterRule
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {selectedColumn?.options?.map(option => (
+              {selectedColumn?.options
+                ?.filter(option => option.value && option.value.trim() !== '')
+                ?.map(option => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
