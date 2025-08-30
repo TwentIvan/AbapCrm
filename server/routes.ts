@@ -6,7 +6,7 @@ import { z } from "zod";
 import { 
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, 
   insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema,
-  insertMessageSchema, insertCommentSchema, insertEmailConfigSchema
+  insertMessageSchema, insertCommentSchema, insertEmailConfigSchema, insertTimesheetSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -660,6 +660,60 @@ export function registerRoutes(app: Express): Server {
   app.delete("/api/time-entries/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const deleted = await storage.deleteTimeEntry(req.params.id, req.user!.id);
+    if (!deleted) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  // Timesheets
+  app.get("/api/timesheets", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const timesheets = await storage.getTimesheets(req.user!.id);
+    res.json(timesheets);
+  });
+
+  app.get("/api/timesheets/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const timesheet = await storage.getTimesheet(req.params.id, req.user!.id);
+    if (!timesheet) return res.sendStatus(404);
+    res.json(timesheet);
+  });
+
+  app.post("/api/timesheets", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const timesheetData = insertTimesheetSchema.parse({
+        name: req.body.name,
+        description: req.body.description || null,
+        groupingFields: req.body.groupingFields,
+        timeEntryIds: req.body.timeEntryIds,
+        groupedData: JSON.stringify(req.body.groupedData),
+        totalDuration: req.body.totalDuration,
+        totalEntries: req.body.totalEntries,
+        userId: req.user!.id
+      });
+
+      const timesheet = await storage.createTimesheet(timesheetData);
+      res.status(201).json(timesheet);
+    } catch (error) {
+      console.error("Timesheet creation error:", error);
+      res.status(400).json({ error: "Invalid timesheet data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.put("/api/timesheets/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const timesheet = await storage.updateTimesheet(req.params.id, req.body, req.user!.id);
+      if (!timesheet) return res.sendStatus(404);
+      res.json(timesheet);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid timesheet data" });
+    }
+  });
+
+  app.delete("/api/timesheets/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const deleted = await storage.deleteTimesheet(req.params.id, req.user!.id);
     if (!deleted) return res.sendStatus(404);
     res.sendStatus(204);
   });

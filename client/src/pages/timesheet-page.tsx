@@ -22,6 +22,36 @@ import Header from "@/components/layout/header";
 import { useTableLayout } from "@/lib/user-preferences";
 import { useToast } from "@/hooks/use-toast";
 
+// Funzione helper per processare i dati raggruppati
+function processEntriesForTimesheet(entries: any[], groupingFields: string[]) {
+  const grouped: { [key: string]: any[] } = {};
+  
+  entries.forEach(entry => {
+    // Crea chiave di raggruppamento basata sui campi selezionati
+    const groupKey = groupingFields.map(field => {
+      switch (field) {
+        case 'taskId':
+          return `Task: ${entry.taskTitle || 'Unknown'}`;
+        case 'projectId':
+          return `Project: ${entry.projectName || 'No Project'}`;
+        case 'date':
+          return `Date: ${entry.formattedDate || 'Unknown'}`;
+        case 'status':
+          return `Status: ${entry.status || 'Unknown'}`;
+        default:
+          return `${field}: ${entry[field] || 'Unknown'}`;
+      }
+    }).join(' | ');
+    
+    if (!grouped[groupKey]) {
+      grouped[groupKey] = [];
+    }
+    grouped[groupKey].push(entry);
+  });
+  
+  return grouped;
+}
+
 // Tipi per raggruppamento dinamico
 type GroupingField = "taskId" | "projectId" | "date" | "status" | "description";
 
@@ -590,7 +620,7 @@ export default function TimesheetPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               ),
-              onClick: (selectedEntries: any[]) => {
+              onClick: async (selectedEntries: any[]) => {
                 if (selectedGroupFields.length === 0) {
                   toast({
                     title: "Configurazione richiesta",
@@ -599,17 +629,63 @@ export default function TimesheetPage() {
                   });
                   return;
                 }
-                
-                toast({
-                  title: "Timesheet creato",
-                  description: `Timesheet creato con ${selectedEntries.length} voci raggruppate per ${selectedGroupFields.length} campi`,
-                });
-                
-                // Qui andrà la logica per creare effettivamente il timesheet
-                console.log('Creating timesheet with:', {
-                  entries: selectedEntries,
-                  groupFields: selectedGroupFields
-                });
+
+                if (selectedEntries.length === 0) {
+                  toast({
+                    title: "Nessuna voce selezionata",
+                    description: "Seleziona almeno una voce di tempo per creare il timesheet",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+
+                try {
+                  // Processa i dati raggruppati
+                  const groupedData = processEntriesForTimesheet(selectedEntries, selectedGroupFields);
+                  const totalDuration = selectedEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
+                  
+                  // Genera nome automatico del timesheet
+                  const now = new Date();
+                  const timesheetName = `Timesheet ${format(now, "dd/MM/yyyy HH:mm")}`;
+                  
+                  // Chiama API per salvare il timesheet
+                  const response = await fetch('/api/timesheets', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                      name: timesheetName,
+                      description: `Timesheet con ${selectedEntries.length} voci raggruppate per ${selectedGroupFields.join(', ')}`,
+                      groupingFields: selectedGroupFields,
+                      timeEntryIds: selectedEntries.map(entry => entry.id),
+                      groupedData: groupedData,
+                      totalDuration: totalDuration,
+                      totalEntries: selectedEntries.length
+                    })
+                  });
+
+                  if (!response.ok) {
+                    throw new Error('Errore nel salvare il timesheet');
+                  }
+
+                  const savedTimesheet = await response.json();
+                  
+                  toast({
+                    title: "✓ Timesheet salvato",
+                    description: `Timesheet "${timesheetName}" creato con successo`,
+                  });
+
+                  console.log('Timesheet saved:', savedTimesheet);
+                } catch (error) {
+                  console.error('Error creating timesheet:', error);
+                  toast({
+                    title: "Errore",
+                    description: "Errore nel salvare il timesheet",
+                    variant: "destructive"
+                  });
+                }
               },
               variant: 'default' as const,
             }

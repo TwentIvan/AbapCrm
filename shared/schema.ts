@@ -216,6 +216,21 @@ export const emailConfigs = pgTable("email_configs", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Timesheet creati (raggruppamenti salvati di time entries)
+export const timesheets = pgTable("timesheets", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(), // "Timesheet Settimana 35", "Progetto ABC - Agosto"
+  description: text("description"),
+  groupingFields: text("grouping_fields").array().notNull(), // ["taskId", "date"]
+  timeEntryIds: text("time_entry_ids").array().notNull(), // Array degli ID time entries incluse
+  groupedData: text("grouped_data").notNull(), // JSON con dati processati raggruppati
+  totalDuration: integer("total_duration").notNull(), // Durata totale in minuti
+  totalEntries: integer("total_entries").notNull(), // Numero totale entry
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Configurazione normalizzazione tempi
 export const timeNormalizationConfigs = pgTable("time_normalization_configs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -333,6 +348,10 @@ export const planningWindowsRelations = relations(planningWindows, ({ one }) => 
 export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
   user: one(users, { fields: [timeEntries.userId], references: [users.id] }),
   task: one(tasks, { fields: [timeEntries.taskId], references: [tasks.id] }),
+}));
+
+export const timesheetsRelations = relations(timesheets, ({ one }) => ({
+  user: one(users, { fields: [timesheets.userId], references: [users.id] }),
 }));
 
 export const messagesRelations = relations(messages, ({ one, many }) => ({
@@ -500,8 +519,16 @@ export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
 export type PlanningWindow = typeof planningWindows.$inferSelect;
 export type InsertPlanningWindow = z.infer<typeof insertPlanningWindowSchema>;
+export const insertTimesheetSchema = createInsertSchema(timesheets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type TimeEntry = typeof timeEntries.$inferSelect;
 export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
+export type Timesheet = typeof timesheets.$inferSelect;
+export type InsertTimesheet = z.infer<typeof insertTimesheetSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Comment = typeof comments.$inferSelect;

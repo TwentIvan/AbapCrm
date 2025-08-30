@@ -1,6 +1,6 @@
 import { 
   users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, emailConfigs,
-  timeNormalizationConfigs, salesOrders, salesOrderItems,
+  timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets,
   type User, type InsertUser,
   type Project, type InsertProject,
   type Task, type InsertTask,
@@ -14,7 +14,8 @@ import {
   type EmailConfig, type InsertEmailConfig,
   type TimeNormalizationConfig, type InsertTimeNormalizationConfig,
   type SalesOrder, type InsertSalesOrder,
-  type SalesOrderItem, type InsertSalesOrderItem
+  type SalesOrderItem, type InsertSalesOrderItem,
+  type Timesheet, type InsertTimesheet
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -107,6 +108,13 @@ export interface IStorage {
   updateSalesOrderItem(id: string, item: Partial<InsertSalesOrderItem>, userId: string): Promise<SalesOrderItem | undefined>;
   deleteSalesOrderItem(id: string, userId: string): Promise<boolean>;
   getAllRunningTimeEntries(userId: string): Promise<TimeEntry[]>;
+
+  // Timesheets
+  getTimesheets(userId: string): Promise<Timesheet[]>;
+  getTimesheet(id: string, userId: string): Promise<Timesheet | undefined>;
+  createTimesheet(timesheet: InsertTimesheet): Promise<Timesheet>;
+  updateTimesheet(id: string, timesheet: Partial<InsertTimesheet>, userId: string): Promise<Timesheet | undefined>;
+  deleteTimesheet(id: string, userId: string): Promise<boolean>;
 
   // Messages
   getMessages(userId: string): Promise<Message[]>;
@@ -680,6 +688,47 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(salesOrderItems)
       .where(eq(salesOrderItems.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Timesheets
+  async getTimesheets(userId: string): Promise<Timesheet[]> {
+    return await db
+      .select()
+      .from(timesheets)
+      .where(eq(timesheets.userId, userId))
+      .orderBy(desc(timesheets.createdAt));
+  }
+
+  async getTimesheet(id: string, userId: string): Promise<Timesheet | undefined> {
+    const [timesheet] = await db
+      .select()
+      .from(timesheets)
+      .where(and(eq(timesheets.id, id), eq(timesheets.userId, userId)));
+    return timesheet || undefined;
+  }
+
+  async createTimesheet(timesheet: InsertTimesheet): Promise<Timesheet> {
+    const [newTimesheet] = await db
+      .insert(timesheets)
+      .values(timesheet)
+      .returning();
+    return newTimesheet;
+  }
+
+  async updateTimesheet(id: string, timesheet: Partial<InsertTimesheet>, userId: string): Promise<Timesheet | undefined> {
+    const [updated] = await db
+      .update(timesheets)
+      .set({ ...timesheet, updatedAt: new Date() })
+      .where(and(eq(timesheets.id, id), eq(timesheets.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteTimesheet(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(timesheets)
+      .where(and(eq(timesheets.id, id), eq(timesheets.userId, userId)));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 

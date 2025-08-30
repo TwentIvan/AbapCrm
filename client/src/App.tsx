@@ -15,6 +15,7 @@ import PartnersPage from "@/pages/partners-page";
 import CalendarPage from "@/pages/calendar-page";
 import GlobalCalendarPage from "@/pages/global-calendar-page";
 import TimesheetPage from "@/pages/timesheet-page";
+import TimesheetsPage from "@/pages/timesheets-page";
 import MessagesPage from "@/pages/messages-page";
 import NotFound from "@/pages/not-found";
 
@@ -29,6 +30,7 @@ function Router() {
       <ProtectedRoute path="/calendar" component={CalendarPage} />
       <ProtectedRoute path="/planning-calendar" component={GlobalCalendarPage} />
       <ProtectedRoute path="/timesheet" component={TimesheetPage} />
+      <ProtectedRoute path="/timesheets" component={TimesheetsPage} />
       <ProtectedRoute path="/messages" component={MessagesPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
