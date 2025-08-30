@@ -45,7 +45,7 @@ export function HumanResourcesPage() {
     deleteLayout,
     updateExistingLayout,
   } = useTableLayout('human-resources');
-  const viewMode = layout.viewMode || 'cards';
+  const viewMode = layout.viewMode;
 
   const { data: resources = [], isLoading } = useQuery<HumanResource[]>({
     queryKey: ["/api/human-resources"],
@@ -428,25 +428,6 @@ export function HumanResourcesPage() {
                     </Card>
                   </div>
 
-                  {/* Selection Actions */}
-                  {selectedResources.length > 0 && (
-                    <div className="mb-4 p-4 bg-muted/50 rounded-lg border">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">
-                          {selectedResources.length} risorsa/e selezionata/e
-                        </span>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setShowBulkDeleteDialog(true)}
-                          data-testid="button-bulk-delete"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Elimina selezionate
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                 </>
               )}
 
@@ -458,17 +439,6 @@ export function HumanResourcesPage() {
                       <CardHeader className="pb-2">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-2">
-                            <Checkbox
-                              checked={selectedResources.some(r => r.id === resource.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedResources([...selectedResources, resource]);
-                                } else {
-                                  setSelectedResources(selectedResources.filter(r => r.id !== resource.id));
-                                }
-                              }}
-                              data-testid={`checkbox-resource-${resource.id}`}
-                            />
                             <span className="text-2xl">{getRoleIcon(resource.role)}</span>
                             <div>
                               <CardTitle className="text-lg">{resource.name}</CardTitle>
