@@ -91,6 +91,18 @@ export function HumanResourceForm({ humanResource, onSuccess }: HumanResourceFor
     },
   });
 
+  // Auto-compilazione nome quando viene selezionato un utente
+  const handleUserSelection = (userId: string) => {
+    if (userId === "none") return;
+    
+    const selectedUser = users.find(user => user.id === userId);
+    if (selectedUser && !form.getValues('name')) {
+      // Proponi il nome completo come nome della risorsa
+      const fullName = `${selectedUser.firstName} ${selectedUser.lastName}`.trim();
+      form.setValue('name', fullName);
+    }
+  };
+
   const saveMutation = useMutation({
     mutationFn: async (data: HumanResourceFormData) => {
       // Prepara i dati per l'API
@@ -150,6 +162,41 @@ export function HumanResourceForm({ humanResource, onSuccess }: HumanResourceFor
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Utente Collegato - PRIMO CAMPO */}
+              <FormField
+                control={form.control}
+                name="linkedUserId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Utente Collegato</FormLabel>
+                    <FormControl>
+                      <Select 
+                        value={field.value || ""} 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          handleUserSelection(value);
+                        }}
+                        disabled={usersLoading}
+                      >
+                        <SelectTrigger data-testid="select-linked-user">
+                          <SelectValue placeholder={usersLoading ? "Caricamento..." : "Seleziona utente (opzionale)"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nessun utente collegato</SelectItem>
+                          {users.filter(user => user.firstName && user.lastName).map(user => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.firstName} {user.lastName} ({user.username})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Nome - SECONDO CAMPO */}
               <FormField
                 control={form.control}
                 name="name"
@@ -158,32 +205,6 @@ export function HumanResourceForm({ humanResource, onSuccess }: HumanResourceFor
                     <FormLabel>Nome Risorsa *</FormLabel>
                     <FormControl>
                       <Input placeholder="Mario Rossi" {...field} data-testid="input-name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="linkedUserId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Utente Collegato</FormLabel>
-                    <FormControl>
-                      <Select value={field.value || ""} onValueChange={field.onChange}>
-                        <SelectTrigger data-testid="select-linked-user">
-                          <SelectValue placeholder="Seleziona utente (opzionale)" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nessun utente collegato</SelectItem>
-                          {users.map(user => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.username} - {user.firstName} {user.lastName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
