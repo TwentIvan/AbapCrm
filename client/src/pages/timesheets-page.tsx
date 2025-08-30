@@ -109,7 +109,7 @@ export default function TimesheetsPage() {
 
   const updateTimesheetMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
-      apiRequest("PATCH", `/api/timesheets/${id}`, data),
+      apiRequest("PUT", `/api/timesheets/${id}`, data),
     onSuccess: (data, variables) => {
       // Only invalidate, don't force refetch to avoid loops
       queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
