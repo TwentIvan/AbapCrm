@@ -552,18 +552,38 @@ function TimesheetDetailDialog({
     );
   }
   
-  // Parse grouped data
-  let groupedData: Record<string, any[]> = {};
+  // Parse static group snapshots (independent from time entries)
+  let groupSnapshots: Record<string, any> = {};
   try {
-    groupedData = JSON.parse(timesheet.groupedData || '{}');
+    groupSnapshots = JSON.parse(timesheet.groupSnapshots || '{}');
   } catch (e) {
-    console.error('Error parsing grouped data:', e);
+    console.error('Error parsing group snapshots:', e);
+    // Fallback to old grouped data if no snapshots available (backwards compatibility)
+    try {
+      const fallbackData = JSON.parse(timesheet.groupedData || '{}');
+      // Convert old format to new snapshot format
+      Object.entries(fallbackData).forEach(([groupKey, entries]: [string, any]) => {
+        const entriesArray = Array.isArray(entries) ? entries : [];
+        const totalDuration = entriesArray.reduce((sum, entry) => {
+          let duration = entry.durationMinutes || entry.duration || 0;
+          if (!duration && entry.startTime && entry.endTime) {
+            const start = new Date(entry.startTime);
+            const end = new Date(entry.endTime);
+            duration = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60));
+          }
+          return sum + duration;
+        }, 0);
+        
+        groupSnapshots[groupKey] = {
+          duration: Math.round(totalDuration / 15) * 15,
+          entryCount: entriesArray.length,
+          entries: entriesArray
+        };
+      });
+    } catch (fallbackError) {
+      console.error('Error parsing fallback grouped data:', fallbackError);
+    }
   }
-
-  // Filter time entries that belong to this timesheet
-  const timesheetEntries = timeEntries?.filter((entry: any) => 
-    timesheet.timeEntryIds?.includes(entry.id)
-  ) || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -591,7 +611,7 @@ function TimesheetDetailDialog({
             <div className="text-sm text-muted-foreground">Durata totale</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">{Object.keys(groupedData).length}</div>
+            <div className="text-2xl font-bold text-purple-600">{Object.keys(groupSnapshots).length}</div>
             <div className="text-sm text-muted-foreground">Gruppi</div>
           </div>
         </div>
@@ -611,69 +631,34 @@ function TimesheetDetailDialog({
             </div>
             
             <div className="divide-y">
-              {Object.entries(groupedData).map(([groupKey, entries]) => {
-                const entriesArray = Array.isArray(entries) ? entries : [];
-                
-                // Calculate duration from startTime and endTime if durationMinutes is not available
-                const rawTotalDuration = entriesArray.reduce((sum, entry) => {
-                  let duration = entry.durationMinutes || entry.duration || 0;
-                  
-                  // If no duration field, calculate from startTime/endTime
-                  if (!duration && entry.startTime && entry.endTime) {
-                    const start = new Date(entry.startTime);
-                    const end = new Date(entry.endTime);
-                    duration = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60)); // minutes
-                  }
-                  
-                  return sum + duration;
-                }, 0);
-                
-                // Apply 15-minute normalization to group totals
-                let totalDuration = Math.round(rawTotalDuration / 15) * 15;
-                
-                // Check for group overrides in timesheet
-                let groupOverrides: Record<string, number> = {};
-                try {
-                  groupOverrides = JSON.parse(timesheet.groupOverrides || '{}');
-                } catch (e) {
-                  // Ignore parse errors
-                }
-                
-                // Use override if available
-                if (groupOverrides[groupKey] !== undefined) {
-                  totalDuration = groupOverrides[groupKey];
-                }
+              {Object.entries(groupSnapshots).map(([groupKey, snapshot]) => {
                 
                 return (
                   <TimesheetGroupRow
                     key={groupKey}
                     groupKey={groupKey}
-                    entries={entriesArray}
-                    totalDuration={totalDuration}
+                    entries={snapshot.entries || []}
+                    totalDuration={snapshot.duration || 0}
                     onEntryDelete={(entryId) => deleteEntryMutation.mutate(entryId)}
                     onEntryUpdate={(entryId, data) => updateEntryMutation.mutate({ id: entryId, data })}
                     onGroupTotalUpdate={(newTotal) => {
-                      // Update group overrides and total duration
-                      let groupOverrides: Record<string, number> = {};
-                      try {
-                        groupOverrides = JSON.parse(timesheet.groupOverrides || '{}');
-                      } catch (e) {
-                        // Ignore parse errors
-                      }
-                      
-                      // Set the override for this group
-                      groupOverrides[groupKey] = newTotal;
+                      // Update the snapshot duration directly
+                      const updatedSnapshots = { ...groupSnapshots };
+                      const oldGroupTotal = updatedSnapshots[groupKey]?.duration || 0;
+                      updatedSnapshots[groupKey] = {
+                        ...updatedSnapshots[groupKey],
+                        duration: newTotal
+                      };
                       
                       // Calculate new total timesheet duration
                       const currentTotal = timesheet.totalDuration || 0;
-                      const oldGroupTotal = totalDuration;
                       const newTimesheetTotal = currentTotal - oldGroupTotal + newTotal;
                       
                       updateTimesheetMutation.mutate({
                         id: timesheet.id,
                         data: { 
                           totalDuration: newTimesheetTotal,
-                          groupOverrides: JSON.stringify(groupOverrides)
+                          groupSnapshots: JSON.stringify(updatedSnapshots)
                         }
                       }, {
                         onSuccess: () => {

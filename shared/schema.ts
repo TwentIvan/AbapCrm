@@ -224,8 +224,8 @@ export const timesheets = pgTable("timesheets", {
   description: text("description"),
   groupingFields: text("grouping_fields").array().notNull(), // ["taskId", "date"]
   timeEntryIds: text("time_entry_ids").array().notNull(), // Array degli ID time entries incluse
-  groupedData: text("grouped_data").notNull(), // JSON con dati processati raggruppati
-  groupOverrides: text("group_overrides"), // JSON con totali personalizzati per gruppo {groupKey: minutes}
+  groupedData: text("grouped_data").notNull(), // JSON con dati processati raggruppati (riferimento storico)
+  groupSnapshots: text("group_snapshots").notNull(), // JSON con snapshot statici dei gruppi {groupKey: {name, duration, entries, ...}}
   totalDuration: integer("total_duration").notNull(), // Durata totale in minuti
   totalEntries: integer("total_entries").notNull(), // Numero totale entry
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -681,12 +681,49 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/timesheets", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
+      // Create static snapshots from grouped data for independence from time entries
+      const groupSnapshots: Record<string, any> = {};
+      if (req.body.groupedData) {
+        Object.entries(req.body.groupedData).forEach(([groupKey, entries]: [string, any]) => {
+          const entriesArray = Array.isArray(entries) ? entries : [];
+          
+          // Calculate initial duration
+          const totalDuration = entriesArray.reduce((sum, entry) => {
+            let duration = entry.durationMinutes || entry.duration || 0;
+            if (!duration && entry.startTime && entry.endTime) {
+              const start = new Date(entry.startTime);
+              const end = new Date(entry.endTime);
+              duration = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60));
+            }
+            return sum + duration;
+          }, 0);
+          
+          // Apply 15-minute normalization
+          const normalizedDuration = Math.round(totalDuration / 15) * 15;
+          
+          groupSnapshots[groupKey] = {
+            duration: normalizedDuration,
+            entryCount: entriesArray.length,
+            entries: entriesArray.map(entry => ({
+              id: entry.id,
+              taskTitle: entry.taskTitle || 'Task sconosciuto',
+              projectName: entry.projectName || 'No Project',
+              startTime: entry.startTime,
+              endTime: entry.endTime,
+              description: entry.description || '',
+              duration: entry.durationMinutes || entry.duration || 0
+            }))
+          };
+        });
+      }
+
       const timesheetData = insertTimesheetSchema.parse({
         name: req.body.name,
         description: req.body.description || null,
         groupingFields: req.body.groupingFields,
         timeEntryIds: req.body.timeEntryIds,
         groupedData: JSON.stringify(req.body.groupedData),
+        groupSnapshots: JSON.stringify(groupSnapshots),
         totalDuration: req.body.totalDuration,
         totalEntries: req.body.totalEntries,
         userId: req.user!.id
