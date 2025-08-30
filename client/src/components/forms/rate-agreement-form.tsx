@@ -180,6 +180,9 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
   });
 
   const onSubmit = (data: FormData) => {
+    console.log("🚀 FORM SUBMIT TRIGGERED! Data:", data);
+    console.log("🔧 Selected grouping fields:", selectedGroupingFields);
+    console.log("🔧 Grouping values:", groupingValues);
     saveMutation.mutate(data);
   };
 
