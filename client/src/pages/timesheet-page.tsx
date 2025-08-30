@@ -571,7 +571,7 @@ export default function TimesheetPage() {
         onOpenChange={setShowConfigDialog}
         editingLayout={editingLayout}
         onSave={(updatedLayout: any) => {
-          updateExistingLayout(updatedLayout);
+          updateExistingLayout(editingLayout.id, updatedLayout);
           setEditingLayout(null);
           setShowConfigDialog(false);
         }}

@@ -32,6 +32,10 @@ interface TableConfigurationProps {
   onConfigurationChange?: (config: any) => void;
   onSaveLayout?: (layoutName: string, isDefault?: boolean) => string;
   editingLayout?: any; // Layout being edited
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onSave?: (layout: any) => void;
+  onCancel?: () => void;
 }
 
 interface SortableColumnItemProps {
