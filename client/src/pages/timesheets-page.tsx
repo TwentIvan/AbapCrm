@@ -111,9 +111,12 @@ export default function TimesheetsPage() {
     setShowDeleteDialog(true);
   };
 
+  const [selectedTimesheetForView, setSelectedTimesheetForView] = useState<Timesheet | null>(null);
+  const [showViewDialog, setShowViewDialog] = useState(false);
+
   const handleView = (timesheet: Timesheet) => {
-    // TODO: Navigate to timesheet detail view
-    console.log("View timesheet:", timesheet);
+    setSelectedTimesheetForView(timesheet);
+    setShowViewDialog(true);
   };
 
   // Column definitions for configurable table
@@ -391,7 +394,290 @@ export default function TimesheetsPage() {
             return layoutName;
           }}
         />
+
+        {/* Timesheet Detail Dialog */}
+        {selectedTimesheetForView && (
+          <TimesheetDetailDialog
+            timesheet={selectedTimesheetForView}
+            open={showViewDialog}
+            onOpenChange={setShowViewDialog}
+            onTimesheetUpdate={() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
+            }}
+          />
+        )}
       </main>
+    </div>
+  );
+}
+
+function TimesheetDetailDialog({ 
+  timesheet, 
+  open, 
+  onOpenChange,
+  onTimesheetUpdate 
+}: { 
+  timesheet: Timesheet;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onTimesheetUpdate: () => void;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // Parse grouped data
+  let groupedData: Record<string, any[]> = {};
+  try {
+    groupedData = JSON.parse(timesheet.groupedData);
+  } catch (e) {
+    console.error('Error parsing grouped data:', e);
+  }
+
+  // Fetch time entries for editing
+  const { data: timeEntries } = useQuery({
+    queryKey: ["/api/time-entries"],
+    queryFn: async () => {
+      const res = await fetch("/api/time-entries", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch time entries');
+      return res.json();
+    },
+  });
+
+  // Filter time entries that belong to this timesheet
+  const timesheetEntries = timeEntries?.filter((entry: any) => 
+    timesheet.timeEntryIds.includes(entry.id)
+  ) || [];
+
+  const deleteEntryMutation = useMutation({
+    mutationFn: async (entryId: string) => {
+      await apiRequest("DELETE", `/api/time-entries/${entryId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      onTimesheetUpdate();
+      toast({ title: "✓ Time entry eliminata dal timesheet" });
+    },
+    onError: () => {
+      toast({
+        title: "Errore nell'eliminazione della time entry",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateEntryMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      await apiRequest("PUT", `/api/time-entries/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      onTimesheetUpdate();
+      toast({ title: "✓ Time entry aggiornata" });
+    },
+    onError: () => {
+      toast({
+        title: "Errore nell'aggiornamento della time entry",
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-blue-500" />
+            {timesheet.name}
+          </DialogTitle>
+          <DialogDescription>
+            {timesheet.description && (
+              <p className="text-sm text-muted-foreground mb-4">
+                {timesheet.description}
+              </p>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Timesheet Summary */}
+        <div className="grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg mb-6">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">{timesheet.totalEntries}</div>
+            <div className="text-sm text-muted-foreground">Voci totali</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">
+              {Math.floor(timesheet.totalDuration / 60)}h {timesheet.totalDuration % 60}m
+            </div>
+            <div className="text-sm text-muted-foreground">Durata totale</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-600">{Object.keys(groupedData).length}</div>
+            <div className="text-sm text-muted-foreground">Gruppi</div>
+          </div>
+        </div>
+
+        {/* Grouped Time Entries */}
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold">Time Entries Raggruppate</h3>
+          
+          {Object.entries(groupedData).map(([groupKey, entries]) => (
+            <div key={groupKey} className="border rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-sm text-muted-foreground">{groupKey}</h4>
+                <Badge variant="secondary" className="text-xs">
+                  {Array.isArray(entries) ? entries.length : 0} entries
+                </Badge>
+              </div>
+              
+              <div className="grid gap-3">
+                {Array.isArray(entries) && entries.map((entry: any, index: number) => (
+                  <TimesheetEntryCard
+                    key={entry.id || index}
+                    entry={entry}
+                    onDelete={() => deleteEntryMutation.mutate(entry.id)}
+                    onUpdate={(data) => updateEntryMutation.mutate({ id: entry.id, data })}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TimesheetEntryCard({ 
+  entry, 
+  onDelete, 
+  onUpdate 
+}: { 
+  entry: any;
+  onDelete: () => void;
+  onUpdate: (data: any) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedDuration, setEditedDuration] = useState(entry.durationMinutes || 0);
+  const [editedDescription, setEditedDescription] = useState(entry.description || '');
+
+  const handleSave = () => {
+    onUpdate({
+      durationMinutes: editedDuration,
+      description: editedDescription,
+    });
+    setIsEditing(false);
+  };
+
+  const formatTime = (date: string) => {
+    return new Date(date).toLocaleTimeString('it-IT', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
+  };
+
+  return (
+    <div className="bg-white border rounded-lg p-4 space-y-3">
+      <div className="flex items-start justify-between">
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{entry.taskTitle || 'Task sconosciuto'}</span>
+            <Badge variant="outline" className="text-xs">
+              {entry.projectName || 'No Project'}
+            </Badge>
+          </div>
+          
+          <div className="text-sm text-muted-foreground">
+            {formatTime(entry.startTime)} - {formatTime(entry.endTime)}
+          </div>
+
+          {isEditing ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium">Durata (minuti):</label>
+                <input
+                  type="number"
+                  value={editedDuration}
+                  onChange={(e) => setEditedDuration(parseInt(e.target.value) || 0)}
+                  className="w-20 px-2 py-1 border rounded text-sm"
+                  min="0"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium">Descrizione:</label>
+                <input
+                  type="text"
+                  value={editedDescription}
+                  onChange={(e) => setEditedDescription(e.target.value)}
+                  className="w-full px-2 py-1 border rounded text-sm mt-1"
+                  placeholder="Aggiungi descrizione..."
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <div className="text-sm font-mono bg-blue-50 px-2 py-1 rounded">
+                {formatDuration(entry.durationMinutes || 0)}
+              </div>
+              {entry.description && (
+                <div className="text-xs text-muted-foreground">
+                  {entry.description}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          {isEditing ? (
+            <>
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={handleSave}
+                className="h-8 w-8 p-0"
+              >
+                ✓
+              </Button>
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => setIsEditing(false)}
+                className="h-8 w-8 p-0"
+              >
+                ✕
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => setIsEditing(true)}
+                className="h-8 w-8 p-0"
+                data-testid={`button-edit-entry-${entry.id}`}
+              >
+                <Edit className="h-3 w-3" />
+              </Button>
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={onDelete}
+                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                data-testid={`button-delete-entry-${entry.id}`}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
