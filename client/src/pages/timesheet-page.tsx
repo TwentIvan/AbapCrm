@@ -571,6 +571,27 @@ export default function TimesheetPage() {
                 <List className="h-4 w-4" />
               </Button>
             </div>
+            
+            {/* Sales Order Creation Button (always visible) */}
+            <Button 
+              variant="outline"
+              onClick={() => {
+                if (tableData.length === 0) {
+                  toast({
+                    title: "Nessuna voce di tempo",
+                    description: "Non ci sono voci di tempo da convertire",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+                setSelectedTimeEntries(tableData);
+                setShowConversionDialog(true);
+              }}
+              data-testid="button-convert-all-entries"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Crea Ordine da Tutto
+            </Button>
           </div>
 
       {/* Running Timer Alert */}
