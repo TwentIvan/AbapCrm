@@ -1311,20 +1311,26 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/human-resources", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const validation = insertHumanResourceSchema.safeParse(req.body);
+      console.log("Received human resource data:", req.body);
+      
+      // Aggiungi automaticamente l'userId dell'utente autenticato prima della validazione
+      const dataWithUserId = {
+        ...req.body,
+        userId: req.user!.id
+      };
+      
+      console.log("Data with userId:", dataWithUserId);
+      
+      const validation = insertHumanResourceSchema.safeParse(dataWithUserId);
       if (!validation.success) {
+        console.log("Validation failed:", validation.error.errors);
         return res.status(400).json({ 
           error: "Invalid data", 
           details: validation.error.errors 
         });
       }
 
-      const resourceData = {
-        ...validation.data,
-        userId: req.user!.id
-      };
-
-      const resource = await storage.createHumanResource(resourceData);
+      const resource = await storage.createHumanResource(validation.data);
       res.status(201).json(resource);
     } catch (error) {
       console.error("Error creating human resource:", error);
