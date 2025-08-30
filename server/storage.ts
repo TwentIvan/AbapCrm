@@ -256,9 +256,31 @@ export class DatabaseStorage implements IStorage {
 
   // Tasks
   async getTasks(userId: string): Promise<Task[]> {
-    return await db.select().from(tasks)
+    const result = await db.select({
+      id: tasks.id,
+      title: tasks.title,
+      description: tasks.description,
+      status: tasks.status,
+      priority: tasks.priority,
+      taskType: tasks.taskType,
+      projectId: tasks.projectId,
+      parentTaskId: tasks.parentTaskId,
+      userId: tasks.userId,
+      assignedTo: tasks.assignedTo,
+      dueDate: tasks.dueDate,
+      completedAt: tasks.completedAt,
+      estimatedEffort: tasks.estimatedEffort,
+      remainingEffort: tasks.remainingEffort,
+      completionPercentage: tasks.completionPercentage,
+      createdAt: tasks.createdAt,
+      updatedAt: tasks.updatedAt,
+      projectName: projects.name,
+    }).from(tasks)
+      .leftJoin(projects, eq(tasks.projectId, projects.id))
       .where(eq(tasks.userId, userId))
       .orderBy(desc(tasks.updatedAt));
+    
+    return result as any[];
   }
 
   async getTasksByProject(projectId: string, userId: string): Promise<Task[]> {

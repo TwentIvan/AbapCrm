@@ -415,6 +415,20 @@ export default function TasksPage() {
     }),
     createTextColumn('description', 'Description', 50),
     {
+      accessorKey: 'projectId',
+      header: 'Project',
+      cell: ({ row }: any) => {
+        const task = row.original;
+        return task.projectName ? (
+          <div className="text-sm font-medium" data-testid={`text-task-project-${task.id}`}>
+            {task.projectName}
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-sm">No project</span>
+        );
+      },
+    },
+    {
       accessorKey: 'dueDate',
       header: 'Due Date',
       cell: ({ row }: any) => {
@@ -567,7 +581,7 @@ export default function TasksPage() {
               data={tasks || []}
               searchPlaceholder="Search tasks..."
               onRowClick={handleEditTask}
-              enableSelection={true}
+              enableSelection={false}
               onSelectionChange={setSelectedTasks}
               tableId="tasks"
               enableAdvancedFilters={true}
