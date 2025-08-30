@@ -560,13 +560,20 @@ function TimesheetDetailDialog({
   
   // Parse static group snapshots (independent from time entries)
   let groupSnapshots: Record<string, any> = {};
+  
+  console.log('DEBUG: Timesheet data received:', timesheet);
+  console.log('DEBUG: groupSnapshots raw:', timesheet.groupSnapshots);
+  console.log('DEBUG: groupedData raw:', timesheet.groupedData);
+  
   try {
     groupSnapshots = JSON.parse(timesheet.groupSnapshots || '{}');
+    console.log('DEBUG: Parsed groupSnapshots:', groupSnapshots);
   } catch (e) {
     console.error('Error parsing group snapshots:', e);
     // Fallback to old grouped data if no snapshots available (backwards compatibility)
     try {
       const fallbackData = JSON.parse(timesheet.groupedData || '{}');
+      console.log('DEBUG: Fallback grouped data:', fallbackData);
       // Convert old format to new snapshot format
       Object.entries(fallbackData).forEach(([groupKey, entries]: [string, any]) => {
         const entriesArray = Array.isArray(entries) ? entries : [];
@@ -586,10 +593,14 @@ function TimesheetDetailDialog({
           entries: entriesArray
         };
       });
+      console.log('DEBUG: Converted groupSnapshots from fallback:', groupSnapshots);
     } catch (fallbackError) {
       console.error('Error parsing fallback grouped data:', fallbackError);
     }
   }
+  
+  console.log('DEBUG: Final groupSnapshots to render:', groupSnapshots);
+  console.log('DEBUG: Number of groups:', Object.keys(groupSnapshots || {}).length);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
