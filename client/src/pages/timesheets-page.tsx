@@ -518,14 +518,14 @@ function TimesheetDetailDialog({
   // Parse grouped data
   let groupedData: Record<string, any[]> = {};
   try {
-    groupedData = JSON.parse(timesheet.groupedData);
+    groupedData = JSON.parse(timesheet?.groupedData || '{}');
   } catch (e) {
     console.error('Error parsing grouped data:', e);
   }
 
   // Filter time entries that belong to this timesheet
   const timesheetEntries = timeEntries?.filter((entry: any) => 
-    timesheet.timeEntryIds.includes(entry.id)
+    timesheet?.timeEntryIds?.includes(entry.id)
   ) || [];
 
   return (
@@ -534,22 +534,22 @@ function TimesheetDetailDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-blue-500" />
-            {timesheet.name}
+            {timesheet?.name || 'Timesheet'}
           </DialogTitle>
           <DialogDescription>
-            {timesheet.description}
+            {timesheet?.description || ''}
           </DialogDescription>
         </DialogHeader>
 
         {/* Timesheet Summary */}
         <div className="grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg mb-6">
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{timesheet.totalEntries}</div>
+            <div className="text-2xl font-bold text-blue-600">{timesheet?.totalEntries || 0}</div>
             <div className="text-sm text-muted-foreground">Voci totali</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-green-600">
-              {Math.floor(timesheet.totalDuration / 60)}h {timesheet.totalDuration % 60}m
+              {Math.floor((timesheet?.totalDuration || 0) / 60)}h {(timesheet?.totalDuration || 0) % 60}m
             </div>
             <div className="text-sm text-muted-foreground">Durata totale</div>
           </div>
