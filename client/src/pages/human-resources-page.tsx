@@ -587,11 +587,11 @@ export function HumanResourcesPage() {
 
           {/* Table Configuration Dialog */}
           <TableConfiguration
+            tableId="human-resources"
+            availableColumns={groupingColumns}
+            editingLayout={editingLayout}
             isOpen={showConfigDialog}
-            onClose={() => setShowConfigDialog(false)}
-            layout={editingLayout || layout}
-            groupingColumns={groupingColumns}
-            aggregationColumns={aggregationColumns}
+            onOpenChange={setShowConfigDialog}
             onSave={(newLayout) => {
               if (editingLayout) {
                 updateExistingLayout(editingLayout.name, newLayout);
@@ -601,10 +601,9 @@ export function HumanResourcesPage() {
               setShowConfigDialog(false);
               setEditingLayout(null);
             }}
-            onSaveAs={(name, newLayout) => {
-              saveLayoutAs(name, newLayout);
-              setShowConfigDialog(false);
+            onCancel={() => {
               setEditingLayout(null);
+              setShowConfigDialog(false);
             }}
           />
         </div>
