@@ -1,6 +1,6 @@
 import { 
   users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, emailConfigs,
-  timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements,
+  timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
   type User, type InsertUser,
   type Project, type InsertProject,
   type Task, type InsertTask,
@@ -16,7 +16,8 @@ import {
   type SalesOrder, type InsertSalesOrder,
   type SalesOrderItem, type InsertSalesOrderItem,
   type Timesheet, type InsertTimesheet,
-  type RateAgreement, type InsertRateAgreement
+  type RateAgreement, type InsertRateAgreement,
+  type HumanResource, type InsertHumanResource
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -153,7 +154,15 @@ export interface IStorage {
   updateRateAgreement(id: string, agreement: Partial<InsertRateAgreement>, userId: string): Promise<RateAgreement | undefined>;
   deleteRateAgreement(id: string, userId: string): Promise<boolean>;
   getActiveRateAgreements(userId: string): Promise<RateAgreement[]>;
-  resolveRateForContext(userId: string, context: { partnerId?: string; projectId?: string; taskId?: string; taskType?: string }): Promise<RateAgreement | undefined>;
+  resolveRateForContext(userId: string, context: { partnerId?: string; projectId?: string; taskId?: string; taskType?: string; humanResourceId?: string }): Promise<RateAgreement | undefined>;
+
+  // Human Resources
+  getHumanResources(userId: string): Promise<HumanResource[]>;
+  getHumanResource(id: string, userId: string): Promise<HumanResource | undefined>;
+  createHumanResource(resource: InsertHumanResource): Promise<HumanResource>;
+  updateHumanResource(id: string, resource: Partial<InsertHumanResource>, userId: string): Promise<HumanResource | undefined>;
+  deleteHumanResource(id: string, userId: string): Promise<boolean>;
+  getHumanResourceByLinkedUser(userId: string, linkedUserId: string): Promise<HumanResource | undefined>;
 
   sessionStore: session.Store;
 }
@@ -989,7 +998,7 @@ export class DatabaseStorage implements IStorage {
 
   async resolveRateForContext(
     userId: string, 
-    context: { partnerId?: string; projectId?: string; taskId?: string; taskType?: string }
+    context: { partnerId?: string; projectId?: string; taskId?: string; taskType?: string; humanResourceId?: string }
   ): Promise<RateAgreement | undefined> {
     const activeAgreements = await this.getActiveRateAgreements(userId);
     
@@ -1028,6 +1037,52 @@ export class DatabaseStorage implements IStorage {
     }
 
     return bestMatch;
+  }
+
+  // Human Resources
+  async getHumanResources(userId: string): Promise<HumanResource[]> {
+    return await db.select().from(humanResources)
+      .where(eq(humanResources.userId, userId))
+      .orderBy(desc(humanResources.createdAt));
+  }
+
+  async getHumanResource(id: string, userId: string): Promise<HumanResource | undefined> {
+    const [resource] = await db.select().from(humanResources)
+      .where(and(eq(humanResources.id, id), eq(humanResources.userId, userId)));
+    return resource || undefined;
+  }
+
+  async createHumanResource(resource: InsertHumanResource): Promise<HumanResource> {
+    const [newResource] = await db
+      .insert(humanResources)
+      .values(resource)
+      .returning();
+    return newResource;
+  }
+
+  async updateHumanResource(id: string, resource: Partial<InsertHumanResource>, userId: string): Promise<HumanResource | undefined> {
+    const [updatedResource] = await db
+      .update(humanResources)
+      .set({ ...resource, updatedAt: new Date() })
+      .where(and(eq(humanResources.id, id), eq(humanResources.userId, userId)))
+      .returning();
+    return updatedResource || undefined;
+  }
+
+  async deleteHumanResource(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(humanResources)
+      .where(and(eq(humanResources.id, id), eq(humanResources.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getHumanResourceByLinkedUser(userId: string, linkedUserId: string): Promise<HumanResource | undefined> {
+    const [resource] = await db.select().from(humanResources)
+      .where(and(
+        eq(humanResources.userId, userId),
+        eq(humanResources.linkedUserId, linkedUserId)
+      ));
+    return resource || undefined;
   }
 }
 

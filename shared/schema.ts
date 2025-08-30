@@ -296,8 +296,8 @@ export const rateAgreements = pgTable("rate_agreements", {
   description: text("description"),
   
   // Sistema di chiavi dinamiche (simile ai timesheet)
-  groupingFields: text("grouping_fields").array().notNull(), // ["partnerId", "projectId", "userId"]
-  groupingValues: text("grouping_values").notNull(), // JSON con valori specifici: {"partnerId": "uuid", "projectId": "uuid"}
+  groupingFields: text("grouping_fields").array().notNull(), // ["partnerId", "projectId", "humanResourceId", "taskType"]
+  groupingValues: text("grouping_values").notNull(), // JSON con valori specifici: {"partnerId": "uuid", "projectId": "uuid", "humanResourceId": "uuid"}
   
   // Tariffa e condizioni
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
@@ -321,6 +321,33 @@ export const rateAgreements = pgTable("rate_agreements", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Risorse Umane - Sistema per gestire le risorse collegabili agli utenti
+export const humanResources = pgTable("human_resources", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(), // Nome della risorsa (può essere diverso dal nome utente)
+  role: text("role").notNull(), // Ruolo: "developer", "analyst", "consultant", "designer", "manager", etc.
+  skillLevel: text("skill_level").notNull(), // "junior", "mid", "senior", "lead", "principal"
+  department: text("department"), // "IT", "Consulting", "Analysis", "Design", etc.
+  costCenter: text("cost_center"), // Centro di costo aziendale
+  
+  // Collegamento all'utente del sistema
+  linkedUserId: uuid("linked_user_id").references(() => users.id), // Utente collegato (99% dei casi)
+  
+  // Tariffa base della risorsa (può essere sovrascritta dagli accordi)
+  baseHourlyRate: decimal("base_hourly_rate", { precision: 10, scale: 2 }),
+  
+  // Disponibilità
+  isActive: boolean("is_active").default(true).notNull(),
+  startDate: timestamp("start_date"), // Data inizio collaborazione
+  endDate: timestamp("end_date"), // Data fine collaborazione (null = attiva)
+  
+  // Metadati
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
@@ -336,6 +363,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   timeNormalizationConfigs: many(timeNormalizationConfigs),
   salesOrders: many(salesOrders),
   rateAgreements: many(rateAgreements),
+  humanResources: many(humanResources),
+  linkedHumanResources: many(humanResources, { relationName: "linkedUser" }),
 }));
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({
@@ -369,6 +398,11 @@ export const partnersRelations = relations(partners, ({ one, many }) => ({
   calendarEvents: many(calendarEvents),
   messages: many(messages),
   salesOrders: many(salesOrders),
+}));
+
+export const humanResourcesRelations = relations(humanResources, ({ one }) => ({
+  user: one(users, { fields: [humanResources.userId], references: [users.id] }),
+  linkedUser: one(users, { fields: [humanResources.linkedUserId], references: [users.id], relationName: "linkedUser" }),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({
@@ -603,3 +637,12 @@ export type SalesOrderItem = typeof salesOrderItems.$inferSelect;
 export type InsertSalesOrderItem = z.infer<typeof insertSalesOrderItemSchema>;
 export type RateAgreement = typeof rateAgreements.$inferSelect;
 export type InsertRateAgreement = z.infer<typeof insertRateAgreementSchema>;
+
+export const insertHumanResourceSchema = createInsertSchema(humanResources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type HumanResource = typeof humanResources.$inferSelect;
+export type InsertHumanResource = z.infer<typeof insertHumanResourceSchema>;

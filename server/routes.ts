@@ -7,7 +7,8 @@ import {
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, 
   insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema,
   insertMessageSchema, insertCommentSchema, insertEmailConfigSchema, insertTimesheetSchema,
-  insertSalesOrderSchema, insertSalesOrderItemSchema, insertRateAgreementSchema
+  insertSalesOrderSchema, insertSalesOrderItemSchema, insertRateAgreementSchema,
+  insertHumanResourceSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -1216,12 +1217,13 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/rate-agreements/resolve", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const { partnerId, projectId, taskId, taskType } = req.body;
+      const { partnerId, projectId, taskId, taskType, humanResourceId } = req.body;
       const agreement = await storage.resolveRateForContext(req.user!.id, {
         partnerId,
         projectId,
         taskId,
-        taskType
+        taskType,
+        humanResourceId
       });
       res.json(agreement || null);
     } catch (error) {
@@ -1271,6 +1273,92 @@ export function registerRoutes(app: Express): Server {
     const deleted = await storage.deleteRateAgreement(req.params.id, req.user!.id);
     if (!deleted) return res.sendStatus(404);
     res.sendStatus(204);
+  });
+
+  // Human Resources routes
+  app.get("/api/human-resources", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const resources = await storage.getHumanResources(req.user!.id);
+      res.json(resources);
+    } catch (error) {
+      console.error("Error fetching human resources:", error);
+      res.status(500).json({ error: "Failed to fetch human resources" });
+    }
+  });
+
+  app.get("/api/human-resources/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const resource = await storage.getHumanResource(req.params.id, req.user!.id);
+      if (!resource) {
+        return res.status(404).json({ error: "Human resource not found" });
+      }
+      res.json(resource);
+    } catch (error) {
+      console.error("Error fetching human resource:", error);
+      res.status(500).json({ error: "Failed to fetch human resource" });
+    }
+  });
+
+  app.post("/api/human-resources", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const validation = insertHumanResourceSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const resourceData = {
+        ...validation.data,
+        userId: req.user!.id
+      };
+
+      const resource = await storage.createHumanResource(resourceData);
+      res.status(201).json(resource);
+    } catch (error) {
+      console.error("Error creating human resource:", error);
+      res.status(500).json({ error: "Failed to create human resource" });
+    }
+  });
+
+  app.put("/api/human-resources/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const validation = insertHumanResourceSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const resource = await storage.updateHumanResource(req.params.id, validation.data, req.user!.id);
+      if (!resource) {
+        return res.status(404).json({ error: "Human resource not found" });
+      }
+      res.json(resource);
+    } catch (error) {
+      console.error("Error updating human resource:", error);
+      res.status(500).json({ error: "Failed to update human resource" });
+    }
+  });
+
+  app.delete("/api/human-resources/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const success = await storage.deleteHumanResource(req.params.id, req.user!.id);
+      if (!success) {
+        return res.status(404).json({ error: "Human resource not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting human resource:", error);
+      res.status(500).json({ error: "Failed to delete human resource" });
+    }
   });
 
   const httpServer = createServer(app);

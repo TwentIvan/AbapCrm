@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { insertRateAgreementSchema, type RateAgreement, type Partner, type Project, type Task } from "@shared/schema";
+import { insertRateAgreementSchema, type RateAgreement, type Partner, type Project, type Task, type HumanResource } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Settings, DollarSign, X, Plus } from "lucide-react";
 
@@ -53,6 +53,11 @@ const AVAILABLE_GROUPING_FIELDS = [
     id: "projectId", 
     label: "Progetto",
     description: "Tariffa per un progetto specifico"
+  },
+  {
+    id: "humanResourceId",
+    label: "Risorsa Umana",
+    description: "Tariffa specifica per una risorsa umana"
   },
   {
     id: "taskType",
@@ -94,6 +99,11 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
   
   const { data: projects = [] } = useQuery<Project[]>({ 
     queryKey: ["/api/projects"],
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: humanResources = [] } = useQuery<HumanResource[]>({ 
+    queryKey: ["/api/human-resources"],
     staleTime: 5 * 60 * 1000,
   });
 
@@ -196,6 +206,8 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
         return partners.map(p => ({ value: p.id, label: p.name }));
       case "projectId":
         return projects.map(p => ({ value: p.id, label: p.name }));
+      case "humanResourceId":
+        return humanResources.map(hr => ({ value: hr.id, label: `${hr.name} (${hr.role} - ${hr.skillLevel})` }));
       case "taskType":
         return TASK_TYPES;
       default:
