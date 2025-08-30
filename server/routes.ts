@@ -1153,6 +1153,70 @@ export function registerRoutes(app: Express): Server {
     res.sendStatus(204);
   });
 
+  // Convert timesheet entries to sales order
+  app.post("/api/sales-orders/from-timesheet", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { timeEntryIds, partnerId, description, hourlyRate } = req.body;
+      
+      if (!timeEntryIds || !Array.isArray(timeEntryIds) || timeEntryIds.length === 0) {
+        return res.status(400).json({ error: "No time entries provided" });
+      }
+      
+      if (!partnerId) {
+        return res.status(400).json({ error: "Partner ID is required" });
+      }
+
+      // Get time entries and calculate totals
+      const timeEntries = await Promise.all(
+        timeEntryIds.map((id: string) => storage.getTimeEntry(id, req.user!.id))
+      );
+      
+      const validEntries = timeEntries.filter(entry => entry !== undefined);
+      if (validEntries.length === 0) {
+        return res.status(400).json({ error: "No valid time entries found" });
+      }
+
+      // Calculate total hours and amount
+      const totalMinutes = validEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
+      const totalHours = Number((totalMinutes / 60).toFixed(2));
+      const rate = parseFloat(hourlyRate) || 50; // Default rate
+      const subtotal = Number((totalHours * rate).toFixed(2));
+      const taxes = Number((subtotal * 0.22).toFixed(2)); // 22% VAT
+      const total = Number((subtotal + taxes).toFixed(2));
+
+      // Create sales order
+      const salesOrder = await storage.createSalesOrder({
+        userId: req.user!.id,
+        partnerId,
+        description: description || "Time tracking services",
+        subtotal: subtotal.toString(),
+        taxes: taxes.toString(),
+        total: total.toString(),
+        currency: "EUR",
+        issueDate: new Date(),
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        status: "draft"
+      });
+
+      // Create sales order item
+      await storage.createSalesOrderItem({
+        salesOrderId: salesOrder.id,
+        description: `Time tracking - ${totalHours}h @ €${rate}/h`,
+        quantity: totalHours.toString(),
+        unitPrice: rate.toString(),
+        lineTotal: subtotal.toString(),
+        workDate: new Date(validEntries[0].startTime),
+        timeEntryIds: timeEntryIds
+      });
+
+      res.status(201).json(salesOrder);
+    } catch (error) {
+      console.error("Sales order conversion error:", error);
+      res.status(500).json({ error: "Failed to convert timesheet to sales order" });
+    }
+  });
+
   // Sales Order Items
   app.get("/api/sales-order-items", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
