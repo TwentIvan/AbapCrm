@@ -1319,6 +1319,7 @@ export function registerRoutes(app: Express): Server {
       
       const validation = insertHumanResourceSchema.safeParse(dataWithUserId);
       if (!validation.success) {
+        console.log("Validation failed:", validation.error.errors);
         return res.status(400).json({ 
           error: "Invalid data", 
           details: validation.error.errors 
