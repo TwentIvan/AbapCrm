@@ -45,7 +45,7 @@ export function HumanResourcesPage() {
     deleteLayout,
     updateExistingLayout,
   } = useTableLayout('human-resources');
-  const viewMode = layout.viewMode;
+  const viewMode = layout.viewMode || 'cards';
 
   const { data: resources = [], isLoading } = useQuery<HumanResource[]>({
     queryKey: ["/api/human-resources"],
@@ -582,6 +582,7 @@ export function HumanResourcesPage() {
                   selectedRows={selectedResources}
                   onSelectionChange={setSelectedResources}
                   onBulkDelete={selectedResources.length > 0 ? () => setShowBulkDeleteDialog(true) : undefined}
+                  enableSelection={true}
                 />
               )}
 
