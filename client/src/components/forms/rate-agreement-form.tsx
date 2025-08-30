@@ -189,6 +189,8 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
     console.log("🚀 FORM SUBMIT TRIGGERED! Data:", data);
     console.log("🔧 Selected grouping fields:", selectedGroupingFields);
     console.log("🔧 Grouping values:", groupingValues);
+    console.log("🔧 Form validation errors:", form.formState.errors);
+    console.log("🔧 Form is valid:", form.formState.isValid);
     saveMutation.mutate(data);
   };
 
@@ -544,6 +546,7 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
             type="submit"
             disabled={saveMutation.isPending}
             data-testid="button-submit"
+            onClick={() => console.log("🎯 SUBMIT BUTTON CLICKED!")}
           >
             {saveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {rateAgreement ? "Aggiorna Accordo" : "Crea Accordo"}
