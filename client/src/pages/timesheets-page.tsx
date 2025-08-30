@@ -311,18 +311,46 @@ export default function TimesheetsPage() {
         
         <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
-            <LayoutManager
-              viewMode={viewMode}
-              onViewModeChange={(mode) => updateLayout({ viewMode: mode })}
-              onConfigureColumns={() => setShowConfigDialog(true)}
-              onSaveLayout={saveLayoutAs}
-              onLoadLayout={loadLayout}
-              onRenameLayout={renameLayout}
-              onDeleteLayout={deleteLayout}
-              savedLayouts={savedLayouts}
-              currentLayoutName={currentLayoutName}
-              className="flex-1"
-            />
+            <div className="flex-1 flex items-center gap-4">
+              <LayoutManager
+                currentLayoutName={currentLayoutName}
+                savedLayouts={savedLayouts}
+                onLoadLayout={loadLayout}
+                onRenameLayout={renameLayout}
+                onDeleteLayout={deleteLayout}
+              />
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowConfigDialog(true)}
+                  data-testid="button-configure-columns"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Configura
+                </Button>
+                <div className="flex border rounded-lg">
+                  <Button 
+                    variant={viewMode === 'list' ? 'default' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => updateLayout({ viewMode: 'list' })}
+                    className="rounded-r-none"
+                    data-testid="button-view-list"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant={viewMode === 'cards' ? 'default' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => updateLayout({ viewMode: 'cards' })}
+                    className="rounded-l-none"
+                    data-testid="button-view-cards"
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
 
           {timesheets?.length === 0 ? (
@@ -399,35 +427,31 @@ export default function TimesheetsPage() {
 
         {/* Table Configuration Dialog */}
         <TableConfiguration
-          open={showConfigDialog}
+          isOpen={showConfigDialog}
           onOpenChange={setShowConfigDialog}
-          layout={layout}
-          onLayoutChange={updateLayout}
+          tableId="timesheets"
           availableColumns={tableColumns.map(col => ({
             id: 'id' in col ? col.id! : col.accessorKey!,
             label: col.header as string
           }))}
-          tableId="timesheets"
           editingLayout={editingLayout}
-          onEditingLayoutChange={setEditingLayout}
-          onSaveLayout={(layoutName) => {
-            updateExistingLayout(layoutName);
-            return layoutName;
+          onSave={(layoutData) => {
+            updateLayout(layoutData);
+            setShowConfigDialog(false);
           }}
+          onCancel={() => setShowConfigDialog(false)}
         />
 
         {/* Timesheet Detail Dialog */}
-        {selectedTimesheetForView && (
-          <TimesheetDetailDialog
-            timesheetId={selectedTimesheetForView.id}
-            open={showViewDialog}
-            onOpenChange={setShowViewDialog}
-            onTimesheetUpdate={() => {
-              queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
-            }}
-            updateTimesheetMutation={updateTimesheetMutation}
-          />
-        )}
+        <TimesheetDetailDialog
+          timesheetId={selectedTimesheetForView?.id || ""}
+          open={showViewDialog && !!selectedTimesheetForView}
+          onOpenChange={setShowViewDialog}
+          onTimesheetUpdate={() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
+          }}
+          updateTimesheetMutation={updateTimesheetMutation}
+        />
       </main>
     </div>
   );
