@@ -20,6 +20,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { useTableLayout } from "@/lib/user-preferences";
+import { useToast } from "@/hooks/use-toast";
 
 // Tipi per raggruppamento dinamico
 type GroupingField = "taskId" | "projectId" | "date" | "status" | "description";
@@ -77,6 +78,8 @@ export default function TimesheetPage() {
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [selectedGroupFields, setSelectedGroupFields] = useState<GroupingField[]>([]);
   const [showTimeNormalizer, setShowTimeNormalizer] = useState(false);
+  
+  const { toast } = useToast();
   
   // Use the table layout hook for persistent preferences
   const { 
