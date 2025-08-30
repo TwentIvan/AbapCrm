@@ -478,7 +478,7 @@ function TimesheetDetailDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Fetch fresh timesheet data
+  // Always declare hooks - enabled condition controls when they run
   const { data: timesheet, isLoading: isLoadingTimesheet } = useQuery({
     queryKey: ["/api/timesheets", timesheetId],
     queryFn: async () => {
@@ -497,6 +497,7 @@ function TimesheetDetailDialog({
       if (!res.ok) throw new Error('Failed to fetch time entries');
       return res.json();
     },
+    enabled: open,
   });
 
   const deleteEntryMutation = useMutation({
@@ -533,7 +534,12 @@ function TimesheetDetailDialog({
     },
   });
 
-  // Show loading state while hooks are properly initialized
+  // Don't render dialog content if not open
+  if (!open) {
+    return null;
+  }
+
+  // Show loading state while data is being fetched
   if (isLoadingTimesheet || !timesheet) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -611,7 +617,7 @@ function TimesheetDetailDialog({
             <div className="text-sm text-muted-foreground">Durata totale</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">{Object.keys(groupSnapshots).length}</div>
+            <div className="text-2xl font-bold text-purple-600">{Object.keys(groupSnapshots || {}).length}</div>
             <div className="text-sm text-muted-foreground">Gruppi</div>
           </div>
         </div>
@@ -631,19 +637,21 @@ function TimesheetDetailDialog({
             </div>
             
             <div className="divide-y">
-              {Object.entries(groupSnapshots).map(([groupKey, snapshot]) => {
+              {Object.entries(groupSnapshots || {}).map(([groupKey, snapshot]) => {
+                // Ensure snapshot is defined and has expected structure
+                const safeSnapshot = snapshot || { entries: [], duration: 0 };
                 
                 return (
                   <TimesheetGroupRow
                     key={groupKey}
                     groupKey={groupKey}
-                    entries={snapshot.entries || []}
-                    totalDuration={snapshot.duration || 0}
+                    entries={safeSnapshot.entries || []}
+                    totalDuration={safeSnapshot.duration || 0}
                     onEntryDelete={(entryId) => deleteEntryMutation.mutate(entryId)}
                     onEntryUpdate={(entryId, data) => updateEntryMutation.mutate({ id: entryId, data })}
                     onGroupTotalUpdate={(newTotal) => {
                       // Update the snapshot duration directly
-                      const updatedSnapshots = { ...groupSnapshots };
+                      const updatedSnapshots = { ...(groupSnapshots || {}) };
                       const oldGroupTotal = updatedSnapshots[groupKey]?.duration || 0;
                       updatedSnapshots[groupKey] = {
                         ...updatedSnapshots[groupKey],
@@ -651,7 +659,7 @@ function TimesheetDetailDialog({
                       };
                       
                       // Calculate new total timesheet duration
-                      const currentTotal = timesheet.totalDuration || 0;
+                      const currentTotal = timesheet?.totalDuration || 0;
                       const newTimesheetTotal = currentTotal - oldGroupTotal + newTotal;
                       
                       updateTimesheetMutation.mutate({
