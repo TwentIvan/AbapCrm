@@ -106,6 +106,25 @@ export default function TimesheetsPage() {
     },
   });
 
+  const updateTimesheetMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      apiRequest("PATCH", `/api/timesheets/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
+      toast({
+        title: "✓ Timesheet aggiornato",
+        description: "I totali sono stati aggiornati con successo.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare il timesheet.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDelete = (timesheet: Timesheet) => {
     setSelectedTimesheet(timesheet);
     setShowDeleteDialog(true);
@@ -404,6 +423,7 @@ export default function TimesheetsPage() {
             onTimesheetUpdate={() => {
               queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
             }}
+            updateTimesheetMutation={updateTimesheetMutation}
           />
         )}
       </main>
@@ -415,12 +435,14 @@ function TimesheetDetailDialog({
   timesheet, 
   open, 
   onOpenChange,
-  onTimesheetUpdate 
+  onTimesheetUpdate,
+  updateTimesheetMutation
 }: { 
   timesheet: Timesheet;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTimesheetUpdate: () => void;
+  updateTimesheetMutation: any;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -557,8 +579,15 @@ function TimesheetDetailDialog({
                     onEntryDelete={(entryId) => deleteEntryMutation.mutate(entryId)}
                     onEntryUpdate={(entryId, data) => updateEntryMutation.mutate({ id: entryId, data })}
                     onGroupTotalUpdate={(newTotal) => {
-                      // TODO: Update group total in timesheet
-                      console.log(`Update group ${groupKey} to ${newTotal} minutes`);
+                      // Update the timesheet total duration
+                      const currentTotal = timesheet.totalDuration || 0;
+                      const oldGroupTotal = totalDuration;
+                      const newTimesheetTotal = currentTotal - oldGroupTotal + newTotal;
+                      
+                      updateTimesheetMutation.mutate({
+                        id: timesheet.id,
+                        data: { totalDuration: newTimesheetTotal }
+                      });
                     }}
                   />
                 );
@@ -648,8 +677,8 @@ function TimesheetGroupRow({
                   value={Math.round(editedTotal)}
                   onChange={(e) => {
                     const value = parseInt(e.target.value) || 0;
-                    // Normalize to 15-minute increments as user types
-                    setEditedTotal(normalizeDuration(value));
+                    // Allow manual input without auto-normalization
+                    setEditedTotal(value);
                   }}
                   className="w-16 px-1 py-0.5 border rounded text-xs text-center"
                   min="0"
@@ -660,7 +689,9 @@ function TimesheetGroupRow({
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    onGroupTotalUpdate?.(editedTotal);
+                    // Apply normalization only when saving
+                    const normalizedTotal = normalizeDuration(editedTotal);
+                    onGroupTotalUpdate?.(normalizedTotal);
                     setIsEditingTotal(false);
                   }}
                   className="h-5 w-5 p-0 text-green-600"
@@ -671,7 +702,7 @@ function TimesheetGroupRow({
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    setEditedTotal(normalizeDuration(totalDuration));
+                    setEditedTotal(totalDuration);
                     setIsEditingTotal(false);
                   }}
                   className="h-5 w-5 p-0 text-gray-600"
@@ -683,8 +714,8 @@ function TimesheetGroupRow({
               <div 
                 className="font-mono font-medium text-green-600 cursor-pointer hover:bg-green-50 px-2 py-1 rounded"
                 onClick={() => {
-                  // Start editing with normalized value
-                  setEditedTotal(normalizeDuration(totalDuration));
+                  // Start editing with current raw value
+                  setEditedTotal(totalDuration);
                   setIsEditingTotal(true);
                 }}
                 title="Clicca per modificare il totale"
