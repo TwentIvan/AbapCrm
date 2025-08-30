@@ -5,7 +5,7 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { insertTaskSchema, Project, Task } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -38,27 +38,19 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
 
   const { data: projects, isLoading: projectsLoading, error: projectsError } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+    queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!user, // Only fetch when user is authenticated
     retry: 3,
   });
 
   const { data: tasks } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
+    queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!user, // Only fetch when user is authenticated
   });
 
   const activeProjects = projects?.filter(project => project.status !== "completed") || [];
   
-  // Debug logging to understand what's happening
-  React.useEffect(() => {
-    console.log("TaskForm debug:", { 
-      user: !!user, 
-      projects, 
-      projectsLoading, 
-      projectsError: projectsError?.message,
-      activeProjects: activeProjects.length
-    });
-  }, [user, projects, projectsLoading, projectsError, activeProjects]);
   const parentTasks = tasks?.filter(t => t.id !== task?.id) || []; // Exclude current task
 
   const form = useForm<FormData>({
