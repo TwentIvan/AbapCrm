@@ -233,22 +233,31 @@ export default function RateAgreementsPage() {
     },
     createTextColumn("formattedRate", "Tariffa"),
     createTextColumn("formattedPriority", "Priorità"),
-    createBadgeColumn(
-      "statusBadge",
-      "Stato",
-      {
-        active: "default",
-        inactive: "secondary", 
-        future: "outline",
-        expired: "destructive"
+    {
+      accessorKey: "statusBadge",
+      header: "Stato",
+      cell: ({ row }: any) => {
+        const status = row.getValue("statusBadge") as string;
+        const statusLabels = {
+          active: "Attivo",
+          inactive: "Inattivo",
+          future: "Futuro", 
+          expired: "Scaduto"
+        };
+        const statusColors = {
+          active: "default",
+          inactive: "secondary", 
+          future: "outline",
+          expired: "destructive"
+        };
+        
+        return (
+          <Badge variant={statusColors[status as keyof typeof statusColors] as any}>
+            {statusLabels[status as keyof typeof statusLabels] || status}
+          </Badge>
+        );
       },
-      {
-        active: "Attivo",
-        inactive: "Inattivo",
-        future: "Futuro", 
-        expired: "Scaduto"
-      }
-    ),
+    },
     createTextColumn("formattedValidity", "Validità"),
     {
       id: "actions",
@@ -308,7 +317,11 @@ export default function RateAgreementsPage() {
     <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
       <Sidebar />
       <div className="flex-1">
-        <Header />
+        <Header 
+          title="Accordi Tariffari" 
+          subtitle="Gestisci i tuoi accordi tariffari dinamici"
+          onNewClick={() => setShowCreateDialog(true)}
+        />
         <main className="p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -405,29 +418,19 @@ export default function RateAgreementsPage() {
             </Card>
           </div>
 
-          {/* Table/Grid View */}
-          <LayoutManager
-            viewMode={viewMode}
-            onViewModeChange={(mode: string) => updateLayout({ viewMode: mode })}
-            onConfigureTable={() => setShowConfigDialog(true)}
-            selectedCount={selectedAgreements.length}
-            totalCount={agreements.length}
-            currentLayoutName={currentLayoutName}
-            savedLayouts={savedLayouts}
-            onSaveLayout={saveLayoutAs}
-            onLoadLayout={loadLayout}
-            onRenameLayout={renameLayout}
-            onDeleteLayout={deleteLayout}
-            data-testid="layout-manager"
-          >
-            <DataTable
-              columns={columns}
-              data={tableData}
-              layout={layout}
-              onLayoutChange={updateLayout}
-              data-testid="agreements-table"
-            />
-          </LayoutManager>
+          {/* Data Table */}
+          <DataTable
+            columns={columns}
+            data={tableData}
+            tableId="rate-agreements"
+            enableSelection={true}
+            onSelectionChange={setSelectedAgreements}
+            enableAdvancedFilters={true}
+            enableAggregation={true}
+            enableColumnReordering={true}
+            configurableColumns={true}
+            data-testid="agreements-table"
+          />
 
           {/* Edit Dialog */}
           <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
@@ -506,15 +509,18 @@ export default function RateAgreementsPage() {
                 </DialogDescription>
               </DialogHeader>
               <TableConfiguration
-                columns={columns}
-                layout={layout}
-                onLayoutChange={updateLayout}
+                tableId="rate-agreements"
+                availableColumns={[
+                  { id: "name", label: "Nome" },
+                  { id: "formattedCriteria", label: "Criteri" },
+                  { id: "formattedRate", label: "Tariffa" },
+                  { id: "formattedPriority", label: "Priorità" },
+                  { id: "statusBadge", label: "Stato" },
+                  { id: "formattedValidity", label: "Validità" },
+                  { id: "actions", label: "Azioni" }
+                ]}
                 editingLayout={editingLayout}
-                onEditingLayoutChange={setEditingLayout}
                 onSave={() => {
-                  if (editingLayout?.name) {
-                    updateExistingLayout(editingLayout.name, layout);
-                  }
                   setShowConfigDialog(false);
                   setEditingLayout(null);
                 }}
