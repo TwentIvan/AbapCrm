@@ -109,8 +109,10 @@ export default function TimesheetsPage() {
   const updateTimesheetMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       apiRequest("PATCH", `/api/timesheets/${id}`, data),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      // Invalidate both the general timesheets list and the specific timesheet
       queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/timesheets", variables.id] });
       toast({
         title: "✓ Timesheet aggiornato",
         description: "I totali sono stati aggiornati con successo.",
@@ -417,7 +419,7 @@ export default function TimesheetsPage() {
         {/* Timesheet Detail Dialog */}
         {selectedTimesheetForView && (
           <TimesheetDetailDialog
-            timesheet={selectedTimesheetForView}
+            timesheetId={selectedTimesheetForView.id}
             open={showViewDialog}
             onOpenChange={setShowViewDialog}
             onTimesheetUpdate={() => {
@@ -432,13 +434,13 @@ export default function TimesheetsPage() {
 }
 
 function TimesheetDetailDialog({ 
-  timesheet, 
+  timesheetId, 
   open, 
   onOpenChange,
   onTimesheetUpdate,
   updateTimesheetMutation
 }: { 
-  timesheet: Timesheet;
+  timesheetId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTimesheetUpdate: () => void;
@@ -446,6 +448,21 @@ function TimesheetDetailDialog({
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Fetch fresh timesheet data
+  const { data: timesheet } = useQuery({
+    queryKey: ["/api/timesheets", timesheetId],
+    queryFn: async () => {
+      const res = await fetch(`/api/timesheets/${timesheetId}`, { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch timesheet');
+      return res.json();
+    },
+    enabled: open && !!timesheetId,
+  });
+
+  if (!timesheet) {
+    return null;
+  }
   
   // Parse grouped data
   let groupedData: Record<string, any[]> = {};
