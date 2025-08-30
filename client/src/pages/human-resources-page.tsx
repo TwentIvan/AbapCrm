@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { HumanResourceForm } from "@/components/forms/human-resource-form";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { HumanResource } from "@shared/schema";
 import { Users, Plus, Search, Edit, Trash2, DollarSign, Calendar, User as UserIcon } from "lucide-react";
@@ -21,6 +21,7 @@ export function HumanResourcesPage() {
 
   const { data: resources = [], isLoading } = useQuery<HumanResource[]>({
     queryKey: ["/api/human-resources"],
+    queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000,
   });
 
