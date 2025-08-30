@@ -10,8 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Clock, Calendar, TrendingUp, Filter, List, LayoutGrid, Group, Settings2, FileText } from "lucide-react";
-import type { Partner } from "@shared/schema";
+import { Clock, Calendar, TrendingUp, Filter, List, LayoutGrid, Group, Settings2 } from "lucide-react";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, startOfDay, isSameDay } from "date-fns";
 import type { TimeEntry, Task, Project } from "@shared/schema";
 import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
@@ -109,11 +108,6 @@ export default function TimesheetPage() {
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [selectedGroupFields, setSelectedGroupFields] = useState<GroupingField[]>([]);
   const [showTimeNormalizer, setShowTimeNormalizer] = useState(false);
-  const [showConversionDialog, setShowConversionDialog] = useState(false);
-  const [selectedTimeEntries, setSelectedTimeEntries] = useState<any[]>([]);
-  const [selectedPartnerId, setSelectedPartnerId] = useState<string>("");
-  const [hourlyRate, setHourlyRate] = useState<string>("50");
-  const [orderDescription, setOrderDescription] = useState<string>("");
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -168,15 +162,6 @@ export default function TimesheetPage() {
     },
   });
 
-  const { data: partners = [] } = useQuery<Partner[]>({
-    queryKey: ["/api/partners"],
-    enabled: showConversionDialog,
-    queryFn: async () => {
-      const res = await fetch("/api/partners", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch partners');
-      return res.json();
-    },
-  });
 
   // Filter entries by period
   const now = new Date();
@@ -203,62 +188,6 @@ export default function TimesheetPage() {
   const taskMap = new Map(tasks.map(task => [task.id, task]));
   const projectMap = new Map(projects.map(project => [project.id, project]));
 
-  // Function to handle sales order conversion
-  const handleConvertToSalesOrder = async () => {
-    if (!selectedPartnerId) {
-      toast({
-        title: "Partner richiesto",
-        description: "Seleziona un partner per creare l'ordine di vendita",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/sales-orders/from-timesheet', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          timeEntryIds: selectedTimeEntries.map(entry => entry.id),
-          partnerId: selectedPartnerId,
-          description: orderDescription || "Time tracking services",
-          hourlyRate: hourlyRate
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create sales order');
-      }
-
-      const salesOrder = await response.json();
-      
-      // Invalidate sales orders cache
-      queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
-      
-      toast({
-        title: "✓ Ordine di vendita creato",
-        description: `Ordine ${salesOrder.orderNumber} creato con successo`,
-      });
-
-      // Reset dialog state
-      setShowConversionDialog(false);
-      setSelectedTimeEntries([]);
-      setSelectedPartnerId("");
-      setOrderDescription("");
-      
-    } catch (error) {
-      console.error('Error creating sales order:', error);
-      toast({
-        title: "Errore",
-        description: error instanceof Error ? error.message : "Errore nel creare l'ordine di vendita",
-        variant: "destructive"
-      });
-    }
-  };
 
   // Raggruppamento dinamico delle time entries usando "collect"
   const groupedEntries = useMemo((): GroupedTimeEntry[] => {
@@ -572,26 +501,6 @@ export default function TimesheetPage() {
               </Button>
             </div>
             
-            {/* Sales Order Creation Button (always visible) */}
-            <Button 
-              variant="outline"
-              onClick={() => {
-                if (tableData.length === 0) {
-                  toast({
-                    title: "Nessuna voce di tempo",
-                    description: "Non ci sono voci di tempo da convertire",
-                    variant: "destructive"
-                  });
-                  return;
-                }
-                setSelectedTimeEntries(tableData);
-                setShowConversionDialog(true);
-              }}
-              data-testid="button-convert-all-entries"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Crea Ordine da Tutto
-            </Button>
           </div>
 
       {/* Running Timer Alert */}
@@ -786,29 +695,6 @@ export default function TimesheetPage() {
                 }
               },
               variant: 'default' as const,
-            },
-            {
-              label: 'Crea Ordine Vendita',
-              icon: ({ className }: { className?: string }) => (
-                <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              ),
-              onClick: async (selectedEntries: any[]) => {
-                if (selectedEntries.length === 0) {
-                  toast({
-                    title: "Nessuna voce selezionata",
-                    description: "Seleziona almeno una voce di tempo per creare l'ordine",
-                    variant: "destructive"
-                  });
-                  return;
-                }
-
-                // Show conversion dialog with partner selection
-                setShowConversionDialog(true);
-                setSelectedTimeEntries(selectedEntries);
-              },
-              variant: 'default' as const,
             }
           ]}
           aggregationColumns={[
@@ -914,91 +800,6 @@ export default function TimesheetPage() {
           )}
         </div>
       </main>
-      
-      {/* Sales Order Conversion Dialog */}
-      <Dialog open={showConversionDialog} onOpenChange={setShowConversionDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Crea Ordine di Vendita</DialogTitle>
-            <DialogDescription>
-              Converti le {selectedTimeEntries.length} voci di tempo selezionate in un ordine di vendita.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="partner-select">Cliente</Label>
-              <Select 
-                value={selectedPartnerId} 
-                onValueChange={setSelectedPartnerId}
-              >
-                <SelectTrigger data-testid="select-partner">
-                  <SelectValue placeholder="Seleziona un cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {partners.map((partner) => (
-                    <SelectItem key={partner.id} value={partner.id}>
-                      {partner.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="hourly-rate">Tariffa oraria (€)</Label>
-              <Input
-                id="hourly-rate"
-                type="number"
-                step="0.01"
-                value={hourlyRate}
-                onChange={(e) => setHourlyRate(e.target.value)}
-                data-testid="input-hourly-rate"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="order-description">Descrizione ordine</Label>
-              <Input
-                id="order-description"
-                placeholder="Servizi di consulenza..."
-                value={orderDescription}
-                onChange={(e) => setOrderDescription(e.target.value)}
-                data-testid="input-order-description"
-              />
-            </div>
-            
-            {selectedTimeEntries.length > 0 && (
-              <div className="space-y-2">
-                <Label>Riepilogo</Label>
-                <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
-                  <p><strong>Voci selezionate:</strong> {selectedTimeEntries.length}</p>
-                  <p><strong>Tempo totale:</strong> {formatDuration(selectedTimeEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0))}</p>
-                  <p><strong>Importo stimato:</strong> €{((selectedTimeEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0) / 60) * parseFloat(hourlyRate || "0")).toFixed(2)}</p>
-                </div>
-              </div>
-            )}
-            
-            <div className="flex justify-end space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowConversionDialog(false)}
-                data-testid="button-cancel-conversion"
-              >
-                Annulla
-              </Button>
-              <Button
-                onClick={handleConvertToSalesOrder}
-                disabled={!selectedPartnerId}
-                data-testid="button-create-sales-order"
-              >
-                Crea Ordine
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* Table Configuration Dialog */}
       <TableConfiguration
         tableId="timesheet"

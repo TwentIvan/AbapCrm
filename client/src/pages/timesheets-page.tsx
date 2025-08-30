@@ -133,6 +133,112 @@ export default function TimesheetsPage() {
     setShowDeleteDialog(true);
   };
 
+  // Function to convert timesheet to sales order
+  const handleConvertToSalesOrder = async (timesheet: Timesheet, groupSnapshots: any) => {
+    if (!groupSnapshots || Object.keys(groupSnapshots).length === 0) {
+      toast({
+        title: "Nessun dato da convertire",
+        description: "Il timesheet non contiene gruppi di ore da convertire",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Calculate totals from timesheet data
+      const timeEntryIds = JSON.parse(timesheet.timeEntryIds || '[]');
+      
+      if (timeEntryIds.length === 0) {
+        toast({
+          title: "Nessuna voce di tempo",
+          description: "Il timesheet non contiene time entries valide",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Use first project's client as default partner
+      const response = await fetch('/api/time-entries', { credentials: 'include' });
+      const allTimeEntries = await response.json();
+      const timesheetEntries = allTimeEntries.filter((entry: any) => timeEntryIds.includes(entry.id));
+      
+      if (timesheetEntries.length === 0) {
+        toast({
+          title: "Time entries non trovate",
+          description: "Non sono state trovate le time entries associate al timesheet",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Find the project and client for the first entry
+      const firstEntry = timesheetEntries[0];
+      const tasksResponse = await fetch('/api/tasks', { credentials: 'include' });
+      const tasks = await tasksResponse.json();
+      const task = tasks.find((t: any) => t.id === firstEntry.taskId);
+      
+      if (!task || !task.projectId) {
+        toast({
+          title: "Progetto non trovato",
+          description: "Non è stato possibile identificare il progetto per questo timesheet",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const projectsResponse = await fetch('/api/projects', { credentials: 'include' });
+      const projects = await projectsResponse.json();
+      const project = projects.find((p: any) => p.id === task.projectId);
+      
+      if (!project || !project.clientId) {
+        toast({
+          title: "Cliente non trovato", 
+          description: "Il progetto non ha un cliente associato",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Convert to sales order using the new API endpoint
+      const salesOrderResponse = await fetch('/api/sales-orders/from-timesheet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          timeEntryIds: timeEntryIds,
+          partnerId: project.clientId,
+          description: `Ordine generato da Timesheet: ${timesheet.name}`,
+          hourlyRate: "50" // Default rate
+        })
+      });
+
+      if (!salesOrderResponse.ok) {
+        const error = await salesOrderResponse.json();
+        throw new Error(error.error || 'Failed to create sales order');
+      }
+
+      const salesOrder = await salesOrderResponse.json();
+      
+      // Invalidate sales orders cache
+      queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
+      
+      toast({
+        title: "✓ Ordine di vendita creato",
+        description: `Ordine ${salesOrder.orderNumber} creato con successo`,
+      });
+
+    } catch (error) {
+      console.error('Error creating sales order:', error);
+      toast({
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Errore nel creare l'ordine di vendita",
+        variant: "destructive"
+      });
+    }
+  };
+
   const [selectedTimesheetForView, setSelectedTimesheetForView] = useState<Timesheet | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
 
@@ -233,6 +339,18 @@ export default function TimesheetsPage() {
                 Visualizza
               </DropdownMenuItem>
               <DropdownMenuItem 
+                onClick={async () => {
+                  const groupSnapshots = timesheet.groupSnapshots ? JSON.parse(timesheet.groupSnapshots) : {};
+                  await handleConvertToSalesOrder(timesheet, groupSnapshots);
+                }}
+                data-testid={`menu-convert-timesheet-${timesheet.id}`}
+              >
+                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Crea Ordine Vendita
+              </DropdownMenuItem>
+              <DropdownMenuItem 
                 onClick={() => handleDelete(timesheet)}
                 className="text-destructive"
                 data-testid={`menu-delete-timesheet-${timesheet.id}`}
@@ -253,6 +371,41 @@ export default function TimesheetsPage() {
       onClick: () => setShowBulkDeleteDialog(true),
       icon: Trash2,
       variant: "destructive" as const,
+      requiresSelection: true,
+    },
+    {
+      label: "Crea Ordine Vendita",
+      onClick: async (selectedTimesheets: Timesheet[]) => {
+        if (selectedTimesheets.length === 0) {
+          toast({
+            title: "Nessun timesheet selezionato",
+            description: "Seleziona almeno un timesheet per creare l'ordine",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Process each selected timesheet
+        for (const timesheet of selectedTimesheets) {
+          try {
+            const groupSnapshots = timesheet.groupSnapshots ? JSON.parse(timesheet.groupSnapshots) : {};
+            await handleConvertToSalesOrder(timesheet, groupSnapshots);
+          } catch (error) {
+            console.error(`Error converting timesheet ${timesheet.name}:`, error);
+            toast({
+              title: "Errore conversione",
+              description: `Errore nel convertire il timesheet "${timesheet.name}"`,
+              variant: "destructive"
+            });
+          }
+        }
+      },
+      icon: ({ className }: { className?: string }) => (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      variant: "default" as const,
       requiresSelection: true,
     },
   ];
@@ -568,139 +721,6 @@ function TimesheetDetailDialog({
       return await apiRequest("POST", "/api/sales-order-items", itemData);
     },
   });
-
-  const findProjectHourlyRate = (projectId: string): number => {
-    if (!projects || !deals || !Array.isArray(projects) || !Array.isArray(deals)) return 50; // Default rate
-    
-    const project = (projects as Project[]).find((p: Project) => p.id === projectId);
-    if (!project || !project.clientId) return 50;
-    
-    const clientDeals = (deals as Deal[]).filter((d: Deal) => d.partnerId === project.clientId && d.stage === 'won');
-    if (clientDeals.length > 0) {
-      return parseFloat(clientDeals[0].hourlyRate || "50");
-    }
-    
-    return 50;
-  };
-
-  const handleConvertToSalesOrder = async (timesheet: Timesheet, groupSnapshots: any) => {
-    if (!groupSnapshots || Object.keys(groupSnapshots).length === 0) {
-      toast({
-        title: "Nessun dato da convertire",
-        description: "Il timesheet non contiene gruppi di ore da convertire",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Calculate totals and prepare line items
-      const lineItems: any[] = [];
-      let totalAmount = 0;
-
-      for (const [groupKey, snapshot] of Object.entries(groupSnapshots)) {
-        const groupSnapshot = snapshot as any;
-        const entries = groupSnapshot.entries || [];
-        const totalHours = (groupSnapshot.duration || 0) / 60; // Convert minutes to hours
-        
-        if (totalHours <= 0) continue;
-
-        // Find project and rate for this group
-        let projectId = null;
-        let taskId = null;
-        let hourlyRate = 50; // Default
-
-        // Extract project/task from first entry in group
-        if (entries.length > 0) {
-          projectId = entries[0].projectId;
-          taskId = entries[0].taskId;
-          hourlyRate = findProjectHourlyRate(projectId);
-        }
-
-        const lineTotal = totalHours * hourlyRate;
-        totalAmount += lineTotal;
-
-        lineItems.push({
-          projectId,
-          taskId,
-          description: `Consulenza ${groupKey} - ${totalHours.toFixed(2)} ore`,
-          quantity: totalHours.toFixed(2),
-          unitPrice: hourlyRate.toFixed(2),
-          lineTotal: lineTotal.toFixed(2),
-          workDate: entries[0]?.startTime ? new Date(entries[0].startTime) : new Date(),
-          timeEntryIds: entries.map((e: any) => e.id)
-        });
-      }
-
-      if (lineItems.length === 0) {
-        toast({
-          title: "Nessuna riga da convertire",
-          description: "Non sono state trovate ore valide da convertire",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Find the first client from the entries
-      let partnerId = null;
-      if (projects && Array.isArray(projects) && lineItems[0]?.projectId) {
-        const project = (projects as Project[]).find((p: Project) => p.id === lineItems[0].projectId);
-        partnerId = project?.clientId;
-      }
-
-      if (!partnerId) {
-        toast({
-          title: "Cliente non trovato",
-          description: "Non è stato possibile identificare il cliente per questo timesheet",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Create sales order
-      const salesOrderData = {
-        partnerId,
-        description: `Ordine generato da Timesheet: ${timesheet.name}`,
-        subtotal: totalAmount.toFixed(2),
-        taxes: "0.00",
-        total: totalAmount.toFixed(2),
-        currency: "EUR",
-        issueDate: new Date(),
-        notes: `Convertito automaticamente dal timesheet ${timesheet.name} in data ${new Date().toLocaleDateString('it-IT')}`
-      };
-
-      const salesOrderResponse = await createSalesOrderMutation.mutateAsync(salesOrderData);
-      const salesOrder = salesOrderResponse as any; // Type assertion for the response
-
-      // Create line items
-      for (const lineItem of lineItems) {
-        await createSalesOrderItemMutation.mutateAsync({
-          ...lineItem,
-          salesOrderId: salesOrder.id
-        });
-      }
-
-      toast({
-        title: "✓ Conversione completata",
-        description: `Ordine di vendita ${salesOrder.orderNumber || 'N/A'} creato con ${lineItems.length} righe`,
-      });
-
-    } catch (error) {
-      console.error("Conversion error:", error);
-      toast({
-        title: "Errore nella conversione",
-        description: "Si è verificato un errore durante la creazione dell'ordine di vendita",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleConvertToInvoice = async (timesheet: Timesheet, groupSnapshots: any) => {
-    toast({
-      title: "Funzionalità in sviluppo",
-      description: "La conversione in fattura sarà disponibile presto",
-    });
-  };
 
   // Don't render dialog content if not open
   if (!open) {
