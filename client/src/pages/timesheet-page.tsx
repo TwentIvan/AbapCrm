@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Clock, Calendar, TrendingUp, Filter, List, LayoutGrid, Group, Settings2 } from "lucide-react";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, startOfDay, isSameDay } from "date-fns";
 import type { TimeEntry, Task, Project } from "@shared/schema";
@@ -16,8 +18,43 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { useTableLayout } from "@/lib/user-preferences";
 
-// Tipi per raggruppamento
-type GroupBy = "none" | "task" | "date" | "description" | "task-date";
+// Tipi per raggruppamento dinamico
+type GroupingField = "taskId" | "projectId" | "date" | "status" | "description";
+
+const AVAILABLE_GROUPING_FIELDS: Array<{
+  id: GroupingField;
+  label: string;
+  accessor: (entry: TimeEntry, taskMap: Map<string, Task>, projectMap: Map<string, Project>) => string;
+}> = [
+  {
+    id: "taskId",
+    label: "Task",
+    accessor: (entry, taskMap) => taskMap.get(entry.taskId)?.title || "Unknown Task"
+  },
+  {
+    id: "projectId", 
+    label: "Project",
+    accessor: (entry, taskMap, projectMap) => {
+      const task = taskMap.get(entry.taskId);
+      return task?.projectId ? (projectMap.get(task.projectId)?.name || "Unknown Project") : "No Project";
+    }
+  },
+  {
+    id: "date",
+    label: "Date", 
+    accessor: (entry) => format(new Date(entry.startTime), "yyyy-MM-dd")
+  },
+  {
+    id: "status",
+    label: "Status",
+    accessor: (entry) => entry.isRunning ? "Running" : "Completed"
+  },
+  {
+    id: "description",
+    label: "Description",
+    accessor: (entry) => entry.description || "No Description"
+  }
+];
 
 interface GroupedTimeEntry {
   id: string;
@@ -35,7 +72,7 @@ export default function TimesheetPage() {
   const [filterPeriod, setFilterPeriod] = useState<"week" | "month" | "all">("week");
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
-  const [groupBy, setGroupBy] = useState<GroupBy>("none");
+  const [selectedGroupFields, setSelectedGroupFields] = useState<GroupingField[]>([]);
   const [showTimeNormalizer, setShowTimeNormalizer] = useState(false);
   
   // Use the table layout hook for persistent preferences
@@ -113,9 +150,9 @@ export default function TimesheetPage() {
   const taskMap = new Map(tasks.map(task => [task.id, task]));
   const projectMap = new Map(projects.map(project => [project.id, project]));
 
-  // Raggruppamento dinamico delle time entries
+  // Raggruppamento dinamico delle time entries usando "collect"
   const groupedEntries = useMemo((): GroupedTimeEntry[] => {
-    if (groupBy === "none") {
+    if (selectedGroupFields.length === 0) {
       // Nessun raggruppamento: ogni entry è un gruppo singolo
       return filteredEntries.map(entry => {
         const task = taskMap.get(entry.taskId);
@@ -135,34 +172,25 @@ export default function TimesheetPage() {
       });
     }
 
+    // Logica "collect": raggruppa per combinazione di campi selezionati
     const groups = new Map<string, GroupedTimeEntry>();
 
     filteredEntries.forEach(entry => {
-      const task = taskMap.get(entry.taskId);
-      const project = task ? projectMap.get(task.projectId || "") : null;
-      const entryDate = format(new Date(entry.startTime), "yyyy-MM-dd");
-      
-      let groupKey = "";
-      let groupLabel = "";
+      // Costruisci la chiave di raggruppamento combinando i campi selezionati
+      const groupKeyParts: string[] = [];
+      const groupLabelParts: string[] = [];
 
-      switch (groupBy) {
-        case "task":
-          groupKey = entry.taskId;
-          groupLabel = `${project?.name || "No Project"} > ${task?.title || "No Task"}`;
-          break;
-        case "date":
-          groupKey = entryDate;
-          groupLabel = format(new Date(entry.startTime), "EEEE, MMMM d, yyyy");
-          break;
-        case "description":
-          groupKey = entry.description || "No Description";
-          groupLabel = entry.description || "No Description";
-          break;
-        case "task-date":
-          groupKey = `${entry.taskId}-${entryDate}`;
-          groupLabel = `${task?.title || "No Task"} - ${format(new Date(entry.startTime), "MMM d")}`;
-          break;
-      }
+      selectedGroupFields.forEach(fieldId => {
+        const field = AVAILABLE_GROUPING_FIELDS.find(f => f.id === fieldId);
+        if (field) {
+          const value = field.accessor(entry, taskMap, projectMap);
+          groupKeyParts.push(`${fieldId}:${value}`);
+          groupLabelParts.push(value);
+        }
+      });
+
+      const groupKey = groupKeyParts.join('|');
+      const groupLabel = groupLabelParts.join(' • ');
 
       if (!groups.has(groupKey)) {
         groups.set(groupKey, {
@@ -171,10 +199,10 @@ export default function TimesheetPage() {
           groupLabel,
           entries: [],
           totalDuration: 0,
-          taskId: groupBy.includes("task") ? entry.taskId : undefined,
-          projectId: groupBy.includes("task") ? (task?.projectId || undefined) : undefined,
-          date: groupBy.includes("date") ? entryDate : undefined,
-          description: groupBy === "description" ? (entry.description || "No Description") : undefined
+          taskId: selectedGroupFields.includes("taskId") ? entry.taskId : undefined,
+          projectId: selectedGroupFields.includes("projectId") ? (taskMap.get(entry.taskId)?.projectId || undefined) : undefined,
+          date: selectedGroupFields.includes("date") ? format(new Date(entry.startTime), "yyyy-MM-dd") : undefined,
+          description: selectedGroupFields.includes("description") ? (entry.description || "No Description") : undefined
         });
       }
 
@@ -184,13 +212,13 @@ export default function TimesheetPage() {
     });
 
     return Array.from(groups.values()).sort((a, b) => {
-      // Ordina per data più recente o alfabeticamente
-      if (groupBy.includes("date")) {
+      // Ordina per data più recente se inclusa nel raggruppamento, altrimenti alfabeticamente
+      if (selectedGroupFields.includes("date")) {
         return new Date(b.entries[0].startTime).getTime() - new Date(a.entries[0].startTime).getTime();
       }
       return a.groupLabel.localeCompare(b.groupLabel);
     });
-  }, [filteredEntries, groupBy, taskMap, projectMap]);
+  }, [filteredEntries, selectedGroupFields, taskMap, projectMap]);
 
   // Group entries by task (legacy per le statistiche)
   const entriesByTask = filteredEntries.reduce((acc, entry) => {
@@ -321,18 +349,56 @@ export default function TimesheetPage() {
               
               <div className="flex items-center gap-2">
                 <Group className="h-4 w-4 text-muted-foreground" />
-                <Select value={groupBy} onValueChange={(value: GroupBy) => setGroupBy(value)}>
-                  <SelectTrigger className="w-[160px]" data-testid="select-group-by">
-                    <SelectValue placeholder="Group by..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No Grouping</SelectItem>
-                    <SelectItem value="task">By Task</SelectItem>
-                    <SelectItem value="date">By Date</SelectItem>
-                    <SelectItem value="description">By Description</SelectItem>
-                    <SelectItem value="task-date">By Task & Date</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-[200px] justify-start text-left font-normal"
+                      data-testid="button-group-fields"
+                    >
+                      {selectedGroupFields.length === 0 
+                        ? "No Grouping" 
+                        : `Grouped by ${selectedGroupFields.length} field${selectedGroupFields.length !== 1 ? 's' : ''}`
+                      }
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[220px] p-3">
+                    <div className="text-xs font-medium text-muted-foreground mb-3">Select Fields to Group By:</div>
+                    <div className="space-y-3">
+                      {AVAILABLE_GROUPING_FIELDS.map(field => (
+                        <div key={field.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`group-${field.id}`}
+                            checked={selectedGroupFields.includes(field.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedGroupFields(prev => [...prev, field.id]);
+                              } else {
+                                setSelectedGroupFields(prev => prev.filter(f => f !== field.id));
+                              }
+                            }}
+                          />
+                          <label 
+                            htmlFor={`group-${field.id}`} 
+                            className="text-sm cursor-pointer flex-1"
+                          >
+                            {field.label}
+                          </label>
+                        </div>
+                      ))}
+                      {selectedGroupFields.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedGroupFields([])}
+                          className="w-full mt-2"
+                        >
+                          Clear All
+                        </Button>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
               
               <Button
@@ -456,6 +522,8 @@ export default function TimesheetPage() {
           enableAdvancedFilters={true}
           enableColumnReordering={true}
           enableAggregation={true}
+          enableSelection={true}
+          enableClipboardCopy={true}
           aggregationColumns={[
             {
               id: "duration",
