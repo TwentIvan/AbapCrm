@@ -118,7 +118,7 @@ export default function TimesheetsPage() {
 
   // Column definitions for configurable table
   const tableColumns = [
-    createTextColumn({
+    {
       accessorKey: "name",
       header: "Nome",
       cell: ({ row }: { row: any }) => (
@@ -127,8 +127,8 @@ export default function TimesheetsPage() {
           <span className="font-medium">{row.getValue("name")}</span>
         </div>
       ),
-    }),
-    createBadgeColumn({
+    },
+    {
       accessorKey: "groupingFields",
       header: "Raggruppamento",
       cell: ({ row }: { row: any }) => {
@@ -145,8 +145,8 @@ export default function TimesheetsPage() {
           </div>
         );
       },
-    }),
-    createTextColumn({
+    },
+    {
       accessorKey: "totalEntries",
       header: "Voci",
       cell: ({ row }: { row: any }) => (
@@ -154,8 +154,8 @@ export default function TimesheetsPage() {
           {row.getValue("totalEntries")} entry
         </span>
       ),
-    }),
-    createTextColumn({
+    },
+    {
       accessorKey: "totalDuration",
       header: "Durata Totale", 
       cell: ({ row }: { row: any }) => {
@@ -168,8 +168,8 @@ export default function TimesheetsPage() {
           </span>
         );
       },
-    }),
-    createTextColumn({
+    },
+    {
       accessorKey: "createdAt",
       header: "Creato",
       cell: ({ row }: { row: any }) => {
@@ -186,7 +186,7 @@ export default function TimesheetsPage() {
           </div>
         );
       },
-    }),
+    },
     {
       id: "actions",
       header: "Azioni",
@@ -225,7 +225,7 @@ export default function TimesheetsPage() {
   const bulkActions = [
     {
       label: "Elimina selezionati",
-      action: () => setShowBulkDeleteDialog(true),
+      onClick: () => setShowBulkDeleteDialog(true),
       icon: Trash2,
       variant: "destructive" as const,
       requiresSelection: true,
@@ -234,23 +234,23 @@ export default function TimesheetsPage() {
 
   const filterColumns = [
     {
-      accessorKey: "name",
-      title: "Nome",
+      id: "name",
+      label: "Nome",
       type: "text" as const,
     },
     {
-      accessorKey: "totalEntries", 
-      title: "Numero Voci",
+      id: "totalEntries", 
+      label: "Numero Voci",
       type: "number" as const,
     },
     {
-      accessorKey: "totalDuration",
-      title: "Durata Totale",
+      id: "totalDuration",
+      label: "Durata Totale",
       type: "number" as const,
     },
     {
-      accessorKey: "createdAt",
-      title: "Data Creazione",
+      id: "createdAt",
+      label: "Data Creazione",
       type: "date" as const,
     },
   ];
@@ -263,6 +263,7 @@ export default function TimesheetsPage() {
           <Header 
             title="Timesheets" 
             subtitle="Gestisci i tuoi timesheet salvati"
+            onNewClick={() => {}}
           />
           <div className="p-6 space-y-4">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -281,13 +282,14 @@ export default function TimesheetsPage() {
         <Header 
           title="Timesheets" 
           subtitle="Gestisci i tuoi timesheet salvati"
+          onNewClick={() => {}}
         />
         
         <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
             <LayoutManager
-              layout={layout}
-              onLayoutChange={updateLayout}
+              viewMode={viewMode}
+              onViewModeChange={(mode) => updateLayout({ viewMode: mode })}
               onConfigureColumns={() => setShowConfigDialog(true)}
               onSaveLayout={saveLayoutAs}
               onLoadLayout={loadLayout}
@@ -377,11 +379,17 @@ export default function TimesheetsPage() {
           onOpenChange={setShowConfigDialog}
           layout={layout}
           onLayoutChange={updateLayout}
-          availableColumns={tableColumns}
+          availableColumns={tableColumns.map(col => ({
+            id: 'id' in col ? col.id! : col.accessorKey!,
+            label: col.header as string
+          }))}
           tableId="timesheets"
           editingLayout={editingLayout}
           onEditingLayoutChange={setEditingLayout}
-          onSaveLayout={updateExistingLayout}
+          onSaveLayout={(layoutName) => {
+            updateExistingLayout(layoutName);
+            return layoutName;
+          }}
         />
       </main>
     </div>
