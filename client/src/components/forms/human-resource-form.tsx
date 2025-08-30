@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertHumanResourceSchema, type HumanResource, type User } from "@shared/schema";
 import { Users, DollarSign, Calendar, User as UserIcon } from "lucide-react";
@@ -69,13 +69,10 @@ export function HumanResourceForm({ humanResource, onSuccess }: HumanResourceFor
   // Carica tutti gli utenti per il collegamento
   const { data: users = [], isLoading: usersLoading, error: usersError } = useQuery<User[]>({
     queryKey: ["/api/users"],
+    queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Debug degli utenti
-  console.log("Users data:", users);
-  console.log("Users loading:", usersLoading);
-  console.log("Users error:", usersError);
 
   const form = useForm<HumanResourceFormData>({
     resolver: zodResolver(formSchema),

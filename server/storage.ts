@@ -192,10 +192,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUsers(): Promise<User[]> {
-    console.log("DatabaseStorage.getUsers() called");
-    const result = await db.select().from(users).orderBy(asc(users.firstName));
-    console.log("Query result:", result);
-    return result;
+    return await db.select().from(users).orderBy(asc(users.firstName));
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {

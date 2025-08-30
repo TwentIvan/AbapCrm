@@ -19,15 +19,8 @@ export function registerRoutes(app: Express): Server {
   // Users
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    try {
-      console.log("Fetching users for authenticated user:", req.user?.id);
-      const users = await storage.getUsers();
-      console.log("Users found:", users.length, users);
-      res.json(users);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      res.status(500).json({ error: "Failed to fetch users" });
-    }
+    const users = await storage.getUsers();
+    res.json(users);
   });
 
   // Projects
