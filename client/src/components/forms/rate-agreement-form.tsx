@@ -31,13 +31,19 @@ import { insertRateAgreementSchema, type RateAgreement, type Partner, type Proje
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { Loader2, Settings, DollarSign, X, Plus } from "lucide-react";
 
-const formSchema = insertRateAgreementSchema.extend({
-  groupingValues: z.record(z.string()),
-  validFrom: z.string(),
+const formSchema = z.object({
+  name: z.string().min(1, "Nome accordo richiesto"),
+  description: z.string().optional(),
+  groupingFields: z.array(z.string()).default([]),
+  groupingValues: z.record(z.string()).default({}),
+  validFrom: z.string().min(1, "Data inizio richiesta"),
   validTo: z.string().optional(),
-  hourlyRate: z.string(),
+  hourlyRate: z.string().min(1, "Tariffa oraria richiesta"),
+  currency: z.string().default("EUR"),
   minimumHours: z.string().optional(),
-  priority: z.string(),
+  priority: z.string().min(1, "Priorità richiesta"),
+  isActive: z.boolean().default(true),
+  notes: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
