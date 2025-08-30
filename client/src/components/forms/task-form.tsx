@@ -35,12 +35,15 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: projects } = useQuery<Project[]>({
+  const { data: projects, isLoading: projectsLoading, error: projectsError } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+    enabled: !!user, // Only fetch when user is authenticated
+    retry: 3,
   });
 
   const { data: tasks } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
+    enabled: !!user, // Only fetch when user is authenticated
   });
 
   const activeProjects = projects?.filter(project => project.status !== "completed") || [];
@@ -229,16 +232,28 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
               <Select onValueChange={field.onChange} value={field.value || "none"}>
                 <FormControl>
                   <SelectTrigger data-testid="select-task-project">
-                    <SelectValue placeholder="Select project" />
+                    <SelectValue placeholder={
+                      projectsLoading ? "Loading projects..." : 
+                      projectsError ? "Error loading projects" :
+                      "Select project"
+                    } />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="none">No project</SelectItem>
-                  {activeProjects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
+                  {projectsLoading ? (
+                    <SelectItem value="" disabled>Loading projects...</SelectItem>
+                  ) : projectsError ? (
+                    <SelectItem value="" disabled>Error loading projects</SelectItem>
+                  ) : activeProjects.length === 0 ? (
+                    <SelectItem value="" disabled>No active projects found</SelectItem>
+                  ) : (
+                    activeProjects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               <FormMessage />
