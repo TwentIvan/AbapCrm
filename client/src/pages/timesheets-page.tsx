@@ -33,6 +33,11 @@ export default function TimesheetsPage() {
 
   const { data: timesheets = [], isLoading } = useQuery<Timesheet[]>({
     queryKey: ["/api/timesheets"],
+    queryFn: async () => {
+      const res = await fetch("/api/timesheets", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch timesheets');
+      return res.json();
+    },
   });
 
   const deleteTimesheet = useMutation({
