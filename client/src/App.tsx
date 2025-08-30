@@ -17,6 +17,7 @@ import GlobalCalendarPage from "@/pages/global-calendar-page";
 import TimesheetPage from "@/pages/timesheet-page";
 import TimesheetsPage from "@/pages/timesheets-page";
 import MessagesPage from "@/pages/messages-page";
+import RateAgreementsPage from "@/pages/rate-agreements-page";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -32,6 +33,7 @@ function Router() {
       <ProtectedRoute path="/timesheet" component={TimesheetPage} />
       <ProtectedRoute path="/timesheets" component={TimesheetsPage} />
       <ProtectedRoute path="/messages" component={MessagesPage} />
+      <ProtectedRoute path="/rate-agreements" component={RateAgreementsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

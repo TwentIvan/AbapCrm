@@ -9,6 +9,7 @@ import { Play, Square, Clock, Trash2, TrendingUp } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDistanceToNow, format } from "date-fns";
 import { CompletionDialog } from "./completion-dialog";
+import { RateDisplay } from "./rate-display";
 import type { TimeEntry, Task } from "@shared/schema";
 
 interface TimeTrackerProps {
@@ -274,6 +275,14 @@ export function TimeTracker({ task }: TimeTrackerProps) {
               </div>
             </div>
           )}
+
+          {/* Rate Display */}
+          <RateDisplay 
+            task={task} 
+            timeLoggedMinutes={totalTime}
+            showValueCalculation={totalTime > 0}
+            className="w-full"
+          />
 
           {progressPercentage > 0 && (
             <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
