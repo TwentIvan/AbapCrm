@@ -474,7 +474,7 @@ function TimesheetDetailDialog({
   const queryClient = useQueryClient();
   
   // Fetch fresh timesheet data
-  const { data: timesheet } = useQuery({
+  const { data: timesheet, isLoading: isLoadingTimesheet } = useQuery({
     queryKey: ["/api/timesheets", timesheetId],
     queryFn: async () => {
       const res = await fetch(`/api/timesheets/${timesheetId}`, { credentials: "include" });
@@ -528,12 +528,20 @@ function TimesheetDetailDialog({
     },
   });
 
-  // Early return after all hooks
-  if (!timesheet) {
+  // Show loading state while hooks are properly initialized
+  if (isLoadingTimesheet || !timesheet) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
-          <div>Loading...</div>
+          <DialogHeader>
+            <DialogTitle>Caricamento Timesheet</DialogTitle>
+            <DialogDescription>
+              Caricamento dei dettagli del timesheet in corso...
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-sm text-muted-foreground">Caricamento...</div>
+          </div>
         </DialogContent>
       </Dialog>
     );
@@ -542,14 +550,14 @@ function TimesheetDetailDialog({
   // Parse grouped data
   let groupedData: Record<string, any[]> = {};
   try {
-    groupedData = JSON.parse(timesheet?.groupedData || '{}');
+    groupedData = JSON.parse(timesheet.groupedData || '{}');
   } catch (e) {
     console.error('Error parsing grouped data:', e);
   }
 
   // Filter time entries that belong to this timesheet
   const timesheetEntries = timeEntries?.filter((entry: any) => 
-    timesheet?.timeEntryIds?.includes(entry.id)
+    timesheet.timeEntryIds?.includes(entry.id)
   ) || [];
 
   return (
@@ -558,22 +566,22 @@ function TimesheetDetailDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-blue-500" />
-            {timesheet?.name || 'Timesheet'}
+            {timesheet.name || 'Timesheet'}
           </DialogTitle>
           <DialogDescription>
-            {timesheet?.description || ''}
+            {timesheet.description || 'Dettagli del timesheet e delle time entries associate'}
           </DialogDescription>
         </DialogHeader>
 
         {/* Timesheet Summary */}
         <div className="grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg mb-6">
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{timesheet?.totalEntries || 0}</div>
+            <div className="text-2xl font-bold text-blue-600">{timesheet.totalEntries || 0}</div>
             <div className="text-sm text-muted-foreground">Voci totali</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-green-600">
-              {Math.floor((timesheet?.totalDuration || 0) / 60)}h {(timesheet?.totalDuration || 0) % 60}m
+              {Math.floor((timesheet.totalDuration || 0) / 60)}h {(timesheet.totalDuration || 0) % 60}m
             </div>
             <div className="text-sm text-muted-foreground">Durata totale</div>
           </div>
