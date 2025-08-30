@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Clock, Calendar, TrendingUp, Filter, List, LayoutGrid, Group, Settings2 } from "lucide-react";
+import { Clock, Calendar, TrendingUp, Filter, List, LayoutGrid, Group, Settings2, FileText } from "lucide-react";
 import type { Partner } from "@shared/schema";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, startOfDay, isSameDay } from "date-fns";
 import type { TimeEntry, Task, Project } from "@shared/schema";
@@ -808,7 +808,7 @@ export default function TimesheetPage() {
                 setShowConversionDialog(true);
                 setSelectedTimeEntries(selectedEntries);
               },
-              variant: 'secondary' as const,
+              variant: 'default' as const,
             }
           ]}
           aggregationColumns={[
