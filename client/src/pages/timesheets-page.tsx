@@ -1,8 +1,17 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { DataTable } from "@/components/ui/data-table";
+import { useTableLayout } from "@/lib/user-preferences";
+import Sidebar from "@/components/layout/sidebar";
+import Header from "@/components/layout/header";
+import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import { LayoutManager } from "@/components/ui/layout-manager";
+import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Button } from "@/components/ui/button";
-import { Trash2, Clock, Calendar, Eye } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Trash2, Clock, Calendar, Eye, MoreHorizontal, Grid3X3, List, Edit } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import type { Timesheet } from "@shared/schema";
@@ -28,10 +37,31 @@ import {
 } from "@/components/ui/dialog";
 
 export default function TimesheetsPage() {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedTimesheet, setSelectedTimesheet] = useState<Timesheet | null>(null);
+  const [selectedTimesheets, setSelectedTimesheets] = useState<Timesheet[]>([]);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [editingLayout, setEditingLayout] = useState<any>(null);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: timesheets = [], isLoading } = useQuery<Timesheet[]>({
+  // Use the table layout hook for persistent preferences
+  const { 
+    layout, 
+    currentLayoutName,
+    savedLayouts,
+    updateLayout, 
+    saveLayoutAs,
+    loadLayout,
+    renameLayout,
+    deleteLayout,
+    updateExistingLayout,
+  } = useTableLayout('timesheets');
+  const viewMode = layout.viewMode;
+
+  const { data: timesheets, isLoading } = useQuery<Timesheet[]>({
     queryKey: ["/api/timesheets"],
     queryFn: async () => {
       const res = await fetch("/api/timesheets", { credentials: "include" });
@@ -47,6 +77,8 @@ export default function TimesheetsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
       toast({ title: "✓ Timesheet eliminato con successo" });
+      setShowDeleteDialog(false);
+      setSelectedTimesheet(null);
     },
     onError: () => {
       toast({
@@ -56,8 +88,37 @@ export default function TimesheetsPage() {
     },
   });
 
-  const columns = [
-    {
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map(id => apiRequest("DELETE", `/api/timesheets/${id}`)));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
+      toast({ title: `✓ ${selectedTimesheets.length} timesheets eliminati con successo` });
+      setShowBulkDeleteDialog(false);
+      setSelectedTimesheets([]);
+    },
+    onError: () => {
+      toast({
+        title: "Errore nell'eliminazione dei timesheets",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDelete = (timesheet: Timesheet) => {
+    setSelectedTimesheet(timesheet);
+    setShowDeleteDialog(true);
+  };
+
+  const handleView = (timesheet: Timesheet) => {
+    // TODO: Navigate to timesheet detail view
+    console.log("View timesheet:", timesheet);
+  };
+
+  // Column definitions for configurable table
+  const tableColumns = [
+    createTextColumn({
       accessorKey: "name",
       header: "Nome",
       cell: ({ row }: { row: any }) => (
@@ -66,29 +127,26 @@ export default function TimesheetsPage() {
           <span className="font-medium">{row.getValue("name")}</span>
         </div>
       ),
-    },
-    {
+    }),
+    createBadgeColumn({
       accessorKey: "groupingFields",
       header: "Raggruppamento",
       cell: ({ row }: { row: any }) => {
         const fields = row.getValue("groupingFields") as string[];
         return (
-          <div className="flex gap-1">
-            {fields.map((field, index) => (
-              <span
-                key={index}
-                className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
-              >
+          <div className="flex gap-1 flex-wrap">
+            {fields.map((field, i) => (
+              <Badge key={i} variant="secondary" className="text-xs">
                 {field === "taskId" ? "Task" : 
                  field === "projectId" ? "Progetto" :
                  field === "date" ? "Data" : field}
-              </span>
+              </Badge>
             ))}
           </div>
         );
       },
-    },
-    {
+    }),
+    createTextColumn({
       accessorKey: "totalEntries",
       header: "Voci",
       cell: ({ row }: { row: any }) => (
@@ -96,8 +154,8 @@ export default function TimesheetsPage() {
           {row.getValue("totalEntries")} entry
         </span>
       ),
-    },
-    {
+    }),
+    createTextColumn({
       accessorKey: "totalDuration",
       header: "Durata Totale", 
       cell: ({ row }: { row: any }) => {
@@ -110,163 +168,222 @@ export default function TimesheetsPage() {
           </span>
         );
       },
-    },
-    {
+    }),
+    createTextColumn({
       accessorKey: "createdAt",
       header: "Creato",
       cell: ({ row }: { row: any }) => {
         const date = new Date(row.getValue("createdAt"));
         return (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            {formatDistanceToNow(date, { addSuffix: true, locale: it })}
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">
+              {formatDistanceToNow(date, {
+                addSuffix: true,
+                locale: it,
+              })}
+            </span>
           </div>
         );
       },
-    },
+    }),
     {
       id: "actions",
       header: "Azioni",
       cell: ({ row }: { row: any }) => {
-        const timesheet = row.original as Timesheet;
+        const timesheet = row.original;
         return (
-          <div className="flex items-center gap-2">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" data-testid="button-view-timesheet">
-                  <Eye className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{timesheet.name}</DialogTitle>
-                  <DialogDescription>
-                    {timesheet.description && (
-                      <p className="text-sm text-muted-foreground mb-4">
-                        {timesheet.description}
-                      </p>
-                    )}
-                  </DialogDescription>
-                </DialogHeader>
-                <TimesheetDetails timesheet={timesheet} />
-              </DialogContent>
-            </Dialog>
-            
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" data-testid="button-delete-timesheet">
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Elimina Timesheet</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Sei sicuro di voler eliminare questo timesheet? Questa azione non può essere annullata.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annulla</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => deleteTimesheet.mutate(timesheet.id)}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Elimina
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" data-testid={`button-timesheet-menu-${timesheet.id}`}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={() => handleView(timesheet)}
+                data-testid={`menu-view-timesheet-${timesheet.id}`}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Visualizza
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => handleDelete(timesheet)}
+                className="text-destructive"
+                data-testid={`menu-delete-timesheet-${timesheet.id}`}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Elimina
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
     },
   ];
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold" data-testid="text-timesheets-title">Timesheet Creati</h1>
-          <p className="text-muted-foreground">
-            Visualizza e gestisci i timesheet che hai salvato dalle entry di tempo
-          </p>
-        </div>
+  const bulkActions = [
+    {
+      label: "Elimina selezionati",
+      action: () => setShowBulkDeleteDialog(true),
+      icon: Trash2,
+      variant: "destructive" as const,
+      requiresSelection: true,
+    },
+  ];
+
+  const filterColumns = [
+    {
+      accessorKey: "name",
+      title: "Nome",
+      type: "text" as const,
+    },
+    {
+      accessorKey: "totalEntries", 
+      title: "Numero Voci",
+      type: "number" as const,
+    },
+    {
+      accessorKey: "totalDuration",
+      title: "Durata Totale",
+      type: "number" as const,
+    },
+    {
+      accessorKey: "createdAt",
+      title: "Data Creazione",
+      type: "date" as const,
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 overflow-auto">
+          <Header 
+            title="Timesheets" 
+            subtitle="Gestisci i tuoi timesheet salvati"
+          />
+          <div className="p-6 space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        </main>
       </div>
-
-      {timesheets.length === 0 && !isLoading ? (
-        <div className="text-center py-12">
-          <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">
-            Nessun timesheet creato ancora. Vai alla pagina Time Entries e usa 'Crea Timesheet' per crearne uno.
-          </p>
-        </div>
-      ) : (
-        <DataTable 
-          columns={columns} 
-          data={timesheets} 
-          searchPlaceholder="Cerca timesheet..."
-          tableId="timesheets"
-        />
-      )}
-    </div>
-  );
-}
-
-function TimesheetDetails({ timesheet }: { timesheet: Timesheet }) {
-  let groupedData;
-  try {
-    groupedData = JSON.parse(timesheet.groupedData);
-  } catch (e) {
-    groupedData = {};
+    );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-blue-600">{timesheet.totalEntries}</div>
-          <div className="text-sm text-muted-foreground">Voci totali</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-green-600">
-            {Math.floor(timesheet.totalDuration / 60)}h {timesheet.totalDuration % 60}m
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 overflow-auto">
+        <Header 
+          title="Timesheets" 
+          subtitle="Gestisci i tuoi timesheet salvati"
+        />
+        
+        <div className="p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <LayoutManager
+              layout={layout}
+              onLayoutChange={updateLayout}
+              onConfigureColumns={() => setShowConfigDialog(true)}
+              onSaveLayout={saveLayoutAs}
+              onLoadLayout={loadLayout}
+              onRenameLayout={renameLayout}
+              onDeleteLayout={deleteLayout}
+              savedLayouts={savedLayouts}
+              currentLayoutName={currentLayoutName}
+              className="flex-1"
+            />
           </div>
-          <div className="text-sm text-muted-foreground">Durata totale</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-purple-600">{Object.keys(groupedData).length}</div>
-          <div className="text-sm text-muted-foreground">Gruppi</div>
-        </div>
-      </div>
 
-      <div>
-        <h3 className="text-lg font-semibold mb-3">Dati Raggruppati</h3>
-        <div className="space-y-3">
-          {Object.entries(groupedData).map(([groupKey, entries]: [string, any]) => (
-            <div key={groupKey} className="border rounded-lg p-4">
-              <div className="font-medium text-sm text-gray-600 mb-2">
-                {groupKey}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                {Array.isArray(entries) && entries.map((entry: any, index: number) => (
-                  <div key={index} className="bg-white p-3 rounded border">
-                    <div className="flex justify-between items-start">
-                      <div className="text-sm">
-                        <div className="font-medium">{entry.taskTitle}</div>
-                        <div className="text-gray-500">{entry.projectName}</div>
-                        <div className="text-xs text-gray-400">{entry.formattedTime}</div>
-                      </div>
-                      <div className="text-xs font-mono bg-blue-100 px-2 py-1 rounded">
-                        {entry.formattedDuration}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          {timesheets?.length === 0 ? (
+            <div className="text-center py-12">
+              <Clock className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">Nessun timesheet ancora</h3>
+              <p className="text-muted-foreground mb-4">Crea il tuo primo timesheet dalla pagina Time Entries</p>
             </div>
-          ))}
+          ) : viewMode === 'list' ? (
+            <DataTable
+              key={`timesheets-table-${currentLayoutName}-${JSON.stringify(layout.columns)}`}
+              columns={tableColumns}
+              data={timesheets || []}
+              searchPlaceholder="Cerca timesheets..."
+              enableSelection={true}
+              onSelectionChange={setSelectedTimesheets}
+              bulkActions={bulkActions}
+              tableId="timesheets"
+              configurableColumns={true}
+              enableAdvancedFilters={true}
+              filterColumns={filterColumns}
+              enableColumnReordering={true}
+              enableClipboardCopy={true}
+              editingLayout={editingLayout}
+            />
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Vista grid non ancora implementata per i timesheets</p>
+            </div>
+          )}
         </div>
-      </div>
+
+        {/* Delete confirmation dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Elimina Timesheet</AlertDialogTitle>
+              <AlertDialogDescription>
+                Sei sicuro di voler eliminare questo timesheet? Questa azione non può essere annullata.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annulla</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => selectedTimesheet && deleteTimesheet.mutate(selectedTimesheet.id)}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Elimina
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Bulk delete confirmation dialog */}
+        <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Elimina Timesheets</AlertDialogTitle>
+              <AlertDialogDescription>
+                Sei sicuro di voler eliminare {selectedTimesheets.length} timesheets? Questa azione non può essere annullata.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annulla</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => bulkDeleteMutation.mutate(selectedTimesheets.map(t => t.id))}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Elimina Tutti
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Table Configuration Dialog */}
+        <TableConfiguration
+          open={showConfigDialog}
+          onOpenChange={setShowConfigDialog}
+          layout={layout}
+          onLayoutChange={updateLayout}
+          availableColumns={tableColumns}
+          tableId="timesheets"
+          editingLayout={editingLayout}
+          onEditingLayoutChange={setEditingLayout}
+          onSaveLayout={updateExistingLayout}
+        />
+      </main>
     </div>
   );
 }
