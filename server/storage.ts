@@ -1,6 +1,6 @@
 import { 
   users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, emailConfigs,
-  timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets,
+  timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements,
   type User, type InsertUser,
   type Project, type InsertProject,
   type Task, type InsertTask,
@@ -15,7 +15,8 @@ import {
   type TimeNormalizationConfig, type InsertTimeNormalizationConfig,
   type SalesOrder, type InsertSalesOrder,
   type SalesOrderItem, type InsertSalesOrderItem,
-  type Timesheet, type InsertTimesheet
+  type Timesheet, type InsertTimesheet,
+  type RateAgreement, type InsertRateAgreement
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -144,6 +145,15 @@ export interface IStorage {
   updateEmailConfig(id: string, config: Partial<InsertEmailConfig>, userId: string): Promise<EmailConfig | undefined>;
   deleteEmailConfig(id: string, userId: string): Promise<boolean>;
   deactivateAllEmailConfigs(userId: string): Promise<void>;
+  
+  // Rate Agreements
+  getRateAgreements(userId: string): Promise<RateAgreement[]>;
+  getRateAgreement(id: string, userId: string): Promise<RateAgreement | undefined>;
+  createRateAgreement(agreement: InsertRateAgreement): Promise<RateAgreement>;
+  updateRateAgreement(id: string, agreement: Partial<InsertRateAgreement>, userId: string): Promise<RateAgreement | undefined>;
+  deleteRateAgreement(id: string, userId: string): Promise<boolean>;
+  getActiveRateAgreements(userId: string): Promise<RateAgreement[]>;
+  resolveRateForContext(userId: string, context: { partnerId?: string; projectId?: string; taskId?: string; taskType?: string }): Promise<RateAgreement | undefined>;
 
   sessionStore: session.Store;
 }
@@ -918,6 +928,106 @@ export class DatabaseStorage implements IStorage {
       .update(emailConfigs)
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(emailConfigs.userId, userId));
+  }
+
+  // Rate Agreements
+  async getRateAgreements(userId: string): Promise<RateAgreement[]> {
+    return await db
+      .select()
+      .from(rateAgreements)
+      .where(eq(rateAgreements.userId, userId))
+      .orderBy(desc(rateAgreements.priority), desc(rateAgreements.updatedAt));
+  }
+
+  async getRateAgreement(id: string, userId: string): Promise<RateAgreement | undefined> {
+    const [agreement] = await db
+      .select()
+      .from(rateAgreements)
+      .where(and(eq(rateAgreements.id, id), eq(rateAgreements.userId, userId)));
+    return agreement || undefined;
+  }
+
+  async createRateAgreement(agreement: InsertRateAgreement): Promise<RateAgreement> {
+    const [newAgreement] = await db
+      .insert(rateAgreements)
+      .values(agreement)
+      .returning();
+    return newAgreement;
+  }
+
+  async updateRateAgreement(id: string, agreement: Partial<InsertRateAgreement>, userId: string): Promise<RateAgreement | undefined> {
+    const [updated] = await db
+      .update(rateAgreements)
+      .set({ ...agreement, updatedAt: new Date() })
+      .where(and(eq(rateAgreements.id, id), eq(rateAgreements.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteRateAgreement(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(rateAgreements)
+      .where(and(eq(rateAgreements.id, id), eq(rateAgreements.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getActiveRateAgreements(userId: string): Promise<RateAgreement[]> {
+    const now = new Date();
+    return await db
+      .select()
+      .from(rateAgreements)
+      .where(
+        and(
+          eq(rateAgreements.userId, userId),
+          eq(rateAgreements.isActive, true),
+          sql`${rateAgreements.validFrom} <= ${now}`,
+          sql`(${rateAgreements.validTo} IS NULL OR ${rateAgreements.validTo} >= ${now})`
+        )
+      )
+      .orderBy(desc(rateAgreements.priority));
+  }
+
+  async resolveRateForContext(
+    userId: string, 
+    context: { partnerId?: string; projectId?: string; taskId?: string; taskType?: string }
+  ): Promise<RateAgreement | undefined> {
+    const activeAgreements = await this.getActiveRateAgreements(userId);
+    
+    // Ordina per priorità e numero di campi matchanti (più specifico = priorità maggiore)
+    let bestMatch: RateAgreement | undefined;
+    let bestMatchScore = 0;
+
+    for (const agreement of activeAgreements) {
+      try {
+        const groupingValues = JSON.parse(agreement.groupingValues);
+        let matchScore = 0;
+        let allFieldsMatch = true;
+
+        // Verifica se tutti i campi dell'accordo corrispondono al contesto
+        for (const field of agreement.groupingFields) {
+          const expectedValue = groupingValues[field];
+          const contextValue = context[field as keyof typeof context];
+
+          if (expectedValue && contextValue === expectedValue) {
+            matchScore++;
+          } else if (expectedValue) {
+            // Campo richiesto ma non match
+            allFieldsMatch = false;
+            break;
+          }
+        }
+
+        // Se tutti i campi matchano e il punteggio è migliore, aggiorna il best match
+        if (allFieldsMatch && matchScore > bestMatchScore) {
+          bestMatch = agreement;
+          bestMatchScore = matchScore;
+        }
+      } catch (error) {
+        console.error('Error parsing groupingValues for agreement:', agreement.id, error);
+      }
+    }
+
+    return bestMatch;
   }
 }
 

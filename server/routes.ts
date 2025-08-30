@@ -7,7 +7,7 @@ import {
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, 
   insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema,
   insertMessageSchema, insertCommentSchema, insertEmailConfigSchema, insertTimesheetSchema,
-  insertSalesOrderSchema, insertSalesOrderItemSchema
+  insertSalesOrderSchema, insertSalesOrderItemSchema, insertRateAgreementSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -1189,6 +1189,86 @@ export function registerRoutes(app: Express): Server {
   app.delete("/api/sales-order-items/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const deleted = await storage.deleteSalesOrderItem(req.params.id, req.user!.id);
+    if (!deleted) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  // Rate Agreements
+  app.get("/api/rate-agreements", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const agreements = await storage.getRateAgreements(req.user!.id);
+    res.json(agreements);
+  });
+
+  app.get("/api/rate-agreements/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const agreement = await storage.getRateAgreement(req.params.id, req.user!.id);
+    if (!agreement) return res.sendStatus(404);
+    res.json(agreement);
+  });
+
+  app.get("/api/rate-agreements/active", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const agreements = await storage.getActiveRateAgreements(req.user!.id);
+    res.json(agreements);
+  });
+
+  app.post("/api/rate-agreements/resolve", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { partnerId, projectId, taskId, taskType } = req.body;
+      const agreement = await storage.resolveRateForContext(req.user!.id, {
+        partnerId,
+        projectId,
+        taskId,
+        taskType
+      });
+      res.json(agreement || null);
+    } catch (error) {
+      console.error("Rate resolution error:", error);
+      res.status(500).json({ error: "Failed to resolve rate" });
+    }
+  });
+
+  app.post("/api/rate-agreements", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const agreementData = insertRateAgreementSchema.parse({
+        ...req.body,
+        userId: req.user!.id,
+        groupingValues: JSON.stringify(req.body.groupingValues),
+        validFrom: req.body.validFrom ? new Date(req.body.validFrom) : new Date(),
+        validTo: req.body.validTo ? new Date(req.body.validTo) : null
+      });
+      const agreement = await storage.createRateAgreement(agreementData);
+      res.status(201).json(agreement);
+    } catch (error) {
+      console.error("Rate agreement creation error:", error);
+      res.status(400).json({ error: "Invalid rate agreement data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.put("/api/rate-agreements/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const updateData = {
+        ...req.body,
+        groupingValues: req.body.groupingValues ? JSON.stringify(req.body.groupingValues) : undefined,
+        validFrom: req.body.validFrom ? new Date(req.body.validFrom) : undefined,
+        validTo: req.body.validTo ? new Date(req.body.validTo) : undefined
+      };
+      const agreement = await storage.updateRateAgreement(req.params.id, updateData, req.user!.id);
+      if (!agreement) return res.sendStatus(404);
+      res.json(agreement);
+    } catch (error) {
+      console.error("Rate agreement update error:", error);
+      res.status(400).json({ error: "Invalid rate agreement data" });
+    }
+  });
+
+  app.delete("/api/rate-agreements/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const deleted = await storage.deleteRateAgreement(req.params.id, req.user!.id);
     if (!deleted) return res.sendStatus(404);
     res.sendStatus(204);
   });

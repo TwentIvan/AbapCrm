@@ -37,6 +37,10 @@ export const projects = pgTable("projects", {
 
 export const taskStatusEnum = pgEnum("task_status", ["todo", "in_progress", "review", "completed"]);
 export const taskPriorityEnum = pgEnum("task_priority", ["low", "medium", "high", "urgent"]);
+export const taskTypeEnum = pgEnum("task_type", [
+  "development", "analysis", "design", "testing", "consulting", 
+  "meeting", "documentation", "maintenance", "support", "other"
+]);
 
 export const tasks = pgTable("tasks", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -44,6 +48,7 @@ export const tasks = pgTable("tasks", {
   description: text("description"),
   status: taskStatusEnum("status").default("todo").notNull(),
   priority: taskPriorityEnum("priority").default("medium").notNull(),
+  taskType: taskTypeEnum("task_type").default("other").notNull(), // Tipo di lavoro per accordi tariffari
   projectId: uuid("project_id").references(() => projects.id),
   parentTaskId: uuid("parent_task_id"), // Self-reference for task hierarchy
   userId: uuid("user_id").references(() => users.id).notNull(),
@@ -283,6 +288,39 @@ export const salesOrderItems = pgTable("sales_order_items", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Accordi tariffari dinamici - sistema flessibile per definire tariffe per combinazioni specifiche
+export const rateAgreements = pgTable("rate_agreements", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(), // "Cliente ABC - Progetto XYZ", "Consulenza SAP - Standard", etc.
+  description: text("description"),
+  
+  // Sistema di chiavi dinamiche (simile ai timesheet)
+  groupingFields: text("grouping_fields").array().notNull(), // ["partnerId", "projectId", "userId"]
+  groupingValues: text("grouping_values").notNull(), // JSON con valori specifici: {"partnerId": "uuid", "projectId": "uuid"}
+  
+  // Tariffa e condizioni
+  hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("EUR").notNull(),
+  
+  // Priorità per risolvere conflitti (più alto = priorità maggiore)
+  priority: integer("priority").default(1).notNull(),
+  
+  // Validità temporale
+  validFrom: timestamp("valid_from").defaultNow().notNull(),
+  validTo: timestamp("valid_to"), // null = infinito
+  
+  // Stato dell'accordo
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  // Note e condizioni aggiuntive
+  notes: text("notes"),
+  minimumHours: decimal("minimum_hours", { precision: 6, scale: 2 }), // Minimo ore per applicare tariffa
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
@@ -297,6 +335,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   emailConfigs: many(emailConfigs),
   timeNormalizationConfigs: many(timeNormalizationConfigs),
   salesOrders: many(salesOrders),
+  rateAgreements: many(rateAgreements),
 }));
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({
@@ -412,6 +451,13 @@ export const salesOrderItemsRelations = relations(salesOrderItems, ({ one }) => 
   }),
 }));
 
+export const rateAgreementsRelations = relations(rateAgreements, ({ one }) => ({
+  user: one(users, {
+    fields: [rateAgreements.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -509,6 +555,15 @@ export const insertSalesOrderItemSchema = createInsertSchema(salesOrderItems).om
   timeEntryIds: z.array(z.string()),
 });
 
+export const insertRateAgreementSchema = createInsertSchema(rateAgreements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  groupingFields: z.array(z.string()),
+  groupingValues: z.string(), // JSON string
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -546,3 +601,5 @@ export type SalesOrder = typeof salesOrders.$inferSelect;
 export type InsertSalesOrder = z.infer<typeof insertSalesOrderSchema>;
 export type SalesOrderItem = typeof salesOrderItems.$inferSelect;
 export type InsertSalesOrderItem = z.infer<typeof insertSalesOrderItemSchema>;
+export type RateAgreement = typeof rateAgreements.$inferSelect;
+export type InsertRateAgreement = z.infer<typeof insertRateAgreementSchema>;
