@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Calendar, TrendingUp, Filter, List, LayoutGrid } from "lucide-react";
-import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { Clock, Calendar, TrendingUp, Filter, List, LayoutGrid, Group, Settings2 } from "lucide-react";
+import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, startOfDay, isSameDay } from "date-fns";
 import type { TimeEntry, Task, Project } from "@shared/schema";
 import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
@@ -16,10 +16,27 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { useTableLayout } from "@/lib/user-preferences";
 
+// Tipi per raggruppamento
+type GroupBy = "none" | "task" | "date" | "description" | "task-date";
+
+interface GroupedTimeEntry {
+  id: string;
+  groupKey: string;
+  groupLabel: string;
+  entries: TimeEntry[];
+  totalDuration: number;
+  taskId?: string;
+  projectId?: string;
+  date?: string;
+  description?: string;
+}
+
 export default function TimesheetPage() {
   const [filterPeriod, setFilterPeriod] = useState<"week" | "month" | "all">("week");
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [groupBy, setGroupBy] = useState<GroupBy>("none");
+  const [showTimeNormalizer, setShowTimeNormalizer] = useState(false);
   
   // Use the table layout hook for persistent preferences
   const { 
@@ -96,7 +113,86 @@ export default function TimesheetPage() {
   const taskMap = new Map(tasks.map(task => [task.id, task]));
   const projectMap = new Map(projects.map(project => [project.id, project]));
 
-  // Group entries by task
+  // Raggruppamento dinamico delle time entries
+  const groupedEntries = useMemo((): GroupedTimeEntry[] => {
+    if (groupBy === "none") {
+      // Nessun raggruppamento: ogni entry è un gruppo singolo
+      return filteredEntries.map(entry => {
+        const task = taskMap.get(entry.taskId);
+        const project = task ? projectMap.get(task.projectId || "") : null;
+        
+        return {
+          id: entry.id,
+          groupKey: entry.id,
+          groupLabel: `${project?.name || "No Project"} > ${task?.title || "No Task"}`,
+          entries: [entry],
+          totalDuration: entry.duration || 0,
+          taskId: entry.taskId,
+          projectId: task?.projectId || undefined,
+          date: format(new Date(entry.startTime), "yyyy-MM-dd"),
+          description: entry.description || undefined
+        };
+      });
+    }
+
+    const groups = new Map<string, GroupedTimeEntry>();
+
+    filteredEntries.forEach(entry => {
+      const task = taskMap.get(entry.taskId);
+      const project = task ? projectMap.get(task.projectId || "") : null;
+      const entryDate = format(new Date(entry.startTime), "yyyy-MM-dd");
+      
+      let groupKey = "";
+      let groupLabel = "";
+
+      switch (groupBy) {
+        case "task":
+          groupKey = entry.taskId;
+          groupLabel = `${project?.name || "No Project"} > ${task?.title || "No Task"}`;
+          break;
+        case "date":
+          groupKey = entryDate;
+          groupLabel = format(new Date(entry.startTime), "EEEE, MMMM d, yyyy");
+          break;
+        case "description":
+          groupKey = entry.description || "No Description";
+          groupLabel = entry.description || "No Description";
+          break;
+        case "task-date":
+          groupKey = `${entry.taskId}-${entryDate}`;
+          groupLabel = `${task?.title || "No Task"} - ${format(new Date(entry.startTime), "MMM d")}`;
+          break;
+      }
+
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
+          id: groupKey,
+          groupKey,
+          groupLabel,
+          entries: [],
+          totalDuration: 0,
+          taskId: groupBy.includes("task") ? entry.taskId : undefined,
+          projectId: groupBy.includes("task") ? (task?.projectId || undefined) : undefined,
+          date: groupBy.includes("date") ? entryDate : undefined,
+          description: groupBy === "description" ? (entry.description || "No Description") : undefined
+        });
+      }
+
+      const group = groups.get(groupKey)!;
+      group.entries.push(entry);
+      group.totalDuration += entry.duration || 0;
+    });
+
+    return Array.from(groups.values()).sort((a, b) => {
+      // Ordina per data più recente o alfabeticamente
+      if (groupBy.includes("date")) {
+        return new Date(b.entries[0].startTime).getTime() - new Date(a.entries[0].startTime).getTime();
+      }
+      return a.groupLabel.localeCompare(b.groupLabel);
+    });
+  }, [filteredEntries, groupBy, taskMap, projectMap]);
+
+  // Group entries by task (legacy per le statistiche)
   const entriesByTask = filteredEntries.reduce((acc, entry) => {
     const taskId = entry.taskId;
     if (!acc[taskId]) {
@@ -208,18 +304,46 @@ export default function TimesheetPage() {
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold">Time Tracking Overview</h2>
             </div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={filterPeriod} onValueChange={(value: any) => setFilterPeriod(value)}>
-                <SelectTrigger className="w-[140px]" data-testid="select-time-period">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
-                  <SelectItem value="all">All Time</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Select value={filterPeriod} onValueChange={(value: any) => setFilterPeriod(value)}>
+                  <SelectTrigger className="w-[140px]" data-testid="select-time-period">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">This Week</SelectItem>
+                    <SelectItem value="month">This Month</SelectItem>
+                    <SelectItem value="all">All Time</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Group className="h-4 w-4 text-muted-foreground" />
+                <Select value={groupBy} onValueChange={(value: GroupBy) => setGroupBy(value)}>
+                  <SelectTrigger className="w-[160px]" data-testid="select-group-by">
+                    <SelectValue placeholder="Group by..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Grouping</SelectItem>
+                    <SelectItem value="task">By Task</SelectItem>
+                    <SelectItem value="date">By Date</SelectItem>
+                    <SelectItem value="description">By Description</SelectItem>
+                    <SelectItem value="task-date">By Task & Date</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTimeNormalizer(!showTimeNormalizer)}
+                data-testid="button-time-normalizer"
+              >
+                <Settings2 className="h-4 w-4 mr-2" />
+                Time Settings
+              </Button>
             </div>
           </div>
 
@@ -443,10 +567,10 @@ export default function TimesheetPage() {
           { id: 'duration', label: 'Duration' },
           { id: 'description', label: 'Description' },
         ]}
-        open={showConfigDialog}
+        isOpen={showConfigDialog}
         onOpenChange={setShowConfigDialog}
         editingLayout={editingLayout}
-        onSave={(updatedLayout) => {
+        onSave={(updatedLayout: any) => {
           updateExistingLayout(updatedLayout);
           setEditingLayout(null);
           setShowConfigDialog(false);

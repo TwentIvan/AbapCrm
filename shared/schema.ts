@@ -216,6 +216,55 @@ export const emailConfigs = pgTable("email_configs", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Configurazione normalizzazione tempi
+export const timeNormalizationConfigs = pgTable("time_normalization_configs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(), // "15 minuti", "30 minuti", "1 ora"
+  minMinutes: integer("min_minutes").notNull(), // 15, 30, 60
+  isDefault: boolean("is_default").default(false).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Ordini di vendita generati da timesheet
+export const salesOrderStatusEnum = pgEnum("sales_order_status", ["draft", "sent", "accepted", "invoiced", "paid", "cancelled"]);
+
+export const salesOrders = pgTable("sales_orders", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  partnerId: uuid("partner_id").references(() => partners.id).notNull(), // Cliente
+  orderNumber: text("order_number").notNull().unique(), // OV-2025-001
+  status: salesOrderStatusEnum("status").default("draft").notNull(),
+  description: text("description"),
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  taxes: decimal("taxes", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("EUR").notNull(),
+  issueDate: timestamp("issue_date").defaultNow().notNull(),
+  dueDate: timestamp("due_date"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Righe degli ordini di vendita (time entries raggruppate)
+export const salesOrderItems = pgTable("sales_order_items", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  salesOrderId: uuid("sales_order_id").references(() => salesOrders.id).notNull(),
+  projectId: uuid("project_id").references(() => projects.id),
+  taskId: uuid("task_id").references(() => tasks.id),
+  description: text("description").notNull(),
+  quantity: decimal("quantity", { precision: 8, scale: 2 }).notNull(), // Ore
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(), // €/ora
+  lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
+  workDate: timestamp("work_date"), // Data del lavoro
+  timeEntryIds: text("time_entry_ids").array().notNull(), // Array degli ID time_entries raggruppate
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
@@ -228,6 +277,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   messages: many(messages),
   comments: many(comments),
   emailConfigs: many(emailConfigs),
+  timeNormalizationConfigs: many(timeNormalizationConfigs),
+  salesOrders: many(salesOrders),
 }));
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({
@@ -259,6 +310,7 @@ export const partnersRelations = relations(partners, ({ one, many }) => ({
   deals: many(deals),
   calendarEvents: many(calendarEvents),
   messages: many(messages),
+  salesOrders: many(salesOrders),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({
@@ -300,6 +352,40 @@ export const commentsRelations = relations(comments, ({ one }) => ({
 
 export const emailConfigsRelations = relations(emailConfigs, ({ one }) => ({
   user: one(users, { fields: [emailConfigs.userId], references: [users.id] }),
+}));
+
+export const timeNormalizationConfigsRelations = relations(timeNormalizationConfigs, ({ one }) => ({
+  user: one(users, {
+    fields: [timeNormalizationConfigs.userId],
+    references: [users.id],
+  }),
+}));
+
+export const salesOrdersRelations = relations(salesOrders, ({ one, many }) => ({
+  user: one(users, {
+    fields: [salesOrders.userId],
+    references: [users.id],
+  }),
+  partner: one(partners, {
+    fields: [salesOrders.partnerId],
+    references: [partners.id],
+  }),
+  items: many(salesOrderItems),
+}));
+
+export const salesOrderItemsRelations = relations(salesOrderItems, ({ one }) => ({
+  salesOrder: one(salesOrders, {
+    fields: [salesOrderItems.salesOrderId],
+    references: [salesOrders.id],
+  }),
+  project: one(projects, {
+    fields: [salesOrderItems.projectId],
+    references: [projects.id],
+  }),
+  task: one(tasks, {
+    fields: [salesOrderItems.taskId],
+    references: [tasks.id],
+  }),
 }));
 
 // Insert schemas
@@ -378,6 +464,27 @@ export const insertEmailConfigSchema = createInsertSchema(emailConfigs).omit({
   updatedAt: true,
 });
 
+export const insertTimeNormalizationConfigSchema = createInsertSchema(timeNormalizationConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSalesOrderSchema = createInsertSchema(salesOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  orderNumber: true,
+});
+
+export const insertSalesOrderItemSchema = createInsertSchema(salesOrderItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  timeEntryIds: z.array(z.string()),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -401,3 +508,9 @@ export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type EmailConfig = typeof emailConfigs.$inferSelect;
 export type InsertEmailConfig = z.infer<typeof insertEmailConfigSchema>;
+export type TimeNormalizationConfig = typeof timeNormalizationConfigs.$inferSelect;
+export type InsertTimeNormalizationConfig = z.infer<typeof insertTimeNormalizationConfigSchema>;
+export type SalesOrder = typeof salesOrders.$inferSelect;
+export type InsertSalesOrder = z.infer<typeof insertSalesOrderSchema>;
+export type SalesOrderItem = typeof salesOrderItems.$inferSelect;
+export type InsertSalesOrderItem = z.infer<typeof insertSalesOrderItemSchema>;

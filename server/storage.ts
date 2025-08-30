@@ -1,5 +1,6 @@
 import { 
   users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, emailConfigs,
+  timeNormalizationConfigs, salesOrders, salesOrderItems,
   type User, type InsertUser,
   type Project, type InsertProject,
   type Task, type InsertTask,
@@ -10,7 +11,10 @@ import {
   type TimeEntry, type InsertTimeEntry,
   type Message, type InsertMessage,
   type Comment, type InsertComment,
-  type EmailConfig, type InsertEmailConfig
+  type EmailConfig, type InsertEmailConfig,
+  type TimeNormalizationConfig, type InsertTimeNormalizationConfig,
+  type SalesOrder, type InsertSalesOrder,
+  type SalesOrderItem, type InsertSalesOrderItem
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -80,6 +84,28 @@ export interface IStorage {
   deleteTimeEntry(id: string, userId: string): Promise<boolean>;
   stopTimeEntry(id: string, userId: string): Promise<TimeEntry | undefined>;
   getRunningTimeEntry(userId: string): Promise<TimeEntry | undefined>;
+  
+  // Time Normalization Configs
+  getTimeNormalizationConfigs(userId: string): Promise<TimeNormalizationConfig[]>;
+  getTimeNormalizationConfig(id: string, userId: string): Promise<TimeNormalizationConfig | undefined>;
+  createTimeNormalizationConfig(config: InsertTimeNormalizationConfig): Promise<TimeNormalizationConfig>;
+  updateTimeNormalizationConfig(id: string, config: Partial<InsertTimeNormalizationConfig>, userId: string): Promise<TimeNormalizationConfig | undefined>;
+  deleteTimeNormalizationConfig(id: string, userId: string): Promise<boolean>;
+  getDefaultTimeNormalizationConfig(userId: string): Promise<TimeNormalizationConfig | undefined>;
+  
+  // Sales Orders
+  getSalesOrders(userId: string): Promise<SalesOrder[]>;
+  getSalesOrder(id: string, userId: string): Promise<SalesOrder | undefined>;
+  createSalesOrder(order: InsertSalesOrder): Promise<SalesOrder>;
+  updateSalesOrder(id: string, order: Partial<InsertSalesOrder>, userId: string): Promise<SalesOrder | undefined>;
+  deleteSalesOrder(id: string, userId: string): Promise<boolean>;
+  
+  // Sales Order Items
+  getSalesOrderItems(salesOrderId: string, userId: string): Promise<SalesOrderItem[]>;
+  getSalesOrderItem(id: string, userId: string): Promise<SalesOrderItem | undefined>;
+  createSalesOrderItem(item: InsertSalesOrderItem): Promise<SalesOrderItem>;
+  updateSalesOrderItem(id: string, item: Partial<InsertSalesOrderItem>, userId: string): Promise<SalesOrderItem | undefined>;
+  deleteSalesOrderItem(id: string, userId: string): Promise<boolean>;
   getAllRunningTimeEntries(userId: string): Promise<TimeEntry[]>;
 
   // Messages
@@ -499,6 +525,162 @@ export class DatabaseStorage implements IStorage {
       .from(timeEntries)
       .where(and(eq(timeEntries.userId, userId), eq(timeEntries.isRunning, true)))
       .orderBy(desc(timeEntries.startTime));
+  }
+
+  // Time Normalization Configs
+  async getTimeNormalizationConfigs(userId: string): Promise<TimeNormalizationConfig[]> {
+    return await db
+      .select()
+      .from(timeNormalizationConfigs)
+      .where(eq(timeNormalizationConfigs.userId, userId))
+      .orderBy(asc(timeNormalizationConfigs.minMinutes));
+  }
+
+  async getTimeNormalizationConfig(id: string, userId: string): Promise<TimeNormalizationConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(timeNormalizationConfigs)
+      .where(and(eq(timeNormalizationConfigs.id, id), eq(timeNormalizationConfigs.userId, userId)));
+    return config || undefined;
+  }
+
+  async createTimeNormalizationConfig(config: InsertTimeNormalizationConfig): Promise<TimeNormalizationConfig> {
+    const [newConfig] = await db
+      .insert(timeNormalizationConfigs)
+      .values(config)
+      .returning();
+    return newConfig;
+  }
+
+  async updateTimeNormalizationConfig(id: string, config: Partial<InsertTimeNormalizationConfig>, userId: string): Promise<TimeNormalizationConfig | undefined> {
+    const [updated] = await db
+      .update(timeNormalizationConfigs)
+      .set({ ...config, updatedAt: new Date() })
+      .where(and(eq(timeNormalizationConfigs.id, id), eq(timeNormalizationConfigs.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteTimeNormalizationConfig(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(timeNormalizationConfigs)
+      .where(and(eq(timeNormalizationConfigs.id, id), eq(timeNormalizationConfigs.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getDefaultTimeNormalizationConfig(userId: string): Promise<TimeNormalizationConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(timeNormalizationConfigs)
+      .where(and(eq(timeNormalizationConfigs.userId, userId), eq(timeNormalizationConfigs.isDefault, true)));
+    return config || undefined;
+  }
+
+  // Sales Orders
+  async getSalesOrders(userId: string): Promise<SalesOrder[]> {
+    return await db
+      .select()
+      .from(salesOrders)
+      .where(eq(salesOrders.userId, userId))
+      .orderBy(desc(salesOrders.issueDate));
+  }
+
+  async getSalesOrder(id: string, userId: string): Promise<SalesOrder | undefined> {
+    const [order] = await db
+      .select()
+      .from(salesOrders)
+      .where(and(eq(salesOrders.id, id), eq(salesOrders.userId, userId)));
+    return order || undefined;
+  }
+
+  async createSalesOrder(order: InsertSalesOrder): Promise<SalesOrder> {
+    // Generate order number
+    const year = new Date().getFullYear();
+    const count = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(salesOrders)
+      .where(and(
+        eq(salesOrders.userId, order.userId),
+        sql`EXTRACT(YEAR FROM issue_date) = ${year}`
+      ));
+    
+    const orderNumber = `OV-${year}-${String((count[0]?.count || 0) + 1).padStart(3, '0')}`;
+    
+    const [newOrder] = await db
+      .insert(salesOrders)
+      .values({ ...order, orderNumber })
+      .returning();
+    return newOrder;
+  }
+
+  async updateSalesOrder(id: string, order: Partial<InsertSalesOrder>, userId: string): Promise<SalesOrder | undefined> {
+    const [updated] = await db
+      .update(salesOrders)
+      .set({ ...order, updatedAt: new Date() })
+      .where(and(eq(salesOrders.id, id), eq(salesOrders.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteSalesOrder(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(salesOrders)
+      .where(and(eq(salesOrders.id, id), eq(salesOrders.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Sales Order Items
+  async getSalesOrderItems(salesOrderId: string, userId: string): Promise<SalesOrderItem[]> {
+    // Verify ownership through sales order
+    const order = await this.getSalesOrder(salesOrderId, userId);
+    if (!order) return [];
+    
+    return await db
+      .select()
+      .from(salesOrderItems)
+      .where(eq(salesOrderItems.salesOrderId, salesOrderId))
+      .orderBy(asc(salesOrderItems.createdAt));
+  }
+
+  async getSalesOrderItem(id: string, userId: string): Promise<SalesOrderItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(salesOrderItems)
+      .innerJoin(salesOrders, eq(salesOrders.id, salesOrderItems.salesOrderId))
+      .where(and(eq(salesOrderItems.id, id), eq(salesOrders.userId, userId)));
+    return item?.sales_order_items || undefined;
+  }
+
+  async createSalesOrderItem(item: InsertSalesOrderItem): Promise<SalesOrderItem> {
+    const [newItem] = await db
+      .insert(salesOrderItems)
+      .values(item)
+      .returning();
+    return newItem;
+  }
+
+  async updateSalesOrderItem(id: string, item: Partial<InsertSalesOrderItem>, userId: string): Promise<SalesOrderItem | undefined> {
+    // Verify ownership through sales order
+    const existingItem = await this.getSalesOrderItem(id, userId);
+    if (!existingItem) return undefined;
+    
+    const [updated] = await db
+      .update(salesOrderItems)
+      .set({ ...item, updatedAt: new Date() })
+      .where(eq(salesOrderItems.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteSalesOrderItem(id: string, userId: string): Promise<boolean> {
+    // Verify ownership through sales order
+    const existingItem = await this.getSalesOrderItem(id, userId);
+    if (!existingItem) return false;
+    
+    const result = await db
+      .delete(salesOrderItems)
+      .where(eq(salesOrderItems.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   // Messages
