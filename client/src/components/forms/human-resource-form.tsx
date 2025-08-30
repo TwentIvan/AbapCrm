@@ -113,10 +113,10 @@ export function HumanResourceForm({ humanResource, onSuccess }: HumanResourceFor
         department: data.department && data.department !== "none" ? data.department : null,
         costCenter: data.costCenter || null,
         linkedUserId: data.linkedUserId && data.linkedUserId !== "none" ? data.linkedUserId : null,
-        baseHourlyRate: data.baseHourlyRate ? parseFloat(data.baseHourlyRate) : null,
+        baseHourlyRate: data.baseHourlyRate || null,
         isActive: data.isActive,
-        startDate: data.startDate ? new Date(data.startDate) : null,
-        endDate: data.endDate ? new Date(data.endDate) : null,
+        startDate: data.startDate || null,
+        endDate: data.endDate || null,
         notes: data.notes || null,
       };
 
