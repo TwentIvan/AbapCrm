@@ -491,11 +491,7 @@ function TimesheetDetailDialog({
             {timesheet.name}
           </DialogTitle>
           <DialogDescription>
-            {timesheet.description && (
-              <p className="text-sm text-muted-foreground mb-4">
-                {timesheet.description}
-              </p>
-            )}
+            {timesheet.description}
           </DialogDescription>
         </DialogHeader>
 
@@ -517,34 +513,145 @@ function TimesheetDetailDialog({
           </div>
         </div>
 
-        {/* Grouped Time Entries */}
-        <div className="space-y-6">
-          <h3 className="text-lg font-semibold">Time Entries Raggruppate</h3>
+        {/* Grouped Time Entries - Aggregated View */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Raggruppamenti Timesheet</h3>
           
-          {Object.entries(groupedData).map(([groupKey, entries]) => (
-            <div key={groupKey} className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium text-sm text-muted-foreground">{groupKey}</h4>
-                <Badge variant="secondary" className="text-xs">
-                  {Array.isArray(entries) ? entries.length : 0} entries
-                </Badge>
-              </div>
-              
-              <div className="grid gap-3">
-                {Array.isArray(entries) && entries.map((entry: any, index: number) => (
-                  <TimesheetEntryCard
-                    key={entry.id || index}
-                    entry={entry}
-                    onDelete={() => deleteEntryMutation.mutate(entry.id)}
-                    onUpdate={(data) => updateEntryMutation.mutate({ id: entry.id, data })}
-                  />
-                ))}
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-muted/30 px-4 py-3 border-b">
+              <div className="grid grid-cols-12 gap-4 text-sm font-medium text-muted-foreground">
+                <div className="col-span-6">Gruppo</div>
+                <div className="col-span-2 text-center">Voci</div>
+                <div className="col-span-2 text-center">Durata Totale</div>
+                <div className="col-span-2 text-center">Azioni</div>
               </div>
             </div>
-          ))}
+            
+            <div className="divide-y">
+              {Object.entries(groupedData).map(([groupKey, entries]) => {
+                const entriesArray = Array.isArray(entries) ? entries : [];
+                const totalDuration = entriesArray.reduce((sum, entry) => sum + (entry.durationMinutes || 0), 0);
+                const hours = Math.floor(totalDuration / 60);
+                const minutes = totalDuration % 60;
+                
+                return (
+                  <TimesheetGroupRow
+                    key={groupKey}
+                    groupKey={groupKey}
+                    entries={entriesArray}
+                    totalDuration={totalDuration}
+                    onEntryDelete={(entryId) => deleteEntryMutation.mutate(entryId)}
+                    onEntryUpdate={(entryId, data) => updateEntryMutation.mutate({ id: entryId, data })}
+                  />
+                );
+              })}
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function TimesheetGroupRow({
+  groupKey,
+  entries,
+  totalDuration,
+  onEntryDelete,
+  onEntryUpdate
+}: {
+  groupKey: string;
+  entries: any[];
+  totalDuration: number;
+  onEntryDelete: (entryId: string) => void;
+  onEntryUpdate: (entryId: string, data: any) => void;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
+  };
+
+  // Parse group info from groupKey
+  const groupInfo = groupKey.split(' | ').reduce((acc, part) => {
+    const [key, value] = part.split(': ');
+    acc[key] = value;
+    return acc;
+  }, {} as Record<string, string>);
+
+  return (
+    <>
+      <div className="px-4 py-3 hover:bg-muted/20 transition-colors">
+        <div className="grid grid-cols-12 gap-4 items-center">
+          {/* Group Info */}
+          <div className="col-span-6">
+            <div className="space-y-1">
+              <div className="font-medium text-sm">
+                {groupInfo.Task || 'Task sconosciuto'}
+              </div>
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                {groupInfo.Project && (
+                  <div>🏗️ {groupInfo.Project}</div>
+                )}
+                {groupInfo.Date && (
+                  <div>📅 {groupInfo.Date}</div>
+                )}
+                {groupInfo.description && groupInfo.description !== 'Unknown' && (
+                  <div>📝 {groupInfo.description}</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Entry Count */}
+          <div className="col-span-2 text-center">
+            <Badge variant="secondary" className="text-xs">
+              {entries.length} voci
+            </Badge>
+          </div>
+
+          {/* Total Duration */}
+          <div className="col-span-2 text-center">
+            <div className="font-mono font-medium text-green-600">
+              {formatDuration(totalDuration)}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="col-span-2 text-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="h-8"
+            >
+              {isExpanded ? '▼ Chiudi' : '▶ Espandi'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded Entry Details */}
+      {isExpanded && (
+        <div className="px-8 py-4 bg-muted/10 border-t">
+          <div className="space-y-3">
+            <h5 className="text-sm font-medium text-muted-foreground">Dettagli Entry:</h5>
+            <div className="grid gap-3">
+              {entries.map((entry, index) => (
+                <TimesheetEntryCard
+                  key={entry.id || index}
+                  entry={entry}
+                  onDelete={() => onEntryDelete(entry.id)}
+                  onUpdate={(data) => onEntryUpdate(entry.id, data)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -583,7 +690,7 @@ function TimesheetEntryCard({
   };
 
   return (
-    <div className="bg-white border rounded-lg p-4 space-y-3">
+    <div className="bg-white border rounded-lg p-3 text-sm">
       <div className="flex items-start justify-between">
         <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2">
@@ -593,19 +700,19 @@ function TimesheetEntryCard({
             </Badge>
           </div>
           
-          <div className="text-sm text-muted-foreground">
-            {formatTime(entry.startTime)} - {formatTime(entry.endTime)}
+          <div className="text-xs text-muted-foreground">
+            ⏰ {formatTime(entry.startTime)} - {formatTime(entry.endTime)}
           </div>
 
           {isEditing ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <label className="text-xs font-medium">Durata (minuti):</label>
+                <label className="text-xs font-medium">Durata (min):</label>
                 <input
                   type="number"
                   value={editedDuration}
                   onChange={(e) => setEditedDuration(parseInt(e.target.value) || 0)}
-                  className="w-20 px-2 py-1 border rounded text-sm"
+                  className="w-16 px-1 py-0.5 border rounded text-xs"
                   min="0"
                 />
               </div>
@@ -615,19 +722,19 @@ function TimesheetEntryCard({
                   type="text"
                   value={editedDescription}
                   onChange={(e) => setEditedDescription(e.target.value)}
-                  className="w-full px-2 py-1 border rounded text-sm mt-1"
+                  className="w-full px-2 py-1 border rounded text-xs mt-1"
                   placeholder="Aggiungi descrizione..."
                 />
               </div>
             </div>
           ) : (
             <div className="space-y-1">
-              <div className="text-sm font-mono bg-blue-50 px-2 py-1 rounded">
-                {formatDuration(entry.durationMinutes || 0)}
+              <div className="text-xs font-mono bg-blue-50 px-2 py-1 rounded w-fit">
+                ⏱️ {formatDuration(entry.durationMinutes || 0)}
               </div>
               {entry.description && (
                 <div className="text-xs text-muted-foreground">
-                  {entry.description}
+                  📝 {entry.description}
                 </div>
               )}
             </div>
@@ -641,7 +748,7 @@ function TimesheetEntryCard({
                 size="sm" 
                 variant="ghost"
                 onClick={handleSave}
-                className="h-8 w-8 p-0"
+                className="h-6 w-6 p-0 text-green-600"
               >
                 ✓
               </Button>
@@ -649,7 +756,7 @@ function TimesheetEntryCard({
                 size="sm" 
                 variant="ghost"
                 onClick={() => setIsEditing(false)}
-                className="h-8 w-8 p-0"
+                className="h-6 w-6 p-0 text-gray-600"
               >
                 ✕
               </Button>
@@ -660,7 +767,7 @@ function TimesheetEntryCard({
                 size="sm" 
                 variant="ghost"
                 onClick={() => setIsEditing(true)}
-                className="h-8 w-8 p-0"
+                className="h-6 w-6 p-0"
                 data-testid={`button-edit-entry-${entry.id}`}
               >
                 <Edit className="h-3 w-3" />
@@ -669,7 +776,7 @@ function TimesheetEntryCard({
                 size="sm" 
                 variant="ghost"
                 onClick={onDelete}
-                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
                 data-testid={`button-delete-entry-${entry.id}`}
               >
                 <Trash2 className="h-3 w-3" />
