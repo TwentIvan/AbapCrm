@@ -62,6 +62,7 @@ export default function SalesOrdersPage() {
     setEditingOrder(null);
   };
 
+
   // Define table columns
   const tableColumns = [
     {

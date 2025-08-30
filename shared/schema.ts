@@ -63,6 +63,7 @@ export const tasks = pgTable("tasks", {
 });
 
 export const recurrenceTypeEnum = pgEnum("recurrence_type", ["none", "daily", "weekly", "monthly", "yearly"]);
+export const timesheetStatusEnum = pgEnum("timesheet_status", ["draft", "to_send", "sent", "invoiced"]);
 
 // Planning Windows - Multiple planning periods for a project with recurrence support
 export const planningWindows = pgTable("planning_windows", {
@@ -229,6 +230,7 @@ export const timesheets = pgTable("timesheets", {
   userId: uuid("user_id").references(() => users.id).notNull(),
   name: text("name").notNull(), // "Timesheet Settimana 35", "Progetto ABC - Agosto"
   description: text("description"),
+  status: timesheetStatusEnum("status").default("draft").notNull(),
   groupingFields: text("grouping_fields").array().notNull(), // ["taskId", "date"]
   timeEntryIds: text("time_entry_ids").array().notNull(), // Array degli ID time entries incluse
   groupedData: text("grouped_data").notNull(), // JSON con dati processati raggruppati (riferimento storico)

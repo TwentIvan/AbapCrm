@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Clock, Calendar, Eye, MoreHorizontal, Grid3X3, List, Edit } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
@@ -135,7 +136,20 @@ export default function TimesheetsPage() {
 
   // Function to convert timesheet to sales order
   const handleConvertToSalesOrder = async (timesheet: Timesheet) => {
+    if (convertingToSalesOrder === timesheet.id) return; // Prevent double clicks
+    
+    setConvertingToSalesOrder(timesheet.id);
     try {
+      // Check if timesheet is in correct status for conversion
+      if (timesheet.status !== "to_send") {
+        toast({
+          title: "Stato non valido",
+          description: "Il timesheet deve essere in stato 'Da inviare' per poter essere convertito",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Parse grouped data from timesheet
       const groupedData = timesheet.groupedData ? JSON.parse(timesheet.groupedData) : {};
       
@@ -241,6 +255,12 @@ export default function TimesheetsPage() {
       // Invalidate sales orders cache
       queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
       
+      // Update timesheet status to "sent" after successful conversion
+      await updateTimesheetMutation.mutateAsync({
+        id: timesheet.id,
+        data: { status: "sent" }
+      });
+
       toast({
         title: "✓ Ordine di vendita creato",
         description: `Ordine ${salesOrder.orderNumber} creato con successo`,
@@ -253,11 +273,14 @@ export default function TimesheetsPage() {
         description: error instanceof Error ? error.message : "Errore nel creare l'ordine di vendita",
         variant: "destructive"
       });
+    } finally {
+      setConvertingToSalesOrder(null);
     }
   };
 
   const [selectedTimesheetForView, setSelectedTimesheetForView] = useState<Timesheet | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [convertingToSalesOrder, setConvertingToSalesOrder] = useState<string | null>(null);
 
   const handleView = (timesheet: Timesheet) => {
     setSelectedTimesheetForView(timesheet);
@@ -336,6 +359,33 @@ export default function TimesheetsPage() {
       },
     },
     {
+      accessorKey: "status",
+      header: "Stato",
+      cell: ({ row }: { row: any }) => {
+        const status = row.getValue("status") as string;
+        const statusLabels = {
+          draft: "Bozza",
+          to_send: "Da inviare", 
+          sent: "Inviato",
+          invoiced: "Fatturato"
+        };
+        const statusColors = {
+          draft: "bg-gray-100 text-gray-800",
+          to_send: "bg-yellow-100 text-yellow-800",
+          sent: "bg-blue-100 text-blue-800", 
+          invoiced: "bg-green-100 text-green-800"
+        };
+        return (
+          <Badge 
+            className={`text-xs ${statusColors[status as keyof typeof statusColors] || "bg-gray-100 text-gray-800"}`}
+            variant="secondary"
+          >
+            {statusLabels[status as keyof typeof statusLabels] || status}
+          </Badge>
+        );
+      },
+    },
+    {
       id: "actions",
       header: "Azioni",
       cell: ({ row }: { row: any }) => {
@@ -359,6 +409,7 @@ export default function TimesheetsPage() {
                 onClick={async () => {
                   await handleConvertToSalesOrder(timesheet);
                 }}
+                disabled={convertingToSalesOrder === timesheet.id || timesheet.status !== "to_send"}
                 data-testid={`menu-convert-timesheet-${timesheet.id}`}
               >
                 <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -621,6 +672,7 @@ export default function TimesheetsPage() {
           }}
           updateTimesheetMutation={updateTimesheetMutation}
           onConvertToSalesOrder={handleConvertToSalesOrder}
+          convertingToSalesOrder={convertingToSalesOrder}
         />
       </main>
     </div>
@@ -633,7 +685,8 @@ function TimesheetDetailDialog({
   onOpenChange,
   onTimesheetUpdate,
   updateTimesheetMutation,
-  onConvertToSalesOrder
+  onConvertToSalesOrder,
+  convertingToSalesOrder
 }: { 
   timesheetId: string;
   open: boolean;
@@ -641,6 +694,7 @@ function TimesheetDetailDialog({
   onTimesheetUpdate: () => void;
   updateTimesheetMutation: any;
   onConvertToSalesOrder: (timesheet: Timesheet) => Promise<void>;
+  convertingToSalesOrder: string | null;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -811,6 +865,37 @@ function TimesheetDetailDialog({
           </div>
         </div>
 
+        {/* Status Management */}
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-medium text-gray-900 mb-1">Stato Timesheet</h4>
+              <p className="text-xs text-gray-600">Il timesheet può essere convertito solo quando è "Da inviare"</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select 
+                value={timesheet.status || "draft"}
+                onValueChange={(value) => {
+                  updateTimesheetMutation.mutate({
+                    id: timesheet.id,
+                    data: { status: value }
+                  });
+                }}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Bozza</SelectItem>
+                  <SelectItem value="to_send">Da inviare</SelectItem>
+                  <SelectItem value="sent">Inviato</SelectItem>
+                  <SelectItem value="invoiced">Fatturato</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
         {/* Conversion Actions */}
         <div className="flex justify-end gap-3 mb-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg">
           <div className="flex-1">
@@ -820,10 +905,11 @@ function TimesheetDetailDialog({
           <div className="flex gap-2">
             <Button 
               onClick={() => onConvertToSalesOrder(timesheet)}
-              className="bg-blue-600 hover:bg-blue-700"
+              disabled={convertingToSalesOrder === timesheet.id || timesheet.status !== "to_send"}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
               data-testid="button-convert-sales-order"
             >
-              📋 Ordine di Vendita
+              {convertingToSalesOrder === timesheet.id ? "⏳ Creando..." : "📋 Ordine di Vendita"}
             </Button>
             <Button 
               onClick={() => handleConvertToInvoice(timesheet)}
