@@ -60,6 +60,16 @@ function TaskTimerButtons({ task }: { task: Task }) {
     refetchInterval: 1000, // Refresh every second to get timer updates
   });
 
+  // Get all time entries for this task to show total time
+  const { data: timeEntries = [] } = useQuery<TimeEntry[]>({
+    queryKey: ["/api/time-entries/task", task.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/time-entries/task/${task.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch time entries');
+      return res.json();
+    },
+  });
+
 
   // Start timer mutation
   const startTimerMutation = useMutation({
@@ -182,34 +192,65 @@ function TaskTimerButtons({ task }: { task: Task }) {
     }
   };
 
+  // Calculate total time tracked for this task
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins}m`;
+  };
+
+  const getTotalTime = () => {
+    const totalTime = timeEntries.reduce((total, entry) => {
+      return total + (entry.duration || 0);
+    }, 0);
+    return formatDuration(totalTime);
+  };
+
 
   return (
     <>
       <div className="flex items-center gap-1">
         {isCurrentTaskRunning ? (
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={handleStop}
-            disabled={stopTimerMutation.isPending}
-            data-testid={`button-stop-timer-${task.id}`}
-            data-timer-button="true"
-          >
-            <Square className="h-3 w-3 mr-1" />
-            {getElapsedTime()}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleStop}
+              disabled={stopTimerMutation.isPending}
+              data-testid={`button-stop-timer-${task.id}`}
+              data-timer-button="true"
+            >
+              <Square className="h-3 w-3 mr-1" />
+              {getElapsedTime()}
+            </Button>
+            {timeEntries.length > 0 && (
+              <span className="text-xs text-muted-foreground font-medium">
+                Total: {getTotalTime()}
+              </span>
+            )}
+          </div>
         ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleStart}
-            disabled={startTimerMutation.isPending || hasRunningTimer}
-            data-testid={`button-start-timer-${task.id}`}
-            data-timer-button="true"
-          >
-            <Play className="h-3 w-3 mr-1" />
-            Start
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white border-0"
+              onClick={handleStart}
+              disabled={startTimerMutation.isPending || hasRunningTimer}
+              data-testid={`button-start-timer-${task.id}`}
+              data-timer-button="true"
+            >
+              <Play className="h-3 w-3 mr-1" />
+              Start
+            </Button>
+            {timeEntries.length > 0 && (
+              <span className="text-xs text-muted-foreground font-medium">
+                {getTotalTime()}
+              </span>
+            )}
+          </div>
         )}
       </div>
       
