@@ -41,6 +41,11 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   const { data: partners, isLoading: isLoadingPartners, error: partnersError } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
     enabled: !!user,
+    queryFn: async () => {
+      const res = await fetch("/api/partners", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch partners');
+      return res.json();
+    },
   });
 
   // Debug log per vedere cosa succede con la query
