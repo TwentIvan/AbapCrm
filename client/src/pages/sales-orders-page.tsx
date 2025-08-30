@@ -7,7 +7,7 @@ import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { Edit, FileText, Euro, Calendar, Building } from "lucide-react";
 import { SalesOrder, Partner } from "@shared/schema";
@@ -167,6 +167,9 @@ export default function SalesOrdersPage() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Sales Order</DialogTitle>
+            <DialogDescription>
+              Create a new sales order from timesheet entries.
+            </DialogDescription>
           </DialogHeader>
           <div className="p-4">
             <p className="text-sm text-muted-foreground">
@@ -180,6 +183,9 @@ export default function SalesOrdersPage() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Sales Order</DialogTitle>
+            <DialogDescription>
+              Edit the details of this sales order.
+            </DialogDescription>
           </DialogHeader>
           <div className="p-4">
             <p className="text-sm text-muted-foreground">

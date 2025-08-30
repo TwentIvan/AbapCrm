@@ -44,6 +44,9 @@ export default function TimesheetsPage() {
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [selectedTimesheetForView, setSelectedTimesheetForView] = useState<Timesheet | null>(null);
+  const [showViewDialog, setShowViewDialog] = useState(false);
+  const [convertingToSalesOrder, setConvertingToSalesOrder] = useState<string | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -277,10 +280,6 @@ export default function TimesheetsPage() {
       setConvertingToSalesOrder(null);
     }
   };
-
-  const [selectedTimesheetForView, setSelectedTimesheetForView] = useState<Timesheet | null>(null);
-  const [showViewDialog, setShowViewDialog] = useState(false);
-  const [convertingToSalesOrder, setConvertingToSalesOrder] = useState<string | null>(null);
 
   const handleView = (timesheet: Timesheet) => {
     setSelectedTimesheetForView(timesheet);
