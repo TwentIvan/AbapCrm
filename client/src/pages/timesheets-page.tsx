@@ -110,13 +110,9 @@ export default function TimesheetsPage() {
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       apiRequest("PATCH", `/api/timesheets/${id}`, data),
     onSuccess: (data, variables) => {
-      // Invalidate and refetch both the general timesheets list and the specific timesheet
+      // Only invalidate, don't force refetch to avoid loops
       queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
       queryClient.invalidateQueries({ queryKey: ["/api/timesheets", variables.id] });
-      
-      // Force immediate refetch for better UX
-      queryClient.refetchQueries({ queryKey: ["/api/timesheets"] });
-      queryClient.refetchQueries({ queryKey: ["/api/timesheets", variables.id] });
       
       toast({
         title: "✓ Timesheet aggiornato",
@@ -668,13 +664,6 @@ function TimesheetDetailDialog({
                         data: { 
                           totalDuration: newTimesheetTotal,
                           groupSnapshots: JSON.stringify(updatedSnapshots)
-                        }
-                      }, {
-                        onSuccess: () => {
-                          // Force refresh of this specific timesheet
-                          queryClient.invalidateQueries({ queryKey: ["/api/timesheets", timesheetId] });
-                          queryClient.refetchQueries({ queryKey: ["/api/timesheets", timesheetId] });
-                          onTimesheetUpdate();
                         }
                       });
                     }}
