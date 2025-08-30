@@ -14,7 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Trash2, Clock, Calendar, Eye, MoreHorizontal, Grid3X3, List, Edit } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
-import type { Timesheet } from "@shared/schema";
+import type { Timesheet, Project, Deal, Partner } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import {
   AlertDialog,
@@ -530,6 +530,177 @@ function TimesheetDetailDialog({
     },
   });
 
+  // Conversion helper functions
+  const { data: projects } = useQuery({
+    queryKey: ["/api/projects"],
+    enabled: open,
+  });
+
+  const { data: deals } = useQuery({
+    queryKey: ["/api/deals"],
+    enabled: open,
+  });
+
+  const { data: partners } = useQuery({
+    queryKey: ["/api/partners"],
+    enabled: open,
+  });
+
+  const createSalesOrderMutation = useMutation({
+    mutationFn: async (salesOrderData: any) => {
+      const response = await apiRequest("POST", "/api/sales-orders", salesOrderData);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
+      toast({ title: "✓ Ordine di vendita creato con successo" });
+    },
+    onError: () => {
+      toast({
+        title: "Errore nella creazione dell'ordine di vendita",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createSalesOrderItemMutation = useMutation({
+    mutationFn: async (itemData: any) => {
+      return await apiRequest("POST", "/api/sales-order-items", itemData);
+    },
+  });
+
+  const findProjectHourlyRate = (projectId: string): number => {
+    if (!projects || !deals) return 50; // Default rate
+    
+    const project = projects.find((p: Project) => p.id === projectId);
+    if (!project || !project.clientId) return 50;
+    
+    const clientDeals = deals.filter((d: Deal) => d.partnerId === project.clientId && d.status === 'active');
+    if (clientDeals.length > 0) {
+      return parseFloat(clientDeals[0].hourlyRate || "50");
+    }
+    
+    return 50;
+  };
+
+  const handleConvertToSalesOrder = async (timesheet: Timesheet, groupSnapshots: any) => {
+    if (!groupSnapshots || Object.keys(groupSnapshots).length === 0) {
+      toast({
+        title: "Nessun dato da convertire",
+        description: "Il timesheet non contiene gruppi di ore da convertire",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Calculate totals and prepare line items
+      const lineItems = [];
+      let totalAmount = 0;
+
+      for (const [groupKey, snapshot] of Object.entries(groupSnapshots)) {
+        const groupSnapshot = snapshot as any;
+        const entries = groupSnapshot.entries || [];
+        const totalHours = (groupSnapshot.duration || 0) / 60; // Convert minutes to hours
+        
+        if (totalHours <= 0) continue;
+
+        // Find project and rate for this group
+        let projectId = null;
+        let taskId = null;
+        let hourlyRate = 50; // Default
+
+        // Extract project/task from first entry in group
+        if (entries.length > 0) {
+          projectId = entries[0].projectId;
+          taskId = entries[0].taskId;
+          hourlyRate = findProjectHourlyRate(projectId);
+        }
+
+        const lineTotal = totalHours * hourlyRate;
+        totalAmount += lineTotal;
+
+        lineItems.push({
+          projectId,
+          taskId,
+          description: `Consulenza ${groupKey} - ${totalHours.toFixed(2)} ore`,
+          quantity: totalHours.toFixed(2),
+          unitPrice: hourlyRate.toFixed(2),
+          lineTotal: lineTotal.toFixed(2),
+          workDate: entries[0]?.startTime ? new Date(entries[0].startTime) : new Date(),
+          timeEntryIds: entries.map((e: any) => e.id)
+        });
+      }
+
+      if (lineItems.length === 0) {
+        toast({
+          title: "Nessuna riga da convertire",
+          description: "Non sono state trovate ore valide da convertire",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Find the first client from the entries
+      let partnerId = null;
+      if (projects && lineItems[0]?.projectId) {
+        const project = projects.find((p: Project) => p.id === lineItems[0].projectId);
+        partnerId = project?.clientId;
+      }
+
+      if (!partnerId) {
+        toast({
+          title: "Cliente non trovato",
+          description: "Non è stato possibile identificare il cliente per questo timesheet",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create sales order
+      const salesOrderData = {
+        partnerId,
+        description: `Ordine generato da Timesheet: ${timesheet.name}`,
+        subtotal: totalAmount.toFixed(2),
+        taxes: "0.00",
+        total: totalAmount.toFixed(2),
+        currency: "EUR",
+        issueDate: new Date(),
+        notes: `Convertito automaticamente dal timesheet ${timesheet.name} in data ${new Date().toLocaleDateString('it-IT')}`
+      };
+
+      const salesOrder = await createSalesOrderMutation.mutateAsync(salesOrderData);
+
+      // Create line items
+      for (const lineItem of lineItems) {
+        await createSalesOrderItemMutation.mutateAsync({
+          ...lineItem,
+          salesOrderId: salesOrder.id
+        });
+      }
+
+      toast({
+        title: "✓ Conversione completata",
+        description: `Ordine di vendita ${salesOrder.orderNumber} creato con ${lineItems.length} righe`,
+      });
+
+    } catch (error) {
+      console.error("Conversion error:", error);
+      toast({
+        title: "Errore nella conversione",
+        description: "Si è verificato un errore durante la creazione dell'ordine di vendita",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleConvertToInvoice = async (timesheet: Timesheet, groupSnapshots: any) => {
+    toast({
+      title: "Funzionalità in sviluppo",
+      description: "La conversione in fattura sarà disponibile presto",
+    });
+  };
+
   // Don't render dialog content if not open
   if (!open) {
     return null;
@@ -616,6 +787,30 @@ function TimesheetDetailDialog({
           <div className="text-center">
             <div className="text-2xl font-bold text-purple-600">{Object.keys(groupSnapshots || {}).length}</div>
             <div className="text-sm text-muted-foreground">Gruppi</div>
+          </div>
+        </div>
+
+        {/* Conversion Actions */}
+        <div className="flex justify-end gap-3 mb-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg">
+          <div className="flex-1">
+            <h4 className="text-sm font-medium text-gray-900 mb-1">Conversione Documenti</h4>
+            <p className="text-xs text-gray-600">Trasforma le ore registrate in documenti commerciali</p>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => handleConvertToSalesOrder(timesheet, groupSnapshots)}
+              className="bg-blue-600 hover:bg-blue-700"
+              data-testid="button-convert-sales-order"
+            >
+              📋 Ordine di Vendita
+            </Button>
+            <Button 
+              onClick={() => handleConvertToInvoice(timesheet, groupSnapshots)}
+              className="bg-green-600 hover:bg-green-700"
+              data-testid="button-convert-invoice"
+            >
+              🧾 Fattura
+            </Button>
           </div>
         </div>
 

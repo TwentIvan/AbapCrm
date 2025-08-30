@@ -6,7 +6,8 @@ import { z } from "zod";
 import { 
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, 
   insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema,
-  insertMessageSchema, insertCommentSchema, insertEmailConfigSchema, insertTimesheetSchema
+  insertMessageSchema, insertCommentSchema, insertEmailConfigSchema, insertTimesheetSchema,
+  insertSalesOrderSchema, insertSalesOrderItemSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -1095,6 +1096,101 @@ export function registerRoutes(app: Express): Server {
       console.error("Email sync error:", error);
       res.status(500).json({ error: "Failed to sync emails" });
     }
+  });
+
+  // Sales Orders
+  app.get("/api/sales-orders", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const orders = await storage.getSalesOrders(req.user!.id);
+    res.json(orders);
+  });
+
+  app.get("/api/sales-orders/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const order = await storage.getSalesOrder(req.params.id, req.user!.id);
+    if (!order) return res.sendStatus(404);
+    res.json(order);
+  });
+
+  app.post("/api/sales-orders", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const orderData = insertSalesOrderSchema.parse({
+        ...req.body,
+        userId: req.user!.id
+      });
+      const order = await storage.createSalesOrder(orderData);
+      res.status(201).json(order);
+    } catch (error) {
+      console.error("Sales order creation error:", error);
+      res.status(400).json({ error: "Invalid sales order data" });
+    }
+  });
+
+  app.put("/api/sales-orders/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const order = await storage.updateSalesOrder(req.params.id, req.body, req.user!.id);
+      if (!order) return res.sendStatus(404);
+      res.json(order);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid sales order data" });
+    }
+  });
+
+  app.delete("/api/sales-orders/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const deleted = await storage.deleteSalesOrder(req.params.id, req.user!.id);
+    if (!deleted) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  // Sales Order Items
+  app.get("/api/sales-order-items", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { salesOrderId } = req.query;
+    if (!salesOrderId || typeof salesOrderId !== 'string') {
+      return res.status(400).json({ error: "salesOrderId is required" });
+    }
+    const items = await storage.getSalesOrderItems(salesOrderId, req.user!.id);
+    res.json(items);
+  });
+
+  app.get("/api/sales-order-items/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const item = await storage.getSalesOrderItem(req.params.id, req.user!.id);
+    if (!item) return res.sendStatus(404);
+    res.json(item);
+  });
+
+  app.post("/api/sales-order-items", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const itemData = insertSalesOrderItemSchema.parse(req.body);
+      const item = await storage.createSalesOrderItem(itemData);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Sales order item creation error:", error);
+      res.status(400).json({ error: "Invalid sales order item data" });
+    }
+  });
+
+  app.put("/api/sales-order-items/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const item = await storage.updateSalesOrderItem(req.params.id, req.body, req.user!.id);
+      if (!item) return res.sendStatus(404);
+      res.json(item);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid sales order item data" });
+    }
+  });
+
+  app.delete("/api/sales-order-items/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const deleted = await storage.deleteSalesOrderItem(req.params.id, req.user!.id);
+    if (!deleted) return res.sendStatus(404);
+    res.sendStatus(204);
   });
 
   const httpServer = createServer(app);

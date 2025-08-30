@@ -22,6 +22,7 @@ export const projects = pgTable("projects", {
   description: text("description"),
   status: projectStatusEnum("status").default("planning").notNull(),
   clientId: uuid("client_id").references(() => partners.id),
+  dealId: uuid("deal_id").references(() => deals.id), // Collegamento all'accordo per tariffe
   parentProjectId: uuid("parent_project_id"), // Self-reference for project hierarchy
   userId: uuid("user_id").references(() => users.id).notNull(),
   startDate: timestamp("start_date"),
@@ -111,6 +112,7 @@ export const deals = pgTable("deals", {
   title: text("title").notNull(),
   description: text("description"),
   value: decimal("value", { precision: 10, scale: 2 }).notNull(),
+  hourlyRate: decimal("hourly_rate", { precision: 8, scale: 2 }), // Tariffa oraria per conversione timesheet
   stage: dealStageEnum("stage").default("prospecting").notNull(),
   probability: integer("probability").default(50).notNull(),
   partnerId: uuid("partner_id").references(() => partners.id).notNull(),
@@ -300,6 +302,7 @@ export const usersRelations = relations(users, ({ many }) => ({
 export const projectsRelations = relations(projects, ({ one, many }) => ({
   user: one(users, { fields: [projects.userId], references: [users.id] }),
   client: one(partners, { fields: [projects.clientId], references: [partners.id] }),
+  deal: one(deals, { fields: [projects.dealId], references: [deals.id] }),
   parentProject: one(projects, { fields: [projects.parentProjectId], references: [projects.id], relationName: "ProjectHierarchy" }),
   subProjects: many(projects, { relationName: "ProjectHierarchy" }),
   tasks: many(tasks),
@@ -332,6 +335,7 @@ export const partnersRelations = relations(partners, ({ one, many }) => ({
 export const dealsRelations = relations(deals, ({ one, many }) => ({
   user: one(users, { fields: [deals.userId], references: [users.id] }),
   partner: one(partners, { fields: [deals.partnerId], references: [partners.id] }),
+  projects: many(projects),
   calendarEvents: many(calendarEvents),
 }));
 
