@@ -570,12 +570,12 @@ function TimesheetDetailDialog({
   });
 
   const findProjectHourlyRate = (projectId: string): number => {
-    if (!projects || !deals) return 50; // Default rate
+    if (!projects || !deals || !Array.isArray(projects) || !Array.isArray(deals)) return 50; // Default rate
     
-    const project = projects.find((p: Project) => p.id === projectId);
+    const project = (projects as Project[]).find((p: Project) => p.id === projectId);
     if (!project || !project.clientId) return 50;
     
-    const clientDeals = deals.filter((d: Deal) => d.partnerId === project.clientId && d.status === 'active');
+    const clientDeals = (deals as Deal[]).filter((d: Deal) => d.partnerId === project.clientId && d.stage === 'won');
     if (clientDeals.length > 0) {
       return parseFloat(clientDeals[0].hourlyRate || "50");
     }
@@ -595,7 +595,7 @@ function TimesheetDetailDialog({
 
     try {
       // Calculate totals and prepare line items
-      const lineItems = [];
+      const lineItems: any[] = [];
       let totalAmount = 0;
 
       for (const [groupKey, snapshot] of Object.entries(groupSnapshots)) {
@@ -643,8 +643,8 @@ function TimesheetDetailDialog({
 
       // Find the first client from the entries
       let partnerId = null;
-      if (projects && lineItems[0]?.projectId) {
-        const project = projects.find((p: Project) => p.id === lineItems[0].projectId);
+      if (projects && Array.isArray(projects) && lineItems[0]?.projectId) {
+        const project = (projects as Project[]).find((p: Project) => p.id === lineItems[0].projectId);
         partnerId = project?.clientId;
       }
 
@@ -669,7 +669,8 @@ function TimesheetDetailDialog({
         notes: `Convertito automaticamente dal timesheet ${timesheet.name} in data ${new Date().toLocaleDateString('it-IT')}`
       };
 
-      const salesOrder = await createSalesOrderMutation.mutateAsync(salesOrderData);
+      const salesOrderResponse = await createSalesOrderMutation.mutateAsync(salesOrderData);
+      const salesOrder = salesOrderResponse as any; // Type assertion for the response
 
       // Create line items
       for (const lineItem of lineItems) {
@@ -681,7 +682,7 @@ function TimesheetDetailDialog({
 
       toast({
         title: "✓ Conversione completata",
-        description: `Ordine di vendita ${salesOrder.orderNumber} creato con ${lineItems.length} righe`,
+        description: `Ordine di vendita ${salesOrder.orderNumber || 'N/A'} creato con ${lineItems.length} righe`,
       });
 
     } catch (error) {
