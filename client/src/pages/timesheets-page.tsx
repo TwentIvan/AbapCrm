@@ -110,9 +110,14 @@ export default function TimesheetsPage() {
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       apiRequest("PATCH", `/api/timesheets/${id}`, data),
     onSuccess: (data, variables) => {
-      // Invalidate both the general timesheets list and the specific timesheet
+      // Invalidate and refetch both the general timesheets list and the specific timesheet
       queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
       queryClient.invalidateQueries({ queryKey: ["/api/timesheets", variables.id] });
+      
+      // Force immediate refetch for better UX
+      queryClient.refetchQueries({ queryKey: ["/api/timesheets"] });
+      queryClient.refetchQueries({ queryKey: ["/api/timesheets", variables.id] });
+      
       toast({
         title: "✓ Timesheet aggiornato",
         description: "I totali sono stati aggiornati con successo.",
@@ -669,6 +674,13 @@ function TimesheetDetailDialog({
                         data: { 
                           totalDuration: newTimesheetTotal,
                           groupOverrides: JSON.stringify(groupOverrides)
+                        }
+                      }, {
+                        onSuccess: () => {
+                          // Force refresh of this specific timesheet
+                          queryClient.invalidateQueries({ queryKey: ["/api/timesheets", timesheetId] });
+                          queryClient.refetchQueries({ queryKey: ["/api/timesheets", timesheetId] });
+                          onTimesheetUpdate();
                         }
                       });
                     }}
