@@ -115,8 +115,8 @@ export function HumanResourceForm({ humanResource, onSuccess }: HumanResourceFor
         linkedUserId: data.linkedUserId && data.linkedUserId !== "none" ? data.linkedUserId : null,
         baseHourlyRate: data.baseHourlyRate || null,
         isActive: data.isActive,
-        startDate: data.startDate ? new Date(data.startDate) : null,
-        endDate: data.endDate ? new Date(data.endDate) : null,
+        startDate: data.startDate || null,
+        endDate: data.endDate || null,
         notes: data.notes || null,
       };
 

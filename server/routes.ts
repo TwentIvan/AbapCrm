@@ -1311,19 +1311,17 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/human-resources", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      console.log("Raw request data:", req.body);
-      
-      // Aggiungi automaticamente l'userId dell'utente autenticato prima della validazione
+      // Aggiungi automaticamente l'userId dell'utente autenticato e converti le date
       const dataWithUserId = {
         ...req.body,
-        userId: req.user!.id
+        userId: req.user!.id,
+        // Converti stringhe ISO in oggetti Date se presenti
+        startDate: req.body.startDate ? new Date(req.body.startDate) : null,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : null,
       };
-      
-      console.log("Data with userId:", dataWithUserId);
       
       const validation = insertHumanResourceSchema.safeParse(dataWithUserId);
       if (!validation.success) {
-        console.log("Validation errors:", validation.error.errors);
         return res.status(400).json({ 
           error: "Invalid data", 
           details: validation.error.errors 
