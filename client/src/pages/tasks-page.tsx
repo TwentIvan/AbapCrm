@@ -106,6 +106,7 @@ function TaskTimerButtons({ task }: { task: Task }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries/running"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/task", task.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       setShowCompletionDialog(false);
     },
