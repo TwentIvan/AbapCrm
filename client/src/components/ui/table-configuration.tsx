@@ -146,7 +146,7 @@ export function TableConfiguration({
     return availableColumns.map(col => ({
       id: col.id,
       label: col.label,
-      visible: layout.columnVisibility?.[col.id] ?? true,
+      visible: layout.columns?.[col.id]?.visible ?? true,
       sortDirection: layout.sorting?.find(s => s.id === col.id)?.desc === false ? 'asc' : layout.sorting?.find(s => s.id === col.id)?.desc === true ? 'desc' : null,
       enableSubtotal: layout.aggregations?.subtotals?.groupBy?.includes(col.id) || false,
     }));
@@ -164,7 +164,7 @@ export function TableConfiguration({
 
   const [enableColumnReordering, setEnableColumnReordering] = useState<boolean>(() => {
     const layout = userPreferences.getTableLayout(tableId);
-    return (layout.columnOrder && layout.columnOrder.length > 0) || true;
+    return (layout.columns && Object.keys(layout.columns).length > 0) || true;
   });
 
   const [enableAggregation, setEnableAggregation] = useState<boolean>(() => {
@@ -244,9 +244,12 @@ export function TableConfiguration({
     
     const updatedLayout = {
       ...layout,
-      columnOrder: columns.map(col => col.id),
-      columnVisibility: Object.fromEntries(
-        columns.map(col => [col.id, col.visible])
+      columns: Object.fromEntries(
+        columns.map(col => [col.id, { 
+          visible: col.visible,
+          position: columns.findIndex(c => c.id === col.id),
+          width: col.width 
+        }])
       ),
       sorting,
       aggregations: {
