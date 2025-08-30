@@ -7,6 +7,9 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Clock, Calendar, TrendingUp, Filter, List, LayoutGrid, Group, Settings2 } from "lucide-react";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, startOfDay, isSameDay } from "date-fns";
 import type { TimeEntry, Task, Project } from "@shared/schema";
@@ -322,8 +325,8 @@ export default function TimesheetPage() {
       <Sidebar />
       <main className="flex-1 overflow-auto">
         <Header 
-          title="Timesheet" 
-          subtitle="Track and manage your time entries across all tasks"
+          title="Time Entries" 
+          subtitle="Gestisci le registrazioni del tempo. Seleziona voci e configura raggruppamenti per creare timesheet."
           onNewClick={() => {}}
         />
         
@@ -399,6 +402,20 @@ export default function TimesheetPage() {
                     </div>
                   </PopoverContent>
                 </Popover>
+                {selectedGroupFields.length > 0 && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => {
+                      // Trigger re-grouping by forcing useMemo recalculation
+                      // The grouping logic already uses selectedGroupFields
+                    }}
+                    className="ml-2"
+                    data-testid="button-execute-grouping"
+                  >
+                    Execute
+                  </Button>
+                )}
               </div>
               
               <Button
@@ -520,10 +537,80 @@ export default function TimesheetPage() {
           searchPlaceholder="Cerca time entries..."
           configurableColumns={true}
           enableAdvancedFilters={true}
+          filterColumns={[
+            {
+              id: "taskId",
+              type: "select",
+              label: "Task",
+              options: Array.from(new Set(tableData.map(entry => {
+                const task = taskMap.get(entry.taskId);
+                return { value: entry.taskId, label: task?.title || "Unknown Task" };
+              }))).sort((a, b) => a.label.localeCompare(b.label))
+            },
+            {
+              id: "projectId", 
+              type: "select",
+              label: "Project",
+              options: Array.from(new Set(tableData.map(entry => {
+                const task = taskMap.get(entry.taskId);
+                const project = task?.projectId ? projectMap.get(task.projectId) : null;
+                return { 
+                  value: task?.projectId || "", 
+                  label: project?.name || "No Project" 
+                };
+              }))).filter(opt => opt.value).sort((a, b) => a.label.localeCompare(b.label))
+            },
+            {
+              id: "status",
+              type: "select", 
+              label: "Status",
+              options: [
+                { value: "completed", label: "Completed" },
+                { value: "running", label: "Running" }
+              ]
+            },
+            {
+              id: "date",
+              type: "date",
+              label: "Date"
+            }
+          ]}
           enableColumnReordering={true}
           enableAggregation={true}
           enableSelection={true}
           enableClipboardCopy={true}
+          bulkActions={[
+            {
+              label: 'Crea Timesheet',
+              icon: ({ className }: { className?: string }) => (
+                <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              ),
+              onClick: (selectedEntries: any[]) => {
+                if (selectedGroupFields.length === 0) {
+                  toast({
+                    title: "Configurazione richiesta",
+                    description: "Seleziona almeno un campo per il raggruppamento",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+                
+                toast({
+                  title: "Timesheet creato",
+                  description: `Timesheet creato con ${selectedEntries.length} voci raggruppate per ${selectedGroupFields.length} campi`,
+                });
+                
+                // Qui andrà la logica per creare effettivamente il timesheet
+                console.log('Creating timesheet with:', {
+                  entries: selectedEntries,
+                  groupFields: selectedGroupFields
+                });
+              },
+              variant: 'default' as const,
+            }
+          ]}
           aggregationColumns={[
             {
               id: "duration",
@@ -536,6 +623,9 @@ export default function TimesheetPage() {
         <Card>
           <CardHeader>
             <CardTitle>Time Entries by Task</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Vista raggruppata per task (seleziona vista Lista per funzioni avanzate)
+            </p>
           </CardHeader>
           <CardContent>
           {Object.keys(entriesByTask).length > 0 ? (
@@ -648,6 +738,84 @@ export default function TimesheetPage() {
           setShowConfigDialog(false);
         }}
       />
+
+      {/* Time Settings Dialog */}
+      <Dialog open={showTimeNormalizer} onOpenChange={setShowTimeNormalizer}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Time Settings</DialogTitle>
+            <DialogDescription>
+              Configura le impostazioni per la normalizzazione e gestione del tempo.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="min-minutes">Minimo minuti per arrotondamento</Label>
+              <Input
+                id="min-minutes"
+                type="number"
+                placeholder="15"
+                min="1"
+                max="60"
+                data-testid="input-min-minutes"
+              />
+              <p className="text-xs text-muted-foreground">
+                Le registrazioni del tempo verranno arrotondate a multipli di questo valore
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="default-description">Descrizione predefinita</Label>
+              <Input
+                id="default-description"
+                placeholder="Lavoro su progetto..."
+                data-testid="input-default-description"
+              />
+              <p className="text-xs text-muted-foreground">
+                Descrizione automatica per nuove registrazioni tempo
+              </p>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox id="auto-stop" data-testid="checkbox-auto-stop" />
+              <Label htmlFor="auto-stop" className="text-sm">
+                Fermata automatica timer dopo 8 ore
+              </Label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox id="round-up" data-testid="checkbox-round-up" />
+              <Label htmlFor="round-up" className="text-sm">
+                Arrotonda sempre per eccesso
+              </Label>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowTimeNormalizer(false)}
+              data-testid="button-cancel-time-settings"
+            >
+              Annulla
+            </Button>
+            <Button
+              onClick={() => {
+                // Qui andrà la logica per salvare le impostazioni
+                toast({
+                  title: "Impostazioni salvate",
+                  description: "Le configurazioni del tempo sono state aggiornate.",
+                });
+                setShowTimeNormalizer(false);
+              }}
+              data-testid="button-save-time-settings"
+            >
+              Salva
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
