@@ -144,6 +144,7 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
 
   const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
+      console.log("🔧 RAW FORM DATA:", data);
       const agreementData = {
         ...data,
         hourlyRate: parseFloat(data.hourlyRate),
@@ -153,16 +154,20 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
         validTo: data.validTo ? new Date(data.validTo) : null,
         groupingValues: groupingValues,
       };
+      console.log("🔧 PROCESSED AGREEMENT DATA:", agreementData);
       
       if (rateAgreement) {
+        console.log("📝 UPDATING existing agreement...");
         const res = await apiRequest("PUT", `/api/rate-agreements/${rateAgreement.id}`, agreementData);
         return res.json();
       } else {
+        console.log("🆕 CREATING new agreement...");
         const res = await apiRequest("POST", "/api/rate-agreements", agreementData);
         return res.json();
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      console.log("✅ MUTATION SUCCESS! Result:", result);
       queryClient.invalidateQueries({ queryKey: ["/api/rate-agreements"] });
       toast({
         title: "Successo",
@@ -171,6 +176,7 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
       onSuccess?.();
     },
     onError: (error) => {
+      console.error("❌ MUTATION ERROR:", error);
       toast({
         title: "Errore",
         description: "Errore durante il salvataggio dell'accordo",
