@@ -68,7 +68,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       const taskData = {
         ...data,
         userId: user!.id,
-        projectId: data.projectId && data.projectId !== "none" ? data.projectId : null,
+        projectId: data.projectId && !["none", "loading", "error", "no-projects"].includes(data.projectId) ? data.projectId : null,
         parentTaskId: data.parentTaskId && data.parentTaskId !== "no-parent" ? data.parentTaskId : null,
         dueDate: data.dueDate || null,
         estimatedEffort: data.estimatedEffort ? parseInt(data.estimatedEffort) : null,
@@ -242,11 +242,11 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                 <SelectContent>
                   <SelectItem value="none">No project</SelectItem>
                   {projectsLoading ? (
-                    <SelectItem value="" disabled>Loading projects...</SelectItem>
+                    <SelectItem value="loading" disabled>Loading projects...</SelectItem>
                   ) : projectsError ? (
-                    <SelectItem value="" disabled>Error loading projects</SelectItem>
+                    <SelectItem value="error" disabled>Error loading projects</SelectItem>
                   ) : activeProjects.length === 0 ? (
-                    <SelectItem value="" disabled>No active projects found</SelectItem>
+                    <SelectItem value="no-projects" disabled>No active projects found</SelectItem>
                   ) : (
                     activeProjects.map((project) => (
                       <SelectItem key={project.id} value={project.id}>
