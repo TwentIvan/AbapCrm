@@ -279,6 +279,10 @@ export function DataTable<TData, TValue>({
     // Filter original columns to keep only visible ones in correct order
     const filteredColumns = orderedColumns.filter(col => {
       const colId = (col as any).accessorKey || col.id;
+      // Always include selection and actions columns regardless of layout settings
+      if (colId === 'select' || colId === 'actions') {
+        return true;
+      }
       return visibleColumnIds.includes(colId);
     });
     
@@ -286,6 +290,15 @@ export function DataTable<TData, TValue>({
     filteredColumns.sort((a, b) => {
       const aId = (a as any).accessorKey || a.id;
       const bId = (b as any).accessorKey || b.id;
+      
+      // Selection column always first
+      if (aId === 'select') return -1;
+      if (bId === 'select') return 1;
+      
+      // Actions column always last
+      if (aId === 'actions') return 1;
+      if (bId === 'actions') return -1;
+      
       const aIndex = visibleColumnIds.indexOf(aId);
       const bIndex = visibleColumnIds.indexOf(bId);
       return aIndex - bIndex;
