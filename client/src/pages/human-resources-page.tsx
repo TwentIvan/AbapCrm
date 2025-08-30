@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { HumanResourceForm } from "@/components/forms/human-resource-form";
 import { apiRequest } from "@/lib/queryClient";
@@ -141,6 +141,12 @@ export function HumanResourcesPage() {
               <DialogTitle>
                 {selectedResource ? "Modifica Risorsa" : "Nuova Risorsa"}
               </DialogTitle>
+              <DialogDescription>
+                {selectedResource 
+                  ? "Aggiorna le informazioni della risorsa umana selezionata" 
+                  : "Inserisci i dati per creare una nuova risorsa umana"
+                }
+              </DialogDescription>
             </DialogHeader>
             <HumanResourceForm
               humanResource={selectedResource || undefined}

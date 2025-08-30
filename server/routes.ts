@@ -16,6 +16,13 @@ import { initializeEmailService, getEmailService } from "./imap-service";
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
+  // Users
+  app.get("/api/users", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const users = await storage.getUsers();
+    res.json(users);
+  });
+
   // Projects
   app.get("/api/projects", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

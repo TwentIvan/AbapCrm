@@ -30,9 +30,12 @@ const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // Users
+  getUsers(): Promise<User[]>;
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, userData: Partial<InsertUser>): Promise<User | undefined>;
 
   // Projects
   getProjects(userId: string): Promise<Project[]>;
@@ -188,12 +191,30 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
+  async getUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(asc(users.firstName));
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(insertUser)
       .returning();
     return user;
+  }
+
+  async updateUser(id: string, userData: Partial<InsertUser>): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser || undefined;
   }
 
   // Projects
