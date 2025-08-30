@@ -532,7 +532,7 @@ function TimesheetDetailDialog({
                 const entriesArray = Array.isArray(entries) ? entries : [];
                 
                 // Calculate duration from startTime and endTime if durationMinutes is not available
-                const totalDuration = entriesArray.reduce((sum, entry) => {
+                const rawTotalDuration = entriesArray.reduce((sum, entry) => {
                   let duration = entry.durationMinutes || entry.duration || 0;
                   
                   // If no duration field, calculate from startTime/endTime
@@ -544,6 +544,9 @@ function TimesheetDetailDialog({
                   
                   return sum + duration;
                 }, 0);
+                
+                // Apply 15-minute normalization to group totals
+                const totalDuration = Math.round(rawTotalDuration / 15) * 15;
                 
                 return (
                   <TimesheetGroupRow
@@ -586,6 +589,11 @@ function TimesheetGroupRow({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingTotal, setIsEditingTotal] = useState(false);
   const [editedTotal, setEditedTotal] = useState(totalDuration);
+  
+  // Function to normalize duration to 15-minute increments
+  const normalizeDuration = (minutes: number) => {
+    return Math.round(minutes / 15) * 15;
+  };
   
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -638,9 +646,14 @@ function TimesheetGroupRow({
                 <input
                   type="number"
                   value={Math.round(editedTotal)}
-                  onChange={(e) => setEditedTotal(parseInt(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 0;
+                    // Normalize to 15-minute increments as user types
+                    setEditedTotal(normalizeDuration(value));
+                  }}
                   className="w-16 px-1 py-0.5 border rounded text-xs text-center"
                   min="0"
+                  step="15"
                 />
                 <span className="text-xs text-muted-foreground">min</span>
                 <Button
@@ -658,7 +671,7 @@ function TimesheetGroupRow({
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    setEditedTotal(totalDuration);
+                    setEditedTotal(normalizeDuration(totalDuration));
                     setIsEditingTotal(false);
                   }}
                   className="h-5 w-5 p-0 text-gray-600"
@@ -670,7 +683,8 @@ function TimesheetGroupRow({
               <div 
                 className="font-mono font-medium text-green-600 cursor-pointer hover:bg-green-50 px-2 py-1 rounded"
                 onClick={() => {
-                  setEditedTotal(totalDuration);
+                  // Start editing with normalized value
+                  setEditedTotal(normalizeDuration(totalDuration));
                   setIsEditingTotal(true);
                 }}
                 title="Clicca per modificare il totale"
