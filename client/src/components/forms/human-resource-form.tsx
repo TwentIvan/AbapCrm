@@ -67,10 +67,15 @@ export function HumanResourceForm({ humanResource, onSuccess }: HumanResourceFor
   const queryClient = useQueryClient();
 
   // Carica tutti gli utenti per il collegamento
-  const { data: users = [] } = useQuery<User[]>({
+  const { data: users = [], isLoading: usersLoading, error: usersError } = useQuery<User[]>({
     queryKey: ["/api/users"],
     staleTime: 5 * 60 * 1000,
   });
+
+  // Debug degli utenti
+  console.log("Users data:", users);
+  console.log("Users loading:", usersLoading);
+  console.log("Users error:", usersError);
 
   const form = useForm<HumanResourceFormData>({
     resolver: zodResolver(formSchema),
