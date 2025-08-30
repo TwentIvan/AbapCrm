@@ -530,9 +530,20 @@ function TimesheetDetailDialog({
             <div className="divide-y">
               {Object.entries(groupedData).map(([groupKey, entries]) => {
                 const entriesArray = Array.isArray(entries) ? entries : [];
-                const totalDuration = entriesArray.reduce((sum, entry) => sum + (entry.durationMinutes || 0), 0);
-                const hours = Math.floor(totalDuration / 60);
-                const minutes = totalDuration % 60;
+                
+                // Calculate duration from startTime and endTime if durationMinutes is not available
+                const totalDuration = entriesArray.reduce((sum, entry) => {
+                  let duration = entry.durationMinutes || entry.duration || 0;
+                  
+                  // If no duration field, calculate from startTime/endTime
+                  if (!duration && entry.startTime && entry.endTime) {
+                    const start = new Date(entry.startTime);
+                    const end = new Date(entry.endTime);
+                    duration = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60)); // minutes
+                  }
+                  
+                  return sum + duration;
+                }, 0);
                 
                 return (
                   <TimesheetGroupRow
@@ -542,6 +553,10 @@ function TimesheetDetailDialog({
                     totalDuration={totalDuration}
                     onEntryDelete={(entryId) => deleteEntryMutation.mutate(entryId)}
                     onEntryUpdate={(entryId, data) => updateEntryMutation.mutate({ id: entryId, data })}
+                    onGroupTotalUpdate={(newTotal) => {
+                      // TODO: Update group total in timesheet
+                      console.log(`Update group ${groupKey} to ${newTotal} minutes`);
+                    }}
                   />
                 );
               })}
@@ -558,15 +573,19 @@ function TimesheetGroupRow({
   entries,
   totalDuration,
   onEntryDelete,
-  onEntryUpdate
+  onEntryUpdate,
+  onGroupTotalUpdate
 }: {
   groupKey: string;
   entries: any[];
   totalDuration: number;
   onEntryDelete: (entryId: string) => void;
   onEntryUpdate: (entryId: string, data: any) => void;
+  onGroupTotalUpdate?: (newTotal: number) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isEditingTotal, setIsEditingTotal] = useState(false);
+  const [editedTotal, setEditedTotal] = useState(totalDuration);
   
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -614,9 +633,51 @@ function TimesheetGroupRow({
 
           {/* Total Duration */}
           <div className="col-span-2 text-center">
-            <div className="font-mono font-medium text-green-600">
-              {formatDuration(totalDuration)}
-            </div>
+            {isEditingTotal ? (
+              <div className="flex items-center justify-center gap-1">
+                <input
+                  type="number"
+                  value={Math.round(editedTotal)}
+                  onChange={(e) => setEditedTotal(parseInt(e.target.value) || 0)}
+                  className="w-16 px-1 py-0.5 border rounded text-xs text-center"
+                  min="0"
+                />
+                <span className="text-xs text-muted-foreground">min</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    onGroupTotalUpdate?.(editedTotal);
+                    setIsEditingTotal(false);
+                  }}
+                  className="h-5 w-5 p-0 text-green-600"
+                >
+                  ✓
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditedTotal(totalDuration);
+                    setIsEditingTotal(false);
+                  }}
+                  className="h-5 w-5 p-0 text-gray-600"
+                >
+                  ✕
+                </Button>
+              </div>
+            ) : (
+              <div 
+                className="font-mono font-medium text-green-600 cursor-pointer hover:bg-green-50 px-2 py-1 rounded"
+                onClick={() => {
+                  setEditedTotal(totalDuration);
+                  setIsEditingTotal(true);
+                }}
+                title="Clicca per modificare il totale"
+              >
+                {formatDuration(totalDuration)}
+              </div>
+            )}
           </div>
 
           {/* Actions */}
@@ -665,7 +726,22 @@ function TimesheetEntryCard({
   onUpdate: (data: any) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editedDuration, setEditedDuration] = useState(entry.durationMinutes || 0);
+  // Calculate duration from entry data
+  const calculateEntryDuration = (entry: any) => {
+    if (entry.durationMinutes || entry.duration) {
+      return entry.durationMinutes || entry.duration;
+    }
+    
+    if (entry.startTime && entry.endTime) {
+      const start = new Date(entry.startTime);
+      const end = new Date(entry.endTime);
+      return Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60));
+    }
+    
+    return 0;
+  };
+
+  const [editedDuration, setEditedDuration] = useState(() => calculateEntryDuration(entry));
   const [editedDescription, setEditedDescription] = useState(entry.description || '');
 
   const handleSave = () => {
@@ -730,7 +806,7 @@ function TimesheetEntryCard({
           ) : (
             <div className="space-y-1">
               <div className="text-xs font-mono bg-blue-50 px-2 py-1 rounded w-fit">
-                ⏱️ {formatDuration(entry.durationMinutes || 0)}
+                ⏱️ {formatDuration(calculateEntryDuration(entry))}
               </div>
               {entry.description && (
                 <div className="text-xs text-muted-foreground">
