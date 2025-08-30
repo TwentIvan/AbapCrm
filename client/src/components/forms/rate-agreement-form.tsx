@@ -153,12 +153,12 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
       console.log("🔧 RAW FORM DATA:", data);
       const agreementData = {
         ...data,
-        hourlyRate: parseFloat(data.hourlyRate),
+        hourlyRate: data.hourlyRate, // Keep as string
         priority: parseInt(data.priority),
-        minimumHours: data.minimumHours ? parseFloat(data.minimumHours) : null,
-        validFrom: new Date(data.validFrom),
-        validTo: data.validTo ? new Date(data.validTo) : null,
-        groupingValues: groupingValues,
+        minimumHours: data.minimumHours || null,
+        validFrom: data.validFrom,
+        validTo: data.validTo || null,
+        groupingValues: JSON.stringify(groupingValues),
       };
       console.log("🔧 PROCESSED AGREEMENT DATA:", agreementData);
       
