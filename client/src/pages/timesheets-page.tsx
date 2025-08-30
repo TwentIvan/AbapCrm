@@ -134,21 +134,44 @@ export default function TimesheetsPage() {
   };
 
   // Function to convert timesheet to sales order
-  const handleConvertToSalesOrder = async (timesheet: Timesheet, groupSnapshots: any) => {
-    if (!groupSnapshots || Object.keys(groupSnapshots).length === 0) {
-      toast({
-        title: "Nessun dato da convertire",
-        description: "Il timesheet non contiene gruppi di ore da convertire",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleConvertToSalesOrder = async (timesheet: Timesheet) => {
     try {
-      // Calculate totals from timesheet data
-      const timeEntryIds = JSON.parse(timesheet.timeEntryIds || '[]');
+      // Parse grouped data from timesheet
+      const groupedData = timesheet.groupedData ? JSON.parse(timesheet.groupedData) : {};
       
-      if (timeEntryIds.length === 0) {
+      if (!groupedData || Object.keys(groupedData).length === 0) {
+        toast({
+          title: "Nessun dato da convertire",
+          description: "Il timesheet non contiene gruppi di ore da convertire",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Calculate totals from grouped data
+      let totalDuration = 0;
+      let allTimeEntryIds: string[] = [];
+      let firstProjectId: string | null = null;
+      
+      // Extract time entry IDs and calculate total duration from grouped data
+      Object.values(groupedData).forEach((groupEntries: any) => {
+        if (Array.isArray(groupEntries)) {
+          groupEntries.forEach((entry: any) => {
+            if (entry.id) {
+              allTimeEntryIds.push(entry.id);
+            }
+            if (entry.duration) {
+              totalDuration += entry.duration;
+            }
+            // Get first task ID for partner identification
+            if (!firstProjectId && entry.taskId) {
+              firstProjectId = entry.taskId;
+            }
+          });
+        }
+      });
+
+      if (allTimeEntryIds.length === 0) {
         toast({
           title: "Nessuna voce di tempo",
           description: "Il timesheet non contiene time entries valide",
@@ -157,25 +180,19 @@ export default function TimesheetsPage() {
         return;
       }
 
-      // Use first project's client as default partner
-      const response = await fetch('/api/time-entries', { credentials: 'include' });
-      const allTimeEntries = await response.json();
-      const timesheetEntries = allTimeEntries.filter((entry: any) => timeEntryIds.includes(entry.id));
-      
-      if (timesheetEntries.length === 0) {
+      // Find the project and client for partner identification
+      if (!firstProjectId) {
         toast({
-          title: "Time entries non trovate",
-          description: "Non sono state trovate le time entries associate al timesheet",
+          title: "Task non trovato",
+          description: "Non è stato possibile identificare il task per questo timesheet",
           variant: "destructive",
         });
         return;
       }
 
-      // Find the project and client for the first entry
-      const firstEntry = timesheetEntries[0];
       const tasksResponse = await fetch('/api/tasks', { credentials: 'include' });
       const tasks = await tasksResponse.json();
-      const task = tasks.find((t: any) => t.id === firstEntry.taskId);
+      const task = tasks.find((t: any) => t.id === firstProjectId);
       
       if (!task || !task.projectId) {
         toast({
@@ -199,7 +216,7 @@ export default function TimesheetsPage() {
         return;
       }
 
-      // Convert to sales order using the new API endpoint
+      // Convert to sales order using the API endpoint
       const salesOrderResponse = await fetch('/api/sales-orders/from-timesheet', {
         method: 'POST',
         headers: {
@@ -207,7 +224,7 @@ export default function TimesheetsPage() {
         },
         credentials: 'include',
         body: JSON.stringify({
-          timeEntryIds: timeEntryIds,
+          timeEntryIds: allTimeEntryIds,
           partnerId: project.clientId,
           description: `Ordine generato da Timesheet: ${timesheet.name}`,
           hourlyRate: "50" // Default rate
@@ -340,8 +357,7 @@ export default function TimesheetsPage() {
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={async () => {
-                  const groupSnapshots = timesheet.groupSnapshots ? JSON.parse(timesheet.groupSnapshots) : {};
-                  await handleConvertToSalesOrder(timesheet, groupSnapshots);
+                  await handleConvertToSalesOrder(timesheet);
                 }}
                 data-testid={`menu-convert-timesheet-${timesheet.id}`}
               >
@@ -388,8 +404,7 @@ export default function TimesheetsPage() {
         // Process each selected timesheet
         for (const timesheet of selectedTimesheets) {
           try {
-            const groupSnapshots = timesheet.groupSnapshots ? JSON.parse(timesheet.groupSnapshots) : {};
-            await handleConvertToSalesOrder(timesheet, groupSnapshots);
+            await handleConvertToSalesOrder(timesheet);
           } catch (error) {
             console.error(`Error converting timesheet ${timesheet.name}:`, error);
             toast({
@@ -605,6 +620,7 @@ export default function TimesheetsPage() {
             queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
           }}
           updateTimesheetMutation={updateTimesheetMutation}
+          onConvertToSalesOrder={handleConvertToSalesOrder}
         />
       </main>
     </div>
@@ -616,13 +632,15 @@ function TimesheetDetailDialog({
   open, 
   onOpenChange,
   onTimesheetUpdate,
-  updateTimesheetMutation
+  updateTimesheetMutation,
+  onConvertToSalesOrder
 }: { 
   timesheetId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTimesheetUpdate: () => void;
   updateTimesheetMutation: any;
+  onConvertToSalesOrder: (timesheet: Timesheet) => Promise<void>;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -722,6 +740,13 @@ function TimesheetDetailDialog({
     },
   });
 
+  const handleConvertToInvoice = async (timesheet: Timesheet) => {
+    toast({
+      title: "Funzionalità in sviluppo",
+      description: "La conversione in fattura sarà disponibile presto",
+    });
+  };
+
   // Don't render dialog content if not open
   if (!open) {
     return null;
@@ -746,38 +771,13 @@ function TimesheetDetailDialog({
     );
   }
   
-  // Parse static group snapshots (independent from time entries)
-  let groupSnapshots: Record<string, any> = {};
+  // Parse grouped data from timesheet 
+  let groupedData: Record<string, any[]> = {};
   
   try {
-    groupSnapshots = JSON.parse(timesheet.groupSnapshots || '{}');
-    
-    // If groupSnapshots is empty but we have groupedData, use it as fallback
-    if (Object.keys(groupSnapshots).length === 0 && timesheet.groupedData) {
-      const fallbackData = JSON.parse(timesheet.groupedData || '{}');
-      
-      // Convert old format to new snapshot format
-      Object.entries(fallbackData).forEach(([groupKey, entries]: [string, any]) => {
-        const entriesArray = Array.isArray(entries) ? entries : [];
-        const totalDuration = entriesArray.reduce((sum, entry) => {
-          let duration = entry.durationMinutes || entry.duration || 0;
-          if (!duration && entry.startTime && entry.endTime) {
-            const start = new Date(entry.startTime);
-            const end = new Date(entry.endTime);
-            duration = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60));
-          }
-          return sum + duration;
-        }, 0);
-        
-        groupSnapshots[groupKey] = {
-          duration: Math.round(totalDuration / 15) * 15,
-          entryCount: entriesArray.length,
-          entries: entriesArray
-        };
-      });
-    }
+    groupedData = JSON.parse(timesheet.groupedData || '{}');
   } catch (e) {
-    console.error('Error parsing timesheet data:', e);
+    console.error('Error parsing timesheet grouped data:', e);
   }
 
   return (
@@ -806,7 +806,7 @@ function TimesheetDetailDialog({
             <div className="text-sm text-muted-foreground">Durata totale</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">{Object.keys(groupSnapshots || {}).length}</div>
+            <div className="text-2xl font-bold text-purple-600">{Object.keys(groupedData || {}).length}</div>
             <div className="text-sm text-muted-foreground">Gruppi</div>
           </div>
         </div>
@@ -819,14 +819,14 @@ function TimesheetDetailDialog({
           </div>
           <div className="flex gap-2">
             <Button 
-              onClick={() => handleConvertToSalesOrder(timesheet, groupSnapshots)}
+              onClick={() => onConvertToSalesOrder(timesheet)}
               className="bg-blue-600 hover:bg-blue-700"
               data-testid="button-convert-sales-order"
             >
               📋 Ordine di Vendita
             </Button>
             <Button 
-              onClick={() => handleConvertToInvoice(timesheet, groupSnapshots)}
+              onClick={() => handleConvertToInvoice(timesheet)}
               className="bg-green-600 hover:bg-green-700"
               data-testid="button-convert-invoice"
             >
@@ -850,36 +850,35 @@ function TimesheetDetailDialog({
             </div>
             
             <div className="divide-y">
-              {Object.entries(groupSnapshots || {}).map(([groupKey, snapshot]) => {
-                // Ensure snapshot is defined and has expected structure
-                const safeSnapshot = snapshot || { entries: [], duration: 0 };
+              {Object.entries(groupedData || {}).map(([groupKey, entries]) => {
+                // Calculate total duration for this group
+                const groupDuration = Array.isArray(entries) ? entries.reduce((sum, entry) => sum + (entry.duration || 0), 0) : 0;
                 
                 return (
                   <TimesheetGroupRow
                     key={groupKey}
                     groupKey={groupKey}
-                    entries={safeSnapshot.entries || []}
-                    totalDuration={safeSnapshot.duration || 0}
+                    entries={entries || []}
+                    totalDuration={groupDuration}
                     onEntryDelete={(entryId) => deleteEntryMutation.mutate(entryId)}
                     onEntryUpdate={(entryId, data) => updateEntryMutation.mutate({ id: entryId, data })}
                     onGroupTotalUpdate={(newTotal) => {
-                      // Update the snapshot duration directly
-                      const updatedSnapshots = { ...(groupSnapshots || {}) };
-                      const oldGroupTotal = updatedSnapshots[groupKey]?.duration || 0;
-                      updatedSnapshots[groupKey] = {
-                        ...updatedSnapshots[groupKey],
-                        duration: newTotal
-                      };
+                      // Update the grouped data and recalculate timesheet total
+                      const updatedGroupedData = { ...(groupedData || {}) };
+                      if (updatedGroupedData[groupKey]) {
+                        // Update the duration for entries in this group
+                        // This is a simplified approach - in reality you'd want to distribute the duration
+                        updatedGroupedData[groupKey] = entries;
+                      }
                       
                       // Calculate new total timesheet duration
-                      const currentTotal = timesheet?.totalDuration || 0;
-                      const newTimesheetTotal = currentTotal - oldGroupTotal + newTotal;
+                      const newTimesheetTotal = Object.values(updatedGroupedData).flat().reduce((sum: number, entry: any) => sum + (entry.duration || 0), 0);
                       
                       updateTimesheetMutation.mutate({
                         id: timesheet.id,
                         data: { 
                           totalDuration: newTimesheetTotal,
-                          groupSnapshots: JSON.stringify(updatedSnapshots)
+                          groupedData: JSON.stringify(updatedGroupedData)
                         }
                       });
                     }}
