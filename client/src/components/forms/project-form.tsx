@@ -40,10 +40,12 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
 
   const { data: partners } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
+    enabled: !!user,
   });
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+    enabled: !!user,
   });
 
   const clients = partners?.filter(partner => partner.type === "client") || [];
