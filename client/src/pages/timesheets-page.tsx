@@ -460,18 +460,6 @@ function TimesheetDetailDialog({
     enabled: open && !!timesheetId,
   });
 
-  if (!timesheet) {
-    return null;
-  }
-  
-  // Parse grouped data
-  let groupedData: Record<string, any[]> = {};
-  try {
-    groupedData = JSON.parse(timesheet.groupedData);
-  } catch (e) {
-    console.error('Error parsing grouped data:', e);
-  }
-
   // Fetch time entries for editing
   const { data: timeEntries } = useQuery({
     queryKey: ["/api/time-entries"],
@@ -481,11 +469,6 @@ function TimesheetDetailDialog({
       return res.json();
     },
   });
-
-  // Filter time entries that belong to this timesheet
-  const timesheetEntries = timeEntries?.filter((entry: any) => 
-    timesheet.timeEntryIds.includes(entry.id)
-  ) || [];
 
   const deleteEntryMutation = useMutation({
     mutationFn: async (entryId: string) => {
@@ -520,6 +503,30 @@ function TimesheetDetailDialog({
       });
     },
   });
+
+  // Early return after all hooks
+  if (!timesheet) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <div>Loading...</div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  
+  // Parse grouped data
+  let groupedData: Record<string, any[]> = {};
+  try {
+    groupedData = JSON.parse(timesheet.groupedData);
+  } catch (e) {
+    console.error('Error parsing grouped data:', e);
+  }
+
+  // Filter time entries that belong to this timesheet
+  const timesheetEntries = timeEntries?.filter((entry: any) => 
+    timesheet.timeEntryIds.includes(entry.id)
+  ) || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
