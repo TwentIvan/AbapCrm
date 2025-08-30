@@ -16,7 +16,7 @@ import { Trash2, Settings, DollarSign, MoreHorizontal, Grid3X3, List, Edit, Plus
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import type { RateAgreement, Partner, Project } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import RateAgreementForm from "@/components/forms/rate-agreement-form";
 import {
   AlertDialog,
@@ -68,16 +68,19 @@ export default function RateAgreementsPage() {
 
   const { data: agreements = [], isLoading } = useQuery<RateAgreement[]>({
     queryKey: ["/api/rate-agreements"],
+    queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: partners = [] } = useQuery<Partner[]>({ 
     queryKey: ["/api/partners"],
+    queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000,
   });
   
   const { data: projects = [] } = useQuery<Project[]>({ 
     queryKey: ["/api/projects"],
+    queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000,
   });
 

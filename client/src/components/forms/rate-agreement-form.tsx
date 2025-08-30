@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { insertRateAgreementSchema, type RateAgreement, type Partner, type Project, type Task, type HumanResource } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { Loader2, Settings, DollarSign, X, Plus } from "lucide-react";
 
 const formSchema = insertRateAgreementSchema.extend({
@@ -94,16 +94,19 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
   // Fetch data for dropdowns
   const { data: partners = [] } = useQuery<Partner[]>({ 
     queryKey: ["/api/partners"],
+    queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000,
   });
   
   const { data: projects = [] } = useQuery<Project[]>({ 
     queryKey: ["/api/projects"],
+    queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: humanResources = [] } = useQuery<HumanResource[]>({ 
     queryKey: ["/api/human-resources"],
+    queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000,
   });
 
