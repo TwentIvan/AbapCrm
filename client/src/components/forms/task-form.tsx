@@ -1,3 +1,4 @@
+import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -47,6 +48,17 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
   });
 
   const activeProjects = projects?.filter(project => project.status !== "completed") || [];
+  
+  // Debug logging to understand what's happening
+  React.useEffect(() => {
+    console.log("TaskForm debug:", { 
+      user: !!user, 
+      projects, 
+      projectsLoading, 
+      projectsError: projectsError?.message,
+      activeProjects: activeProjects.length
+    });
+  }, [user, projects, projectsLoading, projectsError, activeProjects]);
   const parentTasks = tasks?.filter(t => t.id !== task?.id) || []; // Exclude current task
 
   const form = useForm<FormData>({
