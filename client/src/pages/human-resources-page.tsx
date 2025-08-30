@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -388,43 +389,65 @@ export function HumanResourcesPage() {
 
               {/* Statistics Cards */}
               {viewMode === 'cards' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Totale Risorse</p>
-                          <p className="text-2xl font-bold">{stats.total}</p>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Totale Risorse</p>
+                            <p className="text-2xl font-bold">{stats.total}</p>
+                          </div>
+                          <Users className="h-8 w-8 text-blue-500" />
                         </div>
-                        <Users className="h-8 w-8 text-blue-500" />
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
 
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Risorse Attive</p>
-                          <p className="text-2xl font-bold text-green-600">{stats.active}</p>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Risorse Attive</p>
+                            <p className="text-2xl font-bold text-green-600">{stats.active}</p>
+                          </div>
+                          <UserIcon className="h-8 w-8 text-green-500" />
                         </div>
-                        <UserIcon className="h-8 w-8 text-green-500" />
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
 
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Tariffa Media</p>
-                          <p className="text-2xl font-bold">€{stats.avgRate}</p>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Tariffa Media</p>
+                            <p className="text-2xl font-bold">€{stats.avgRate}</p>
+                          </div>
+                          <DollarSign className="h-8 w-8 text-orange-500" />
                         </div>
-                        <DollarSign className="h-8 w-8 text-orange-500" />
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Selection Actions */}
+                  {selectedResources.length > 0 && (
+                    <div className="mb-4 p-4 bg-muted/50 rounded-lg border">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          {selectedResources.length} risorsa/e selezionata/e
+                        </span>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setShowBulkDeleteDialog(true)}
+                          data-testid="button-bulk-delete"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Elimina selezionate
+                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Content based on view mode */}
@@ -435,6 +458,17 @@ export function HumanResourcesPage() {
                       <CardHeader className="pb-2">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={selectedResources.some(r => r.id === resource.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedResources([...selectedResources, resource]);
+                                } else {
+                                  setSelectedResources(selectedResources.filter(r => r.id !== resource.id));
+                                }
+                              }}
+                              data-testid={`checkbox-resource-${resource.id}`}
+                            />
                             <span className="text-2xl">{getRoleIcon(resource.role)}</span>
                             <div>
                               <CardTitle className="text-lg">{resource.name}</CardTitle>
