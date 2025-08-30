@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useTableLayout } from "@/lib/user-preferences";
@@ -696,6 +696,12 @@ function TimesheetGroupRow({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingTotal, setIsEditingTotal] = useState(false);
   const [editedTotal, setEditedTotal] = useState(totalDuration);
+  const [displayDuration, setDisplayDuration] = useState(totalDuration);
+  
+  // Update display duration when prop changes
+  useEffect(() => {
+    setDisplayDuration(totalDuration);
+  }, [totalDuration]);
   
   // Function to normalize duration to 15-minute increments
   const normalizeDuration = (minutes: number) => {
@@ -769,6 +775,8 @@ function TimesheetGroupRow({
                   onClick={() => {
                     // Apply normalization only when saving
                     const normalizedTotal = normalizeDuration(editedTotal);
+                    // Update display immediately for responsive UI
+                    setDisplayDuration(normalizedTotal);
                     onGroupTotalUpdate?.(normalizedTotal);
                     setIsEditingTotal(false);
                   }}
@@ -780,7 +788,7 @@ function TimesheetGroupRow({
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    setEditedTotal(totalDuration);
+                    setEditedTotal(displayDuration);
                     setIsEditingTotal(false);
                   }}
                   className="h-5 w-5 p-0 text-gray-600"
@@ -793,12 +801,12 @@ function TimesheetGroupRow({
                 className="font-mono font-medium text-green-600 cursor-pointer hover:bg-green-50 px-2 py-1 rounded"
                 onClick={() => {
                   // Start editing with current raw value
-                  setEditedTotal(totalDuration);
+                  setEditedTotal(displayDuration);
                   setIsEditingTotal(true);
                 }}
                 title="Clicca per modificare il totale"
               >
-                {formatDuration(totalDuration)}
+                {formatDuration(displayDuration)}
               </div>
             )}
           </div>
