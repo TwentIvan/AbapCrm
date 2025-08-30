@@ -48,13 +48,6 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
     },
   });
 
-  // Debug log per vedere cosa succede con la query
-  console.log('Partners query debug:', { 
-    user: !!user, 
-    partners: partners?.length, 
-    isLoadingPartners, 
-    error: partnersError 
-  });
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
