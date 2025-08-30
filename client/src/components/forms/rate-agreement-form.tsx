@@ -150,7 +150,6 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
 
   const saveMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      console.log("🔧 RAW FORM DATA:", data);
       const agreementData = {
         ...data,
         hourlyRate: data.hourlyRate, // Keep as string
@@ -160,20 +159,16 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
         validTo: data.validTo || null,
         groupingValues: JSON.stringify(groupingValues),
       };
-      console.log("🔧 PROCESSED AGREEMENT DATA:", agreementData);
       
       if (rateAgreement) {
-        console.log("📝 UPDATING existing agreement...");
         const res = await apiRequest("PUT", `/api/rate-agreements/${rateAgreement.id}`, agreementData);
         return res.json();
       } else {
-        console.log("🆕 CREATING new agreement...");
         const res = await apiRequest("POST", "/api/rate-agreements", agreementData);
         return res.json();
       }
     },
-    onSuccess: (result) => {
-      console.log("✅ MUTATION SUCCESS! Result:", result);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rate-agreements"] });
       toast({
         title: "Successo",
@@ -182,7 +177,6 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
       onSuccess?.();
     },
     onError: (error) => {
-      console.error("❌ MUTATION ERROR:", error);
       toast({
         title: "Errore",
         description: "Errore durante il salvataggio dell'accordo",
@@ -192,11 +186,6 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
   });
 
   const onSubmit = (data: FormData) => {
-    console.log("🚀 FORM SUBMIT TRIGGERED! Data:", data);
-    console.log("🔧 Selected grouping fields:", selectedGroupingFields);
-    console.log("🔧 Grouping values:", groupingValues);
-    console.log("🔧 Form validation errors:", form.formState.errors);
-    console.log("🔧 Form is valid:", form.formState.isValid);
     saveMutation.mutate(data);
   };
 
@@ -552,12 +541,6 @@ export default function RateAgreementForm({ rateAgreement, onSuccess }: RateAgre
             type="submit"
             disabled={saveMutation.isPending}
             data-testid="button-submit"
-            onClick={() => {
-              console.log("🎯 SUBMIT BUTTON CLICKED!");
-              console.log("🔍 Form state:", form.formState);
-              console.log("🔍 Form errors:", form.formState.errors);
-              console.log("🔍 Current form values:", form.getValues());
-            }}
           >
             {saveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {rateAgreement ? "Aggiorna Accordo" : "Crea Accordo"}

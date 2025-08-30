@@ -346,13 +346,7 @@ export default function RateAgreementsPage() {
               )}
               <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
                 <DialogTrigger asChild>
-                  <Button 
-                    data-testid="button-create-agreement"
-                    onClick={() => {
-                      console.log("🔥 BUTTON CLICKED! Opening dialog...");
-                      setShowCreateDialog(true);
-                    }}
-                  >
+                  <Button data-testid="button-create-agreement">
                     <Plus className="h-4 w-4 mr-2" />
                     Nuovo Accordo
                   </Button>
