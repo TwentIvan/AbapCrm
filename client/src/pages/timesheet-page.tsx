@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -110,6 +110,7 @@ export default function TimesheetPage() {
   const [showTimeNormalizer, setShowTimeNormalizer] = useState(false);
   
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   // Use the table layout hook for persistent preferences
   const { 
@@ -671,6 +672,9 @@ export default function TimesheetPage() {
                   }
 
                   const savedTimesheet = await response.json();
+                  
+                  // Invalida la cache dei timesheets per aggiornare la pagina Timesheets
+                  queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
                   
                   toast({
                     title: "✓ Timesheet salvato",
