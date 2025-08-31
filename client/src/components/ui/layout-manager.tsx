@@ -207,13 +207,14 @@ export function LayoutManager({
         variant="outline" 
         size="sm" 
         className="h-8"
-        onClick={() => onEditLayout && onEditLayout({ 
-          id: 'current', 
-          name: currentLayoutName, 
-          isDefault: false, 
-          createdAt: new Date(), 
-          updatedAt: new Date() 
-        })}
+        onClick={() => {
+          if (onEditLayout) {
+            const currentLayout = savedLayouts.find(l => l.name === currentLayoutName);
+            if (currentLayout) {
+              onEditLayout(currentLayout);
+            }
+          }
+        }}
         data-testid="button-configure-layout"
       >
         <Edit className="mr-2 h-4 w-4" />

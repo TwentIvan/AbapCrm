@@ -670,8 +670,6 @@ export default function TasksPage() {
                   onClick: () => handleDelete(selectedTasks)
                 }
               ]}
-              isLoading={isLoading}
-              filterColumns={filterColumns}
               enableAggregation={true}
               aggregationColumns={aggregationColumns}
               enableColumnReordering={true}
@@ -896,10 +894,14 @@ export default function TasksPage() {
           { id: 'actions', label: 'Actions' },
         ]}
         isOpen={showConfigDialog}
-        onClose={() => setShowConfigDialog(false)}
+        onOpenChange={(open) => setShowConfigDialog(open)}
         editingLayout={editingLayout}
         onSave={(updatedLayout) => {
           updateExistingLayout(updatedLayout);
+          setEditingLayout(null);
+          setShowConfigDialog(false);
+        }}
+        onCancel={() => {
           setEditingLayout(null);
           setShowConfigDialog(false);
         }}
