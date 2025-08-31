@@ -76,9 +76,12 @@ export default function VPNConnectionsPage() {
   });
 
   const testConnectionMutation = useMutation({
-    mutationFn: (connectionId: string) => {
+    mutationFn: async (connectionId: string) => {
       console.log("🧪 Test mutation starting for connection:", connectionId);
-      return apiRequest("POST", `/api/vpn-connections/${connectionId}/test`);
+      const response = await apiRequest("POST", `/api/vpn-connections/${connectionId}/test`);
+      const data = await response.json();
+      console.log("🧪 Test response JSON:", data);
+      return data;
     },
     onMutate: (connectionId: string) => {
       console.log("🧪 Test mutation onMutate:", connectionId);
