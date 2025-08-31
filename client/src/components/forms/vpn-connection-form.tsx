@@ -58,8 +58,6 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
     },
   });
 
-  console.log("🔍 VPN Form rendered, partners count:", partners.length);
-  console.log("🔍 Current form values:", form.getValues());
 
   const createMutation = useMutation({
     mutationFn: (data: z.infer<typeof formSchema>) => 

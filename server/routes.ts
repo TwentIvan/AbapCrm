@@ -1704,21 +1704,16 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/vpn-connections", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      console.log("🔍 VPN POST received body:", req.body);
-      console.log("🔍 VPN POST user ID:", req.user!.id);
       const connectionData = { ...req.body, userId: req.user!.id };
-      console.log("🔍 VPN POST connection data with userId:", connectionData);
       
-      // Validate basic required fields manually (skip Zod validation that omits userId)
+      // Validate basic required fields
       if (!connectionData.name || !connectionData.partnerId || !connectionData.serverHost || !connectionData.userId) {
         return res.status(400).json({ error: "Missing required fields: name, partnerId, serverHost" });
       }
       
-      console.log("🔍 VPN POST passing data directly to storage:", connectionData);
       const connection = await storage.createVpnConnection(connectionData as any);
       res.status(201).json(connection);
     } catch (error) {
-      console.log("🔍 VPN POST error:", error);
       res.status(400).json({ error: "Invalid VPN connection data", details: error instanceof Error ? error.message : String(error) });
     }
   });
