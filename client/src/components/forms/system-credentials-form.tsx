@@ -42,7 +42,16 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
   const { toast } = useToast();
   const isEditing = !!credential;
 
-  // Note: Helper per sistemi esistenti temporaneamente rimosso
+  // Fetch available systems for reference
+  const { data: sapSystems = [] } = useQuery({
+    queryKey: ["/api/sap-systems"],
+    enabled: false // Disabled temporaneamente per debug
+  });
+
+  const { data: vpnConnections = [] } = useQuery({
+    queryKey: ["/api/vpn-connections"],  
+    enabled: false // Disabled temporaneamente per debug
+  });
 
   const form = useForm<InsertSystemCredentials>({
     resolver: zodResolver(insertSystemCredentialsSchema),
@@ -177,21 +186,66 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
 
             <FormField
               control={form.control}
-              name="systemName"
+              name="systemId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome Sistema</FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field} 
-                      placeholder={selectedSystemType === "sap" ? "Es. PRD, DEV, QAS" : "Es. Cliente VPN, Office VPN"}
-                      data-testid="input-system-name"
-                    />
-                  </FormControl>
+                  <FormLabel>Sistema di Riferimento</FormLabel>
+                  <Select 
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      // Auto-fill system name from selected system  
+                      const systems = selectedSystemType === "sap" ? sapSystems : vpnConnections;
+                      const selectedSystem = Array.isArray(systems) ? systems.find((s: any) => s.id === value) : null;
+                      if (selectedSystem) {
+                        form.setValue("systemName", selectedSystem.name);
+                      }
+                    }} 
+                    defaultValue={field.value || undefined}
+                    data-testid="select-system-reference"
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona sistema esistente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="temp-manual">Inserimento manuale (temporaneo)</SelectItem>
+                      {selectedSystemType === "sap" && Array.isArray(sapSystems) && sapSystems.map((system: any) => (
+                        <SelectItem key={system.id} value={system.id}>
+                          {system.name} ({system.serverHost || system.host})
+                        </SelectItem>
+                      ))}
+                      {selectedSystemType === "vpn" && Array.isArray(vpnConnections) && vpnConnections.map((vpn: any) => (
+                        <SelectItem key={vpn.id} value={vpn.id}>
+                          {vpn.name} ({vpn.serverHost || vpn.host})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {form.watch("systemId") === "temp-manual" && (
+              <FormField
+                control={form.control}
+                name="systemName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome Sistema</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        placeholder={selectedSystemType === "sap" ? "Es. PRD, DEV, QAS" : "Es. Cliente VPN, Office VPN"}
+                        data-testid="input-system-name"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
