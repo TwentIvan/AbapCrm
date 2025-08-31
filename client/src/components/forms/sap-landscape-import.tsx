@@ -179,6 +179,9 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
   };
 
   const onSubmit = (data: ImportFormData) => {
+    console.log("🎯 Form submit triggered with data:", data);
+    console.log("🔍 Form validation errors:", form.formState.errors);
+    console.log("📝 Form values:", form.getValues());
     setStep("import");
     importMutation.mutate(data);
   };
@@ -424,7 +427,17 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
               <Button type="button" variant="outline" onClick={resetForm} data-testid="button-reset">
                 Start Over
               </Button>
-              <Button type="submit" disabled={importMutation.isPending} data-testid="button-import">
+              <Button 
+                type="submit" 
+                disabled={importMutation.isPending} 
+                data-testid="button-import"
+                onClick={(e) => {
+                  console.log("🖱️ Import button clicked!");
+                  console.log("📝 Form is valid:", form.formState.isValid);
+                  console.log("📋 Form errors:", form.formState.errors);
+                  console.log("💾 Form values:", form.getValues());
+                }}
+              >
                 {importMutation.isPending ? "Importing..." : `Import Selected Systems`}
               </Button>
             </div>
