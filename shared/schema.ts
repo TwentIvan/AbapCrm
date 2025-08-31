@@ -1036,6 +1036,7 @@ export const insertSapSystemCredentialsSchema = createInsertSchema(sapSystemCred
 
 export const insertVpnConnectionSchema = createInsertSchema(vpnConnections).omit({
   id: true,
+  userId: true, // Auto-filled from user session
   createdAt: true,
   updatedAt: true,
   lastConnected: true,

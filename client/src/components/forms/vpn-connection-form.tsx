@@ -118,15 +118,21 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
 
   const onSubmit = (data: any) => {
     console.log("🔍 Form submit called with data:", data);
-    // Remove vpnSoftwareType from the data sent to the server
+    // Remove vpnSoftwareType from the data sent to the server and add userId
     const { vpnSoftwareType, ...vpnData } = data;
+    
+    // Add userId to the data (will be set by backend)
+    const submitData = {
+      ...vpnData,
+      // userId will be automatically added by the backend from the session
+    };
     
     if (vpnConnection) {
       console.log("🔍 Updating existing VPN connection");
-      updateMutation.mutate(vpnData);
+      updateMutation.mutate(submitData);
     } else {
-      console.log("🔍 Creating new VPN connection");
-      createMutation.mutate(vpnData);
+      console.log("🔍 Creating new VPN connection with data:", submitData);
+      createMutation.mutate(submitData);
     }
   };
 
@@ -232,7 +238,8 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
                     <FormLabel>Porta</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="1194" {...field} 
-                        onChange={e => field.onChange(parseInt(e.target.value))}
+                        onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : 1194)}
+                        value={field.value || ''}
                         data-testid="input-port" />
                     </FormControl>
                     <FormMessage />
