@@ -12,7 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import { SimpleDataTable } from "@/components/ui/simple-data-table";
+import { createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Server, Building, MoreHorizontal, Grid3X3, List, Edit, Trash2, Key, Wifi, Upload } from "lucide-react";
@@ -301,7 +302,7 @@ export default function SapSystemsPage() {
   );
 
   const renderTable = () => (
-    <DataTable
+    <SimpleDataTable
       data={systems || []}
       columns={columns}
       enableSelection={true}
@@ -317,10 +318,8 @@ export default function SapSystemsPage() {
           variant: "destructive",
         },
       ]}
-      searchKey="name"
-      searchPlaceholder="Search SAP systems..."
-      tableId="sap-systems"
-      data-testid="table-sap-systems"
+      searchKey="systemName"
+      searchPlaceholder="Cerca sistema SAP..."
     />
   );
 
