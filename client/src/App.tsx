@@ -20,6 +20,7 @@ import MessagesPage from "@/pages/messages-page";
 import RateAgreementsPage from "@/pages/rate-agreements-page";
 import { HumanResourcesPage } from "@/pages/human-resources-page";
 import SalesOrdersPage from "@/pages/sales-orders-page";
+import SapSystemsPage from "@/pages/sap-systems-page";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -38,6 +39,7 @@ function Router() {
       <ProtectedRoute path="/rate-agreements" component={RateAgreementsPage} />
       <ProtectedRoute path="/human-resources" component={HumanResourcesPage} />
       <ProtectedRoute path="/sales-orders" component={SalesOrdersPage} />
+      <ProtectedRoute path="/sap-systems" component={SapSystemsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

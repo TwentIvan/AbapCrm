@@ -164,6 +164,49 @@ export class AIService {
       console.error("Error updating message with suggestion:", error);
     }
   }
+
+  async generateDocumentation(prompt: string): Promise<{ content: string; confidence: number }> {
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        messages: [
+          {
+            role: "system",
+            content: "You are a specialized AI assistant for SAP ABAP development documentation. Create comprehensive, professional intervention documents that provide clear technical analysis, implementation details, and actionable recommendations. Focus on accuracy, clarity, and completeness."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.2, // Lower temperature for more consistent technical documentation
+        max_tokens: 4000 // Allow for comprehensive documentation
+      });
+
+      const content = response.choices[0].message.content || "";
+      
+      // Calculate confidence based on content quality indicators
+      let confidence = 0.7; // Base confidence
+      
+      // Boost confidence for comprehensive content
+      if (content.length > 1000) confidence += 0.1;
+      if (content.includes("Executive Summary")) confidence += 0.05;
+      if (content.includes("Technical Changes")) confidence += 0.05;
+      if (content.includes("Impact Analysis")) confidence += 0.05;
+      if (content.includes("Testing")) confidence += 0.05;
+      
+      // Ensure confidence is within bounds
+      confidence = Math.min(0.95, Math.max(0.5, confidence));
+
+      return {
+        content,
+        confidence
+      };
+    } catch (error) {
+      console.error("AI documentation generation error:", error);
+      throw new Error(`Failed to generate AI documentation: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
 }
 
 export const aiService = new AIService();

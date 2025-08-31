@@ -350,6 +350,227 @@ export const humanResources = pgTable("human_resources", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// SAP Systems Management
+export const sapSystemTypeEnum = pgEnum("sap_system_type", ["ecc", "s4hana", "bw", "pi", "po", "solution_manager", "crm", "srm", "other"]);
+export const sapSystemStatusEnum = pgEnum("sap_system_status", ["active", "inactive", "maintenance", "test"]);
+
+export const sapSystems = pgTable("sap_systems", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  partnerId: uuid("partner_id").references(() => partners.id).notNull(), // Cliente a cui appartiene il sistema
+  projectId: uuid("project_id").references(() => projects.id), // Progetto associato opzionale
+  name: text("name").notNull(), // Nome del sistema (es. "PRD", "DEV", "QAS")
+  description: text("description"),
+  systemType: sapSystemTypeEnum("system_type").default("ecc").notNull(),
+  status: sapSystemStatusEnum("status").default("active").notNull(),
+  
+  // Connection details
+  serverHost: text("server_host").notNull(), // IP o hostname
+  systemNumber: text("system_number").notNull(), // 00, 01, etc.
+  clientNumber: text("client_number").notNull(), // 100, 800, etc.
+  applicationServerPort: integer("application_server_port").default(3200), // 32XX
+  messageServerPort: integer("message_server_port").default(3600), // 36XX
+  
+  // Additional SAP details
+  sapReleaseVersion: text("sap_release_version"), // 750, 740, etc.
+  kernelVersion: text("kernel_version"),
+  landscape: text("landscape").default("production"), // production, test, development
+  
+  // VPN Configuration
+  vpnConnectionId: uuid("vpn_connection_id").references(() => vpnConnections.id),
+  
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Credenziali multiple per ogni sistema SAP
+export const sapSystemCredentials = pgTable("sap_system_credentials", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  sapSystemId: uuid("sap_system_id").references(() => sapSystems.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  
+  // Credential details
+  username: text("username").notNull(),
+  password: text("password").notNull(), // Encrypted in storage
+  description: text("description"), // "Admin user", "Developer", "Functional", etc.
+  
+  // Authorization details
+  userType: text("user_type").default("dialog").notNull(), // dialog, system, service, communication
+  authorizationProfile: text("authorization_profile"), // SAP_ALL, Z_DEVELOPER, etc.
+  
+  // Validity
+  validFrom: timestamp("valid_from").defaultNow().notNull(),
+  validTo: timestamp("valid_to"), // null = no expiration
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  // Last usage tracking
+  lastUsed: timestamp("last_used"),
+  usageCount: integer("usage_count").default(0).notNull(),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// VPN Connections for accessing SAP systems
+export const vpnConnectionTypeEnum = pgEnum("vpn_connection_type", ["openvpn", "ipsec", "wireguard", "cisco_anyconnect", "fortigate", "other"]);
+export const vpnStatusEnum = pgEnum("vpn_status", ["active", "inactive", "expired", "blocked"]);
+
+export const vpnConnections = pgTable("vpn_connections", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  partnerId: uuid("partner_id").references(() => partners.id).notNull(), // Cliente a cui appartiene la VPN
+  
+  name: text("name").notNull(), // "Cliente ABC VPN", "Site-to-Site Production"
+  description: text("description"),
+  connectionType: vpnConnectionTypeEnum("connection_type").default("openvpn").notNull(),
+  status: vpnStatusEnum("status").default("active").notNull(),
+  
+  // Connection details
+  serverHost: text("server_host").notNull(),
+  serverPort: integer("server_port").default(1194).notNull(),
+  protocol: text("protocol").default("udp").notNull(), // udp, tcp
+  
+  // Configuration files/settings
+  configFileContent: text("config_file_content"), // VPN config file content
+  certificatePath: text("certificate_path"), // Path to client certificate
+  keyPath: text("key_path"), // Path to private key
+  caCertPath: text("ca_cert_path"), // Path to CA certificate
+  
+  // Additional settings
+  allowedIpRanges: text("allowed_ip_ranges").array().default([]), // IP ranges accessible through VPN
+  dnsServers: text("dns_servers").array().default([]), // DNS servers to use
+  
+  // Connection tracking
+  autoConnect: boolean("auto_connect").default(false).notNull(),
+  lastConnected: timestamp("last_connected"),
+  connectionDuration: integer("connection_duration").default(0), // Total minutes connected
+  
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Credenziali multiple per ogni VPN
+export const vpnCredentials = pgTable("vpn_credentials", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  vpnConnectionId: uuid("vpn_connection_id").references(() => vpnConnections.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  
+  // Credential details
+  username: text("username").notNull(),
+  password: text("password").notNull(), // Encrypted in storage
+  description: text("description"), // "Primary user", "Backup access", etc.
+  
+  // Pre-shared keys for IPSec
+  preSharedKey: text("pre_shared_key"), // For IPSec connections
+  
+  // Two-factor authentication
+  totpSecret: text("totp_secret"), // TOTP secret for 2FA
+  backupCodes: text("backup_codes").array().default([]), // Backup authentication codes
+  
+  // Validity and usage
+  validFrom: timestamp("valid_from").defaultNow().notNull(),
+  validTo: timestamp("valid_to"), // null = no expiration
+  isActive: boolean("is_active").default(true).notNull(),
+  lastUsed: timestamp("last_used"),
+  usageCount: integer("usage_count").default(0).notNull(),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Transport Request files (cofile and data file)
+export const transportRequestStatusEnum = pgEnum("transport_request_status", ["development", "testing", "quality", "production", "released", "imported"]);
+export const transportRequestTypeEnum = pgEnum("transport_request_type", ["workbench", "customizing", "copy", "relocate"]);
+
+export const transportRequests = pgTable("transport_requests", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  sapSystemId: uuid("sap_system_id").references(() => sapSystems.id).notNull(),
+  projectId: uuid("project_id").references(() => projects.id),
+  taskId: uuid("task_id").references(() => tasks.id),
+  
+  // Transport request details
+  requestNumber: text("request_number").notNull().unique(), // DEVK9XXXXX
+  description: text("description").notNull(),
+  type: transportRequestTypeEnum("type").default("workbench").notNull(),
+  status: transportRequestStatusEnum("status").default("development").notNull(),
+  
+  // Owner information
+  owner: text("owner").notNull(), // SAP user who created the transport
+  targetSystem: text("target_system"), // Target system for import
+  
+  // File information
+  cofilePath: text("cofile_path"), // Path to cofile (control file)
+  datafilePath: text("datafile_path"), // Path to data file
+  cofileContent: text("cofile_content"), // Content of cofile for AI analysis
+  
+  // Metadata
+  releaseDate: timestamp("release_date"),
+  importDate: timestamp("import_date"),
+  
+  // Objects included (for AI documentation)
+  includedObjects: text("included_objects").array().default([]), // List of SAP objects in transport
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// AI-generated intervention documentation
+export const interventionDocumentStatusEnum = pgEnum("intervention_document_status", ["draft", "pending_review", "approved", "archived"]);
+export const interventionDocumentTypeEnum = pgEnum("intervention_document_type", ["transport_analysis", "system_configuration", "troubleshooting", "development", "custom"]);
+
+export const interventionDocuments = pgTable("intervention_documents", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  projectId: uuid("project_id").references(() => projects.id),
+  taskId: uuid("task_id").references(() => tasks.id),
+  sapSystemId: uuid("sap_system_id").references(() => sapSystems.id),
+  transportRequestId: uuid("transport_request_id").references(() => transportRequests.id),
+  
+  title: text("title").notNull(),
+  type: interventionDocumentTypeEnum("type").default("transport_analysis").notNull(),
+  status: interventionDocumentStatusEnum("status").default("draft").notNull(),
+  
+  // AI-generated content
+  aiGeneratedContent: text("ai_generated_content").notNull(), // Main AI-generated documentation
+  aiConfidenceScore: decimal("ai_confidence_score", { precision: 3, scale: 2 }), // 0.00-1.00
+  aiModel: text("ai_model").default("gpt-5").notNull(), // AI model used for generation
+  
+  // Analysis data used for generation
+  sourceFiles: text("source_files").array().default([]), // Files analyzed for generation
+  analysisPrompt: text("analysis_prompt"), // Prompt used for AI generation
+  
+  // Manual edits and reviews
+  manualEdits: text("manual_edits"), // User edits to AI content
+  reviewNotes: text("review_notes"), // Review comments
+  finalContent: text("final_content"), // Final approved content
+  
+  // Template and customization
+  templateId: text("template_id"), // If using a specific template
+  customFields: text("custom_fields"), // JSON for custom client-specific fields
+  
+  // Metadata
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+  approvedAt: timestamp("approved_at"),
+  
+  // Export and sharing
+  exportedFormats: text("exported_formats").array().default([]), // pdf, docx, html
+  sharedWithClient: boolean("shared_with_client").default(false).notNull(),
+  clientAccessUrl: text("client_access_url"), // Secure URL for client access
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
@@ -367,6 +588,12 @@ export const usersRelations = relations(users, ({ many }) => ({
   rateAgreements: many(rateAgreements),
   humanResources: many(humanResources),
   linkedHumanResources: many(humanResources, { relationName: "linkedUser" }),
+  sapSystems: many(sapSystems),
+  sapSystemCredentials: many(sapSystemCredentials),
+  vpnConnections: many(vpnConnections),
+  vpnCredentials: many(vpnCredentials),
+  transportRequests: many(transportRequests),
+  interventionDocuments: many(interventionDocuments),
 }));
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({
@@ -380,6 +607,9 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   calendarEvents: many(calendarEvents),
   messages: many(messages),
   comments: many(comments),
+  sapSystems: many(sapSystems),
+  transportRequests: many(transportRequests),
+  interventionDocuments: many(interventionDocuments),
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
@@ -391,6 +621,8 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   timeEntries: many(timeEntries),
   messages: many(messages),
   comments: many(comments),
+  transportRequests: many(transportRequests),
+  interventionDocuments: many(interventionDocuments),
 }));
 
 export const partnersRelations = relations(partners, ({ one, many }) => ({
@@ -400,6 +632,8 @@ export const partnersRelations = relations(partners, ({ one, many }) => ({
   calendarEvents: many(calendarEvents),
   messages: many(messages),
   salesOrders: many(salesOrders),
+  sapSystems: many(sapSystems),
+  vpnConnections: many(vpnConnections),
 }));
 
 export const humanResourcesRelations = relations(humanResources, ({ one }) => ({
@@ -492,6 +726,50 @@ export const rateAgreementsRelations = relations(rateAgreements, ({ one }) => ({
     fields: [rateAgreements.userId],
     references: [users.id],
   }),
+}));
+
+// SAP System Relations
+export const sapSystemsRelations = relations(sapSystems, ({ one, many }) => ({
+  user: one(users, { fields: [sapSystems.userId], references: [users.id] }),
+  partner: one(partners, { fields: [sapSystems.partnerId], references: [partners.id] }),
+  project: one(projects, { fields: [sapSystems.projectId], references: [projects.id] }),
+  vpnConnection: one(vpnConnections, { fields: [sapSystems.vpnConnectionId], references: [vpnConnections.id] }),
+  credentials: many(sapSystemCredentials),
+  transportRequests: many(transportRequests),
+  interventionDocuments: many(interventionDocuments),
+}));
+
+export const sapSystemCredentialsRelations = relations(sapSystemCredentials, ({ one }) => ({
+  user: one(users, { fields: [sapSystemCredentials.userId], references: [users.id] }),
+  sapSystem: one(sapSystems, { fields: [sapSystemCredentials.sapSystemId], references: [sapSystems.id] }),
+}));
+
+export const vpnConnectionsRelations = relations(vpnConnections, ({ one, many }) => ({
+  user: one(users, { fields: [vpnConnections.userId], references: [users.id] }),
+  partner: one(partners, { fields: [vpnConnections.partnerId], references: [partners.id] }),
+  credentials: many(vpnCredentials),
+  sapSystems: many(sapSystems),
+}));
+
+export const vpnCredentialsRelations = relations(vpnCredentials, ({ one }) => ({
+  user: one(users, { fields: [vpnCredentials.userId], references: [users.id] }),
+  vpnConnection: one(vpnConnections, { fields: [vpnCredentials.vpnConnectionId], references: [vpnConnections.id] }),
+}));
+
+export const transportRequestsRelations = relations(transportRequests, ({ one, many }) => ({
+  user: one(users, { fields: [transportRequests.userId], references: [users.id] }),
+  sapSystem: one(sapSystems, { fields: [transportRequests.sapSystemId], references: [sapSystems.id] }),
+  project: one(projects, { fields: [transportRequests.projectId], references: [projects.id] }),
+  task: one(tasks, { fields: [transportRequests.taskId], references: [tasks.id] }),
+  interventionDocuments: many(interventionDocuments),
+}));
+
+export const interventionDocumentsRelations = relations(interventionDocuments, ({ one }) => ({
+  user: one(users, { fields: [interventionDocuments.userId], references: [users.id] }),
+  project: one(projects, { fields: [interventionDocuments.projectId], references: [projects.id] }),
+  task: one(tasks, { fields: [interventionDocuments.taskId], references: [tasks.id] }),
+  sapSystem: one(sapSystems, { fields: [interventionDocuments.sapSystemId], references: [sapSystems.id] }),
+  transportRequest: one(transportRequests, { fields: [interventionDocuments.transportRequestId], references: [transportRequests.id] }),
 }));
 
 // Insert schemas
@@ -646,5 +924,77 @@ export const insertHumanResourceSchema = createInsertSchema(humanResources).omit
   updatedAt: true,
 });
 
+// SAP Insert Schemas
+export const insertSapSystemSchema = createInsertSchema(sapSystems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSapSystemCredentialsSchema = createInsertSchema(sapSystemCredentials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastUsed: true,
+  usageCount: true,
+});
+
+export const insertVpnConnectionSchema = createInsertSchema(vpnConnections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastConnected: true,
+  connectionDuration: true,
+}).extend({
+  allowedIpRanges: z.array(z.string()).optional(),
+  dnsServers: z.array(z.string()).optional(),
+});
+
+export const insertVpnCredentialsSchema = createInsertSchema(vpnCredentials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastUsed: true,
+  usageCount: true,
+}).extend({
+  backupCodes: z.array(z.string()).optional(),
+});
+
+export const insertTransportRequestSchema = createInsertSchema(transportRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  releaseDate: true,
+  importDate: true,
+}).extend({
+  includedObjects: z.array(z.string()).optional(),
+});
+
+export const insertInterventionDocumentSchema = createInsertSchema(interventionDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  generatedAt: true,
+  reviewedAt: true,
+  approvedAt: true,
+}).extend({
+  sourceFiles: z.array(z.string()).optional(),
+  exportedFormats: z.array(z.string()).optional(),
+});
+
+// All Types
 export type HumanResource = typeof humanResources.$inferSelect;
 export type InsertHumanResource = z.infer<typeof insertHumanResourceSchema>;
+
+export type SapSystem = typeof sapSystems.$inferSelect;
+export type InsertSapSystem = z.infer<typeof insertSapSystemSchema>;
+export type SapSystemCredentials = typeof sapSystemCredentials.$inferSelect;
+export type InsertSapSystemCredentials = z.infer<typeof insertSapSystemCredentialsSchema>;
+export type VpnConnection = typeof vpnConnections.$inferSelect;
+export type InsertVpnConnection = z.infer<typeof insertVpnConnectionSchema>;
+export type VpnCredentials = typeof vpnCredentials.$inferSelect;
+export type InsertVpnCredentials = z.infer<typeof insertVpnCredentialsSchema>;
+export type TransportRequest = typeof transportRequests.$inferSelect;
+export type InsertTransportRequest = z.infer<typeof insertTransportRequestSchema>;
+export type InterventionDocument = typeof interventionDocuments.$inferSelect;
+export type InsertInterventionDocument = z.infer<typeof insertInterventionDocumentSchema>;

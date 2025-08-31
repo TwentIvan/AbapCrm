@@ -1,6 +1,7 @@
 import { 
   users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, emailConfigs,
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
+  sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments,
   type User, type InsertUser,
   type Project, type InsertProject,
   type Task, type InsertTask,
@@ -17,7 +18,13 @@ import {
   type SalesOrderItem, type InsertSalesOrderItem,
   type Timesheet, type InsertTimesheet,
   type RateAgreement, type InsertRateAgreement,
-  type HumanResource, type InsertHumanResource
+  type HumanResource, type InsertHumanResource,
+  type SapSystem, type InsertSapSystem,
+  type SapSystemCredentials, type InsertSapSystemCredentials,
+  type VpnConnection, type InsertVpnConnection,
+  type VpnCredentials, type InsertVpnCredentials,
+  type TransportRequest, type InsertTransportRequest,
+  type InterventionDocument, type InsertInterventionDocument
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -166,6 +173,58 @@ export interface IStorage {
   updateHumanResource(id: string, resource: Partial<InsertHumanResource>, userId: string): Promise<HumanResource | undefined>;
   deleteHumanResource(id: string, userId: string): Promise<boolean>;
   getHumanResourceByLinkedUser(userId: string, linkedUserId: string): Promise<HumanResource | undefined>;
+
+  // SAP Systems
+  getSapSystems(userId: string): Promise<SapSystem[]>;
+  getSapSystemsByPartner(partnerId: string, userId: string): Promise<SapSystem[]>;
+  getSapSystem(id: string, userId: string): Promise<SapSystem | undefined>;
+  createSapSystem(system: InsertSapSystem): Promise<SapSystem>;
+  updateSapSystem(id: string, system: Partial<InsertSapSystem>, userId: string): Promise<SapSystem | undefined>;
+  deleteSapSystem(id: string, userId: string): Promise<boolean>;
+
+  // SAP System Credentials
+  getSapSystemCredentials(sapSystemId: string, userId: string): Promise<SapSystemCredentials[]>;
+  getSapSystemCredential(id: string, userId: string): Promise<SapSystemCredentials | undefined>;
+  createSapSystemCredential(credential: InsertSapSystemCredentials): Promise<SapSystemCredentials>;
+  updateSapSystemCredential(id: string, credential: Partial<InsertSapSystemCredentials>, userId: string): Promise<SapSystemCredentials | undefined>;
+  deleteSapSystemCredential(id: string, userId: string): Promise<boolean>;
+  getActiveSapSystemCredentials(sapSystemId: string, userId: string): Promise<SapSystemCredentials[]>;
+
+  // VPN Connections
+  getVpnConnections(userId: string): Promise<VpnConnection[]>;
+  getVpnConnectionsByPartner(partnerId: string, userId: string): Promise<VpnConnection[]>;
+  getVpnConnection(id: string, userId: string): Promise<VpnConnection | undefined>;
+  createVpnConnection(connection: InsertVpnConnection): Promise<VpnConnection>;
+  updateVpnConnection(id: string, connection: Partial<InsertVpnConnection>, userId: string): Promise<VpnConnection | undefined>;
+  deleteVpnConnection(id: string, userId: string): Promise<boolean>;
+
+  // VPN Credentials
+  getVpnCredentials(vpnConnectionId: string, userId: string): Promise<VpnCredentials[]>;
+  getVpnCredential(id: string, userId: string): Promise<VpnCredentials | undefined>;
+  createVpnCredential(credential: InsertVpnCredentials): Promise<VpnCredentials>;
+  updateVpnCredential(id: string, credential: Partial<InsertVpnCredentials>, userId: string): Promise<VpnCredentials | undefined>;
+  deleteVpnCredential(id: string, userId: string): Promise<boolean>;
+  getActiveVpnCredentials(vpnConnectionId: string, userId: string): Promise<VpnCredentials[]>;
+
+  // Transport Requests
+  getTransportRequests(userId: string): Promise<TransportRequest[]>;
+  getTransportRequestsBySapSystem(sapSystemId: string, userId: string): Promise<TransportRequest[]>;
+  getTransportRequestsByProject(projectId: string, userId: string): Promise<TransportRequest[]>;
+  getTransportRequest(id: string, userId: string): Promise<TransportRequest | undefined>;
+  createTransportRequest(request: InsertTransportRequest): Promise<TransportRequest>;
+  updateTransportRequest(id: string, request: Partial<InsertTransportRequest>, userId: string): Promise<TransportRequest | undefined>;
+  deleteTransportRequest(id: string, userId: string): Promise<boolean>;
+  getTransportRequestByNumber(requestNumber: string, userId: string): Promise<TransportRequest | undefined>;
+
+  // Intervention Documents
+  getInterventionDocuments(userId: string): Promise<InterventionDocument[]>;
+  getInterventionDocumentsByProject(projectId: string, userId: string): Promise<InterventionDocument[]>;
+  getInterventionDocumentsByTransportRequest(transportRequestId: string, userId: string): Promise<InterventionDocument[]>;
+  getInterventionDocument(id: string, userId: string): Promise<InterventionDocument | undefined>;
+  createInterventionDocument(document: InsertInterventionDocument): Promise<InterventionDocument>;
+  updateInterventionDocument(id: string, document: Partial<InsertInterventionDocument>, userId: string): Promise<InterventionDocument | undefined>;
+  deleteInterventionDocument(id: string, userId: string): Promise<boolean>;
+  getInterventionDocumentsByStatus(status: string, userId: string): Promise<InterventionDocument[]>;
 
   sessionStore: session.Store;
 }
@@ -1126,6 +1185,326 @@ export class DatabaseStorage implements IStorage {
         eq(humanResources.linkedUserId, linkedUserId)
       ));
     return resource || undefined;
+  }
+
+  // SAP Systems
+  async getSapSystems(userId: string): Promise<SapSystem[]> {
+    return await db.select().from(sapSystems)
+      .where(eq(sapSystems.userId, userId))
+      .orderBy(desc(sapSystems.createdAt));
+  }
+
+  async getSapSystemsByPartner(partnerId: string, userId: string): Promise<SapSystem[]> {
+    return await db.select().from(sapSystems)
+      .where(and(
+        eq(sapSystems.partnerId, partnerId),
+        eq(sapSystems.userId, userId)
+      ))
+      .orderBy(desc(sapSystems.createdAt));
+  }
+
+  async getSapSystem(id: string, userId: string): Promise<SapSystem | undefined> {
+    const [system] = await db.select().from(sapSystems)
+      .where(and(eq(sapSystems.id, id), eq(sapSystems.userId, userId)));
+    return system || undefined;
+  }
+
+  async createSapSystem(system: InsertSapSystem): Promise<SapSystem> {
+    const [newSystem] = await db
+      .insert(sapSystems)
+      .values(system)
+      .returning();
+    return newSystem;
+  }
+
+  async updateSapSystem(id: string, system: Partial<InsertSapSystem>, userId: string): Promise<SapSystem | undefined> {
+    const [updatedSystem] = await db
+      .update(sapSystems)
+      .set({ ...system, updatedAt: new Date() })
+      .where(and(eq(sapSystems.id, id), eq(sapSystems.userId, userId)))
+      .returning();
+    return updatedSystem || undefined;
+  }
+
+  async deleteSapSystem(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(sapSystems)
+      .where(and(eq(sapSystems.id, id), eq(sapSystems.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // SAP System Credentials
+  async getSapSystemCredentials(sapSystemId: string, userId: string): Promise<SapSystemCredentials[]> {
+    return await db.select().from(sapSystemCredentials)
+      .where(and(
+        eq(sapSystemCredentials.sapSystemId, sapSystemId),
+        eq(sapSystemCredentials.userId, userId)
+      ))
+      .orderBy(desc(sapSystemCredentials.createdAt));
+  }
+
+  async getSapSystemCredential(id: string, userId: string): Promise<SapSystemCredentials | undefined> {
+    const [credential] = await db.select().from(sapSystemCredentials)
+      .where(and(eq(sapSystemCredentials.id, id), eq(sapSystemCredentials.userId, userId)));
+    return credential || undefined;
+  }
+
+  async createSapSystemCredential(credential: InsertSapSystemCredentials): Promise<SapSystemCredentials> {
+    const [newCredential] = await db
+      .insert(sapSystemCredentials)
+      .values(credential)
+      .returning();
+    return newCredential;
+  }
+
+  async updateSapSystemCredential(id: string, credential: Partial<InsertSapSystemCredentials>, userId: string): Promise<SapSystemCredentials | undefined> {
+    const [updatedCredential] = await db
+      .update(sapSystemCredentials)
+      .set({ ...credential, updatedAt: new Date() })
+      .where(and(eq(sapSystemCredentials.id, id), eq(sapSystemCredentials.userId, userId)))
+      .returning();
+    return updatedCredential || undefined;
+  }
+
+  async deleteSapSystemCredential(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(sapSystemCredentials)
+      .where(and(eq(sapSystemCredentials.id, id), eq(sapSystemCredentials.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getActiveSapSystemCredentials(sapSystemId: string, userId: string): Promise<SapSystemCredentials[]> {
+    return await db.select().from(sapSystemCredentials)
+      .where(and(
+        eq(sapSystemCredentials.sapSystemId, sapSystemId),
+        eq(sapSystemCredentials.userId, userId),
+        eq(sapSystemCredentials.isActive, true)
+      ))
+      .orderBy(desc(sapSystemCredentials.createdAt));
+  }
+
+  // VPN Connections
+  async getVpnConnections(userId: string): Promise<VpnConnection[]> {
+    return await db.select().from(vpnConnections)
+      .where(eq(vpnConnections.userId, userId))
+      .orderBy(desc(vpnConnections.createdAt));
+  }
+
+  async getVpnConnectionsByPartner(partnerId: string, userId: string): Promise<VpnConnection[]> {
+    return await db.select().from(vpnConnections)
+      .where(and(
+        eq(vpnConnections.partnerId, partnerId),
+        eq(vpnConnections.userId, userId)
+      ))
+      .orderBy(desc(vpnConnections.createdAt));
+  }
+
+  async getVpnConnection(id: string, userId: string): Promise<VpnConnection | undefined> {
+    const [connection] = await db.select().from(vpnConnections)
+      .where(and(eq(vpnConnections.id, id), eq(vpnConnections.userId, userId)));
+    return connection || undefined;
+  }
+
+  async createVpnConnection(connection: InsertVpnConnection): Promise<VpnConnection> {
+    const [newConnection] = await db
+      .insert(vpnConnections)
+      .values(connection)
+      .returning();
+    return newConnection;
+  }
+
+  async updateVpnConnection(id: string, connection: Partial<InsertVpnConnection>, userId: string): Promise<VpnConnection | undefined> {
+    const [updatedConnection] = await db
+      .update(vpnConnections)
+      .set({ ...connection, updatedAt: new Date() })
+      .where(and(eq(vpnConnections.id, id), eq(vpnConnections.userId, userId)))
+      .returning();
+    return updatedConnection || undefined;
+  }
+
+  async deleteVpnConnection(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(vpnConnections)
+      .where(and(eq(vpnConnections.id, id), eq(vpnConnections.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // VPN Credentials
+  async getVpnCredentials(vpnConnectionId: string, userId: string): Promise<VpnCredentials[]> {
+    return await db.select().from(vpnCredentials)
+      .where(and(
+        eq(vpnCredentials.vpnConnectionId, vpnConnectionId),
+        eq(vpnCredentials.userId, userId)
+      ))
+      .orderBy(desc(vpnCredentials.createdAt));
+  }
+
+  async getVpnCredential(id: string, userId: string): Promise<VpnCredentials | undefined> {
+    const [credential] = await db.select().from(vpnCredentials)
+      .where(and(eq(vpnCredentials.id, id), eq(vpnCredentials.userId, userId)));
+    return credential || undefined;
+  }
+
+  async createVpnCredential(credential: InsertVpnCredentials): Promise<VpnCredentials> {
+    const [newCredential] = await db
+      .insert(vpnCredentials)
+      .values(credential)
+      .returning();
+    return newCredential;
+  }
+
+  async updateVpnCredential(id: string, credential: Partial<InsertVpnCredentials>, userId: string): Promise<VpnCredentials | undefined> {
+    const [updatedCredential] = await db
+      .update(vpnCredentials)
+      .set({ ...credential, updatedAt: new Date() })
+      .where(and(eq(vpnCredentials.id, id), eq(vpnCredentials.userId, userId)))
+      .returning();
+    return updatedCredential || undefined;
+  }
+
+  async deleteVpnCredential(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(vpnCredentials)
+      .where(and(eq(vpnCredentials.id, id), eq(vpnCredentials.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getActiveVpnCredentials(vpnConnectionId: string, userId: string): Promise<VpnCredentials[]> {
+    return await db.select().from(vpnCredentials)
+      .where(and(
+        eq(vpnCredentials.vpnConnectionId, vpnConnectionId),
+        eq(vpnCredentials.userId, userId),
+        eq(vpnCredentials.isActive, true)
+      ))
+      .orderBy(desc(vpnCredentials.createdAt));
+  }
+
+  // Transport Requests
+  async getTransportRequests(userId: string): Promise<TransportRequest[]> {
+    return await db.select().from(transportRequests)
+      .where(eq(transportRequests.userId, userId))
+      .orderBy(desc(transportRequests.createdAt));
+  }
+
+  async getTransportRequestsBySapSystem(sapSystemId: string, userId: string): Promise<TransportRequest[]> {
+    return await db.select().from(transportRequests)
+      .where(and(
+        eq(transportRequests.sapSystemId, sapSystemId),
+        eq(transportRequests.userId, userId)
+      ))
+      .orderBy(desc(transportRequests.createdAt));
+  }
+
+  async getTransportRequestsByProject(projectId: string, userId: string): Promise<TransportRequest[]> {
+    return await db.select().from(transportRequests)
+      .where(and(
+        eq(transportRequests.projectId, projectId),
+        eq(transportRequests.userId, userId)
+      ))
+      .orderBy(desc(transportRequests.createdAt));
+  }
+
+  async getTransportRequest(id: string, userId: string): Promise<TransportRequest | undefined> {
+    const [request] = await db.select().from(transportRequests)
+      .where(and(eq(transportRequests.id, id), eq(transportRequests.userId, userId)));
+    return request || undefined;
+  }
+
+  async createTransportRequest(request: InsertTransportRequest): Promise<TransportRequest> {
+    const [newRequest] = await db
+      .insert(transportRequests)
+      .values(request)
+      .returning();
+    return newRequest;
+  }
+
+  async updateTransportRequest(id: string, request: Partial<InsertTransportRequest>, userId: string): Promise<TransportRequest | undefined> {
+    const [updatedRequest] = await db
+      .update(transportRequests)
+      .set({ ...request, updatedAt: new Date() })
+      .where(and(eq(transportRequests.id, id), eq(transportRequests.userId, userId)))
+      .returning();
+    return updatedRequest || undefined;
+  }
+
+  async deleteTransportRequest(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(transportRequests)
+      .where(and(eq(transportRequests.id, id), eq(transportRequests.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getTransportRequestByNumber(requestNumber: string, userId: string): Promise<TransportRequest | undefined> {
+    const [request] = await db.select().from(transportRequests)
+      .where(and(
+        eq(transportRequests.requestNumber, requestNumber),
+        eq(transportRequests.userId, userId)
+      ));
+    return request || undefined;
+  }
+
+  // Intervention Documents
+  async getInterventionDocuments(userId: string): Promise<InterventionDocument[]> {
+    return await db.select().from(interventionDocuments)
+      .where(eq(interventionDocuments.userId, userId))
+      .orderBy(desc(interventionDocuments.createdAt));
+  }
+
+  async getInterventionDocumentsByProject(projectId: string, userId: string): Promise<InterventionDocument[]> {
+    return await db.select().from(interventionDocuments)
+      .where(and(
+        eq(interventionDocuments.projectId, projectId),
+        eq(interventionDocuments.userId, userId)
+      ))
+      .orderBy(desc(interventionDocuments.createdAt));
+  }
+
+  async getInterventionDocumentsByTransportRequest(transportRequestId: string, userId: string): Promise<InterventionDocument[]> {
+    return await db.select().from(interventionDocuments)
+      .where(and(
+        eq(interventionDocuments.transportRequestId, transportRequestId),
+        eq(interventionDocuments.userId, userId)
+      ))
+      .orderBy(desc(interventionDocuments.createdAt));
+  }
+
+  async getInterventionDocument(id: string, userId: string): Promise<InterventionDocument | undefined> {
+    const [document] = await db.select().from(interventionDocuments)
+      .where(and(eq(interventionDocuments.id, id), eq(interventionDocuments.userId, userId)));
+    return document || undefined;
+  }
+
+  async createInterventionDocument(document: InsertInterventionDocument): Promise<InterventionDocument> {
+    const [newDocument] = await db
+      .insert(interventionDocuments)
+      .values(document)
+      .returning();
+    return newDocument;
+  }
+
+  async updateInterventionDocument(id: string, document: Partial<InsertInterventionDocument>, userId: string): Promise<InterventionDocument | undefined> {
+    const [updatedDocument] = await db
+      .update(interventionDocuments)
+      .set({ ...document, updatedAt: new Date() })
+      .where(and(eq(interventionDocuments.id, id), eq(interventionDocuments.userId, userId)))
+      .returning();
+    return updatedDocument || undefined;
+  }
+
+  async deleteInterventionDocument(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(interventionDocuments)
+      .where(and(eq(interventionDocuments.id, id), eq(interventionDocuments.userId, userId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getInterventionDocumentsByStatus(status: string, userId: string): Promise<InterventionDocument[]> {
+    return await db.select().from(interventionDocuments)
+      .where(and(
+        eq(interventionDocuments.status, status as any),
+        eq(interventionDocuments.userId, userId)
+      ))
+      .orderBy(desc(interventionDocuments.createdAt));
   }
 }
 
