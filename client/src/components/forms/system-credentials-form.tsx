@@ -264,7 +264,7 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
                     <FormControl>
                       <SearchableSelect
                         options={systemOptions}
-                        value={field.value}
+                        value={field.value || undefined}
                         onValueChange={(value) => {
                           field.onChange(value);
                           // Auto-fill system name from selected system
