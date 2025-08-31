@@ -304,6 +304,7 @@ export function DataTable<TData, TValue>({
     onRowSelectionChange: setRowSelection,
     globalFilterFn: "includesString",
     enableRowSelection: enableSelection,
+    getRowId: (row: any) => row.id, // Usa l'ID univoco per la selezione
     state: {
       sorting,
       columnFilters,

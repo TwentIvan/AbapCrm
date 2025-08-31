@@ -154,21 +154,25 @@ export default function SapSystemsPage() {
     {
       accessorKey: "name",
       header: "System Name",
+      enableSorting: true,
       cell: ({ row }: any) => row.original.name,
     },
     {
       accessorKey: "systemNumber",
       header: "System Number",
+      enableSorting: true,
       cell: ({ row }: any) => row.original.systemNumber,
     },
     {
       accessorKey: "serverHost",
       header: "Server Host",
+      enableSorting: true,
       cell: ({ row }: any) => row.original.serverHost,
     },
     {
       accessorKey: "landscape",
       header: "Landscape",
+      enableSorting: true,
       cell: ({ row }: any) => {
         const system = row.original;
         const landscapeValue = landscapeLabels[system.landscape as keyof typeof landscapeLabels] || system.landscape;
@@ -181,8 +185,10 @@ export default function SapSystemsPage() {
       },
     },
     {
-      accessorKey: "partner",
+      id: "partner",
+      accessorFn: (row: any) => row.partner?.name || "",
       header: "Partner",
+      enableSorting: true,
       cell: ({ row }: any) => {
         const system = row.original;
         return system.partner ? (
@@ -195,11 +201,13 @@ export default function SapSystemsPage() {
     {
       accessorKey: "description",
       header: "Description",
+      enableSorting: true,
       cell: ({ row }: any) => row.original.description || "—",
     },
     {
-      accessorKey: "actions",
+      id: "actions",
       header: "Actions",
+      enableSorting: false,
       cell: ({ row }: any) => {
         const system = row.original;
         return (
@@ -298,6 +306,17 @@ export default function SapSystemsPage() {
       columns={columns}
       enableSelection={true}
       onSelectionChange={(rows) => setSelectedSystems(rows as SapSystem[])}
+      bulkActions={[
+        {
+          label: "Delete Selected",
+          icon: Trash2,
+          onClick: (selectedRows) => {
+            setSelectedSystems(selectedRows as SapSystem[]);
+            setShowBulkDeleteDialog(true);
+          },
+          variant: "destructive",
+        },
+      ]}
       searchKey="name"
       searchPlaceholder="Search SAP systems..."
       tableId="sap-systems"
