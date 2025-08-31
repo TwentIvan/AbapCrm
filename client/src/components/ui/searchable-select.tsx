@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from "react";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
+import { Check, ChevronsUpDown, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface SearchableSelectOption {
@@ -56,83 +57,98 @@ export function SearchableSelect({
   const selectedOption = options.find(option => option.value === value);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("w-full justify-between text-left", className)}
-          disabled={disabled}
-          data-testid={testId}
-        >
-          <div className="flex flex-col items-start">
-            {selectedOption ? (
-              <>
-                <span>{selectedOption.label}</span>
-                {selectedOption.description && (
-                  <span className="text-xs text-muted-foreground">
-                    {selectedOption.description}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
-            )}
-          </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
-        <div className="flex items-center border-b px-3 py-2">
-          <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-          <input
-            type="text"
-            placeholder={searchPlaceholder}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 w-full border-0 bg-transparent px-0 text-sm outline-none ring-0 focus:outline-none focus:ring-0"
-            autoFocus={true}
-            style={{ outline: 'none', border: 'none' }}
-          />
+    <>
+      <Button
+        variant="outline"
+        className={cn("w-full justify-between text-left", className)}
+        disabled={disabled}
+        data-testid={testId}
+        onClick={() => setOpen(true)}
+      >
+        <div className="flex flex-col items-start">
+          {selectedOption ? (
+            <>
+              <span>{selectedOption.label}</span>
+              {selectedOption.description && (
+                <span className="text-xs text-muted-foreground">
+                  {selectedOption.description}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
         </div>
-        <ScrollArea className="max-h-64">
-          <div className="p-1">
-            {filteredOptions.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                {emptyMessage}
-              </div>
-            ) : (
-              filteredOptions.map((option) => (
-                <div
-                  key={option.value}
-                  className="flex cursor-pointer items-center justify-between rounded-md px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
-                  onClick={() => {
-                    onValueChange(option.value);
-                    setOpen(false);
-                    setSearchQuery("");
-                  }}
-                >
-                  <div className="flex flex-col">
-                    <span>{option.label}</span>
-                    {option.description && (
-                      <span className="text-xs text-muted-foreground">
-                        {option.description}
-                      </span>
-                    )}
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Seleziona Sistema</span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setOpen(false)}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Search className="h-4 w-4 shrink-0 opacity-50" />
+              <Input
+                placeholder={searchPlaceholder}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1"
+                autoFocus
+              />
+            </div>
+            
+            <ScrollArea className="max-h-64 w-full">
+              <div className="space-y-1">
+                {filteredOptions.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-muted-foreground">
+                    {emptyMessage}
                   </div>
-                  <Check
-                    className={cn(
-                      "ml-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                </div>
-              ))
-            )}
+                ) : (
+                  filteredOptions.map((option) => (
+                    <div
+                      key={option.value}
+                      className="flex cursor-pointer items-center justify-between rounded-md p-3 text-sm hover:bg-accent hover:text-accent-foreground"
+                      onClick={() => {
+                        onValueChange(option.value);
+                        setOpen(false);
+                        setSearchQuery("");
+                      }}
+                    >
+                      <div className="flex flex-col">
+                        <span>{option.label}</span>
+                        {option.description && (
+                          <span className="text-xs text-muted-foreground">
+                            {option.description}
+                          </span>
+                        )}
+                      </div>
+                      <Check
+                        className={cn(
+                          "ml-2 h-4 w-4",
+                          value === option.value ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
           </div>
-        </ScrollArea>
-      </PopoverContent>
-    </Popover>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
