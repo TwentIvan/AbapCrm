@@ -385,6 +385,10 @@ export default function TasksPage() {
     }
   };
 
+  const confirmBulkDelete = () => {
+    bulkDeleteMutation.mutate(selectedTasks);
+  };
+
   // Define filter columns for advanced filtering
   const filterColumns = [
     { id: 'title', label: 'Titolo', type: 'text' as const },
@@ -600,7 +604,7 @@ export default function TasksPage() {
           ) : viewMode === 'list' ? (
             <UniversalTable
               data={tasks || []}
-              columns={columns}
+              columns={tableColumns}
               enableSelection={true}
               enableSearch={true}
               searchPlaceholder="Cerca tasks..."
