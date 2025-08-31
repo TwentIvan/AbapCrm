@@ -389,6 +389,27 @@ export default function TasksPage() {
     bulkDeleteMutation.mutate(selectedTasks);
   };
 
+  const handleEdit = (task: Task) => {
+    setEditingTask(task);
+    setShowEditDialog(true);
+  };
+
+  const handleAdd = () => {
+    setEditingTask(null);
+    setShowCreateDialog(true);
+  };
+
+  const handleSingleDelete = (task: Task) => {
+    setEditingTask(task);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDelete = (tasks: Task[]) => {
+    if (tasks.length === 0) return;
+    setSelectedTasks(tasks);
+    setShowBulkDeleteDialog(true);
+  };
+
   // Define filter columns for advanced filtering
   const filterColumns = [
     { id: 'title', label: 'Titolo', type: 'text' as const },
