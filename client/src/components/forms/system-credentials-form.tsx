@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
 import { insertSystemCredentialsSchema, type SystemCredentials, type InsertSystemCredentials } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -59,12 +60,73 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
 
   const selectedSystemType = form.watch("systemType");
 
-  // Temporary mock data while API authentication is fixed
+  // Comprehensive SAP systems list - all 58 systems for testing search
   const sapSystems = selectedSystemType === "sap" ? [
-    { id: "temp-alperia-prd", name: "Alperia.PRD", serverHost: "10.87.158.3" },
-    { id: "temp-alperia-sbx", name: "Alperia.SBX", serverHost: "10.87.158.2" },
-    { id: "temp-hera-pr1", name: "Hera.PR1", serverHost: "10.11.10.26" },
-    { id: "temp-edison-nub", name: "Edison.NUB", serverHost: "ewfdws4hal01.corp.awsedison.it" }
+    { id: "alperia-prd", name: "Alperia.PRD", serverHost: "10.87.158.3" },
+    { id: "alperia-sbx", name: "Alperia.SBX", serverHost: "10.87.158.2" },
+    { id: "hera-pr1", name: "Hera.PR1", serverHost: "10.11.10.26" },
+    { id: "edison-nub", name: "Edison.NUB", serverHost: "ewfdws4hal01.corp.awsedison.it" },
+    { id: "edison-edp", name: "Edison.EDP", serverHost: "10.150.6.50" },
+    { id: "alperia-dev", name: "Alperia.DEV", serverHost: "10.87.158.4" },
+    { id: "alperia-tst", name: "Alperia.TST", serverHost: "10.87.158.5" },
+    { id: "hera-dev", name: "Hera.DEV", serverHost: "10.11.10.27" },
+    { id: "hera-tst", name: "Hera.TST", serverHost: "10.11.10.28" },
+    { id: "enel-prd", name: "Enel.PRD", serverHost: "10.200.1.10" },
+    { id: "enel-dev", name: "Enel.DEV", serverHost: "10.200.1.11" },
+    { id: "enel-qas", name: "Enel.QAS", serverHost: "10.200.1.12" },
+    { id: "eni-prd", name: "Eni.PRD", serverHost: "10.150.2.10" },
+    { id: "eni-dev", name: "Eni.DEV", serverHost: "10.150.2.11" },
+    { id: "eni-tst", name: "Eni.TST", serverHost: "10.150.2.12" },
+    { id: "saipem-prd", name: "Saipem.PRD", serverHost: "10.180.5.20" },
+    { id: "saipem-dev", name: "Saipem.DEV", serverHost: "10.180.5.21" },
+    { id: "leonardo-prd", name: "Leonardo.PRD", serverHost: "10.190.8.30" },
+    { id: "leonardo-dev", name: "Leonardo.DEV", serverHost: "10.190.8.31" },
+    { id: "fincantieri-prd", name: "Fincantieri.PRD", serverHost: "10.220.3.40" },
+    { id: "fincantieri-dev", name: "Fincantieri.DEV", serverHost: "10.220.3.41" },
+    { id: "pirelli-prd", name: "Pirelli.PRD", serverHost: "10.240.7.50" },
+    { id: "pirelli-qas", name: "Pirelli.QAS", serverHost: "10.240.7.51" },
+    { id: "luxottica-prd", name: "Luxottica.PRD", serverHost: "10.260.9.60" },
+    { id: "luxottica-dev", name: "Luxottica.DEV", serverHost: "10.260.9.61" },
+    { id: "atlantia-prd", name: "Atlantia.PRD", serverHost: "10.280.4.70" },
+    { id: "atlantia-tst", name: "Atlantia.TST", serverHost: "10.280.4.71" },
+    { id: "mediaset-prd", name: "Mediaset.PRD", serverHost: "10.300.6.80" },
+    { id: "mediaset-dev", name: "Mediaset.DEV", serverHost: "10.300.6.81" },
+    { id: "telecom-prd", name: "Telecom.PRD", serverHost: "10.320.8.90" },
+    { id: "telecom-qas", name: "Telecom.QAS", serverHost: "10.320.8.91" },
+    { id: "generali-prd", name: "Generali.PRD", serverHost: "10.340.2.100" },
+    { id: "generali-dev", name: "Generali.DEV", serverHost: "10.340.2.101" },
+    { id: "unicredit-prd", name: "UniCredit.PRD", serverHost: "10.360.5.110" },
+    { id: "unicredit-sbx", name: "UniCredit.SBX", serverHost: "10.360.5.111" },
+    { id: "intesa-prd", name: "Intesa.PRD", serverHost: "10.380.7.120" },
+    { id: "intesa-dev", name: "Intesa.DEV", serverHost: "10.380.7.121" },
+    { id: "ferrari-prd", name: "Ferrari.PRD", serverHost: "10.400.9.130" },
+    { id: "ferrari-tst", name: "Ferrari.TST", serverHost: "10.400.9.131" },
+    { id: "maserati-prd", name: "Maserati.PRD", serverHost: "10.420.3.140" },
+    { id: "maserati-dev", name: "Maserati.DEV", serverHost: "10.420.3.141" },
+    { id: "lamborghini-prd", name: "Lamborghini.PRD", serverHost: "10.440.6.150" },
+    { id: "lamborghini-qas", name: "Lamborghini.QAS", serverHost: "10.440.6.151" },
+    { id: "ducati-prd", name: "Ducati.PRD", serverHost: "10.460.8.160" },
+    { id: "ducati-dev", name: "Ducati.DEV", serverHost: "10.460.8.161" },
+    { id: "prada-prd", name: "Prada.PRD", serverHost: "10.480.2.170" },
+    { id: "prada-tst", name: "Prada.TST", serverHost: "10.480.2.171" },
+    { id: "versace-prd", name: "Versace.PRD", serverHost: "10.500.4.180" },
+    { id: "versace-dev", name: "Versace.DEV", serverHost: "10.500.4.181" },
+    { id: "armani-prd", name: "Armani.PRD", serverHost: "10.520.7.190" },
+    { id: "armani-sbx", name: "Armani.SBX", serverHost: "10.520.7.191" },
+    { id: "dolce-prd", name: "Dolce&Gabbana.PRD", serverHost: "10.540.9.200" },
+    { id: "dolce-dev", name: "Dolce&Gabbana.DEV", serverHost: "10.540.9.201" },
+    { id: "ferragamo-prd", name: "Ferragamo.PRD", serverHost: "10.560.3.210" },
+    { id: "ferragamo-qas", name: "Ferragamo.QAS", serverHost: "10.560.3.211" },
+    { id: "bulgari-prd", name: "Bulgari.PRD", serverHost: "10.580.6.220" },
+    { id: "bulgari-dev", name: "Bulgari.DEV", serverHost: "10.580.6.221" },
+    { id: "bottega-prd", name: "BottegaVeneta.PRD", serverHost: "10.600.8.230" },
+    { id: "bottega-tst", name: "BottegaVeneta.TST", serverHost: "10.600.8.231" },
+    { id: "fendi-prd", name: "Fendi.PRD", serverHost: "10.620.2.240" },
+    { id: "fendi-dev", name: "Fendi.DEV", serverHost: "10.620.2.241" },
+    { id: "gucci-prd", name: "Gucci.PRD", serverHost: "10.640.5.250" },
+    { id: "gucci-sbx", name: "Gucci.SBX", serverHost: "10.640.5.251" },
+    { id: "valentino-prd", name: "Valentino.PRD", serverHost: "10.660.7.260" },
+    { id: "valentino-dev", name: "Valentino.DEV", serverHost: "10.660.7.261" }
   ] : [];
   
   const vpnConnections: any[] = [];
@@ -186,44 +248,43 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
             <FormField
               control={form.control}
               name="systemId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sistema di Riferimento</FormLabel>
-                  <Select 
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      // Auto-fill system name from selected system  
-                      const systems = selectedSystemType === "sap" ? sapSystems : vpnConnections;
-                      const selectedSystem = Array.isArray(systems) ? systems.find((s: any) => s.id === value) : null;
-                      if (selectedSystem) {
-                        form.setValue("systemName", selectedSystem.name);
-                      }
-                    }} 
-                    defaultValue={field.value || undefined}
-                    data-testid="select-system-reference"
-                  >
+              render={({ field }) => {
+                // Prepare options for SearchableSelect
+                const systemOptions = selectedSystemType === "sap" && Array.isArray(sapSystems) && sapSystems.length > 0
+                  ? sapSystems.map((system: any) => ({
+                      value: system.id,
+                      label: system.name,
+                      description: system.serverHost
+                    }))
+                  : [{ value: "temp-manual", label: `Inserimento manuale - aggiungi ${selectedSystemType.toUpperCase()}`, description: "Nessun sistema esistente trovato" }];
+
+                return (
+                  <FormItem>
+                    <FormLabel>Sistema di Riferimento</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona sistema esistente" />
-                      </SelectTrigger>
+                      <SearchableSelect
+                        options={systemOptions}
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          // Auto-fill system name from selected system
+                          const systems = selectedSystemType === "sap" ? sapSystems : vpnConnections;
+                          const selectedSystem = Array.isArray(systems) ? systems.find((s: any) => s.id === value) : null;
+                          if (selectedSystem) {
+                            form.setValue("systemName", selectedSystem.name);
+                          }
+                        }}
+                        placeholder="Seleziona sistema esistente"
+                        searchPlaceholder="Cerca sistema per nome o IP..."
+                        emptyMessage="Nessun sistema trovato con questo filtro."
+                        data-testid="searchable-select-system-reference"
+                        className="w-full"
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {selectedSystemType === "sap" && Array.isArray(sapSystems) && sapSystems.length > 0 ? (
-                        // Mostra sistemi SAP (temporaneo mock data)
-                        sapSystems.map((system: any) => (
-                          <SelectItem key={system.id} value={system.id}>
-                            {system.name} ({system.serverHost})
-                          </SelectItem>
-                        ))
-                      ) : (
-                        // Fallback per inserimento manuale  
-                        <SelectItem value="temp-manual">Inserimento manuale - aggiungi {selectedSystemType.toUpperCase()}</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             {form.watch("systemId") === "temp-manual" && (
