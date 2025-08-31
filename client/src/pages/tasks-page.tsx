@@ -317,9 +317,7 @@ export default function TasksPage() {
     queryFn: async () => {
       const res = await fetch("/api/tasks", { credentials: "include" });
       if (!res.ok) throw new Error('Failed to fetch tasks');
-      const data = await res.json();
-      console.log('Tasks loaded from API:', data);
-      return data;
+      return res.json();
     },
   });
 
@@ -608,22 +606,36 @@ export default function TasksPage() {
       sortable: false,
       searchable: false,
       render: (task: Task) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" data-testid={`button-task-menu-${task.id}`}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={() => handleEdit(task)}
-              data-testid={`menu-edit-task-${task.id}`}
+        <div className="flex items-center space-x-2">
+          {task.sapSystemId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleLaunchConnections(task)}
+              data-testid={`button-launch-connections-${task.id}`}
+              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
             >
-              <Edit className="mr-2 h-4 w-4" />
-              Modifica
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Avvia
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" data-testid={`button-task-menu-${task.id}`}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={() => handleEdit(task)}
+                data-testid={`menu-edit-task-${task.id}`}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Modifica
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       ),
     },
   ];

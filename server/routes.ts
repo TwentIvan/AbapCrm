@@ -96,8 +96,6 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const tasks = await storage.getTasks(req.user!.id);
-    console.log('GET /api/tasks - returning tasks:', JSON.stringify(tasks, null, 2));
-    console.log('First task sapSystemId:', tasks[0]?.sapSystemId);
     res.json(tasks);
   });
 
