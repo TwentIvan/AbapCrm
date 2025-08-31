@@ -8,7 +8,7 @@ const execAsync = promisify(exec);
 export interface VPNConnection {
   id: string;
   name: string;
-  type: 'forticlient' | 'native' | 'openfortivpn';
+  type: 'forticlient' | 'native' | 'openfortivpn' | 'openconnect' | 'cisco' | 'openvpn';
   server?: string;
   port?: number;
   status: 'available' | 'configured' | 'error';

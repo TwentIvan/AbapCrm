@@ -181,6 +181,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const { software } = req.body;
       console.log('[VPN-DISCOVERY-API] ========== NEW DISCOVERY REQUEST ==========');
       console.log('[VPN-DISCOVERY-API] Request for software:', software);
+      console.log('[VPN-DISCOVERY-API] Request body:', req.body);
       console.log('[VPN-DISCOVERY-API] Platform:', process.platform);
       console.log('[VPN-DISCOVERY-API] Starting discovery...');
       
