@@ -592,7 +592,7 @@ export default function PartnersPage() {
               const isEditingExisting = !!editingLayout;
               if (isEditingExisting && editingLayout) {
                 updateExistingLayout(editingLayout.id, {
-                  columnVisibility: layout.columnVisibility,
+                  columns: layout.columns,
                   sorting: layout.sorting,
                   filters: layout.filters
                 });

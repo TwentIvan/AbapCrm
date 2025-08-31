@@ -294,10 +294,11 @@ export default function SapSystemsPage() {
     <DataTable
       data={systems || []}
       columns={columns}
-      selectedRows={selectedSystems}
+      enableSelection={true}
       onSelectionChange={(rows) => setSelectedSystems(rows as SapSystem[])}
       searchKey="name"
       searchPlaceholder="Search SAP systems..."
+      tableId="sap-systems"
       data-testid="table-sap-systems"
     />
   );
@@ -307,7 +308,11 @@ export default function SapSystemsPage() {
       <div className="flex h-screen bg-gray-50">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
+          <Header 
+            title="SAP Systems" 
+            subtitle="Manage your SAP system configurations and connections"
+            onNewClick={() => setShowCreateDialog(true)}
+          />
           <main className="flex-1 overflow-y-auto p-6">
             <div className="space-y-6">
               <Skeleton className="h-8 w-48" />
@@ -327,7 +332,11 @@ export default function SapSystemsPage() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+        <Header 
+          title="SAP Systems" 
+          subtitle="Manage your SAP system configurations and connections"
+          onNewClick={() => setShowCreateDialog(true)}
+        />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -360,11 +369,11 @@ export default function SapSystemsPage() {
                 
                 <Button 
                   variant="outline" 
-                  onClick={() => updateLayout({ viewMode: viewMode === 'grid' ? 'table' : 'grid' })}
+                  onClick={() => updateLayout({ viewMode: viewMode === 'list' ? 'cards' : 'list' })}
                   data-testid="button-toggle-view"
                 >
-                  {viewMode === 'grid' ? <List className="mr-2 h-4 w-4" /> : <Grid3X3 className="mr-2 h-4 w-4" />}
-                  {viewMode === 'grid' ? 'Table View' : 'Grid View'}
+                  {viewMode === 'cards' ? <List className="mr-2 h-4 w-4" /> : <Grid3X3 className="mr-2 h-4 w-4" />}
+                  {viewMode === 'cards' ? 'List View' : 'Card View'}
                 </Button>
                 
                 <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-sap-system">
@@ -379,7 +388,7 @@ export default function SapSystemsPage() {
               Current layout: {currentLayoutName || 'Default'}
             </div>
 
-            {viewMode === 'grid' ? renderGrid() : renderTable()}
+            {viewMode === 'cards' ? renderGrid() : renderTable()}
           </div>
         </main>
       </div>

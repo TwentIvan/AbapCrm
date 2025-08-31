@@ -183,7 +183,7 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Landscape</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
                       <FormControl>
                         <SelectTrigger data-testid="select-landscape">
                           <SelectValue placeholder="Select landscape" />
