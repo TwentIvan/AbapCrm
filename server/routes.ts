@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
+import { generateVPNAutomationScript, discoverVPNConnections } from "./vpn-automation";
 import { z } from "zod";
 import { 
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, 
@@ -118,6 +119,36 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error getting task connection info:', error);
       res.status(500).json({ error: "Failed to get connection info" });
+    }
+  });
+
+  // Execute VPN connection automation
+  app.post("/api/tasks/:id/execute-connection", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const connectionInfo = await storage.getTaskConnectionInfo(req.params.id, req.user!.id);
+      if (!connectionInfo) {
+        return res.status(404).json({ error: "Task not found or no SAP system configured" });
+      }
+
+      // Generate automation scripts based on the VPN connection info
+      const automationResult = await generateVPNAutomationScript(connectionInfo);
+      res.json(automationResult);
+    } catch (error) {
+      console.error('Error executing VPN automation:', error);
+      res.status(500).json({ error: "Failed to execute VPN automation" });
+    }
+  });
+
+  // Discover available VPN connections on macOS
+  app.get("/api/vpn/discover", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const availableConnections = await discoverVPNConnections();
+      res.json(availableConnections);
+    } catch (error) {
+      console.error('Error discovering VPN connections:', error);
+      res.status(500).json({ error: "Failed to discover VPN connections" });
     }
   });
 

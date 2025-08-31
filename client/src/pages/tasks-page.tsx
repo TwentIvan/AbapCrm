@@ -385,59 +385,58 @@ export default function TasksPage() {
     }
 
     try {
-      const response = await fetch(`/api/tasks/${task.id}/connection-info`, {
+      // Execute VPN automation
+      const response = await fetch(`/api/tasks/${task.id}/execute-connection`, {
+        method: 'POST',
         credentials: "include"
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get connection info');
+        throw new Error('Failed to execute connection automation');
       }
 
-      const connectionInfo = await response.json();
+      const automationResult = await response.json();
       
-      // Generate VPN connection command/URL
-      const vpnInfo = connectionInfo.vpnSystem;
-      const vpnSoftwareInfo = connectionInfo.vpnSoftware;
-      const sapInfo = connectionInfo.sapSystem;
-      
-      let message = `Connessioni per: ${task.title}\n\n`;
-      
-      if (vpnInfo && vpnSoftwareInfo) {
-        message += `🔐 VPN: ${vpnInfo.name}\n`;
-        message += `   Server: ${vpnInfo.serverAddress}:${vpnInfo.serverPort}\n`;
-        message += `   Software: ${vpnSoftwareInfo.name} (${vpnSoftwareInfo.vendor})\n\n`;
-      }
-      
-      if (sapInfo) {
-        message += `🖥️ SAP: ${sapInfo.name}\n`;
-        message += `   Host: ${sapInfo.host}:${sapInfo.port}\n`;
-        message += `   Client: ${sapInfo.client} | SID: ${sapInfo.sid}\n`;
-        message += `   Versione: ${sapInfo.version}\n\n`;
-      }
-      
-      if (connectionInfo.sapCredentials) {
-        message += `👤 Utente SAP: ${connectionInfo.sapCredentials.username}\n`;
-      }
-      
-      message += `\n⚡ Per completare la connessione:\n`;
-      message += `1. Avvia ${vpnSoftwareInfo?.name || 'VPN'} e connettiti a ${vpnInfo?.name || 'il server'}\n`;
-      message += `2. Apri SAP GUI e connettiti a ${sapInfo?.name || 'il sistema SAP'}\n`;
-      message += `3. Usa le credenziali fornite per l'accesso`;
+      if (automationResult.success) {
+        // Show successful automation result with instructions
+        const message = `🚀 Automazione VPN Generata per ${task.title}
 
-      // Show connection info in a simple alert for now
-      // In future, this could open actual VPN client and SAP GUI
-      alert(message);
-      
-      toast({ 
-        title: "Informazioni connessione", 
-        description: "Controlla i dettagli per completare la connessione" 
-      });
+Tipo Connessione: ${automationResult.connectionType}
+
+${automationResult.instructions || ''}
+
+${automationResult.executionCommand ? `📋 Comando di esecuzione:\n${automationResult.executionCommand}` : ''}
+
+✅ Lo script è stato generato e può essere eseguito per connettersi automaticamente!`;
+
+        alert(message);
+        
+        toast({
+          title: "Automazione Generata",
+          description: `Script VPN ${automationResult.connectionType} generato con successo`,
+        });
+      } else {
+        // Show error from automation
+        const errorMessage = `❌ Errore nell'automazione VPN per ${task.title}:
+
+${automationResult.error || 'Errore sconosciuto'}
+
+Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
+
+        alert(errorMessage);
+        
+        toast({
+          title: "Errore Automazione",
+          description: automationResult.error || "Errore nell'automazione VPN",
+          variant: "destructive"
+        });
+      }
 
     } catch (error) {
       console.error('Error launching connections:', error);
       toast({ 
         title: "Errore", 
-        description: "Impossibile ottenere le informazioni di connessione",
+        description: "Impossibile avviare l'automazione delle connessioni",
         variant: "destructive" 
       });
     }
