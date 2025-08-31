@@ -53,6 +53,7 @@ export const tasks = pgTable("tasks", {
   parentTaskId: uuid("parent_task_id"), // Self-reference for task hierarchy
   userId: uuid("user_id").references(() => users.id).notNull(),
   assignedTo: uuid("assigned_to").references(() => users.id),
+  sapSystemId: uuid("sap_system_id").references(() => sapSystems.id), // Collegamento al sistema SAP per connessione automatica
   dueDate: timestamp("due_date"),
   completedAt: timestamp("completed_at"),
   estimatedEffort: integer("estimated_effort"), // in hours

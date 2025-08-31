@@ -106,6 +106,21 @@ export function registerRoutes(app: Express): Server {
     res.json(task);
   });
 
+  // Get connection info for a task (VPN + SAP)
+  app.get("/api/tasks/:id/connection-info", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const connectionInfo = await storage.getTaskConnectionInfo(req.params.id, req.user!.id);
+      if (!connectionInfo) {
+        return res.status(404).json({ error: "Task not found or no SAP system configured" });
+      }
+      res.json(connectionInfo);
+    } catch (error) {
+      console.error('Error getting task connection info:', error);
+      res.status(500).json({ error: "Failed to get connection info" });
+    }
+  });
+
   // Get tasks by project
   app.get("/api/tasks/project/:projectId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

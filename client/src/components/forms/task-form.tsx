@@ -6,7 +6,7 @@ import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { insertTaskSchema, Project, Task } from "@shared/schema";
+import { insertTaskSchema, Project, Task, SapSystem } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ const formSchema = insertTaskSchema.omit({
   projectId: z.string().optional(),
   parentTaskId: z.string().optional(),
   estimatedEffort: z.string().optional(),
+  sapSystemId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -49,6 +50,12 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
     enabled: !!user, // Only fetch when user is authenticated
   });
 
+  const { data: sapSystems } = useQuery<SapSystem[]>({
+    queryKey: ["/api/sap-systems"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!user, // Only fetch when user is authenticated
+  });
+
   const activeProjects = projects?.filter(project => project.status !== "completed") || [];
   
   const parentTasks = tasks?.filter(t => t.id !== task?.id) || []; // Exclude current task
@@ -64,6 +71,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       parentTaskId: task?.parentTaskId || "no-parent",
       dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "",
       estimatedEffort: task?.estimatedEffort?.toString() || "",
+      sapSystemId: task?.sapSystemId || "none",
     },
   });
 
@@ -74,6 +82,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         userId: user!.id,
         projectId: data.projectId && !["none", "loading", "error", "no-projects"].includes(data.projectId) ? data.projectId : null,
         parentTaskId: data.parentTaskId && data.parentTaskId !== "no-parent" ? data.parentTaskId : null,
+        sapSystemId: data.sapSystemId && data.sapSystemId !== "none" ? data.sapSystemId : null,
         dueDate: data.dueDate || null,
         estimatedEffort: data.estimatedEffort ? parseInt(data.estimatedEffort) : null,
         completionPercentage: task?.completionPercentage || 0,
@@ -258,6 +267,32 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                       </SelectItem>
                     ))
                   )}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="sapSystemId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>SAP System (Optional)</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || "none"}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-task-sap-system">
+                    <SelectValue placeholder="Select SAP system" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">No SAP system</SelectItem>
+                  {sapSystems?.map((sapSystem) => (
+                    <SelectItem key={sapSystem.id} value={sapSystem.id}>
+                      {sapSystem.name} - {sapSystem.serverHost}:{sapSystem.applicationServerPort}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormMessage />

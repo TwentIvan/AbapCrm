@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square, Trash2 } from "lucide-react";
+import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square, Trash2, ExternalLink } from "lucide-react";
 import type { Task, Project, TimeEntry } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import TaskForm from "@/components/forms/task-form";
@@ -374,6 +374,75 @@ export default function TasksPage() {
     setShowEditDialog(true);
   };
 
+  const handleLaunchConnections = async (task: Task) => {
+    if (!task.sapSystemId) {
+      toast({ 
+        title: "Sistema SAP non configurato", 
+        description: "Questo task non ha un sistema SAP collegato",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/connection-info`, {
+        credentials: "include"
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get connection info');
+      }
+
+      const connectionInfo = await response.json();
+      
+      // Generate VPN connection command/URL
+      const vpnInfo = connectionInfo.vpnSystem;
+      const vpnSoftwareInfo = connectionInfo.vpnSoftware;
+      const sapInfo = connectionInfo.sapSystem;
+      
+      let message = `Connessioni per: ${task.title}\n\n`;
+      
+      if (vpnInfo && vpnSoftwareInfo) {
+        message += `🔐 VPN: ${vpnInfo.name}\n`;
+        message += `   Server: ${vpnInfo.serverAddress}:${vpnInfo.serverPort}\n`;
+        message += `   Software: ${vpnSoftwareInfo.name} (${vpnSoftwareInfo.vendor})\n\n`;
+      }
+      
+      if (sapInfo) {
+        message += `🖥️ SAP: ${sapInfo.name}\n`;
+        message += `   Host: ${sapInfo.host}:${sapInfo.port}\n`;
+        message += `   Client: ${sapInfo.client} | SID: ${sapInfo.sid}\n`;
+        message += `   Versione: ${sapInfo.version}\n\n`;
+      }
+      
+      if (connectionInfo.sapCredentials) {
+        message += `👤 Utente SAP: ${connectionInfo.sapCredentials.username}\n`;
+      }
+      
+      message += `\n⚡ Per completare la connessione:\n`;
+      message += `1. Avvia ${vpnSoftwareInfo?.name || 'VPN'} e connettiti a ${vpnInfo?.name || 'il server'}\n`;
+      message += `2. Apri SAP GUI e connettiti a ${sapInfo?.name || 'il sistema SAP'}\n`;
+      message += `3. Usa le credenziali fornite per l'accesso`;
+
+      // Show connection info in a simple alert for now
+      // In future, this could open actual VPN client and SAP GUI
+      alert(message);
+      
+      toast({ 
+        title: "Informazioni connessione", 
+        description: "Controlla i dettagli per completare la connessione" 
+      });
+
+    } catch (error) {
+      console.error('Error launching connections:', error);
+      toast({ 
+        title: "Errore", 
+        description: "Impossibile ottenere le informazioni di connessione",
+        variant: "destructive" 
+      });
+    }
+  };
+
   const handleCloseEditDialog = () => {
     setShowEditDialog(false);
     setEditingTask(null);
@@ -719,6 +788,18 @@ export default function TasksPage() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
+                            {task.sapSystemId && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleLaunchConnections(task)}
+                                data-testid={`button-launch-connections-${task.id}`}
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              >
+                                <ExternalLink className="h-4 w-4 mr-1" />
+                                Avvia
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"

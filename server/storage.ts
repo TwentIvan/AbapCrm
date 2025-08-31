@@ -31,7 +31,7 @@ import {
   type VpnSystems, type InsertVpnSystems
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, isNotNull } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -59,6 +59,7 @@ export interface IStorage {
   getTasks(userId: string): Promise<Task[]>;
   getTasksByProject(projectId: string, userId: string): Promise<Task[]>;
   getTask(id: string, userId: string): Promise<Task | undefined>;
+  getTaskConnectionInfo(taskId: string, userId: string): Promise<any>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, task: Partial<InsertTask>, userId: string): Promise<Task | undefined>;
   deleteTask(id: string, userId: string): Promise<boolean>;
@@ -379,6 +380,96 @@ export class DatabaseStorage implements IStorage {
     const [task] = await db.select().from(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, userId)));
     return task || undefined;
+  }
+
+  async getTaskConnectionInfo(taskId: string, userId: string): Promise<any> {
+    const [result] = await db
+      .select({
+        // Task info
+        taskId: tasks.id,
+        taskTitle: tasks.title,
+        taskDescription: tasks.description,
+        taskStatus: tasks.status,
+        
+        // SAP System info
+        sapSystemId: sapSystems.id,
+        sapSystemName: sapSystems.name,
+        sapSystemDescription: sapSystems.description,
+        sapSystemType: sapSystems.systemType,
+        sapServerHost: sapSystems.serverHost,
+        sapSystemNumber: sapSystems.systemNumber,
+        sapApplicationServerPort: sapSystems.applicationServerPort,
+        sapMessageServerPort: sapSystems.messageServerPort,
+        sapReleaseVersion: sapSystems.sapReleaseVersion,
+        sapKernelVersion: sapSystems.kernelVersion,
+        sapLandscape: sapSystems.landscape,
+        
+        // VPN Connection info
+        vpnConnectionId: vpnConnections.id,
+        vpnConnectionName: vpnConnections.name,
+        vpnConnectionType: vpnConnections.connectionType,
+        vpnServerHost: vpnConnections.serverHost,
+        vpnServerPort: vpnConnections.serverPort,
+        vpnProtocol: vpnConnections.protocol,
+        vpnConfigFileContent: vpnConnections.configFileContent,
+        vpnAllowedIpRanges: vpnConnections.allowedIpRanges,
+        vpnDnsServers: vpnConnections.dnsServers,
+        
+        // VPN Software info
+        vpnSoftwareId: vpnSoftware.id,
+        vpnSoftwareName: vpnSoftware.name,
+        vpnSoftwareVendor: vpnSoftware.vendor,
+        vpnSoftwareVersion: vpnSoftware.version,
+        vpnSoftwareIconUrl: vpnSoftware.iconUrl,
+        vpnSoftwareDownloadUrl: vpnSoftware.downloadUrl,
+        vpnSoftwareDocumentationUrl: vpnSoftware.documentationUrl,
+        vpnSupportedPlatforms: vpnSoftware.supportedPlatforms,
+        
+        // Partner info
+        partnerId: partners.id,
+        partnerName: partners.name,
+        partnerCompany: partners.company,
+        partnerEmail: partners.email,
+      })
+      .from(tasks)
+      .leftJoin(sapSystems, eq(tasks.sapSystemId, sapSystems.id))
+      .leftJoin(vpnConnections, eq(sapSystems.vpnConnectionId, vpnConnections.id))
+      .leftJoin(vpnSoftware, eq(vpnConnections.vpnSoftwareId, vpnSoftware.id))
+      .leftJoin(partners, eq(sapSystems.partnerId, partners.id))
+      .where(and(
+        eq(tasks.id, taskId), 
+        eq(tasks.userId, userId),
+        isNotNull(tasks.sapSystemId) // Solo task con sistema SAP collegato
+      ));
+
+    if (!result) {
+      return null;
+    }
+
+    // Get SAP credentials for this system
+    const credentials = await db
+      .select({
+        credentialId: sapSystemCredentials.id,
+        username: sapSystemCredentials.username,
+        password: sapSystemCredentials.password,
+        description: sapSystemCredentials.description,
+        userType: sapSystemCredentials.userType,
+        authorizationProfile: sapSystemCredentials.authorizationProfile,
+        validFrom: sapSystemCredentials.validFrom,
+        validTo: sapSystemCredentials.validTo,
+        isActive: sapSystemCredentials.isActive,
+      })
+      .from(sapSystemCredentials)
+      .where(and(
+        eq(sapSystemCredentials.sapSystemId, result.sapSystemId),
+        eq(sapSystemCredentials.userId, userId),
+        eq(sapSystemCredentials.isActive, true)
+      ));
+
+    return {
+      ...result,
+      sapCredentials: credentials
+    };
   }
 
   async createTask(task: InsertTask): Promise<Task> {
