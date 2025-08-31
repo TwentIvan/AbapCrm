@@ -17,7 +17,7 @@ import { UniversalTable, createStandardColumns } from "@/components/ui/universal
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2 } from "lucide-react";
-import { Project } from "@shared/schema";
+import { Project, Partner } from "@shared/schema";
 import ProjectForm from "@/components/forms/project-form";
 import ProjectPlanner from "@/components/planning/project-planner";
 
@@ -61,6 +61,15 @@ export default function ProjectsPage() {
     queryFn: async () => {
       const res = await fetch("/api/projects", { credentials: "include" });
       if (!res.ok) throw new Error('Failed to fetch projects');
+      return res.json();
+    },
+  });
+
+  const { data: partners = [] } = useQuery<Partner[]>({
+    queryKey: ["/api/partners"],
+    queryFn: async () => {
+      const res = await fetch("/api/partners", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch partners');
       return res.json();
     },
   });
@@ -149,10 +158,22 @@ export default function ProjectsPage() {
     return new Date(date).toLocaleDateString("it-IT");
   };
 
+  const getClientName = (clientId: string | null) => {
+    if (!clientId) return "N/A";
+    const client = partners.find(p => p.id === clientId);
+    return client?.name || "N/A";
+  };
+
   const columns = [
     createStandardColumns.text("name", "Nome"),
     createStandardColumns.badge("status", "Status", statusColors),
-    createStandardColumns.text("clientId", "Cliente"),
+    {
+      key: "clientId",
+      label: "Cliente", 
+      sortable: true,
+      searchable: true,
+      render: (project: Project) => getClientName(project.clientId)
+    },
     {
       key: "startDate",
       label: "Data Inizio", 

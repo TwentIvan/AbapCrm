@@ -279,6 +279,8 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [selectedTasks, setSelectedTasks] = useState<Task[]>([]);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
 
@@ -377,6 +379,12 @@ export default function TasksPage() {
     setEditingTask(null);
   };
 
+  const confirmDelete = () => {
+    if (editingTask) {
+      deleteMutation.mutate(editingTask.id);
+    }
+  };
+
   // Define filter columns for advanced filtering
   const filterColumns = [
     { id: 'title', label: 'Titolo', type: 'text' as const },
@@ -426,19 +434,9 @@ export default function TasksPage() {
         </div>
       ),
     },
-    createBadgeColumn('status', 'Status', {
-      todo: 'secondary',
-      in_progress: 'default',
-      review: 'outline',
-      completed: 'secondary'
-    }),
-    createBadgeColumn('priority', 'Priority', {
-      low: 'secondary',
-      medium: 'outline',
-      high: 'destructive',
-      urgent: 'destructive'
-    }),
-    createTextColumn('description', 'Description', 50),
+    createStandardColumns.badge('status', 'Status', statusColors),
+    createStandardColumns.badge('priority', 'Priority', priorityColors),
+    createStandardColumns.text('description', 'Description'),
     {
       accessorKey: 'projectId',
       header: 'Project',
