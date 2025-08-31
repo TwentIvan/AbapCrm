@@ -484,6 +484,38 @@ export const vpnCredentials = pgTable("vpn_credentials", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Tabella unificata per credenziali di sistema (SAP + VPN)
+export const systemTypeEnum = pgEnum("system_type", ["sap", "vpn"]);
+
+export const systemCredentials = pgTable("system_credentials", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  
+  // Credenziali
+  username: text("username").notNull(),
+  password: text("password").notNull(), // Encrypted in storage
+  
+  // Tipo sistema e riferimento
+  systemType: systemTypeEnum("system_type").notNull(), // SAP o VPN
+  systemId: uuid("system_id"), // ID del sistema SAP o VPN di riferimento
+  systemName: text("system_name").notNull(), // Nome leggibile del sistema
+  
+  // Scadenza e validità
+  expirationDate: timestamp("expiration_date"), // Data scadenza credenziali
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  // Tracking utilizzo
+  lastUsed: timestamp("last_used"),
+  usageCount: integer("usage_count").default(0).notNull(),
+  
+  // Note aggiuntive
+  description: text("description"), // "Admin user", "Developer", "VPN Client", etc.
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Transport Request files (cofile and data file)
 export const transportRequestStatusEnum = pgEnum("transport_request_status", ["development", "testing", "quality", "production", "released", "imported"]);
 export const transportRequestTypeEnum = pgEnum("transport_request_type", ["workbench", "customizing", "copy", "relocate"]);
@@ -982,6 +1014,15 @@ export const insertInterventionDocumentSchema = createInsertSchema(interventionD
   exportedFormats: z.array(z.string()).optional(),
 });
 
+// System Credentials Insert Schema
+export const insertSystemCredentialsSchema = createInsertSchema(systemCredentials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastUsed: true,
+  usageCount: true,
+});
+
 // All Types
 export type HumanResource = typeof humanResources.$inferSelect;
 export type InsertHumanResource = z.infer<typeof insertHumanResourceSchema>;
@@ -998,3 +1039,5 @@ export type TransportRequest = typeof transportRequests.$inferSelect;
 export type InsertTransportRequest = z.infer<typeof insertTransportRequestSchema>;
 export type InterventionDocument = typeof interventionDocuments.$inferSelect;
 export type InsertInterventionDocument = z.infer<typeof insertInterventionDocumentSchema>;
+export type SystemCredentials = typeof systemCredentials.$inferSelect;
+export type InsertSystemCredentials = z.infer<typeof insertSystemCredentialsSchema>;

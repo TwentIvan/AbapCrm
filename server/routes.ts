@@ -10,7 +10,7 @@ import {
   insertSalesOrderSchema, insertSalesOrderItemSchema, insertRateAgreementSchema,
   insertHumanResourceSchema, insertSapSystemSchema, insertSapSystemCredentialsSchema,
   insertVpnConnectionSchema, insertVpnCredentialsSchema, insertTransportRequestSchema,
-  insertInterventionDocumentSchema
+  insertInterventionDocumentSchema, insertSystemCredentialsSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -1821,6 +1821,59 @@ export function registerRoutes(app: Express): Server {
   app.delete("/api/intervention-documents/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const success = await storage.deleteInterventionDocument(req.params.id, req.user!.id);
+    if (!success) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  // System Credentials (unified SAP + VPN)
+  app.get("/api/system-credentials", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const credentials = await storage.getSystemCredentials(req.user!.id);
+    res.json(credentials);
+  });
+
+  app.get("/api/system-credentials/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const credential = await storage.getSystemCredential(req.params.id, req.user!.id);
+    if (!credential) return res.sendStatus(404);
+    res.json(credential);
+  });
+
+  app.post("/api/system-credentials", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const processedData = {
+        ...req.body,
+        userId: req.user!.id,
+        expirationDate: req.body.expirationDate ? new Date(req.body.expirationDate) : null
+      };
+      const credentialData = insertSystemCredentialsSchema.parse(processedData);
+      const credential = await storage.createSystemCredential(credentialData);
+      res.status(201).json(credential);
+    } catch (error) {
+      console.error("System credential creation error:", error);
+      res.status(400).json({ error: "Invalid credential data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.put("/api/system-credentials/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const updateData = {
+        ...req.body,
+        expirationDate: req.body.expirationDate ? new Date(req.body.expirationDate) : null
+      };
+      const credential = await storage.updateSystemCredential(req.params.id, updateData, req.user!.id);
+      if (!credential) return res.sendStatus(404);
+      res.json(credential);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update credential", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.delete("/api/system-credentials/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const success = await storage.deleteSystemCredential(req.params.id, req.user!.id);
     if (!success) return res.sendStatus(404);
     res.sendStatus(204);
   });

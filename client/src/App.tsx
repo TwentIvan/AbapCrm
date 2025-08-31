@@ -21,6 +21,7 @@ import RateAgreementsPage from "@/pages/rate-agreements-page";
 import { HumanResourcesPage } from "@/pages/human-resources-page";
 import SalesOrdersPage from "@/pages/sales-orders-page";
 import SapSystemsPage from "@/pages/sap-systems-page";
+import { SystemCredentialsPage } from "@/pages/system-credentials-page";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -40,6 +41,7 @@ function Router() {
       <ProtectedRoute path="/human-resources" component={HumanResourcesPage} />
       <ProtectedRoute path="/sales-orders" component={SalesOrdersPage} />
       <ProtectedRoute path="/sap-systems" component={SapSystemsPage} />
+      <ProtectedRoute path="/system-credentials" component={SystemCredentialsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

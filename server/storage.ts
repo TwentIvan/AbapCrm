@@ -1,7 +1,7 @@
 import { 
   users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, emailConfigs,
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
-  sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments,
+  sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
   type User, type InsertUser,
   type Project, type InsertProject,
   type Task, type InsertTask,
@@ -24,7 +24,8 @@ import {
   type VpnConnection, type InsertVpnConnection,
   type VpnCredentials, type InsertVpnCredentials,
   type TransportRequest, type InsertTransportRequest,
-  type InterventionDocument, type InsertInterventionDocument
+  type InterventionDocument, type InsertInterventionDocument,
+  type SystemCredentials, type InsertSystemCredentials
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -205,6 +206,14 @@ export interface IStorage {
   updateVpnCredential(id: string, credential: Partial<InsertVpnCredentials>, userId: string): Promise<VpnCredentials | undefined>;
   deleteVpnCredential(id: string, userId: string): Promise<boolean>;
   getActiveVpnCredentials(vpnConnectionId: string, userId: string): Promise<VpnCredentials[]>;
+
+  // System Credentials (unified SAP + VPN)
+  getSystemCredentials(userId: string): Promise<SystemCredentials[]>;
+  getSystemCredential(id: string, userId: string): Promise<SystemCredentials | undefined>;
+  getSystemCredentialsBySystem(systemId: string, systemType: "sap" | "vpn", userId: string): Promise<SystemCredentials[]>;
+  createSystemCredential(credential: InsertSystemCredentials): Promise<SystemCredentials>;
+  updateSystemCredential(id: string, credential: Partial<InsertSystemCredentials>, userId: string): Promise<SystemCredentials | undefined>;
+  deleteSystemCredential(id: string, userId: string): Promise<boolean>;
 
   // Transport Requests
   getTransportRequests(userId: string): Promise<TransportRequest[]>;
@@ -1534,6 +1543,62 @@ export class DatabaseStorage implements IStorage {
         eq(interventionDocuments.userId, userId)
       ))
       .orderBy(desc(interventionDocuments.createdAt));
+  }
+
+  // System Credentials (unified SAP + VPN)
+  async getSystemCredentials(userId: string): Promise<SystemCredentials[]> {
+    return await db.select().from(systemCredentials)
+      .where(eq(systemCredentials.userId, userId))
+      .orderBy(desc(systemCredentials.createdAt));
+  }
+
+  async getSystemCredential(id: string, userId: string): Promise<SystemCredentials | undefined> {
+    const [credential] = await db.select().from(systemCredentials)
+      .where(and(
+        eq(systemCredentials.id, id),
+        eq(systemCredentials.userId, userId)
+      ));
+    return credential || undefined;
+  }
+
+  async getSystemCredentialsBySystem(systemId: string, systemType: "sap" | "vpn", userId: string): Promise<SystemCredentials[]> {
+    return await db.select().from(systemCredentials)
+      .where(and(
+        eq(systemCredentials.systemId, systemId),
+        eq(systemCredentials.systemType, systemType),
+        eq(systemCredentials.userId, userId)
+      ))
+      .orderBy(desc(systemCredentials.createdAt));
+  }
+
+  async createSystemCredential(credential: InsertSystemCredentials): Promise<SystemCredentials> {
+    const [newCredential] = await db
+      .insert(systemCredentials)
+      .values(credential)
+      .returning();
+    return newCredential;
+  }
+
+  async updateSystemCredential(id: string, credential: Partial<InsertSystemCredentials>, userId: string): Promise<SystemCredentials | undefined> {
+    const [updated] = await db
+      .update(systemCredentials)
+      .set({ ...credential, updatedAt: new Date() })
+      .where(and(
+        eq(systemCredentials.id, id),
+        eq(systemCredentials.userId, userId)
+      ))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteSystemCredential(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(systemCredentials)
+      .where(and(
+        eq(systemCredentials.id, id),
+        eq(systemCredentials.userId, userId)
+      ));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 
