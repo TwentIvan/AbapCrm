@@ -151,7 +151,7 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome Connessione</FormLabel>
+                    <FormLabel>Nome Connessione *</FormLabel>
                     <FormControl>
                       <Input placeholder="Cliente ABC VPN" {...field} data-testid="input-name" />
                     </FormControl>
@@ -165,7 +165,7 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
                 name="partnerId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cliente/Partner</FormLabel>
+                    <FormLabel>Cliente/Partner *</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-partner">
                       <FormControl>
                         <SelectTrigger>
@@ -215,7 +215,7 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
                 name="serverHost"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Server VPN</FormLabel>
+                    <FormLabel>Server VPN *</FormLabel>
                     <FormControl>
                       <Input placeholder="vpn.cliente.com" {...field} data-testid="input-server" />
                     </FormControl>
