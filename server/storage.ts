@@ -354,6 +354,7 @@ export class DatabaseStorage implements IStorage {
       parentTaskId: tasks.parentTaskId,
       userId: tasks.userId,
       assignedTo: tasks.assignedTo,
+      sapSystemId: tasks.sapSystemId,
       dueDate: tasks.dueDate,
       completedAt: tasks.completedAt,
       estimatedEffort: tasks.estimatedEffort,
