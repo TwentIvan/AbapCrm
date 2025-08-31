@@ -60,9 +60,15 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
   const selectedSystemType = form.watch("systemType");
 
   // Fetch available systems for reference - only load what exists
-  const { data: sapSystems = [] } = useQuery({
+  const { data: sapSystems = [], isLoading: sapLoading, error: sapError } = useQuery({
     queryKey: ["/api/sap-systems"],
-    enabled: selectedSystemType === "sap" // Solo se tipo SAP selezionato
+    enabled: selectedSystemType === "sap", // Solo se tipo SAP selezionato
+    onSuccess: (data) => {
+      console.log("SAP Systems loaded:", data?.length || 0);
+    },
+    onError: (error) => {
+      console.error("SAP Systems error:", error);
+    }
   });
 
   const { data: vpnConnections = [] } = useQuery({
