@@ -1,7 +1,7 @@
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Radar } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import hubUpLogo from "@assets/generated_images/hub_up_logo.png";
 import ImageContainer from "@/components/ui/image-container";
@@ -19,6 +19,7 @@ const navigation = [
   { name: "Human Resources", href: "/human-resources", icon: Users, testId: "nav-human-resources" },
   { name: "SAP Systems", href: "/sap-systems", icon: Server, testId: "nav-sap-systems" },
   { name: "VPN Systems", href: "/vpn-systems", icon: Shield, testId: "nav-vpn-systems" },
+  { name: "VPN Connections", href: "/vpn-connections", icon: Wifi, testId: "nav-vpn-connections" },
   { name: "VPN Discovery", href: "/vpn-discovery", icon: Radar, testId: "nav-vpn-discovery" },
   { name: "System Credentials", href: "/system-credentials", icon: Key, testId: "nav-system-credentials" },
   { name: "Messages", href: "/messages", icon: Mail, testId: "nav-messages" },

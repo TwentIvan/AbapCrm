@@ -24,6 +24,7 @@ import SapSystemsPage from "@/pages/sap-systems-page";
 import { SystemCredentialsPage } from "@/pages/system-credentials-page";
 import VpnSystemsPage from "@/pages/vpn-systems-page";
 import VPNDiscoveryPage from "@/pages/vpn-discovery-page";
+import VPNConnectionsPage from "@/pages/vpn-connections-page";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -44,6 +45,7 @@ function Router() {
       <ProtectedRoute path="/sales-orders" component={SalesOrdersPage} />
       <ProtectedRoute path="/sap-systems" component={SapSystemsPage} />
       <ProtectedRoute path="/vpn-systems" component={VpnSystemsPage} />
+      <ProtectedRoute path="/vpn-connections" component={VPNConnectionsPage} />
       <ProtectedRoute path="/vpn-discovery" component={VPNDiscoveryPage} />
       <ProtectedRoute path="/system-credentials" component={SystemCredentialsPage} />
       <Route path="/auth" component={AuthPage} />

@@ -131,7 +131,39 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Task not found or no SAP system configured" });
       }
 
-      // Generate automation scripts based on the VPN connection info
+      // Check if VPN connection has pre-generated automation script
+      if (connectionInfo.vpnConnectionId) {
+        const vpnConnection = await storage.getVpnConnection(connectionInfo.vpnConnectionId, req.user!.id);
+        
+        if (vpnConnection?.automationScript) {
+          // Use the pre-generated intelligent script from database
+          console.log('Using pre-generated VPN automation script from database');
+          const automationResult = {
+            success: true,
+            connectionType: vpnConnection.scriptType || 'unknown',
+            executionCommand: vpnConnection.automationScript,
+            instructions: `🚀 Script Intelligente Pre-Configurato
+            
+Questo script è stato generato e validato durante la configurazione della VPN "${vpnConnection.name}".
+
+Comando di esecuzione:
+${vpnConnection.automationScript}
+
+Tipo script: ${vpnConnection.scriptType}
+Generato il: ${vpnConnection.scriptGeneratedAt ? new Date(vpnConnection.scriptGeneratedAt).toLocaleString() : 'N/A'}
+Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptValidatedAt).toLocaleString() : 'N/A'}
+
+✅ Questo script è pronto per l'uso immediato!`,
+            scriptPath: vpnConnection.scriptType === 'applescript' ? '/tmp/forticlient_automation.scpt' : 
+                       vpnConnection.scriptType === 'scutil' ? '/tmp/native_vpn.sh' : '/tmp/vpn_script.sh'
+          };
+          
+          return res.json(automationResult);
+        }
+      }
+
+      // Fallback: Generate automation scripts on the fly (legacy behavior)
+      console.log('No pre-generated script found, generating on-the-fly...');
       const automationResult = await generateVPNAutomationScript(connectionInfo);
       res.json(automationResult);
     } catch (error) {
@@ -1696,6 +1728,60 @@ export function registerRoutes(app: Express): Server {
     const success = await storage.deleteVpnConnection(req.params.id, req.user!.id);
     if (!success) return res.sendStatus(404);
     res.sendStatus(204);
+  });
+
+  // Generate VPN automation script
+  app.post("/api/vpn-connections/:id/generate-script", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const connection = await storage.getVpnConnection(req.params.id, req.user!.id);
+      if (!connection) return res.sendStatus(404);
+
+      // Create a VPN connection object for the automation script generator
+      const vpnConnectionInfo = {
+        id: connection.id,
+        name: connection.name,
+        type: req.body.connectionType || 'forticlient', // Let user specify the type
+        server: connection.serverHost,
+        port: connection.serverPort,
+        status: 'configured',
+        description: connection.description || `VPN automation for ${connection.name}`
+      };
+
+      // Generate the automation script
+      const automationResult = await generateVPNAutomationScript({ vpnConnection: vpnConnectionInfo });
+
+      if (automationResult.success) {
+        // Save the generated script to the database
+        const scriptType = automationResult.connectionType === 'forticlient' ? 'applescript' : 
+                         automationResult.connectionType === 'native' ? 'scutil' : 'shell';
+        
+        const updatedConnection = await storage.updateVpnConnection(req.params.id, {
+          automationScript: automationResult.executionCommand,
+          scriptType: scriptType,
+          scriptGeneratedAt: new Date(),
+          scriptValidatedAt: new Date() // Set as validated since it was just generated
+        }, req.user!.id);
+
+        res.json({
+          success: true,
+          connection: updatedConnection,
+          automationResult: automationResult
+        });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          error: automationResult.error 
+        });
+      }
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        error: "Failed to generate automation script", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
   });
 
   // VPN Credentials

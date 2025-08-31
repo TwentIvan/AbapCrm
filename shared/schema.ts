@@ -485,6 +485,12 @@ export const vpnConnections = pgTable("vpn_connections", {
   keyPath: text("key_path"), // Path to private key
   caCertPath: text("ca_cert_path"), // Path to CA certificate
   
+  // Automation script for VPN connection
+  automationScript: text("automation_script"), // Generated AppleScript/Shell script for VPN automation
+  scriptType: text("script_type"), // "applescript", "shell", "native_macos"
+  scriptGeneratedAt: timestamp("script_generated_at", { withTimezone: true }), // When script was generated
+  scriptValidatedAt: timestamp("script_validated_at", { withTimezone: true }), // When script was last tested
+  
   // Additional settings
   allowedIpRanges: text("allowed_ip_ranges").array().default([]), // IP ranges accessible through VPN
   dnsServers: text("dns_servers").array().default([]), // DNS servers to use
@@ -1034,6 +1040,8 @@ export const insertVpnConnectionSchema = createInsertSchema(vpnConnections).omit
   updatedAt: true,
   lastConnected: true,
   connectionDuration: true,
+  scriptGeneratedAt: true, // Auto-generated when script is created
+  scriptValidatedAt: true, // Auto-generated when script is tested
 }).extend({
   allowedIpRanges: z.array(z.string()).optional(),
   dnsServers: z.array(z.string()).optional(),
