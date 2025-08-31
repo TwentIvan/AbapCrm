@@ -299,20 +299,21 @@ export class SapLandscapeParser {
     // Determina il landscape dal nome del sistema
     const landscape = this.inferLandscape(systemId, description);
 
-    // Porta dell'application server (default SAP)
-    let applicationServerPort = 3200; // Default SAP
-    const portAttr = bestService.getAttribute("port");
-    if (portAttr) {
-      const port = parseInt(portAttr);
-      if (!isNaN(port)) {
-        applicationServerPort = port;
+    // Se c'è ancora un servizio, prova a estrarre la porta da lì
+    if (bestService) {
+      const portAttr = bestService.getAttribute("port");
+      if (portAttr) {
+        const port = parseInt(portAttr);
+        if (!isNaN(port)) {
+          applicationServerPort = port;
+        }
       }
     }
 
     return {
       name: systemId,
       description: description || undefined,
-      serverHost: server,
+      serverHost: finalServer,
       systemNumber: systemNumber.padStart(2, '0'), // Assicura 2 cifre
       clientNumber: clientNumber.padStart(3, '0'), // Assicura 3 cifre
       applicationServerPort,
