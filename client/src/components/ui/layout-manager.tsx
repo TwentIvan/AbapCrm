@@ -202,6 +202,48 @@ export function LayoutManager({
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* Save Layout Dialog */}
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8"
+            data-testid="button-save-layout"
+          >
+            <Save className="mr-2 h-4 w-4" />
+            Salva Layout
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Salva Layout Corrente</DialogTitle>
+            <DialogDescription>
+              Inserisci un nome per salvare la configurazione corrente di colonne, ordinamento e filtri.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center space-x-2">
+            <div className="grid flex-1 gap-2">
+              <Label htmlFor="layout-name" className="sr-only">
+                Nome Layout
+              </Label>
+              <Input
+                id="layout-name"
+                placeholder="Es. Layout Personalizzato"
+                data-testid="input-layout-name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="submit"
+              data-testid="button-confirm-save-layout"
+            >
+              Salva Layout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
