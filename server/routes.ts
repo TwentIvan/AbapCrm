@@ -4,6 +4,7 @@ import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { generateVPNAutomationScript, discoverVPNConnections } from "./vpn-automation";
 import { z } from "zod";
+import { createInsertSchema } from "drizzle-zod";
 import { 
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, 
   insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema,
@@ -12,7 +13,7 @@ import {
   insertHumanResourceSchema, insertSapSystemSchema, insertSapSystemCredentialsSchema,
   insertVpnConnectionSchema, insertVpnCredentialsSchema, insertTransportRequestSchema,
   insertInterventionDocumentSchema, insertSystemCredentialsSchema,
-  insertVpnSoftwareSchema, insertVpnSystemsSchema
+  insertVpnSoftwareSchema, insertVpnSystemsSchema, vpnConnections
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -1708,10 +1709,20 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const connectionData = { ...req.body, userId: req.user!.id };
       console.log("🔍 VPN POST connection data with userId:", connectionData);
       
-      // Create backend validation schema that includes userId
-      const backendVpnSchema = insertVpnConnectionSchema.extend({
-        userId: z.string().uuid()
+      // Use the original schema without userId omitted for backend validation
+      const backendVpnSchema = createInsertSchema(vpnConnections).omit({
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        lastConnected: true,
+        connectionDuration: true,
+        scriptGeneratedAt: true,
+        scriptValidatedAt: true,
+      }).extend({
+        allowedIpRanges: z.array(z.string()).optional(),
+        dnsServers: z.array(z.string()).optional(),
       });
+      
       const validatedData = backendVpnSchema.parse(connectionData);
       console.log("🔍 VPN POST validated data:", validatedData);
       const connection = await storage.createVpnConnection(validatedData);
