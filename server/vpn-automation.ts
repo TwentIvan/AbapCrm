@@ -301,7 +301,11 @@ async function checkOpenFortiVPNAvailability(): Promise<VPNConnection | null> {
 export async function generateVPNAutomationScript(connectionInfo: any): Promise<VPNAutomationResult> {
   const { vpnConnection } = connectionInfo;
 
+  console.log('[VPN-SCRIPT] Input connectionInfo:', JSON.stringify(connectionInfo, null, 2));
+  console.log('[VPN-SCRIPT] Extracted vpnConnection:', JSON.stringify(vpnConnection, null, 2));
+
   if (!vpnConnection) {
+    console.log('[VPN-SCRIPT] ERROR: No vpnConnection found');
     return {
       success: false,
       connectionType: 'none',
@@ -309,8 +313,11 @@ export async function generateVPNAutomationScript(connectionInfo: any): Promise<
     };
   }
 
+  const connectionType = vpnConnection.type || vpnConnection.connectionType;
+  console.log('[VPN-SCRIPT] Connection type detected:', connectionType);
+
   try {
-    switch (vpnConnection.type || vpnConnection.connectionType) {
+    switch (connectionType) {
       case 'forticlient':
         return await generateFortiClientScript(vpnConnection);
       
@@ -322,16 +329,18 @@ export async function generateVPNAutomationScript(connectionInfo: any): Promise<
         return await generateOpenVPNScript(vpnConnection);
       
       default:
+        console.log('[VPN-SCRIPT] ERROR: Unsupported connection type:', connectionType);
         return {
           success: false,
-          connectionType: vpnConnection.type || 'unknown',
+          connectionType: connectionType || 'unknown',
           error: 'Unsupported VPN connection type'
         };
     }
   } catch (error) {
+    console.log('[VPN-SCRIPT] EXCEPTION caught:', error);
     return {
       success: false,
-      connectionType: vpnConnection.type || 'unknown',
+      connectionType: connectionType || 'unknown',
       error: `Failed to generate automation script: ${error}`
     };
   }
@@ -465,8 +474,12 @@ export async function testVPNConnection(connection: any): Promise<VPNTestResult>
   };
 
   try {
+    console.log('[VPN-TEST] Testing connection:', connection.name, 'type:', connection.connectionType);
+    
     // Generate the actual automation script for this connection
     const scriptResult = await generateVPNAutomationScript({ vpnConnection: connection });
+    
+    console.log('[VPN-TEST] Script generation result:', JSON.stringify(scriptResult, null, 2));
     
     if (scriptResult.success) {
       result.script.valid = true;
