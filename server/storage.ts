@@ -2,6 +2,7 @@ import {
   users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, emailConfigs,
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
+  vpnSoftware, vpnSystems,
   type User, type InsertUser,
   type Project, type InsertProject,
   type Task, type InsertTask,
@@ -25,7 +26,9 @@ import {
   type VpnCredentials, type InsertVpnCredentials,
   type TransportRequest, type InsertTransportRequest,
   type InterventionDocument, type InsertInterventionDocument,
-  type SystemCredentials, type InsertSystemCredentials
+  type SystemCredentials, type InsertSystemCredentials,
+  type VpnSoftware, type InsertVpnSoftware,
+  type VpnSystems, type InsertVpnSystems
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -234,6 +237,21 @@ export interface IStorage {
   updateInterventionDocument(id: string, document: Partial<InsertInterventionDocument>, userId: string): Promise<InterventionDocument | undefined>;
   deleteInterventionDocument(id: string, userId: string): Promise<boolean>;
   getInterventionDocumentsByStatus(status: string, userId: string): Promise<InterventionDocument[]>;
+
+  // VPN Software (Master Data)
+  getVpnSoftware(): Promise<VpnSoftware[]>;
+  getVpnSoftwareById(id: string): Promise<VpnSoftware | undefined>;
+  createVpnSoftware(software: InsertVpnSoftware): Promise<VpnSoftware>;
+  updateVpnSoftware(id: string, software: Partial<InsertVpnSoftware>): Promise<VpnSoftware | undefined>;
+  deleteVpnSoftware(id: string): Promise<boolean>;
+
+  // VPN Systems
+  getVpnSystems(userId: string): Promise<VpnSystems[]>;
+  getVpnSystemsByPartner(partnerId: string, userId: string): Promise<VpnSystems[]>;
+  getVpnSystem(id: string, userId: string): Promise<VpnSystems | undefined>;
+  createVpnSystem(system: InsertVpnSystems): Promise<VpnSystems>;
+  updateVpnSystem(id: string, system: Partial<InsertVpnSystems>, userId: string): Promise<VpnSystems | undefined>;
+  deleteVpnSystem(id: string, userId: string): Promise<boolean>;
 
   sessionStore: session.Store;
 }
@@ -1599,6 +1617,114 @@ export class DatabaseStorage implements IStorage {
         eq(systemCredentials.userId, userId)
       ));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // VPN Software (Master Data) 
+  async getVpnSoftware(): Promise<VpnSoftware[]> {
+    return await db.select().from(vpnSoftware)
+      .where(eq(vpnSoftware.isActive, true))
+      .orderBy(asc(vpnSoftware.vendor), asc(vpnSoftware.name));
+  }
+
+  async getVpnSoftwareById(id: string): Promise<VpnSoftware | undefined> {
+    const [software] = await db.select().from(vpnSoftware)
+      .where(eq(vpnSoftware.id, id));
+    return software || undefined;
+  }
+
+  async createVpnSoftware(insertSoftware: InsertVpnSoftware): Promise<VpnSoftware> {
+    const [software] = await db
+      .insert(vpnSoftware)
+      .values(insertSoftware)
+      .returning();
+    return software;
+  }
+
+  async updateVpnSoftware(id: string, softwareData: Partial<InsertVpnSoftware>): Promise<VpnSoftware | undefined> {
+    const [software] = await db
+      .update(vpnSoftware)
+      .set(softwareData)
+      .where(eq(vpnSoftware.id, id))
+      .returning();
+    return software || undefined;
+  }
+
+  async deleteVpnSoftware(id: string): Promise<boolean> {
+    const result = await db
+      .delete(vpnSoftware)
+      .where(eq(vpnSoftware.id, id));
+    return result.rowCount > 0;
+  }
+
+  // VPN Systems
+  async getVpnSystems(userId: string): Promise<VpnSystems[]> {
+    return await db.select({
+      id: vpnSystems.id,
+      name: vpnSystems.name,
+      serverAddress: vpnSystems.serverAddress,
+      port: vpnSystems.port,
+      connectionType: vpnSystems.connectionType,
+      status: vpnSystems.status,
+      description: vpnSystems.description,
+      partnerId: vpnSystems.partnerId,
+      vpnSoftwareId: vpnSystems.vpnSoftwareId,
+      userId: vpnSystems.userId,
+      createdAt: vpnSystems.createdAt,
+      updatedAt: vpnSystems.updatedAt,
+      lastConnected: vpnSystems.lastConnected,
+      partner: {
+        id: partners.id,
+        name: partners.name,
+        company: partners.company
+      },
+      vpnSoftware: {
+        id: vpnSoftware.id,
+        name: vpnSoftware.name,
+        vendor: vpnSoftware.vendor,
+        iconUrl: vpnSoftware.iconUrl
+      }
+    })
+    .from(vpnSystems)
+    .leftJoin(partners, eq(vpnSystems.partnerId, partners.id))
+    .leftJoin(vpnSoftware, eq(vpnSystems.vpnSoftwareId, vpnSoftware.id))
+    .where(eq(vpnSystems.userId, userId))
+    .orderBy(desc(vpnSystems.createdAt));
+  }
+
+  async getVpnSystemsByPartner(partnerId: string, userId: string): Promise<VpnSystems[]> {
+    return await db.select().from(vpnSystems)
+      .where(and(eq(vpnSystems.partnerId, partnerId), eq(vpnSystems.userId, userId)))
+      .orderBy(desc(vpnSystems.createdAt));
+  }
+
+  async getVpnSystem(id: string, userId: string): Promise<VpnSystems | undefined> {
+    const [system] = await db.select().from(vpnSystems)
+      .where(and(eq(vpnSystems.id, id), eq(vpnSystems.userId, userId)));
+    return system || undefined;
+  }
+
+  async createVpnSystem(insertSystem: InsertVpnSystems): Promise<VpnSystems> {
+    const [system] = await db
+      .insert(vpnSystems)
+      .values(insertSystem)
+      .returning();
+    return system;
+  }
+
+  async updateVpnSystem(id: string, systemData: Partial<InsertVpnSystems>, userId: string): Promise<VpnSystems | undefined> {
+    const [system] = await db
+      .update(vpnSystems)
+      .set(systemData)
+      .where(and(eq(vpnSystems.id, id), eq(vpnSystems.userId, userId)))
+      .returning();
+    return system || undefined;
+  }
+
+  async deleteVpnSystem(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(vpnSystems)
+      .where(and(eq(vpnSystems.id, id), eq(vpnSystems.userId, userId)));
+    return result.rowCount > 0;
   }
 }
 

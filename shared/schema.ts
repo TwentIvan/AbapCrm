@@ -418,6 +418,51 @@ export const sapSystemCredentials = pgTable("sap_system_credentials", {
 export const vpnConnectionTypeEnum = pgEnum("vpn_connection_type", ["openvpn", "ipsec", "wireguard", "cisco_anyconnect", "fortigate", "other"]);
 export const vpnStatusEnum = pgEnum("vpn_status", ["active", "inactive", "expired", "blocked"]);
 
+// VPN Software (Master Data)
+export const vpnSoftware = pgTable("vpn_software", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(), // "FortiClient", "Azure VPN Client", "GlobalProtect"
+  vendor: text("vendor").notNull(), // "Fortinet", "Microsoft", "Palo Alto Networks"
+  version: text("version"), // "7.2.0", "Latest"
+  description: text("description"),
+  iconUrl: text("icon_url"), // URL dell'icona del software
+  downloadUrl: text("download_url"), // URL per scaricare il software
+  documentationUrl: text("documentation_url"), // URL documentazione
+  supportedPlatforms: text("supported_platforms").array().default([]), // ["windows", "mac", "linux", "ios", "android"]
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// VPN Systems (per partner con software specifico)
+export const vpnSystems = pgTable("vpn_systems", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  partnerId: uuid("partner_id").references(() => partners.id).notNull(),
+  vpnSoftwareId: uuid("vpn_software_id").references(() => vpnSoftware.id).notNull(),
+  
+  name: text("name").notNull(), // "VPN Azienda ABC", "Accesso remoto Cliente XYZ"
+  description: text("description"),
+  
+  // Connection details
+  serverHost: text("server_host").notNull(),
+  serverPort: integer("server_port"),
+  username: text("username"),
+  connectionProfile: text("connection_profile"), // Nome profilo configurazione
+  
+  // Configuration
+  configNotes: text("config_notes"), // Note di configurazione specifiche
+  autoStart: boolean("auto_start").default(false).notNull(),
+  
+  // Status
+  status: vpnStatusEnum("status").default("active").notNull(),
+  lastConnected: timestamp("last_connected"),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const vpnConnections = pgTable("vpn_connections", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
@@ -666,6 +711,7 @@ export const partnersRelations = relations(partners, ({ one, many }) => ({
   salesOrders: many(salesOrders),
   sapSystems: many(sapSystems),
   vpnConnections: many(vpnConnections),
+  vpnSystems: many(vpnSystems),
 }));
 
 export const humanResourcesRelations = relations(humanResources, ({ one }) => ({
@@ -774,6 +820,16 @@ export const sapSystemsRelations = relations(sapSystems, ({ one, many }) => ({
 export const sapSystemCredentialsRelations = relations(sapSystemCredentials, ({ one }) => ({
   user: one(users, { fields: [sapSystemCredentials.userId], references: [users.id] }),
   sapSystem: one(sapSystems, { fields: [sapSystemCredentials.sapSystemId], references: [sapSystems.id] }),
+}));
+
+export const vpnSoftwareRelations = relations(vpnSoftware, ({ many }) => ({
+  vpnSystems: many(vpnSystems),
+}));
+
+export const vpnSystemsRelations = relations(vpnSystems, ({ one }) => ({
+  user: one(users, { fields: [vpnSystems.userId], references: [users.id] }),
+  partner: one(partners, { fields: [vpnSystems.partnerId], references: [partners.id] }),
+  vpnSoftware: one(vpnSoftware, { fields: [vpnSystems.vpnSoftwareId], references: [vpnSoftware.id] }),
 }));
 
 export const vpnConnectionsRelations = relations(vpnConnections, ({ one, many }) => ({
@@ -1023,6 +1079,23 @@ export const insertSystemCredentialsSchema = createInsertSchema(systemCredential
   usageCount: true,
 });
 
+// VPN Software Insert Schema
+export const insertVpnSoftwareSchema = createInsertSchema(vpnSoftware).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  supportedPlatforms: z.array(z.string()).optional(),
+});
+
+// VPN Systems Insert Schema
+export const insertVpnSystemsSchema = createInsertSchema(vpnSystems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastConnected: true,
+});
+
 // All Types
 export type HumanResource = typeof humanResources.$inferSelect;
 export type InsertHumanResource = z.infer<typeof insertHumanResourceSchema>;
@@ -1041,3 +1114,7 @@ export type InterventionDocument = typeof interventionDocuments.$inferSelect;
 export type InsertInterventionDocument = z.infer<typeof insertInterventionDocumentSchema>;
 export type SystemCredentials = typeof systemCredentials.$inferSelect;
 export type InsertSystemCredentials = z.infer<typeof insertSystemCredentialsSchema>;
+export type VpnSoftware = typeof vpnSoftware.$inferSelect;
+export type InsertVpnSoftware = z.infer<typeof insertVpnSoftwareSchema>;
+export type VpnSystems = typeof vpnSystems.$inferSelect;
+export type InsertVpnSystems = z.infer<typeof insertVpnSystemsSchema>;

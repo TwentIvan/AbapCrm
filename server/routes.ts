@@ -10,7 +10,8 @@ import {
   insertSalesOrderSchema, insertSalesOrderItemSchema, insertRateAgreementSchema,
   insertHumanResourceSchema, insertSapSystemSchema, insertSapSystemCredentialsSchema,
   insertVpnConnectionSchema, insertVpnCredentialsSchema, insertTransportRequestSchema,
-  insertInterventionDocumentSchema, insertSystemCredentialsSchema
+  insertInterventionDocumentSchema, insertSystemCredentialsSchema,
+  insertVpnSoftwareSchema, insertVpnSystemsSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -1696,6 +1697,99 @@ export function registerRoutes(app: Express): Server {
   app.delete("/api/vpn-credentials/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const success = await storage.deleteVpnCredential(req.params.id, req.user!.id);
+    if (!success) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  // VPN Software (Master Data)
+  app.get("/api/vpn-software", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const software = await storage.getVpnSoftware();
+    res.json(software);
+  });
+
+  app.get("/api/vpn-software/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const software = await storage.getVpnSoftwareById(req.params.id);
+    if (!software) return res.sendStatus(404);
+    res.json(software);
+  });
+
+  app.post("/api/vpn-software", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const validatedData = insertVpnSoftwareSchema.parse(req.body);
+      const software = await storage.createVpnSoftware(validatedData);
+      res.status(201).json(software);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid VPN software data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.put("/api/vpn-software/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const software = await storage.updateVpnSoftware(req.params.id, req.body);
+      if (!software) return res.sendStatus(404);
+      res.json(software);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update VPN software", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.delete("/api/vpn-software/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const success = await storage.deleteVpnSoftware(req.params.id);
+    if (!success) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  // VPN Systems
+  app.get("/api/vpn-systems", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const systems = await storage.getVpnSystems(req.user!.id);
+    res.json(systems);
+  });
+
+  app.get("/api/vpn-systems/partner/:partnerId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const systems = await storage.getVpnSystemsByPartner(req.params.partnerId, req.user!.id);
+    res.json(systems);
+  });
+
+  app.get("/api/vpn-systems/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const system = await storage.getVpnSystem(req.params.id, req.user!.id);
+    if (!system) return res.sendStatus(404);
+    res.json(system);
+  });
+
+  app.post("/api/vpn-systems", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const systemData = { ...req.body, userId: req.user!.id };
+      const validatedData = insertVpnSystemsSchema.parse(systemData);
+      const system = await storage.createVpnSystem(validatedData);
+      res.status(201).json(system);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid VPN system data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.put("/api/vpn-systems/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const system = await storage.updateVpnSystem(req.params.id, req.body, req.user!.id);
+      if (!system) return res.sendStatus(404);
+      res.json(system);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update VPN system", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.delete("/api/vpn-systems/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const success = await storage.deleteVpnSystem(req.params.id, req.user!.id);
     if (!success) return res.sendStatus(404);
     res.sendStatus(204);
   });
