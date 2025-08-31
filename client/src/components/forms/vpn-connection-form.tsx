@@ -39,6 +39,7 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
 
   const form = useForm({
     resolver: zodResolver(formSchema),
+    mode: "onChange",
     defaultValues: {
       name: vpnConnection?.name || "",
       description: vpnConnection?.description || "",
@@ -56,6 +57,8 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
       vpnSoftwareType: 'forticlient'
     },
   });
+
+  console.log("🔍 VPN Form rendered, partners count:", partners.length);
 
   const createMutation = useMutation({
     mutationFn: (data: z.infer<typeof formSchema>) => 

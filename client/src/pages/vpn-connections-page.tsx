@@ -230,19 +230,23 @@ export default function VPNConnectionsPage() {
                   {editingConnection ? "Aggiorna" : "Aggiungi"} connessione VPN per accesso remoto
                 </DialogDescription>
               </DialogHeader>
-              <VPNConnectionForm
-                vpnConnection={editingConnection}
-                partners={partners.map(p => ({ id: p.id, name: p.name, company: p.company || 'N/A' }))}
-                onSuccess={() => {
-                  setShowForm(false);
-                  setEditingConnection(null);
-                  queryClient.invalidateQueries({ queryKey: ["/api/vpn-connections"] });
-                }}
-                onCancel={() => {
-                  setShowForm(false);
-                  setEditingConnection(null);
-                }}
-              />
+              {showForm && (
+                <VPNConnectionForm
+                  vpnConnection={editingConnection}
+                  partners={partners?.map(p => ({ id: p.id, name: p.name || 'N/A', company: p.company || 'N/A' })) || []}
+                  onSuccess={() => {
+                    console.log("🔍 VPN form success callback");
+                    setShowForm(false);
+                    setEditingConnection(null);
+                    queryClient.invalidateQueries({ queryKey: ["/api/vpn-connections"] });
+                  }}
+                  onCancel={() => {
+                    console.log("🔍 VPN form cancel callback");
+                    setShowForm(false);
+                    setEditingConnection(null);
+                  }}
+                />
+              )}
             </DialogContent>
           </Dialog>
 
