@@ -317,7 +317,9 @@ export default function TasksPage() {
     queryFn: async () => {
       const res = await fetch("/api/tasks", { credentials: "include" });
       if (!res.ok) throw new Error('Failed to fetch tasks');
-      return res.json();
+      const data = await res.json();
+      console.log('Tasks loaded from API:', data);
+      return data;
     },
   });
 
