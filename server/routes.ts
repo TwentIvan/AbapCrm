@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { generateVPNAutomationScript, discoverVPNConnections } from "./vpn-automation";
+import { generateVPNAutomationScript, discoverVPNConnections, testVPNConnection } from "./vpn-automation";
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
 import { 
@@ -1734,6 +1734,31 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     const success = await storage.deleteVpnConnection(req.params.id, req.user!.id);
     if (!success) return res.sendStatus(404);
     res.sendStatus(204);
+  });
+
+  // Test VPN connection
+  app.post("/api/vpn-connections/:id/test", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const connection = await storage.getVpnConnection(req.params.id, req.user!.id);
+      if (!connection) return res.sendStatus(404);
+
+      // Test VPN connectivity and script validation
+      const testResult = await testVPNConnection(connection);
+      
+      res.json({
+        success: true,
+        connection: connection,
+        testResult: testResult
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        error: "Failed to test VPN connection", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
   });
 
   // Generate VPN automation script

@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { VpnConnection, Partner } from "@shared/schema";
 import VPNConnectionForm from "@/components/forms/vpn-connection-form";
-import { Trash2, Settings, CheckCircle, XCircle } from "lucide-react";
+import { Trash2, Settings, CheckCircle, XCircle, Play, Loader2 } from "lucide-react";
 
 export default function VPNConnectionsPage() {
   const [selectedConnections, setSelectedConnections] = useState<VpnConnection[]>([]);
@@ -21,6 +21,7 @@ export default function VPNConnectionsPage() {
   const [showForm, setShowForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [testingConnection, setTestingConnection] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -71,6 +72,31 @@ export default function VPNConnectionsPage() {
       setSelectedConnections([]);
       setShowBulkDeleteDialog(false);
       toast({ title: "Eliminate", description: "Connessioni VPN eliminate con successo" });
+    }
+  });
+
+  const testConnectionMutation = useMutation({
+    mutationFn: (connectionId: string) => apiRequest("POST", `/api/vpn-connections/${connectionId}/test`),
+    onMutate: (connectionId: string) => {
+      setTestingConnection(connectionId);
+    },
+    onSuccess: (data: any, connectionId: string) => {
+      setTestingConnection(null);
+      const testResult = data.testResult;
+      
+      toast({
+        title: "Test Completato",
+        description: testResult.overall.message,
+        variant: testResult.overall.status === 'error' ? 'destructive' : 'default'
+      });
+    },
+    onError: (error: any, connectionId: string) => {
+      setTestingConnection(null);
+      toast({
+        title: "Errore Test",
+        description: "Impossibile testare la connessione VPN",
+        variant: "destructive"
+      });
     }
   });
 
@@ -175,6 +201,42 @@ export default function VPNConnectionsPage() {
           </div>
         ) : (
           <span className="text-muted-foreground">-</span>
+        );
+      },
+    },
+    {
+      key: "actions",
+      label: "Azioni", 
+      sortable: false,
+      searchable: false,
+      render: (connection: VpnConnection) => {
+        const isTestingThis = testingConnection === connection.id;
+        
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              data-testid={`button-test-${connection.id}`}
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                testConnectionMutation.mutate(connection.id);
+              }}
+              disabled={isTestingThis || testingConnection !== null}
+            >
+              {isTestingThis ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Testing...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 mr-2" />
+                  Test
+                </>
+              )}
+            </Button>
+          </div>
         );
       },
     },
