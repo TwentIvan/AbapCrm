@@ -168,12 +168,15 @@ export class SapLandscapeParser {
    * Estrae informazioni da un elemento System
    */
   private static parseSystemElement(systemElement: Element): SapSystemFromXml | null {
-    // Prova diversi attributi per il system ID
+    // System ID (es: SV6)
     const systemId = systemElement.getAttribute("systemid") || 
                      systemElement.getAttribute("systemId") || 
-                     systemElement.getAttribute("sid") ||
-                     systemElement.getAttribute("name") ||
-                     systemElement.getAttribute("id");
+                     systemElement.getAttribute("sid");
+    
+    // System Name completo (es: Hera.SV6) - prende dal campo "name"
+    const systemName = systemElement.getAttribute("name") || 
+                       systemElement.getAttribute("id") ||
+                       systemId; // fallback al system ID
                      
     const description = systemElement.getAttribute("description") || 
                        systemElement.getAttribute("desc") ||
@@ -182,12 +185,13 @@ export class SapLandscapeParser {
     console.log("Parsing system element:", {
       tagName: systemElement.tagName,
       systemId,
+      systemName,
       description,
       allAttributes: Array.from(systemElement.attributes).map(attr => `${attr.name}="${attr.value}"`).join(' ')
     });
 
     if (!systemId) {
-      throw new Error("System element missing system identifier (tried: systemid, systemId, sid, name, id)");
+      throw new Error("System element missing system identifier (tried: systemid, systemId, sid)");
     }
 
     // Cerca servizi all'interno del sistema
@@ -304,7 +308,7 @@ export class SapLandscapeParser {
     }
 
     return {
-      name: systemId,
+      name: systemName || systemId, // Usa il nome completo (es: "Hera.SV6") o fallback al system ID
       description: description || undefined,
       serverHost: finalServer,
       systemNumber: systemNumber.padStart(2, '0'), // Assicura 2 cifre
@@ -315,7 +319,7 @@ export class SapLandscapeParser {
       landscape,
       sapReleaseVersion: undefined,
       kernelVersion: undefined,
-      notes: undefined,
+      notes: `System ID: ${systemId}`, // Salva il system ID nelle note
       isActive: true,
     };
   }

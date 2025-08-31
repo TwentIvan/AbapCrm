@@ -47,7 +47,6 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
       const res = await fetch("/api/partners", { credentials: "include" });
       if (!res.ok) throw new Error('Failed to fetch partners');
       const data = await res.json();
-      console.log("🏢 Partners loaded:", data);
       return data;
     },
   });
@@ -65,22 +64,15 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
   // Mutation per import multiplo
   const importMutation = useMutation({
     mutationFn: async (data: ImportFormData) => {
-      console.log("🚀 Starting import with data:", data);
-      console.log("📋 Parsed systems:", parsedSystems);
-      
       const systemsToImport = parsedSystems.filter((_, index) => 
         data.selectedSystems.includes(index.toString())
       );
-      
-      console.log("✅ Systems to import:", systemsToImport);
 
       const importPromises = systemsToImport.map(async (system, index) => {
         const systemData = {
           ...system,
           partnerId: data.partnerId || undefined,
         };
-        
-        console.log(`📤 Importing system ${index + 1}/${systemsToImport.length}:`, system.name, systemData);
         
         const response = await fetch("/api/sap-systems", {
           method: "POST",
@@ -89,11 +81,8 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
           body: JSON.stringify(systemData),
         });
         
-        console.log(`📥 Response for ${system.name}:`, response.status, response.statusText);
-        
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`❌ Error response for ${system.name}:`, errorText);
           let errorDetails;
           try {
             errorDetails = JSON.parse(errorText);
@@ -103,9 +92,7 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
           throw new Error(`Failed to import ${system.name}: ${errorDetails.details || errorDetails.error || 'Unknown error'}`);
         }
         
-        const result = await response.json();
-        console.log(`✅ Successfully imported ${system.name}:`, result);
-        return result;
+        return response.json();
       });
 
       return Promise.all(importPromises);
@@ -183,9 +170,6 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
   };
 
   const onSubmit = (data: ImportFormData) => {
-    console.log("🎯 Form submit triggered with data:", data);
-    console.log("🔍 Form validation errors:", form.formState.errors);
-    console.log("📝 Form values:", form.getValues());
     setStep("import");
     importMutation.mutate(data);
   };
@@ -441,12 +425,6 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
                 type="submit" 
                 disabled={importMutation.isPending} 
                 data-testid="button-import"
-                onClick={(e) => {
-                  console.log("🖱️ Import button clicked!");
-                  console.log("📝 Form is valid:", form.formState.isValid);
-                  console.log("📋 Form errors:", form.formState.errors);
-                  console.log("💾 Form values:", form.getValues());
-                }}
               >
                 {importMutation.isPending ? "Importing..." : `Import Selected Systems`}
               </Button>

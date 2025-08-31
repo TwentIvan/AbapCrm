@@ -167,11 +167,6 @@ export default function SapSystemsPage() {
       cell: ({ row }: any) => row.original.serverHost,
     },
     {
-      accessorKey: "clientNumber",
-      header: "Client",
-      cell: ({ row }: any) => row.original.clientNumber,
-    },
-    {
       accessorKey: "landscape",
       header: "Landscape",
       cell: ({ row }: any) => {
@@ -267,13 +262,6 @@ export default function SapSystemsPage() {
                 <span className="text-sm font-medium">Server Host:</span>
                 <span className="text-sm text-gray-600" data-testid={`text-server-host-${system.id}`}>
                   {system.serverHost}
-                </span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Client:</span>
-                <span className="text-sm text-gray-600" data-testid={`text-client-number-${system.id}`}>
-                  {system.clientNumber}
                 </span>
               </div>
               
