@@ -7,9 +7,15 @@ export const SapSystemFromXmlSchema = z.object({
   serverHost: z.string().min(1, "Server host is required"),
   systemNumber: z.string().regex(/^\d{2}$/, "System number must be 2 digits"),
   clientNumber: z.string().regex(/^\d{3}$/, "Client number must be 3 digits"),
-  applicationServerPort: z.number().min(1).max(65535).optional(),
+  applicationServerPort: z.number().min(1).max(65535).default(3200),
+  messageServerPort: z.number().min(1).max(65535).default(3600),
   systemType: z.enum(["ecc", "s4hana", "bw", "pi", "po", "solution_manager", "crm", "srm", "other"]).default("other"),
-  landscape: z.enum(["development", "test", "production"]).default("production"),
+  status: z.enum(["active", "inactive", "maintenance", "test"]).default("active"),
+  landscape: z.string().default("production"), // Cambiato da enum a stringa per supportare valori custom
+  sapReleaseVersion: z.string().optional(),
+  kernelVersion: z.string().optional(),
+  notes: z.string().optional(),
+  isActive: z.boolean().default(true),
 });
 
 export type SapSystemFromXml = z.infer<typeof SapSystemFromXmlSchema>;
@@ -317,8 +323,14 @@ export class SapLandscapeParser {
       systemNumber: systemNumber.padStart(2, '0'), // Assicura 2 cifre
       clientNumber: clientNumber.padStart(3, '0'), // Assicura 3 cifre
       applicationServerPort,
+      messageServerPort: 3600, // Default SAP message server port
       systemType,
-      landscape
+      status: "active" as const,
+      landscape,
+      sapReleaseVersion: undefined,
+      kernelVersion: undefined,
+      notes: undefined,
+      isActive: true,
     };
   }
 
@@ -357,11 +369,13 @@ export class SapLandscapeParser {
   }
 
   /**
-   * Inferisce il landscape dal nome del sistema
+   * Inferisce il landscape dal nome del sistema, inclusi numeri di livello
    */
   private static inferLandscape(systemId: string, description: string): "development" | "test" | "production" {
     const text = (systemId + " " + description).toLowerCase();
+    const systemId_upper = systemId.toUpperCase();
     
+    // Pattern testuali espliciti
     if (text.includes("dev") || text.includes("development") || text.includes("sviluppo")) {
       return "development";
     }
@@ -371,9 +385,53 @@ export class SapLandscapeParser {
     if (text.includes("prod") || text.includes("production") || text.includes("produzione")) {
       return "production";
     }
+    if (text.includes("preprod") || text.includes("pre-prod") || text.includes("staging")) {
+      return "test"; // Pre-produzione considerato test
+    }
     
-    // Default basato su convenzioni comuni
-    const systemId_upper = systemId.toUpperCase();
+    // Pattern basati su numeri nell'ID del sistema
+    // Estrae numeri dall'ID del sistema
+    const numberMatch = systemId.match(/\d+/);
+    if (numberMatch) {
+      const number = parseInt(numberMatch[0]);
+      console.log(`System ${systemId} - detected number: ${number}`);
+      
+      // Logica flessibile per numeri
+      switch (number) {
+        case 1:
+          console.log(`System ${systemId} - number 1 = development`);
+          return "development";
+        case 2:
+          console.log(`System ${systemId} - number 2 = test`);
+          return "test";
+        case 3:
+          // 3 può essere quality/test o produzione, controlliamo ulteriori indizi
+          if (systemId_upper.includes("Q") || text.includes("quality") || text.includes("qas")) {
+            console.log(`System ${systemId} - number 3 with quality indicators = test`);
+            return "test";
+          } else {
+            console.log(`System ${systemId} - number 3 = production`);
+            return "production";
+          }
+        case 4:
+          // 4 spesso è pre-produzione
+          console.log(`System ${systemId} - number 4 = test (pre-prod)`);
+          return "test";
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 9:
+          // Numeri alti tipicamente produzione
+          console.log(`System ${systemId} - high number ${number} = production`);
+          return "production";
+        default:
+          console.log(`System ${systemId} - number ${number} = using text analysis`);
+          break;
+      }
+    }
+    
+    // Pattern basati su lettere standard SAP
     if (systemId_upper.includes("DEV") || systemId_upper.includes("D")) {
       return "development";
     }
@@ -384,6 +442,18 @@ export class SapLandscapeParser {
       return "production";
     }
     
+    // Pattern basati su suffissi comuni
+    if (systemId_upper.endsWith("D") || systemId_upper.endsWith("DEV")) {
+      return "development";
+    }
+    if (systemId_upper.endsWith("Q") || systemId_upper.endsWith("T") || systemId_upper.endsWith("TST")) {
+      return "test";
+    }
+    if (systemId_upper.endsWith("P") || systemId_upper.endsWith("PRD")) {
+      return "production";
+    }
+    
+    console.log(`System ${systemId} - no pattern matched, defaulting to production`);
     return "production"; // Default
   }
 }
