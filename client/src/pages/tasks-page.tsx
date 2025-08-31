@@ -788,7 +788,7 @@ export default function TasksPage() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            {task.sapSystemId && (
+{console.log(`Task ${task.title} - sapSystemId:`, task.sapSystemId) || task.sapSystemId && (
                               <Button
                                 variant="ghost"
                                 size="sm"
