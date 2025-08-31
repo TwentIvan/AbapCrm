@@ -86,12 +86,14 @@ export function SearchableSelect({
       <PopoverContent className="w-[400px] p-0" align="start">
         <div className="flex items-center border-b px-3 py-2">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-          <Input
+          <input
+            type="text"
             placeholder={searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 border-0 bg-transparent px-0 text-sm focus-visible:ring-0"
-            autoFocus
+            className="h-8 w-full border-0 bg-transparent px-0 text-sm outline-none ring-0 focus:outline-none focus:ring-0"
+            autoFocus={true}
+            style={{ outline: 'none', border: 'none' }}
           />
         </div>
         <ScrollArea className="max-h-64">
