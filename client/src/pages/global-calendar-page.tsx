@@ -44,8 +44,8 @@ export default function GlobalCalendarPage() {
             </DialogTitle>
           </DialogHeader>
           <PlanningWindowForm
-            projectId={editingPlanningWindow?.projectId}
-            planningWindow={editingPlanningWindow}
+            projectId={editingPlanningWindow?.projectId || ""}
+            planningWindow={editingPlanningWindow || undefined}
             onSuccess={handleClosePlanningWindowDialog}
           />
         </DialogContent>

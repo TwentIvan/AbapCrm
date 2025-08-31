@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square, Trash2 } from "lucide-react";
-import { Task } from "@shared/schema";
+import type { Task, Project, TimeEntry } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import TaskForm from "@/components/forms/task-form";
 import { TimeTracker } from "@/components/timesheet/time-tracker";
@@ -434,56 +434,89 @@ export default function TasksPage() {
     { id: 'title', type: 'count' as const, label: 'Totale Tasks' },
   ];
 
-  // Define table columns for list view
+  // Define table columns for UniversalTable
   const tableColumns = [
     {
-      accessorKey: 'completed',
-      header: '',
-      cell: ({ row }: any) => {
-        const task = row.original;
-        return (
-          <Checkbox
-            checked={task.status === 'completed'}
-            onCheckedChange={() => toggleTaskComplete(task)}
-            data-testid={`checkbox-task-${task.id}`}
-          />
-        );
-      },
+      key: 'completed',
+      label: '',
+      sortable: false,
+      searchable: false,
+      render: (task: Task) => (
+        <Checkbox
+          checked={task.status === 'completed'}
+          onCheckedChange={() => toggleTaskComplete(task)}
+          data-testid={`checkbox-task-${task.id}`}
+        />
+      ),
     },
     {
-      accessorKey: 'title',
-      header: 'Title',
-      cell: ({ row }: any) => (
-        <div className="font-medium" data-testid={`text-task-title-${row.original.id}`}>
-          {row.original.title}
+      key: 'title',
+      label: 'Title',
+      sortable: true,
+      searchable: true,
+      render: (task: Task) => (
+        <div className="font-medium" data-testid={`text-task-title-${task.id}`}>
+          {task.title}
         </div>
       ),
     },
-    createStandardColumns.badge('status', 'Status', statusColors),
-    createStandardColumns.badge('priority', 'Priority', priorityColors),
-    createStandardColumns.text('description', 'Description'),
     {
-      accessorKey: 'projectId',
-      header: 'Project',
-      cell: ({ row }: any) => {
-        const task = row.original;
-        return task.projectName ? (
-          <div className="text-sm font-medium" data-testid={`text-task-project-${task.id}`}>
-            {task.projectName}
-          </div>
-        ) : (
-          <span className="text-muted-foreground text-sm">No project</span>
-        );
-      },
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      searchable: true,
+      render: (task: Task) => (
+        <Badge className={statusColors[task.status as keyof typeof statusColors]} data-testid={`badge-task-status-${task.id}`}>
+          {statusLabels[task.status as keyof typeof statusLabels]}
+        </Badge>
+      ),
     },
     {
-      accessorKey: 'dueDate',
-      header: 'Due Date',
-      cell: ({ row }: any) => {
-        const date = row.getValue('dueDate');
-        if (!date) return '-';
-        const dueDate = new Date(date);
-        const isOverdue = dueDate < new Date() && row.original.status !== 'completed';
+      key: 'priority',
+      label: 'Priority',
+      sortable: true,
+      searchable: true,
+      render: (task: Task) => (
+        <Badge className={priorityColors[task.priority as keyof typeof priorityColors]} data-testid={`badge-task-priority-${task.id}`}>
+          {task.priority}
+        </Badge>
+      ),
+    },
+    {
+      key: 'description',
+      label: 'Description',
+      sortable: false,
+      searchable: true,
+      render: (task: Task) => task.description ? (
+        <div className="text-sm max-w-xs truncate" title={task.description}>
+          {task.description}
+        </div>
+      ) : (
+        <span className="text-muted-foreground text-sm">No description</span>
+      ),
+    },
+    {
+      key: 'projectId',
+      label: 'Project',
+      sortable: true,
+      searchable: true,
+      render: (task: any) => task.projectName ? (
+        <div className="text-sm font-medium" data-testid={`text-task-project-${task.id}`}>
+          {task.projectName}
+        </div>
+      ) : (
+        <span className="text-muted-foreground text-sm">No project</span>
+      ),
+    },
+    {
+      key: 'dueDate',
+      label: 'Due Date',
+      sortable: true,
+      searchable: false,
+      render: (task: Task) => {
+        if (!task.dueDate) return <span className="text-muted-foreground text-sm">No due date</span>;
+        const dueDate = new Date(task.dueDate);
+        const isOverdue = dueDate < new Date() && task.status !== 'completed';
         return (
           <div className={isOverdue ? 'text-red-600 font-medium' : ''}>
             {dueDate.toLocaleDateString()}
@@ -492,37 +525,35 @@ export default function TasksPage() {
       },
     },
     {
-      id: 'timeTracker',
-      header: 'Timer',
-      cell: ({ row }: any) => {
-        const task = row.original;
-        return <TaskTimerButtons task={task} />;
-      },
+      key: 'timer',
+      label: 'Timer',
+      sortable: false,
+      searchable: false,
+      render: (task: Task) => <TaskTimerButtons task={task} />,
     },
     {
-      id: 'actions',
-      header: 'Actions',
-      cell: ({ row }: any) => {
-        const task = row.original;
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid={`button-task-menu-${task.id}`}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem 
-                onClick={() => handleEditTask(task)}
-                data-testid={`menu-edit-task-${task.id}`}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Modifica
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
+      key: 'actions',
+      label: 'Actions',
+      sortable: false,
+      searchable: false,
+      render: (task: Task) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" data-testid={`button-task-menu-${task.id}`}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem 
+              onClick={() => handleEdit(task)}
+              data-testid={`menu-edit-task-${task.id}`}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Modifica
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
     },
   ];
 
@@ -864,15 +895,11 @@ export default function TasksPage() {
           { id: 'timeTracker', label: 'Timer' },
           { id: 'actions', label: 'Actions' },
         ]}
-        open={showConfigDialog}
-        onOpenChange={setShowConfigDialog}
+        isOpen={showConfigDialog}
+        onClose={() => setShowConfigDialog(false)}
         editingLayout={editingLayout}
         onSave={(updatedLayout) => {
           updateExistingLayout(updatedLayout);
-          setEditingLayout(null);
-          setShowConfigDialog(false);
-        }}
-        onCancel={() => {
           setEditingLayout(null);
           setShowConfigDialog(false);
         }}
