@@ -4,7 +4,7 @@ import { UniversalTable, createStandardColumns } from "@/components/ui/universal
 import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2, Key, Wifi, Server } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-// import { SystemCredentialsForm } from "@/components/forms/system-credentials-form";
+import { SystemCredentialsForm } from "@/components/forms/system-credentials-form";
 import type { SystemCredentials } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -164,15 +164,19 @@ export function SystemCredentialsPage() {
         // isLoading={isLoading} // TODO: Add loading support to UniversalTable
       />
 
-      {/* Form temporaneamente disabilitato */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg">
-            <h2 className="text-lg font-bold mb-4">Form in sviluppo</h2>
-            <p className="mb-4">Form per credenziali sistema in corso di sviluppo...</p>
-            <Button onClick={() => setShowForm(false)}>Chiudi</Button>
-          </div>
-        </div>
+        <SystemCredentialsForm
+          credential={editingCredential}
+          onSuccess={() => {
+            setShowForm(false);
+            setEditingCredential(null);
+            queryClient.invalidateQueries({ queryKey: ["/api/system-credentials"] });
+          }}
+          onCancel={() => {
+            setShowForm(false);
+            setEditingCredential(null);
+          }}
+        />
       )}
     </div>
   );
