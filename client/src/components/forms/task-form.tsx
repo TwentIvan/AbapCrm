@@ -60,9 +60,6 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
   
   const parentTasks = tasks?.filter(t => t.id !== task?.id) || []; // Exclude current task
 
-  console.log('TaskForm - task prop:', task);
-  console.log('TaskForm - task.sapSystemId:', task?.sapSystemId);
-
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -104,6 +101,9 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (task) {
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks", task.id] });
+      }
       toast({ title: task ? "Task updated successfully" : "Task created successfully" });
       onSuccess?.();
     },
