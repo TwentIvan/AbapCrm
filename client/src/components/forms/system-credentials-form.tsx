@@ -145,7 +145,14 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form 
+            onSubmit={(e) => {
+              console.log("Form submit event triggered!");
+              e.preventDefault();
+              form.handleSubmit(onSubmit)(e);
+            }} 
+            className="space-y-6"
+          >
             <FormField
               control={form.control}
               name="systemType"
@@ -369,6 +376,14 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
                 type="submit"
                 disabled={mutation.isPending}
                 data-testid="button-submit"
+                onClick={(e) => {
+                  console.log("Button clicked!");
+                  console.log("Form state:", {
+                    isValid: form.formState.isValid,
+                    errors: form.formState.errors,
+                    values: form.getValues()
+                  });
+                }}
               >
                 {mutation.isPending 
                   ? "Salvando..." 
