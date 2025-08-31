@@ -1703,11 +1703,16 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/vpn-connections", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
+      console.log("🔍 VPN POST received body:", req.body);
+      console.log("🔍 VPN POST user ID:", req.user!.id);
       const connectionData = { ...req.body, userId: req.user!.id };
+      console.log("🔍 VPN POST connection data with userId:", connectionData);
       const validatedData = insertVpnConnectionSchema.parse(connectionData);
+      console.log("🔍 VPN POST validated data:", validatedData);
       const connection = await storage.createVpnConnection(validatedData);
       res.status(201).json(connection);
     } catch (error) {
+      console.log("🔍 VPN POST error:", error);
       res.status(400).json({ error: "Invalid VPN connection data", details: error instanceof Error ? error.message : String(error) });
     }
   });
