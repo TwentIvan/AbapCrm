@@ -41,14 +41,18 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
   const [step, setStep] = useState<"upload" | "configure" | "import">("upload");
 
   // Fetch partners per la selezione
-  const { data: partners } = useQuery<Partner[]>({
+  const partnersQuery = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
     queryFn: async () => {
       const res = await fetch("/api/partners", { credentials: "include" });
       if (!res.ok) throw new Error('Failed to fetch partners');
-      return res.json();
+      const data = await res.json();
+      console.log("🏢 Partners loaded:", data);
+      return data;
     },
   });
+
+  const partners = partnersQuery.data;
 
   const form = useForm<ImportFormData>({
     resolver: zodResolver(importFormSchema),
@@ -300,6 +304,12 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          {partnersQuery.isLoading && (
+                            <SelectItem value="loading" disabled>Loading partners...</SelectItem>
+                          )}
+                          {partnersQuery.error && (
+                            <SelectItem value="error" disabled>Failed to load partners</SelectItem>
+                          )}
                           {partners?.map((partner) => (
                             <SelectItem key={partner.id} value={partner.id}>
                               <div className="flex items-center gap-2">
@@ -311,6 +321,9 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
                               </div>
                             </SelectItem>
                           ))}
+                          {!partnersQuery.isLoading && !partnersQuery.error && (!partners || partners.length === 0) && (
+                            <SelectItem value="none" disabled>No partners found</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
