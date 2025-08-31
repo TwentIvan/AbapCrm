@@ -310,7 +310,7 @@ export async function generateVPNAutomationScript(connectionInfo: any): Promise<
   }
 
   try {
-    switch (vpnConnection.type) {
+    switch (vpnConnection.type || vpnConnection.connectionType) {
       case 'forticlient':
         return await generateFortiClientScript(vpnConnection);
       
@@ -318,7 +318,8 @@ export async function generateVPNAutomationScript(connectionInfo: any): Promise<
         return await generateNativeVPNScript(vpnConnection);
       
       case 'openfortivpn':
-        return await generateOpenFortiVPNScript(vpnConnection);
+      case 'openvpn':
+        return await generateOpenVPNScript(vpnConnection);
       
       default:
         return {
@@ -465,7 +466,7 @@ export async function testVPNConnection(connection: any): Promise<VPNTestResult>
 
   try {
     // Generate the actual automation script for this connection
-    const scriptResult = await generateVPNAutomationScript(connection);
+    const scriptResult = await generateVPNAutomationScript({ vpnConnection: connection });
     
     if (scriptResult.success) {
       result.script.valid = true;
@@ -507,4 +508,52 @@ export async function testVPNConnection(connection: any): Promise<VPNTestResult>
   }
 
   return result;
+}
+
+/**
+ * Generate script for standard OpenVPN connections
+ */
+async function generateOpenVPNScript(vpnConnection: any): Promise<VPNAutomationResult> {
+  const configTemplate = `# OpenVPN Configuration for ${vpnConnection.name}
+# Server: ${vpnConnection.serverHost || vpnConnection.server || 'vpn.example.com'}
+# Port: ${vpnConnection.serverPort || vpnConnection.port || 1194}
+# Protocol: ${vpnConnection.protocol || 'udp'}
+
+client
+dev tun
+proto ${vpnConnection.protocol || 'udp'}
+remote ${vpnConnection.serverHost || vpnConnection.server || 'vpn.example.com'} ${vpnConnection.serverPort || vpnConnection.port || 1194}
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+auth-user-pass
+verb 3
+`;
+
+  const launchScript = `#!/bin/bash
+# Launch script for ${vpnConnection.name}
+# Save config as ${vpnConnection.name}.ovpn and run:
+
+openvpn --config "${vpnConnection.name}.ovpn" --auth-user-pass
+`;
+
+  return {
+    success: true,
+    connectionType: 'openvpn',
+    executionCommand: `openvpn --config "${vpnConnection.name}.ovpn" --auth-user-pass`,
+    instructions: `OpenVPN configuration generated for ${vpnConnection.name}
+    
+1. Install OpenVPN: brew install openvpn (macOS) or apt install openvpn (Linux)
+2. Save the config as ${vpnConnection.name}.ovpn
+3. Run: sudo openvpn --config "${vpnConnection.name}.ovpn" --auth-user-pass
+4. Enter username and password when prompted
+
+Configuration template:
+${configTemplate}
+
+Launch script:
+${launchScript}`,
+    scriptPath: `/tmp/${vpnConnection.name}_openvpn.ovpn`
+  };
 }
