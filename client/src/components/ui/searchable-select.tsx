@@ -63,7 +63,11 @@ export function SearchableSelect({
         className={cn("w-full justify-between text-left", className)}
         disabled={disabled}
         data-testid={testId}
-        onClick={() => setOpen(true)}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen(true);
+        }}
       >
         <div className="flex flex-col items-start">
           {selectedOption ? (
@@ -83,7 +87,11 @@ export function SearchableSelect({
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[500px]">
+        <DialogContent 
+          className="max-w-[500px]"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Seleziona Sistema</span>
