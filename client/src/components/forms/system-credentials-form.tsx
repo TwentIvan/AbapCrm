@@ -59,22 +59,15 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
 
   const selectedSystemType = form.watch("systemType");
 
-  // Fetch available systems for reference - only load what exists
-  const { data: sapSystems = [], isLoading: sapLoading, error: sapError } = useQuery({
-    queryKey: ["/api/sap-systems"],
-    enabled: selectedSystemType === "sap", // Solo se tipo SAP selezionato
-    onSuccess: (data) => {
-      console.log("SAP Systems loaded:", data?.length || 0);
-    },
-    onError: (error) => {
-      console.error("SAP Systems error:", error);
-    }
-  });
-
-  const { data: vpnConnections = [] } = useQuery({
-    queryKey: ["/api/vpn-connections"],  
-    enabled: false // VPN table doesn't exist yet
-  });
+  // Temporary mock data while API authentication is fixed
+  const sapSystems = selectedSystemType === "sap" ? [
+    { id: "temp-alperia-prd", name: "Alperia.PRD", serverHost: "10.87.158.3" },
+    { id: "temp-alperia-sbx", name: "Alperia.SBX", serverHost: "10.87.158.2" },
+    { id: "temp-hera-pr1", name: "Hera.PR1", serverHost: "10.11.10.26" },
+    { id: "temp-edison-nub", name: "Edison.NUB", serverHost: "ewfdws4hal01.corp.awsedison.it" }
+  ] : [];
+  
+  const vpnConnections: any[] = [];
 
   const mutation = useMutation({
     mutationFn: async (data: InsertSystemCredentials) => {
@@ -216,22 +209,15 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
                     </FormControl>
                     <SelectContent>
                       {selectedSystemType === "sap" && Array.isArray(sapSystems) && sapSystems.length > 0 ? (
-                        // Mostra sistemi SAP esistenti
+                        // Mostra sistemi SAP (temporaneo mock data)
                         sapSystems.map((system: any) => (
                           <SelectItem key={system.id} value={system.id}>
-                            {system.name} ({system.serverHost || system.host})
-                          </SelectItem>
-                        ))
-                      ) : selectedSystemType === "vpn" && Array.isArray(vpnConnections) && vpnConnections.length > 0 ? (
-                        // Mostra connessioni VPN esistenti
-                        vpnConnections.map((vpn: any) => (
-                          <SelectItem key={vpn.id} value={vpn.id}>
-                            {vpn.name} ({vpn.serverHost || vpn.host})
+                            {system.name} ({system.serverHost})
                           </SelectItem>
                         ))
                       ) : (
-                        // Fallback per inserimento manuale
-                        <SelectItem value="temp-manual">Inserimento manuale - nessun {selectedSystemType.toUpperCase()} nel sistema</SelectItem>
+                        // Fallback per inserimento manuale  
+                        <SelectItem value="temp-manual">Inserimento manuale - aggiungi {selectedSystemType.toUpperCase()}</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
