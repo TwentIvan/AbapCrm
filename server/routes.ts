@@ -1764,9 +1764,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         
         const updatedConnection = await storage.updateVpnConnection(req.params.id, {
           automationScript: automationResult.executionCommand,
-          scriptType: scriptType,
-          scriptGeneratedAt: new Date(),
-          scriptValidatedAt: new Date() // Set as validated since it was just generated
+          scriptType: scriptType
+          // scriptGeneratedAt and scriptValidatedAt are auto-generated in database
         }, req.user!.id);
 
         res.json({
