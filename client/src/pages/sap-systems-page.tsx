@@ -181,6 +181,18 @@ export default function SapSystemsPage() {
       },
     },
     {
+      accessorKey: "partner",
+      header: "Partner",
+      cell: ({ row }: any) => {
+        const system = row.original;
+        return system.partner ? (
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+            {system.partner.name}
+          </Badge>
+        ) : "—";
+      },
+    },
+    {
       accessorKey: "description",
       header: "Description",
       cell: ({ row }: any) => row.original.description || "—",

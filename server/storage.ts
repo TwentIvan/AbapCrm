@@ -1189,9 +1189,38 @@ export class DatabaseStorage implements IStorage {
 
   // SAP Systems
   async getSapSystems(userId: string): Promise<SapSystem[]> {
-    return await db.select().from(sapSystems)
-      .where(eq(sapSystems.userId, userId))
-      .orderBy(desc(sapSystems.createdAt));
+    return await db.select({
+      id: sapSystems.id,
+      userId: sapSystems.userId,
+      partnerId: sapSystems.partnerId,
+      projectId: sapSystems.projectId,
+      name: sapSystems.name,
+      description: sapSystems.description,
+      systemType: sapSystems.systemType,
+      status: sapSystems.status,
+      serverHost: sapSystems.serverHost,
+      systemNumber: sapSystems.systemNumber,
+      applicationServerPort: sapSystems.applicationServerPort,
+      messageServerPort: sapSystems.messageServerPort,
+      landscape: sapSystems.landscape,
+      sapReleaseVersion: sapSystems.sapReleaseVersion,
+      kernelVersion: sapSystems.kernelVersion,
+      notes: sapSystems.notes,
+      isActive: sapSystems.isActive,
+      vpnConnectionId: sapSystems.vpnConnectionId,
+      createdAt: sapSystems.createdAt,
+      updatedAt: sapSystems.updatedAt,
+      partner: {
+        id: partners.id,
+        name: partners.name,
+        company: partners.company,
+        type: partners.type,
+      }
+    })
+    .from(sapSystems)
+    .leftJoin(partners, eq(sapSystems.partnerId, partners.id))
+    .where(eq(sapSystems.userId, userId))
+    .orderBy(desc(sapSystems.createdAt));
   }
 
   async getSapSystemsByPartner(partnerId: string, userId: string): Promise<SapSystem[]> {
