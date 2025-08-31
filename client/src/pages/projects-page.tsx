@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,16 +10,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
+import { LayoutManager } from "@/components/ui/layout-manager";
+import { TableConfiguration } from "@/components/ui/table-configuration";
+import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2 } from "lucide-react";
 import { Project } from "@shared/schema";
 import ProjectForm from "@/components/forms/project-form";
 import ProjectPlanner from "@/components/planning/project-planner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
-import { LayoutManager } from "@/components/ui/layout-manager";
-import { TableConfiguration } from "@/components/ui/table-configuration";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useTableLayout } from "@/lib/user-preferences";
 
 const statusColors = {
   planning: "bg-blue-100 text-blue-800",
@@ -26,25 +29,20 @@ const statusColors = {
   on_hold: "bg-red-100 text-red-800",
 };
 
-const statusLabels = {
-  planning: "Planning",
-  in_progress: "In Progress",
-  review: "Review", 
-  completed: "Completed",
-  on_hold: "On Hold",
-};
-
 export default function ProjectsPage() {
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [showPlanner, setShowPlanner] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedProjects, setSelectedProjects] = useState<Project[]>([]);
-  const [editingLayout, setEditingLayout] = useState<any>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [editingLayout, setEditingLayout] = useState<any>(null);
+  const [showPlanner, setShowPlanner] = useState(false);
+  const [selectedProjectForPlanner, setSelectedProjectForPlanner] = useState<Project | null>(null);
   
-  // Use the table layout hook for persistent preferences
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const { 
     layout, 
     currentLayoutName,
@@ -58,7 +56,7 @@ export default function ProjectsPage() {
   } = useTableLayout('projects');
   const viewMode = layout.viewMode;
 
-  const { data: projects, isLoading } = useQuery<Project[]>({
+  const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
     queryFn: async () => {
       const res = await fetch("/api/projects", { credentials: "include" });
@@ -67,127 +65,160 @@ export default function ProjectsPage() {
     },
   });
 
-  const handleEditProject = (project: Project) => {
+  const deleteMutation = useMutation({
+    mutationFn: async (projectId: string) => {
+      await apiRequest("DELETE", `/api/projects/${projectId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      setShowDeleteDialog(false);
+      setEditingProject(null);
+      toast({
+        title: "Progetto eliminato",
+        description: "Il progetto è stato eliminato con successo.",
+      });
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (projects: Project[]) => {
+      for (const project of projects) {
+        await apiRequest("DELETE", `/api/projects/${project.id}`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      setSelectedProjects([]);
+      setShowBulkDeleteDialog(false);
+      toast({
+        title: "Progetti eliminati",
+        description: "I progetti selezionati sono stati eliminati con successo.",
+      });
+    },
+  });
+
+  const handleEdit = (project: Project) => {
     setEditingProject(project);
-    setShowEditDialog(true);
+    setShowForm(true);
   };
 
-  const handleCloseEditDialog = () => {
-    setShowEditDialog(false);
+  const handleAdd = () => {
     setEditingProject(null);
+    setShowForm(true);
+  };
+
+  const handleSingleDelete = (project: Project) => {
+    setEditingProject(project);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDelete = (projects: Project[]) => {
+    if (projects.length === 0) return;
+    setSelectedProjects(projects);
+    setShowBulkDeleteDialog(true);
   };
 
   const handleOpenPlanner = (project: Project) => {
-    setSelectedProject(project);
+    setSelectedProjectForPlanner(project);
     setShowPlanner(true);
   };
 
   const handleClosePlanner = () => {
     setShowPlanner(false);
-    setSelectedProject(null);
+    setSelectedProjectForPlanner(null);
   };
 
-  // Define filter columns for advanced filtering
-  const filterColumns = [
-    { id: 'name', label: 'Nome', type: 'text' as const },
-    { id: 'status', label: 'Status', type: 'select' as const, options: [
-      { value: 'planning', label: 'Planning' },
-      { value: 'in_progress', label: 'In Progress' },
-      { value: 'review', label: 'Review' },
-      { value: 'completed', label: 'Completed' },
-      { value: 'on_hold', label: 'On Hold' },
-    ]},
-    { id: 'description', label: 'Descrizione', type: 'text' as const },
-    { id: 'budget', label: 'Budget', type: 'number' as const },
-    { id: 'startDate', label: 'Data Inizio', type: 'date' as const },
-    { id: 'endDate', label: 'Data Fine', type: 'date' as const },
-  ];
+  const confirmDelete = () => {
+    if (editingProject) {
+      deleteMutation.mutate(editingProject.id);
+    }
+  };
 
-  // Define aggregation columns 
-  const aggregationColumns = [
-    { id: 'name', type: 'count' as const, label: 'Totale Progetti' },
-    { id: 'budget', type: 'sum' as const, label: 'Budget Totale' },
-    { id: 'budget', type: 'avg' as const, label: 'Budget Medio' },
-  ];
+  const confirmBulkDelete = () => {
+    bulkDeleteMutation.mutate(selectedProjects);
+  };
 
-  // Define table columns for list view
-  const tableColumns = [
+  const formatBudget = (budget: string | null) => {
+    if (!budget) return "N/A";
+    const amount = parseFloat(budget);
+    return `€${amount.toLocaleString()}`;
+  };
+
+  const formatDate = (date: Date | string | null) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString("it-IT");
+  };
+
+  const columns = [
+    createStandardColumns.text("name", "Nome"),
+    createStandardColumns.badge("status", "Status", statusColors),
+    createStandardColumns.text("clientId", "Cliente"),
     {
-      accessorKey: 'name',
-      header: 'Name',
-      cell: ({ row }: any) => (
-        <div className="font-medium" data-testid={`text-project-name-${row.original.id}`}>
-          {row.original.name}
-        </div>
-      ),
-    },
-    createBadgeColumn('status', 'Status', {
-      planning: 'secondary',
-      in_progress: 'default', 
-      review: 'outline',
-      completed: 'secondary',
-      on_hold: 'destructive'
-    }),
-    createTextColumn('description', 'Description', 50),
-    {
-      accessorKey: 'budget',
-      header: 'Budget',
-      cell: ({ row }: any) => {
-        const amount = parseFloat(row.getValue('budget') || '0');
-        return (
-          <div className="font-medium" data-testid={`text-project-budget-${row.original.id}`}>
-            €{amount.toLocaleString()}
-          </div>
-        );
-      },
+      key: "startDate",
+      label: "Data Inizio", 
+      sortable: true,
+      searchable: false,
+      render: (project: Project) => formatDate(project.startDate)
     },
     {
-      accessorKey: 'startDate', 
-      header: 'Start Date',
-      cell: ({ row }: any) => {
-        const date = row.getValue('startDate');
-        return date ? new Date(date).toLocaleDateString() : '-';
-      },
+      key: "endDate",
+      label: "Data Fine", 
+      sortable: true,
+      searchable: false,
+      render: (project: Project) => formatDate(project.endDate)
     },
     {
-      accessorKey: 'endDate',
-      header: 'End Date', 
-      cell: ({ row }: any) => {
-        const date = row.getValue('endDate');
-        return date ? new Date(date).toLocaleDateString() : '-';
-      },
+      key: "budget",
+      label: "Budget", 
+      sortable: true,
+      searchable: false,
+      render: (project: Project) => formatBudget(project.budget)
     },
     {
-      id: 'actions',
-      header: 'Actions',
-      cell: ({ row }: any) => {
-        const project = row.original;
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid={`button-project-menu-${project.id}`}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem 
-                onClick={() => handleEditProject(project)}
-                data-testid={`menu-edit-project-${project.id}`}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Modifica
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => handleOpenPlanner(project)}
-                data-testid={`menu-planner-project-${project.id}`}
-              >
-                <Target className="mr-2 h-4 w-4" />
-                Planner
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
+      key: "progress",
+      label: "Progresso", 
+      sortable: true,
+      searchable: false,
+      render: (project: Project) => `${project.progress}%`
+    },
+    {
+      key: "actions",
+      label: "Azioni", 
+      sortable: false,
+      searchable: false,
+      render: (project: Project) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" data-testid={`button-project-menu-${project.id}`}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem 
+              onClick={() => handleEdit(project)}
+              data-testid={`menu-edit-project-${project.id}`}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Modifica
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => handleOpenPlanner(project)}
+              data-testid={`menu-planner-project-${project.id}`}
+            >
+              <Target className="mr-2 h-4 w-4" />
+              Planner
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => handleSingleDelete(project)}
+              className="text-destructive"
+              data-testid={`menu-delete-project-${project.id}`}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Elimina
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
     },
   ];
 
@@ -196,9 +227,9 @@ export default function ProjectsPage() {
       <Sidebar />
       <main className="flex-1 overflow-auto">
         <Header 
-          title="Projects" 
-          subtitle="Manage your SAP ABAP projects"
-          onNewClick={() => setShowCreateDialog(true)}
+          title="Progetti" 
+          subtitle="Gestione progetti SAP ABAP"
+          onNewClick={handleAdd}
         />
         
         <div className="p-6">
@@ -211,8 +242,8 @@ export default function ProjectsPage() {
               onLoadLayout={loadLayout}
               onRenameLayout={renameLayout}
               onDeleteLayout={deleteLayout}
-              onEditLayout={(layout) => {
-                setEditingLayout(layout);
+              onEditLayout={(layoutToEdit) => {
+                setEditingLayout(layoutToEdit);
                 setShowConfigDialog(true);
               }}
             />
@@ -265,64 +296,77 @@ export default function ProjectsPage() {
           ) : projects?.length === 0 ? (
             <div className="text-center py-12">
               <Code className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No projects yet</h3>
-              <p className="text-muted-foreground mb-4">Create your first SAP ABAP project to get started</p>
-              <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-first-project">
-                Create Project
+              <h3 className="text-lg font-medium text-foreground mb-2">Nessun progetto</h3>
+              <p className="text-muted-foreground mb-4">Crea il tuo primo progetto SAP ABAP</p>
+              <Button onClick={handleAdd} data-testid="button-create-first-project">
+                Crea Progetto
               </Button>
             </div>
           ) : viewMode === 'list' ? (
-            <DataTable
-              key={`projects-${currentLayoutName}`}
-              columns={tableColumns}
-              data={projects || []}
-              searchPlaceholder="Search projects..."
-              onRowClick={handleEditProject}
+            <UniversalTable
+              data={projects}
+              columns={columns}
               enableSelection={true}
-              onSelectionChange={setSelectedProjects}
-              tableId="projects"
-              enableAdvancedFilters={true}
-              filterColumns={filterColumns}
-              enableAggregation={true}
-              aggregationColumns={aggregationColumns}
-              enableColumnReordering={true}
+              enableSearch={true}
+              searchPlaceholder="Cerca progetti..."
+              onSelectionChange={(rows) => setSelectedProjects(rows as Project[])}
+              onRowClick={handleEdit}
+              bulkActions={[
+                {
+                  label: "Elimina Selezionati",
+                  icon: Trash2,
+                  variant: "destructive",
+                  onClick: () => handleDelete(selectedProjects)
+                }
+              ]}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {projects?.map((project) => (
-                <Card key={project.id} className="hover:shadow-lg transition-shadow" data-testid={`card-project-${project.id}`}>
+                <Card key={project.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleEdit(project)}>
                   <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                          <Code className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg" data-testid={`text-project-name-${project.id}`}>
-                            {project.name}
-                          </CardTitle>
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1 flex-1">
+                        <CardTitle className="text-lg" data-testid={`text-project-name-${project.id}`}>
+                          {project.name}
+                        </CardTitle>
+                        <div className="flex items-center space-x-2">
                           <Badge 
-                            className={statusColors[project.status]}
+                            variant="secondary" 
+                            className={statusColors[project.status as keyof typeof statusColors]}
                             data-testid={`badge-project-status-${project.id}`}
                           >
-                            {statusLabels[project.status]}
+                            {project.status}
                           </Badge>
+                          {project.clientId && (
+                            <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                              <User className="h-4 w-4" />
+                              <span data-testid={`text-project-client-${project.id}`}>{project.clientId}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      
+                      <div className="flex space-x-1">
                         <Button 
                           variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleOpenPlanner(project)}
-                          data-testid={`button-plan-project-${project.id}`}
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenPlanner(project);
+                          }}
+                          data-testid={`button-planner-project-${project.id}`}
                           title="Project Planner"
                         >
                           <Target className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleEditProject(project)}
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(project);
+                          }}
                           data-testid={`button-edit-project-${project.id}`}
                           title="Edit Project"
                         >
@@ -354,7 +398,7 @@ export default function ProjectsPage() {
                         <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                           <DollarSign className="h-4 w-4" />
                           <span data-testid={`text-project-budget-${project.id}`}>
-                            €{parseFloat(project.budget).toLocaleString()}
+                            {formatBudget(project.budget)}
                           </span>
                         </div>
                       )}
@@ -363,7 +407,7 @@ export default function ProjectsPage() {
                         <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                           <Calendar className="h-4 w-4" />
                           <span data-testid={`text-project-end-date-${project.id}`}>
-                            {new Date(project.endDate).toLocaleDateString()}
+                            {formatDate(project.endDate)}
                           </span>
                         </div>
                       )}
@@ -375,65 +419,145 @@ export default function ProjectsPage() {
           )}
         </div>
       </main>
-      
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create New Project</DialogTitle>
+            <DialogTitle>
+              {editingProject ? "Modifica Progetto" : "Nuovo Progetto"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingProject ? "Aggiorna" : "Crea"} un progetto SAP ABAP
+            </DialogDescription>
           </DialogHeader>
-          <ProjectForm onSuccess={() => setShowCreateDialog(false)} />
+          <ProjectForm 
+            project={editingProject || undefined}
+            onSuccess={() => {
+              setShowForm(false);
+              setEditingProject(null);
+              queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+            }}
+            onCancel={() => {
+              setShowForm(false);
+              setEditingProject(null);
+            }}
+          />
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showEditDialog} onOpenChange={handleCloseEditDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Project</DialogTitle>
-          </DialogHeader>
-          {editingProject && (
-            <ProjectForm 
-              project={editingProject} 
-              onSuccess={handleCloseEditDialog} 
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
+      {/* Project Planner Dialog */}
       <Dialog open={showPlanner} onOpenChange={handleClosePlanner}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Project Schedule Planner</DialogTitle>
+            <DialogDescription>
+              Pianifica le attività e le milestone del progetto
+            </DialogDescription>
           </DialogHeader>
-          {selectedProject && (
-            <ProjectPlanner projectId={selectedProject.id} />
+          {selectedProjectForPlanner && (
+            <ProjectPlanner projectId={selectedProjectForPlanner.id} />
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Table Configuration Dialog */}
-      <TableConfiguration
-        tableId="projects"
-        availableColumns={[
-          { id: 'name', label: 'Name' },
-          { id: 'status', label: 'Status' },
-          { id: 'client', label: 'Client' },
-          { id: 'startDate', label: 'Start Date' },
-          { id: 'endDate', label: 'End Date' },
-          { id: 'budget', label: 'Budget' },
-        ]}
-        open={showConfigDialog}
-        onOpenChange={setShowConfigDialog}
-        editingLayout={editingLayout}
-        onSave={(updatedLayout) => {
-          updateExistingLayout(updatedLayout);
-          setEditingLayout(null);
-          setShowConfigDialog(false);
-        }}
-        onCancel={() => {
-          setEditingLayout(null);
-          setShowConfigDialog(false);
-        }}
-      />
+      {/* Single Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Elimina Progetto</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare il progetto "{editingProject?.name}"? 
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Eliminando..." : "Elimina"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma Eliminazione Multipla</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare {selectedProjects.length} progetti selezionati? 
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-bulk-delete">
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkDeleteMutation.isPending}
+              data-testid="button-confirm-bulk-delete"
+            >
+              {bulkDeleteMutation.isPending ? "Eliminando..." : `Elimina ${selectedProjects.length} Progetti`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Layout Configuration Dialog */}
+      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Modifica Layout: {editingLayout?.name || 'Layout'}
+            </DialogTitle>
+            <DialogDescription>
+              Configura la visibilità delle colonne, ordinamento e filtri per questo layout.
+            </DialogDescription>
+          </DialogHeader>
+          <TableConfiguration
+            tableId="projects"
+            availableColumns={[
+              { id: 'name', label: 'Nome' },
+              { id: 'status', label: 'Status' },
+              { id: 'client', label: 'Cliente' },
+              { id: 'startDate', label: 'Data Inizio' },
+              { id: 'endDate', label: 'Data Fine' },
+              { id: 'budget', label: 'Budget' },
+              { id: 'progress', label: 'Progresso' },
+            ]}
+            editingLayout={editingLayout}
+            onConfigurationChange={(config) => {
+              updateLayout(config);
+            }}
+            onSaveLayout={(layoutName, isDefault) => {
+              const isEditingExisting = !!editingLayout;
+              if (isEditingExisting && editingLayout) {
+                updateExistingLayout(editingLayout.id, {
+                  columns: layout.columns,
+                  sorting: layout.sorting,
+                  filters: layout.filters
+                });
+                setShowConfigDialog(false);
+                return editingLayout.id;
+              } else {
+                const newLayoutId = saveLayoutAs(layoutName);
+                setShowConfigDialog(false);
+                return newLayoutId;
+              }
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

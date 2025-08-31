@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
@@ -7,14 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Handshake, DollarSign, Calendar, TrendingUp, MoreHorizontal, Grid3X3, List, Edit } from "lucide-react";
-import { Deal } from "@shared/schema";
-import DealForm from "@/components/forms/deal-form";
-import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { TableConfiguration } from "@/components/ui/table-configuration";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Handshake, DollarSign, Calendar, TrendingUp, MoreHorizontal, Grid3X3, List, Edit, Trash2 } from "lucide-react";
+import { Deal } from "@shared/schema";
+import DealForm from "@/components/forms/deal-form";
 
 const stageColors = {
   prospecting: "bg-blue-100 text-blue-800",
@@ -35,12 +38,16 @@ const stageLabels = {
 };
 
 export default function DealsPage() {
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [selectedDeals, setSelectedDeals] = useState<Deal[]>([]);
-  const [editingLayout, setEditingLayout] = useState<any>(null);
+  const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [editingLayout, setEditingLayout] = useState<any>(null);
+  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Use the table layout hook for persistent preferences
   const { 
@@ -56,7 +63,7 @@ export default function DealsPage() {
   } = useTableLayout('deals');
   const viewMode = layout.viewMode;
 
-  const { data: deals, isLoading } = useQuery<Deal[]>({
+  const { data: deals = [], isLoading } = useQuery<Deal[]>({
     queryKey: ["/api/deals"],
     queryFn: async () => {
       const res = await fetch("/api/deals", { credentials: "include" });
@@ -65,6 +72,69 @@ export default function DealsPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (dealId: string) => {
+      await apiRequest("DELETE", `/api/deals/${dealId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      setShowDeleteDialog(false);
+      setEditingDeal(null);
+      toast({
+        title: "Deal eliminato",
+        description: "Il deal è stato eliminato con successo.",
+      });
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (deals: Deal[]) => {
+      for (const deal of deals) {
+        await apiRequest("DELETE", `/api/deals/${deal.id}`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      setSelectedDeals([]);
+      setShowBulkDeleteDialog(false);
+      toast({
+        title: "Deal eliminati",
+        description: "I deal selezionati sono stati eliminati con successo.",
+      });
+    },
+  });
+
+  const handleEdit = (deal: Deal) => {
+    setEditingDeal(deal);
+    setShowForm(true);
+  };
+
+  const handleAdd = () => {
+    setEditingDeal(null);
+    setShowForm(true);
+  };
+
+  const handleSingleDelete = (deal: Deal) => {
+    setEditingDeal(deal);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDelete = (deals: Deal[]) => {
+    if (deals.length === 0) return;
+    setSelectedDeals(deals);
+    setShowBulkDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (editingDeal) {
+      deleteMutation.mutate(editingDeal.id);
+    }
+  };
+
+  const confirmBulkDelete = () => {
+    bulkDeleteMutation.mutate(selectedDeals);
+  };
+
   const activeDeals = deals?.filter(deal => !["won", "lost"].includes(deal.stage));
   const closedDeals = deals?.filter(deal => ["won", "lost"].includes(deal.stage));
 
@@ -72,14 +142,15 @@ export default function DealsPage() {
   const wonValue = closedDeals?.filter(deal => deal.stage === "won")
     .reduce((sum, deal) => sum + parseFloat(deal.value), 0) || 0;
 
-  const handleEditDeal = (deal: Deal) => {
-    setEditingDeal(deal);
-    setShowEditDialog(true);
+  const formatValue = (value: string | null) => {
+    if (!value) return "N/A";
+    const amount = parseFloat(value);
+    return `€${amount.toLocaleString()}`;
   };
 
-  const handleCloseEditDialog = () => {
-    setShowEditDialog(false);
-    setEditingDeal(null);
+  const formatDate = (date: Date | string | null) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString("it-IT");
   };
 
   // Define filter columns for advanced filtering
@@ -106,71 +177,56 @@ export default function DealsPage() {
     { id: 'value', type: 'avg' as const, label: 'Valore Medio' },
   ];
 
-  // Define table columns for list view
-  const tableColumns = [
+  const columns = [
+    createStandardColumns.text("title", "Titolo"),
+    createStandardColumns.badge("stage", "Stage", stageColors),
     {
-      accessorKey: 'title',
-      header: 'Title',
-      cell: ({ row }: any) => (
-        <div className="font-medium" data-testid={`text-deal-title-${row.original.id}`}>
-          {row.original.title}
-        </div>
-      ),
+      key: "value",
+      label: "Valore", 
+      sortable: true,
+      searchable: false,
+      render: (deal: Deal) => formatValue(deal.value)
     },
-    createBadgeColumn('stage', 'Stage', {
-      prospecting: 'default',
-      proposal: 'outline',
-      negotiation: 'secondary',
-      closing: 'destructive',
-      won: 'default',
-      lost: 'destructive'
-    }),
+    createStandardColumns.text("company", "Azienda"),
+    createStandardColumns.text("contactPerson", "Contatto"),
     {
-      accessorKey: 'value',
-      header: 'Value',
-      cell: ({ row }: any) => {
-        const amount = parseFloat(row.getValue('value') || '0');
-        return (
-          <div className="font-medium" data-testid={`text-deal-value-${row.original.id}`}>
-            €{amount.toLocaleString()}
-          </div>
-        );
-      },
-    },
-    createTextColumn('company', 'Company'),
-    createTextColumn('contactPerson', 'Contact'),
-    {
-      accessorKey: 'closingDate',
-      header: 'Closing Date',
-      cell: ({ row }: any) => {
-        const date = row.getValue('closingDate');
-        return date ? new Date(date).toLocaleDateString() : '-';
-      },
+      key: "closingDate",
+      label: "Data Chiusura", 
+      sortable: true,
+      searchable: false,
+      render: (deal: Deal) => formatDate(deal.closingDate)
     },
     {
-      id: 'actions',
-      header: 'Actions',
-      cell: ({ row }: any) => {
-        const deal = row.original;
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid={`button-deal-menu-${deal.id}`}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem 
-                onClick={() => handleEditDeal(deal)}
-                data-testid={`menu-edit-deal-${deal.id}`}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Modifica
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
+      key: "actions",
+      label: "Azioni", 
+      sortable: false,
+      searchable: false,
+      render: (deal: Deal) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" data-testid={`button-deal-menu-${deal.id}`}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem 
+              onClick={() => handleEdit(deal)}
+              data-testid={`menu-edit-deal-${deal.id}`}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Modifica
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => handleSingleDelete(deal)}
+              className="text-destructive"
+              data-testid={`menu-delete-deal-${deal.id}`}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Elimina
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
     },
   ];
 
@@ -179,9 +235,9 @@ export default function DealsPage() {
       <Sidebar />
       <main className="flex-1 overflow-auto">
         <Header 
-          title="Deals" 
-          subtitle="Manage your sales pipeline and opportunities"
-          onNewClick={() => setShowCreateDialog(true)}
+          title="Deal" 
+          subtitle="Gestisci pipeline vendite e opportunità"
+          onNewClick={handleAdd}
         />
         
         <div className="p-6 space-y-6">
