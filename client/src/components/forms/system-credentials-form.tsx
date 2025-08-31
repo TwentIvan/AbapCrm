@@ -100,7 +100,7 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
         : "/api/system-credentials";
       const method = isEditing ? "PUT" : "POST";
       
-      return apiRequest(url, method, data);
+      return apiRequest(method, url, data);
     },
     onSuccess: () => {
       toast({
