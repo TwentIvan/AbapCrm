@@ -179,29 +179,40 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     
     try {
       const { software } = req.body;
-      console.log('[VPN-DISCOVERY] Request for software:', software);
+      console.log('[VPN-DISCOVERY-API] ========== NEW DISCOVERY REQUEST ==========');
+      console.log('[VPN-DISCOVERY-API] Request for software:', software);
+      console.log('[VPN-DISCOVERY-API] Platform:', process.platform);
+      console.log('[VPN-DISCOVERY-API] Starting discovery...');
       
       // Get all discovered connections
       const allConnections = await discoverVPNConnections();
-      console.log('[VPN-DISCOVERY] All connections found:', allConnections.length);
+      console.log('[VPN-DISCOVERY-API] ===== ALL CONNECTIONS FOUND =====');
+      console.log('[VPN-DISCOVERY-API] Total connections:', allConnections.length);
+      console.log('[VPN-DISCOVERY-API] Connections:', JSON.stringify(allConnections, null, 2));
       
       // Filter by requested software type
       const filteredConnections = allConnections.filter(conn => {
-        switch (software) {
-          case 'forticlient':
-            return conn.type === 'forticlient';
-          case 'macos_native':
-            return conn.type === 'native';
-          case 'openconnect':
-            return conn.type === 'openconnect' || conn.type === 'cisco';
-          case 'openvpn':
-            return conn.type === 'openvpn' || conn.type === 'openfortivpn';
-          default:
-            return false;
-        }
+        const match = (() => {
+          switch (software) {
+            case 'forticlient':
+              return conn.type === 'forticlient';
+            case 'macos_native':
+              return conn.type === 'native';
+            case 'openconnect':
+              return conn.type === 'openconnect' || conn.type === 'cisco';
+            case 'openvpn':
+              return conn.type === 'openvpn' || conn.type === 'openfortivpn';
+            default:
+              return false;
+          }
+        })();
+        console.log('[VPN-DISCOVERY-API] Connection', conn.name, 'type', conn.type, '-> match:', match);
+        return match;
       });
       
-      console.log('[VPN-DISCOVERY] Filtered connections for', software, ':', filteredConnections.length);
+      console.log('[VPN-DISCOVERY-API] ===== FILTERED CONNECTIONS =====');
+      console.log('[VPN-DISCOVERY-API] Filtered for', software, ':', filteredConnections.length);
+      console.log('[VPN-DISCOVERY-API] Filtered:', JSON.stringify(filteredConnections, null, 2));
       
       const response = {
         success: true,
@@ -215,9 +226,15 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         }))
       };
       
+      console.log('[VPN-DISCOVERY-API] ===== FINAL RESPONSE =====');
+      console.log('[VPN-DISCOVERY-API] Response:', JSON.stringify(response, null, 2));
+      console.log('[VPN-DISCOVERY-API] ========================================');
+      
       res.json(response);
     } catch (error) {
-      console.error('[VPN-DISCOVERY] Error:', error);
+      console.error('[VPN-DISCOVERY-API] ===== ERROR =====');
+      console.error('[VPN-DISCOVERY-API] Error:', error);
+      console.error('[VPN-DISCOVERY-API] Stack:', error instanceof Error ? error.stack : 'No stack');
       res.status(500).json({ 
         success: false,
         error: "Failed to discover VPN connections",
