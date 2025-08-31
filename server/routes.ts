@@ -173,6 +173,7 @@ export function registerRoutes(app: Express): Server {
       if (req.body.status !== undefined) updateData.status = req.body.status;
       if (req.body.priority !== undefined) updateData.priority = req.body.priority;
       if (req.body.projectId !== undefined) updateData.projectId = req.body.projectId;
+      if (req.body.sapSystemId !== undefined) updateData.sapSystemId = req.body.sapSystemId;
       if (req.body.dueDate !== undefined) updateData.dueDate = req.body.dueDate ? new Date(req.body.dueDate) : null;
       if (req.body.estimatedEffort !== undefined) updateData.estimatedEffort = req.body.estimatedEffort || null;
       if (req.body.completionPercentage !== undefined) updateData.completionPercentage = req.body.completionPercentage;
