@@ -440,10 +440,23 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
 
         {/* Actions */}
         <div className="flex justify-end space-x-2">
-          <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
+          <Button type="button" variant="outline" onClick={() => {
+            console.log("🔍 Cancel button clicked");
+            onCancel();
+          }} data-testid="button-cancel">
             Annulla
           </Button>
-          <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save">
+          <Button 
+            type="submit" 
+            disabled={createMutation.isPending || updateMutation.isPending} 
+            data-testid="button-save"
+            onClick={() => {
+              console.log("🔍 Submit button clicked");
+              console.log("🔍 Form errors:", form.formState.errors);
+              console.log("🔍 Form is valid:", form.formState.isValid);
+              console.log("🔍 Form values:", form.getValues());
+            }}
+          >
             {createMutation.isPending || updateMutation.isPending ? "Salvando..." : 
              vpnConnection ? "Aggiorna" : "Crea"}
           </Button>
