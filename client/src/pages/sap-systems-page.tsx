@@ -15,9 +15,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { TableConfiguration } from "@/components/ui/table-configuration";
-import { Server, Building, MoreHorizontal, Grid3X3, List, Edit, Trash2, Key, Wifi } from "lucide-react";
+import { Server, Building, MoreHorizontal, Grid3X3, List, Edit, Trash2, Key, Wifi, Upload } from "lucide-react";
 import { SapSystem } from "@shared/schema";
 import SapSystemForm from "../components/forms/sap-system-form";
+import SapLandscapeImport from "../components/forms/sap-landscape-import";
 
 const landscapeColors = {
   development: "bg-blue-100 text-blue-800",
@@ -35,6 +36,7 @@ export default function SapSystemsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [selectedSystem, setSelectedSystem] = useState<SapSystem | null>(null);
   const [selectedSystems, setSelectedSystems] = useState<SapSystem[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
@@ -376,6 +378,15 @@ export default function SapSystemsPage() {
                   {viewMode === 'cards' ? 'List View' : 'Card View'}
                 </Button>
                 
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowImportDialog(true)} 
+                  data-testid="button-import-xml"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import from XML
+                </Button>
+                
                 <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-sap-system">
                   <Server className="mr-2 h-4 w-4" />
                   Add SAP System
@@ -476,6 +487,21 @@ export default function SapSystemsPage() {
               <Button variant="outline" onClick={() => setShowConfigDialog(false)}>Close</Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import from XML Dialog */}
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Import SAP Systems from XML</DialogTitle>
+            <DialogDescription>
+              Upload and import SAP system configurations from a SAPUILandscape.xml file.
+            </DialogDescription>
+          </DialogHeader>
+          <SapLandscapeImport
+            onSuccess={() => setShowImportDialog(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>
