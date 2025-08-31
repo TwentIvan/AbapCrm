@@ -8,6 +8,19 @@ Preferred communication style: Simple, everyday language.
 
 ## Standard Development Pattern for Table Areas
 
+When creating any new table/CRUD area in the application ("Usa il template standard per creare la nuova area"), ALWAYS implement ALL these mandatory features:
+
+### Checklist Template Standard (TUTTI i punti obbligatori):
+- ✅ **Creazione tabella anagrafica principale** - Database schema + API + Frontend table
+- ✅ **Creazione nuova voce menu** - Aggiungere nel sidebar navigation array  
+- ✅ **Menu sempre visibile** - Item presente nel sidebar con icona appropriata
+- ✅ **Funzioni di configurazione e salvataggio dei layout per la vista lista** - LayoutManager + TableConfiguration
+- ✅ **Selezione dei layout** - Dropdown per caricare layout salvati
+- ✅ **Box di selezione** - enableSelection=true + onSelectionChange
+- ✅ **Funzioni legate alla selezione** - Cancellazione multipla con AlertDialog elegante + modifica massiva (TODO)
+
+### Implementation Template
+
 When creating any new table/CRUD area in the application, ALWAYS follow this exact template to ensure consistency and avoid repeated errors:
 
 ### 1. Required Imports Template
