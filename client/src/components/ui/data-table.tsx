@@ -82,8 +82,8 @@ export function DataTable<TData, TValue>({
   enableClipboardCopy = false,
   editingLayout = null // Layout being edited
 }: DataTableProps<TData, TValue>) {
-  // Load and manage table layout preferences
-  const { layout, updateLayout, resetLayout, saveLayoutAs, currentLayoutName } = useTableLayout(tableId);
+  // DISABLED: Layout system removed to fix functionality issues
+  // const { layout, updateLayout, resetLayout, saveLayoutAs, currentLayoutName } = useTableLayout(tableId);
   
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -91,7 +91,7 @@ export function DataTable<TData, TValue>({
   // const [columnVisibility, setColumnVisibility] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>(layout.filters || []);
+  const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
   
   // Simple table key to avoid loops
   const tableKey = `table-${tableId}`;
@@ -119,40 +119,22 @@ export function DataTable<TData, TValue>({
   // Selection columns setup  
   const selectionColumn = enableSelection ? [{
     id: "select",
-    header: ({ table }: any) => {
-      console.log("🔍 Rendering select-all checkbox:", {
-        isAllSelected: table.getIsAllPageRowsSelected(),
-        rowCount: table.getRowModel().rows.length
-      });
-      return (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => {
-            console.log("🔍 Select-all clicked:", value);
-            table.toggleAllPageRowsSelected(!!value);
-          }}
-          aria-label="Select all"
-          data-testid="checkbox-select-all"
-        />
-      );
-    },
-    cell: ({ row }: any) => {
-      console.log("🔍 Rendering row checkbox:", {
-        rowId: row.id,
-        isSelected: row.getIsSelected()
-      });
-      return (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => {
-            console.log("🔍 Row checkbox clicked:", { rowId: row.id, value });
-            row.toggleSelected(!!value);
-          }}
-          aria-label="Select row"
-          data-testid={`checkbox-select-${row.id}`}
-        />
-      );
-    },
+    header: ({ table }: any) => (
+      <Checkbox
+        checked={table.getIsAllPageRowsSelected()}
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+        data-testid="checkbox-select-all"
+      />
+    ),
+    cell: ({ row }: any) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+        data-testid={`checkbox-select-${row.id}`}
+      />
+    ),
     enableSorting: false,
     enableHiding: false,
   }] : [];
@@ -240,13 +222,7 @@ export function DataTable<TData, TValue>({
     return results;
   }, [filteredData, aggregationColumns, enableAggregation]);
 
-  // SEMPLIFICATO: Usa colonne base senza layout complesso
-  console.log("🔍 DataTable render:", {
-    enableSelection,
-    dataLength: data.length,
-    columnsCount: orderedColumns.length,
-    tableId
-  });
+  // Use simple column configuration
 
   const table = useReactTable({
     data: filteredData,
@@ -268,6 +244,8 @@ export function DataTable<TData, TValue>({
       globalFilter,
       rowSelection,
     },
+    enableSorting: true,
+    manualSorting: false,
   });
 
 
@@ -305,25 +283,12 @@ export function DataTable<TData, TValue>({
     // Drag & drop disabled for now
   };
 
-  // Debug sorting changes
+  // Notify parent about selection changes
   useEffect(() => {
-    console.log("🔍 Sorting changed:", sorting);
-  }, [sorting]);
-
-  // Debug selection changes
-  useEffect(() => {
-    console.log("🔍 Selection changed:", {
-      rowSelection,
-      selectedRowsCount: selectedRows.length,
-      selectedRowIds: Object.keys(rowSelection),
-      enableSelection,
-      tableDataLength: data.length
-    });
-    
     if (onSelectionChange) {
       onSelectionChange(selectedRows);
     }
-  }, [rowSelection, onSelectionChange, selectedRows, enableSelection, data.length]);
+  }, [rowSelection, onSelectionChange, selectedRows]);
 
   return (
     <div className="space-y-4">
@@ -410,7 +375,8 @@ export function DataTable<TData, TValue>({
                 }
               }}
               onSaveLayout={(layoutName, isDefault) => {
-                return saveLayoutAs(layoutName);
+                // Layout system disabled
+                return "";
               }}
               editingLayout={editingLayout}
             />
@@ -420,7 +386,7 @@ export function DataTable<TData, TValue>({
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={resetLayout}
+              onClick={() => {/* Layout system disabled */}}
               data-testid="button-reset-layout"
             >
               <SlidersHorizontal className="mr-2 h-4 w-4" />
@@ -432,14 +398,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Aggregations Row - Top */}
-      {enableAggregation && layout.aggregations.position === 'top' && (
-        <AggregationRow 
-          aggregations={aggregations}
-          aggregationColumns={aggregationColumns}
-          allColumns={allColumns}
-          position="top"
-        />
-      )}
+      {/* Aggregations disabled */}
 
       {/* Table */}
       <div className="rounded-md border">
@@ -513,14 +472,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Aggregations Row - Bottom */}
-      {enableAggregation && layout.aggregations.position === 'bottom' && (
-        <AggregationRow 
-          aggregations={aggregations}
-          aggregationColumns={aggregationColumns}
-          allColumns={allColumns}
-          position="bottom"
-        />
-      )}
+      {/* Aggregations disabled */}
 
       {/* Pagination */}
       <div className="flex items-center justify-between space-x-2 py-4">
