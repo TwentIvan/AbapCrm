@@ -27,7 +27,7 @@ export function SystemCredentialsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/system-credentials/${id}`, "DELETE"),
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/system-credentials/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/system-credentials"] });
       toast({
