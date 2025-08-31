@@ -325,9 +325,6 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">
-                          <span className="text-gray-500">No partner selected</span>
-                        </SelectItem>
                         {partners?.map((partner) => (
                           <SelectItem key={partner.id} value={partner.id}>
                             <div className="flex items-center gap-2">
