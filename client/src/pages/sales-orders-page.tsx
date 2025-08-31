@@ -6,12 +6,13 @@ import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LayoutManager } from "@/components/ui/layout-manager";
+import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { FileText, Euro, Calendar, Building, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { FileText, Euro, Calendar, Building, MoreHorizontal, Edit, Trash2, Grid3X3, List } from "lucide-react";
 import { SalesOrder, Partner } from "@shared/schema";
 // import SalesOrderForm from "@/components/forms/sales-order-form";
 
@@ -116,9 +117,9 @@ export default function SalesOrdersPage() {
 
   const clients = partners?.filter(partner => partner.type === "client") || [];
   
-  const getClientName = (clientId: string | null) => {
-    if (!clientId) return "N/A";
-    const client = clients.find(c => c.id === clientId);
+  const getClientName = (partnerId: string | null) => {
+    if (!partnerId) return "N/A";
+    const client = clients.find(c => c.id === partnerId);
     return client?.name || "N/A";
   };
 
@@ -141,21 +142,21 @@ export default function SalesOrdersPage() {
       label: "Cliente", 
       sortable: true,
       searchable: true,
-      render: (order: SalesOrder) => getClientName(order.clientId)
+      render: (order: SalesOrder) => getClientName(order.partnerId)
     },
     {
       key: "totalAmount",
       label: "Importo", 
       sortable: true,
       searchable: false,
-      render: (order: SalesOrder) => formatAmount(order.totalAmount)
+      render: (order: SalesOrder) => `€${order.total || '0'}`
     },
     {
       key: "orderDate",
       label: "Data Ordine", 
       sortable: true,
       searchable: false,
-      render: (order: SalesOrder) => formatDate(order.orderDate)
+      render: (order: SalesOrder) => formatDate(order.dueDate)
     },
     {
       key: "actions",
@@ -201,21 +202,48 @@ export default function SalesOrdersPage() {
           onNewClick={handleAdd}
         />
         <main className="p-6 space-y-6">
-          <LayoutManager
-            layoutId="sales-orders"
-            viewMode={viewMode}
-            currentLayoutName={currentLayoutName}
-            savedLayouts={savedLayouts}
-            onViewModeChange={(mode) => updateLayout({ viewMode: mode })}
-            onLoadLayout={loadLayout}
-            onSaveLayout={saveLayoutAs}
-            onRenameLayout={renameLayout}
-            onDeleteLayout={deleteLayout}
-            onEditLayout={(layoutToEdit) => {
-              setEditingLayout(layoutToEdit);
-              setShowConfigDialog(true);
-            }}
-          />
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-4">
+              <LayoutManager
+                currentLayoutName={currentLayoutName}
+                savedLayouts={savedLayouts}
+                onLoadLayout={loadLayout}
+                onRenameLayout={renameLayout}
+                onDeleteLayout={deleteLayout}
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowConfigDialog(true)}
+                data-testid="button-configure-columns"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Configura
+              </Button>
+            </div>
+
+            {/* View Toggle */}
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => updateLayout({ viewMode: 'cards' })}
+                data-testid="button-view-cards"
+              >
+                <Grid3X3 className="mr-2 h-4 w-4" />
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => updateLayout({ viewMode: 'list' })}
+                data-testid="button-view-list"
+              >
+                <List className="mr-2 h-4 w-4" />
+                List
+              </Button>
+            </div>
+          </div>
 
           <UniversalTable
             data={salesOrders}
@@ -233,7 +261,6 @@ export default function SalesOrdersPage() {
                 onClick: () => handleDelete(selectedOrders)
               }
             ]}
-            isLoading={isLoading}
           />
 
           {/* Create/Edit Dialog */}
@@ -311,6 +338,26 @@ export default function SalesOrdersPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Table Configuration Dialog */}
+          <TableConfiguration
+            isOpen={showConfigDialog}
+            onOpenChange={setShowConfigDialog}
+            tableId="sales-orders"
+            availableColumns={[
+              { id: 'orderNumber', label: 'N. Ordine' },
+              { id: 'status', label: 'Status' },
+              { id: 'partnerId', label: 'Cliente' },
+              { id: 'total', label: 'Importo' },
+              { id: 'dueDate', label: 'Data Scadenza' },
+            ]}
+            editingLayout={editingLayout}
+            onSave={(layoutData) => {
+              updateLayout(layoutData);
+              setShowConfigDialog(false);
+            }}
+            onCancel={() => setShowConfigDialog(false)}
+          />
         </main>
       </div>
     </div>

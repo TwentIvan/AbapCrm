@@ -202,24 +202,6 @@ export function LayoutManager({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Configure Layout Button */}
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="h-8"
-        onClick={() => {
-          if (onEditLayout) {
-            const currentLayout = savedLayouts.find(l => l.name === currentLayoutName);
-            if (currentLayout) {
-              onEditLayout(currentLayout);
-            }
-          }
-        }}
-        data-testid="button-configure-layout"
-      >
-        <Edit className="mr-2 h-4 w-4" />
-        Configura Layout
-      </Button>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

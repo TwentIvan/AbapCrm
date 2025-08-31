@@ -6,13 +6,14 @@ import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LayoutManager } from "@/components/ui/layout-manager";
+import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { DollarSign, MoreHorizontal, Edit, Trash2, CheckCircle, XCircle, Settings } from "lucide-react";
+import { DollarSign, MoreHorizontal, Edit, Trash2, CheckCircle, XCircle, Settings, Grid3X3, List } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { RateAgreement, Partner, Project } from "@shared/schema";
@@ -20,7 +21,7 @@ import RateAgreementForm from "@/components/forms/rate-agreement-form";
 
 export default function RateAgreementsPage() {
   const [selectedAgreements, setSelectedAgreements] = useState<RateAgreement[]>([]);
-  const [editingAgreement, setEditingAgreement] = useState<RateAgreement | null>(null);
+  const [editingAgreement, setEditingAgreement] = useState<RateAgreement | undefined>(undefined);
   const [showForm, setShowForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
@@ -236,21 +237,48 @@ export default function RateAgreementsPage() {
           onNewClick={handleAdd}
         />
         <main className="p-6 space-y-6">
-          <LayoutManager
-            layoutId="rate-agreements"
-            viewMode={viewMode}
-            currentLayoutName={currentLayoutName}
-            savedLayouts={savedLayouts}
-            onViewModeChange={(mode) => updateLayout({ viewMode: mode })}
-            onLoadLayout={loadLayout}
-            onSaveLayout={saveLayoutAs}
-            onRenameLayout={renameLayout}
-            onDeleteLayout={deleteLayout}
-            onEditLayout={(layoutToEdit) => {
-              setEditingLayout(layoutToEdit);
-              setShowConfigDialog(true);
-            }}
-          />
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-4">
+              <LayoutManager
+                currentLayoutName={currentLayoutName}
+                savedLayouts={savedLayouts}
+                onLoadLayout={loadLayout}
+                onRenameLayout={renameLayout}
+                onDeleteLayout={deleteLayout}
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowConfigDialog(true)}
+                data-testid="button-configure-columns"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Configura
+              </Button>
+            </div>
+
+            {/* View Toggle */}
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => updateLayout({ viewMode: 'cards' })}
+                data-testid="button-view-cards"
+              >
+                <Grid3X3 className="mr-2 h-4 w-4" />
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => updateLayout({ viewMode: 'list' })}
+                data-testid="button-view-list"
+              >
+                <List className="mr-2 h-4 w-4" />
+                List
+              </Button>
+            </div>
+          </div>
 
           <UniversalTable
             data={agreements}
@@ -268,7 +296,6 @@ export default function RateAgreementsPage() {
                 onClick: () => handleDelete(selectedAgreements)
               }
             ]}
-            isLoading={isLoading}
           />
 
           {/* Create/Edit Dialog */}
@@ -283,7 +310,7 @@ export default function RateAgreementsPage() {
                 </DialogDescription>
               </DialogHeader>
               <RateAgreementForm
-                rateAgreement={editingAgreement}
+                rateAgreement={editingAgreement || undefined}
                 onSuccess={() => {
                   setShowForm(false);
                   setEditingAgreement(null);
@@ -292,6 +319,27 @@ export default function RateAgreementsPage() {
               />
             </DialogContent>
           </Dialog>
+
+          {/* Table Configuration Dialog */}
+          <TableConfiguration
+            isOpen={showConfigDialog}
+            onOpenChange={setShowConfigDialog}
+            tableId="rate-agreements"
+            availableColumns={[
+              { id: 'name', label: 'Nome' },
+              { id: 'hourlyRate', label: 'Tariffa/h' },
+              { id: 'currency', label: 'Valuta' },
+              { id: 'startDate', label: 'Data Inizio' },
+              { id: 'endDate', label: 'Data Fine' },
+              { id: 'isActive', label: 'Stato' },
+            ]}
+            editingLayout={editingLayout}
+            onSave={(layoutData) => {
+              updateLayout(layoutData);
+              setShowConfigDialog(false);
+            }}
+            onCancel={() => setShowConfigDialog(false)}
+          />
 
           {/* Single Delete Dialog */}
           <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

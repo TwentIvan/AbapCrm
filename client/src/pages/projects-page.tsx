@@ -257,17 +257,24 @@ export default function ProjectsPage() {
           {/* Layout Management and View Toggle */}
           <div className="flex justify-between items-center mb-4">
             {/* Layout Manager */}
-            <LayoutManager
-              currentLayoutName={currentLayoutName}
-              savedLayouts={savedLayouts}
-              onLoadLayout={loadLayout}
-              onRenameLayout={renameLayout}
-              onDeleteLayout={deleteLayout}
-              onEditLayout={(layoutToEdit) => {
-                setEditingLayout(layoutToEdit);
-                setShowConfigDialog(true);
-              }}
-            />
+            <div className="flex items-center gap-4">
+              <LayoutManager
+                currentLayoutName={currentLayoutName}
+                savedLayouts={savedLayouts}
+                onLoadLayout={loadLayout}
+                onRenameLayout={renameLayout}
+                onDeleteLayout={deleteLayout}
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowConfigDialog(true)}
+                data-testid="button-configure-columns"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Configura
+              </Button>
+            </div>
 
             {/* View Toggle */}
             <div className="flex bg-muted rounded-lg p-1">
@@ -459,10 +466,6 @@ export default function ProjectsPage() {
               setEditingProject(null);
               queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
             }}
-            onCancel={() => {
-              setShowForm(false);
-              setEditingProject(null);
-            }}
           />
         </DialogContent>
       </Dialog>
@@ -534,51 +537,27 @@ export default function ProjectsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Layout Configuration Dialog */}
-      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              Modifica Layout: {editingLayout?.name || 'Layout'}
-            </DialogTitle>
-            <DialogDescription>
-              Configura la visibilità delle colonne, ordinamento e filtri per questo layout.
-            </DialogDescription>
-          </DialogHeader>
-          <TableConfiguration
-            tableId="projects"
-            availableColumns={[
-              { id: 'name', label: 'Nome' },
-              { id: 'status', label: 'Status' },
-              { id: 'client', label: 'Cliente' },
-              { id: 'startDate', label: 'Data Inizio' },
-              { id: 'endDate', label: 'Data Fine' },
-              { id: 'budget', label: 'Budget' },
-              { id: 'progress', label: 'Progresso' },
-            ]}
-            editingLayout={editingLayout}
-            onConfigurationChange={(config) => {
-              updateLayout(config);
-            }}
-            onSaveLayout={(layoutName, isDefault) => {
-              const isEditingExisting = !!editingLayout;
-              if (isEditingExisting && editingLayout) {
-                updateExistingLayout(editingLayout.id, {
-                  columns: layout.columns,
-                  sorting: layout.sorting,
-                  filters: layout.filters
-                });
-                setShowConfigDialog(false);
-                return editingLayout.id;
-              } else {
-                const newLayoutId = saveLayoutAs(layoutName);
-                setShowConfigDialog(false);
-                return newLayoutId;
-              }
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Table Configuration Dialog */}
+      <TableConfiguration
+        isOpen={showConfigDialog}
+        onOpenChange={setShowConfigDialog}
+        tableId="projects"
+        availableColumns={[
+          { id: 'name', label: 'Nome' },
+          { id: 'status', label: 'Status' },
+          { id: 'client', label: 'Cliente' },
+          { id: 'startDate', label: 'Data Inizio' },
+          { id: 'endDate', label: 'Data Fine' },
+          { id: 'budget', label: 'Budget' },
+          { id: 'progress', label: 'Progresso' },
+        ]}
+        editingLayout={editingLayout}
+        onSave={(layoutData) => {
+          updateLayout(layoutData);
+          setShowConfigDialog(false);
+        }}
+        onCancel={() => setShowConfigDialog(false)}
+      />
     </div>
   );
 }

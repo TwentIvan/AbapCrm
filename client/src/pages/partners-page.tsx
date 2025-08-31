@@ -264,17 +264,24 @@ export default function PartnersPage() {
           {/* Layout Management and View Toggle */}
           <div className="flex justify-between items-center mb-4">
             {/* Layout Manager */}
-            <LayoutManager
-              currentLayoutName={currentLayoutName}
-              savedLayouts={savedLayouts}
-              onLoadLayout={loadLayout}
-              onRenameLayout={renameLayout}
-              onDeleteLayout={deleteLayout}
-              onEditLayout={(layout) => {
-                setEditingLayout(layout);
-                setShowConfigDialog(true);
-              }}
-            />
+            <div className="flex items-center gap-4">
+              <LayoutManager
+                currentLayoutName={currentLayoutName}
+                savedLayouts={savedLayouts}
+                onLoadLayout={loadLayout}
+                onRenameLayout={renameLayout}
+                onDeleteLayout={deleteLayout}
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowConfigDialog(true)}
+                data-testid="button-configure-columns"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Configura
+              </Button>
+            </div>
 
             {/* View Toggle */}
             <div className="flex bg-muted rounded-lg p-1">
@@ -558,56 +565,29 @@ export default function PartnersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {/* Layout Configuration Dialog */}
-      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              Modifica Layout: {editingLayout?.name || 'Layout'}
-            </DialogTitle>
-            <DialogDescription>
-              Configura la visibilità delle colonne, ordinamento e filtri per questo layout.
-            </DialogDescription>
-          </DialogHeader>
-          <TableConfiguration
-            tableId="partners"
-            availableColumns={[
-              { id: 'logoUrl', label: 'Logo' },
-              { id: 'name', label: 'Nome' },
-              { id: 'type', label: 'Tipo' },
-              { id: 'company', label: 'Azienda' },
-              { id: 'email', label: 'Email' },
-              { id: 'phone', label: 'Telefono' },
-              { id: 'address', label: 'Indirizzo' },
-              { id: 'fiscalCode', label: 'Codice Fiscale' },
-              { id: 'vatNumber', label: 'Partita IVA' },
-            ]}
-            editingLayout={editingLayout}
-            onConfigurationChange={(config) => {
-              // Apply configuration immediately
-              updateLayout(config);
-            }}
-            onSaveLayout={(layoutName, isDefault) => {
-              // If editing existing layout, update it instead of creating new
-              const isEditingExisting = !!editingLayout;
-              if (isEditingExisting && editingLayout) {
-                updateExistingLayout(editingLayout.id, {
-                  columns: layout.columns,
-                  sorting: layout.sorting,
-                  filters: layout.filters
-                });
-                setShowConfigDialog(false);
-                return editingLayout.id;
-              } else {
-                // Save as new layout
-                const newLayoutId = saveLayoutAs(layoutName);
-                setShowConfigDialog(false);
-                return newLayoutId;
-              }
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Table Configuration Dialog */}
+      <TableConfiguration
+        isOpen={showConfigDialog}
+        onOpenChange={setShowConfigDialog}
+        tableId="partners"
+        availableColumns={[
+          { id: 'logoUrl', label: 'Logo' },
+          { id: 'name', label: 'Nome' },
+          { id: 'type', label: 'Tipo' },
+          { id: 'company', label: 'Azienda' },
+          { id: 'email', label: 'Email' },
+          { id: 'phone', label: 'Telefono' },
+          { id: 'address', label: 'Indirizzo' },
+          { id: 'fiscalCode', label: 'Codice Fiscale' },
+          { id: 'vatNumber', label: 'Partita IVA' },
+        ]}
+        editingLayout={editingLayout}
+        onSave={(layoutData) => {
+          updateLayout(layoutData);
+          setShowConfigDialog(false);
+        }}
+        onCancel={() => setShowConfigDialog(false)}
+      />
     </div>
   );
 }

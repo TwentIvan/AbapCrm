@@ -587,17 +587,24 @@ export default function TasksPage() {
           {/* Layout Management and View Toggle */}
           <div className="flex justify-between items-center mb-4">
             {/* Layout Manager */}
-            <LayoutManager
-              currentLayoutName={currentLayoutName}
-              savedLayouts={savedLayouts}
-              onLoadLayout={loadLayout}
-              onRenameLayout={renameLayout}
-              onDeleteLayout={deleteLayout}
-              onEditLayout={(layout) => {
-                setEditingLayout(layout);
-                setShowConfigDialog(true);
-              }}
-            />
+            <div className="flex items-center gap-4">
+              <LayoutManager
+                currentLayoutName={currentLayoutName}
+                savedLayouts={savedLayouts}
+                onLoadLayout={loadLayout}
+                onRenameLayout={renameLayout}
+                onDeleteLayout={deleteLayout}
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowConfigDialog(true)}
+                data-testid="button-configure-columns"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Configura
+              </Button>
+            </div>
 
             {/* View Toggle */}
             <div className="flex bg-muted rounded-lg p-1">
@@ -670,9 +677,6 @@ export default function TasksPage() {
                   onClick: () => handleDelete(selectedTasks)
                 }
               ]}
-              enableAggregation={true}
-              aggregationColumns={aggregationColumns}
-              enableColumnReordering={true}
             />
           ) : (
             <div className="space-y-4">
@@ -894,17 +898,13 @@ export default function TasksPage() {
           { id: 'actions', label: 'Actions' },
         ]}
         isOpen={showConfigDialog}
-        onOpenChange={(open) => setShowConfigDialog(open)}
+        onOpenChange={setShowConfigDialog}
         editingLayout={editingLayout}
-        onSave={(updatedLayout) => {
-          updateExistingLayout(updatedLayout);
-          setEditingLayout(null);
+        onSave={(layoutData) => {
+          updateLayout(layoutData);
           setShowConfigDialog(false);
         }}
-        onCancel={() => {
-          setEditingLayout(null);
-          setShowConfigDialog(false);
-        }}
+        onCancel={() => setShowConfigDialog(false)}
       />
     </div>
   );
