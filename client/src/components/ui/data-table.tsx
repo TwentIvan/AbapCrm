@@ -119,22 +119,40 @@ export function DataTable<TData, TValue>({
   // Selection columns setup  
   const selectionColumn = enableSelection ? [{
     id: "select",
-    header: ({ table }: any) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-        data-testid="checkbox-select-all"
-      />
-    ),
-    cell: ({ row }: any) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        data-testid={`checkbox-select-${row.id}`}
-      />
-    ),
+    header: ({ table }: any) => {
+      console.log("🔍 Rendering select-all checkbox:", {
+        isAllSelected: table.getIsAllPageRowsSelected(),
+        rowCount: table.getRowModel().rows.length
+      });
+      return (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => {
+            console.log("🔍 Select-all clicked:", value);
+            table.toggleAllPageRowsSelected(!!value);
+          }}
+          aria-label="Select all"
+          data-testid="checkbox-select-all"
+        />
+      );
+    },
+    cell: ({ row }: any) => {
+      console.log("🔍 Rendering row checkbox:", {
+        rowId: row.id,
+        isSelected: row.getIsSelected()
+      });
+      return (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => {
+            console.log("🔍 Row checkbox clicked:", { rowId: row.id, value });
+            row.toggleSelected(!!value);
+          }}
+          aria-label="Select row"
+          data-testid={`checkbox-select-${row.id}`}
+        />
+      );
+    },
     enableSorting: false,
     enableHiding: false,
   }] : [];
@@ -222,74 +240,13 @@ export function DataTable<TData, TValue>({
     return results;
   }, [filteredData, aggregationColumns, enableAggregation]);
 
-  // USER'S ALGORITHM: SELECT visible columns ORDER BY position
-  const getVisibleColumnsInOrder = useMemo(() => {
-    let layoutColumns = layout.columns || {};
-    
-    // Debug logs removed - algorithm working perfectly
-    
-    
-    // AUTO-POPULATE: Only for DEFAULT layout if still empty
-    if (Object.keys(layoutColumns).length === 0) {
-      // Layout has empty columns
-      
-      if (currentLayoutName === 'Default') {
-        layoutColumns = {};
-        orderedColumns.forEach((col, index) => {
-          const colId = (col as any).accessorKey || col.id;
-          if (colId && colId !== 'actions' && colId !== 'select') { // Skip special columns
-            layoutColumns[colId] = { visible: true, position: index + 1 };
-          }
-        });
-        
-        // Auto-populated columns for DEFAULT layout
-      } else {
-        // Layout has no column configuration
-        return []; // Return empty columns for unconfigured saved layouts
-      }
-    }
-    
-    // 1. SELECT: Get all columns with visible: true
-    const visibleColumnConfigs = Object.entries(layoutColumns)
-      .filter(([_, config]) => config.visible === true)
-      .sort(([_, a], [__, b]) => a.position - b.position); // 2. ORDER BY: Sort by position
-    
-    // 3. RENDER: Map to actual column definitions
-    const visibleColumnIds = visibleColumnConfigs.map(([columnId]) => columnId);
-    
-    // Filter original columns to keep only visible ones in correct order
-    const filteredColumns = orderedColumns.filter(col => {
-      const colId = (col as any).accessorKey || col.id;
-      // Always include selection and actions columns regardless of layout settings
-      if (colId === 'select' || colId === 'actions') {
-        return true;
-      }
-      return visibleColumnIds.includes(colId);
-    });
-    
-    // Sort filtered columns according to layout position
-    filteredColumns.sort((a, b) => {
-      const aId = (a as any).accessorKey || a.id;
-      const bId = (b as any).accessorKey || b.id;
-      
-      // Selection column always first
-      if (aId === 'select') return -1;
-      if (bId === 'select') return 1;
-      
-      // Actions column always last
-      if (aId === 'actions') return 1;
-      if (bId === 'actions') return -1;
-      
-      const aIndex = visibleColumnIds.indexOf(aId);
-      const bIndex = visibleColumnIds.indexOf(bId);
-      return aIndex - bIndex;
-    });
-    
-    // User algorithm result: SELECT visible=true ORDER BY position
-    return filteredColumns;
-  }, [orderedColumns, layout.columns, updateLayout, currentLayoutName]);
-  
-  const visibleColumns = getVisibleColumnsInOrder;
+  // SEMPLIFICATO: Usa colonne base senza layout complesso
+  console.log("🔍 DataTable render:", {
+    enableSelection,
+    dataLength: data.length,
+    columnsCount: orderedColumns.length,
+    tableId
+  });
 
   const table = useReactTable({
     data: filteredData,
@@ -348,12 +305,25 @@ export function DataTable<TData, TValue>({
     // Drag & drop disabled for now
   };
 
-  // Notify parent about selection changes
+  // Debug sorting changes
   useEffect(() => {
+    console.log("🔍 Sorting changed:", sorting);
+  }, [sorting]);
+
+  // Debug selection changes
+  useEffect(() => {
+    console.log("🔍 Selection changed:", {
+      rowSelection,
+      selectedRowsCount: selectedRows.length,
+      selectedRowIds: Object.keys(rowSelection),
+      enableSelection,
+      tableDataLength: data.length
+    });
+    
     if (onSelectionChange) {
       onSelectionChange(selectedRows);
     }
-  }, [rowSelection, onSelectionChange, table]);
+  }, [rowSelection, onSelectionChange, selectedRows, enableSelection, data.length]);
 
   return (
     <div className="space-y-4">
