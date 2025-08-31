@@ -91,19 +91,60 @@ export class SapLandscapeParser {
   private static findSystemElements(doc: Document): Element[] {
     const systems: Element[] = [];
 
-    // Cerca pattern standard: Landscape > Workspaces > Workspace > System
+    // Debug: stampa la struttura del documento
+    console.log("XML Root element:", doc.documentElement?.tagName);
+    console.log("XML structure preview:", doc.documentElement?.outerHTML?.substring(0, 500) + "...");
+
+    // Pattern 1: Landscape > Workspaces > Workspace > System
     const workspacesSystems = Array.from(doc.querySelectorAll("Landscape Workspaces Workspace System"));
+    console.log("Found systems in Workspaces pattern:", workspacesSystems.length);
     systems.push(...workspacesSystems);
 
-    // Cerca pattern alternativo: Landscape > System
+    // Pattern 2: Landscape > System (diretto)
     const directSystems = Array.from(doc.querySelectorAll("Landscape > System"));
+    console.log("Found systems in direct Landscape pattern:", directSystems.length);
     systems.push(...directSystems);
 
-    // Cerca pattern generico: qualsiasi elemento System
+    // Pattern 3: Landscape > Services > System
+    const servicesSystems = Array.from(doc.querySelectorAll("Landscape Services System"));
+    console.log("Found systems in Services pattern:", servicesSystems.length);
+    systems.push(...servicesSystems);
+
+    // Pattern 4: Qualsiasi elemento System nel documento
     if (systems.length === 0) {
       const allSystems = Array.from(doc.querySelectorAll("System"));
+      console.log("Found systems with generic System selector:", allSystems.length);
       systems.push(...allSystems);
     }
+
+    // Pattern 5: Elementi con attributo systemid (caso generale)
+    if (systems.length === 0) {
+      const systemsByAttribute = Array.from(doc.querySelectorAll("*[systemid]"));
+      console.log("Found elements with systemid attribute:", systemsByAttribute.length);
+      systems.push(...systemsByAttribute);
+    }
+
+    // Pattern 6: Case-insensitive search
+    if (systems.length === 0) {
+      const allElements = Array.from(doc.querySelectorAll("*"));
+      const systemElements = allElements.filter(el => 
+        el.tagName.toLowerCase() === 'system' || 
+        el.hasAttribute('systemid') ||
+        el.hasAttribute('systemId')
+      );
+      console.log("Found systems with case-insensitive search:", systemElements.length);
+      systems.push(...systemElements);
+    }
+
+    // Debug: lista tutti gli elementi trovati
+    console.log("Total systems found:", systems.length);
+    systems.forEach((sys, index) => {
+      console.log(`System ${index + 1}:`, {
+        tagName: sys.tagName,
+        systemid: sys.getAttribute('systemid') || sys.getAttribute('systemId'),
+        attributes: Array.from(sys.attributes).map(attr => `${attr.name}="${attr.value}"`).join(' ')
+      });
+    });
 
     return systems;
   }
@@ -112,22 +153,41 @@ export class SapLandscapeParser {
    * Estrae informazioni da un elemento System
    */
   private static parseSystemElement(systemElement: Element): SapSystemFromXml | null {
-    const systemId = systemElement.getAttribute("systemid");
-    const description = systemElement.getAttribute("description") || "";
+    // Prova diversi attributi per il system ID
+    const systemId = systemElement.getAttribute("systemid") || 
+                     systemElement.getAttribute("systemId") || 
+                     systemElement.getAttribute("sid") ||
+                     systemElement.getAttribute("name") ||
+                     systemElement.getAttribute("id");
+                     
+    const description = systemElement.getAttribute("description") || 
+                       systemElement.getAttribute("desc") ||
+                       systemElement.textContent?.trim() || "";
+
+    console.log("Parsing system element:", {
+      tagName: systemElement.tagName,
+      systemId,
+      description,
+      allAttributes: Array.from(systemElement.attributes).map(attr => `${attr.name}="${attr.value}"`).join(' ')
+    });
 
     if (!systemId) {
-      throw new Error("System element missing systemid attribute");
+      throw new Error("System element missing system identifier (tried: systemid, systemId, sid, name, id)");
     }
 
     // Cerca servizi all'interno del sistema
     const items = systemElement.querySelectorAll("Item");
     let bestService: Element | null = null;
+    
+    console.log(`System ${systemId} - Found ${items.length} items`);
 
     // Prova a trovare un servizio WinGui o WebGui
     for (const item of Array.from(items)) {
       const services = Array.from(item.querySelectorAll("Service"));
+      console.log(`  Item has ${services.length} services`);
       for (const service of services) {
         const serviceType = service.getAttribute("type");
+        console.log(`    Service type: ${serviceType}`);
         if (serviceType === "WinGui" || serviceType === "SAPGUI") {
           bestService = service;
           break;
@@ -138,31 +198,60 @@ export class SapLandscapeParser {
 
     // Se non trova WinGui, usa il primo servizio disponibile
     if (!bestService) {
-      const allServices = systemElement.querySelectorAll("Service");
+      const allServices = Array.from(systemElement.querySelectorAll("Service"));
+      console.log(`No WinGui service found, trying ${allServices.length} total services`);
       if (allServices.length > 0) {
         bestService = allServices[0];
       }
     }
 
-    if (!bestService) {
-      throw new Error(`No services found for system ${systemId}`);
-    }
+    // Se ancora non trova servizi, prova a estrarre info direttamente dall'elemento system
+    let server: string | null = null;
+    let systemNumber: string | null = null;
+    let clientNumber: string | null = null;
 
-    // Estrae informazioni dal servizio
-    const server = bestService.getAttribute("server") || bestService.getAttribute("host");
-    const systemNumber = bestService.getAttribute("systemNumber") || bestService.getAttribute("sysnr");
-    const clientNumber = bestService.getAttribute("clientNumber") || bestService.getAttribute("client");
+    if (bestService) {
+      console.log(`Using service:`, bestService.outerHTML.substring(0, 200));
+      
+      // Estrae informazioni dal servizio
+      server = bestService.getAttribute("server") || 
+               bestService.getAttribute("host") || 
+               bestService.getAttribute("hostname");
+      systemNumber = bestService.getAttribute("systemNumber") || 
+                     bestService.getAttribute("sysnr") ||
+                     bestService.getAttribute("instance");
+      clientNumber = bestService.getAttribute("clientNumber") || 
+                     bestService.getAttribute("client") ||
+                     bestService.getAttribute("mandt");
+    } else {
+      console.log(`No services found, trying to extract info from system element directly`);
+      
+      // Prova a estrarre direttamente dall'elemento system
+      server = systemElement.getAttribute("server") || 
+               systemElement.getAttribute("host") || 
+               systemElement.getAttribute("hostname");
+      systemNumber = systemElement.getAttribute("systemNumber") || 
+                     systemElement.getAttribute("sysnr") ||
+                     systemElement.getAttribute("instance") ||
+                     "00"; // Default SAP
+      clientNumber = systemElement.getAttribute("clientNumber") || 
+                     systemElement.getAttribute("client") ||
+                     systemElement.getAttribute("mandt") ||
+                     "100"; // Default SAP
+    }
+    
+    console.log(`Extracted data:`, { server, systemNumber, clientNumber });
     
     if (!server) {
-      throw new Error(`No server information found for system ${systemId}`);
+      throw new Error(`No server information found for system ${systemId} (tried: server, host, hostname)`);
     }
 
     if (!systemNumber) {
-      throw new Error(`No system number found for system ${systemId}`);
+      throw new Error(`No system number found for system ${systemId} (tried: systemNumber, sysnr, instance)`);
     }
 
     if (!clientNumber) {
-      throw new Error(`No client number found for system ${systemId}`);
+      throw new Error(`No client number found for system ${systemId} (tried: clientNumber, client, mandt)`);
     }
 
     // Determina il tipo di sistema dal nome o descrizione
