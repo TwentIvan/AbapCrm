@@ -28,7 +28,7 @@ interface VPNConnectionFormProps {
 }
 
 const formSchema = insertVpnConnectionSchema.extend({
-  connectionType: z.enum(['openvpn', 'ipsec', 'pptp', 'l2tp']),
+  connectionType: z.enum(['openvpn', 'ipsec', 'wireguard', 'cisco_anyconnect', 'fortigate', 'other']),
   vpnSoftwareType: z.enum(['forticlient', 'native', 'openfortivpn']).optional(),
 });
 
@@ -37,7 +37,7 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
   const [generatedScript, setGeneratedScript] = useState<any>(null);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: vpnConnection?.name || "",
@@ -60,12 +60,12 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
   const createMutation = useMutation({
     mutationFn: (data: z.infer<typeof formSchema>) => 
       apiRequest("POST", "/api/vpn-connections", data),
-    onSuccess: (newConnection) => {
+    onSuccess: (newConnection: any) => {
       toast({ title: "Connessione VPN creata", description: "La connessione VPN è stata configurata con successo" });
       
       // If we have a VPN software type selected, automatically generate the script
-      if (form.getValues('vpnSoftwareType')) {
-        handleGenerateScript(newConnection.id, form.getValues('vpnSoftwareType'));
+      if (form.getValues('vpnSoftwareType') && newConnection?.id) {
+        handleGenerateScript(newConnection.id, form.getValues('vpnSoftwareType')!);
       } else {
         onSuccess();
       }
@@ -113,7 +113,7 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
     generateScriptMutation.mutate({ connectionId, connectionType });
   };
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
+  const onSubmit = (data: any) => {
     // Remove vpnSoftwareType from the data sent to the server
     const { vpnSoftwareType, ...vpnData } = data;
     
