@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -74,6 +74,23 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       sapSystemId: task?.sapSystemId || "none",
     },
   });
+
+  // Reset form when task changes
+  useEffect(() => {
+    if (task) {
+      form.reset({
+        title: task.title || "",
+        description: task.description || "",
+        status: task.status || "todo",
+        priority: task.priority || "medium",
+        projectId: task.projectId || "none",
+        parentTaskId: task.parentTaskId || "no-parent",
+        dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "",
+        estimatedEffort: task.estimatedEffort?.toString() || "",
+        sapSystemId: task.sapSystemId || "none",
+      });
+    }
+  }, [task, form]);
 
   const saveTaskMutation = useMutation({
     mutationFn: async (data: FormData) => {
