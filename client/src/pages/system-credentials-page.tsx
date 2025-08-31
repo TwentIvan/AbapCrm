@@ -1,18 +1,23 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
-import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Key, Wifi, Server } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
+import { TableConfiguration } from "@/components/ui/table-configuration";
+import { Plus, Edit, Trash2, Key, Grid3X3, List, MoreHorizontal } from "lucide-react";
+import { SystemCredentials } from "@shared/schema";
 import { SystemCredentialsForm } from "@/components/forms/system-credentials-form";
-import type { SystemCredentials } from "@shared/schema";
-import { apiRequest, getQueryFn } from "@/lib/queryClient";
 
 export function SystemCredentialsPage() {
   const [selectedCredentials, setSelectedCredentials] = useState<SystemCredentials[]>([]);
@@ -22,15 +27,16 @@ export function SystemCredentialsPage() {
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Layout management
-  const {
-    layout,
+  // Use the table layout hook for persistent preferences
+  const { 
+    layout, 
     currentLayoutName,
     savedLayouts,
-    updateLayout,
+    updateLayout, 
     saveLayoutAs,
     loadLayout,
     renameLayout,
@@ -39,44 +45,29 @@ export function SystemCredentialsPage() {
   } = useTableLayout('system-credentials');
   const viewMode = layout.viewMode;
 
-  const { data: credentials = [], isLoading, error } = useQuery<SystemCredentials[]>({
+  const { data: credentials = [], isLoading } = useQuery<SystemCredentials[]>({
     queryKey: ["/api/system-credentials"],
     queryFn: async () => {
       const res = await fetch("/api/system-credentials", { credentials: "include" });
-      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      if (!res.ok) throw new Error('Failed to fetch system credentials');
       return res.json();
     },
-    retry: false,
-    staleTime: 0,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/system-credentials/${id}`),
+    mutationFn: async (credentialId: string) => {
+      await apiRequest("DELETE", `/api/system-credentials/${credentialId}`);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/system-credentials"] });
+      setShowDeleteDialog(false);
+      setEditingCredential(null);
       toast({
         title: "Credenziali eliminate",
         description: "Le credenziali sono state eliminate con successo.",
       });
     },
-    onError: () => {
-      toast({
-        title: "Errore",
-        description: "Impossibile eliminare le credenziali.",
-        variant: "destructive",
-      });
-    },
   });
-
-  const handleEdit = (credential: SystemCredentials) => {
-    setEditingCredential(credential);
-    setShowForm(true);
-  };
-
-  const handleAdd = () => {
-    setEditingCredential(null);
-    setShowForm(true);
-  };
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (credentials: SystemCredentials[]) => {
@@ -93,14 +84,17 @@ export function SystemCredentialsPage() {
         description: "Le credenziali selezionate sono state eliminate con successo.",
       });
     },
-    onError: () => {
-      toast({
-        title: "Errore",
-        description: "Impossibile eliminare le credenziali.",
-        variant: "destructive",
-      });
-    },
   });
+
+  const handleEdit = (credential: SystemCredentials) => {
+    setEditingCredential(credential);
+    setShowForm(true);
+  };
+
+  const handleAdd = () => {
+    setEditingCredential(null);
+    setShowForm(true);
+  };
 
   const handleSingleDelete = (credential: SystemCredentials) => {
     setEditingCredential(credential);
@@ -171,59 +165,86 @@ export function SystemCredentialsPage() {
     },
     {
       key: "actions",
-      label: "Azioni",
+      label: "Azioni", 
       sortable: false,
       searchable: false,
       render: (credential: SystemCredentials) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost" 
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEdit(credential);
-            }}
-            data-testid={`button-edit-${credential.id}`}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost" 
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleSingleDelete(credential);
-            }}
-            data-testid={`button-delete-${credential.id}`}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" data-testid={`button-credential-menu-${credential.id}`}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem 
+              onClick={() => handleEdit(credential)}
+              data-testid={`menu-edit-credential-${credential.id}`}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Modifica
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => handleSingleDelete(credential)}
+              className="text-destructive"
+              data-testid={`menu-delete-credential-${credential.id}`}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Elimina
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )
-    }
+    },
   ];
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-auto">
         <Header 
-          title="Credenziali Sistema"
+          title="Credenziali Sistema" 
           subtitle="Gestione unificata credenziali SAP e VPN"
           onNewClick={handleAdd}
         />
-        <main className="p-6 space-y-6">
-          <LayoutManager
-            currentLayoutName={currentLayoutName}
-            savedLayouts={savedLayouts}
-            onLoadLayout={loadLayout}
-            onRenameLayout={renameLayout}
-            onDeleteLayout={deleteLayout}
-            onEditLayout={(layoutToEdit) => {
-              setEditingLayout(layoutToEdit);
-              setShowConfigDialog(true);
-            }}
-          />
+        
+        <div className="p-6">
+          {/* Layout Management and View Toggle */}
+          <div className="flex justify-between items-center mb-4">
+            {/* Layout Manager */}
+            <LayoutManager
+              currentLayoutName={currentLayoutName}
+              savedLayouts={savedLayouts}
+              onLoadLayout={loadLayout}
+              onRenameLayout={renameLayout}
+              onDeleteLayout={deleteLayout}
+              onEditLayout={(layoutToEdit) => {
+                setEditingLayout(layoutToEdit);
+                setShowConfigDialog(true);
+              }}
+            />
+
+            {/* View Toggle */}
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => updateLayout({ viewMode: 'cards' })}
+                data-testid="button-view-cards"
+              >
+                <Grid3X3 className="mr-2 h-4 w-4" />
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => updateLayout({ viewMode: 'list' })}
+                data-testid="button-view-list"
+              >
+                <List className="mr-2 h-4 w-4" />
+                List
+              </Button>
+            </div>
+          </div>
 
           <UniversalTable
             data={credentials}
@@ -242,101 +263,134 @@ export function SystemCredentialsPage() {
               }
             ]}
           />
+        </div>
 
-          {/* Create/Edit Dialog */}
-          <Dialog open={showForm} onOpenChange={setShowForm}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingCredential ? "Modifica Credenziali" : "Nuove Credenziali"}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingCredential ? "Aggiorna" : "Aggiungi"} le credenziali di sistema
-                </DialogDescription>
-              </DialogHeader>
-              <SystemCredentialsForm
-                credential={editingCredential}
-                onSuccess={() => {
-                  setShowForm(false);
-                  setEditingCredential(null);
-                  queryClient.invalidateQueries({ queryKey: ["/api/system-credentials"] });
-                }}
-                onCancel={() => {
-                  setShowForm(false);
-                  setEditingCredential(null);
-                }}
-              />
-            </DialogContent>
-          </Dialog>
+        {/* Create/Edit Dialog */}
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editingCredential ? "Modifica Credenziali" : "Nuove Credenziali"}
+              </DialogTitle>
+              <DialogDescription>
+                {editingCredential ? "Aggiorna" : "Aggiungi"} le credenziali di sistema
+              </DialogDescription>
+            </DialogHeader>
+            <SystemCredentialsForm
+              credential={editingCredential}
+              onSuccess={() => {
+                setShowForm(false);
+                setEditingCredential(null);
+                queryClient.invalidateQueries({ queryKey: ["/api/system-credentials"] });
+              }}
+              onCancel={() => {
+                setShowForm(false);
+                setEditingCredential(null);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
 
-          {/* Single Delete Confirmation Dialog */}
-          <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Elimina Credenziali</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Sei sicuro di voler eliminare le credenziali per "{editingCredential?.systemName}"? 
-                  Questa azione non può essere annullata.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel data-testid="button-cancel-delete">
-                  Annulla
-                </AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={confirmDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  disabled={deleteMutation.isPending}
-                  data-testid="button-confirm-delete"
-                >
-                  {deleteMutation.isPending ? "Eliminando..." : "Elimina"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+        {/* Single Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Elimina Credenziali</AlertDialogTitle>
+              <AlertDialogDescription>
+                Sei sicuro di voler eliminare le credenziali per "{editingCredential?.systemName}"? 
+                Questa azione non può essere annullata.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-delete">
+                Annulla
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleteMutation.isPending}
+                data-testid="button-confirm-delete"
+              >
+                {deleteMutation.isPending ? "Eliminando..." : "Elimina"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-          {/* Bulk Delete Confirmation Dialog */}
-          <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Conferma Eliminazione Multipla</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Sei sicuro di voler eliminare {selectedCredentials.length} credenziali selezionate? 
-                  Questa azione non può essere annullata.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel data-testid="button-cancel-bulk-delete">
-                  Annulla
-                </AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={confirmBulkDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  disabled={bulkDeleteMutation.isPending}
-                  data-testid="button-confirm-bulk-delete"
-                >
-                  {bulkDeleteMutation.isPending ? "Eliminando..." : `Elimina ${selectedCredentials.length} Credenziali`}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+        {/* Bulk Delete Confirmation Dialog */}
+        <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Conferma Eliminazione Multipla</AlertDialogTitle>
+              <AlertDialogDescription>
+                Sei sicuro di voler eliminare {selectedCredentials.length} credenziali selezionate? 
+                Questa azione non può essere annullata.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-bulk-delete">
+                Annulla
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmBulkDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={bulkDeleteMutation.isPending}
+                data-testid="button-confirm-bulk-delete"
+              >
+                {bulkDeleteMutation.isPending ? "Eliminando..." : `Elimina ${selectedCredentials.length} Credenziali`}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-          {/* Layout Configuration Dialog */}
-          <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  Modifica Layout: {editingLayout?.name || 'Layout'}
-                </DialogTitle>
-                <DialogDescription>
-                  Configura la visibilità delle colonne, ordinamento e filtri per questo layout.
-                </DialogDescription>
-              </DialogHeader>
-              {/* TODO: Add TableConfiguration component */}
-            </DialogContent>
-          </Dialog>
-        </main>
-      </div>
+        {/* Layout Configuration Dialog */}
+        <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Modifica Layout: {editingLayout?.name || 'Layout'}
+              </DialogTitle>
+              <DialogDescription>
+                Configura la visibilità delle colonne, ordinamento e filtri per questo layout.
+              </DialogDescription>
+            </DialogHeader>
+            <TableConfiguration
+              tableId="system-credentials"
+              availableColumns={[
+                { id: 'username', label: 'Username' },
+                { id: 'systemName', label: 'Sistema' },
+                { id: 'systemType', label: 'Tipo' },
+                { id: 'description', label: 'Descrizione' },
+                { id: 'expirationDate', label: 'Scadenza' },
+                { id: 'isActive', label: 'Stato' },
+              ]}
+              editingLayout={editingLayout}
+              onConfigurationChange={(config) => {
+                // Apply configuration immediately
+                updateLayout(config);
+              }}
+              onSaveLayout={(layoutName, isDefault) => {
+                // If editing existing layout, update it instead of creating new
+                const isEditingExisting = !!editingLayout;
+                if (isEditingExisting && editingLayout) {
+                  updateExistingLayout(editingLayout.id, {
+                    columns: layout.columns,
+                    sorting: layout.sorting,
+                    filters: layout.filters
+                  });
+                  setShowConfigDialog(false);
+                  return editingLayout.id;
+                } else {
+                  // Save as new layout
+                  const newLayoutId = saveLayoutAs(layoutName);
+                  setShowConfigDialog(false);
+                  return newLayoutId;
+                }
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      </main>
     </div>
   );
 }
