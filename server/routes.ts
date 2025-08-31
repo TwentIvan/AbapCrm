@@ -1707,7 +1707,12 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       console.log("🔍 VPN POST user ID:", req.user!.id);
       const connectionData = { ...req.body, userId: req.user!.id };
       console.log("🔍 VPN POST connection data with userId:", connectionData);
-      const validatedData = insertVpnConnectionSchema.parse(connectionData);
+      
+      // Create backend validation schema that includes userId
+      const backendVpnSchema = insertVpnConnectionSchema.extend({
+        userId: z.string().uuid()
+      });
+      const validatedData = backendVpnSchema.parse(connectionData);
       console.log("🔍 VPN POST validated data:", validatedData);
       const connection = await storage.createVpnConnection(validatedData);
       res.status(201).json(connection);
