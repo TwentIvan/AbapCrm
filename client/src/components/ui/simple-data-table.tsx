@@ -3,18 +3,15 @@ import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   SortingState,
   useReactTable,
   RowSelectionState,
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 
 interface SimpleDataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -43,8 +40,15 @@ export function SimpleDataTable<TData, TValue>({
   bulkActions = [],
 }: SimpleDataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  console.log("🔍 SimpleDataTable render:", {
+    dataLength: data.length,
+    enableSelection,
+    sortingState: sorting,
+    rowSelectionState: rowSelection,
+    firstRowId: data[0] ? (data[0] as any).id : 'no-data'
+  });
 
   // Add selection column if needed
   const selectionColumn: ColumnDef<TData>[] = enableSelection ? [
@@ -52,8 +56,11 @@ export function SimpleDataTable<TData, TValue>({
       id: "select",
       header: ({ table }) => (
         <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          checked={table.getIsAllRowsSelected()}
+          onCheckedChange={(value) => {
+            console.log("🔍 Select-all clicked:", value);
+            table.toggleAllRowsSelected(!!value);
+          }}
           aria-label="Select all"
           data-testid="checkbox-select-all"
         />
@@ -61,7 +68,10 @@ export function SimpleDataTable<TData, TValue>({
       cell: ({ row }) => (
         <Checkbox
           checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          onCheckedChange={(value) => {
+            console.log("🔍 Row checkbox clicked:", { rowId: row.id, value, currentSelection: row.getIsSelected() });
+            row.toggleSelected(!!value);
+          }}
           aria-label="Select row"
           data-testid={`checkbox-select-${row.id}`}
         />
@@ -77,17 +87,16 @@ export function SimpleDataTable<TData, TValue>({
     data,
     columns: allColumns,
     onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     enableRowSelection: enableSelection,
-    getRowId: (row: any) => row.id,
+    getRowId: (row: any) => {
+      console.log("🔍 getRowId called:", row.id);
+      return row.id;
+    },
     state: {
       sorting,
-      globalFilter,
       rowSelection,
     },
   });
@@ -135,17 +144,7 @@ export function SimpleDataTable<TData, TValue>({
         </div>
       )}
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-        <Input
-          placeholder={searchPlaceholder}
-          value={globalFilter ?? ""}
-          onChange={(event) => setGlobalFilter(String(event.target.value))}
-          className="pl-10"
-          data-testid="input-table-search"
-        />
-      </div>
+      {/* Search disabled for now */}
 
       {/* Table */}
       <div className="rounded-md border">
@@ -211,27 +210,7 @@ export function SimpleDataTable<TData, TValue>({
       {/* Pagination */}
       <div className="flex items-center justify-between space-x-2 py-4">
         <div className="text-sm text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} elementi visualizzati
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            data-testid="button-prev-page"
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            data-testid="button-next-page"
-          >
-            Next
-          </Button>
+          {table.getRowModel().rows.length} elementi visualizzati
         </div>
       </div>
     </div>
