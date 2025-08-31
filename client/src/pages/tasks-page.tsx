@@ -789,18 +789,16 @@ export default function TasksPage() {
                               <Edit className="h-4 w-4" />
                             </Button>
                             {console.log(`Task ${task.title} - sapSystemId:`, task.sapSystemId)}
-                            {task.sapSystemId && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleLaunchConnections(task)}
-                                data-testid={`button-launch-connections-${task.id}`}
-                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              >
-                                <ExternalLink className="h-4 w-4 mr-1" />
-                                Avvia
-                              </Button>
-                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleLaunchConnections(task)}
+                              data-testid={`button-launch-connections-${task.id}`}
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <ExternalLink className="h-4 w-4 mr-1" />
+                              Avvia ({task.sapSystemId ? 'SAP' : 'NO'})
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
