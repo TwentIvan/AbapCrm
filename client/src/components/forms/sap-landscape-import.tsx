@@ -16,10 +16,8 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { SapLandscapeParser, type SapSystemFromXml } from "@/lib/sap-landscape-parser";
 import { Building, Upload, FileText, AlertCircle, CheckCircle, Server, Globe } from "lucide-react";
-import type { Partner } from "@shared/schema";
 
 const importFormSchema = z.object({
-  partnerId: z.string().optional(), // Partner opzionale
   selectedSystems: z.array(z.string()).min(1, "Please select at least one system to import"),
 });
 
@@ -37,26 +35,14 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
   const [file, setFile] = useState<File | null>(null);
   const [parsedSystems, setParsedSystems] = useState<SapSystemFromXml[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [partnersCreated, setPartnersCreated] = useState<Array<{groupName: string, partner: any, created: boolean}>>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<"upload" | "configure" | "import">("upload");
 
-  // Fetch partners per la selezione
-  const partnersQuery = useQuery<Partner[]>({
-    queryKey: ["/api/partners"],
-    queryFn: async () => {
-      const res = await fetch("/api/partners", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch partners');
-      const data = await res.json();
-      return data;
-    },
-  });
-
-  const partners = partnersQuery.data;
 
   const form = useForm<ImportFormData>({
     resolver: zodResolver(importFormSchema),
     defaultValues: {
-      partnerId: undefined,
       selectedSystems: [],
     },
   });
@@ -71,7 +57,7 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
       const importPromises = systemsToImport.map(async (system, index) => {
         const systemData = {
           ...system,
-          partnerId: data.partnerId || undefined,
+          // Il partnerId è già assegnato automaticamente nel sistema
         };
         
         const response = await fetch("/api/sap-systems", {
@@ -119,6 +105,7 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
     setFile(null);
     setParsedSystems([]);
     setParseErrors([]);
+    setPartnersCreated([]);
     setStep("upload");
     form.reset();
   };
@@ -146,6 +133,7 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
       
       setParsedSystems(parseResult.systems);
       setParseErrors(parseResult.errors);
+      setPartnersCreated(parseResult.partnersCreated || []);
       
       if (parseResult.success && parseResult.systems.length > 0) {
         setStep("configure");
@@ -266,56 +254,38 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
       {step === "configure" && (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Partner Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building className="h-5 w-5" />
-                  Select Partner
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <FormField
-                  control={form.control}
-                  name="partnerId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Associated Partner (Optional)</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-partner">
-                            <SelectValue placeholder="Select the partner who owns these SAP systems" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {partnersQuery.isLoading && (
-                            <SelectItem value="loading" disabled>Loading partners...</SelectItem>
-                          )}
-                          {partnersQuery.error && (
-                            <SelectItem value="error" disabled>Failed to load partners</SelectItem>
-                          )}
-                          {partners?.map((partner) => (
-                            <SelectItem key={partner.id} value={partner.id}>
-                              <div className="flex items-center gap-2">
-                                <Building className="h-4 w-4" />
-                                {partner.name}
-                                {partner.company && (
-                                  <span className="text-sm text-gray-500">({partner.company})</span>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))}
-                          {!partnersQuery.isLoading && !partnersQuery.error && (!partners || partners.length === 0) && (
-                            <SelectItem value="none" disabled>No partners found</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
+
+            {/* Auto-Created Partners Info */}
+            {partnersCreated.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Partner Automatici
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {partnersCreated.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Building className="h-4 w-4 text-blue-600" />
+                          <div>
+                            <div className="font-medium">{item.partner.name}</div>
+                            <div className="text-sm text-gray-500">
+                              Gruppo: {item.groupName}
+                            </div>
+                          </div>
+                        </div>
+                        <Badge variant={item.created ? "default" : "outline"}>
+                          {item.created ? "Creato" : "Trovato"}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Systems Selection */}
             <Card>
@@ -387,6 +357,15 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
                                         <span className="font-medium">Port:</span> {system.applicationServerPort}
                                       </div>
                                     </div>
+                                    
+                                    {system.partnerId && (
+                                      <div className="mt-2 flex items-center gap-2">
+                                        <Building className="h-3 w-3 text-green-600" />
+                                        <span className="text-sm text-green-600 font-medium">
+                                          Partner automatico assegnato
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </FormItem>

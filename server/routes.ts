@@ -280,6 +280,68 @@ export function registerRoutes(app: Express): Server {
     res.sendStatus(204);
   });
 
+  // Search or create partner automatically 
+  app.post("/api/partners/search-or-create", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { groupName } = req.body;
+      if (!groupName || typeof groupName !== 'string') {
+        return res.status(400).json({ error: "Group name is required" });
+      }
+
+      const userId = req.user!.id;
+      
+      // 1. Prima cerca nei partner esistenti
+      const existingPartners = await storage.getPartners(userId);
+      const foundPartner = existingPartners.find(p => 
+        p.name.toLowerCase().includes(groupName.toLowerCase()) ||
+        (p.company && p.company.toLowerCase().includes(groupName.toLowerCase()))
+      );
+      
+      if (foundPartner) {
+        return res.json({ partner: foundPartner, created: false });
+      }
+      
+      // 2. Se non trova, cerca con company lookup service
+      const { CompanyLookupService } = await import('./company-lookup-service');
+      const companies = await CompanyLookupService.searchCompanies(groupName);
+      
+      let companyInfo = null;
+      if (companies.length > 0) {
+        companyInfo = companies[0]; // Usa il primo risultato
+      }
+      
+      // 3. Crea nuovo partner con le info trovate
+      const partnerData = insertPartnerSchema.parse({
+        name: companyInfo?.name || groupName,
+        company: companyInfo?.name || groupName,
+        email: null,
+        phone: null,
+        address: companyInfo?.address || null,
+        city: companyInfo?.city || null,
+        postalCode: companyInfo?.postalCode || null,
+        country: companyInfo?.country || 'IT',
+        fiscalCode: companyInfo?.fiscalCode || null,
+        vatNumber: companyInfo?.vatNumber || null,
+        website: companyInfo?.website || null,
+        type: 'client',
+        notes: `Auto-created from SAP XML import for group: ${groupName}`,
+        userId
+      });
+      
+      const newPartner = await storage.createPartner(partnerData);
+      res.status(201).json({ partner: newPartner, created: true });
+      
+    } catch (error) {
+      console.error("Partner search-or-create error:", error);
+      res.status(400).json({ 
+        error: "Failed to search or create partner", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
   // Address suggestions endpoint
   app.get("/api/address/suggestions", async (req, res) => {
     const { q } = req.query;

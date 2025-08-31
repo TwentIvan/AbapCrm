@@ -16,6 +16,7 @@ export const SapSystemFromXmlSchema = z.object({
   kernelVersion: z.string().optional(),
   notes: z.string().optional(),
   isActive: z.boolean().default(true),
+  partnerId: z.string().optional(), // Auto-assigned partner ID
 });
 
 export type SapSystemFromXml = z.infer<typeof SapSystemFromXmlSchema>;
@@ -24,6 +25,7 @@ export interface ParseResult {
   success: boolean;
   systems: SapSystemFromXml[];
   errors: string[];
+  partnersCreated?: Array<{groupName: string, partner: any, created: boolean}>;
 }
 
 /**
@@ -31,6 +33,90 @@ export interface ParseResult {
  * Supporta sia il formato standard SAP che varianti comuni
  */
 export class SapLandscapeParser {
+  
+  /**
+   * Estrae il nome del gruppo/partner dal system name
+   * Es: "Hera.SV6" -> "Hera", "Dora.I1D" -> "Dora"
+   */
+  private static extractGroupName(systemName: string): string | null {
+    if (!systemName) return null;
+    
+    // Se il nome contiene un punto, prende la parte prima del punto
+    if (systemName.includes('.')) {
+      const parts = systemName.split('.');
+      const groupName = parts[0].trim();
+      if (groupName.length > 0) {
+        return groupName;
+      }
+    }
+    
+    // Se non c'è un punto, cerca pattern comuni (es: HeraOVS -> Hera)
+    const match = systemName.match(/^([A-Za-z]+)/);
+    if (match && match[1].length >= 3) {
+      return match[1];
+    }
+    
+    return null;
+  }
+
+  /**
+   * Automatizza l'assegnazione dei partner basandosi sui nomi dei gruppi
+   */
+  static async autoAssignPartners(systems: SapSystemFromXml[]): Promise<{
+    systems: SapSystemFromXml[],
+    partnersCreated: Array<{groupName: string, partner: any, created: boolean}>
+  }> {
+    const partnersCreated: Array<{groupName: string, partner: any, created: boolean}> = [];
+    const groupToPartnerMap = new Map<string, string>(); // groupName -> partnerId
+    
+    // Raggruppa sistemi per nome gruppo
+    const groupedSystems = new Map<string, SapSystemFromXml[]>();
+    
+    for (const system of systems) {
+      const groupName = this.extractGroupName(system.name);
+      if (groupName) {
+        if (!groupedSystems.has(groupName)) {
+          groupedSystems.set(groupName, []);
+        }
+        groupedSystems.get(groupName)!.push(system);
+      }
+    }
+    
+    // Per ogni gruppo, cerca/crea il partner
+    for (const [groupName, groupSystems] of Array.from(groupedSystems.entries())) {
+      try {
+        const response = await fetch("/api/partners/search-or-create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ groupName }),
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          groupToPartnerMap.set(groupName, result.partner.id);
+          partnersCreated.push({
+            groupName,
+            partner: result.partner,
+            created: result.created
+          });
+        }
+      } catch (error) {
+        console.error(`Failed to auto-assign partner for group ${groupName}:`, error);
+      }
+    }
+    
+    // Assegna i partner ID ai sistemi
+    const updatedSystems = systems.map(system => {
+      const groupName = this.extractGroupName(system.name);
+      if (groupName && groupToPartnerMap.has(groupName)) {
+        return { ...system, partnerId: groupToPartnerMap.get(groupName) };
+      }
+      return system;
+    });
+    
+    return { systems: updatedSystems, partnersCreated };
+  }
   
   /**
    * Parsa un file SAPUILandscape.xml
@@ -84,8 +170,29 @@ export class SapLandscapeParser {
         }
       }
 
+      // Auto-assegna i partner basandosi sui nomi dei gruppi
+      if (systems.length > 0) {
+        try {
+          const autoAssignResult = await this.autoAssignPartners(systems);
+          return {
+            success: true,
+            systems: autoAssignResult.systems,
+            errors,
+            partnersCreated: autoAssignResult.partnersCreated
+          };
+        } catch (error) {
+          console.error("Auto-assignment failed:", error);
+          // Se l'auto-assignment fallisce, ritorna comunque i sistemi senza partner
+          return {
+            success: systems.length > 0,
+            systems,
+            errors: [...errors, `Partner auto-assignment failed: ${error instanceof Error ? error.message : String(error)}`]
+          };
+        }
+      }
+
       return {
-        success: systems.length > 0,
+        success: false,
         systems,
         errors
       };
@@ -321,6 +428,7 @@ export class SapLandscapeParser {
       kernelVersion: undefined,
       notes: `System ID: ${systemId}`, // Salva il system ID nelle note
       isActive: true,
+      partnerId: undefined, // Will be set during auto-assignment
     };
   }
 
