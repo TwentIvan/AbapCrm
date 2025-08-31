@@ -169,7 +169,7 @@ export default function VPNConnectionsPage() {
         return partner ? (
           <div>
             <div className="font-medium">{partner.name}</div>
-            <div className="text-sm text-muted-foreground">{partner.company}</div>
+            <div className="text-sm text-muted-foreground">{partner.company || ''}</div>
           </div>
         ) : (
           <span className="text-muted-foreground">-</span>
@@ -189,12 +189,9 @@ export default function VPNConnectionsPage() {
         />
         <main className="p-6 space-y-6">
           <LayoutManager
-            viewMode={viewMode}
             currentLayoutName={currentLayoutName}
             savedLayouts={savedLayouts}
-            onViewModeChange={(mode: "list" | "cards") => updateLayout({ viewMode: mode })}
-            onLoadLayout={loadLayout}
-            onSaveLayout={saveLayoutAs}
+            onLoadLayout={(layoutId: string) => { loadLayout(layoutId); }}
             onRenameLayout={renameLayout}
             onDeleteLayout={deleteLayout}
           />
@@ -230,7 +227,7 @@ export default function VPNConnectionsPage() {
               </DialogHeader>
               <VPNConnectionForm
                 vpnConnection={editingConnection}
-                partners={partners}
+                partners={partners.map(p => ({ id: p.id, name: p.name, company: p.company || 'N/A' }))}
                 onSuccess={() => {
                   setShowForm(false);
                   setEditingConnection(null);

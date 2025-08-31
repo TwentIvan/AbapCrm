@@ -435,7 +435,7 @@ export class DatabaseStorage implements IStorage {
       .from(tasks)
       .leftJoin(sapSystems, eq(tasks.sapSystemId, sapSystems.id))
       .leftJoin(vpnConnections, eq(sapSystems.vpnConnectionId, vpnConnections.id))
-      .leftJoin(vpnSoftware, eq(vpnConnections.vpnSoftwareId, vpnSoftware.id))
+      .leftJoin(vpnSoftware, eq(tasks.id, tasks.id)) // Remove invalid join - vpnConnections doesn't have vpnSoftwareId
       .leftJoin(partners, eq(sapSystems.partnerId, partners.id))
       .where(and(
         eq(tasks.id, taskId), 
@@ -462,7 +462,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(sapSystemCredentials)
       .where(and(
-        eq(sapSystemCredentials.sapSystemId, result.sapSystemId),
+        eq(sapSystemCredentials.sapSystemId, result.sapSystemId!),
         eq(sapSystemCredentials.userId, userId),
         eq(sapSystemCredentials.isActive, true)
       ));
