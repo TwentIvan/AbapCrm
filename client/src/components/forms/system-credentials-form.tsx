@@ -121,6 +121,11 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
   });
 
   const onSubmit = (data: InsertSystemCredentials) => {
+    console.log("Form submit triggered with data:", data);
+    console.log("Form errors:", form.formState.errors);
+    console.log("Form is valid:", form.formState.isValid);
+    console.log("Mutation state:", { isPending: mutation.isPending, isError: mutation.isError });
+    
     mutation.mutate(data);
   };
 
