@@ -486,9 +486,6 @@ export class DatabaseStorage implements IStorage {
       updateData.completedAt = new Date();
     }
     
-    console.log('Storage updateTask - updateData:', updateData);
-    console.log('Storage updateTask - sapSystemId in updateData:', updateData.sapSystemId);
-    
     const [updatedTask] = await db
       .update(tasks)
       .set(updateData)
