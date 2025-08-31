@@ -31,7 +31,7 @@ import { Switch } from "@/components/ui/switch";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
 import { insertSystemCredentialsSchema, type SystemCredentials, type InsertSystemCredentials } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface SystemCredentialsFormProps {
   credential?: SystemCredentials | null;
@@ -103,6 +103,9 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
       return apiRequest(method, url, data);
     },
     onSuccess: () => {
+      // Invalidate cache to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["/api/system-credentials"] });
+      
       toast({
         title: isEditing ? "Credenziali aggiornate" : "Credenziali create",
         description: isEditing 
@@ -122,11 +125,6 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
   });
 
   const onSubmit = (data: InsertSystemCredentials) => {
-    console.log("Form submit triggered with data:", data);
-    console.log("Form errors:", form.formState.errors);
-    console.log("Form is valid:", form.formState.isValid);
-    console.log("Mutation state:", { isPending: mutation.isPending, isError: mutation.isError });
-    
     mutation.mutate(data);
   };
 
@@ -146,14 +144,7 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
         </DialogHeader>
 
         <Form {...form}>
-          <form 
-            onSubmit={(e) => {
-              console.log("Form submit event triggered!");
-              e.preventDefault();
-              form.handleSubmit(onSubmit)(e);
-            }} 
-            className="space-y-6"
-          >
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
               name="systemType"
@@ -377,14 +368,6 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
                 type="submit"
                 disabled={mutation.isPending}
                 data-testid="button-submit"
-                onClick={(e) => {
-                  console.log("Button clicked!");
-                  console.log("Form state:", {
-                    isValid: form.formState.isValid,
-                    errors: form.formState.errors,
-                    values: form.getValues()
-                  });
-                }}
               >
                 {mutation.isPending 
                   ? "Salvando..." 
