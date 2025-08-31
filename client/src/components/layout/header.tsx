@@ -45,7 +45,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           </Button>
           
           {/* New Button */}
-          <Button onClick={onNewClick} data-testid="button-new">
+          <Button onClick={() => {
+            console.log("🔍 Button New clicked in header");
+            onNewClick();
+          }} data-testid="button-new">
             <Plus className="h-4 w-4 mr-2" />
             New
           </Button>

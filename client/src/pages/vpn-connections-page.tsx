@@ -80,8 +80,10 @@ export default function VPNConnectionsPage() {
   };
 
   const handleAdd = () => {
+    console.log("🔍 handleAdd called - aprendo dialog VPN");
     setEditingConnection(null);
     setShowForm(true);
+    console.log("🔍 showForm state updated to:", true);
   };
 
   const handleSingleDelete = (connection: VpnConnection) => {
@@ -215,7 +217,10 @@ export default function VPNConnectionsPage() {
           />
 
           {/* Create/Edit Dialog */}
-          <Dialog open={showForm} onOpenChange={setShowForm}>
+          <Dialog open={showForm} onOpenChange={(open) => {
+            console.log("🔍 Dialog onOpenChange called with:", open);
+            setShowForm(open);
+          }}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>

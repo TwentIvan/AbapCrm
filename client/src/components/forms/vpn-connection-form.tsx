@@ -114,12 +114,15 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
   };
 
   const onSubmit = (data: any) => {
+    console.log("🔍 Form submit called with data:", data);
     // Remove vpnSoftwareType from the data sent to the server
     const { vpnSoftwareType, ...vpnData } = data;
     
     if (vpnConnection) {
+      console.log("🔍 Updating existing VPN connection");
       updateMutation.mutate(vpnData);
     } else {
+      console.log("🔍 Creating new VPN connection");
       createMutation.mutate(vpnData);
     }
   };
