@@ -76,11 +76,16 @@ export default function VPNConnectionsPage() {
   });
 
   const testConnectionMutation = useMutation({
-    mutationFn: (connectionId: string) => apiRequest("POST", `/api/vpn-connections/${connectionId}/test`),
+    mutationFn: (connectionId: string) => {
+      console.log("🧪 Test mutation starting for connection:", connectionId);
+      return apiRequest("POST", `/api/vpn-connections/${connectionId}/test`);
+    },
     onMutate: (connectionId: string) => {
+      console.log("🧪 Test mutation onMutate:", connectionId);
       setTestingConnection(connectionId);
     },
     onSuccess: (data: any, connectionId: string) => {
+      console.log("🧪 Test mutation success:", data);
       setTestingConnection(null);
       const testResult = data.testResult;
       
@@ -91,6 +96,7 @@ export default function VPNConnectionsPage() {
       });
     },
     onError: (error: any, connectionId: string) => {
+      console.log("🧪 Test mutation error:", error);
       setTestingConnection(null);
       toast({
         title: "Errore Test",
@@ -220,6 +226,7 @@ export default function VPNConnectionsPage() {
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
+                console.log("🧪 Test button clicked for connection:", connection.name, connection.id);
                 testConnectionMutation.mutate(connection.id);
               }}
               disabled={isTestingThis || testingConnection !== null}
