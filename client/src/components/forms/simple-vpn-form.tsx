@@ -53,9 +53,12 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
   });
 
   const discoverMutation = useMutation({
-    mutationFn: (software: string) => {
+    mutationFn: async (software: string) => {
       console.log("🔍 Discovering connections for software:", software);
-      return apiRequest("POST", "/api/vpn/discover", { software });
+      const response = await apiRequest("POST", "/api/vpn/discover", { software });
+      const data = await response.json();
+      console.log("🔍 Raw response data:", data);
+      return data;
     },
     onMutate: () => {
       setIsDiscovering(true);
