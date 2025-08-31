@@ -6,6 +6,7 @@ import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LayoutManager } from "@/components/ui/layout-manager";
+import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, type TableColumn } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -29,19 +30,6 @@ const statusLabels = {
   connecting: "Connessione",
 };
 
-const connectionTypeColors = {
-  "site-to-site": "bg-blue-100 text-blue-800",
-  "client-to-site": "bg-purple-100 text-purple-800",
-  "ssl-vpn": "bg-green-100 text-green-800",
-  "ipsec": "bg-orange-100 text-orange-800",
-};
-
-const connectionTypeLabels = {
-  "site-to-site": "Site-to-Site",
-  "client-to-site": "Client-to-Site",
-  "ssl-vpn": "SSL VPN",
-  "ipsec": "IPSec",
-};
 
 export default function VpnSystemsPage() {
   const [selectedItems, setSelectedItems] = useState<VpnSystems[]>([]);
@@ -138,29 +126,26 @@ export default function VpnSystemsPage() {
       )
     },
     {
-      key: "serverAddress",
+      key: "serverHost",
       label: "Indirizzo Server",
       sortable: true,
       searchable: true,
       render: (item: VpnSystems) => (
         <div className="font-mono text-sm">
-          {item.serverAddress}
-          {item.port && <span className="text-gray-500">:{item.port}</span>}
+          {item.serverHost}
+          {item.serverPort && <span className="text-gray-500">:{item.serverPort}</span>}
         </div>
       )
     },
     {
-      key: "connectionType",
-      label: "Tipo Connessione",
+      key: "connectionProfile",
+      label: "Profilo Connessione",
       sortable: true,
       searchable: true,
       render: (item: VpnSystems) => (
-        <Badge 
-          variant="secondary" 
-          className={connectionTypeColors[item.connectionType as keyof typeof connectionTypeColors]}
-        >
-          {connectionTypeLabels[item.connectionType as keyof typeof connectionTypeLabels] || item.connectionType}
-        </Badge>
+        <span className="text-sm">
+          {item.connectionProfile || "Nessun profilo"}
+        </span>
       )
     },
     {
@@ -266,12 +251,9 @@ export default function VpnSystemsPage() {
         />
         <main className="p-6 space-y-6">
           <LayoutManager
-            viewMode={viewMode}
             currentLayoutName={currentLayoutName}
             savedLayouts={savedLayouts}
-            onViewModeChange={(mode: any) => updateLayout({ viewMode: mode })}
             onLoadLayout={loadLayout}
-            onSaveLayout={saveLayoutAs}
             onRenameLayout={renameLayout}
             onDeleteLayout={deleteLayout}
             onEditLayout={(layoutToEdit: any) => {
@@ -296,7 +278,6 @@ export default function VpnSystemsPage() {
                 onClick: () => handleDelete(selectedItems)
               }
             ]}
-            isLoading={isLoading}
           />
 
           {/* Create/Edit Dialog */}
@@ -360,6 +341,29 @@ export default function VpnSystemsPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Table Configuration Dialog */}
+          <TableConfiguration
+            tableId="vpn-systems"
+            availableColumns={columns.map(col => ({
+              id: col.key,
+              label: col.label
+            }))}
+            editingLayout={editingLayout}
+            isOpen={showConfigDialog}
+            onOpenChange={setShowConfigDialog}
+            onSave={(configuration) => {
+              if (editingLayout) {
+                updateExistingLayout(editingLayout.id, configuration);
+              }
+              setShowConfigDialog(false);
+              setEditingLayout(null);
+            }}
+            onCancel={() => {
+              setShowConfigDialog(false);
+              setEditingLayout(null);
+            }}
+          />
         </main>
       </div>
     </div>
