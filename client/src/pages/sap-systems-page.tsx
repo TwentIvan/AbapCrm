@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SimpleDataTable } from "@/components/ui/simple-data-table";
+import { TestTable } from "@/components/ui/test-table";
 import { createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { TableConfiguration } from "@/components/ui/table-configuration";
@@ -302,25 +303,31 @@ export default function SapSystemsPage() {
   );
 
   const renderTable = () => (
-    <SimpleDataTable
-      data={systems || []}
-      columns={columns}
-      enableSelection={true}
-      onSelectionChange={(rows) => setSelectedSystems(rows as SapSystem[])}
-      bulkActions={[
-        {
-          label: "Delete Selected",
-          icon: Trash2,
-          onClick: (selectedRows) => {
-            setSelectedSystems(selectedRows as SapSystem[]);
-            setShowBulkDeleteDialog(true);
+    <div className="space-y-6">
+      <div className="text-lg font-semibold">Test con HTML puro (dovrebbe funzionare):</div>
+      <TestTable data={systems || []} />
+      
+      <div className="text-lg font-semibold">React Table (problematico):</div>
+      <SimpleDataTable
+        data={systems || []}
+        columns={columns}
+        enableSelection={true}
+        onSelectionChange={(rows) => setSelectedSystems(rows as SapSystem[])}
+        bulkActions={[
+          {
+            label: "Delete Selected",
+            icon: Trash2,
+            onClick: (selectedRows) => {
+              setSelectedSystems(selectedRows as SapSystem[]);
+              setShowBulkDeleteDialog(true);
+            },
+            variant: "destructive",
           },
-          variant: "destructive",
-        },
-      ]}
-      searchKey="systemName"
-      searchPlaceholder="Cerca sistema SAP..."
-    />
+        ]}
+        searchKey="systemName"
+        searchPlaceholder="Cerca sistema SAP..."
+      />
+    </div>
   );
 
   if (isLoading) {
