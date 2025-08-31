@@ -46,6 +46,7 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
   const form = useForm<InsertSystemCredentials>({
     resolver: zodResolver(insertSystemCredentialsSchema),
     defaultValues: {
+      userId: credential?.userId || "811b4ad2-6882-4a7d-afcd-57dfb7f0af51", // Current user ID
       username: credential?.username || "",
       password: credential?.password || "",
       systemType: credential?.systemType || "sap",
