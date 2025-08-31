@@ -6,7 +6,7 @@ import { Plus, Edit, Trash2, Key, Wifi, Server } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SystemCredentialsForm } from "@/components/forms/system-credentials-form";
 import type { SystemCredentials } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 
 export function SystemCredentialsPage() {
   const [selectedCredentials, setSelectedCredentials] = useState<SystemCredentials[]>([]);
@@ -17,9 +17,14 @@ export function SystemCredentialsPage() {
 
   const { data: credentials = [], isLoading, error } = useQuery<SystemCredentials[]>({
     queryKey: ["/api/system-credentials"],
+    queryFn: async () => {
+      const res = await fetch("/api/system-credentials", { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
+    retry: false,
+    staleTime: 0,
   });
-
-  console.log("Credentials query:", { credentials, isLoading, error });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/system-credentials/${id}`, "DELETE"),
