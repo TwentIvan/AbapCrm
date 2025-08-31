@@ -228,25 +228,6 @@ export function DataTable<TData, TValue>({
     
     // Debug logs removed - algorithm working perfectly
     
-    // SYNC FIX: Update layout.columns from columnVisibility if they don't match
-    if (layout.columnVisibility && Object.keys(layout.columnVisibility).length > 0) {
-      // Check if sync is needed (avoid infinite loops)
-      const needsSync = Object.entries(layout.columnVisibility).some(([colId, visible]) => 
-        layoutColumns[colId] && layoutColumns[colId].visible !== visible
-      );
-      
-      if (needsSync) {
-        // Update layoutColumns from columnVisibility
-        Object.entries(layout.columnVisibility).forEach(([colId, visible]) => {
-          if (layoutColumns[colId]) {
-            layoutColumns[colId] = { 
-              ...layoutColumns[colId], 
-              visible: visible as boolean 
-            };
-          }
-        });
-      }
-    }
     
     // AUTO-POPULATE: Only for DEFAULT layout if still empty
     if (Object.keys(layoutColumns).length === 0) {
