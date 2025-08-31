@@ -293,7 +293,7 @@ export function DataTable<TData, TValue>({
 
   const table = useReactTable({
     data: filteredData,
-    columns: visibleColumns,
+    columns: orderedColumns, // Usa le colonne base senza layout complesso
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
