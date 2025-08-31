@@ -61,25 +61,47 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
   // Mutation per import multiplo
   const importMutation = useMutation({
     mutationFn: async (data: ImportFormData) => {
+      console.log("🚀 Starting import with data:", data);
+      console.log("📋 Parsed systems:", parsedSystems);
+      
       const systemsToImport = parsedSystems.filter((_, index) => 
         data.selectedSystems.includes(index.toString())
       );
+      
+      console.log("✅ Systems to import:", systemsToImport);
 
-      const importPromises = systemsToImport.map(async (system) => {
+      const importPromises = systemsToImport.map(async (system, index) => {
+        const systemData = {
+          ...system,
+          partnerId: data.partnerId,
+        };
+        
+        console.log(`📤 Importing system ${index + 1}/${systemsToImport.length}:`, system.name, systemData);
+        
         const response = await fetch("/api/sap-systems", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({
-            ...system,
-            partnerId: data.partnerId,
-          }),
+          body: JSON.stringify(systemData),
         });
+        
+        console.log(`📥 Response for ${system.name}:`, response.status, response.statusText);
+        
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(`Failed to import ${system.name}: ${error.details || 'Unknown error'}`);
+          const errorText = await response.text();
+          console.error(`❌ Error response for ${system.name}:`, errorText);
+          let errorDetails;
+          try {
+            errorDetails = JSON.parse(errorText);
+          } catch {
+            errorDetails = { details: errorText };
+          }
+          throw new Error(`Failed to import ${system.name}: ${errorDetails.details || errorDetails.error || 'Unknown error'}`);
         }
-        return response.json();
+        
+        const result = await response.json();
+        console.log(`✅ Successfully imported ${system.name}:`, result);
+        return result;
       });
 
       return Promise.all(importPromises);
