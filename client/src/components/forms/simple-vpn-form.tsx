@@ -1,0 +1,347 @@
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Search, CheckCircle, Loader2, Wifi } from "lucide-react";
+import { z } from "zod";
+
+interface SimpleVPNFormProps {
+  onSuccess: () => void;
+  onCancel: () => void;
+  partners: Array<{ id: string; name: string; company: string }>;
+}
+
+const formSchema = z.object({
+  name: z.string().min(1, "Nome richiesto"),
+  partnerId: z.string().min(1, "Cliente richiesto"),
+  vpnSoftware: z.enum(['forticlient', 'macos_native', 'openconnect', 'openvpn']),
+  existingConnectionId: z.string().min(1, "Seleziona una connessione esistente"),
+});
+
+interface DiscoveredConnection {
+  id: string;
+  name: string;
+  type: string;
+  details: string;
+  configured: boolean;
+}
+
+export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleVPNFormProps) {
+  const { toast } = useToast();
+  const [discoveredConnections, setDiscoveredConnections] = useState<DiscoveredConnection[]>([]);
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [discoveryComplete, setDiscoveryComplete] = useState(false);
+
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      partnerId: "",
+      vpnSoftware: 'forticlient' as const,
+      existingConnectionId: "",
+    },
+  });
+
+  const discoverMutation = useMutation({
+    mutationFn: (software: string) => {
+      console.log("🔍 Discovering connections for software:", software);
+      return apiRequest("POST", "/api/vpn/discover", { software });
+    },
+    onMutate: () => {
+      setIsDiscovering(true);
+      setDiscoveredConnections([]);
+      setDiscoveryComplete(false);
+    },
+    onSuccess: (data: any) => {
+      console.log("🔍 Discovery result:", data);
+      setDiscoveredConnections(data.connections || []);
+      setDiscoveryComplete(true);
+      setIsDiscovering(false);
+      
+      const count = data.connections?.length || 0;
+      toast({
+        title: "Connessioni Trovate",
+        description: `Scoperte ${count} connessioni esistenti per ${form.getValues('vpnSoftware')}`,
+      });
+    },
+    onError: (error: any) => {
+      setIsDiscovering(false);
+      toast({
+        variant: "destructive",
+        title: "Errore Discovery",
+        description: "Impossibile cercare connessioni esistenti",
+      });
+    }
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: z.infer<typeof formSchema>) => {
+      const selectedConnection = discoveredConnections.find(c => c.id === data.existingConnectionId);
+      
+      return apiRequest("POST", "/api/vpn-connections", {
+        name: data.name,
+        partnerId: data.partnerId,
+        vpnSoftware: data.vpnSoftware,
+        existingConnectionRef: data.existingConnectionId,
+        existingConnectionName: selectedConnection?.name,
+        existingConnectionDetails: selectedConnection?.details,
+        connectionType: selectedConnection?.type,
+        isActive: true,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Connessione VPN Configurata",
+        description: "Riferimento alla connessione esistente salvato con successo",
+      });
+      onSuccess();
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Impossibile salvare la configurazione VPN",
+      });
+    }
+  });
+
+  const handleDiscover = () => {
+    const software = form.getValues('vpnSoftware');
+    discoverMutation.mutate(software);
+  };
+
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    console.log("🔍 Simple VPN form submit:", data);
+    createMutation.mutate(data);
+  };
+
+  const selectedSoftwareLabels = {
+    forticlient: 'FortiClient',
+    macos_native: 'VPN nativa macOS',
+    openconnect: 'OpenConnect (Cisco)',
+    openvpn: 'OpenVPN'
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        
+        {/* Basic Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Nuova Connessione VPN</CardTitle>
+            <CardDescription>
+              Configura una nuova connessione usando software già installato
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome Connessione *</FormLabel>
+                  <FormControl>
+                    <input
+                      type="text"
+                      placeholder="es. Dolomiti Energia VPN"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      {...field}
+                      data-testid="input-name"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="partnerId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cliente/Partner *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-partner">
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona cliente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {partners.map((partner) => (
+                        <SelectItem key={partner.id} value={partner.id}>
+                          {partner.name} - {partner.company}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Software Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Software VPN</CardTitle>
+            <CardDescription>
+              Quale software VPN usi per connetterti?
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            
+            <FormField
+              control={form.control}
+              name="vpnSoftware"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Software Installato</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-vpn-software">
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="forticlient">FortiClient (FortiGate SSL VPN)</SelectItem>
+                      <SelectItem value="macos_native">VPN nativa macOS (IPSec/IKEv2)</SelectItem>
+                      <SelectItem value="openconnect">OpenConnect (Cisco AnyConnect)</SelectItem>
+                      <SelectItem value="openvpn">OpenVPN (configurazione .ovpn)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDiscover}
+              disabled={isDiscovering || !form.getValues('vpnSoftware')}
+              className="w-full"
+              data-testid="button-discover"
+            >
+              {isDiscovering ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cercando connessioni...
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2 h-4 w-4" />
+                  🔍 Trova Connessioni Esistenti
+                </>
+              )}
+            </Button>
+
+            {isDiscovering && (
+              <Alert>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <AlertDescription>
+                  Scansionando {selectedSoftwareLabels[form.getValues('vpnSoftware') as keyof typeof selectedSoftwareLabels]} per connessioni configurate...
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Connection Selection */}
+        {discoveryComplete && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Connessioni Trovate</CardTitle>
+              <CardDescription>
+                Seleziona la connessione che vuoi usare per {form.getValues('name') || 'questo cliente'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {discoveredConnections.length === 0 ? (
+                <Alert>
+                  <AlertDescription>
+                    Nessuna connessione trovata per {selectedSoftwareLabels[form.getValues('vpnSoftware') as keyof typeof selectedSoftwareLabels]}.
+                    Assicurati che il software sia installato e configurato.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="existingConnectionId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="space-y-3">
+                        {discoveredConnections.map((connection) => (
+                          <Label
+                            key={connection.id}
+                            className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-accent"
+                            data-testid={`connection-${connection.id}`}
+                          >
+                            <input
+                              type="radio"
+                              value={connection.id}
+                              checked={field.value === connection.id}
+                              onChange={() => field.onChange(connection.id)}
+                              className="text-primary"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <Wifi className="h-4 w-4 text-blue-500" />
+                                <span className="font-medium">{connection.name}</span>
+                                {connection.configured && (
+                                  <Badge variant="outline" className="text-green-600">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Configurata
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {connection.details}
+                              </p>
+                            </div>
+                          </Label>
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Actions */}
+        <div className="flex justify-end space-x-2">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onCancel} 
+            data-testid="button-cancel"
+          >
+            Annulla
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={createMutation.isPending || !discoveryComplete || !form.getValues('existingConnectionId')} 
+            data-testid="button-save"
+          >
+            {createMutation.isPending ? "Salvando..." : "Configura VPN"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}

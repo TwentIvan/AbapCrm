@@ -173,7 +173,60 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
-  // Discover available VPN connections on macOS
+  // Discover VPN connections for specific software
+  app.post("/api/vpn/discover", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { software } = req.body;
+      console.log('[VPN-DISCOVERY] Request for software:', software);
+      
+      // Get all discovered connections
+      const allConnections = await discoverVPNConnections();
+      console.log('[VPN-DISCOVERY] All connections found:', allConnections.length);
+      
+      // Filter by requested software type
+      const filteredConnections = allConnections.filter(conn => {
+        switch (software) {
+          case 'forticlient':
+            return conn.type === 'forticlient';
+          case 'macos_native':
+            return conn.type === 'native';
+          case 'openconnect':
+            return conn.type === 'openconnect' || conn.type === 'cisco';
+          case 'openvpn':
+            return conn.type === 'openvpn' || conn.type === 'openfortivpn';
+          default:
+            return false;
+        }
+      });
+      
+      console.log('[VPN-DISCOVERY] Filtered connections for', software, ':', filteredConnections.length);
+      
+      const response = {
+        success: true,
+        software: software,
+        connections: filteredConnections.map(conn => ({
+          id: conn.id || conn.name,
+          name: conn.name,
+          type: conn.type,
+          details: conn.description || `${conn.type} connection`,
+          configured: conn.status === 'configured'
+        }))
+      };
+      
+      res.json(response);
+    } catch (error) {
+      console.error('[VPN-DISCOVERY] Error:', error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to discover VPN connections",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Legacy GET endpoint for backward compatibility
   app.get("/api/vpn/discover", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {

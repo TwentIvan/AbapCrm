@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { VpnConnection, Partner } from "@shared/schema";
-import VPNConnectionForm from "@/components/forms/vpn-connection-form";
+import SimpleVPNForm from "@/components/forms/simple-vpn-form";
 import { Trash2, Settings, CheckCircle, XCircle, Play, Loader2 } from "lucide-react";
 
 export default function VPNConnectionsPage() {
@@ -302,22 +302,29 @@ export default function VPNConnectionsPage() {
                   {editingConnection ? "Aggiorna" : "Aggiungi"} connessione VPN per accesso remoto
                 </DialogDescription>
               </DialogHeader>
-              {showForm && (
-                <VPNConnectionForm
-                  vpnConnection={editingConnection}
+              {showForm && !editingConnection && (
+                <SimpleVPNForm
                   partners={partners?.map(p => ({ id: p.id, name: p.name || 'N/A', company: p.company || 'N/A' })) || []}
                   onSuccess={() => {
-                    console.log("🔍 VPN form success callback");
+                    console.log("🔍 Simple VPN form success callback");
                     setShowForm(false);
                     setEditingConnection(null);
                     queryClient.invalidateQueries({ queryKey: ["/api/vpn-connections"] });
                   }}
                   onCancel={() => {
-                    console.log("🔍 VPN form cancel callback");
+                    console.log("🔍 Simple VPN form cancel callback");
                     setShowForm(false);
                     setEditingConnection(null);
                   }}
                 />
+              )}
+              {showForm && editingConnection && (
+                <div className="p-4 text-center">
+                  <p className="text-muted-foreground">
+                    La modifica di connessioni VPN esistenti non è ancora supportata.<br/>
+                    Elimina la connessione e ricreala se necessario.
+                  </p>
+                </div>
               )}
             </DialogContent>
           </Dialog>
