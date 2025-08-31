@@ -260,6 +260,10 @@ export default function VpnSystemsPage() {
               setEditingLayout(layoutToEdit);
               setShowConfigDialog(true);
             }}
+            onConfigureTable={() => {
+              setEditingLayout(null);
+              setShowConfigDialog(true);
+            }}
           />
 
           <UniversalTable

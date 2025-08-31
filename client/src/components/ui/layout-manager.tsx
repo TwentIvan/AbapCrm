@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Layout, ChevronDown, Edit, Trash2, Check, X } from "lucide-react";
+import { Save, Layout, ChevronDown, Edit, Trash2, Check, X, Settings } from "lucide-react";
 import type { SavedLayout } from "@/lib/user-preferences";
 
 interface LayoutManagerProps {
@@ -17,6 +17,7 @@ interface LayoutManagerProps {
   onRenameLayout: (layoutId: string, newName: string) => void;
   onDeleteLayout: (layoutId: string) => void;
   onEditLayout?: (layout: SavedLayout) => void;
+  onConfigureTable?: () => void;
 }
 
 export function LayoutManager({
@@ -26,6 +27,7 @@ export function LayoutManager({
   onRenameLayout,
   onDeleteLayout,
   onEditLayout,
+  onConfigureTable,
 }: LayoutManagerProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [layoutToDelete, setLayoutToDelete] = useState<SavedLayout | null>(null);
@@ -202,6 +204,19 @@ export function LayoutManager({
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* Configure Table Button */}
+      {onConfigureTable && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8"
+          onClick={onConfigureTable}
+          data-testid="button-configure-table"
+        >
+          <Settings className="h-4 w-4 mr-2" />
+          Configura
+        </Button>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
