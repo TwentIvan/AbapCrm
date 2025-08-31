@@ -1,68 +1,37 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
 import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
-import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LayoutManager } from "@/components/ui/layout-manager";
-import { TableConfiguration } from "@/components/ui/table-configuration";
+import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Trash2, Settings, DollarSign, MoreHorizontal, Grid3X3, List, Edit, Plus, CheckCircle, XCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
+import { DollarSign, MoreHorizontal, Edit, Trash2, CheckCircle, XCircle, Settings } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
-import type { RateAgreement, Partner, Project } from "@shared/schema";
-import { apiRequest, getQueryFn } from "@/lib/queryClient";
+import { RateAgreement, Partner, Project } from "@shared/schema";
 import RateAgreementForm from "@/components/forms/rate-agreement-form";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 
 export default function RateAgreementsPage() {
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editingAgreement, setEditingAgreement] = useState<RateAgreement | null>(null);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [selectedAgreement, setSelectedAgreement] = useState<RateAgreement | null>(null);
   const [selectedAgreements, setSelectedAgreements] = useState<RateAgreement[]>([]);
+  const [editingAgreement, setEditingAgreement] = useState<RateAgreement | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
-  const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
-  
+  const [editingLayout, setEditingLayout] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Use the table layout hook for persistent preferences
-  const { 
-    layout, 
-    currentLayoutName,
-    savedLayouts,
-    updateLayout, 
-    saveLayoutAs,
-    loadLayout,
-    renameLayout,
-    deleteLayout,
-    updateExistingLayout,
+  const {
+    layout, currentLayoutName, savedLayouts, updateLayout, 
+    saveLayoutAs, loadLayout, renameLayout, deleteLayout, updateExistingLayout
   } = useTableLayout('rate-agreements');
   const viewMode = layout.viewMode;
 
@@ -85,80 +54,88 @@ export default function RateAgreementsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/rate-agreements/${id}`);
-    },
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/rate-agreements/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rate-agreements"] });
-      toast({
-        title: "Successo",
-        description: "Accordo eliminato con successo",
-      });
       setShowDeleteDialog(false);
-      setSelectedAgreement(null);
-    },
-    onError: () => {
-      toast({
-        title: "Errore",
-        description: "Errore durante l'eliminazione dell'accordo",
-        variant: "destructive",
-      });
+      setEditingAgreement(null);
+      toast({ title: "Eliminato", description: "Accordo eliminato con successo" });
     }
   });
 
   const bulkDeleteMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      await Promise.all(ids.map(id => apiRequest("DELETE", `/api/rate-agreements/${id}`)));
+    mutationFn: async (agreements: RateAgreement[]) => {
+      for (const agreement of agreements) {
+        await apiRequest("DELETE", `/api/rate-agreements/${agreement.id}`);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rate-agreements"] });
-      toast({
-        title: "Successo",
-        description: `${selectedAgreements.length} accordi eliminati con successo`,
-      });
-      setShowBulkDeleteDialog(false);
       setSelectedAgreements([]);
-    },
-    onError: () => {
-      toast({
-        title: "Errore",
-        description: "Errore durante l'eliminazione degli accordi",
-        variant: "destructive",
-      });
+      setShowBulkDeleteDialog(false);
+      toast({ title: "Eliminati", description: "Accordi eliminati con successo" });
     }
   });
 
   const handleEdit = (agreement: RateAgreement) => {
     setEditingAgreement(agreement);
-    setShowEditDialog(true);
+    setShowForm(true);
   };
 
-  const handleDelete = (agreement: RateAgreement) => {
-    setSelectedAgreement(agreement);
+  const handleAdd = () => {
+    setEditingAgreement(null);
+    setShowForm(true);
+  };
+
+  const handleSingleDelete = (agreement: RateAgreement) => {
+    setEditingAgreement(agreement);
     setShowDeleteDialog(true);
   };
 
-  const handleBulkDelete = () => {
-    if (selectedAgreements.length > 0) {
-      setShowBulkDeleteDialog(true);
+  const handleDelete = (agreements: RateAgreement[]) => {
+    if (agreements.length === 0) return;
+    setSelectedAgreements(agreements);
+    setShowBulkDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (editingAgreement) {
+      deleteMutation.mutate(editingAgreement.id);
     }
+  };
+
+  const confirmBulkDelete = () => {
+    bulkDeleteMutation.mutate(selectedAgreements);
+  };
+
+  const getValidityStatus = (agreement: RateAgreement) => {
+    const now = new Date();
+    const validFrom = new Date(agreement.validFrom);
+    const validTo = agreement.validTo ? new Date(agreement.validTo) : null;
+
+    if (!agreement.isActive) return "inactive";
+    if (now < validFrom) return "future";
+    if (validTo && now > validTo) return "expired";
+    return "active";
   };
 
   const formatCriteria = (agreement: RateAgreement) => {
     if (agreement.groupingFields.length === 0) {
       return "Tariffa generale";
     }
-
+    
     try {
-      const values = JSON.parse(agreement.groupingValues);
       const parts = agreement.groupingFields.map(fieldId => {
-        const value = values[fieldId];
-        if (!value) return null;
-
-        switch (fieldId) {
+        const groupValue = agreement.groupingValues && agreement.groupingValues[fieldId];
+        if (!groupValue) return null;
+        
+        const values = Array.isArray(groupValue) ? groupValue : [groupValue];
+        const value = values[0];
+        
+        switch(fieldId) {
           case "partnerId":
             const partner = partners.find(p => p.id === value);
-            return partner ? `Cliente: ${partner.name}` : `Cliente: ${value}`;
+            return partner ? `Partner: ${partner.name}` : `Partner: ${value}`;
           case "projectId":
             const project = projects.find(p => p.id === value);
             return project ? `Progetto: ${project.name}` : `Progetto: ${value}`;
@@ -187,291 +164,148 @@ export default function RateAgreementsPage() {
     }
   };
 
-  const getValidityStatus = (agreement: RateAgreement) => {
-    const now = new Date();
-    const validFrom = new Date(agreement.validFrom);
-    const validTo = agreement.validTo ? new Date(agreement.validTo) : null;
-
-    if (!agreement.isActive) return "inactive";
-    if (now < validFrom) return "future";
-    if (validTo && now > validTo) return "expired";
-    return "active";
+  const statusColors = {
+    active: "bg-green-100 text-green-800",
+    inactive: "bg-gray-100 text-gray-800",
+    future: "bg-blue-100 text-blue-800",
+    expired: "bg-red-100 text-red-800"
   };
 
-  const formatValidityPeriod = (agreement: RateAgreement) => {
-    const validFrom = new Date(agreement.validFrom);
-    const validTo = agreement.validTo ? new Date(agreement.validTo) : null;
-    
-    const fromStr = validFrom.toLocaleDateString("it-IT");
-    const toStr = validTo ? validTo.toLocaleDateString("it-IT") : "∞";
-    
-    return `${fromStr} - ${toStr}`;
-  };
-
-  // Data for table view
-  const tableData = agreements.map(agreement => ({
-    ...agreement,
-    formattedCriteria: formatCriteria(agreement),
-    formattedRate: `€${agreement.hourlyRate}/h`,
-    formattedPriority: `Priorità ${agreement.priority}`,
-    validityStatus: getValidityStatus(agreement),
-    formattedValidity: formatValidityPeriod(agreement),
-    statusBadge: getValidityStatus(agreement),
-  }));
-
-  // Table columns
   const columns = [
-    createTextColumn("name", "Nome"),
+    createStandardColumns.text("name", "Nome"),
     {
-      accessorKey: "formattedCriteria",
-      header: "Criteri",
-      cell: ({ row }: any) => (
+      key: "criteria",
+      label: "Criteri", 
+      sortable: false,
+      searchable: true,
+      render: (agreement: RateAgreement) => (
         <div className="max-w-xs">
-          <p className="text-sm truncate">{row.original.formattedCriteria}</p>
+          <p className="text-sm truncate">{formatCriteria(agreement)}</p>
         </div>
-      ),
+      )
     },
-    createTextColumn("formattedRate", "Tariffa"),
-    createTextColumn("formattedPriority", "Priorità"),
     {
-      accessorKey: "statusBadge",
-      header: "Stato",
-      cell: ({ row }: any) => {
-        const status = row.getValue("statusBadge") as string;
-        const statusLabels = {
-          active: "Attivo",
-          inactive: "Inattivo",
-          future: "Futuro", 
-          expired: "Scaduto"
-        };
-        const statusColors = {
-          active: "default",
-          inactive: "secondary", 
-          future: "outline",
-          expired: "destructive"
-        };
-        
-        return (
-          <Badge variant={statusColors[status as keyof typeof statusColors] as any}>
-            {statusLabels[status as keyof typeof statusLabels] || status}
-          </Badge>
-        );
-      },
+      key: "hourlyRate",
+      label: "Tariffa", 
+      sortable: true,
+      searchable: false,
+      render: (agreement: RateAgreement) => `€${agreement.hourlyRate}/h`
     },
-    createTextColumn("formattedValidity", "Validità"),
+    createStandardColumns.badge("status", "Stato", statusColors, (agreement: RateAgreement) => getValidityStatus(agreement)),
     {
-      id: "actions",
-      header: "Azioni",
-      cell: ({ row }: any) => {
-        const agreement = row.original;
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0" data-testid={`button-actions-${agreement.id}`}>
-                <span className="sr-only">Apri menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleEdit(agreement)} data-testid={`action-edit-${agreement.id}`}>
-                <Edit className="mr-2 h-4 w-4" />
-                Modifica
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => handleDelete(agreement)} 
-                className="text-red-600"
-                data-testid={`action-delete-${agreement.id}`}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Elimina
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
+      key: "actions",
+      label: "Azioni", 
+      sortable: false,
+      searchable: false,
+      render: (agreement: RateAgreement) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" data-testid={`button-agreement-menu-${agreement.id}`}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem 
+              onClick={() => handleEdit(agreement)}
+              data-testid={`menu-edit-agreement-${agreement.id}`}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Modifica
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => handleSingleDelete(agreement)}
+              className="text-destructive"
+              data-testid={`menu-delete-agreement-${agreement.id}`}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Elimina
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
     },
   ];
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
-        <Sidebar />
-        <div className="flex-1">
-          <Header 
-            title="Accordi Tariffari" 
-            subtitle="Gestisci i tuoi accordi tariffari dinamici"
-            onNewClick={() => setShowCreateDialog(true)}
-          />
-          <main className="p-6">
-            <div className="space-y-4">
-              <Skeleton className="h-8 w-64" />
-              <Skeleton className="h-96 w-full" />
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen">
       <Sidebar />
-      <div className="flex-1">
+      <div className="flex-1 overflow-hidden">
         <Header 
-          title="Accordi Tariffari" 
-          subtitle="Gestisci i tuoi accordi tariffari dinamici"
-          onNewClick={() => setShowCreateDialog(true)}
+          title="Accordi Tariffari"
+          subtitle="Gestisci gli accordi e le tariffe"
+          onNewClick={handleAdd}
         />
         <main className="p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight" data-testid="page-title">
-                Accordi Tariffari
-              </h1>
-              <p className="text-muted-foreground">
-                Gestisci i tuoi accordi tariffari dinamici con criteri personalizzati
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {selectedAgreements.length > 0 && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleBulkDelete}
-                  data-testid="button-bulk-delete"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Elimina {selectedAgreements.length}
-                </Button>
-              )}
-              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-                <DialogTrigger asChild>
-                  <Button data-testid="button-create-agreement">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nuovo Accordo
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Crea Nuovo Accordo Tariffario</DialogTitle>
-                    <DialogDescription>
-                      Configura un nuovo accordo con criteri dinamici specifici
-                    </DialogDescription>
-                  </DialogHeader>
-                  <RateAgreementForm onSuccess={() => setShowCreateDialog(false)} />
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Totale Accordi</CardTitle>
-                <Settings className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="stat-total-agreements">
-                  {agreements.length}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Accordi Attivi</CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600" data-testid="stat-active-agreements">
-                  {agreements.filter(a => getValidityStatus(a) === "active").length}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Accordi Scaduti</CardTitle>
-                <XCircle className="h-4 w-4 text-red-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600" data-testid="stat-expired-agreements">
-                  {agreements.filter(a => getValidityStatus(a) === "expired").length}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Tariffa Media</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="stat-average-rate">
-                  €{agreements.length > 0 
-                    ? Math.round(agreements.reduce((sum, a) => sum + parseFloat(a.hourlyRate), 0) / agreements.length)
-                    : 0
-                  }/h
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Data Table */}
-          <DataTable
-            columns={columns}
-            data={tableData}
-            tableId="rate-agreements"
-            enableSelection={true}
-            onSelectionChange={setSelectedAgreements}
-            enableAdvancedFilters={true}
-            enableAggregation={true}
-            enableColumnReordering={true}
-            configurableColumns={true}
-            data-testid="agreements-table"
+          <LayoutManager
+            layoutId="rate-agreements"
+            viewMode={viewMode}
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onViewModeChange={(mode) => updateLayout({ viewMode: mode })}
+            onLoadLayout={loadLayout}
+            onSaveLayout={saveLayoutAs}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onEditLayout={(layoutToEdit) => {
+              setEditingLayout(layoutToEdit);
+              setShowConfigDialog(true);
+            }}
           />
 
-          {/* Edit Dialog */}
-          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <UniversalTable
+            data={agreements}
+            columns={columns}
+            enableSelection={true}
+            enableSearch={true}
+            searchPlaceholder="Cerca accordi..."
+            onSelectionChange={(rows) => setSelectedAgreements(rows as RateAgreement[])}
+            onRowClick={handleEdit}
+            bulkActions={[
+              {
+                label: "Elimina Selezionati",
+                icon: Trash2,
+                variant: "destructive",
+                onClick: () => handleDelete(selectedAgreements)
+              }
+            ]}
+            isLoading={isLoading}
+          />
+
+          {/* Create/Edit Dialog */}
+          <Dialog open={showForm} onOpenChange={setShowForm}>
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Modifica Accordo Tariffario</DialogTitle>
+                <DialogTitle>
+                  {editingAgreement ? "Modifica Accordo" : "Nuovo Accordo"}
+                </DialogTitle>
                 <DialogDescription>
-                  Aggiorna la configurazione dell'accordo
+                  {editingAgreement ? "Aggiorna" : "Crea"} un accordo tariffario
                 </DialogDescription>
               </DialogHeader>
-              {editingAgreement && (
-                <RateAgreementForm
-                  rateAgreement={editingAgreement}
-                  onSuccess={() => {
-                    setShowEditDialog(false);
-                    setEditingAgreement(null);
-                  }}
-                />
-              )}
+              <RateAgreementForm
+                rateAgreement={editingAgreement}
+                onSuccess={() => {
+                  setShowForm(false);
+                  setEditingAgreement(null);
+                  queryClient.invalidateQueries({ queryKey: ["/api/rate-agreements"] });
+                }}
+              />
             </DialogContent>
           </Dialog>
 
-          {/* Delete Dialog */}
+          {/* Single Delete Dialog */}
           <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Conferma Eliminazione</AlertDialogTitle>
+                <AlertDialogTitle>Elimina Accordo</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Sei sicuro di voler eliminare l'accordo "{selectedAgreement?.name}"?
+                  Sei sicuro di voler eliminare l'accordo "{editingAgreement?.name}"? 
                   Questa azione non può essere annullata.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Annulla</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => selectedAgreement && deleteMutation.mutate(selectedAgreement.id)}
-                  className="bg-red-600 hover:bg-red-700"
-                  data-testid="button-confirm-delete"
-                >
-                  Elimina
-                </AlertDialogAction>
+                <AlertDialogAction onClick={confirmDelete}>Elimina</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -480,57 +314,20 @@ export default function RateAgreementsPage() {
           <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Conferma Eliminazione di Gruppo</AlertDialogTitle>
+                <AlertDialogTitle>Conferma Eliminazione Multipla</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Sei sicuro di voler eliminare {selectedAgreements.length} accordi selezionati?
+                  Sei sicuro di voler eliminare {selectedAgreements.length} accordi selezionati? 
                   Questa azione non può essere annullata.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Annulla</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => bulkDeleteMutation.mutate(selectedAgreements.map(a => a.id))}
-                  className="bg-red-600 hover:bg-red-700"
-                  data-testid="button-confirm-bulk-delete"
-                >
-                  Elimina Tutti
+                <AlertDialogAction onClick={confirmBulkDelete}>
+                  Elimina {selectedAgreements.length} Accordi
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-
-          {/* Table Configuration Dialog */}
-          <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Configura Tabella</DialogTitle>
-                <DialogDescription>
-                  Personalizza le colonne e il layout della tabella
-                </DialogDescription>
-              </DialogHeader>
-              <TableConfiguration
-                tableId="rate-agreements"
-                availableColumns={[
-                  { id: "name", label: "Nome" },
-                  { id: "formattedCriteria", label: "Criteri" },
-                  { id: "formattedRate", label: "Tariffa" },
-                  { id: "formattedPriority", label: "Priorità" },
-                  { id: "statusBadge", label: "Stato" },
-                  { id: "formattedValidity", label: "Validità" },
-                  { id: "actions", label: "Azioni" }
-                ]}
-                editingLayout={editingLayout}
-                onSave={() => {
-                  setShowConfigDialog(false);
-                  setEditingLayout(null);
-                }}
-                onCancel={() => {
-                  setShowConfigDialog(false);
-                  setEditingLayout(null);
-                }}
-              />
-            </DialogContent>
-          </Dialog>
         </main>
       </div>
     </div>

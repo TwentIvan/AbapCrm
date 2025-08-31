@@ -190,11 +190,11 @@ export default function DealsPage() {
     createStandardColumns.text("company", "Azienda"),
     createStandardColumns.text("contactPerson", "Contatto"),
     {
-      key: "closingDate",
+      key: "actualCloseDate",
       label: "Data Chiusura", 
       sortable: true,
       searchable: false,
-      render: (deal: Deal) => formatDate(deal.closingDate)
+      render: (deal: Deal) => formatDate(deal.actualCloseDate)
     },
     {
       key: "actions",
@@ -351,25 +351,27 @@ export default function DealsPage() {
               <Handshake className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">No deals yet</h3>
               <p className="text-muted-foreground mb-4">Create your first deal to start tracking opportunities</p>
-              <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-first-deal">
+              <Button onClick={handleAdd} data-testid="button-create-first-deal">
                 Create Deal
               </Button>
             </div>
           ) : viewMode === 'list' ? (
-            <DataTable
-              key={`deals-${currentLayoutName}`}
-              columns={tableColumns}
-              data={deals || []}
-              searchPlaceholder="Search deals..."
-              onRowClick={handleEditDeal}
+            <UniversalTable
+              data={deals}
+              columns={columns}
               enableSelection={true}
-              onSelectionChange={setSelectedDeals}
-              tableId="deals"
-              enableAdvancedFilters={true}
-              filterColumns={filterColumns}
-              enableAggregation={true}
-              aggregationColumns={aggregationColumns}
-              enableColumnReordering={true}
+              enableSearch={true}
+              searchPlaceholder="Cerca deal..."
+              onSelectionChange={(rows) => setSelectedDeals(rows as Deal[])}
+              onRowClick={handleEdit}
+              bulkActions={[
+                {
+                  label: "Elimina Selezionati",
+                  icon: Trash2,
+                  variant: "destructive",
+                  onClick: () => handleDelete(selectedDeals)
+                }
+              ]}
             />
           ) : (
             <div>
@@ -400,11 +402,19 @@ export default function DealsPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem 
-                                  onClick={() => handleEditDeal(deal)}
+                                  onClick={() => handleEdit(deal)}
                                   data-testid={`menu-edit-deal-${deal.id}`}
                                 >
                                   <Edit className="mr-2 h-4 w-4" />
                                   Modifica
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleSingleDelete(deal)}
+                                  className="text-destructive"
+                                  data-testid={`menu-delete-deal-${deal.id}`}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Elimina
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -489,54 +499,50 @@ export default function DealsPage() {
           )}
         </div>
       </main>
-      
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl">
+      {/* Layout Configuration Dialog */}
+      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Deal</DialogTitle>
+            <DialogTitle>
+              Modifica Layout: {editingLayout?.name || 'Layout'}
+            </DialogTitle>
+            <DialogDescription>
+              Configura la visibilità delle colonne, ordinamento e filtri per questo layout.
+            </DialogDescription>
           </DialogHeader>
-          <DealForm onSuccess={() => setShowCreateDialog(false)} />
+          <TableConfiguration
+            tableId="deals"
+            availableColumns={[
+              { id: 'title', label: 'Titolo' },
+              { id: 'stage', label: 'Stage' },
+              { id: 'value', label: 'Valore' },
+              { id: 'company', label: 'Azienda' },
+              { id: 'contactPerson', label: 'Contatto' },
+              { id: 'actualCloseDate', label: 'Data Chiusura' },
+            ]}
+            editingLayout={editingLayout}
+            onConfigurationChange={(config) => {
+              updateLayout(config);
+            }}
+            onSaveLayout={(layoutName, isDefault) => {
+              const isEditingExisting = !!editingLayout;
+              if (isEditingExisting && editingLayout) {
+                updateExistingLayout(editingLayout.id, {
+                  columns: layout.columns,
+                  sorting: layout.sorting,
+                  filters: layout.filters
+                });
+                setShowConfigDialog(false);
+                return editingLayout.id;
+              } else {
+                const newLayoutId = saveLayoutAs(layoutName);
+                setShowConfigDialog(false);
+                return newLayoutId;
+              }
+            }}
+          />
         </DialogContent>
       </Dialog>
-
-      <Dialog open={showEditDialog} onOpenChange={handleCloseEditDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Deal</DialogTitle>
-          </DialogHeader>
-          {editingDeal && (
-            <DealForm 
-              deal={editingDeal} 
-              onSuccess={handleCloseEditDialog} 
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Table Configuration Dialog */}
-      <TableConfiguration
-        tableId="deals"
-        availableColumns={[
-          { id: 'title', label: 'Title' },
-          { id: 'stage', label: 'Stage' },
-          { id: 'value', label: 'Value' },
-          { id: 'partnerId', label: 'Partner' },
-          { id: 'probability', label: 'Probability' },
-          { id: 'expectedCloseDate', label: 'Expected Close Date' },
-        ]}
-        open={showConfigDialog}
-        onOpenChange={setShowConfigDialog}
-        editingLayout={editingLayout}
-        onSave={(updatedLayout) => {
-          updateExistingLayout(updatedLayout);
-          setEditingLayout(null);
-          setShowConfigDialog(false);
-        }}
-        onCancel={() => {
-          setEditingLayout(null);
-          setShowConfigDialog(false);
-        }}
-      />
     </div>
   );
 }

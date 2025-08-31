@@ -10,14 +10,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square } from "lucide-react";
+import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square, Trash2 } from "lucide-react";
 import { Task } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import TaskForm from "@/components/forms/task-form";
 import { TimeTracker } from "@/components/timesheet/time-tracker";
 import { CompletionDialog } from "@/components/timesheet/completion-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -332,6 +333,30 @@ export default function TasksPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/tasks/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      setShowDeleteDialog(false);
+      setEditingTask(null);
+      toast({ title: "Eliminato", description: "Task eliminato con successo" });
+    }
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (tasks: Task[]) => {
+      for (const task of tasks) {
+        await apiRequest("DELETE", `/api/tasks/${task.id}`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      setSelectedTasks([]);
+      setShowBulkDeleteDialog(false);
+      toast({ title: "Eliminati", description: "Tasks eliminati con successo" });
+    }
+  });
+
   const toggleTaskComplete = (task: Task) => {
     const newStatus = task.status === "completed" ? "todo" : "completed";
     updateTaskMutation.mutate({ 
@@ -575,16 +600,23 @@ export default function TasksPage() {
               </Button>
             </div>
           ) : viewMode === 'list' ? (
-            <DataTable
-              key={`tasks-${currentLayoutName}`}
-              columns={tableColumns}
+            <UniversalTable
               data={tasks || []}
-              searchPlaceholder="Search tasks..."
-              onRowClick={handleEditTask}
-              enableSelection={false}
-              onSelectionChange={setSelectedTasks}
-              tableId="tasks"
-              enableAdvancedFilters={true}
+              columns={columns}
+              enableSelection={true}
+              enableSearch={true}
+              searchPlaceholder="Cerca tasks..."
+              onSelectionChange={(rows) => setSelectedTasks(rows as Task[])}
+              onRowClick={handleEdit}
+              bulkActions={[
+                {
+                  label: "Elimina Selezionati",
+                  icon: Trash2,
+                  variant: "destructive",
+                  onClick: () => handleDelete(selectedTasks)
+                }
+              ]}
+              isLoading={isLoading}
               filterColumns={filterColumns}
               enableAggregation={true}
               aggregationColumns={aggregationColumns}
@@ -758,6 +790,42 @@ export default function TasksPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Single Delete Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Elimina Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare "{editingTask?.title}"? 
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Elimina</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Dialog */}
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma Eliminazione Multipla</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare {selectedTasks.length} tasks selezionati? 
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmBulkDelete}>
+              Elimina {selectedTasks.length} Tasks
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Table Configuration Dialog */}
       <TableConfiguration

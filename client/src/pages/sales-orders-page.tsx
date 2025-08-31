@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/use-auth";
+import { useTableLayout } from "@/lib/user-preferences";
+import Sidebar from "@/components/layout/sidebar";
+import Header from "@/components/layout/header";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { LayoutManager } from "@/components/ui/layout-manager";
+import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import Header from "@/components/layout/header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
-import { Edit, FileText, Euro, Calendar, Building } from "lucide-react";
+import { FileText, Euro, Calendar, Building, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { SalesOrder, Partner } from "@shared/schema";
+// import SalesOrderForm from "@/components/forms/sales-order-form";
 
 const statusColors = {
   draft: "bg-gray-100 text-gray-800",
@@ -22,178 +25,294 @@ const statusColors = {
 };
 
 export default function SalesOrdersPage() {
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState<SalesOrder[]>([]);
   const [editingOrder, setEditingOrder] = useState<SalesOrder | null>(null);
-  
-  const { user } = useAuth();
+  const [showForm, setShowForm] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [editingLayout, setEditingLayout] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: salesOrders, isLoading } = useQuery<SalesOrder[]>({
+  const {
+    layout, currentLayoutName, savedLayouts, updateLayout, 
+    saveLayoutAs, loadLayout, renameLayout, deleteLayout, updateExistingLayout
+  } = useTableLayout('sales-orders');
+  const viewMode = layout.viewMode;
+
+  const { data: salesOrders = [], isLoading } = useQuery<SalesOrder[]>({
     queryKey: ["/api/sales-orders"],
-    enabled: !!user,
     queryFn: async () => {
       const res = await fetch("/api/sales-orders", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch sales orders');
+      if (!res.ok) throw new Error('Failed to fetch');
       return res.json();
     },
   });
 
-  const { data: partners } = useQuery<Partner[]>({
+  const { data: partners = [] } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
-    enabled: !!user,
     queryFn: async () => {
       const res = await fetch("/api/partners", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch partners');
+      if (!res.ok) throw new Error('Failed to fetch');
       return res.json();
     },
   });
 
-  const clients = partners?.filter(partner => partner.type === "client") || [];
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/sales-orders/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
+      setShowDeleteDialog(false);
+      setEditingOrder(null);
+      toast({ title: "Eliminato", description: "Ordine eliminato con successo" });
+    }
+  });
 
-  const handleEditOrder = (order: SalesOrder) => {
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (orders: SalesOrder[]) => {
+      for (const order of orders) {
+        await apiRequest("DELETE", `/api/sales-orders/${order.id}`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
+      setSelectedOrders([]);
+      setShowBulkDeleteDialog(false);
+      toast({ title: "Eliminati", description: "Ordini eliminati con successo" });
+    }
+  });
+
+  const handleEdit = (order: SalesOrder) => {
     setEditingOrder(order);
-    setShowEditDialog(true);
+    setShowForm(true);
   };
 
-  const handleCloseEditDialog = () => {
-    setShowEditDialog(false);
+  const handleAdd = () => {
     setEditingOrder(null);
+    setShowForm(true);
   };
 
+  const handleSingleDelete = (order: SalesOrder) => {
+    setEditingOrder(order);
+    setShowDeleteDialog(true);
+  };
 
-  // Define table columns
-  const tableColumns = [
+  const handleDelete = (orders: SalesOrder[]) => {
+    if (orders.length === 0) return;
+    setSelectedOrders(orders);
+    setShowBulkDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (editingOrder) {
+      deleteMutation.mutate(editingOrder.id);
+    }
+  };
+
+  const confirmBulkDelete = () => {
+    bulkDeleteMutation.mutate(selectedOrders);
+  };
+
+  const clients = partners?.filter(partner => partner.type === "client") || [];
+  
+  const getClientName = (clientId: string | null) => {
+    if (!clientId) return "N/A";
+    const client = clients.find(c => c.id === clientId);
+    return client?.name || "N/A";
+  };
+
+  const formatAmount = (amount: string | null) => {
+    if (!amount) return "N/A";
+    const value = parseFloat(amount);
+    return `€${value.toLocaleString()}`;
+  };
+
+  const formatDate = (date: Date | string | null) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString("it-IT");
+  };
+
+  const columns = [
+    createStandardColumns.text("orderNumber", "N. Ordine"),
+    createStandardColumns.badge("status", "Status", statusColors),
     {
-      accessorKey: 'orderNumber',
-      header: 'Order Number',
-      cell: ({ row }: any) => (
-        <div className="font-mono text-sm" data-testid={`text-order-number-${row.original.id}`}>
-          {row.original.orderNumber}
-        </div>
-      ),
+      key: "clientId",
+      label: "Cliente", 
+      sortable: true,
+      searchable: true,
+      render: (order: SalesOrder) => getClientName(order.clientId)
     },
     {
-      accessorKey: 'partnerId',
-      header: 'Client',
-      cell: ({ row }: any) => {
-        const order = row.original;
-        const client = clients.find(c => c.id === order.partnerId);
-        return client ? (
-          <div className="flex items-center gap-2">
-            <Building className="h-4 w-4 text-muted-foreground" />
-            <span data-testid={`text-order-client-${order.id}`}>{client.name}</span>
-          </div>
-        ) : (
-          <span className="text-muted-foreground">Unknown Client</span>
-        );
-      },
-    },
-    createBadgeColumn('status', 'Status', statusColors),
-    {
-      accessorKey: 'total',
-      header: 'Total',
-      cell: ({ row }: any) => (
-        <div className="flex items-center gap-1 font-medium">
-          <Euro className="h-4 w-4 text-muted-foreground" />
-          <span data-testid={`text-order-total-${row.original.id}`}>
-            €{parseFloat(row.original.total).toFixed(2)}
-          </span>
-        </div>
-      ),
+      key: "totalAmount",
+      label: "Importo", 
+      sortable: true,
+      searchable: false,
+      render: (order: SalesOrder) => formatAmount(order.totalAmount)
     },
     {
-      accessorKey: 'issueDate',
-      header: 'Issue Date',
-      cell: ({ row }: any) => (
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span data-testid={`text-order-date-${row.original.id}`}>
-            {new Date(row.original.issueDate).toLocaleDateString()}
-          </span>
-        </div>
-      ),
+      key: "orderDate",
+      label: "Data Ordine", 
+      sortable: true,
+      searchable: false,
+      render: (order: SalesOrder) => formatDate(order.orderDate)
     },
     {
-      id: 'actions',
-      header: 'Actions',
-      cell: ({ row }: any) => {
-        const order = row.original;
-        return (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleEditOrder(order)}
-              data-testid={`button-edit-order-${order.id}`}
-            >
-              <Edit className="h-4 w-4" />
+      key: "actions",
+      label: "Azioni", 
+      sortable: false,
+      searchable: false,
+      render: (order: SalesOrder) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" data-testid={`button-order-menu-${order.id}`}>
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              data-testid={`button-view-order-${order.id}`}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem 
+              onClick={() => handleEdit(order)}
+              data-testid={`menu-edit-order-${order.id}`}
             >
-              <FileText className="h-4 w-4" />
-            </Button>
-          </div>
-        );
-      },
+              <Edit className="mr-2 h-4 w-4" />
+              Modifica
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => handleSingleDelete(order)}
+              className="text-destructive"
+              data-testid={`menu-delete-order-${order.id}`}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Elimina
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
     },
   ];
 
-  if (isLoading) {
-    return <div>Loading sales orders...</div>;
-  }
-
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        title="Sales Orders"
-        subtitle="Manage your sales orders and invoices"
-        onNewClick={() => setShowCreateDialog(true)}
-      />
-      
-      <main className="container mx-auto px-6 py-8">
-        <DataTable
-          data={salesOrders || []}
-          columns={tableColumns}
-          tableId="sales-orders"
+    <div className="flex h-screen">
+      <Sidebar />
+      <div className="flex-1 overflow-hidden">
+        <Header 
+          title="Ordini di Vendita"
+          subtitle="Gestisci gli ordini di vendita"
+          onNewClick={handleAdd}
         />
-      </main>
+        <main className="p-6 space-y-6">
+          <LayoutManager
+            layoutId="sales-orders"
+            viewMode={viewMode}
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onViewModeChange={(mode) => updateLayout({ viewMode: mode })}
+            onLoadLayout={loadLayout}
+            onSaveLayout={saveLayoutAs}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onEditLayout={(layoutToEdit) => {
+              setEditingLayout(layoutToEdit);
+              setShowConfigDialog(true);
+            }}
+          />
 
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create Sales Order</DialogTitle>
-            <DialogDescription>
-              Create a new sales order from timesheet entries.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="p-4">
-            <p className="text-sm text-muted-foreground">
-              Sales order creation from timesheet entries will be implemented here.
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+          <UniversalTable
+            data={salesOrders}
+            columns={columns}
+            enableSelection={true}
+            enableSearch={true}
+            searchPlaceholder="Cerca ordini..."
+            onSelectionChange={(rows) => setSelectedOrders(rows as SalesOrder[])}
+            onRowClick={handleEdit}
+            bulkActions={[
+              {
+                label: "Elimina Selezionati",
+                icon: Trash2,
+                variant: "destructive",
+                onClick: () => handleDelete(selectedOrders)
+              }
+            ]}
+            isLoading={isLoading}
+          />
 
-      <Dialog open={showEditDialog} onOpenChange={handleCloseEditDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Sales Order</DialogTitle>
-            <DialogDescription>
-              Edit the details of this sales order.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="p-4">
-            <p className="text-sm text-muted-foreground">
-              Sales order editing will be implemented here.
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+          {/* Create/Edit Dialog */}
+          <Dialog open={showForm} onOpenChange={setShowForm}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingOrder ? "Modifica Ordine" : "Nuovo Ordine"}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingOrder ? "Aggiorna" : "Crea"} un ordine di vendita
+                </DialogDescription>
+              </DialogHeader>
+              <div className="p-4">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Form per {editingOrder ? "modificare" : "creare"} ordine di vendita
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingOrder(null);
+                    }}
+                  >
+                    Annulla
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingOrder(null);
+                      queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
+                      toast({ title: "Salvato", description: "Ordine salvato con successo" });
+                    }}
+                  >
+                    Salva
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Single Delete Dialog */}
+          <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Elimina Ordine</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Sei sicuro di voler eliminare l'ordine "{editingOrder?.orderNumber}"? 
+                  Questa azione non può essere annullata.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDelete}>Elimina</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Bulk Delete Dialog */}
+          <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Conferma Eliminazione Multipla</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Sei sicuro di voler eliminare {selectedOrders.length} ordini selezionati? 
+                  Questa azione non può essere annullata.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmBulkDelete}>
+                  Elimina {selectedOrders.length} Ordini
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </main>
+      </div>
     </div>
   );
 }

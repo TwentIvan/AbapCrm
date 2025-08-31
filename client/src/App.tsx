@@ -18,7 +18,7 @@ import TimesheetPage from "@/pages/timesheet-page";
 import TimesheetsPage from "@/pages/timesheets-page";
 import MessagesPage from "@/pages/messages-page";
 import RateAgreementsPage from "@/pages/rate-agreements-page";
-import { HumanResourcesPage } from "@/pages/human-resources-page";
+import HumanResourcesPage from "@/pages/human-resources-page";
 import SalesOrdersPage from "@/pages/sales-orders-page";
 import SapSystemsPage from "@/pages/sap-systems-page";
 import { SystemCredentialsPage } from "@/pages/system-credentials-page";
