@@ -11,9 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { VpnConnection } from "@shared/schema";
+import { VpnConnection, Partner } from "@shared/schema";
 import VPNConnectionForm from "@/components/forms/vpn-connection-form";
-import { Trash2, Zap, Settings, Wifi, Shield, CheckCircle, XCircle } from "lucide-react";
+import { Trash2, Settings, CheckCircle, XCircle } from "lucide-react";
 
 export default function VPNConnectionsPage() {
   const [selectedConnections, setSelectedConnections] = useState<VpnConnection[]>([]);
@@ -40,8 +40,8 @@ export default function VPNConnectionsPage() {
     },
   });
 
-  // Fetch partners for the form
-  const { data: partners = [] } = useQuery({
+  // Fetch partners for display
+  const { data: partners = [] } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
     queryFn: async () => {
       const res = await fetch("/api/partners", { credentials: "include" });
@@ -50,7 +50,6 @@ export default function VPNConnectionsPage() {
     },
   });
 
-  // Delete mutations
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/vpn-connections/${id}`),
     onSuccess: () => {
@@ -75,7 +74,6 @@ export default function VPNConnectionsPage() {
     }
   });
 
-  // Handlers
   const handleEdit = (connection: VpnConnection) => {
     setEditingConnection(connection);
     setShowForm(true);
@@ -108,56 +106,39 @@ export default function VPNConnectionsPage() {
   };
 
   // Table columns
-  const columns = createStandardColumns<VpnConnection>([
+  const columns = [
     {
-      accessorKey: "name",
-      header: "Nome",
-      cell: ({ row }) => (
+      key: "name",
+      label: "Nome",
+      sortable: true,
+      searchable: true,
+      render: (connection: VpnConnection) => (
         <div>
-          <div className="font-medium">{row.getValue("name")}</div>
-          <div className="text-sm text-muted-foreground">{row.original.description}</div>
+          <div className="font-medium">{connection.name}</div>
+          <div className="text-sm text-muted-foreground">{connection.description}</div>
         </div>
       ),
     },
     {
-      accessorKey: "serverHost",
-      header: "Server",
-      cell: ({ row }) => (
+      key: "server",
+      label: "Server",
+      sortable: true,
+      searchable: true,
+      render: (connection: VpnConnection) => (
         <div className="font-mono text-sm">
-          {row.original.serverHost}:{row.original.serverPort}
+          {connection.serverHost}:{connection.serverPort}
         </div>
       ),
     },
+    createStandardColumns.badge("connectionType", "Tipo"),
     {
-      accessorKey: "connectionType",
-      header: "Tipo",
-      cell: ({ row }) => (
-        <Badge variant="outline">
-          {row.getValue("connectionType")}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: "Stato",
-      cell: ({ row }) => {
-        const status = row.getValue("status") as string;
-        return (
-          <Badge 
-            variant={status === "active" ? "default" : "secondary"}
-            className={status === "active" ? "bg-green-100 text-green-800" : ""}
-          >
-            {status === "active" ? "Attiva" : "Inattiva"}
-          </Badge>
-        );
-      },
-    },
-    {
-      accessorKey: "automationScript",
-      header: "Automazione",
-      cell: ({ row }) => {
-        const hasScript = !!row.original.automationScript;
-        const scriptType = row.original.scriptType;
+      key: "automationScript",
+      label: "Automazione",
+      sortable: true,
+      searchable: false,
+      render: (connection: VpnConnection) => {
+        const hasScript = !!connection.automationScript;
+        const scriptType = connection.scriptType;
         
         return (
           <div className="flex items-center gap-2">
@@ -179,10 +160,12 @@ export default function VPNConnectionsPage() {
       },
     },
     {
-      accessorKey: "partnerId", 
-      header: "Cliente",
-      cell: ({ row }) => {
-        const partner = partners.find(p => p.id === row.original.partnerId);
+      key: "partnerId", 
+      label: "Cliente",
+      sortable: true,
+      searchable: true,
+      render: (connection: VpnConnection) => {
+        const partner = partners.find(p => p.id === connection.partnerId);
         return partner ? (
           <div>
             <div className="font-medium">{partner.name}</div>
@@ -193,32 +176,7 @@ export default function VPNConnectionsPage() {
         );
       },
     },
-    {
-      accessorKey: "actions",
-      header: "Azioni",
-      cell: ({ row }) => (
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleEdit(row.original)}
-            data-testid={`button-edit-${row.original.id}`}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleSingleDelete(row.original)}
-            data-testid={`button-delete-${row.original.id}`}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
-  ]);
+  ];
 
   return (
     <div className="flex h-screen">
@@ -231,11 +189,10 @@ export default function VPNConnectionsPage() {
         />
         <main className="p-6 space-y-6">
           <LayoutManager
-            layoutId="vpn-connections"
             viewMode={viewMode}
             currentLayoutName={currentLayoutName}
             savedLayouts={savedLayouts}
-            onViewModeChange={(mode) => updateLayout({ viewMode: mode })}
+            onViewModeChange={(mode: "list" | "cards") => updateLayout({ viewMode: mode })}
             onLoadLayout={loadLayout}
             onSaveLayout={saveLayoutAs}
             onRenameLayout={renameLayout}
@@ -258,18 +215,17 @@ export default function VPNConnectionsPage() {
                 onClick: () => handleDelete(selectedConnections)
               }
             ]}
-            isLoading={isLoading}
           />
 
           {/* Create/Edit Dialog */}
           <Dialog open={showForm} onOpenChange={setShowForm}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>
                   {editingConnection ? "Modifica Connessione VPN" : "Nuova Connessione VPN"}
                 </DialogTitle>
                 <DialogDescription>
-                  {editingConnection ? "Aggiorna" : "Configura"} la connessione VPN e genera script di automazione
+                  {editingConnection ? "Aggiorna" : "Aggiungi"} connessione VPN per accesso remoto
                 </DialogDescription>
               </DialogHeader>
               <VPNConnectionForm
@@ -294,8 +250,8 @@ export default function VPNConnectionsPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Elimina Connessione VPN</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Sei sicuro di voler eliminare la connessione "{editingConnection?.name}"? 
-                  Questa azione eliminerà anche tutti gli script di automazione associati e non può essere annullata.
+                  Sei sicuro di voler eliminare "{editingConnection?.name}"? 
+                  Questa azione non può essere annullata.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -312,7 +268,7 @@ export default function VPNConnectionsPage() {
                 <AlertDialogTitle>Conferma Eliminazione Multipla</AlertDialogTitle>
                 <AlertDialogDescription>
                   Sei sicuro di voler eliminare {selectedConnections.length} connessioni VPN selezionate? 
-                  Questa azione eliminerà anche tutti gli script di automazione associati e non può essere annullata.
+                  Questa azione non può essere annullata.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
