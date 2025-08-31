@@ -95,8 +95,6 @@ export default function VPNDiscoveryPage() {
           title="Scoperta Connessioni VPN" 
           subtitle="Identifica e configura le connessioni VPN disponibili sul sistema"
           onNewClick={handleRefresh}
-          newButtonText="Aggiorna"
-          newButtonIcon={RefreshCw}
         />
         
         <div className="p-6 space-y-6">

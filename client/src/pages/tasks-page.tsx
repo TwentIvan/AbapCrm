@@ -801,17 +801,6 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            {console.log(`Task ${task.title} - sapSystemId:`, task.sapSystemId)}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => alert(`Test button for task: ${task.title}`)}
-                              data-testid={`button-test-${task.id}`}
-                              className="bg-red-500 text-white px-4 py-2"
-                              style={{ backgroundColor: 'red', color: 'white', fontSize: '16px' }}
-                            >
-                              🔴 TEST BUTTON
-                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
