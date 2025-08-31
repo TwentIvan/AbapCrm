@@ -60,110 +60,34 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
 
   const selectedSystemType = form.watch("systemType");
 
-  // Complete SAP systems list - all 58 systems with Hera.SV6 included
+  // Real SAP systems with actual UUIDs from database (temporary until API 401 is fixed)
   const sapSystems = selectedSystemType === "sap" ? [
-    // Alperia systems
-    { id: "alperia-prd", name: "Alperia.PRD", serverHost: "10.87.158.3" },
-    { id: "alperia-sbx", name: "Alperia.SBX", serverHost: "10.87.158.2" },
-    { id: "alperia-dev", name: "Alperia.DEV", serverHost: "10.87.158.4" },
-    { id: "alperia-tst", name: "Alperia.TST", serverHost: "10.87.158.5" },
-    
-    // Hera systems - INCLUDING SV6!
-    { id: "hera-pr1", name: "Hera.PR1", serverHost: "10.11.10.26" },
-    { id: "hera-sv6", name: "Hera.SV6", serverHost: "10.11.10.56" },
-    { id: "hera-dev", name: "Hera.DEV", serverHost: "10.11.10.27" },
-    { id: "hera-tst", name: "Hera.TST", serverHost: "10.11.10.28" },
-    { id: "hera-qas", name: "Hera.QAS", serverHost: "10.11.10.29" },
-    { id: "hera-sbx", name: "Hera.SBX", serverHost: "10.11.10.30" },
-    
-    // Edison systems
-    { id: "edison-nub", name: "Edison.NUB", serverHost: "ewfdws4hal01.corp.awsedison.it" },
-    { id: "edison-edp", name: "Edison.EDP", serverHost: "10.150.6.50" },
-    { id: "edison-dev", name: "Edison.DEV", serverHost: "10.150.6.51" },
-    { id: "edison-tst", name: "Edison.TST", serverHost: "10.150.6.52" },
-    
-    // Enel systems
-    { id: "enel-prd", name: "Enel.PRD", serverHost: "10.200.1.10" },
-    { id: "enel-dev", name: "Enel.DEV", serverHost: "10.200.1.11" },
-    { id: "enel-qas", name: "Enel.QAS", serverHost: "10.200.1.12" },
-    { id: "enel-tst", name: "Enel.TST", serverHost: "10.200.1.13" },
-    
-    // Eni systems
-    { id: "eni-prd", name: "Eni.PRD", serverHost: "10.150.2.10" },
-    { id: "eni-dev", name: "Eni.DEV", serverHost: "10.150.2.11" },
-    { id: "eni-tst", name: "Eni.TST", serverHost: "10.150.2.12" },
-    { id: "eni-qas", name: "Eni.QAS", serverHost: "10.150.2.13" },
-    
-    // Saipem systems
-    { id: "saipem-prd", name: "Saipem.PRD", serverHost: "10.180.5.20" },
-    { id: "saipem-dev", name: "Saipem.DEV", serverHost: "10.180.5.21" },
-    { id: "saipem-tst", name: "Saipem.TST", serverHost: "10.180.5.22" },
-    
-    // Leonardo systems
-    { id: "leonardo-prd", name: "Leonardo.PRD", serverHost: "10.190.8.30" },
-    { id: "leonardo-dev", name: "Leonardo.DEV", serverHost: "10.190.8.31" },
-    { id: "leonardo-qas", name: "Leonardo.QAS", serverHost: "10.190.8.32" },
-    
-    // Fincantieri systems
-    { id: "fincantieri-prd", name: "Fincantieri.PRD", serverHost: "10.220.3.40" },
-    { id: "fincantieri-dev", name: "Fincantieri.DEV", serverHost: "10.220.3.41" },
-    { id: "fincantieri-tst", name: "Fincantieri.TST", serverHost: "10.220.3.42" },
-    
-    // Pirelli systems
-    { id: "pirelli-prd", name: "Pirelli.PRD", serverHost: "10.240.7.50" },
-    { id: "pirelli-qas", name: "Pirelli.QAS", serverHost: "10.240.7.51" },
-    { id: "pirelli-dev", name: "Pirelli.DEV", serverHost: "10.240.7.52" },
-    
-    // Luxottica systems
-    { id: "luxottica-prd", name: "Luxottica.PRD", serverHost: "10.260.9.60" },
-    { id: "luxottica-dev", name: "Luxottica.DEV", serverHost: "10.260.9.61" },
-    { id: "luxottica-tst", name: "Luxottica.TST", serverHost: "10.260.9.62" },
-    
-    // Atlantia systems
-    { id: "atlantia-prd", name: "Atlantia.PRD", serverHost: "10.280.4.70" },
-    { id: "atlantia-tst", name: "Atlantia.TST", serverHost: "10.280.4.71" },
-    { id: "atlantia-dev", name: "Atlantia.DEV", serverHost: "10.280.4.72" },
-    
-    // Mediaset systems
-    { id: "mediaset-prd", name: "Mediaset.PRD", serverHost: "10.300.6.80" },
-    { id: "mediaset-dev", name: "Mediaset.DEV", serverHost: "10.300.6.81" },
-    { id: "mediaset-qas", name: "Mediaset.QAS", serverHost: "10.300.6.82" },
-    
-    // Telecom systems
-    { id: "telecom-prd", name: "Telecom.PRD", serverHost: "10.320.8.90" },
-    { id: "telecom-qas", name: "Telecom.QAS", serverHost: "10.320.8.91" },
-    { id: "telecom-dev", name: "Telecom.DEV", serverHost: "10.320.8.92" },
-    
-    // Generali systems
-    { id: "generali-prd", name: "Generali.PRD", serverHost: "10.340.2.100" },
-    { id: "generali-dev", name: "Generali.DEV", serverHost: "10.340.2.101" },
-    { id: "generali-tst", name: "Generali.TST", serverHost: "10.340.2.102" },
-    
-    // UniCredit systems
-    { id: "unicredit-prd", name: "UniCredit.PRD", serverHost: "10.360.5.110" },
-    { id: "unicredit-sbx", name: "UniCredit.SBX", serverHost: "10.360.5.111" },
-    { id: "unicredit-dev", name: "UniCredit.DEV", serverHost: "10.360.5.112" },
-    
-    // Intesa systems
-    { id: "intesa-prd", name: "Intesa.PRD", serverHost: "10.380.7.120" },
-    { id: "intesa-dev", name: "Intesa.DEV", serverHost: "10.380.7.121" },
-    { id: "intesa-qas", name: "Intesa.QAS", serverHost: "10.380.7.122" },
-    
-    // Ferrari systems
-    { id: "ferrari-prd", name: "Ferrari.PRD", serverHost: "10.400.9.130" },
-    { id: "ferrari-tst", name: "Ferrari.TST", serverHost: "10.400.9.131" },
-    { id: "ferrari-dev", name: "Ferrari.DEV", serverHost: "10.400.9.132" },
-    
-    // Maserati systems
-    { id: "maserati-prd", name: "Maserati.PRD", serverHost: "10.420.3.140" },
-    { id: "maserati-dev", name: "Maserati.DEV", serverHost: "10.420.3.141" },
-    { id: "maserati-qas", name: "Maserati.QAS", serverHost: "10.420.3.142" },
-    
-    // Additional systems to reach 58 total
-    { id: "lamborghini-prd", name: "Lamborghini.PRD", serverHost: "10.440.6.150" },
-    { id: "lamborghini-qas", name: "Lamborghini.QAS", serverHost: "10.440.6.151" },
-    { id: "ducati-prd", name: "Ducati.PRD", serverHost: "10.460.8.160" },
-    { id: "ducati-dev", name: "Ducati.DEV", serverHost: "10.460.8.161" }
+    // Real systems with proper UUIDs from database
+    { id: "8854f105-1e44-46ab-bc1b-c74f0d60e59e", name: "Alperia.PRD", serverHost: "10.87.158.3" },
+    { id: "1e841e98-6549-47d5-ad5d-b7033bea9da4", name: "Alperia.SBX", serverHost: "10.87.158.2" },
+    { id: "77ea9cb5-f285-4728-83fc-2418795d9737", name: "Alperia.QUA", serverHost: "10.87.158.2" },
+    { id: "445368c7-d062-4f3d-8661-ccada9b7235e", name: "Alperia.D4U", serverHost: "10.230.0.89" },
+    { id: "7f31ef3e-56b7-42ea-aa37-3a686c129512", name: "Alperia.NWC", serverHost: "192.168.202.148" },
+    { id: "acc821c3-b57c-4abc-83a3-db8b97781403", name: "Alperia.T4U", serverHost: "vhalpt4ucs.fra3.hec.corp.local" },
+    { id: "c8d2d1a7-5461-429a-a380-d6a82044b2a4", name: "Hera.PR1", serverHost: "10.11.10.26" },
+    { id: "72c41ce7-4d80-403e-ab9a-8adb3a4577b9", name: "Hera.PRQ", serverHost: "isuprq.service.intra" },
+    { id: "56307313-32bf-452b-a240-3691089e5eae", name: "Hera.PRP", serverHost: "10.11.11.47" },
+    { id: "83d9f112-8730-43bf-a4b3-426b9b37a229", name: "Hera.PQ4", serverHost: "isupq4.service.intra" },
+    { id: "349cdfec-9f8e-464c-a434-61824221f8b8", name: "Hera.SV6", serverHost: "isuse6.service.intra" }, // ECCO SV6!
+    { id: "2a17df43-bb64-47a6-98c5-02b768f81db9", name: "Edison.NUB", serverHost: "ewfdws4hal01.corp.awsedison.it" },
+    { id: "78032808-27b9-4069-800e-77c1c3ec2937", name: "Edison.NUT", serverHost: "ewfrws4hal01.corp.awsedison.it" },
+    { id: "ad8fac16-7d8f-4e47-9219-d08bd75659c6", name: "Edison.EUC", serverHost: "10.202.242.162" },
+    { id: "7481bfce-ebb6-430b-9963-b56a3d7c7cfc", name: "Enel.REP", serverHost: "10.153.99.23" },
+    { id: "ce0f902f-5fef-4586-b389-499c21b47130", name: "Enel.RED", serverHost: "10.154.133.39" },
+    { id: "0f368277-a269-47cd-8088-6d6bb5522dd2", name: "Enel.REM", serverHost: "10.154.133.116" },
+    { id: "5ab48393-911c-40d7-948e-629bf0c0d730", name: "Enel.REQ", serverHost: "12.1.1.1" },
+    { id: "1b475623-b28f-4c80-84d0-32a042fd2a90", name: "CSI.PRD", serverHost: "10.102.229.46" },
+    { id: "714f8fe3-affe-4ec6-81d1-14804a452b36", name: "CSI.DEV", serverHost: "10.102.229.63" },
+    { id: "0eb72859-3283-4414-bf19-37037139ed1d", name: "CSI.SND", serverHost: "10.102.229.69" },
+    { id: "7d3d8bb3-8da6-40ba-b1d0-415a706bc6f9", name: "Iren.SHS", serverHost: "172.25.255.223" },
+    { id: "df61cdd2-0621-4f59-84ca-7d773441aa9f", name: "Iren.SHP", serverHost: "172.25.255.222" },
+    { id: "a5f7c1ef-610e-46fc-9fe7-39758708f4fb", name: "Iren.SHC", serverHost: "saphshc02.master.local" },
+    { id: "4c223f19-7988-4908-85e1-a2fcbbb64a04", name: "Iren.SM2", serverHost: "172.25.245.142" }
   ] : [];
   
   const vpnConnections: any[] = [];
