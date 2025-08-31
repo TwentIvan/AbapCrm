@@ -104,12 +104,12 @@ export default function VpnSystemForm({ system, onSuccess, onCancel }: VpnSystem
   const onSubmit = async (data: VpnSystemFormData) => {
     setIsSubmitting(true);
     try {
-      // Clean up empty strings to null
+      // Clean up empty strings to undefined
       const cleanData = {
         ...data,
-        partnerId: data.partnerId || null,
-        vpnSoftwareId: data.vpnSoftwareId || null,
-        description: data.description || null,
+        partnerId: data.partnerId || undefined,
+        vpnSoftwareId: data.vpnSoftwareId || undefined,
+        description: data.description || undefined,
       };
 
       if (system) {
@@ -152,7 +152,7 @@ export default function VpnSystemForm({ system, onSuccess, onCancel }: VpnSystem
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Stato</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
                   <FormControl>
                     <SelectTrigger data-testid="select-status">
                       <SelectValue placeholder="Seleziona stato" />
@@ -219,7 +219,7 @@ export default function VpnSystemForm({ system, onSuccess, onCancel }: VpnSystem
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Profilo Connessione</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
                   <FormControl>
                     <SelectTrigger data-testid="select-connection-profile">
                       <SelectValue placeholder="Seleziona profilo" />
@@ -243,14 +243,14 @@ export default function VpnSystemForm({ system, onSuccess, onCancel }: VpnSystem
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Software VPN</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
                   <FormControl>
                     <SelectTrigger data-testid="select-vpn-software">
                       <SelectValue placeholder="Seleziona software" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">Nessuno</SelectItem>
+                    <SelectItem value="none">Nessuno</SelectItem>
                     {vpnSoftware.map((software) => (
                       <SelectItem key={software.id} value={software.id}>
                         {software.vendor} {software.name}
@@ -277,7 +277,7 @@ export default function VpnSystemForm({ system, onSuccess, onCancel }: VpnSystem
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">Nessun partner</SelectItem>
+                  <SelectItem value="none">Nessun partner</SelectItem>
                   {partners.map((partner) => (
                     <SelectItem key={partner.id} value={partner.id}>
                       {partner.name} {partner.company && `(${partner.company})`}

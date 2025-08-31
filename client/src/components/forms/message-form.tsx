@@ -49,7 +49,7 @@ export default function MessageForm({ onSuccess, defaultValues }: MessageFormPro
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: InsertMessage) => apiRequest("/api/messages", "POST", data),
+    mutationFn: (data: InsertMessage) => apiRequest("POST", "/api/messages", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
       toast({
