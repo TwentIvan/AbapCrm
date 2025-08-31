@@ -7,6 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import Sidebar from "@/components/layout/sidebar";
+import Header from "@/components/layout/header";
 import { 
   Mail, 
   MailOpen, 
@@ -228,73 +230,60 @@ export default function MessagesPage() {
   const unreadCount = messages.filter(m => m.status === 'unread').length;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Messaggi Email</h1>
-          <p className="text-muted-foreground">
-            Gestisci le email ricevute e i suggerimenti AI
-          </p>
+    <div className="flex h-screen">
+      <Sidebar />
+      <div className="flex-1 overflow-hidden">
+        <Header 
+          title="Messaggi Email"
+          subtitle="Gestisci le email ricevute e i suggerimenti AI"
+          onNewClick={() => setShowNewMessageDialog(true)}
+        />
+        
+        <div className="px-6 py-2 border-b">
+          <div className="flex items-center space-x-2">
+            <Badge variant="secondary" className="text-sm">
+              {unreadCount} non letti
+            </Badge>
+            <Button 
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending}
+              size="sm"
+              variant="outline"
+              data-testid="button-sync-emails"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+              Sincronizza
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Badge variant="secondary" className="text-sm">
-            {unreadCount} non letti
-          </Badge>
-          <Button 
-            onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending}
-            size="sm"
-            variant="outline"
-            data-testid="button-sync-emails"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-            Sincronizza
-          </Button>
-          <Dialog open={showNewMessageDialog} onOpenChange={setShowNewMessageDialog}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-new-message">
-                <Plus className="h-4 w-4 mr-2" />
-                Nuovo Messaggio
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Crea Nuovo Messaggio</DialogTitle>
-              </DialogHeader>
-              <MessageForm 
-                onSuccess={() => setShowNewMessageDialog(false)} 
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+        <main className="p-6 space-y-6">
 
-      {/* Email Configuration */}
-      <EmailConfig />
+          {/* Email Configuration */}
+          <EmailConfig />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Message List */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Lista Messaggi
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[600px]">
-              {messages.length === 0 ? (
-                <div className="p-6 text-center text-muted-foreground">
-                  <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nessun messaggio ricevuto</p>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {messages.map((message) => {
-                    const linkedObject = getLinkedObjectName(message);
-                    
-                    return (
-                      <div
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Message List */}
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5" />
+                  Lista Messaggi
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[600px]">
+                  {messages.length === 0 ? (
+                    <div className="p-6 text-center text-muted-foreground">
+                      <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Nessun messaggio ricevuto</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {messages.map((message) => {
+                        const linkedObject = getLinkedObjectName(message);
+                        
+                        return (
+                          <div
                         key={message.id}
                         data-testid={`message-item-${message.id}`}
                         className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors ${
@@ -350,10 +339,10 @@ export default function MessagesPage() {
               )}
             </ScrollArea>
           </CardContent>
-        </Card>
+            </Card>
 
-        {/* Message Detail */}
-        <Card className="lg:col-span-2">
+            {/* Message Detail */}
+            <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -721,8 +710,22 @@ export default function MessagesPage() {
               </div>
             )}
           </CardContent>
-        </Card>
+            </Card>
+          </div>
+        </main>
       </div>
+
+      {/* Create Message Dialog */}
+      <Dialog open={showNewMessageDialog} onOpenChange={setShowNewMessageDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Crea Nuovo Messaggio</DialogTitle>
+          </DialogHeader>
+          <MessageForm 
+            onSuccess={() => setShowNewMessageDialog(false)} 
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
