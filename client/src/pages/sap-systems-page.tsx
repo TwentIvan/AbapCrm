@@ -12,9 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { SimpleDataTable } from "@/components/ui/simple-data-table";
-import { TestTable } from "@/components/ui/test-table";
-import { createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
+import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Server, Building, MoreHorizontal, Grid3X3, List, Edit, Trash2, Key, Wifi, Upload } from "lucide-react";
@@ -151,88 +149,30 @@ export default function SapSystemsPage() {
     setSelectedSystem(null);
   };
 
-  // Define columns for the table
+  // SISTEMA UNIVERSALE: Configurazione colonne standardizzata
   const columns = [
-    {
-      accessorKey: "name",
-      header: "System Name",
-      enableSorting: true,
-      cell: ({ row }: any) => row.original.name,
-    },
-    {
-      accessorKey: "systemNumber",
-      header: "System Number",
-      enableSorting: true,
-      cell: ({ row }: any) => row.original.systemNumber,
-    },
-    {
-      accessorKey: "serverHost",
-      header: "Server Host",
-      enableSorting: true,
-      cell: ({ row }: any) => row.original.serverHost,
-    },
-    {
-      accessorKey: "landscape",
-      header: "Landscape",
-      enableSorting: true,
-      cell: ({ row }: any) => {
-        const system = row.original;
-        const landscapeValue = landscapeLabels[system.landscape as keyof typeof landscapeLabels] || system.landscape;
-        const colorClass = landscapeColors[system.landscape as keyof typeof landscapeColors] || "bg-gray-100 text-gray-800";
-        return (
-          <Badge className={colorClass}>
-            {landscapeValue}
-          </Badge>
-        );
+    createStandardColumns.text("name", "System Name"),
+    createStandardColumns.text("systemNumber", "System Number"),
+    createStandardColumns.text("serverHost", "Server Host"),
+    createStandardColumns.badge("landscape", "Landscape", {
+      development: "bg-blue-100 text-blue-800",
+      test: "bg-yellow-100 text-yellow-800", 
+      production: "bg-red-100 text-red-800"
+    }),
+    createStandardColumns.partner("Partner"),
+    createStandardColumns.text("description", "Description"),
+    createStandardColumns.actions([
+      {
+        label: "Edit",
+        icon: Edit,
+        onClick: handleEdit
       },
-    },
-    {
-      id: "partner",
-      accessorFn: (row: any) => row.partner?.name || "",
-      header: "Partner",
-      enableSorting: true,
-      cell: ({ row }: any) => {
-        const system = row.original;
-        return system.partner ? (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-            {system.partner.name}
-          </Badge>
-        ) : "—";
-      },
-    },
-    {
-      accessorKey: "description",
-      header: "Description",
-      enableSorting: true,
-      cell: ({ row }: any) => row.original.description || "—",
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      enableSorting: false,
-      cell: ({ row }: any) => {
-        const system = row.original;
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" data-testid={`dropdown-sap-system-${system.id}`}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleEdit(system)} data-testid={`edit-sap-system-${system.id}`}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDelete(system)} data-testid={`delete-sap-system-${system.id}`}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
-    },
+      {
+        label: "Delete", 
+        icon: Trash2,
+        onClick: handleDelete
+      }
+    ])
   ];
 
   // Grid view for card layout
@@ -303,31 +243,27 @@ export default function SapSystemsPage() {
   );
 
   const renderTable = () => (
-    <div className="space-y-6">
-      <div className="text-lg font-semibold">Test con HTML puro (dovrebbe funzionare):</div>
-      <TestTable data={systems || []} />
-      
-      <div className="text-lg font-semibold">React Table (problematico):</div>
-      <SimpleDataTable
-        data={systems || []}
-        columns={columns}
-        enableSelection={true}
-        onSelectionChange={(rows) => setSelectedSystems(rows as SapSystem[])}
-        bulkActions={[
-          {
-            label: "Delete Selected",
-            icon: Trash2,
-            onClick: (selectedRows) => {
-              setSelectedSystems(selectedRows as SapSystem[]);
-              setShowBulkDeleteDialog(true);
-            },
-            variant: "destructive",
+    <UniversalTable
+      data={systems || []}
+      columns={columns}
+      enableSelection={true}
+      enableSearch={true}
+      searchPlaceholder="Cerca sistema SAP..."
+      onSelectionChange={(rows) => setSelectedSystems(rows as SapSystem[])}
+      onRowClick={handleEdit}
+      bulkActions={[
+        {
+          label: "Delete Selected",
+          icon: Trash2,
+          onClick: (selectedRows) => {
+            setSelectedSystems(selectedRows as SapSystem[]);
+            setShowBulkDeleteDialog(true);
           },
-        ]}
-        searchKey="systemName"
-        searchPlaceholder="Cerca sistema SAP..."
-      />
-    </div>
+          variant: "destructive",
+        },
+      ]}
+      emptyMessage="Nessun sistema SAP trovato"
+    />
   );
 
   if (isLoading) {
