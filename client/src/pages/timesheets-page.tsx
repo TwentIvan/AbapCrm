@@ -588,12 +588,10 @@ export default function TimesheetsPage() {
               onSelectionChange={setSelectedTimesheets}
               bulkActions={bulkActions}
               tableId="timesheets"
-              configurableColumns={true}
-              enableAdvancedFilters={true}
-              filterColumns={filterColumns}
-              enableColumnReordering={true}
-              enableClipboardCopy={true}
-              editingLayout={editingLayout}
+              configurableColumns={false}
+              enableAdvancedFilters={false}
+              enableColumnReordering={false}
+              enableClipboardCopy={false}
             />
           ) : (
             <div className="text-center py-12">
