@@ -117,51 +117,31 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="systemType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo Sistema</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                      data-testid="select-system-type"
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleziona tipo" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="sap">SAP</SelectItem>
-                        <SelectItem value="vpn">VPN</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="systemName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome Sistema</FormLabel>
+            <FormField
+              control={form.control}
+              name="systemType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo Sistema</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                    data-testid="select-system-type"
+                  >
                     <FormControl>
-                      <Input 
-                        {...field} 
-                        placeholder="Es. PRD, DEV, Cliente VPN"
-                        data-testid="input-system-name"
-                      />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona tipo" />
+                      </SelectTrigger>
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                    <SelectContent>
+                      <SelectItem value="sap">SAP</SelectItem>
+                      <SelectItem value="vpn">VPN</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
@@ -202,41 +182,47 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
               />
             </div>
 
-            {selectedSystemType && (
-              <FormField
-                control={form.control}
-                name="systemId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sistema di Riferimento (opzionale)</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value || ""}
-                      data-testid="select-system-reference"
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleziona sistema esistente" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {selectedSystemType === "sap" && Array.isArray(sapSystems) && sapSystems.map((system: any) => (
-                          <SelectItem key={system.id} value={system.id}>
-                            {system.name} ({system.serverHost})
-                          </SelectItem>
-                        ))}
-                        {selectedSystemType === "vpn" && Array.isArray(vpnConnections) && vpnConnections.map((vpn: any) => (
-                          <SelectItem key={vpn.id} value={vpn.id}>
-                            {vpn.name} ({vpn.serverHost})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <FormField
+              control={form.control}
+              name="systemId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sistema di Riferimento</FormLabel>
+                  <Select 
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      // Auto-fill system name from selected system
+                      const systems = selectedSystemType === "sap" ? sapSystems : vpnConnections;
+                      const selectedSystem = Array.isArray(systems) ? systems.find((s: any) => s.id === value) : null;
+                      if (selectedSystem) {
+                        form.setValue("systemName", selectedSystem.name);
+                      }
+                    }} 
+                    defaultValue={field.value || undefined}
+                    data-testid="select-system-reference"
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={`Seleziona sistema ${selectedSystemType.toUpperCase()} esistente`} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {selectedSystemType === "sap" && Array.isArray(sapSystems) && sapSystems.map((system: any) => (
+                        <SelectItem key={system.id} value={system.id}>
+                          {system.name} ({system.serverHost || system.host})
+                        </SelectItem>
+                      ))}
+                      {selectedSystemType === "vpn" && Array.isArray(vpnConnections) && vpnConnections.map((vpn: any) => (
+                        <SelectItem key={vpn.id} value={vpn.id}>
+                          {vpn.name} ({vpn.serverHost || vpn.host})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
