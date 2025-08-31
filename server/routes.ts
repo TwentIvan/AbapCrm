@@ -244,6 +244,53 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Upload local VPN connections from user's workstation
+  app.post("/api/vpn/upload-local-connections", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { source, hostname, username, timestamp, forticlient_installed, connection_count, connections } = req.body;
+      
+      console.log('[VPN-UPLOAD] ========== LOCAL CONNECTIONS UPLOAD ==========');
+      console.log('[VPN-UPLOAD] Source:', source);
+      console.log('[VPN-UPLOAD] Hostname:', hostname);
+      console.log('[VPN-UPLOAD] Username:', username);
+      console.log('[VPN-UPLOAD] Timestamp:', timestamp);
+      console.log('[VPN-UPLOAD] FortiClient installed:', forticlient_installed);
+      console.log('[VPN-UPLOAD] Connection count:', connection_count);
+      console.log('[VPN-UPLOAD] Connections:', JSON.stringify(connections, null, 2));
+      
+      // Store the uploaded connections (in production, save to database)
+      global.uploadedVPNConnections = {
+        source,
+        hostname,
+        username,
+        timestamp,
+        forticlient_installed,
+        connection_count,
+        connections: JSON.parse(connections),
+        userId: req.user!.id
+      };
+      
+      console.log('[VPN-UPLOAD] ✅ Connections stored successfully');
+      
+      res.json({
+        success: true,
+        message: "VPN connections uploaded successfully",
+        connection_count: connection_count,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('[VPN-UPLOAD] Error:', error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to upload VPN connections",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Legacy GET endpoint for backward compatibility
   app.get("/api/vpn/discover", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

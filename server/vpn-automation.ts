@@ -53,7 +53,28 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
       }
     }
     
-    // 4. If no real connections found, show demos as fallback
+    // 4. Check for uploaded connections from local workstation
+    if ((global as any).uploadedVPNConnections) {
+      const uploaded = (global as any).uploadedVPNConnections;
+      console.log('[VPN-DISCOVERY] Using uploaded connections from workstation:', uploaded.hostname);
+      console.log('[VPN-DISCOVERY] Uploaded at:', uploaded.timestamp);
+      console.log('[VPN-DISCOVERY] Connection count:', uploaded.connection_count);
+      
+      const uploadedConnections = uploaded.connections.map((conn: any) => ({
+        id: conn.id,
+        name: conn.name,
+        type: conn.type,
+        status: conn.status,
+        description: `${conn.description} (from ${uploaded.hostname})`,
+        server: conn.server || undefined,
+        port: conn.port || undefined,
+        automationScript: 'applescript'
+      }));
+      
+      connections.push(...uploadedConnections);
+    }
+    
+    // 5. If no real connections found, show demos as fallback
     if (connections.length === 0) {
       console.log('[VPN-DISCOVERY] No real VPN connections found, showing demo connections');
       connections.push(...getDemoVPNConnections());
