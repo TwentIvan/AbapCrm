@@ -337,7 +337,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(projects)
       .where(and(eq(projects.id, id), eq(projects.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   // Tasks
@@ -407,7 +407,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   // Partners
@@ -444,7 +444,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(partners)
       .where(and(eq(partners.id, id), eq(partners.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   // Deals
@@ -486,7 +486,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(deals)
       .where(and(eq(deals.id, id), eq(deals.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   // Calendar Events
@@ -523,7 +523,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(calendarEvents)
       .where(and(eq(calendarEvents.id, id), eq(calendarEvents.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   // Planning Windows
@@ -600,7 +600,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(planningWindows)
       .where(eq(planningWindows.id, id));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   // Time Entries
@@ -649,7 +649,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(timeEntries)
       .where(and(eq(timeEntries.id, id), eq(timeEntries.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   async stopTimeEntry(id: string, userId: string): Promise<TimeEntry | undefined> {
@@ -721,7 +721,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(timeNormalizationConfigs)
       .where(and(eq(timeNormalizationConfigs.id, id), eq(timeNormalizationConfigs.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   async getDefaultTimeNormalizationConfig(userId: string): Promise<TimeNormalizationConfig | undefined> {
@@ -782,7 +782,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(salesOrders)
       .where(and(eq(salesOrders.id, id), eq(salesOrders.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   // Sales Order Items
@@ -836,7 +836,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(salesOrderItems)
       .where(eq(salesOrderItems.id, id));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   // Timesheets
@@ -877,7 +877,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(timesheets)
       .where(and(eq(timesheets.id, id), eq(timesheets.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   // Messages
@@ -926,7 +926,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(messages)
       .where(and(eq(messages.id, id), eq(messages.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   async getUnreadMessages(userId: string): Promise<Message[]> {
@@ -1008,7 +1008,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(comments)
       .where(and(eq(comments.id, id), eq(comments.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   // Email Configs
@@ -1058,7 +1058,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(emailConfigs)
       .where(and(eq(emailConfigs.id, id), eq(emailConfigs.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   async deactivateAllEmailConfigs(userId: string): Promise<void> {
@@ -1106,7 +1106,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(rateAgreements)
       .where(and(eq(rateAgreements.id, id), eq(rateAgreements.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   async getActiveRateAgreements(userId: string): Promise<RateAgreement[]> {
@@ -1202,7 +1202,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(humanResources)
       .where(and(eq(humanResources.id, id), eq(humanResources.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   async getHumanResourceByLinkedUser(userId: string, linkedUserId: string): Promise<HumanResource | undefined> {
@@ -1286,7 +1286,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(sapSystems)
       .where(and(eq(sapSystems.id, id), eq(sapSystems.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   // SAP System Credentials
@@ -1326,7 +1326,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(sapSystemCredentials)
       .where(and(eq(sapSystemCredentials.id, id), eq(sapSystemCredentials.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   async getActiveSapSystemCredentials(sapSystemId: string, userId: string): Promise<SapSystemCredentials[]> {
@@ -1382,7 +1382,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(vpnConnections)
       .where(and(eq(vpnConnections.id, id), eq(vpnConnections.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   // VPN Credentials
@@ -1422,7 +1422,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(vpnCredentials)
       .where(and(eq(vpnCredentials.id, id), eq(vpnCredentials.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   async getActiveVpnCredentials(vpnConnectionId: string, userId: string): Promise<VpnCredentials[]> {
@@ -1487,7 +1487,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(transportRequests)
       .where(and(eq(transportRequests.id, id), eq(transportRequests.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   async getTransportRequestByNumber(requestNumber: string, userId: string): Promise<TransportRequest | undefined> {
@@ -1551,7 +1551,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(interventionDocuments)
       .where(and(eq(interventionDocuments.id, id), eq(interventionDocuments.userId, userId)));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   async getInterventionDocumentsByStatus(status: string, userId: string): Promise<InterventionDocument[]> {
@@ -1616,7 +1616,7 @@ export class DatabaseStorage implements IStorage {
         eq(systemCredentials.id, id),
         eq(systemCredentials.userId, userId)
       ));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return (result.rowCount || 0) > 0;
   }
 
   // VPN Software (Master Data) 
@@ -1653,7 +1653,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(vpnSoftware)
       .where(eq(vpnSoftware.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // VPN Systems
@@ -1661,14 +1661,18 @@ export class DatabaseStorage implements IStorage {
     return await db.select({
       id: vpnSystems.id,
       name: vpnSystems.name,
-      serverAddress: vpnSystems.serverAddress,
-      port: vpnSystems.port,
-      connectionType: vpnSystems.connectionType,
+      serverHost: vpnSystems.serverHost,
+      serverPort: vpnSystems.serverPort,
       status: vpnSystems.status,
       description: vpnSystems.description,
       partnerId: vpnSystems.partnerId,
       vpnSoftwareId: vpnSystems.vpnSoftwareId,
       userId: vpnSystems.userId,
+      username: vpnSystems.username,
+      connectionProfile: vpnSystems.connectionProfile,
+      configNotes: vpnSystems.configNotes,
+      autoStart: vpnSystems.autoStart,
+      notes: vpnSystems.notes,
       createdAt: vpnSystems.createdAt,
       updatedAt: vpnSystems.updatedAt,
       lastConnected: vpnSystems.lastConnected,
@@ -1724,7 +1728,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(vpnSystems)
       .where(and(eq(vpnSystems.id, id), eq(vpnSystems.userId, userId)));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 }
 
