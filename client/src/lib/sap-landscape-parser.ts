@@ -251,16 +251,46 @@ export class SapLandscapeParser {
     
     console.log(`Extracted data:`, { server, systemNumber, clientNumber });
     
+    // Gestione più robusta dei campi mancanti
     if (!server) {
-      throw new Error(`No server information found for system ${systemId} (tried: server, host, hostname)`);
+      console.warn(`No server information found for system ${systemId}, skipping...`);
+      return null; // Invece di lanciare errore, ritorna null per saltare questo sistema
     }
 
+    // Gestione port nel server string (es: "server:port")
+    let finalServer = server;
+    let applicationServerPort = 3200; // Default SAP
+    
+    if (server.includes(':')) {
+      const parts = server.split(':');
+      finalServer = parts[0];
+      const portStr = parts[1];
+      const port = parseInt(portStr);
+      if (!isNaN(port)) {
+        applicationServerPort = port;
+      }
+    }
+
+    // Usa valori di default se non trova system number o client
     if (!systemNumber) {
-      throw new Error(`No system number found for system ${systemId} (tried: systemNumber, sysnr, instance)`);
+      console.warn(`No system number found for system ${systemId}, using default '00'`);
+      systemNumber = "00";
     }
 
     if (!clientNumber) {
-      throw new Error(`No client number found for system ${systemId} (tried: clientNumber, client, mandt)`);
+      console.warn(`No client number found for system ${systemId}, using default '100'`);
+      clientNumber = "100";
+    }
+
+    // Verifica che i valori siano nel formato corretto
+    if (!/^\d{2}$/.test(systemNumber)) {
+      console.warn(`Invalid system number format for ${systemId}: ${systemNumber}, using '00'`);
+      systemNumber = "00";
+    }
+
+    if (!/^\d{3}$/.test(clientNumber)) {
+      console.warn(`Invalid client number format for ${systemId}: ${clientNumber}, using '100'`);
+      clientNumber = "100";
     }
 
     // Determina il tipo di sistema dal nome o descrizione
