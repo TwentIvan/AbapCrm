@@ -794,12 +794,12 @@ export default function TasksPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleLaunchConnections(task)}
-                              data-testid={`button-launch-connections-${task.id}`}
-                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              onClick={() => alert(`Test button for task: ${task.title}`)}
+                              data-testid={`button-test-${task.id}`}
+                              className="bg-red-500 text-white px-4 py-2"
+                              style={{ backgroundColor: 'red', color: 'white', fontSize: '16px' }}
                             >
-                              <ExternalLink className="h-4 w-4 mr-1" />
-                              Avvia ({task.sapSystemId ? 'SAP' : 'NO'})
+                              🔴 TEST BUTTON
                             </Button>
                             <Button
                               variant="ghost"
