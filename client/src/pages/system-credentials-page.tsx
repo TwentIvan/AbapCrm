@@ -78,15 +78,49 @@ export function SystemCredentialsPage() {
     setShowForm(true);
   };
 
-  const handleDelete = async (credentials: SystemCredentials[]) => {
-    if (credentials.length === 0) return;
-    
-    if (confirm(`Eliminare ${credentials.length} credenziali selezionate?`)) {
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (credentials: SystemCredentials[]) => {
       for (const credential of credentials) {
-        await deleteMutation.mutateAsync(credential.id);
+        await apiRequest("DELETE", `/api/system-credentials/${credential.id}`);
       }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/system-credentials"] });
       setSelectedCredentials([]);
+      setShowBulkDeleteDialog(false);
+      toast({
+        title: "Credenziali eliminate",
+        description: "Le credenziali selezionate sono state eliminate con successo.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile eliminare le credenziali.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSingleDelete = (credential: SystemCredentials) => {
+    setEditingCredential(credential);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDelete = (credentials: SystemCredentials[]) => {
+    if (credentials.length === 0) return;
+    setSelectedCredentials(credentials);
+    setShowBulkDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (editingCredential) {
+      deleteMutation.mutate(editingCredential.id);
     }
+  };
+
+  const confirmBulkDelete = () => {
+    bulkDeleteMutation.mutate(selectedCredentials);
   };
 
   const formatSystemType = (type: string) => {
@@ -180,13 +214,9 @@ export function SystemCredentialsPage() {
         />
         <main className="p-6 space-y-6">
           <LayoutManager
-            layoutId="system-credentials"
-            viewMode={viewMode}
             currentLayoutName={currentLayoutName}
             savedLayouts={savedLayouts}
-            onViewModeChange={(mode) => updateLayout({ viewMode: mode })}
             onLoadLayout={loadLayout}
-            onSaveLayout={saveLayoutAs}
             onRenameLayout={renameLayout}
             onDeleteLayout={deleteLayout}
             onEditLayout={(layoutToEdit) => {
@@ -211,7 +241,6 @@ export function SystemCredentialsPage() {
                 onClick: () => handleDelete(selectedCredentials)
               }
             ]}
-            isLoading={isLoading}
           />
 
           {/* Create/Edit Dialog */}
