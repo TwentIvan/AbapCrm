@@ -15,9 +15,11 @@ export function SystemCredentialsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: credentials = [], isLoading } = useQuery<SystemCredentials[]>({
+  const { data: credentials = [], isLoading, error } = useQuery<SystemCredentials[]>({
     queryKey: ["/api/system-credentials"],
   });
+
+  console.log("Credentials query:", { credentials, isLoading, error });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/system-credentials/${id}`, "DELETE"),
