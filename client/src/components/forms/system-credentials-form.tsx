@@ -220,7 +220,6 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Nessun sistema collegato</SelectItem>
                         {selectedSystemType === "sap" && Array.isArray(sapSystems) && sapSystems.map((system: any) => (
                           <SelectItem key={system.id} value={system.id}>
                             {system.name} ({system.serverHost})
