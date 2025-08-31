@@ -357,7 +357,7 @@ export const sapSystemStatusEnum = pgEnum("sap_system_status", ["active", "inact
 export const sapSystems = pgTable("sap_systems", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
-  partnerId: uuid("partner_id").references(() => partners.id).notNull(), // Cliente a cui appartiene il sistema
+  partnerId: uuid("partner_id").references(() => partners.id), // Cliente a cui appartiene il sistema (opzionale)
   projectId: uuid("project_id").references(() => projects.id), // Progetto associato opzionale
   name: text("name").notNull(), // Nome del sistema (es. "PRD", "DEV", "QAS")
   description: text("description"),

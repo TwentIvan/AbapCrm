@@ -19,7 +19,7 @@ import { Building, Upload, FileText, AlertCircle, CheckCircle, Server, Globe } f
 import type { Partner } from "@shared/schema";
 
 const importFormSchema = z.object({
-  partnerId: z.string().min(1, "Please select a partner"),
+  partnerId: z.string().optional(),
   selectedSystems: z.array(z.string()).min(1, "Please select at least one system to import"),
 });
 
@@ -57,7 +57,7 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
   const form = useForm<ImportFormData>({
     resolver: zodResolver(importFormSchema),
     defaultValues: {
-      partnerId: "",
+      partnerId: undefined,
       selectedSystems: [],
     },
   });
@@ -77,7 +77,7 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
       const importPromises = systemsToImport.map(async (system, index) => {
         const systemData = {
           ...system,
-          partnerId: data.partnerId,
+          partnerId: data.partnerId || undefined,
         };
         
         console.log(`📤 Importing system ${index + 1}/${systemsToImport.length}:`, system.name, systemData);
