@@ -62,10 +62,19 @@ export class SapLandscapeParser {
             // Valida i dati estratti
             const validatedSystem = SapSystemFromXmlSchema.parse(sapSystem);
             systems.push(validatedSystem);
+            console.log(`✓ Successfully parsed system: ${sapSystem.name}`);
           }
         } catch (error) {
-          const systemId = systemElement.getAttribute("systemid") || "unknown";
-          errors.push(`Error parsing system ${systemId}: ${error instanceof Error ? error.message : String(error)}`);
+          const systemId = systemElement.getAttribute("systemid") || 
+                          systemElement.getAttribute("systemId") || 
+                          systemElement.getAttribute("name") || 
+                          "unknown";
+          const errorMessage = `Error parsing system ${systemId}: ${error instanceof Error ? error.message : String(error)}`;
+          console.error(errorMessage);
+          errors.push(errorMessage);
+          
+          // Log dell'elemento problematico per debugging
+          console.log(`Problematic element for ${systemId}:`, systemElement.outerHTML.substring(0, 500));
         }
       }
 
