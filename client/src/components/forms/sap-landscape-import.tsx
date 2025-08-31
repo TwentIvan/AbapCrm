@@ -19,7 +19,7 @@ import { Building, Upload, FileText, AlertCircle, CheckCircle, Server, Globe } f
 import type { Partner } from "@shared/schema";
 
 const importFormSchema = z.object({
-  partnerId: z.string().optional(),
+  partnerId: z.string().optional(), // Partner opzionale
   selectedSystems: z.array(z.string()).min(1, "Please select at least one system to import"),
 });
 
@@ -296,7 +296,7 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
                   name="partnerId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Associated Partner</FormLabel>
+                      <FormLabel>Associated Partner (Optional)</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-partner">
@@ -391,16 +391,13 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
                                       <p className="text-sm text-muted-foreground">{system.description}</p>
                                     )}
                                     
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                                       <div className="flex items-center gap-1">
                                         <Globe className="h-3 w-3" />
                                         <span className="font-medium">Host:</span> {system.serverHost}
                                       </div>
                                       <div>
                                         <span className="font-medium">System:</span> {system.systemNumber}
-                                      </div>
-                                      <div>
-                                        <span className="font-medium">Client:</span> {system.clientNumber}
                                       </div>
                                       <div>
                                         <span className="font-medium">Port:</span> {system.applicationServerPort}

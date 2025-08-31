@@ -367,7 +367,7 @@ export const sapSystems = pgTable("sap_systems", {
   // Connection details
   serverHost: text("server_host").notNull(), // IP o hostname
   systemNumber: text("system_number").notNull(), // 00, 01, etc.
-  clientNumber: text("client_number").notNull(), // 100, 800, etc.
+  // clientNumber rimosso - è dato applicativo che va nelle credenziali
   applicationServerPort: integer("application_server_port").default(3200), // 32XX
   messageServerPort: integer("message_server_port").default(3600), // 36XX
   

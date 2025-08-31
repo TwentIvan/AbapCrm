@@ -6,12 +6,12 @@ export const SapSystemFromXmlSchema = z.object({
   description: z.string().optional(),
   serverHost: z.string().min(1, "Server host is required"),
   systemNumber: z.string().regex(/^\d{2}$/, "System number must be 2 digits"),
-  clientNumber: z.string().regex(/^\d{3}$/, "Client number must be 3 digits"),
+  // clientNumber rimosso - è dato applicativo che va nelle credenziali
   applicationServerPort: z.number().min(1).max(65535).default(3200),
   messageServerPort: z.number().min(1).max(65535).default(3600),
   systemType: z.enum(["ecc", "s4hana", "bw", "pi", "po", "solution_manager", "crm", "srm", "other"]).default("other"),
   status: z.enum(["active", "inactive", "maintenance", "test"]).default("active"),
-  landscape: z.string().default("production"), // Cambiato da enum a stringa per supportare valori custom
+  landscape: z.string().default("production"),
   sapReleaseVersion: z.string().optional(),
   kernelVersion: z.string().optional(),
   notes: z.string().optional(),
@@ -223,7 +223,6 @@ export class SapLandscapeParser {
     // Se ancora non trova servizi, prova a estrarre info direttamente dall'elemento system
     let server: string | null = null;
     let systemNumber: string | null = null;
-    let clientNumber: string | null = null;
 
     if (bestService) {
       console.log(`Using service:`, bestService.outerHTML.substring(0, 200));
@@ -232,12 +231,12 @@ export class SapLandscapeParser {
       server = bestService.getAttribute("server") || 
                bestService.getAttribute("host") || 
                bestService.getAttribute("hostname");
+      // Estrae system number con pattern più avanzati
       systemNumber = bestService.getAttribute("systemNumber") || 
                      bestService.getAttribute("sysnr") ||
-                     bestService.getAttribute("instance");
-      clientNumber = bestService.getAttribute("clientNumber") || 
-                     bestService.getAttribute("client") ||
-                     bestService.getAttribute("mandt");
+                     bestService.getAttribute("instance") ||
+                     bestService.getAttribute("snc") ||
+                     this.extractSystemNumberFromServer(server);
     } else {
       console.log(`No services found, trying to extract info from system element directly`);
       
@@ -248,14 +247,11 @@ export class SapLandscapeParser {
       systemNumber = systemElement.getAttribute("systemNumber") || 
                      systemElement.getAttribute("sysnr") ||
                      systemElement.getAttribute("instance") ||
+                     this.extractSystemNumberFromServer(server) ||
                      "00"; // Default SAP
-      clientNumber = systemElement.getAttribute("clientNumber") || 
-                     systemElement.getAttribute("client") ||
-                     systemElement.getAttribute("mandt") ||
-                     "100"; // Default SAP
     }
     
-    console.log(`Extracted data:`, { server, systemNumber, clientNumber });
+    console.log(`Extracted data:`, { server, systemNumber });
     
     // Gestione più robusta dei campi mancanti
     if (!server) {
@@ -283,21 +279,12 @@ export class SapLandscapeParser {
       systemNumber = "00";
     }
 
-    if (!clientNumber) {
-      console.warn(`No client number found for system ${systemId}, using default '100'`);
-      clientNumber = "100";
-    }
-
     // Verifica che i valori siano nel formato corretto
     if (!/^\d{2}$/.test(systemNumber)) {
       console.warn(`Invalid system number format for ${systemId}: ${systemNumber}, using '00'`);
       systemNumber = "00";
     }
 
-    if (!/^\d{3}$/.test(clientNumber)) {
-      console.warn(`Invalid client number format for ${systemId}: ${clientNumber}, using '100'`);
-      clientNumber = "100";
-    }
 
     // Determina il tipo di sistema dal nome o descrizione
     const systemType = this.inferSystemType(systemId, description);
@@ -321,7 +308,6 @@ export class SapLandscapeParser {
       description: description || undefined,
       serverHost: finalServer,
       systemNumber: systemNumber.padStart(2, '0'), // Assicura 2 cifre
-      clientNumber: clientNumber.padStart(3, '0'), // Assicura 3 cifre
       applicationServerPort,
       messageServerPort: 3600, // Default SAP message server port
       systemType,
@@ -332,6 +318,30 @@ export class SapLandscapeParser {
       notes: undefined,
       isActive: true,
     };
+  }
+
+  /**
+   * Estrae il system number dal server string quando contiene il numero
+   * Es: "server.com:3266" -> "66", "host:3207" -> "07"
+   */
+  private static extractSystemNumberFromServer(server: string | null): string | null {
+    if (!server) return null;
+    
+    // Pattern per estrarre instance number da porta (32XX dove XX è l'instance)
+    const portMatch = server.match(/:32(\d{2})$/);
+    if (portMatch) {
+      console.log(`Extracted system number from port: ${portMatch[1]}`);
+      return portMatch[1];
+    }
+    
+    // Pattern per altre porte SAP comuni (36XX, 80XX, etc.)
+    const generalPortMatch = server.match(/:(\d{2})(\d{2})$/);
+    if (generalPortMatch) {
+      console.log(`Extracted system number from general port: ${generalPortMatch[2]}`);
+      return generalPortMatch[2];
+    }
+    
+    return null;
   }
 
   /**
