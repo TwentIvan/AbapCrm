@@ -138,9 +138,15 @@ export function TableConfiguration({
   currentAggregations = [],
   onConfigurationChange,
   onSaveLayout,
-  editingLayout
+  editingLayout,
+  isOpen: externalIsOpen,
+  onOpenChange,
+  onSave,
+  onCancel
 }: TableConfigurationProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+  const setIsOpen = onOpenChange || setInternalIsOpen;
   const [columns, setColumns] = useState<ColumnConfig[]>(() => {
     const layout = userPreferences.getTableLayout(tableId);
     return availableColumns.map(col => ({
@@ -263,24 +269,32 @@ export function TableConfiguration({
       },
     };
 
-    // Save as new layout with specified name
+    // Save layout using new simplified interface
     console.log('💾 About to save layout...');
-    const layoutId = onSaveLayout ? 
-      onSaveLayout(layoutName, saveAsDefault) : 
-      userPreferences.saveLayoutAs(tableId, layoutName, saveAsDefault);
-    console.log('✅ Layout saved with ID:', layoutId);
     
-    // Update current layout with new configuration
-    userPreferences.saveTableLayout(tableId, updatedLayout);
-    console.log('🔄 Layout updated');
-    
-    onConfigurationChange?.(updatedLayout);
-    
-    // Reset form
-    setLayoutName('');
-    setSaveAsDefault(false);
-    setIsOpen(false);
-    console.log('✨ Form reset, dialog closed');
+    if (onSave) {
+      // Use new simplified onSave callback
+      onSave(updatedLayout);
+      console.log('✅ Layout saved via onSave callback');
+    } else {
+      // Fallback to old interface for compatibility
+      const layoutId = onSaveLayout ? 
+        onSaveLayout(layoutName, saveAsDefault) : 
+        userPreferences.saveLayoutAs(tableId, layoutName, saveAsDefault);
+      console.log('✅ Layout saved with ID:', layoutId);
+      
+      // Update current layout with new configuration
+      userPreferences.saveTableLayout(tableId, updatedLayout);
+      console.log('🔄 Layout updated');
+      
+      onConfigurationChange?.(updatedLayout);
+      
+      // Reset form
+      setLayoutName('');
+      setSaveAsDefault(false);
+      setIsOpen(false);
+      console.log('✨ Form reset, dialog closed');
+    }
   };
 
   const handleResetConfiguration = () => {
@@ -303,22 +317,25 @@ export function TableConfiguration({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="ml-2"
-          data-testid="button-table-configuration"
-        >
-          <Settings className="mr-2 h-4 w-4" />
-          Configurazione
-          {(activeFiltersCount > 0 || activeAggregationsCount > 0) && (
-            <Badge variant="secondary" className="ml-2">
-              {activeFiltersCount + activeAggregationsCount}
-            </Badge>
-          )}
-        </Button>
-      </DialogTrigger>
+      {/* Only show trigger if not controlled externally */}
+      {externalIsOpen === undefined && (
+        <DialogTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="ml-2"
+            data-testid="button-table-configuration"
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            Configurazione
+            {(activeFiltersCount > 0 || activeAggregationsCount > 0) && (
+              <Badge variant="secondary" className="ml-2">
+                {activeFiltersCount + activeAggregationsCount}
+              </Badge>
+            )}
+          </Button>
+        </DialogTrigger>
+      )}
       
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
@@ -534,7 +551,13 @@ export function TableConfiguration({
           <div className="space-x-2">
             <Button 
               variant="outline" 
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                if (onCancel) {
+                  onCancel();
+                } else {
+                  setIsOpen(false);
+                }
+              }}
               data-testid="button-cancel-configuration"
             >
               Annulla
