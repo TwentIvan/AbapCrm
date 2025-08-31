@@ -42,17 +42,6 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
   const { toast } = useToast();
   const isEditing = !!credential;
 
-  // Fetch available systems for reference
-  const { data: sapSystems = [] } = useQuery({
-    queryKey: ["/api/sap-systems"],
-    enabled: false // Disabled temporaneamente per debug
-  });
-
-  const { data: vpnConnections = [] } = useQuery({
-    queryKey: ["/api/vpn-connections"],  
-    enabled: false // Disabled temporaneamente per debug
-  });
-
   const form = useForm<InsertSystemCredentials>({
     resolver: zodResolver(insertSystemCredentialsSchema),
     defaultValues: {
@@ -69,6 +58,17 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
   });
 
   const selectedSystemType = form.watch("systemType");
+
+  // Fetch available systems for reference - only load what exists
+  const { data: sapSystems = [] } = useQuery({
+    queryKey: ["/api/sap-systems"],
+    enabled: selectedSystemType === "sap" // Solo se tipo SAP selezionato
+  });
+
+  const { data: vpnConnections = [] } = useQuery({
+    queryKey: ["/api/vpn-connections"],  
+    enabled: false // VPN table doesn't exist yet
+  });
 
   const mutation = useMutation({
     mutationFn: async (data: InsertSystemCredentials) => {
@@ -209,17 +209,24 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="temp-manual">Inserimento manuale (temporaneo)</SelectItem>
-                      {selectedSystemType === "sap" && Array.isArray(sapSystems) && sapSystems.map((system: any) => (
-                        <SelectItem key={system.id} value={system.id}>
-                          {system.name} ({system.serverHost || system.host})
-                        </SelectItem>
-                      ))}
-                      {selectedSystemType === "vpn" && Array.isArray(vpnConnections) && vpnConnections.map((vpn: any) => (
-                        <SelectItem key={vpn.id} value={vpn.id}>
-                          {vpn.name} ({vpn.serverHost || vpn.host})
-                        </SelectItem>
-                      ))}
+                      {selectedSystemType === "sap" && Array.isArray(sapSystems) && sapSystems.length > 0 ? (
+                        // Mostra sistemi SAP esistenti
+                        sapSystems.map((system: any) => (
+                          <SelectItem key={system.id} value={system.id}>
+                            {system.name} ({system.serverHost || system.host})
+                          </SelectItem>
+                        ))
+                      ) : selectedSystemType === "vpn" && Array.isArray(vpnConnections) && vpnConnections.length > 0 ? (
+                        // Mostra connessioni VPN esistenti
+                        vpnConnections.map((vpn: any) => (
+                          <SelectItem key={vpn.id} value={vpn.id}>
+                            {vpn.name} ({vpn.serverHost || vpn.host})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        // Fallback per inserimento manuale
+                        <SelectItem value="temp-manual">Inserimento manuale - nessun {selectedSystemType.toUpperCase()} nel sistema</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
