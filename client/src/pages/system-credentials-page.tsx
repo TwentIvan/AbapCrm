@@ -4,6 +4,12 @@ import { UniversalTable, createStandardColumns } from "@/components/ui/universal
 import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2, Key, Wifi, Server } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTableLayout } from "@/lib/user-preferences";
+import Sidebar from "@/components/layout/sidebar";
+import Header from "@/components/layout/header";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { LayoutManager } from "@/components/ui/layout-manager";
 import { SystemCredentialsForm } from "@/components/forms/system-credentials-form";
 import type { SystemCredentials } from "@shared/schema";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
@@ -12,8 +18,26 @@ export function SystemCredentialsPage() {
   const [selectedCredentials, setSelectedCredentials] = useState<SystemCredentials[]>([]);
   const [editingCredential, setEditingCredential] = useState<SystemCredentials | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [editingLayout, setEditingLayout] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Layout management
+  const {
+    layout,
+    currentLayoutName,
+    savedLayouts,
+    updateLayout,
+    saveLayoutAs,
+    loadLayout,
+    renameLayout,
+    deleteLayout,
+    updateExistingLayout,
+  } = useTableLayout('system-credentials');
+  const viewMode = layout.viewMode;
 
   const { data: credentials = [], isLoading, error } = useQuery<SystemCredentials[]>({
     queryKey: ["/api/system-credentials"],
@@ -117,74 +141,173 @@ export function SystemCredentialsPage() {
       sortable: false,
       searchable: false,
       render: (credential: SystemCredentials) => (
-        <Button
-          variant="ghost" 
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleEdit(credential);
-          }}
-          data-testid={`button-edit-${credential.id}`}
-        >
-          <Edit className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost" 
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(credential);
+            }}
+            data-testid={`button-edit-${credential.id}`}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost" 
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSingleDelete(credential);
+            }}
+            data-testid={`button-delete-${credential.id}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       )
     }
   ];
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <Key className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-3xl font-bold">Credenziali Sistema</h1>
-            <p className="text-gray-600">Gestione unificata credenziali SAP e VPN</p>
-          </div>
-        </div>
-        <Button 
-          onClick={handleAdd}
-          className="bg-blue-600 hover:bg-blue-700"
-          data-testid="button-add-credential"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Aggiungi Credenziali
-        </Button>
-      </div>
-
-      <UniversalTable
-        data={credentials}
-        columns={columns}
-        enableSelection={true}
-        enableSearch={true}
-        searchPlaceholder="Cerca credenziali..."
-        onSelectionChange={(rows) => setSelectedCredentials(rows as SystemCredentials[])}
-        onRowClick={handleEdit}
-        bulkActions={[
-          {
-            label: "Delete Selected",
-            icon: Trash2,
-            variant: "destructive",
-            onClick: () => handleDelete(selectedCredentials)
-          }
-        ]}
-        // isLoading={isLoading} // TODO: Add loading support to UniversalTable
-      />
-
-      {showForm && (
-        <SystemCredentialsForm
-          credential={editingCredential}
-          onSuccess={() => {
-            setShowForm(false);
-            setEditingCredential(null);
-            queryClient.invalidateQueries({ queryKey: ["/api/system-credentials"] });
-          }}
-          onCancel={() => {
-            setShowForm(false);
-            setEditingCredential(null);
-          }}
+    <div className="flex h-screen">
+      <Sidebar />
+      <div className="flex-1 overflow-hidden">
+        <Header 
+          title="Credenziali Sistema"
+          subtitle="Gestione unificata credenziali SAP e VPN"
+          onNewClick={handleAdd}
         />
-      )}
+        <main className="p-6 space-y-6">
+          <LayoutManager
+            layoutId="system-credentials"
+            viewMode={viewMode}
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onViewModeChange={(mode) => updateLayout({ viewMode: mode })}
+            onLoadLayout={loadLayout}
+            onSaveLayout={saveLayoutAs}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onEditLayout={(layoutToEdit) => {
+              setEditingLayout(layoutToEdit);
+              setShowConfigDialog(true);
+            }}
+          />
+
+          <UniversalTable
+            data={credentials}
+            columns={columns}
+            enableSelection={true}
+            enableSearch={true}
+            searchPlaceholder="Cerca credenziali..."
+            onSelectionChange={(rows) => setSelectedCredentials(rows as SystemCredentials[])}
+            onRowClick={handleEdit}
+            bulkActions={[
+              {
+                label: "Elimina Selezionate",
+                icon: Trash2,
+                variant: "destructive",
+                onClick: () => handleDelete(selectedCredentials)
+              }
+            ]}
+            isLoading={isLoading}
+          />
+
+          {/* Create/Edit Dialog */}
+          <Dialog open={showForm} onOpenChange={setShowForm}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingCredential ? "Modifica Credenziali" : "Nuove Credenziali"}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingCredential ? "Aggiorna" : "Aggiungi"} le credenziali di sistema
+                </DialogDescription>
+              </DialogHeader>
+              <SystemCredentialsForm
+                credential={editingCredential}
+                onSuccess={() => {
+                  setShowForm(false);
+                  setEditingCredential(null);
+                  queryClient.invalidateQueries({ queryKey: ["/api/system-credentials"] });
+                }}
+                onCancel={() => {
+                  setShowForm(false);
+                  setEditingCredential(null);
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+
+          {/* Single Delete Confirmation Dialog */}
+          <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Elimina Credenziali</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Sei sicuro di voler eliminare le credenziali per "{editingCredential?.systemName}"? 
+                  Questa azione non può essere annullata.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="button-cancel-delete">
+                  Annulla
+                </AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={confirmDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={deleteMutation.isPending}
+                  data-testid="button-confirm-delete"
+                >
+                  {deleteMutation.isPending ? "Eliminando..." : "Elimina"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Bulk Delete Confirmation Dialog */}
+          <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Conferma Eliminazione Multipla</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Sei sicuro di voler eliminare {selectedCredentials.length} credenziali selezionate? 
+                  Questa azione non può essere annullata.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="button-cancel-bulk-delete">
+                  Annulla
+                </AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={confirmBulkDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={bulkDeleteMutation.isPending}
+                  data-testid="button-confirm-bulk-delete"
+                >
+                  {bulkDeleteMutation.isPending ? "Eliminando..." : `Elimina ${selectedCredentials.length} Credenziali`}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Layout Configuration Dialog */}
+          <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  Modifica Layout: {editingLayout?.name || 'Layout'}
+                </DialogTitle>
+                <DialogDescription>
+                  Configura la visibilità delle colonne, ordinamento e filtri per questo layout.
+                </DialogDescription>
+              </DialogHeader>
+              {/* TODO: Add TableConfiguration component */}
+            </DialogContent>
+          </Dialog>
+        </main>
+      </div>
     </div>
   );
 }
