@@ -1,0 +1,182 @@
+MacBook-Pro-di-Ivan:Downloads Ivan$ bash extract_vpn_advanced.sh
+Extracting VPN connections from macOS workstation (Advanced)
+============================================================
+
+=== 1. SCANNING SYSTEM VPN CONNECTIONS ===
+System VPN connections found:
+Available network connection services in the current set (*=enabled):
+* (Disconnected)   E6C9B3B3-63BE-40A7-946F-78EEE2632334 VPN (com.fortinet.forticlient.macos.vpn) "VPN 2"                          [VPN:com.fortinet.forticlient.macos.vpn]
+* (Disconnected)   8F3A8165-7232-40D1-81C1-F3A1FE6BC6F8 VPN (com.microsoft.AzureVpnMac) "eVPN-GruppoHera-IT"             [VPN:com.microsoft.AzureVpnMac]
+* (Disconnected)   3D60A479-0569-4F04-B069-9EF146045A71 VPN (com.cisco.anyconnect) "Julius Meinl"                   [VPN:com.cisco.anyconnect]
+* (Disconnected)   66A21E3A-AF19-4074-A0D7-D38D2C6AC9CD VPN (com.cisco.anyconnect) "Lutech"                         [VPN:com.cisco.anyconnect]
+* (Disconnected)   449187EC-AFF4-4CAD-A57D-A7A2D10E6E0F VPN (com.paloaltonetworks.globalprotect.vpn) "GlobalProtect"                  [VPN:com.paloaltonetworks.globalprotect.vpn]
+* (Disconnected)   20ADF21A-37E9-4F91-8503-ADB27A277044 VPN (com.fortinet.forticlient.macos.vpn) "VPN"                            [VPN:com.fortinet.forticlient.macos.vpn]
+
+  [✓] Found: VPN 2 (forticlient)
+  [✓] Found: eVPN-GruppoHera-IT (azure-vpn)
+  [✓] Found: Julius Meinl (cisco-anyconnect)
+  [✓] Found: Lutech (cisco-anyconnect)
+  [✓] Found: GlobalProtect (globalprotect)
+  [✓] Found: VPN (forticlient)
+
+=== 2. SCANNING FORTICLIENT CONFIGURATIONS ===
+FortiClient app found
+  Checking: /Users/Ivan/Library/Application Support/Fortinet/FortiClient
+  [✓] FortiClient config directory found
+  [✓] Found: FortiClient Profiles (       1) (forticlient)
+  Checking: /Users/Ivan/Library/Preferences/com.fortinet.forticlient.plist
+  [✓] FortiClient plist found
+  Checking: /Library/Application Support/Fortinet/FortiClient
+  [✓] FortiClient config directory found
+  [✓] Found: FortiClient Profiles (       6) (forticlient)
+
+=== 3. SCANNING GLOBALPROTECT CONFIGURATIONS ===
+GlobalProtect app found
+  Checking: /Users/Ivan/Library/Application Support/PaloAltoNetworks/GlobalProtect
+  [✓] GlobalProtect config directory found
+  [✓] Found: GlobalProtect Profiles (       9) (globalprotect)
+  Checking: /Library/Application Support/PaloAltoNetworks
+  [✓] GlobalProtect config directory found
+  [✓] Found: GlobalProtect Profiles (      11) (globalprotect)
+
+=== 4. SCANNING CISCO ANYCONNECT CONFIGURATIONS ===
+Cisco AnyConnect found
+  Checking: /opt/cisco/anyconnect/profile
+  [✓] AnyConnect config files found
+  [✓] Found: AnyConnect Profiles (       1) (cisco-anyconnect)
+
+=== 5. SCANNING OTHER VPN SOFTWARE ===
+  [✓] Found: NordVPN
+  [✓] Found: NordVPN (nordvpn)
+  [✓] Found: ExpressVPN
+  [✓] Found: ExpressVPN (expressvpn)
+  [✓] Found: Private Internet Access
+  [✓] Found: Private Internet Access (pia)
+
+============================================================
+DISCOVERY RESULTS: Found 14 total connections
+============================================================
+Connections JSON:
+[
+    {
+        "id": "sys-fc-0",
+        "name": "VPN 2",
+        "type": "forticlient",
+        "source": "system",
+        "status": "configured",
+        "description": "FortiClient system connection"
+    },
+    {
+        "id": "sys-az-1",
+        "name": "eVPN-GruppoHera-IT",
+        "type": "azure-vpn",
+        "source": "system",
+        "status": "configured",
+        "description": "Azure VPN system connection"
+    },
+    {
+        "id": "sys-ac-2",
+        "name": "Julius Meinl",
+        "type": "cisco-anyconnect",
+        "source": "system",
+        "status": "configured",
+        "description": "Cisco AnyConnect system connection"
+    },
+    {
+        "id": "sys-ac-3",
+        "name": "Lutech",
+        "type": "cisco-anyconnect",
+        "source": "system",
+        "status": "configured",
+        "description": "Cisco AnyConnect system connection"
+    },
+    {
+        "id": "sys-gp-4",
+        "name": "GlobalProtect",
+        "type": "globalprotect",
+        "source": "system",
+        "status": "configured",
+        "description": "GlobalProtect system connection"
+    },
+    {
+        "id": "sys-fc-5",
+        "name": "VPN",
+        "type": "forticlient",
+        "source": "system",
+        "status": "configured",
+        "description": "FortiClient system connection"
+    },
+    {
+        "id": "fc-dir-6",
+        "name": "FortiClient Profiles (       1)",
+        "type": "forticlient",
+        "source": "config-dir",
+        "status": "configured",
+        "description": "FortiClient configuration files"
+    },
+    {
+        "id": "fc-dir-7",
+        "name": "FortiClient Profiles (       6)",
+        "type": "forticlient",
+        "source": "config-dir",
+        "status": "configured",
+        "description": "FortiClient configuration files"
+    },
+    {
+        "id": "gp-dir-8",
+        "name": "GlobalProtect Profiles (       9)",
+        "type": "globalprotect",
+        "source": "config-dir",
+        "status": "configured",
+        "description": "GlobalProtect configuration files"
+    },
+    {
+        "id": "gp-dir-9",
+        "name": "GlobalProtect Profiles (      11)",
+        "type": "globalprotect",
+        "source": "config-dir",
+        "status": "configured",
+        "description": "GlobalProtect configuration files"
+    },
+    {
+        "id": "ac-dir-10",
+        "name": "AnyConnect Profiles (       1)",
+        "type": "cisco-anyconnect",
+        "source": "config-dir",
+        "status": "configured",
+        "description": "Cisco AnyConnect configuration files"
+    },
+    {
+        "id": "other-11",
+        "name": "NordVPN",
+        "type": "nordvpn",
+        "source": "installed",
+        "status": "configured",
+        "description": "NordVPN VPN client"
+    },
+    {
+        "id": "other-12",
+        "name": "ExpressVPN",
+        "type": "expressvpn",
+        "source": "installed",
+        "status": "configured",
+        "description": "ExpressVPN VPN client"
+    },
+    {
+        "id": "other-13",
+        "name": "Private Internet Access",
+        "type": "pia",
+        "source": "installed",
+        "status": "configured",
+        "description": "Private Internet Access VPN client"
+    }
+]
+
+Uploading to server: https://abapcrm.ivanlotorto.repl.co/api/vpn/upload-local-connections
+Failed to upload to server. Saving locally...
+Saved to: /Users/Ivan/vpn_connections_advanced_20250901_022343.json
+
+You can manually copy this JSON to the web interface:
+[{"id":"sys-fc-0","name":"VPN 2","type":"forticlient","source":"system","status":"configured","description":"FortiClient system connection"},{"id":"sys-az-1","name":"eVPN-GruppoHera-IT","type":"azure-vpn","source":"system","status":"configured","description":"Azure VPN system connection"},{"id":"sys-ac-2","name":"Julius Meinl","type":"cisco-anyconnect","source":"system","status":"configured","description":"Cisco AnyConnect system connection"},{"id":"sys-ac-3","name":"Lutech","type":"cisco-anyconnect","source":"system","status":"configured","description":"Cisco AnyConnect system connection"},{"id":"sys-gp-4","name":"GlobalProtect","type":"globalprotect","source":"system","status":"configured","description":"GlobalProtect system connection"},{"id":"sys-fc-5","name":"VPN","type":"forticlient","source":"system","status":"configured","description":"FortiClient system connection"},{"id":"fc-dir-6","name":"FortiClient Profiles (       1)","type":"forticlient","source":"config-dir","status":"configured","description":"FortiClient configuration files"},{"id":"fc-dir-7","name":"FortiClient Profiles (       6)","type":"forticlient","source":"config-dir","status":"configured","description":"FortiClient configuration files"},{"id":"gp-dir-8","name":"GlobalProtect Profiles (       9)","type":"globalprotect","source":"config-dir","status":"configured","description":"GlobalProtect configuration files"},{"id":"gp-dir-9","name":"GlobalProtect Profiles (      11)","type":"globalprotect","source":"config-dir","status":"configured","description":"GlobalProtect configuration files"},{"id":"ac-dir-10","name":"AnyConnect Profiles (       1)","type":"cisco-anyconnect","source":"config-dir","status":"configured","description":"Cisco AnyConnect configuration files"},{"id":"other-11","name":"NordVPN","type":"nordvpn","source":"installed","status":"configured","description":"NordVPN VPN client"},{"id":"other-12","name":"ExpressVPN","type":"expressvpn","source":"installed","status":"configured","description":"ExpressVPN VPN client"},{"id":"other-13","name":"Private Internet Access","type":"pia","source":"installed","status":"configured","description":"Private Internet Access VPN client"}]
+
+Script completed!
