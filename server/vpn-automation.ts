@@ -220,16 +220,74 @@ export async function discoverAvailableVPNSoftware(): Promise<{
 }
 
 /**
+ * Discover VPN connections for specific software by ID
+ */
+async function discoverForSpecificSoftware(softwareId: string): Promise<VPNConnection[]> {
+  try {
+    console.log('[SPECIFIC-DISCOVERY] Looking up software ID:', softwareId);
+    
+    // First, get software info from database to know what we're looking for
+    const { DatabaseStorage } = await import('./storage.js');
+    const storage = new DatabaseStorage();
+    const software = await storage.getVpnSoftwareById(softwareId);
+    
+    if (!software) {
+      console.log('[SPECIFIC-DISCOVERY] Software not found in database');
+      return [];
+    }
+    
+    console.log('[SPECIFIC-DISCOVERY] Found software:', software.name, 'by', software.vendor);
+    
+    // Return template configurations based on software type
+    switch (software.vendor?.toLowerCase()) {
+      case 'cisco':
+        return await discoverCiscoAnyConnectConfigurations(software);
+      
+      case 'fortinet':
+        return await discoverFortiClientConfigurations(software);
+      
+      case 'microsoft':
+        return await discoverAzureVpnConfigurations(software);
+      
+      case 'palo alto networks':
+        return await discoverGlobalProtectConfigurations(software);
+      
+      case 'openvpn inc.':
+        return await discoverOpenVpnConfigurations(software);
+      
+      default:
+        console.log('[SPECIFIC-DISCOVERY] No specific discovery for vendor:', software.vendor);
+        return [];
+    }
+  } catch (error) {
+    console.error('[SPECIFIC-DISCOVERY] Error:', error);
+    return [];
+  }
+}
+
+/**
  * Discover available VPN connections for specific software
  */
 export async function discoverVPNConnections(softwareFilter?: string): Promise<VPNConnection[]> {
   const connections: VPNConnection[] = [];
 
   try {
-    console.log('[VPN-DISCOVERY] Starting comprehensive VPN discovery...');
+    console.log('[VPN-DISCOVERY] Starting VPN discovery...');
+    console.log('[VPN-DISCOVERY] Software filter:', softwareFilter);
     console.log('[VPN-DISCOVERY] Platform:', process.platform);
-    console.log('[VPN-DISCOVERY] Home directory:', process.env.HOME || 'undefined');
-    console.log('[VPN-DISCOVERY] User:', process.env.USER || 'undefined');
+    
+    // If specific software is requested, do targeted discovery
+    if (softwareFilter) {
+      const targetedConnections = await discoverForSpecificSoftware(softwareFilter);
+      console.log('[VPN-DISCOVERY] Targeted discovery for', softwareFilter, 'returned:', targetedConnections.length, 'connections');
+      connections.push(...targetedConnections);
+      
+      // If we found connections for specific software, return them
+      if (connections.length > 0) {
+        console.log('[VPN-DISCOVERY] Found specific configurations, returning them');
+        return connections;
+      }
+    }
     
     // 1. Check for FortiClient configurations (try on any platform)
     const fortiConnections = await discoverFortiClientConnections();
@@ -668,6 +726,104 @@ async function checkOpenFortiVPNAvailability(): Promise<VPNConnection | null> {
   }
 
   return null;
+}
+
+/**
+ * Discovery functions for specific software types
+ */
+async function discoverCiscoAnyConnectConfigurations(software: any): Promise<VPNConnection[]> {
+  console.log('[CISCO-DISCOVERY] Creating template configurations for Cisco AnyConnect');
+  
+  return [
+    {
+      id: 'cisco-corp-vpn',
+      name: 'Corporate VPN (AnyConnect)',
+      type: 'cisco-anyconnect',
+      status: 'template',
+      description: 'Template configurazione per VPN aziendale Cisco AnyConnect',
+      server: 'vpn.company.com',
+      port: 443,
+      automationScript: 'anyconnect-cli'
+    },
+    {
+      id: 'cisco-remote-access',
+      name: 'Remote Access SSL VPN',
+      type: 'cisco-anyconnect', 
+      status: 'template',
+      description: 'Template per accesso remoto sicuro via SSL VPN',
+      server: 'remote.company.com',
+      port: 443,
+      automationScript: 'anyconnect-gui'
+    }
+  ];
+}
+
+async function discoverFortiClientConfigurations(software: any): Promise<VPNConnection[]> {
+  console.log('[FORTINET-DISCOVERY] Creating template configurations for FortiClient');
+  
+  return [
+    {
+      id: 'forti-ssl-vpn',
+      name: 'FortiGate SSL VPN',
+      type: 'forticlient',
+      status: 'template', 
+      description: 'Template configurazione FortiGate SSL VPN',
+      server: 'vpn.fortigate.local',
+      port: 443,
+      automationScript: 'applescript'
+    }
+  ];
+}
+
+async function discoverAzureVpnConfigurations(software: any): Promise<VPNConnection[]> {
+  console.log('[AZURE-DISCOVERY] Creating template configurations for Azure VPN');
+  
+  return [
+    {
+      id: 'azure-p2s-vpn',
+      name: 'Azure Point-to-Site VPN',
+      type: 'azure-vpn',
+      status: 'template',
+      description: 'Template per connessione Point-to-Site Azure VPN Gateway',
+      server: 'vpngateway.azure.net',
+      port: 443,
+      automationScript: 'powershell'
+    }
+  ];
+}
+
+async function discoverGlobalProtectConfigurations(software: any): Promise<VPNConnection[]> {
+  console.log('[GLOBALPROTECT-DISCOVERY] Creating template configurations for GlobalProtect');
+  
+  return [
+    {
+      id: 'gp-portal',
+      name: 'GlobalProtect Portal',
+      type: 'globalprotect',
+      status: 'template',
+      description: 'Template configurazione Palo Alto GlobalProtect',
+      server: 'gp.company.com',
+      port: 443,
+      automationScript: 'globalprotect-cli'
+    }
+  ];
+}
+
+async function discoverOpenVpnConfigurations(software: any): Promise<VPNConnection[]> {
+  console.log('[OPENVPN-DISCOVERY] Creating template configurations for OpenVPN Connect');
+  
+  return [
+    {
+      id: 'openvpn-server',
+      name: 'OpenVPN Server Connection',
+      type: 'openvpn',
+      status: 'template',
+      description: 'Template configurazione OpenVPN (.ovpn file)',
+      server: 'openvpn.server.com',
+      port: 1194,
+      automationScript: 'openvpn-cli'
+    }
+  ];
 }
 
 /**
