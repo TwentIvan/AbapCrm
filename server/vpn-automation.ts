@@ -33,24 +33,27 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
 
   try {
     console.log('[VPN-DISCOVERY] Starting comprehensive VPN discovery...');
-    
-    // Always try real discovery first (works on any Unix-like system)
     console.log('[VPN-DISCOVERY] Platform:', process.platform);
+    console.log('[VPN-DISCOVERY] Home directory:', process.env.HOME || 'undefined');
+    console.log('[VPN-DISCOVERY] User:', process.env.USER || 'undefined');
     
-    // 1. Check for FortiClient configurations (works on macOS and Linux)
+    // 1. Check for FortiClient configurations (try on any platform)
     const fortiConnections = await discoverFortiClientConnections();
+    console.log('[VPN-DISCOVERY] FortiClient discovery returned:', fortiConnections.length, 'connections');
     connections.push(...fortiConnections);
 
-    // 2. Check for native macOS VPN connections (macOS only)
-    if (process.platform === 'darwin') {
-      const nativeConnections = await discoverNativeVPNConnections();
-      connections.push(...nativeConnections);
+    // 2. Check for native VPN connections (try on any platform)  
+    const nativeConnections = await discoverNativeVPNConnections();
+    console.log('[VPN-DISCOVERY] Native VPN discovery returned:', nativeConnections.length, 'connections');
+    connections.push(...nativeConnections);
 
-      // 3. Check if openfortivpn is available (Unix systems)
-      const openfortiConnection = await checkOpenFortiVPNAvailability();
-      if (openfortiConnection) {
-        connections.push(openfortiConnection);
-      }
+    // 3. Check if openfortivpn is available (try on any platform)
+    const openfortiConnection = await checkOpenFortiVPNAvailability();
+    if (openfortiConnection) {
+      console.log('[VPN-DISCOVERY] OpenFortiVPN available');
+      connections.push(openfortiConnection);
+    } else {
+      console.log('[VPN-DISCOVERY] OpenFortiVPN not available');
     }
     
     // 4. Check for uploaded connections from local workstation
@@ -93,44 +96,14 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
       
       connections.push(...realConnections);
     } else {
-      // Fallback to system VPN connections only (no hardcoded fake data)
-      console.log('[VPN-DISCOVERY] No real profiles found, using system VPN connections only');
-      
-      // Try to get system VPN connections via scutil
-      try {
-        if (process.platform === 'darwin') {
-          const { stdout } = await execAsync('scutil --nc list');
-          const systemConnections = stdout.split('\n')
-            .filter(line => line.includes('VPN') || line.includes('Fortinet') || line.includes('SSL'))
-            .map((line, index) => {
-              const match = line.match(/\"\s*([^"]+)\"/);
-              if (match && match[1]) {
-                return {
-                  id: `system-vpn-${index}`,
-                  name: match[1],
-                  type: 'native' as const,
-                  status: 'configured' as const,
-                  description: `System VPN connection: ${match[1]}`,
-                  automationScript: 'scutil'
-                };
-              }
-              return null;
-            })
-            .filter(conn => conn !== null);
-          
-          connections.push(...systemConnections);
-          console.log('[VPN-DISCOVERY] Found', systemConnections.length, 'system VPN connections');
-        }
-      } catch (error) {
-        console.log('[VPN-DISCOVERY] Could not access system VPN connections');
-      }
+      console.log('[VPN-DISCOVERY] No uploaded profiles found');
     }
     
-    // 5. If no real connections found, return empty array (no fake data)
-    if (connections.length === 0) {
-      console.log('[VPN-DISCOVERY] No real VPN connections found - returning empty array');
-      console.log('[VPN-DISCOVERY] To add real profiles, run the fccconfig extraction script');
-    }
+    // Final summary without forcing anything
+    console.log('[VPN-DISCOVERY] Discovery complete. Total connections found:', connections.length);
+    connections.forEach((conn, index) => {
+      console.log(`[VPN-DISCOVERY] ${index + 1}. ${conn.name} (${conn.type}) - ${conn.status}`);
+    });
 
   } catch (error) {
     console.error('Error discovering VPN connections:', error);
@@ -148,16 +121,18 @@ async function discoverFortiClientConnections(): Promise<VPNConnection[]> {
   const connections: VPNConnection[] = [];
 
   try {
-    console.log('[FORTICLIENT-DISCOVERY] Starting FortiClient detection...');
+    console.log('[FORTICLIENT-DISCOVERY] Starting FortiClient detection - checking everything...');
     
     // Method 1: Check if FortiClient process is running
-    let fortiClientRunning = false;
     try {
       const { stdout } = await execAsync('ps aux | grep -i forticlient | grep -v grep');
-      fortiClientRunning = stdout.trim().length > 0;
+      const fortiClientRunning = stdout.trim().length > 0;
       console.log('[FORTICLIENT-DISCOVERY] FortiClient process running:', fortiClientRunning);
+      if (fortiClientRunning) {
+        console.log('[FORTICLIENT-DISCOVERY] Process details:', stdout.trim());
+      }
     } catch (error) {
-      console.log('[FORTICLIENT-DISCOVERY] Could not check running processes');
+      console.log('[FORTICLIENT-DISCOVERY] Could not check running processes:', error);
     }
 
     // Method 2: Check if FortiClient app is installed  
@@ -167,46 +142,83 @@ async function discoverFortiClientConnections(): Promise<VPNConnection[]> {
       '/Applications/Fortinet/FortiClient.app'
     ];
     
-    let fortiClientInstalled = false;
     for (const appPath of fortiClientAppPaths) {
       try {
         await fs.access(appPath);
-        fortiClientInstalled = true;
-        console.log('[FORTICLIENT-DISCOVERY] FortiClient app found at:', appPath);
-        break;
+        console.log('[FORTICLIENT-DISCOVERY] ✅ FortiClient app found at:', appPath);
       } catch {
-        // Continue checking other paths
+        console.log('[FORTICLIENT-DISCOVERY] ❌ FortiClient not at:', appPath);
       }
     }
 
-    if (!fortiClientInstalled && !fortiClientRunning) {
-      console.log('[FORTICLIENT-DISCOVERY] FortiClient not detected on system');
-      return connections;
+    // Method 3: Try to use fccconfig to export real configurations
+    const fcconfigPaths = [
+      '/Library/Application Support/Fortinet/FortiClient/bin/fccconfig',
+      '/Applications/FortiClient.app/Contents/MacOS/fccconfig',
+      '/Applications/FortiClient.app/Contents/Resources/fccconfig',
+      '/Library/Application Support/Fortinet/bin/fccconfig',
+      '/usr/local/bin/fccconfig'
+    ];
+    
+    for (const fcconfigPath of fcconfigPaths) {
+      try {
+        await fs.access(fcconfigPath);
+        console.log('[FORTICLIENT-DISCOVERY] ✅ fccconfig found at:', fcconfigPath);
+        
+        // Try to export configuration
+        try {
+          const tempDir = `/tmp/forticlient-export-${Date.now()}`;
+          await fs.mkdir(tempDir, { recursive: true });
+          const configFile = `${tempDir}/config.xml`;
+          
+          const { stdout, stderr } = await execAsync(`"${fcconfigPath}" --operation export --file "${configFile}"`);
+          console.log('[FORTICLIENT-DISCOVERY] fccconfig export result:', stdout);
+          
+          // Try to read the exported XML
+          try {
+            const xmlContent = await fs.readFile(configFile, 'utf8');
+            console.log('[FORTICLIENT-DISCOVERY] ✅ Config XML exported successfully, size:', xmlContent.length);
+            
+            // Extract VPN profile names from XML
+            const profileMatches = xmlContent.match(/<(vpn|sslvpn|ipsec)[^>]*name="([^"]+)"/g);
+            if (profileMatches) {
+              profileMatches.forEach((match, index) => {
+                const nameMatch = match.match(/name="([^"]+)"/);
+                if (nameMatch && nameMatch[1]) {
+                  connections.push({
+                    id: `fccconfig-real-${index}`,
+                    name: nameMatch[1],
+                    type: 'forticlient',
+                    status: 'configured',
+                    description: `Real FortiClient profile extracted via fccconfig: ${nameMatch[1]}`,
+                    automationScript: 'applescript-advanced'
+                  });
+                }
+              });
+              console.log('[FORTICLIENT-DISCOVERY] ✅ Found', profileMatches.length, 'real profiles in XML');
+            } else {
+              console.log('[FORTICLIENT-DISCOVERY] ❌ No VPN profiles found in XML');
+            }
+          } catch (xmlError) {
+            console.log('[FORTICLIENT-DISCOVERY] ❌ Could not read XML:', xmlError);
+          }
+          
+          // Cleanup
+          try {
+            await fs.rm(tempDir, { recursive: true });
+          } catch {}
+          
+        } catch (exportError) {
+          console.log('[FORTICLIENT-DISCOVERY] ❌ fccconfig export failed:', exportError);
+        }
+        
+        break; // Found working fccconfig, stop trying other paths
+      } catch {
+        console.log('[FORTICLIENT-DISCOVERY] ❌ fccconfig not at:', fcconfigPath);
+      }
     }
 
-    // Method 3: Try to get connection names via GUI automation (AppleScript)
-    try {
-      const appleScript = `
-        tell application "System Events"
-          try
-            tell process "FortiClient"
-              -- This is a placeholder for real AppleScript that would inspect FortiClient GUI
-              return "FortiClient GUI accessible"
-            end tell
-          on error
-            return "FortiClient not accessible"
-          end try
-        end tell
-      `;
-      
-      const { stdout } = await execAsync(`osascript -e '${appleScript}'`);
-      console.log('[FORTICLIENT-DISCOVERY] AppleScript result:', stdout.trim());
-      
-    } catch (error) {
-      console.log('[FORTICLIENT-DISCOVERY] AppleScript inspection failed');
-    }
-
-    // Method 4: Check FortiClient config directories (user-accessible)
+    // Method 4: Check FortiClient config directories for any files
     const configPaths = [
       `${process.env.HOME}/Library/Application Support/Fortinet`,
       `${process.env.HOME}/Library/Preferences/com.fortinet.FortiClient.plist`,
@@ -218,72 +230,44 @@ async function discoverFortiClientConnections(): Promise<VPNConnection[]> {
       try {
         const stats = await fs.stat(configPath);
         if (stats.isDirectory()) {
-          console.log('[FORTICLIENT-DISCOVERY] Found config directory:', configPath);
-          // Try to list contents
+          console.log('[FORTICLIENT-DISCOVERY] ✅ Found config directory:', configPath);
           try {
             const files = await fs.readdir(configPath);
-            console.log('[FORTICLIENT-DISCOVERY] Config directory contents:', files);
+            console.log('[FORTICLIENT-DISCOVERY] Directory contents:', files);
+            // Look for actual config files
+            const configFiles = files.filter(f => f.includes('config') || f.includes('.xml') || f.includes('.plist'));
+            if (configFiles.length > 0) {
+              console.log('[FORTICLIENT-DISCOVERY] ✅ Config files found:', configFiles);
+            }
           } catch (error) {
-            console.log('[FORTICLIENT-DISCOVERY] Cannot read config directory contents');
+            console.log('[FORTICLIENT-DISCOVERY] ❌ Cannot read directory:', error);
           }
         } else {
-          console.log('[FORTICLIENT-DISCOVERY] Found config file:', configPath);
+          console.log('[FORTICLIENT-DISCOVERY] ✅ Found config file:', configPath);
         }
-      } catch {
-        // Path doesn't exist, continue
+      } catch (error) {
+        console.log('[FORTICLIENT-DISCOVERY] ❌ Path not accessible:', configPath);
       }
     }
 
-    // Method 5: Look for saved VPN connections in system preferences
-    try {
-      const { stdout } = await execAsync('scutil --nc list');
-      const networkConnections = stdout.split('\n').filter(line => 
-        line.includes('VPN') || line.includes('Fortinet') || line.includes('SSL')
-      );
-      console.log('[FORTICLIENT-DISCOVERY] System VPN connections:', networkConnections);
-      
-      // Parse FortiClient-like connections
-      networkConnections.forEach((line, index) => {
-        const match = line.match(/"\s*([^"]+)"/);
-        if (match && match[1]) {
-          connections.push({
-            id: `forticlient-system-${index}`,
-            name: match[1],
-            type: 'forticlient',
-            status: 'configured',
-            description: `System VPN connection: ${match[1]}`,
-            automationScript: 'applescript'
-          });
+    // Method 5: Try any available VPN commands regardless of platform
+    const vpnCommands = [
+      'scutil --nc list',
+      'networksetup -listallnetworkservices | grep -i vpn',
+      'ls /etc/NetworkManager/system-connections/ | grep -i vpn',
+      'find /home -name "*.ovpn" 2>/dev/null | head -5',
+      'find /etc -name "*vpn*" 2>/dev/null | head -5'
+    ];
+
+    for (const cmd of vpnCommands) {
+      try {
+        const { stdout } = await execAsync(cmd);
+        if (stdout.trim()) {
+          console.log(`[FORTICLIENT-DISCOVERY] Command "${cmd}" result:`, stdout.trim());
         }
-      });
-    } catch (error) {
-      console.log('[FORTICLIENT-DISCOVERY] Cannot access system VPN list');
-    }
-
-    // If FortiClient is detected but no specific connections found, create realistic demo connections
-    if ((fortiClientInstalled || fortiClientRunning) && connections.length === 0) {
-      console.log('[FORTICLIENT-DISCOVERY] FortiClient detected, adding realistic connections...');
-      
-      const demoConnections = [
-        { name: 'Dolomiti Energia VPN', server: 'vpn.dolomitienergia.com' },
-        { name: 'Cliente-A-Produzione', server: 'vpn.clientea.com' },
-        { name: 'SAP Development VPN', server: 'sap-dev.example.com' },
-        { name: 'Backup Site VPN', server: 'backup.vpnserver.com' },
-        { name: 'Azure Cloud Gateway', server: 'azure-gw.cloudvpn.com' }
-      ];
-
-      demoConnections.forEach((conn, index) => {
-        connections.push({
-          id: `forticlient-detected-${index}`,
-          name: conn.name,
-          type: 'forticlient',
-          server: conn.server,
-          port: 443,
-          status: 'configured',
-          description: `FortiClient SSL VPN: ${conn.name} (auto-detected)`,
-          automationScript: 'applescript'
-        });
-      });
+      } catch (error) {
+        console.log(`[FORTICLIENT-DISCOVERY] Command "${cmd}" failed:`, error.message);
+      }
     }
 
   } catch (error) {
@@ -330,36 +314,95 @@ async function parseFortiClientConfig(configPath: string): Promise<VPNConnection
 }
 
 /**
- * Discover native macOS VPN connections
+ * Discover native VPN connections (try on any platform)
  */
 async function discoverNativeVPNConnections(): Promise<VPNConnection[]> {
   const connections: VPNConnection[] = [];
 
-  try {
-    const { stdout } = await execAsync('scutil --nc list');
-    
-    // Parse scutil output to find VPN services
-    const lines = stdout.split('\n');
-    lines.forEach((line, index) => {
-      const match = line.match(/\* \(Connected\)\s+"([^"]*)"|\* \(Disconnected\)\s+"([^"]*)"/);
-      if (match) {
-        const serviceName = match[1] || match[2];
-        if (serviceName && serviceName.toLowerCase().includes('vpn')) {
-          connections.push({
-            id: `native-${index}`,
-            name: serviceName,
-            type: 'native',
-            status: 'configured',
-            description: `Native macOS VPN: ${serviceName}`,
-            automationScript: 'scutil'
-          });
-        }
+  console.log('[NATIVE-VPN-DISCOVERY] Starting native VPN discovery...');
+
+  // Try multiple methods to find VPN connections
+  const discoveryMethods = [
+    {
+      name: 'macOS scutil',
+      command: 'scutil --nc list',
+      parser: (stdout: string) => {
+        console.log('[NATIVE-VPN-DISCOVERY] scutil output:', stdout);
+        const lines = stdout.split('\n');
+        return lines.map((line, index) => {
+          const match = line.match(/\*\s*\([^)]+\)\s+"([^"]+)"/);
+          if (match && match[1]) {
+            return {
+              id: `native-scutil-${index}`,
+              name: match[1],
+              type: 'native' as const,
+              status: 'configured' as const,
+              description: `Native VPN service: ${match[1]}`,
+              automationScript: 'scutil'
+            };
+          }
+          return null;
+        }).filter(Boolean);
       }
-    });
-  } catch (error) {
-    console.error('Error checking native VPN connections:', error);
+    },
+    {
+      name: 'networksetup services',
+      command: 'networksetup -listallnetworkservices',
+      parser: (stdout: string) => {
+        console.log('[NATIVE-VPN-DISCOVERY] networksetup output:', stdout);
+        const lines = stdout.split('\n').filter(line => 
+          line.toLowerCase().includes('vpn') || 
+          line.toLowerCase().includes('ppp')
+        );
+        return lines.map((line, index) => ({
+          id: `native-networksetup-${index}`,
+          name: line.trim(),
+          type: 'native' as const,
+          status: 'configured' as const,
+          description: `Network service: ${line.trim()}`,
+          automationScript: 'networksetup'
+        }));
+      }
+    },
+    {
+      name: 'Linux NetworkManager',
+      command: 'ls /etc/NetworkManager/system-connections/',
+      parser: (stdout: string) => {
+        console.log('[NATIVE-VPN-DISCOVERY] NetworkManager connections:', stdout);
+        const lines = stdout.split('\n').filter(line => 
+          line.toLowerCase().includes('vpn') ||
+          line.toLowerCase().includes('openvpn') ||
+          line.toLowerCase().includes('wireguard')
+        );
+        return lines.map((line, index) => ({
+          id: `native-nm-${index}`,
+          name: line.trim(),
+          type: 'native' as const,
+          status: 'configured' as const,
+          description: `NetworkManager VPN: ${line.trim()}`,
+          automationScript: 'nmcli'
+        }));
+      }
+    }
+  ];
+
+  for (const method of discoveryMethods) {
+    try {
+      console.log(`[NATIVE-VPN-DISCOVERY] Trying method: ${method.name}`);
+      const { stdout } = await execAsync(method.command);
+      const parsed = method.parser(stdout);
+      if (parsed.length > 0) {
+        console.log(`[NATIVE-VPN-DISCOVERY] ✅ Found ${parsed.length} connections via ${method.name}`);
+        connections.push(...parsed);
+      } else {
+        console.log(`[NATIVE-VPN-DISCOVERY] ❌ No connections found via ${method.name}`);
+      }
+    } catch (error) {
+      console.log(`[NATIVE-VPN-DISCOVERY] ❌ Method ${method.name} failed:`, error.message);
+    }
   }
 
+  console.log('[NATIVE-VPN-DISCOVERY] Total native connections found:', connections.length);
   return connections;
 }
 
