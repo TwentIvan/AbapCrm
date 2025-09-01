@@ -287,9 +287,13 @@ export async function discoverVPNConnections(softwareFilter?: string): Promise<V
     // Create mapping between software ID and REAL configurations from user's macOS workstation
     console.log('[VPN-DISCOVERY] Loading REAL workstation configurations for software:', softwareFilter);
     
-    // Get software details to determine type
-    const software = softwareFilter ? await storage.getVPNSoftware(softwareFilter) : null;
-    const softwareType = software?.name?.toLowerCase().replace(/\s+/g, '-');
+    // Map software ID directly to type for known software
+    let softwareType = null;
+    if (softwareFilter === 'a075d943-b930-4513-81d5-b362433514d2') {
+      softwareType = 'cisco-anyconnect';
+    } else if (softwareFilter === 'f9a8b7c6-d5e4-f3a2-b1c0-9876543210ab') {
+      softwareType = 'azure-vpn';
+    }
     
     console.log('[VPN-DISCOVERY] Software type for filtering:', softwareType);
     
