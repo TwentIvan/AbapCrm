@@ -2,7 +2,7 @@ import {
   users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, emailConfigs,
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
-  vpnSoftware, vpnSystems,
+  vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations,
   type User, type InsertUser,
   type Project, type InsertProject,
   type Task, type InsertTask,
@@ -28,7 +28,9 @@ import {
   type InterventionDocument, type InsertInterventionDocument,
   type SystemCredentials, type InsertSystemCredentials,
   type VpnSoftware, type InsertVpnSoftware,
-  type VpnSystems, type InsertVpnSystems
+  type VpnSystems, type InsertVpnSystems,
+  type DiscoveredVpnSoftware, type InsertDiscoveredVpnSoftware,
+  type DiscoveredVpnConfiguration, type InsertDiscoveredVpnConfiguration
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull } from "drizzle-orm";
@@ -253,6 +255,22 @@ export interface IStorage {
   createVpnSystem(system: InsertVpnSystems): Promise<VpnSystems>;
   updateVpnSystem(id: string, system: Partial<InsertVpnSystems>, userId: string): Promise<VpnSystems | undefined>;
   deleteVpnSystem(id: string, userId: string): Promise<boolean>;
+
+  // Discovery VPN Software - Pre-caricamento risultati discovery
+  getDiscoveredVpnSoftware(userId: string): Promise<DiscoveredVpnSoftware[]>;
+  getDiscoveredVpnSoftwareById(id: string, userId: string): Promise<DiscoveredVpnSoftware | undefined>;
+  createDiscoveredVpnSoftware(software: InsertDiscoveredVpnSoftware): Promise<DiscoveredVpnSoftware>;
+  updateDiscoveredVpnSoftware(id: string, software: Partial<InsertDiscoveredVpnSoftware>, userId: string): Promise<DiscoveredVpnSoftware | undefined>;
+  deleteDiscoveredVpnSoftware(id: string, userId: string): Promise<boolean>;
+  clearDiscoveredVpnSoftware(userId: string): Promise<boolean>; // Per rifare discovery completo
+
+  // Discovery VPN Configurations - Configurazioni trovate per ogni software
+  getDiscoveredVpnConfigurations(userId: string): Promise<DiscoveredVpnConfiguration[]>;
+  getDiscoveredVpnConfigurationsBySoftware(discoveredSoftwareId: string, userId: string): Promise<DiscoveredVpnConfiguration[]>;
+  getDiscoveredVpnConfigurationById(id: string, userId: string): Promise<DiscoveredVpnConfiguration | undefined>;
+  createDiscoveredVpnConfiguration(config: InsertDiscoveredVpnConfiguration): Promise<DiscoveredVpnConfiguration>;
+  updateDiscoveredVpnConfiguration(id: string, config: Partial<InsertDiscoveredVpnConfiguration>, userId: string): Promise<DiscoveredVpnConfiguration | undefined>;
+  deleteDiscoveredVpnConfiguration(id: string, userId: string): Promise<boolean>;
 
   sessionStore: session.Store;
 }
@@ -1820,6 +1838,97 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(vpnSystems)
       .where(and(eq(vpnSystems.id, id), eq(vpnSystems.userId, userId)));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Discovery VPN Software Methods
+  async getDiscoveredVpnSoftware(userId: string): Promise<DiscoveredVpnSoftware[]> {
+    return await db.select().from(discoveredVpnSoftware)
+      .where(and(eq(discoveredVpnSoftware.userId, userId), eq(discoveredVpnSoftware.isActive, true)))
+      .orderBy(desc(discoveredVpnSoftware.lastDiscovery));
+  }
+
+  async getDiscoveredVpnSoftwareById(id: string, userId: string): Promise<DiscoveredVpnSoftware | undefined> {
+    const [software] = await db.select().from(discoveredVpnSoftware)
+      .where(and(eq(discoveredVpnSoftware.id, id), eq(discoveredVpnSoftware.userId, userId)));
+    return software || undefined;
+  }
+
+  async createDiscoveredVpnSoftware(software: InsertDiscoveredVpnSoftware): Promise<DiscoveredVpnSoftware> {
+    const [newSoftware] = await db
+      .insert(discoveredVpnSoftware)
+      .values(software)
+      .returning();
+    return newSoftware;
+  }
+
+  async updateDiscoveredVpnSoftware(id: string, software: Partial<InsertDiscoveredVpnSoftware>, userId: string): Promise<DiscoveredVpnSoftware | undefined> {
+    const [updatedSoftware] = await db
+      .update(discoveredVpnSoftware)
+      .set({ ...software, updatedAt: new Date() })
+      .where(and(eq(discoveredVpnSoftware.id, id), eq(discoveredVpnSoftware.userId, userId)))
+      .returning();
+    return updatedSoftware || undefined;
+  }
+
+  async deleteDiscoveredVpnSoftware(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(discoveredVpnSoftware)
+      .where(and(eq(discoveredVpnSoftware.id, id), eq(discoveredVpnSoftware.userId, userId)));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async clearDiscoveredVpnSoftware(userId: string): Promise<boolean> {
+    const result = await db
+      .delete(discoveredVpnSoftware)
+      .where(eq(discoveredVpnSoftware.userId, userId));
+    return (result.rowCount || 0) >= 0; // Allow zero rows as success
+  }
+
+  // Discovery VPN Configurations Methods
+  async getDiscoveredVpnConfigurations(userId: string): Promise<DiscoveredVpnConfiguration[]> {
+    return await db.select().from(discoveredVpnConfigurations)
+      .where(and(eq(discoveredVpnConfigurations.userId, userId), eq(discoveredVpnConfigurations.isActive, true)))
+      .orderBy(desc(discoveredVpnConfigurations.lastDiscovered));
+  }
+
+  async getDiscoveredVpnConfigurationsBySoftware(discoveredSoftwareId: string, userId: string): Promise<DiscoveredVpnConfiguration[]> {
+    return await db.select().from(discoveredVpnConfigurations)
+      .where(and(
+        eq(discoveredVpnConfigurations.discoveredSoftwareId, discoveredSoftwareId),
+        eq(discoveredVpnConfigurations.userId, userId),
+        eq(discoveredVpnConfigurations.isActive, true)
+      ))
+      .orderBy(desc(discoveredVpnConfigurations.lastDiscovered));
+  }
+
+  async getDiscoveredVpnConfigurationById(id: string, userId: string): Promise<DiscoveredVpnConfiguration | undefined> {
+    const [config] = await db.select().from(discoveredVpnConfigurations)
+      .where(and(eq(discoveredVpnConfigurations.id, id), eq(discoveredVpnConfigurations.userId, userId)));
+    return config || undefined;
+  }
+
+  async createDiscoveredVpnConfiguration(config: InsertDiscoveredVpnConfiguration): Promise<DiscoveredVpnConfiguration> {
+    const [newConfig] = await db
+      .insert(discoveredVpnConfigurations)
+      .values(config)
+      .returning();
+    return newConfig;
+  }
+
+  async updateDiscoveredVpnConfiguration(id: string, config: Partial<InsertDiscoveredVpnConfiguration>, userId: string): Promise<DiscoveredVpnConfiguration | undefined> {
+    const [updatedConfig] = await db
+      .update(discoveredVpnConfigurations)
+      .set({ ...config, updatedAt: new Date() })
+      .where(and(eq(discoveredVpnConfigurations.id, id), eq(discoveredVpnConfigurations.userId, userId)))
+      .returning();
+    return updatedConfig || undefined;
+  }
+
+  async deleteDiscoveredVpnConfiguration(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(discoveredVpnConfigurations)
+      .where(and(eq(discoveredVpnConfigurations.id, id), eq(discoveredVpnConfigurations.userId, userId)));
     return (result.rowCount || 0) > 0;
   }
 }

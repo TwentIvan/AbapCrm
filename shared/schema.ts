@@ -568,6 +568,75 @@ export const systemCredentials = pgTable("system_credentials", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// VPN Software Discovery - Risultati del discovery automatico
+export const discoveredVpnSoftware = pgTable("discovered_vpn_software", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  
+  // Identificatore software
+  softwareKey: text("software_key").notNull(), // "forticlient", "cisco_anyconnect", etc.
+  name: text("name").notNull(), // "FortiClient", "Cisco AnyConnect"
+  vendor: text("vendor"), // "Fortinet", "Cisco"
+  
+  // Risultati discovery
+  installed: boolean("installed").default(false).notNull(),
+  canReadConfigs: boolean("can_read_configs").default(false).notNull(),
+  configCount: integer("config_count").default(0).notNull(),
+  
+  // Tipo automazione disponibile
+  automationType: text("automation_type").notNull(), // "full", "credentials", "manual"
+  description: text("description"),
+  
+  // Paths e info tecniche trovate
+  installPath: text("install_path"), // Dove è installato il software
+  configPath: text("config_path"), // Dove sono le configurazioni
+  executablePath: text("executable_path"), // Path dell'eseguibile
+  
+  // Discovery metadata
+  discoveryMethod: text("discovery_method"), // "filesystem", "registry", "command"
+  lastDiscovery: timestamp("last_discovery").defaultNow().notNull(),
+  platform: text("platform").default("unknown").notNull(), // "macos", "windows", "linux"
+  
+  // Status
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// VPN Configurations Discovery - Configurazioni trovate per ogni software
+export const discoveredVpnConfigurations = pgTable("discovered_vpn_configurations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  discoveredSoftwareId: uuid("discovered_software_id").references(() => discoveredVpnSoftware.id).notNull(),
+  
+  // Identificatori configurazione
+  configId: text("config_id").notNull(), // ID univoco della configurazione nel sistema
+  name: text("name").notNull(), // Nome del profilo/connessione
+  
+  // Dettagli connessione
+  server: text("server"), // Server VPN
+  port: integer("port"), // Porta
+  protocol: text("protocol"), // "UDP", "TCP", "IKEv2", etc.
+  
+  // Stato configurazione
+  configured: boolean("configured").default(false).notNull(),
+  active: boolean("active").default(false).notNull(),
+  
+  // Metadati configurazione
+  configPath: text("config_path"), // Path del file di configurazione
+  profileData: text("profile_data"), // Dati del profilo (JSON o testo)
+  extractionMethod: text("extraction_method"), // "fccconfig", "xml_parse", "registry"
+  
+  // Discovery info
+  lastDiscovered: timestamp("last_discovered").defaultNow().notNull(),
+  lastVerified: timestamp("last_verified"),
+  
+  // Status
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Transport Request files (cofile and data file)
 export const transportRequestStatusEnum = pgEnum("transport_request_status", ["development", "testing", "quality", "production", "released", "imported"]);
 export const transportRequestTypeEnum = pgEnum("transport_request_type", ["workbench", "customizing", "copy", "relocate"]);
@@ -1106,6 +1175,22 @@ export const insertVpnSystemsSchema = createInsertSchema(vpnSystems).omit({
   lastConnected: true,
 });
 
+// Discovery VPN Insert Schemas
+export const insertDiscoveredVpnSoftwareSchema = createInsertSchema(discoveredVpnSoftware).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastDiscovery: true,
+});
+
+export const insertDiscoveredVpnConfigurationSchema = createInsertSchema(discoveredVpnConfigurations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastDiscovered: true,
+  lastVerified: true,
+});
+
 // All Types
 export type HumanResource = typeof humanResources.$inferSelect;
 export type InsertHumanResource = z.infer<typeof insertHumanResourceSchema>;
@@ -1128,3 +1213,7 @@ export type VpnSoftware = typeof vpnSoftware.$inferSelect;
 export type InsertVpnSoftware = z.infer<typeof insertVpnSoftwareSchema>;
 export type VpnSystems = typeof vpnSystems.$inferSelect;
 export type InsertVpnSystems = z.infer<typeof insertVpnSystemsSchema>;
+export type DiscoveredVpnSoftware = typeof discoveredVpnSoftware.$inferSelect;
+export type InsertDiscoveredVpnSoftware = z.infer<typeof insertDiscoveredVpnSoftwareSchema>;
+export type DiscoveredVpnConfiguration = typeof discoveredVpnConfigurations.$inferSelect;
+export type InsertDiscoveredVpnConfiguration = z.infer<typeof insertDiscoveredVpnConfigurationSchema>;

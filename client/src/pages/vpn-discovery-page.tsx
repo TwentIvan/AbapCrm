@@ -61,19 +61,59 @@ export default function VPNDiscoveryPage() {
     password: ""
   });
 
-  // Discover available VPN software installed on the system
+  // Funzione per eseguire discovery e salvare nel database
+  const runDiscovery = async () => {
+    console.log('🔍 Eseguendo discovery VPN e salvataggio nel database...');
+    const response = await fetch("/api/discovered-vpn-software/run-discovery", { 
+      method: "POST",
+      credentials: "include" 
+    });
+    if (!response.ok) {
+      throw new Error('Discovery failed');
+    }
+    const result = await response.json();
+    console.log('✅ Discovery completato:', result);
+    return result;
+  };
+
+  // Pre-carica software VPN scoperti dal database 
   const { data: availableSoftware, isLoading: isLoadingSoftware, refetch: refetchSoftware } = useQuery<VPNSoftware[]>({
-    queryKey: ["/api/vpn/software"],
+    queryKey: ["/api/discovered-vpn-software"],
     queryFn: async () => {
       try {
-        const res = await fetch("/api/vpn/software", { credentials: "include" });
+        console.log('🔍 Caricamento software VPN dal database...');
+        const res = await fetch("/api/discovered-vpn-software", { credentials: "include" });
         if (!res.ok) {
-          console.log('API non disponibile - nessun software VPN disponibile');
-          return [];
+          console.log('Database non disponibile o vuoto - eseguo discovery...');
+          // Se il database è vuoto, esegui prima il discovery
+          await runDiscovery();
+          // Poi riprova a caricare dal database
+          const retryRes = await fetch("/api/discovered-vpn-software", { credentials: "include" });
+          if (!retryRes.ok) return [];
+          const retryData = await retryRes.json();
+          return retryData.map((software: any) => ({
+            software: software.softwareKey,
+            name: software.name,
+            installed: software.installed,
+            canReadConfigs: software.canReadConfigs,
+            configCount: software.configCount,
+            description: software.description,
+            automationType: software.automationType
+          }));
         }
         const data = await res.json();
-        console.log('✅ Software VPN disponibile:', data.software);
-        return data.software || [];
+        console.log('✅ Software VPN caricato dal database:', data.length, 'elementi');
+        
+        // Converti dal formato database al formato frontend
+        return data.map((software: any) => ({
+          software: software.softwareKey,
+          name: software.name,
+          installed: software.installed,
+          canReadConfigs: software.canReadConfigs,
+          configCount: software.configCount,
+          description: software.description,
+          automationType: software.automationType
+        }));
       } catch (error) {
         console.log('Errore API - nessun software VPN disponibile:', error);
         return [];
@@ -81,43 +121,82 @@ export default function VPNDiscoveryPage() {
     },
   });
 
-  // Discover VPN connections for selected software
+  // Carica configurazioni VPN dal database per il software selezionato
   const { data: vpnConnections, isLoading: isLoadingConnections, refetch: refetchConnections } = useQuery<VPNConnection[]>({
-    queryKey: ["/api/vpn/discover", selectedSoftware],
+    queryKey: ["/api/discovered-vpn-configurations/software", selectedSoftware],
     queryFn: async () => {
       if (!selectedSoftware) return [];
       
       try {
-        const res = await fetch("/api/vpn/discover", { 
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: "include",
-          body: JSON.stringify({ software: selectedSoftware })
+        // Trova il software selezionato per ottenere il database ID
+        const selectedSoftwareData = availableSoftware?.find(s => s.software === selectedSoftware);
+        if (!selectedSoftwareData) return [];
+        
+        // Ottieni l'ID dal database
+        const softwareRes = await fetch("/api/discovered-vpn-software", { credentials: "include" });
+        if (!softwareRes.ok) return [];
+        const allSoftware = await softwareRes.json();
+        const dbSoftware = allSoftware.find((s: any) => s.softwareKey === selectedSoftware);
+        if (!dbSoftware) return [];
+        
+        // Carica le configurazioni per questo software
+        const res = await fetch(`/api/discovered-vpn-configurations/software/${dbSoftware.id}`, { 
+          credentials: "include"
         });
         if (!res.ok) {
-          console.log('Discovery API non disponibile');
+          console.log('Nessuna configurazione trovata nel database');
           return [];
         }
         const data = await res.json();
-        console.log('✅ Connessioni trovate per', selectedSoftware, ':', data.connections);
-        return data.connections || [];
+        console.log('✅ Configurazioni caricate dal database per', selectedSoftware, ':', data.length);
+        
+        // Converti dal formato database al formato frontend
+        return data.map((config: any) => ({
+          id: config.configId,
+          name: config.name,
+          type: config.extractionMethod,
+          server: config.server,
+          port: config.port,
+          details: config.profileData ? JSON.parse(config.profileData).details || '' : '',
+          configured: config.configured
+        }));
       } catch (error) {
-        console.log('Errore discovery:', error);
+        console.log('Errore caricamento configurazioni:', error);
         return [];
       }
     },
-    enabled: !!selectedSoftware
+    enabled: !!selectedSoftware && !!availableSoftware
   });
 
-  const handleRefresh = () => {
-    refetchSoftware();
-    if (selectedSoftware) {
-      refetchConnections();
+  const handleRefresh = async () => {
+    try {
+      console.log('🔄 Esecuzione discovery completo...');
+      toast({
+        title: "Discovery in corso",
+        description: "Scansione software VPN e salvataggio nel database..."
+      });
+      
+      // Esegui discovery e salva nel database
+      await runDiscovery();
+      
+      // Aggiorna i dati dal database
+      refetchSoftware();
+      if (selectedSoftware) {
+        refetchConnections();
+      }
+      
+      toast({
+        title: "Aggiornamento completato",
+        description: "Software e configurazioni VPN scansionati e salvati nel database"
+      });
+    } catch (error) {
+      console.error('Errore durante discovery:', error);
+      toast({
+        title: "Errore",
+        description: "Errore durante la scansione VPN",
+        variant: "destructive"
+      });
     }
-    toast({
-      title: "Aggiornamento",
-      description: "Ricerca software e connessioni VPN aggiornata"
-    });
   };
 
   const handleSoftwareChange = (software: string) => {

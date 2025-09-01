@@ -13,7 +13,8 @@ import {
   insertHumanResourceSchema, insertSapSystemSchema, insertSapSystemCredentialsSchema,
   insertVpnConnectionSchema, insertVpnCredentialsSchema, insertTransportRequestSchema,
   insertInterventionDocumentSchema, insertSystemCredentialsSchema,
-  insertVpnSoftwareSchema, insertVpnSystemsSchema, vpnConnections
+  insertVpnSoftwareSchema, insertVpnSystemsSchema, vpnConnections,
+  insertDiscoveredVpnSoftwareSchema, insertDiscoveredVpnConfigurationSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -2131,6 +2132,184 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.delete("/api/vpn-systems/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const success = await storage.deleteVpnSystem(req.params.id, req.user!.id);
+    if (!success) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  // Discovered VPN Software - Pre-caricamento discovery risultati
+  app.get("/api/discovered-vpn-software", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const software = await storage.getDiscoveredVpnSoftware(req.user!.id);
+    res.json(software);
+  });
+
+  app.get("/api/discovered-vpn-software/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const software = await storage.getDiscoveredVpnSoftwareById(req.params.id, req.user!.id);
+    if (!software) return res.sendStatus(404);
+    res.json(software);
+  });
+
+  app.post("/api/discovered-vpn-software", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const softwareData = { ...req.body, userId: req.user!.id };
+      const validatedData = insertDiscoveredVpnSoftwareSchema.parse(softwareData);
+      const software = await storage.createDiscoveredVpnSoftware(validatedData);
+      res.status(201).json(software);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid discovered VPN software data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.put("/api/discovered-vpn-software/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const software = await storage.updateDiscoveredVpnSoftware(req.params.id, req.body, req.user!.id);
+      if (!software) return res.sendStatus(404);
+      res.json(software);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update discovered VPN software", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.delete("/api/discovered-vpn-software/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const success = await storage.deleteDiscoveredVpnSoftware(req.params.id, req.user!.id);
+    if (!success) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  // Endpoint per eseguire discovery e salvare risultati nel database
+  app.post("/api/discovered-vpn-software/run-discovery", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      console.log('[VPN-DISCOVERY] Avvio discovery completo e salvataggio nel database...');
+      
+      // Pulisci discovery precedenti per questo utente
+      await storage.clearDiscoveredVpnSoftware(req.user!.id);
+      
+      // Scopri software disponibili 
+      const availableSoftware = await discoverAvailableVPNSoftware();
+      console.log('[VPN-DISCOVERY] Software trovati:', availableSoftware);
+      
+      const discoveredSoftwareIds = [];
+      
+      for (const software of availableSoftware) {
+        // Salva il software scoperto nel database
+        const softwareData = {
+          userId: req.user!.id,
+          softwareKey: software.software, // Corretto: usa 'software' invece di 'key'
+          name: software.name,
+          vendor: 'Unknown', // Non disponibile dal discoverAvailableVPNSoftware
+          installed: software.installed,
+          canReadConfigs: software.canReadConfigs || false,
+          configCount: software.configCount || 0,
+          automationType: software.automationType,
+          description: software.description || '',
+          installPath: null, // Non disponibile dal discoverAvailableVPNSoftware
+          configPath: null, // Non disponibile dal discoverAvailableVPNSoftware
+          executablePath: null, // Non disponibile dal discoverAvailableVPNSoftware
+          discoveryMethod: 'filesystem', // Default
+          platform: process.platform || 'unknown'
+        };
+        
+        const discoveredSoftware = await storage.createDiscoveredVpnSoftware(softwareData);
+        discoveredSoftwareIds.push(discoveredSoftware.id);
+        
+        // Se il software ha configurazioni, scoprile e salvale
+        if (software.installed && software.canReadConfigs) {
+          try {
+            const connections = await discoverVPNConnections(software.software); // Corretto: usa 'software' invece di 'key'
+            for (const connection of connections) {
+              const configData = {
+                userId: req.user!.id,
+                discoveredSoftwareId: discoveredSoftware.id,
+                configId: connection.id || `${software.software}-${connection.name}`,
+                name: connection.name,
+                server: connection.server || null,
+                port: connection.port || null,
+                protocol: null, // Non disponibile dal tipo VPNConnection
+                configured: connection.status === 'configured',
+                active: false, // VPNConnection.status non include 'active'
+                configPath: null, // Non disponibile dal tipo VPNConnection
+                profileData: connection.details ? JSON.stringify({ details: connection.details }) : null,
+                extractionMethod: connection.type || 'unknown'
+              };
+              
+              await storage.createDiscoveredVpnConfiguration(configData);
+            }
+          } catch (error) {
+            console.warn(`[VPN-DISCOVERY] Error discovering configs for ${software.software}:`, error);
+          }
+        }
+      }
+      
+      console.log('[VPN-DISCOVERY] ✅ Discovery completato e salvato nel database');
+      
+      res.json({
+        success: true,
+        message: 'Discovery completato e risultati salvati nel database',
+        discoveredSoftwareCount: availableSoftware.length,
+        discoveredSoftwareIds: discoveredSoftwareIds
+      });
+      
+    } catch (error) {
+      console.error('[VPN-DISCOVERY] Error during discovery:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to run VPN discovery and save to database',
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Discovered VPN Configurations
+  app.get("/api/discovered-vpn-configurations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const configurations = await storage.getDiscoveredVpnConfigurations(req.user!.id);
+    res.json(configurations);
+  });
+
+  app.get("/api/discovered-vpn-configurations/software/:softwareId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const configurations = await storage.getDiscoveredVpnConfigurationsBySoftware(req.params.softwareId, req.user!.id);
+    res.json(configurations);
+  });
+
+  app.get("/api/discovered-vpn-configurations/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const configuration = await storage.getDiscoveredVpnConfigurationById(req.params.id, req.user!.id);
+    if (!configuration) return res.sendStatus(404);
+    res.json(configuration);
+  });
+
+  app.post("/api/discovered-vpn-configurations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const configData = { ...req.body, userId: req.user!.id };
+      const validatedData = insertDiscoveredVpnConfigurationSchema.parse(configData);
+      const configuration = await storage.createDiscoveredVpnConfiguration(validatedData);
+      res.status(201).json(configuration);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid discovered VPN configuration data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.put("/api/discovered-vpn-configurations/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const configuration = await storage.updateDiscoveredVpnConfiguration(req.params.id, req.body, req.user!.id);
+      if (!configuration) return res.sendStatus(404);
+      res.json(configuration);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update discovered VPN configuration", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.delete("/api/discovered-vpn-configurations/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const success = await storage.deleteDiscoveredVpnConfiguration(req.params.id, req.user!.id);
     if (!success) return res.sendStatus(404);
     res.sendStatus(204);
   });
