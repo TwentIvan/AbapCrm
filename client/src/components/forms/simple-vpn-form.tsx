@@ -87,15 +87,26 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
     },
     onSuccess: (data: any) => {
       console.log("🔍 Discovery result:", data);
-      setDiscoveredConnections(data.connections || []);
+      const connections = data.connections || [];
+      setDiscoveredConnections(connections);
       setDiscoveryComplete(true);
       setIsDiscovering(false);
       
-      const count = data.connections?.length || 0;
-      toast({
-        title: "Connessioni Trovate",
-        description: `Scoperte ${count} connessioni esistenti per ${form.getValues('vpnSoftware')}`,
-      });
+      if (connections.length > 0) {
+        // Found real configurations
+        toast({
+          title: "Configurazioni Trovate",
+          description: `Trovate ${connections.length} configurazioni reali per ${selectedSoftware?.name}`,
+        });
+      } else {
+        // No real configurations found - show credentials form
+        console.log("🔍 No real configurations found - showing credentials form");
+        setShowCredentialsForm(true);
+        toast({
+          title: "Configurazioni Non Trovate",
+          description: `Nessuna configurazione esistente per ${selectedSoftware?.name}. Inserisci le credenziali manualmente.`,
+        });
+      }
     },
     onError: (error: any) => {
       setIsDiscovering(false);
@@ -410,24 +421,17 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
           </Card>
         )}
 
-        {/* Connection Selection */}
+        {/* Connection Selection - only shown if real configurations were found */}
         {discoveryComplete && discoveredConnections.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Connessioni Trovate</CardTitle>
+              <CardTitle>Configurazioni Reali Trovate</CardTitle>
               <CardDescription>
-                Seleziona la connessione che vuoi usare per {form.getValues('name') || 'questo cliente'}
+                Seleziona la configurazione esistente che vuoi usare per {form.getValues('name') || 'questo cliente'}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {discoveredConnections.length === 0 ? (
-                <Alert>
-                  <AlertDescription>
-                    Nessuna connessione trovata per {selectedSoftwareLabels[form.getValues('vpnSoftware') as keyof typeof selectedSoftwareLabels]}.
-                    Assicurati che il software sia installato e configurato.
-                  </AlertDescription>
-                </Alert>
-              ) : (
+              {discoveredConnections.length > 0 && (
                 <FormField
                   control={form.control}
                   name="existingConnectionId"
