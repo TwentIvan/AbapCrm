@@ -276,53 +276,53 @@ export async function discoverVPNConnections(softwareFilter?: string): Promise<V
     console.log('[VPN-DISCOVERY] Software filter:', softwareFilter);
     console.log('[VPN-DISCOVERY] Platform:', process.platform);
     
-    // If specific software is requested, check for uploaded real profiles first
-    if (softwareFilter) {
-      console.log('[VPN-DISCOVERY] Checking for real uploaded profiles for software:', softwareFilter);
+    // Check for uploaded connections from local workstation first
+    if ((global as any).uploadedVPNConnections) {
+      const uploaded = (global as any).uploadedVPNConnections;
+      console.log('[VPN-DISCOVERY] Using uploaded connections from workstation:', uploaded.hostname);
+      console.log('[VPN-DISCOVERY] Uploaded at:', uploaded.timestamp);
+      console.log('[VPN-DISCOVERY] Connection count:', uploaded.connection_count);
       
-      // Check for uploaded connections from local workstation
-      if ((global as any).uploadedVPNConnections) {
-        const uploaded = (global as any).uploadedVPNConnections;
-        console.log('[VPN-DISCOVERY] Using uploaded connections from workstation:', uploaded.hostname);
-        console.log('[VPN-DISCOVERY] Uploaded at:', uploaded.timestamp);
-        console.log('[VPN-DISCOVERY] Connection count:', uploaded.connection_count);
-        
-        const uploadedConnections = uploaded.connections.map((conn: any) => ({
-          id: conn.id,
-          name: conn.name,
-          type: conn.type,
-          status: conn.status,
-          description: `${conn.description} (from ${uploaded.hostname})`,
-          server: conn.server || undefined,
-          port: conn.port || undefined,
-          automationScript: 'applescript'
-        }));
-        
-        return uploadedConnections;
-      } else if ((global as any).realFortiClientProfiles) {
-        // Use REAL FortiClient profiles extracted with fccconfig
-        const realProfiles = (global as any).realFortiClientProfiles;
-        console.log('[VPN-DISCOVERY] Using REAL FortiClient profiles from fccconfig');
-        console.log('[VPN-DISCOVERY] Real profiles from:', realProfiles.hostname);
-        console.log('[VPN-DISCOVERY] Extraction method:', realProfiles.extraction_method);
-        console.log('[VPN-DISCOVERY] Profile count:', realProfiles.connection_count);
-        
-        const realConnections = realProfiles.connections.map((conn: any) => ({
-          id: conn.id,
-          name: conn.name,
-          type: conn.type,
-          status: conn.status,
-          description: `${conn.description} (estratto da fccconfig)`,
-          server: conn.server || undefined,
-          port: conn.port || undefined,
-          automationScript: 'applescript-advanced'
-        }));
-        
-        return realConnections;
-      } else {
-        console.log('[VPN-DISCOVERY] No uploaded real profiles found - credentials needed');
-        return [];
-      }
+      const uploadedConnections = uploaded.connections.map((conn: any) => ({
+        id: conn.id,
+        name: conn.name,
+        type: conn.type,
+        status: conn.status,
+        description: `${conn.description} (from ${uploaded.hostname})`,
+        server: conn.server || undefined,
+        port: conn.port || undefined,
+        automationScript: 'applescript'
+      }));
+      
+      connections.push(...uploadedConnections);
+    } else if ((global as any).realFortiClientProfiles) {
+      // Use REAL FortiClient profiles extracted with fccconfig
+      const realProfiles = (global as any).realFortiClientProfiles;
+      console.log('[VPN-DISCOVERY] Using REAL FortiClient profiles from fccconfig');
+      console.log('[VPN-DISCOVERY] Real profiles from:', realProfiles.hostname);
+      console.log('[VPN-DISCOVERY] Extraction method:', realProfiles.extraction_method);
+      console.log('[VPN-DISCOVERY] Profile count:', realProfiles.connection_count);
+      
+      const realConnections = realProfiles.connections.map((conn: any) => ({
+        id: conn.id,
+        name: conn.name,
+        type: conn.type,
+        status: conn.status,
+        description: `${conn.description} (estratto da fccconfig)`,
+        server: conn.server || undefined,
+        port: conn.port || undefined,
+        automationScript: 'applescript-advanced'
+      }));
+      
+      connections.push(...realConnections);
+    } else {
+      console.log('[VPN-DISCOVERY] No uploaded profiles found - running real discovery...');
+    }
+    
+    // If we already have connections from uploaded data, return them
+    if (connections.length > 0) {
+      console.log('[VPN-DISCOVERY] Returning uploaded connections');
+      return connections;
     }
     
     // 1. Check for FortiClient configurations (try on any platform)
