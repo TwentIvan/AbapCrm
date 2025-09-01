@@ -1474,7 +1474,7 @@ export class DatabaseStorage implements IStorage {
   async createVpnConnection(connection: InsertVpnConnection): Promise<VpnConnection> {
     const [newConnection] = await db
       .insert(vpnConnections)
-      .values([connection])
+      .values(connection)
       .returning();
     return newConnection;
   }
