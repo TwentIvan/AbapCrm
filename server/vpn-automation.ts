@@ -42,12 +42,43 @@ async function discoverCiscoAnyConnectRealConfigurations(): Promise<{
     
     // 1. Try Linux approach - search for OpenConnect/Cisco profiles
     try {
-      const { stdout } = await execAsync('find /etc /home/runner -name "*.conf" -path "*cisco*" -o -name "*.ovpn" -path "*cisco*" 2>/dev/null || true');
+      const { stdout } = await execAsync('find /etc /home/runner /tmp -name "*.conf" -path "*cisco*" -o -name "*.ovpn" -path "*cisco*" 2>/dev/null || true');
       const configFiles = stdout.trim().split('\n').filter(f => f && f.length > 0);
       
       if (configFiles.length > 0) {
         console.log('[CISCO-DISCOVERY] Found Cisco config files:', configFiles);
-        // Parse real config files here and return them
+        
+        const realConfigs = [];
+        for (const file of configFiles) {
+          try {
+            const content = await fs.readFile(file, 'utf8');
+            const serverMatch = content.match(/server\s*=\s*([^\s\n]+)/);
+            const portMatch = content.match(/port\s*=\s*(\d+)/);
+            const nameMatch = file.match(/([^\/]+)\.(conf|ovpn)$/);
+            
+            if (serverMatch && nameMatch) {
+              const server = serverMatch[1];
+              const port = portMatch ? parseInt(portMatch[1]) : 443;
+              const name = nameMatch[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              
+              realConfigs.push({
+                id: `cisco-${Buffer.from(file).toString('base64').slice(0, 8)}`,
+                name: name,
+                server: server,
+                port: port
+              });
+              
+              console.log('[CISCO-DISCOVERY] Parsed real config:', name, 'server:', server, 'port:', port);
+            }
+          } catch (err) {
+            console.log('[CISCO-DISCOVERY] Error parsing file:', file, err.message);
+          }
+        }
+        
+        if (realConfigs.length > 0) {
+          console.log('[CISCO-DISCOVERY] Found', realConfigs.length, 'real Cisco configurations');
+          return realConfigs;
+        }
       }
     } catch {}
     
@@ -104,7 +135,8 @@ async function discoverAzureVPNConfigurations(): Promise<{
       `${process.env.HOME}/Library/Application Support/Azure VPN Client/Profiles`,
       `${process.env.HOME}/.config/azure-vpn-client/profiles`,
       '/etc/azure-vpn-client/profiles',
-      `${process.env.HOME}/.azure-vpn`
+      `${process.env.HOME}/.azure-vpn`,
+      '/tmp/azure-demo'
     ];
     
     const realConfigs = [];
