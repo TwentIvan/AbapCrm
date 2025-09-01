@@ -1,0 +1,366 @@
+FortiClient Deep Configuration Discovery
+=======================================
+Finding ALL FortiClient configurations including 'GiVa'
+
+✅ FortiClient found
+
+1. Analyzing FortiClient Configuration Files...
+================================================
+
+✅ Found: /Users/Ivan/Library/Application Support/Fortinet/FortiClient
+   Directory contents:
+     /Users/Ivan/Library/Application Support/Fortinet/FortiClient/fct.plist
+   Searching for 'GiVa' in configuration files...
+     🎯 Found 'GiVa' in: /Users/Ivan/Library/Application Support/Fortinet/FortiClient/fct.plist
+       ► <plist version="1.0">
+       ► <dict>
+       ► 	<key>VPNLastTimeConnection</key>
+       ► 	<string>GiVa</string>
+       ► 	<key>disconnectedBySleep</key>
+       ► 	<false/>
+       ► </dict>
+
+✅ Found: /Library/Application Support/Fortinet/FortiClient
+   Directory contents:
+     /Library/Application Support/Fortinet/FortiClient/data/schtasks.plist
+     /Library/Application Support/Fortinet/FortiClient/data/fctdata.plist
+     /Library/Application Support/Fortinet/FortiClient/conf/vpn.plist
+     /Library/Application Support/Fortinet/FortiClient/conf/fctsysconf.plist
+     /Library/Application Support/Fortinet/FortiClient/conf/fsso.plist
+     /Library/Application Support/Fortinet/FortiClient/conf/epctrl.plist
+   Searching for 'GiVa' in configuration files...
+     🎯 Found 'GiVa' in: /Library/Application Support/Fortinet/FortiClient/conf/vpn.plist
+       ► 			<key>WarnInvalidServerCertificate</key>
+       ► 			<integer>1</integer>
+       ► 		</dict>
+       ► 		<key>GiVa</key>
+       ► 		<dict>
+       ► 			<key>AllowAutoConnect</key>
+       ► 			<integer>1</integer>
+       ► --
+       ► 			<key>CertIssuerPattern</key>
+       ► 			<string></string>
+       ► 			<key>Comment</key>
+       ► 			<string>GiVa</string>
+       ► 			<key>DisclaimerMessage</key>
+       ► 			<string>$null</string>
+       ► 			<key>EmsAllowAutoConnect</key>
+       ► --
+       ► 			<key>KeepRunningMaxRetry</key>
+       ► 			<integer>0</integer>
+       ► 			<key>Name</key>
+       ► 			<string>GiVa</string>
+       ► 			<key>OnConnectScript</key>
+       ► 			<string>$null</string>
+       ► 			<key>OnDisconnectScript</key>
+       ► --
+       ► 			<key>SaveUsername</key>
+       ► 			<integer>0</integer>
+       ► 			<key>Server</key>
+       ► 			<string>https://sslvpn.givagroup.it:443/sslvpn</string>
+       ► 			<key>ServerPort</key>
+       ► 			<integer>443</integer>
+       ► 			<key>ShowPasscode</key>
+
+✅ Found: /Users/Ivan/Library/Application Support/Fortinet
+   Directory contents:
+     /Users/Ivan/Library/Application Support/Fortinet/FortiClient/fct.plist
+   Searching for 'GiVa' in configuration files...
+     🎯 Found 'GiVa' in: /Users/Ivan/Library/Application Support/Fortinet/FortiClient/fct.plist
+       ► <plist version="1.0">
+       ► <dict>
+       ► 	<key>VPNLastTimeConnection</key>
+       ► 	<string>GiVa</string>
+       ► 	<key>disconnectedBySleep</key>
+       ► 	<false/>
+       ► </dict>
+
+✅ Found: /Library/Application Support/Fortinet
+   Directory contents:
+     /Library/Application Support/Fortinet/FortiClient/data/schtasks.plist
+     /Library/Application Support/Fortinet/FortiClient/data/fctdata.plist
+     /Library/Application Support/Fortinet/FortiClient/conf/vpn.plist
+     /Library/Application Support/Fortinet/FortiClient/conf/fctsysconf.plist
+     /Library/Application Support/Fortinet/FortiClient/conf/fsso.plist
+     /Library/Application Support/Fortinet/FortiClient/conf/epctrl.plist
+   Searching for 'GiVa' in configuration files...
+     🎯 Found 'GiVa' in: /Library/Application Support/Fortinet/FortiClient/conf/vpn.plist
+       ► 			<key>WarnInvalidServerCertificate</key>
+       ► 			<integer>1</integer>
+       ► 		</dict>
+       ► 		<key>GiVa</key>
+       ► 		<dict>
+       ► 			<key>AllowAutoConnect</key>
+       ► 			<integer>1</integer>
+       ► --
+       ► 			<key>CertIssuerPattern</key>
+       ► 			<string></string>
+       ► 			<key>Comment</key>
+       ► 			<string>GiVa</string>
+       ► 			<key>DisclaimerMessage</key>
+       ► 			<string>$null</string>
+       ► 			<key>EmsAllowAutoConnect</key>
+       ► --
+       ► 			<key>KeepRunningMaxRetry</key>
+       ► 			<integer>0</integer>
+       ► 			<key>Name</key>
+       ► 			<string>GiVa</string>
+       ► 			<key>OnConnectScript</key>
+       ► 			<string>$null</string>
+       ► 			<key>OnDisconnectScript</key>
+       ► --
+       ► 			<key>SaveUsername</key>
+       ► 			<integer>0</integer>
+       ► 			<key>Server</key>
+       ► 			<string>https://sslvpn.givagroup.it:443/sslvpn</string>
+       ► 			<key>ServerPort</key>
+       ► 			<integer>443</integer>
+       ► 			<key>ShowPasscode</key>
+
+✅ Found: /Users/Ivan/Library/Preferences/com.fortinet.forticlient.plist
+   Analyzing plist file for VPN configs...
+   Raw plist content (looking for GiVa):
+
+================================================
+2. FortiClient CLI Configuration Discovery...
+=============================================
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient --list
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:58:59.263 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:58:59.295 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:58:59.304 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient --list-connections
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:00.115 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:00.118 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:00.118 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient --list-profiles
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:00.865 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:00.868 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:00.868 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient --list-vpn
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:01.563 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:01.565 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:01.565 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient --show-connections
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:02.269 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:02.272 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:02.272 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient --show-profiles
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:02.962 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:02.965 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:02.965 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient --show-vpn
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:03.650 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:03.652 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:03.653 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient --get-connections
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:04.341 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:04.344 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:04.344 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient --get-profiles
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:05.035 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:05.038 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:05.038 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient --profiles
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:05.753 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:05.757 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:05.757 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient --connections
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:06.442 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:06.444 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:06.444 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient --config
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:07.136 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:07.138 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:07.139 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient --configuration
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:07.816 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:07.818 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:07.819 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient list
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:08.533 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:08.535 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:08.536 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient show
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:09.285 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:09.288 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:09.288 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient profiles
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:09.980 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:09.982 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:09.982 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+Testing: /Applications/FortiClient.app/Contents/MacOS/FortiClient connections
+-----------------------------
+Output found:
+   Index - singleInstanceLock=false 1
+   02:59:10.673 › Index - singleInstanceLock=false
+   Index - bindAppCommonListeners 1
+   02:59:10.675 › Index - bindAppCommonListeners
+   Index - FortiClient should quit singleInstanceLock=false shouldQuit=true. 1
+   02:59:10.676 › Index - FortiClient should quit singleInstanceLock=false shouldQuit=true.
+
+================================================
+3. System VPN Integration Check...
+===================================
+Checking if GiVa appears in system VPN list...
+
+Full system VPN list (looking for FortiClient connections):
+   * (Disconnected)   E6C9B3B3-63BE-40A7-946F-78EEE2632334 VPN (com.fortinet.forticlient.macos.vpn) "VPN 2"                          [VPN:com.fortinet.forticlient.macos.vpn]
+   * (Disconnected)   20ADF21A-37E9-4F91-8503-ADB27A277044 VPN (com.fortinet.forticlient.macos.vpn) "VPN"                            [VPN:com.fortinet.forticlient.macos.vpn]
+
+================================================
+4. FortiClient Runtime Analysis...
+==================================
+Starting FortiClient to analyze runtime configuration...
+FortiClient processes:
+   Ivan             41305   0,0  0,4 1597208320  93824   ??  S    Mer10am   1:35.99 /Applications/FortiClient.app/Contents/Frameworks/FortiClient Helper (Renderer).app/Contents/MacOS/FortiClient Helper (Renderer) --type=renderer --user-data-dir=/Users/Ivan/Library/Application Support/FortiClient --app-path=/Applications/FortiClient.app/Contents/Resources/app.asar --no-sandbox --no-zygote --first-renderer-process --disable-gpu-compositing --lang=it --num-raster-threads=4 --enable-zero-copy --enable-gpu-memory-buffer-compositor-resources --enable-main-frame-before-activation --renderer-client-id=4 --time-ticks-at-unix-epoch=-1755556992178964 --launch-time-ticks=724647415175 --shared-files --field-trial-handle=1718379636,r,15477387827778160119,9903256927703942002,131072 --disable-features=SpareRendererForSitePerProcess
+   Ivan             41301   0,0  0,0 411012608   7008   ??  S    Mer10am   0:02.72 /Applications/FortiClient.app/Contents/Frameworks/FortiClient Helper.app/Contents/MacOS/FortiClient Helper --type=utility --utility-sub-type=network.mojom.NetworkService --lang=it --service-sandbox-type=network --user-data-dir=/Users/Ivan/Library/Application Support/FortiClient --shared-files --field-trial-handle=1718379636,r,15477387827778160119,9903256927703942002,131072 --disable-features=SpareRendererForSitePerProcess --seatbelt-client=40
+   Ivan             41300   0,0  0,1 411879488  31968   ??  S    Mer10am   0:28.59 /Applications/FortiClient.app/Contents/Frameworks/FortiClient Helper (GPU).app/Contents/MacOS/FortiClient Helper (GPU) --type=gpu-process --user-data-dir=/Users/Ivan/Library/Application Support/FortiClient --gpu-preferences=UAAAAAAAAAAgAAAIAAAAAAAAAAAAAAAAAABgAAAAAAAwAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAGgHAAAAAAAAaAcAAAAAAAB4AgAATgAAAHACAAAAAAAAeAIAAAAAAACAAgAAAAAAAIgCAAAAAAAAkAIAAAAAAACYAgAAAAAAAKACAAAAAAAAqAIAAAAAAACwAgAAAAAAALgCAAAAAAAAwAIAAAAAAADIAgAAAAAAANACAAAAAAAA2AIAAAAAAADgAgAAAAAAAOgCAAAAAAAA8AIAAAAAAAD4AgAAAAAAAAADAAAAAAAACAMAAAAAAAAQAwAAAAAAABgDAAAAAAAAIAMAAAAAAAAoAwAAAAAAADADAAAAAAAAOAMAAAAAAABAAwAAAAAAAEgDAAAAAAAAUAMAAAAAAABYAwAAAAAAAGADAAAAAAAAaAMAAAAAAABwAwAAAAAAAHgDAAAAAAAAgAMAAAAAAACIAwAAAAAAAJADAAAAAAAAmAMAAAAAAACgAwAAAAAAAKgDAAAAAAAAsAMAAAAAAAC4AwAAAAAAAMADAAAAAAAAyAMAAAAAAADQAwAAAAAAANgDAAAAAAAA4AMAAAAAAADoAwAAAAAAAPADAAAAAAAA+AMAAAAAAAAABAAAAAAAAAgEAAAAAAAAEAQAAAAAAAAYBAAAAAAAACAEAAAAAAAAKAQAAAAAAAAwBAAAAAAAADgEAAAAAAAAQAQAAAAAAABIBAAAAAAAAFAEAAAAAAAAWAQAAAAAAABgBAAAAAAAAGgEAAAAAAAAcAQAAAAAAAB4BAAAAAAAAIAEAAAAAAAAiAQAAAAAAACQBAAAAAAAAJgEAAAAAAAAoAQAAAAAAACoBAAAAAAAALAEAAAAAAAAuAQAAAAAAADABAAAAAAAAMgEAAAAAAAA0AQAAAAAAADYBAAAAAAAABAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAABAAAAEAAAAAAAAAAAAAAAAgAAABAAAAAAAAAAAAAAAAMAAAAQAAAAAAAAAAAAAAAGAAAAEAAAAAAAAAAAAAAABwAAABAAAAAAAAAAAAAAAAgAAAAQAAAAAAAAAAAAAAAJAAAAEAAAAAAAAAAAAAAACwAAABAAAAAAAAAAAAAAAAwAAAAQAAAAAAAAAAAAAAAOAAAAEAAAAAAAAAAAAAAADwAAABAAAAAAAAAAAAAAABAAAAAQAAAAAAAAAAEAAAAAAAAAEAAAAAAAAAABAAAAAQAAABAAAAAAAAAAAQAAAAIAAAAQAAAAAAAAAAEAAAADAAAAEAAAAAAAAAABAAAABgAAABAAAAAAAAAAAQAAAAcAAAAQAAAAAAAAAAEAAAAIAAAAEAAAAAAAAAABAAAACQAAABAAAAAAAAAAAQAAAAsAAAAQAAAAAAAAAAEAAAAMAAAAEAAAAAAAAAABAAAADgAAABAAAAAAAAAAAQAAAA8AAAAQAAAAAAAAAAEAAAAQAAAAEAAAAAAAAAAEAAAAAAAAABAAAAAAAAAABAAAAAEAAAAQAAAAAAAAAAQAAAACAAAAEAAAAAAAAAAEAAAAAwAAABAAAAAAAAAABAAAAAYAAAAQAAAAAAAAAAQAAAAHAAAAEAAAAAAAAAAEAAAACAAAABAAAAAAAAAABAAAAAkAAAAQAAAAAAAAAAQAAAALAAAAEAAAAAAAAAAEAAAADAAAABAAAAAAAAAABAAAAA4AAAAQAAAAAAAAAAQAAAAPAAAAEAAAAAAAAAAEAAAAEAAAABAAAAAAAAAABwAAAAAAAAAQAAAAAAAAAAcAAAABAAAAEAAAAAAAAAAHAAAAAgAAABAAAAAAAAAABwAAAAMAAAAQAAAAAAAAAAcAAAAGAAAAEAAAAAAAAAAHAAAABwAAABAAAAAAAAAABwAAAAgAAAAQAAAAAAAAAAcAAAAJAAAAEAAAAAAAAAAHAAAACwAAABAAAAAAAAAABwAAAAwAAAAQAAAAAAAAAAcAAAAOAAAAEAAAAAAAAAAHAAAADwAAABAAAAAAAAAABwAAABAAAAAQAAAAAAAAAAgAAAAAAAAAEAAAAAAAAAAIAAAAAQAAABAAAAAAAAAACAAAAAIAAAAQAAAAAAAAAAgAAAADAAAAEAAAAAAAAAAIAAAABgAAABAAAAAAAAAACAAAAAcAAAAQAAAAAAAAAAgAAAAIAAAAEAAAAAAAAAAIAAAACQAAABAAAAAAAAAACAAAAAsAAAAQAAAAAAAAAAgAAAAMAAAAEAAAAAAAAAAIAAAADgAAABAAAAAAAAAACAAAAA8AAAAQAAAAAAAAAAgAAAAQAAAAEAAAAAAAAAAKAAAAAAAAABAAAAAAAAAACgAAAAEAAAAQAAAAAAAAAAoAAAACAAAAEAAAAAAAAAAKAAAAAwAAABAAAAAAAAAACgAAAAYAAAAQAAAAAAAAAAoAAAAHAAAAEAAAAAAAAAAKAAAACAAAABAAAAAAAAAACgAAAAkAAAAQAAAAAAAAAAoAAAALAAAAEAAAAAAAAAAKAAAADAAAABAAAAAAAAAACgAAAA4AAAAQAAAAAAAAAAoAAAAPAAAAEAAAAAAAAAAKAAAAEAAAAAgAAAAAAAAACAAAAAAAAAA= --use-gl=angle --use-angle=swiftshader-webgl --shared-files --field-trial-handle=1718379636,r,15477387827778160119,9903256927703942002,131072 --disable-features=SpareRendererForSitePerProcess --seatbelt-client=40
+   Ivan             41294   0,0  0,3 1589134688  76368   ??  S    Mer10am   0:48.10 /Applications/FortiClient.app/Contents/MacOS/FortiClient
+   root              1513   0,0  0,1 411884928  31616   ??  Ss   18Ago25  39:45.74 /Library/Application Support/Fortinet/FortiClient/bin/fcconfig
+   root              1515   0,0  0,0 411615504   5024   ??  Ss   18Ago25   2:01.66 /Library/PrivilegedHelperTools/com.fortinet.forticlient.macos.PrivilegedHelper
+   Ivan              1512   0,0  0,1 412020368  31792   ??  S    18Ago25   1:28.82 /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiTray.app/Contents/MacOS/FortiTray
+   Ivan              1511   0,0  0,1 411697520  22256   ??  S    18Ago25   7:11.96 /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientAgent.app/Contents/Resources/runtime.helper/FctMiscAgent.app/Contents/MacOS/FctMiscAgent
+   Ivan              1374   0,0  0,1 411305648  16512   ??  S    18Ago25   0:33.14 /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientAgent.app/Contents/MacOS/FortiClientAgent
+   Ivan              1153   0,0  0,0 410754832   2784   ??  S    18Ago25   0:03.39 /Library/Application Support/Fortinet/FortiClient/bin/CredentialStore
+   root               628   0,0  0,0 411747792   8448   ??  Ss   18Ago25   0:46.74 /Library/Application Support/Fortinet/FortiClient/bin/fctservctl2
+   Ivan             74985   0,0  0,0 410739120   3232 s000  S+    2:58am   0:00.05 bash forticlient_discovery_deep.sh
+
+FortiClient application bundle analysis:
+   Checking for configuration templates or examples...
+   Checking: /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientAgent.app/Contents/Resources/runtime.helper/FctMiscAgent.app/Contents/Info.plist
+     🎯 Found relevant content in /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientAgent.app/Contents/Resources/runtime.helper/FctMiscAgent.app/Contents/Info.plist
+   Checking: /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientAgent.app/Contents/Info.plist
+     🎯 Found relevant content in /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientAgent.app/Contents/Info.plist
+   Checking: /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiTray.app/Contents/Resources/Main.storyboardc/Info.plist
+     🎯 Found relevant content in /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiTray.app/Contents/Resources/Main.storyboardc/Info.plist
+   Checking: /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiTray.app/Contents/Library/SystemExtensions/com.fortinet.forticlient.macos.vpn.nwextension.systemextension/Contents/Info.plist
+     🎯 Found relevant content in /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiTray.app/Contents/Library/SystemExtensions/com.fortinet.forticlient.macos.vpn.nwextension.systemextension/Contents/Info.plist
+   Checking: /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiTray.app/Contents/Info.plist
+     🎯 Found relevant content in /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiTray.app/Contents/Info.plist
+   Checking: /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientUpdate.app/Contents/Info.plist
+     🎯 Found relevant content in /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientUpdate.app/Contents/Info.plist
+   Checking: /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientNetwork.app/Contents/Library/SystemExtensions/com.fortinet.forticlient.macos.webfilter.systemextension/Contents/Info.plist
+     🎯 Found relevant content in /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientNetwork.app/Contents/Library/SystemExtensions/com.fortinet.forticlient.macos.webfilter.systemextension/Contents/Info.plist
+   Checking: /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientNetwork.app/Contents/Library/SystemExtensions/com.fortinet.forticlient.macos.proxy.systemextension/Contents/Info.plist
+     🎯 Found relevant content in /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientNetwork.app/Contents/Library/SystemExtensions/com.fortinet.forticlient.macos.proxy.systemextension/Contents/Info.plist
+   Checking: /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientNetwork.app/Contents/Info.plist
+     🎯 Found relevant content in /Applications/FortiClient.app/Contents/Resources/runtime.helper/FortiClientNetwork.app/Contents/Info.plist
+   Checking: /Applications/FortiClient.app/Contents/Frameworks/FortiClient Helper (Plugin).app/Contents/Info.plist
+     🎯 Found relevant content in /Applications/FortiClient.app/Contents/Frameworks/FortiClient Helper (Plugin).app/Contents/Info.plist
+
+================================================
+5. FortiClient AppleScript Introspection...
+===========================================
+Querying FortiClient for available connections via AppleScript...
+AppleScript introspection result:
+   /tmp/fc_introspection.scpt:251:261: script error: Si attendeva nome classe ma è stato trovato identificativo. (-2741)
+
+================================================
+FortiClient Deep Discovery Complete!
+================================================
+
+🎯 SUMMARY:
+• Analyzed all FortiClient configuration paths
+• Tested all possible CLI list commands
+• Checked system VPN integration
+• Performed runtime analysis
+• Used AppleScript introspection
+
+Look for 🎯 markers above to see where 'GiVa' was found!
