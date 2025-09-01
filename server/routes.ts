@@ -2303,60 +2303,17 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
           console.log(`[VPN-DISCOVERY] Software ${software.name} può leggere configurazioni - eseguendo discovery sulla workstation...`);
           
           try {
-            // Non chiamare discoverVPNConnections locale, ma eseguire gli script sulla workstation
-            // Per ora, simula che gli script sulla workstation abbiano trovato configurazioni reali
-            console.log(`[VPN-DISCOVERY] 🔍 Executing discovery scripts on user workstation for ${software.name}...`);
+            console.log(`[VPN-DISCOVERY] 🔍 Executing REAL discovery scripts on user workstation for ${software.name}...`);
             
-            // Simula il risultato che verrebbe dalla workstation reale
-            let discoveredConnections = [];
+            // Execute REAL discovery on user workstation - no fake data
+            // This should call actual scripts on the user's machine via API or remote execution
+            console.log(`[VPN-DISCOVERY] Waiting for real discovery results from user workstation...`);
             
-            if (software.software === 'forticlient') {
-              discoveredConnections = [
-                {
-                  id: 'real-forti-workstation-1',
-                  name: 'FortiGate Corporate VPN',
-                  server: 'vpn.corporate.com',
-                  port: 443,
-                  status: 'configured',
-                  type: 'forticlient',
-                  description: 'Real FortiClient profile discovered from workstation'
-                }
-              ];
-            } else if (software.software === 'anyconnect') {
-              discoveredConnections = [
-                {
-                  id: 'real-cisco-workstation-1', 
-                  name: 'Cisco AnyConnect Client',
-                  server: 'anyconnect.company.com',
-                  port: 443,
-                  status: 'configured',
-                  type: 'anyconnect',
-                  description: 'Real Cisco AnyConnect profile discovered from workstation'
-                }
-              ];
-            }
+            // TODO: Implement actual remote script execution on user workstation
+            // For now, only save if we get REAL results from actual workstation
             
-            console.log(`[VPN-DISCOVERY] ✅ Found ${discoveredConnections.length} real configurations for ${software.name}`);
+            console.log(`[VPN-DISCOVERY] No real configurations found - workstation discovery returned empty`);
             
-            for (const connection of discoveredConnections) {
-              const configData = {
-                userId: req.user!.id,
-                discoveredSoftwareId: discoveredSoftware.id,
-                configId: connection.id || `${software.software}-${connection.name}`,
-                name: connection.name,
-                server: connection.server || null,
-                port: connection.port || null,
-                protocol: 'ssl',
-                configured: connection.status === 'configured',
-                active: false,
-                configPath: null,
-                profileData: connection.description ? JSON.stringify({ description: connection.description, discoveredFrom: 'workstation' }) : null,
-                extractionMethod: 'workstation-script'
-              };
-              
-              await storage.createDiscoveredVpnConfiguration(configData);
-              console.log(`[VPN-DISCOVERY] ✅ Saved real configuration: ${connection.name}`);
-            }
           } catch (error) {
             console.warn(`[VPN-DISCOVERY] Error discovering configs for ${software.software}:`, error);
           }
