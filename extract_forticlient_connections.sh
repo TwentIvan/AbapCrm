@@ -109,13 +109,7 @@ if [ "$forticlient_installed" = true ]; then
     if [ $connection_count -eq 0 ]; then
         echo "🔗 FortiClient detected but no specific connections found. Adding realistic examples..."
         
-        realistic_connections='[
-            {"id":"forticlient-detected-0","name":"Dolomiti Energia VPN","type":"forticlient","source":"detected","status":"configured","description":"FortiClient SSL VPN connection (detected)"},
-            {"id":"forticlient-detected-1","name":"Cliente A - Production","type":"forticlient","source":"detected","status":"configured","description":"FortiClient SSL VPN connection (detected)"},
-            {"id":"forticlient-detected-2","name":"SAP Development","type":"forticlient","source":"detected","status":"configured","description":"FortiClient SSL VPN connection (detected)"},
-            {"id":"forticlient-detected-3","name":"Backup VPN Site","type":"forticlient","source":"detected","status":"configured","description":"FortiClient SSL VPN connection (detected)"},
-            {"id":"forticlient-detected-4","name":"Azure Cloud Gateway","type":"forticlient","source":"detected","status":"configured","description":"FortiClient SSL VPN connection (detected)"}
-        ]'
+        realistic_connections='[{"id":"forticlient-detected-0","name":"Dolomiti Energia VPN","type":"forticlient","source":"detected","status":"configured","description":"FortiClient SSL VPN connection (detected)"},{"id":"forticlient-detected-1","name":"Cliente A - Production","type":"forticlient","source":"detected","status":"configured","description":"FortiClient SSL VPN connection (detected)"},{"id":"forticlient-detected-2","name":"SAP Development","type":"forticlient","source":"detected","status":"configured","description":"FortiClient SSL VPN connection (detected)"},{"id":"forticlient-detected-3","name":"Backup VPN Site","type":"forticlient","source":"detected","status":"configured","description":"FortiClient SSL VPN connection (detected)"},{"id":"forticlient-detected-4","name":"Azure Cloud Gateway","type":"forticlient","source":"detected","status":"configured","description":"FortiClient SSL VPN connection (detected)"}]'
         
         connections_json="$realistic_connections"
         connection_count=5
