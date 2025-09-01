@@ -181,7 +181,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     console.log('[VPN-SOFTWARE-API] ========== SOFTWARE DISCOVERY REQUEST ==========');
     
     try {
-      const availableSoftware = await discoverAvailableVPNSoftware();
+      const availableSoftware = await discoverAvailableVPNSoftware(req.user!.id);
       
       console.log('[VPN-SOFTWARE-API] Found', availableSoftware.length, 'VPN software packages');
       availableSoftware.forEach(sw => {
@@ -2268,7 +2268,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       await storage.clearDiscoveredVpnSoftware(req.user!.id);
       
       // Scopri software disponibili 
-      const availableSoftware = await discoverAvailableVPNSoftware();
+      const availableSoftware = await discoverAvailableVPNSoftware(req.user!.id);
       console.log('[VPN-DISCOVERY] Software trovati:', availableSoftware);
       
       const discoveredSoftwareIds = [];
