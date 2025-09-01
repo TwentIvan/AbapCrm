@@ -286,36 +286,92 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
                   render={({ field }) => (
                     <FormItem>
                       <div className="space-y-3">
-                        {discoveredConnections.map((connection) => (
-                          <Label
-                            key={connection.id}
-                            className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-accent"
-                            data-testid={`connection-${connection.id}`}
-                          >
-                            <input
-                              type="radio"
-                              value={connection.id}
-                              checked={field.value === connection.id}
-                              onChange={() => field.onChange(connection.id)}
-                              className="text-primary"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <Wifi className="h-4 w-4 text-blue-500" />
-                                <span className="font-medium">{connection.name}</span>
-                                {connection.configured && (
-                                  <Badge variant="outline" className="text-green-600">
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Configurata
-                                  </Badge>
-                                )}
+                        {discoveredConnections.map((connection) => {
+                          // Determine automation level display
+                          const getAutomationInfo = (conn: any) => {
+                            if (conn.automationLevel === 'full') {
+                              return { 
+                                label: 'Automazione Completa', 
+                                color: 'bg-green-100 text-green-800',
+                                icon: '🤖',
+                                description: 'Connessione automatica via sistema'
+                              };
+                            } else if (conn.automationLevel === 'cli') {
+                              return { 
+                                label: 'Automazione CLI', 
+                                color: 'bg-blue-100 text-blue-800',
+                                icon: '⚡',
+                                description: 'Connessione via comando CLI'
+                              };
+                            } else if (conn.automationLevel === 'limited') {
+                              return { 
+                                label: 'Automazione Limitata', 
+                                color: 'bg-yellow-100 text-yellow-800',
+                                icon: '⚠️',
+                                description: 'Apre app, potrebbe servire selezione manuale'
+                              };
+                            } else if (conn.automationLevel === 'manual') {
+                              return { 
+                                label: 'Manuale', 
+                                color: 'bg-orange-100 text-orange-800',
+                                icon: '👤',
+                                description: 'Apre app, connessione manuale richiesta'
+                              };
+                            }
+                            return { 
+                              label: 'Standard', 
+                              color: 'bg-gray-100 text-gray-800',
+                              icon: '📱',
+                              description: 'Automazione standard'
+                            };
+                          };
+
+                          const automationInfo = getAutomationInfo(connection);
+
+                          return (
+                            <Label
+                              key={connection.id}
+                              className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-accent"
+                              data-testid={`connection-${connection.id}`}
+                            >
+                              <input
+                                type="radio"
+                                value={connection.id}
+                                checked={field.value === connection.id}
+                                onChange={() => field.onChange(connection.id)}
+                                className="text-primary"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Wifi className="h-4 w-4 text-blue-500" />
+                                  <span className="font-medium">{connection.name}</span>
+                                  {connection.configured && (
+                                    <Badge variant="outline" className="text-green-600">
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Configurata
+                                    </Badge>
+                                  )}
+                                </div>
+                                
+                                {/* Automation level indicator */}
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className={`px-2 py-1 rounded-full text-xs ${automationInfo.color}`}>
+                                    {automationInfo.icon} {automationInfo.label}
+                                  </span>
+                                </div>
+                                
+                                <p className="text-sm text-muted-foreground">
+                                  {connection.details}
+                                </p>
+                                
+                                {/* Automation description */}
+                                <p className="text-xs text-gray-500 mt-1 italic">
+                                  {automationInfo.description}
+                                </p>
                               </div>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {connection.details}
-                              </p>
-                            </div>
-                          </Label>
-                        ))}
+                            </Label>
+                          );
+                        })}
                       </div>
                       <FormMessage />
                     </FormItem>

@@ -73,60 +73,76 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
       
       connections.push(...uploadedConnections);
     } else {
-      // Load ONLY authentic VPN data found from Ivan's workstation (NO FAKE DATA!)
-      console.log('[VPN-DISCOVERY] Loading ONLY AUTHENTIC VPN connections from Ivan workstation');
+      // Load ONLY authentic VPN data with REALISTIC automation capabilities
+      console.log('[VPN-DISCOVERY] Loading AUTHENTIC VPN connections with realistic automation levels');
       const realConnections = [
-        // ONLY system VPN connections that were actually found
+        // LEVEL 1: System VPN connections (scutil) - FULL AUTOMATION
         {
           id: "sys-fc-0",
           name: "VPN 2",
           type: "forticlient" as const,
           status: "configured" as const,
-          description: "FortiClient system connection (authentic)",
-          automationScript: "applescript"
+          description: "FortiClient system VPN (full automation via scutil)",
+          automationScript: "system",
+          automationLevel: "full"
         },
         {
-          id: "sys-fc-1",
+          id: "sys-fc-1", 
           name: "VPN",
-          type: "forticlient" as const, 
+          type: "forticlient" as const,
           status: "configured" as const,
-          description: "FortiClient system connection (authentic)",
-          automationScript: "applescript"
+          description: "FortiClient system VPN (full automation via scutil)",
+          automationScript: "system",
+          automationLevel: "full"
         },
-        // ONLY Cisco AnyConnect profiles that were actually found
+        // LEVEL 2: Cisco AnyConnect - CLI AUTOMATION
         {
           id: "sys-ac-0",
           name: "Julius Meinl",
           type: "openconnect" as const,
           status: "configured" as const,
-          description: "Cisco AnyConnect profile (authentic)",
-          automationScript: "applescript"
+          description: "Cisco AnyConnect (CLI automation available)",
+          automationScript: "cli",
+          automationLevel: "cli"
         },
         {
           id: "sys-ac-1",
-          name: "Lutech",
+          name: "Lutech", 
           type: "openconnect" as const,
           status: "configured" as const,
-          description: "Cisco AnyConnect profile (authentic)",
-          automationScript: "applescript"
+          description: "Cisco AnyConnect (CLI automation available)",
+          automationScript: "cli",
+          automationLevel: "cli"
         },
-        // ONLY GlobalProtect connection that was actually found
+        // LEVEL 3: Azure VPN - SYSTEM AUTOMATION
+        {
+          id: "sys-az-0",
+          name: "eVPN-GruppoHera-IT",
+          type: "native" as const,
+          status: "configured" as const,
+          description: "Azure VPN (system automation via scutil)",
+          automationScript: "system",
+          automationLevel: "full"
+        },
+        // LEVEL 3: GlobalProtect - LIMITED AUTOMATION  
         {
           id: "sys-gp-0",
           name: "GlobalProtect",
           type: "native" as const,
           status: "configured" as const,
-          description: "GlobalProtect system connection (authentic)",
-          automationScript: "applescript"
+          description: "GlobalProtect (limited automation, may require manual steps)",
+          automationScript: "gui",
+          automationLevel: "limited"
         },
-        // ONLY Azure VPN that was actually found
+        // LEVEL 4: FortiClient non-system connections - MANUAL ONLY
         {
-          id: "sys-az-0",
-          name: "eVPN-GruppoHera-IT",
-          type: "native" as const,
-          status: "configured" as const, 
-          description: "Azure VPN system connection (authentic)",
-          automationScript: "applescript"
+          id: "fc-manual-0",
+          name: "GiVa",
+          type: "forticlient" as const,
+          status: "configured" as const,
+          description: "FortiClient GiVa (manual connection - opens app, user selects)",
+          automationScript: "manual",
+          automationLevel: "manual"
         }
       ];
       connections.push(...realConnections);
