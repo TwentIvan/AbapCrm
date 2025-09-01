@@ -26,9 +26,203 @@ export interface VPNAutomationResult {
 }
 
 /**
- * Discover available VPN connections on macOS
+ * Discover available VPN software installed on the system
  */
-export async function discoverVPNConnections(): Promise<VPNConnection[]> {
+export async function discoverAvailableVPNSoftware(): Promise<{
+  software: string;
+  name: string;
+  installed: boolean;
+  canReadConfigs: boolean;
+  configCount: number;
+  description: string;
+  automationType: 'full' | 'credentials' | 'manual';
+}[]> {
+  const software = [];
+  
+  console.log('[VPN-SOFTWARE-DISCOVERY] Starting software detection...');
+  
+  // FortiClient detection
+  const fortiClientPaths = [
+    '/Applications/FortiClient.app',
+    '/Applications/FortiClientVPN.app', 
+    '/Applications/Fortinet/FortiClient.app'
+  ];
+  
+  let fortiClientInstalled = false;
+  for (const path of fortiClientPaths) {
+    try {
+      await fs.access(path);
+      fortiClientInstalled = true;
+      console.log('[VPN-SOFTWARE-DISCOVERY] ✅ FortiClient found at:', path);
+      break;
+    } catch {}
+  }
+  
+  if (fortiClientInstalled) {
+    // Check if we can read FortiClient configs
+    const fcconfigPaths = [
+      '/Library/Application Support/Fortinet/FortiClient/bin/fccconfig',
+      '/Applications/FortiClient.app/Contents/MacOS/fccconfig'
+    ];
+    
+    let canReadConfigs = false;
+    let configCount = 0;
+    
+    for (const fcconfigPath of fcconfigPaths) {
+      try {
+        await fs.access(fcconfigPath);
+        canReadConfigs = true;
+        console.log('[VPN-SOFTWARE-DISCOVERY] ✅ fccconfig available, can read configs');
+        // TODO: Actually count configs here
+        configCount = 1; // Placeholder
+        break;
+      } catch {}
+    }
+    
+    software.push({
+      software: 'forticlient',
+      name: 'FortiClient',
+      installed: true,
+      canReadConfigs,
+      configCount,
+      description: canReadConfigs 
+        ? `FortiClient con ${configCount} profili configurati`
+        : 'FortiClient installato - automazione credenziali disponibile',
+      automationType: (canReadConfigs ? 'full' : 'credentials') as const
+    });
+  }
+  
+  // Cisco AnyConnect detection
+  const ciscoAnyConnectPaths = [
+    '/Applications/Cisco/Cisco AnyConnect Secure Mobility Client.app',
+    '/opt/cisco/anyconnect',
+    '/Applications/Cisco AnyConnect Secure Mobility Client.app'
+  ];
+  
+  let ciscoInstalled = false;
+  for (const path of ciscoAnyConnectPaths) {
+    try {
+      await fs.access(path);
+      ciscoInstalled = true;
+      console.log('[VPN-SOFTWARE-DISCOVERY] ✅ Cisco AnyConnect found at:', path);
+      break;
+    } catch {}
+  }
+  
+  if (ciscoInstalled) {
+    // Check for Cisco profile files
+    const ciscoProfilePaths = [
+      `${process.env.HOME}/Library/Application Support/Cisco/Cisco AnyConnect Secure Mobility Client/Profile`,
+      '/opt/cisco/anyconnect/profile'
+    ];
+    
+    let configCount = 0;
+    for (const profilePath of ciscoProfilePaths) {
+      try {
+        const files = await fs.readdir(profilePath);
+        configCount = files.filter(f => f.endsWith('.xml')).length;
+        console.log('[VPN-SOFTWARE-DISCOVERY] ✅ Found', configCount, 'Cisco profiles');
+        break;
+      } catch {}
+    }
+    
+    software.push({
+      software: 'cisco_anyconnect',
+      name: 'Cisco AnyConnect',
+      installed: true,
+      canReadConfigs: configCount > 0,
+      configCount,
+      description: configCount > 0 
+        ? `Cisco AnyConnect con ${configCount} profili configurati`
+        : 'Cisco AnyConnect installato - automazione credenziali disponibile',
+      automationType: (configCount > 0 ? 'full' : 'credentials') as const
+    });
+  }
+  
+  // Azure VPN Client detection (Windows/macOS)
+  const azureVpnPaths = [
+    '/Applications/Azure VPN Client.app',
+    'C:\\Program Files\\Azure VPN Client'
+  ];
+  
+  let azureInstalled = false;
+  for (const path of azureVpnPaths) {
+    try {
+      await fs.access(path);
+      azureInstalled = true;
+      console.log('[VPN-SOFTWARE-DISCOVERY] ✅ Azure VPN Client found at:', path);
+      break;
+    } catch {}
+  }
+  
+  if (azureInstalled) {
+    software.push({
+      software: 'azure_vpn',
+      name: 'Azure VPN Client',
+      installed: true,
+      canReadConfigs: false, // Azure profiles are usually imported
+      configCount: 0,
+      description: 'Azure VPN Client - automazione credenziali disponibile',
+      automationType: 'credentials' as const
+    });
+  }
+  
+  // Native VPN (always available on macOS/Windows)
+  try {
+    const { stdout } = await execAsync('scutil --nc list');
+    const nativeConfigs = stdout.split('\n').filter(line => 
+      line.includes('VPN') || line.includes('L2TP') || line.includes('IKEv2')
+    ).length;
+    
+    if (nativeConfigs > 0 || process.platform === 'darwin') {
+      software.push({
+        software: 'native',
+        name: 'VPN Nativa del Sistema',
+        installed: true,
+        canReadConfigs: nativeConfigs > 0,
+        configCount: nativeConfigs,
+        description: nativeConfigs > 0 
+          ? `VPN nativa con ${nativeConfigs} configurazioni`
+          : 'VPN nativa del sistema - configurazione manuale',
+        automationType: (nativeConfigs > 0 ? 'full' : 'manual') as const
+      });
+    }
+  } catch (error) {
+    console.log('[VPN-SOFTWARE-DISCOVERY] Native VPN check failed, adding as manual option');
+    software.push({
+      software: 'native',
+      name: 'VPN Nativa del Sistema',
+      installed: true,
+      canReadConfigs: false,
+      configCount: 0,
+      description: 'VPN nativa del sistema - configurazione manuale',
+      automationType: 'manual' as const
+    });
+  }
+  
+  // OpenVPN detection
+  try {
+    await execAsync('which openvpn');
+    software.push({
+      software: 'openvpn',
+      name: 'OpenVPN',
+      installed: true,
+      canReadConfigs: false,
+      configCount: 0,
+      description: 'OpenVPN CLI - configurazione manuale richiesta',
+      automationType: 'manual' as const
+    });
+    console.log('[VPN-SOFTWARE-DISCOVERY] ✅ OpenVPN CLI available');
+  } catch {}
+  
+  console.log('[VPN-SOFTWARE-DISCOVERY] Found', software.length, 'available VPN software');
+  return software;
+}
+
+/**
+ * Discover available VPN connections for specific software
+ */
+export async function discoverVPNConnections(softwareFilter?: string): Promise<VPNConnection[]> {
   const connections: VPNConnection[] = [];
 
   try {
