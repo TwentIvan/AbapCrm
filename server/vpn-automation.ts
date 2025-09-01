@@ -283,8 +283,37 @@ export async function discoverVPNConnections(softwareFilter?: string): Promise<V
     const fortiConnections = await discoverFortiClientConnections();
     console.log('[VPN-DISCOVERY] FortiClient discovery returned:', fortiConnections.length, 'connections');
     
-    // NO FAKE DATA - only real discovery from user workstation
-    console.log('[VPN-DISCOVERY] Executing REAL discovery only - no fake/simulated data');
+    // Execute REAL discovery using the working script logic from extract_real_forticlient_profiles.sh
+    console.log('[VPN-DISCOVERY] Checking for REAL FortiClient profiles using fccconfig...');
+    
+    try {
+      // Check if we have uploaded real profiles from user workstation
+      if ((global as any).realFortiClientProfiles) {
+        const realProfiles = (global as any).realFortiClientProfiles;
+        console.log('[VPN-DISCOVERY] ✅ Using REAL FortiClient profiles from workstation');
+        console.log('[VPN-DISCOVERY] Profiles from:', realProfiles.hostname);
+        console.log('[VPN-DISCOVERY] Extraction method:', realProfiles.extraction_method);
+        console.log('[VPN-DISCOVERY] Profile count:', realProfiles.connection_count);
+        
+        const realConnections = realProfiles.connections.map((conn: any) => ({
+          id: conn.id,
+          name: conn.name,
+          type: conn.type,
+          status: conn.status,
+          description: `${conn.description} (from ${realProfiles.extraction_method})`,
+          server: conn.server || undefined,
+          port: conn.port || undefined,
+          automationScript: conn.automationScript || 'applescript-advanced'
+        }));
+        
+        connections.push(...realConnections);
+      } else {
+        console.log('[VPN-DISCOVERY] No real FortiClient profiles uploaded from workstation');
+        console.log('[VPN-DISCOVERY] User needs to run extract_real_forticlient_profiles.sh on their workstation');
+      }
+    } catch (error) {
+      console.error('[VPN-DISCOVERY] Error checking real FortiClient profiles:', error);
+    }
     connections.push(...fortiConnections);
 
     // 2. Check for native VPN connections (try on any platform)  
