@@ -1,0 +1,31 @@
+Extracting FortiClient connections from macOS workstation...
+========================================================
+Checking FortiClient installation...
+FortiClient found at: /Applications/FortiClient.app
+Checking system VPN connections...
+System VPN connections found:
+Available network connection services in the current set (*=enabled):
+* (Disconnected)   E6C9B3B3-63BE-40A7-946F-78EEE2632334 VPN (com.fortinet.forticlient.macos.vpn) "VPN 2"                          [VPN:com.fortinet.forticlient.macos.vpn]
+* (Disconnected)   8F3A8165-7232-40D1-81C1-F3A1FE6BC6F8 VPN (com.microsoft.AzureVpnMac) "eVPN-GruppoHera-IT"             [VPN:com.microsoft.AzureVpnMac]
+* (Disconnected)   3D60A479-0569-4F04-B069-9EF146045A71 VPN (com.cisco.anyconnect) "Julius Meinl"                   [VPN:com.cisco.anyconnect]
+* (Disconnected)   66A21E3A-AF19-4074-A0D7-D38D2C6AC9CD VPN (com.cisco.anyconnect) "Lutech"                         [VPN:com.cisco.anyconnect]
+* (Disconnected)   449187EC-AFF4-4CAD-A57D-A7A2D10E6E0F VPN (com.paloaltonetworks.globalprotect.vpn) "GlobalProtect"                  [VPN:com.paloaltonetworks.globalprotect.vpn]
+* (Disconnected)   20ADF21A-37E9-4F91-8503-ADB27A277044 VPN (com.fortinet.forticlient.macos.vpn) "VPN"                            [VPN:com.fortinet.forticlient.macos.vpn]
+Found VPN connection: VPN 2
+Found VPN connection: eVPN-GruppoHera-IT
+Found VPN connection: Julius Meinl
+Found VPN connection: Lutech
+Found VPN connection: GlobalProtect
+Found VPN connection: VPN
+
+========================================================
+DISCOVERY RESULTS: Found 6 connections
+========================================================
+Connections JSON:
+[{"id":"vpn-0","name":"VPN 2","type":"forticlient","source":"system","status":"configured","description":"System VPN connection"},{"id":"vpn-1","name":"eVPN-GruppoHera-IT","type":"forticlient","source":"system","status":"configured","description":"System VPN connection"},{"id":"vpn-2","name":"Julius Meinl","type":"forticlient","source":"system","status":"configured","description":"System VPN connection"},{"id":"vpn-3","name":"Lutech","type":"forticlient","source":"system","status":"configured","description":"System VPN connection"},{"id":"vpn-4","name":"GlobalProtect","type":"forticlient","source":"system","status":"configured","description":"System VPN connection"},{"id":"vpn-5","name":"VPN","type":"forticlient","source":"system","status":"configured","description":"System VPN connection"}]
+
+Uploading to server: https://abapcrm.ivanlotorto.repl.co/api/vpn/upload-local-connections
+Failed to upload to server. Saving locally...
+Saved to: /Users/Ivan/forticlient_connections_20250901_021742.json
+
+Script completed!
