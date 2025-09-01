@@ -157,13 +157,18 @@ async function discoverFortiClientConnections(): Promise<VPNConnection[]> {
       '/Applications/FortiClient.app/Contents/MacOS/fccconfig',
       '/Applications/FortiClient.app/Contents/Resources/fccconfig',
       '/Library/Application Support/Fortinet/bin/fccconfig',
-      '/usr/local/bin/fccconfig'
+      '/usr/local/bin/fccconfig',
+      '/opt/fortinet/forticlient/bin/fccconfig',
+      '/usr/bin/fccconfig',
+      `${process.env.HOME}/Applications/FortiClient.app/Contents/MacOS/fccconfig`
     ];
     
+    let fcconfigFound = false;
     for (const fcconfigPath of fcconfigPaths) {
       try {
         await fs.access(fcconfigPath);
         console.log('[FORTICLIENT-DISCOVERY] ✅ fccconfig found at:', fcconfigPath);
+        fcconfigFound = true;
         
         // Try to export configuration
         try {
@@ -173,6 +178,7 @@ async function discoverFortiClientConnections(): Promise<VPNConnection[]> {
           
           const { stdout, stderr } = await execAsync(`"${fcconfigPath}" --operation export --file "${configFile}"`);
           console.log('[FORTICLIENT-DISCOVERY] fccconfig export result:', stdout);
+          if (stderr) console.log('[FORTICLIENT-DISCOVERY] fccconfig stderr:', stderr);
           
           // Try to read the exported XML
           try {
@@ -215,6 +221,48 @@ async function discoverFortiClientConnections(): Promise<VPNConnection[]> {
         break; // Found working fccconfig, stop trying other paths
       } catch {
         console.log('[FORTICLIENT-DISCOVERY] ❌ fccconfig not at:', fcconfigPath);
+      }
+    }
+    
+    if (!fcconfigFound) {
+      console.log('[FORTICLIENT-DISCOVERY] ❌ fccconfig not found - trying alternative methods...');
+      
+      // Alternative Method: Try to find config files directly
+      const alternativeConfigPaths = [
+        `${process.env.HOME}/Library/Application Support/Fortinet/FortiClient/config.xml`,
+        `${process.env.HOME}/Library/Application Support/Fortinet/config.xml`,
+        '/Library/Application Support/Fortinet/FortiClient/config.xml',
+        '/Library/Application Support/Fortinet/config.xml',
+        `${process.env.HOME}/.fortinet/config.xml`,
+        `${process.env.HOME}/.config/fortinet/config.xml`
+      ];
+      
+      for (const configPath of alternativeConfigPaths) {
+        try {
+          const configContent = await fs.readFile(configPath, 'utf8');
+          console.log('[FORTICLIENT-DISCOVERY] ✅ Found config file at:', configPath, 'size:', configContent.length);
+          
+          // Try to parse it for VPN profiles
+          const profileMatches = configContent.match(/<(vpn|sslvpn|ipsec|fortigate)[^>]*name="([^"]+)"/g);
+          if (profileMatches) {
+            profileMatches.forEach((match, index) => {
+              const nameMatch = match.match(/name="([^"]+)"/);
+              if (nameMatch && nameMatch[1]) {
+                connections.push({
+                  id: `direct-config-${index}`,
+                  name: nameMatch[1],
+                  type: 'forticlient',
+                  status: 'configured',
+                  description: `FortiClient profile from config file: ${nameMatch[1]}`,
+                  automationScript: 'applescript-advanced'
+                });
+              }
+            });
+            console.log('[FORTICLIENT-DISCOVERY] ✅ Found', profileMatches.length, 'profiles in config file');
+          }
+        } catch (error) {
+          console.log('[FORTICLIENT-DISCOVERY] ❌ Config file not accessible:', configPath);
+        }
       }
     }
 
