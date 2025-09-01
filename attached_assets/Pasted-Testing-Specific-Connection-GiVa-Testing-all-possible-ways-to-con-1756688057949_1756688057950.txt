@@ -1,0 +1,100 @@
+Testing Specific Connection: GiVa
+=================================
+Testing all possible ways to connect to a VPN named 'GiVa'
+
+1. Testing System VPN (scutil) with 'GiVa'...
+-----------------------------------------------
+   Trying: scutil --nc start "GiVa"
+No service
+   ❌ System VPN start failed
+   Trying: scutil --nc show "GiVa"
+No service
+   ❌ System VPN show failed
+
+2. Testing FortiClient with 'GiVa'...
+-------------------------------------
+   CLI attempts:
+     /Applications/FortiClient.app/Contents/MacOS/FortiClient --connect "GiVa"
+       Index - singleInstanceLock=false 1
+       02:53:19.574 › Index - singleInstanceLock=false
+       Index - bindAppCommonListeners 1
+     /Applications/FortiClient.app/Contents/MacOS/FortiClient -c "GiVa"
+       Index - singleInstanceLock=false 1
+       02:53:20.337 › Index - singleInstanceLock=false
+       Index - bindAppCommonListeners 1
+     /Applications/FortiClient.app/Contents/MacOS/FortiClient connect "GiVa"
+       Index - singleInstanceLock=false 1
+       02:53:21.033 › Index - singleInstanceLock=false
+       Index - bindAppCommonListeners 1
+   AppleScript attempts:
+     AppleScript result: ERROR: FortiClient ha trovato un errore: Impossibile continuare connect.
+
+3. Testing GlobalProtect with 'GiVa'...
+---------------------------------------
+   CLI attempts:
+     /Applications/GlobalProtect.app/Contents/MacOS/GlobalProtect --connect "GiVa"
+       P74801-T259   09/01/2025 02:53:23:528 Info ( 728): arguments (
+           "/Applications/GlobalProtect.app/Contents/MacOS/GlobalProtect",
+           "--connect",
+     /Applications/GlobalProtect.app/Contents/MacOS/GlobalProtect -c "GiVa"
+       P74807-T259   09/01/2025 02:53:23:638 Info ( 728): arguments (
+           "/Applications/GlobalProtect.app/Contents/MacOS/GlobalProtect",
+           "-c",
+     /Applications/GlobalProtect.app/Contents/MacOS/GlobalProtect connect-to "GiVa"
+       P74813-T259   09/01/2025 02:53:23:744 Info ( 728): arguments (
+           "/Applications/GlobalProtect.app/Contents/MacOS/GlobalProtect",
+           "connect-to",
+   AppleScript attempts:
+     AppleScript result: ERROR: GlobalProtect ha trovato un errore: Impossibile continuare connect.
+
+4. Testing GUI Automation for 'GiVa'...
+----------------------------------------
+   FortiClient GUI automation:
+     FortiClient GUI result: INFO: GiVa not found in GUI
+
+5. Checking Connection Status...
+--------------------------------
+   Current VPN connections:
+     * (Disconnected)   E6C9B3B3-63BE-40A7-946F-78EEE2632334 VPN (com.fortinet.forticlient.macos.vpn) "VPN 2"                          [VPN:com.fortinet.forticlient.macos.vpn]
+     * (Disconnected)   8F3A8165-7232-40D1-81C1-F3A1FE6BC6F8 VPN (com.microsoft.AzureVpnMac) "eVPN-GruppoHera-IT"             [VPN:com.microsoft.AzureVpnMac]
+     * (Disconnected)   3D60A479-0569-4F04-B069-9EF146045A71 VPN (com.cisco.anyconnect) "Julius Meinl"                   [VPN:com.cisco.anyconnect]
+     * (Disconnected)   66A21E3A-AF19-4074-A0D7-D38D2C6AC9CD VPN (com.cisco.anyconnect) "Lutech"                         [VPN:com.cisco.anyconnect]
+     * (Disconnected)   449187EC-AFF4-4CAD-A57D-A7A2D10E6E0F VPN (com.paloaltonetworks.globalprotect.vpn) "GlobalProtect"                  [VPN:com.paloaltonetworks.globalprotect.vpn]
+     * (Disconnected)   20ADF21A-37E9-4F91-8503-ADB27A277044 VPN (com.fortinet.forticlient.macos.vpn) "VPN"                            [VPN:com.fortinet.forticlient.macos.vpn]
+   Network interfaces:
+     utun0: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1380
+     	inet6 fe80::e2de:c383:64f6:86da%utun0 prefixlen 64 scopeid 0x10 
+     	nd6 options=201<PERFORMNUD,DAD>
+     utun1: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 2000
+     	inet6 fe80::aee2:48a0:b89e:15e3%utun1 prefixlen 64 scopeid 0x11 
+     	nd6 options=201<PERFORMNUD,DAD>
+     utun2: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1000
+     	inet6 fe80::ce81:b1c:bd2c:69e%utun2 prefixlen 64 scopeid 0x12 
+     	nd6 options=201<PERFORMNUD,DAD>
+     utun3: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1500
+     	inet6 fe80::7b14:7d5a:aca3:a8fa%utun3 prefixlen 64 scopeid 0x13 
+     	nd6 options=201<PERFORMNUD,DAD>
+     utun4: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1380
+     	inet6 fe80::5423:1486:cb89:c24%utun4 prefixlen 64 scopeid 0x14 
+     	nd6 options=201<PERFORMNUD,DAD>
+     utun5: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1380
+     	inet6 fe80::2470:7963:ad1a:b494%utun5 prefixlen 64 scopeid 0x15 
+     	nd6 options=201<PERFORMNUD,DAD>
+     utun6: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1380
+     	inet6 fe80::9f29:8d6:3fa6:36d5%utun6 prefixlen 64 scopeid 0x16 
+     	nd6 options=201<PERFORMNUD,DAD>
+     utun7: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1380
+     	inet6 fe80::cbef:1bdf:dc53:93e5%utun7 prefixlen 64 scopeid 0x17 
+     	nd6 options=201<PERFORMNUD,DAD>
+     utun8: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1400
+     bridge100: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+     	options=3<RXCSUM,TXCSUM>
+
+=================================
+Test completed for connection 'GiVa'
+=================================
+
+🎯 SUMMARY:
+If you see 'SUCCESS' messages above, the connection attempt worked!
+If you see error messages, those show what went wrong.
+Check your VPN software GUI to see if 'GiVa' connection was attempted.
