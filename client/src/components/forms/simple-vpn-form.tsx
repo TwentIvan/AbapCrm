@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Search, CheckCircle, Loader2, Wifi } from "lucide-react";
+import { Search, CheckCircle, Loader2, Wifi, Key } from "lucide-react";
 import { z } from "zod";
 
 interface SimpleVPNFormProps {

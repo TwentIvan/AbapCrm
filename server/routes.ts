@@ -2047,7 +2047,46 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.get("/api/vpn-software", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const software = await storage.getVpnSoftware();
-    res.json(software);
+    
+    // Enhance software with automation capabilities based on vendor
+    const enhancedSoftware = software.map(sw => {
+      let canReadConfigs = false;
+      let automationType = 'manual';
+      
+      switch (sw.vendor?.toLowerCase()) {
+        case 'cisco':
+          canReadConfigs = true;
+          automationType = 'full';
+          break;
+        case 'fortinet':
+          canReadConfigs = true;
+          automationType = 'full';
+          break;
+        case 'microsoft':
+          canReadConfigs = false;
+          automationType = 'credentials';
+          break;
+        case 'palo alto networks':
+          canReadConfigs = true;
+          automationType = 'full';
+          break;
+        case 'openvpn inc.':
+          canReadConfigs = false;
+          automationType = 'manual';
+          break;
+        default:
+          canReadConfigs = false;
+          automationType = 'manual';
+      }
+      
+      return {
+        ...sw,
+        canReadConfigs,
+        automationType
+      };
+    });
+    
+    res.json(enhancedSoftware);
   });
 
   app.get("/api/vpn-software/:id", async (req, res) => {
