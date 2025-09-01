@@ -294,17 +294,15 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             phone: '',
             address: '',
             country: '',
-            notes: `Auto-created for real VPN profiles discovered from ${hostname}`,
-            isActive: true
+            notes: `Auto-created for real VPN profiles discovered from ${hostname}`
           });
 
           // Save the real VPN connection to database
           const vpnConnectionData = {
-            userId: req.user!.id,
             partnerId: discoverPartner.id,
             name: conn.name || `Real VPN ${conn.id}`,
             description: `${conn.description || ''} (Real profile from ${extraction_method})`,
-            connectionType: 'forticlient' as const,
+            connectionType: 'other' as const,
             status: 'active' as const,
             serverHost: conn.server || hostname,
             serverPort: conn.port || 443,
@@ -315,7 +313,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             isActive: true
           };
           
-          await storage.createVpnConnection(vpnConnectionData);
+          await storage.createVpnConnection(vpnConnectionData, req.user!.id);
           console.log('[VPN-REAL-PROFILES] ✅ Saved real profile to database:', conn.name);
         } catch (error) {
           console.error('[VPN-REAL-PROFILES] ⚠️ Could not save to database:', error);
@@ -1922,17 +1920,16 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     try {
       const connectionData = { 
         ...req.body, 
-        userId: req.user!.id,
         id: undefined  // Let database generate ID
       };
       
       // Validate basic required fields
-      if (!connectionData.name || !connectionData.partnerId || !connectionData.serverHost || !connectionData.userId) {
+      if (!connectionData.name || !connectionData.partnerId || !connectionData.serverHost) {
         return res.status(400).json({ error: "Missing required fields: name, partnerId, serverHost" });
       }
       
       const validatedData = insertVpnConnectionSchema.parse(connectionData);
-      const connection = await storage.createVpnConnection(validatedData);
+      const connection = await storage.createVpnConnection(validatedData, req.user!.id);
       res.status(201).json(connection);
     } catch (error) {
       res.status(400).json({ error: "Invalid VPN connection data", details: error instanceof Error ? error.message : String(error) });

@@ -201,7 +201,7 @@ export interface IStorage {
   getVpnConnections(userId: string): Promise<VpnConnection[]>;
   getVpnConnectionsByPartner(partnerId: string, userId: string): Promise<VpnConnection[]>;
   getVpnConnection(id: string, userId: string): Promise<VpnConnection | undefined>;
-  createVpnConnection(connection: InsertVpnConnection): Promise<VpnConnection>;
+  createVpnConnection(connection: InsertVpnConnection, userId: string): Promise<VpnConnection>;
   updateVpnConnection(id: string, connection: Partial<InsertVpnConnection>, userId: string): Promise<VpnConnection | undefined>;
   deleteVpnConnection(id: string, userId: string): Promise<boolean>;
 
@@ -1471,10 +1471,10 @@ export class DatabaseStorage implements IStorage {
     return connection || undefined;
   }
 
-  async createVpnConnection(connection: InsertVpnConnection): Promise<VpnConnection> {
+  async createVpnConnection(connection: InsertVpnConnection, userId: string): Promise<VpnConnection> {
     const [newConnection] = await db
       .insert(vpnConnections)
-      .values([connection])
+      .values([{ ...connection, userId }])
       .returning();
     return newConnection;
   }
