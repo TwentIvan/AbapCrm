@@ -1,0 +1,47 @@
+Extracting REAL VPN configuration names from macOS workstation
+==============================================================
+
+=== 1. EXTRACTING REAL FORTICLIENT CONFIGURATIONS ===
+FortiClient found - searching for real configuration names...
+  Searching in: /Users/Ivan/Library/Application Support/Fortinet/FortiClient
+  Searching in: /Library/Application Support/Fortinet/FortiClient
+  No specific configs found, using system VPN names...
+  [✓] Real Config: VPN 2 (fortigate)
+  [✓] Real Config: VPN (fortigate)
+
+=== 2. EXTRACTING REAL GLOBALPROTECT CONFIGURATIONS ===
+GlobalProtect found - searching for real configuration names...
+  Searching in: /Users/Ivan/Library/Application Support/PaloAltoNetworks/GlobalProtect
+  Searching in: /Library/Application Support/PaloAltoNetworks
+  [✓] Real Config: GlobalProtect (other)
+
+=== 3. EXTRACTING REAL CISCO ANYCONNECT CONFIGURATIONS ===
+Cisco AnyConnect - searching for real profiles...
+  Searching in: /opt/cisco/anyconnect/profile
+    Reading: jm-vie-profile.xml
+sed: 1: "s/]$/,{"id":"ac-real-3" ...": bad flag in substitute command: 'o'
+  [✓] Real Config: HostEntry (cisco_anyconnect)
+sed: 1: "s/]$/,{"id":"ac-real-4" ...": bad flag in substitute command: 'o'
+  [✓] Real Config: HostEntry (cisco_anyconnect)
+  Searching in: /Applications/Cisco
+  [✓] Real Config: Julius Meinl (cisco_anyconnect)
+  [✓] Real Config: Lutech (cisco_anyconnect)
+
+=== 4. EXTRACTING AZURE VPN CONFIGURATIONS ===
+  [✓] Real Config: eVPN-GruppoHera-IT (other)
+
+============================================================
+REAL CONFIGURATION EXTRACTION: Found 8 connections
+============================================================
+Real Configurations JSON:
+
+
+Uploading to server: https://abapcrm.ivanlotorto.repl.co/api/vpn/upload-local-connections
+Failed to upload to server. Saving locally...
+Saved to: /Users/Ivan/real_vpn_configs_20250901_022920.json
+
+Real VPN Configuration Names Found:
+
+
+Real configuration extraction completed!
+MacBook-Pro-di-Ivan:Downloads Ivan$ bash extract_vpn_configs.sh

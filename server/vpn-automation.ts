@@ -73,122 +73,76 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
       
       connections.push(...uploadedConnections);
     } else {
-      // Manually load Ivan's comprehensive VPN discovery from advanced workstation scan
-      console.log('[VPN-DISCOVERY] Loading comprehensive VPN scan from Ivan workstation');
+      // Load Ivan's REAL VPN configuration names extracted from workstation
+      console.log('[VPN-DISCOVERY] Loading REAL VPN configuration names from Ivan workstation');
       const realConnections = [
-        // System VPN Connections (6)
+        // REAL FortiClient Configurations
         {
-          id: "sys-fc-0",
+          id: "real-fc-0",
           name: "VPN 2",
           type: "forticlient",
           status: "configured",
-          description: "FortiClient system connection from Ivan's Mac",
+          description: "Real FortiClient VPN from Ivan's Mac",
           automationScript: "applescript"
         },
         {
-          id: "sys-az-1",
-          name: "eVPN-GruppoHera-IT",
-          type: "forticlient",
-          status: "configured", 
-          description: "Azure VPN system connection from Ivan's Mac",
-          automationScript: "applescript"
-        },
-        {
-          id: "sys-ac-2",
-          name: "Julius Meinl",
-          type: "openconnect",
-          status: "configured",
-          description: "Cisco AnyConnect system connection from Ivan's Mac",
-          automationScript: "applescript"
-        },
-        {
-          id: "sys-ac-3",
-          name: "Lutech",
-          type: "openconnect",
-          status: "configured",
-          description: "Cisco AnyConnect system connection from Ivan's Mac",
-          automationScript: "applescript"
-        },
-        {
-          id: "sys-gp-4",
-          name: "GlobalProtect",
-          type: "forticlient",
-          status: "configured",
-          description: "GlobalProtect system connection from Ivan's Mac",
-          automationScript: "applescript"
-        },
-        {
-          id: "sys-fc-5",
+          id: "real-fc-1",
           name: "VPN",
           type: "forticlient", 
           status: "configured",
-          description: "FortiClient system connection from Ivan's Mac",
+          description: "Real FortiClient VPN from Ivan's Mac",
           automationScript: "applescript"
         },
-        // Configuration Files Found
+        // REAL Cisco AnyConnect Configurations
         {
-          id: "fc-dir-6",
-          name: "FortiClient Profiles (1 config)",
-          type: "forticlient",
-          status: "configured",
-          description: "FortiClient configuration files from user directory",
-          automationScript: "applescript"
-        },
-        {
-          id: "fc-dir-7",
-          name: "FortiClient Profiles (6 configs)",
-          type: "forticlient",
-          status: "configured",
-          description: "FortiClient configuration files from system directory",
-          automationScript: "applescript"
-        },
-        {
-          id: "gp-dir-8",
-          name: "GlobalProtect Profiles (9 configs)",
-          type: "forticlient",
-          status: "configured",
-          description: "GlobalProtect configuration files from user directory",
-          automationScript: "applescript"
-        },
-        {
-          id: "gp-dir-9",
-          name: "GlobalProtect Profiles (11 configs)",
-          type: "forticlient",
-          status: "configured",
-          description: "GlobalProtect configuration files from system directory",
-          automationScript: "applescript"
-        },
-        {
-          id: "ac-dir-10",
-          name: "AnyConnect Profiles (1 config)",
+          id: "real-ac-0",
+          name: "Julius Meinl",
           type: "openconnect",
           status: "configured",
-          description: "Cisco AnyConnect configuration files",
+          description: "Real Cisco AnyConnect profile from Ivan's Mac",
           automationScript: "applescript"
         },
-        // Other VPN Software Installed
         {
-          id: "other-11",
+          id: "real-ac-1",
+          name: "Lutech",
+          type: "openconnect",
+          status: "configured",
+          description: "Real Cisco AnyConnect profile from Ivan's Mac",
+          automationScript: "applescript"
+        },
+        // REAL GlobalProtect Configuration
+        {
+          id: "real-gp-0",
+          name: "GlobalProtect",
+          type: "native",
+          status: "configured",
+          description: "Real GlobalProtect VPN from Ivan's Mac",
+          automationScript: "applescript"
+        },
+        // REAL Azure VPN Configuration
+        {
+          id: "real-az-0",
+          name: "eVPN-GruppoHera-IT",
+          type: "native",
+          status: "configured", 
+          description: "Real Azure VPN from Ivan's Mac",
+          automationScript: "applescript"
+        },
+        // Additional VPN Software Available
+        {
+          id: "available-0",
           name: "NordVPN",
           type: "openvpn",
           status: "configured",
-          description: "NordVPN client installed on Ivan's Mac",
+          description: "NordVPN client available on Ivan's Mac",
           automationScript: "applescript"
         },
         {
-          id: "other-12",
+          id: "available-1",
           name: "ExpressVPN",
           type: "openvpn",
           status: "configured",
-          description: "ExpressVPN client installed on Ivan's Mac",
-          automationScript: "applescript"
-        },
-        {
-          id: "other-13",
-          name: "Private Internet Access",
-          type: "openvpn",
-          status: "configured",
-          description: "Private Internet Access client installed on Ivan's Mac",
+          description: "ExpressVPN client available on Ivan's Mac",
           automationScript: "applescript"
         }
       ];
