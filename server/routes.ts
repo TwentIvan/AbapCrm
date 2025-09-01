@@ -261,7 +261,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       console.log('[VPN-UPLOAD] Connections:', JSON.stringify(connections, null, 2));
       
       // Store the uploaded connections (in production, save to database)
-      global.uploadedVPNConnections = {
+      (global as any).uploadedVPNConnections = {
         source,
         hostname,
         username,
