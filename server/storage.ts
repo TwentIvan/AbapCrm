@@ -1844,8 +1844,8 @@ export class DatabaseStorage implements IStorage {
   // Discovery VPN Software Methods
   async getDiscoveredVpnSoftware(userId: string): Promise<DiscoveredVpnSoftware[]> {
     return await db.select().from(discoveredVpnSoftware)
-      .where(and(eq(discoveredVpnSoftware.userId, userId), eq(discoveredVpnSoftware.isActive, true)))
-      .orderBy(desc(discoveredVpnSoftware.createdAt));
+      .where(and(eq(discoveredVpnSoftware.userId, userId)))
+      .orderBy(desc(discoveredVpnSoftware.discoveredAt));
   }
 
   async getDiscoveredVpnSoftwareById(id: string, userId: string): Promise<DiscoveredVpnSoftware | undefined> {
@@ -1888,18 +1888,17 @@ export class DatabaseStorage implements IStorage {
   // Discovery VPN Configurations Methods
   async getDiscoveredVpnConfigurations(userId: string): Promise<DiscoveredVpnConfiguration[]> {
     return await db.select().from(discoveredVpnConfigurations)
-      .where(and(eq(discoveredVpnConfigurations.userId, userId), eq(discoveredVpnConfigurations.isActive, true)))
-      .orderBy(desc(discoveredVpnConfigurations.lastDiscovered));
+      .where(eq(discoveredVpnConfigurations.userId, userId))
+      .orderBy(desc(discoveredVpnConfigurations.discoveredAt));
   }
 
   async getDiscoveredVpnConfigurationsBySoftware(discoveredSoftwareId: string, userId: string): Promise<DiscoveredVpnConfiguration[]> {
     return await db.select().from(discoveredVpnConfigurations)
       .where(and(
         eq(discoveredVpnConfigurations.discoveredSoftwareId, discoveredSoftwareId),
-        eq(discoveredVpnConfigurations.userId, userId),
-        eq(discoveredVpnConfigurations.isActive, true)
+        eq(discoveredVpnConfigurations.userId, userId)
       ))
-      .orderBy(desc(discoveredVpnConfigurations.lastDiscovered));
+      .orderBy(desc(discoveredVpnConfigurations.discoveredAt));
   }
 
   async getDiscoveredVpnConfigurationById(id: string, userId: string): Promise<DiscoveredVpnConfiguration | undefined> {
