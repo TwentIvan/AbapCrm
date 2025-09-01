@@ -7,7 +7,7 @@ echo "🔍 Extracting FortiClient connections from macOS workstation..."
 echo "========================================================"
 
 # Configurazione server
-SERVER_URL="https://replit-domain.replit.app"  # Sostituisci con il tuo dominio Replit
+SERVER_URL="https://abapcrm.ivanlotorto.repl.co"
 API_ENDPOINT="/api/vpn/upload-local-connections"
 
 # Array per memorizzare le connessioni trovate
