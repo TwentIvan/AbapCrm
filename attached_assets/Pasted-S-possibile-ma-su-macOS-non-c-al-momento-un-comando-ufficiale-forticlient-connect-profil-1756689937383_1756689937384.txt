@@ -1,0 +1,324 @@
+Sì, è possibile — ma su macOS non c’è (al momento) un comando ufficiale “forticlient connect <profilo>”. Ecco le 3 strade che funzionano in pratica:
+
+1) Metodo “supportato”: profilo con Auto-Connect
+
+Se abiliti Save password + Auto connect nel profilo VPN, ti basta lanciare l’app da script e FortiClient si collega da solo a quel profilo (se è l’unico con Auto-Connect attivo).
+
+Imposti l’autoconnect dal client/EMS (o via XML backup/restore con fccconfig). Fortinet documenta sia l’autoconnect, sia l’utility fccconfig su macOS (per export/import del file di configurazione). 
+docs.fortinet.com
++2
+docs.fortinet.com
++2
+fortinetweb.s3.amazonaws.com
+
+Esempio (bash):
+
+#!/usr/bin/env bash
+# Avvia FortiClient: se il profilo ha Auto-Connect, si collegherà da solo
+open -a "/Applications/FortiClient.app"
+
+
+Percorsi e processi FortiClient su macOS (utile per script/controlli): /Applications/FortiClient.app/... e i binari in /Library/Application Support/Fortinet/FortiClient/bin. 
+fortinetweb.s3.amazonaws.com
+
+Nota: su macOS recenti devi avere le estensioni/permessi di rete abilitati (FortiTray, packet filter, ecc.), altrimenti l’autoconnect non parte. 
+docs.fortinet.com
+
+2) Metodo “pragmatico”: AppleScript che seleziona il profilo e preme “Connect”
+
+Se non puoi usare Auto-Connect (es. più profili, SAML, ecc.), puoi guidare l’interfaccia con AppleScript/osascript. È un workaround, ma spesso funziona.
+
+Esempio (osascript da bash):
+
+#!/usr/bin/env bash
+PROFILE_NAME="Nome del tuo profilo"
+
+osascript <<'AS'
+activate application "FortiClient"
+delay 1
+tell application "System Events"
+  tell process "FortiClient"
+    -- Porta in primo piano la finestra principale
+    set frontmost to true
+    delay 0.5
+    -- Clic sul menu a tendina dei profili (potrebbe essere una tabella/lista)
+    -- Qui serve adattare a etichette/localizzazione della tua GUI.
+    try
+      click (first pop up button of window 1)
+      delay 0.3
+      -- Seleziona la voce col nome del profilo
+      click (first menu item whose name is "$PROFILE_NAME" of menu 1 of pop up button 1 of window 1)
+    end try
+    delay 0.3
+    -- Clic su "Connetti"
+    try
+      click (first button whose title contains "Connect" of window 1)
+    end try
+  end tell
+end tell
+AS
+
+
+Adatta i selettori (“Connect”, posizioni dei controlli) alla tua UI. Questo metodo non è “supportato” ufficialmente ma evita edit di file interni.
+
+3) Metodo “CLI puro” (solo se accettabile cambiare tool)
+
+Fortinet fornisce una CLI SSL-VPN (forticlientsslvpn_cli) per Linux/Windows, non per macOS VPN-only attuale. Su Mac non c’è un binario ufficiale equivalente che richiami un profilo salvato del client GUI. Se puoi usare quella CLI (su un host Linux/Windows), la sintassi è tipo:
+
+forticlientsslvpn_cli --server <host:port> --vpnuser <utente> [--keepalive]
+
+
+(ma non legge i profili del GUI). 
+Ask Ubuntu
+
+Dove “vive” la configurazione (se ti serve da script)
+
+Export/restore supportato: usa fccconfig (macOS: /Library/Application Support/Fortinet/FortiClient/bin/fccconfig) per esportare/importare il file di configurazione cifrato/ XML e abilita opzioni come Auto-Connect/Always Up nel profilo. 
+docs.fortinet.com
+fortinetweb.s3.amazonaws.com
+
+Alcune discussioni community citano vpn.plist sotto /Library/Application Support/Fortinet/FortiClient/..., ma Fortinet raccomanda l’uso di backup/restore invece di manipolare plist a mano. 
+Reddit
+
+In sintesi: la ricetta pratica
+
+Abilita Save password + Auto-Connect nel profilo bersaglio (via GUI/EMS o export-edit-import con fccconfig). 
+docs.fortinet.com
+
+Lancia l’app da script: open -a "/Applications/FortiClient.app".
+
+Se gestisci più profili e vuoi sceglierne uno “on demand”, usa l’AppleScript qui sopra per selezionarlo e cliccare Connect.
+
+Se vuoi, ti preparo uno script completo che:
+
+verifica permessi/estensioni richieste,
+
+importa un XML con Auto-Connect via fccconfig,
+
+lancia FortiClient e controlla lo stato del tunnel (leggendo i log del demone sslvpnd). 
+fortinetweb.s3.amazonaws.com
+
+Fammi sapere il nome esatto del profilo e se usi SSL-VPN o IPsec, e te lo cucio addosso.
+
+Hai detto:
+ho più profili, quindi guidami in questa soluzione
+ChatGPT ha detto:
+Ragionato per 11s
+
+perfetto: con più profili, la via più solida è uno script bash che (1) legge i profili disponibili dal file di configurazione FortiClient tramite fccconfig, (2) ti fa scegliere il profilo, e (3) usa AppleScript/osascript per pilotare la GUI di FortiClient selezionando quel profilo e premendo “Connetti”.
+
+Di seguito trovi uno script unico, già pronto.
+
+Script “forticlient-connect.sh”
+
+Cosa fa
+
+esporta temporaneamente la config FortiClient con fccconfig
+
+estrae i nomi dei profili VPN (SSL e/o IPsec)
+
+se non gli passi un nome come argomento, ti fa scegliere da elenco
+
+avvia FortiClient, seleziona il profilo e preme Connetti (o Connect) via UI Scripting
+
+Requisiti
+
+FortiClient installato (7.x o 6.x)
+
+Terminal/iTerm deve avere i permessi in Preferenze di Sistema → Sicurezza e Privacy → Accessibilità (necessario per lo UI scripting).
+
+L’account deve già poter connettere quel profilo (credenziali salvate o flusso SAML che parte da FortiClient).
+
+Copia tutto in un file e rendilo eseguibile:
+
+nano ~/forticlient-connect.sh
+chmod +x ~/forticlient-connect.sh
+
+
+Contenuto:
+
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --- Parametri opzionali ---
+PROFILE_ARG="${1:-}"          # se lo passi da CLI salta il menu
+ACTION="${2:-connect}"        # connect | disconnect (per usare lo stesso script anche per disconnessione)
+FCT_APP="/Applications/FortiClient.app"
+FCCCONFIG="/Library/Application Support/Fortinet/FortiClient/bin/fccconfig"
+
+# --- Funzioni di utilità ---
+die() { echo "Errore: $*" >&2; exit 1; }
+exists() { command -v "$1" >/dev/null 2>&1; }
+
+# --- Verifiche di base ---
+[ -d "$FCT_APP" ] || die "FortiClient non trovato in $FCT_APP"
+[ -x "$FCCCONFIG" ] || die "fccconfig non trovato in: $FCCCONFIG"
+
+# --- Estrai profili disponibili da FortiClient ---
+TMPDIR="$(mktemp -d)"
+CFG_XML="$TMPDIR/fct_config.xml"
+
+# esporta configurazione (non contiene password in chiaro; è l'export "supportato")
+"$FCCCONFIG" --operation export --file "$CFG_XML" >/dev/null 2>&1 || true
+[ -s "$CFG_XML" ] || die "Impossibile esportare la configurazione. Apri FortiClient almeno una volta e riprova."
+
+# Estrazione nomi profili (SSL VPN e/o IPsec) - adattata ai tag più comuni
+# Nota: usiamo awk/grep per semplicità; se hai xmlstarlet meglio ancora.
+mapfile -t PROFILES < <(grep -Eo '<(vpn|sslvpn|ipsec)[^>]*name="[^"]+"' "$CFG_XML" \
+                       | sed -E 's/.*name="([^"]+)".*/\1/' \
+                       | awk 'length' \
+                       | sort -u)
+
+[ "${#PROFILES[@]}" -gt 0 ] || die "Nessun profilo trovato nella configurazione."
+
+# --- Scegli profilo ---
+PROFILE_NAME="$PROFILE_ARG"
+if [ -z "$PROFILE_NAME" ]; then
+  echo "Profili trovati:"
+  i=1
+  for p in "${PROFILES[@]}"; do
+    printf "  [%d] %s\n" "$i" "$p"
+    i=$((i+1))
+  done
+  printf "Seleziona numero profilo: "
+  read -r sel
+  if ! [[ "$sel" =~ ^[0-9]+$ ]] || [ "$sel" -lt 1 ] || [ "$sel" -gt "${#PROFILES[@]}" ]; then
+    die "Selezione non valida."
+  fi
+  PROFILE_NAME="${PROFILES[$((sel-1))]}"
+fi
+
+# Verifica che esista
+if ! printf '%s\n' "${PROFILES[@]}" | grep -Fxq "$PROFILE_NAME"; then
+  die "Profilo \"$PROFILE_NAME\" non presente nella config esportata."
+fi
+
+echo "Azione: $ACTION  | Profilo: $PROFILE_NAME"
+
+# --- Avvia FortiClient (se non attivo) ---
+open -ga "$FCT_APP"
+# dai il tempo alla GUI di apparire
+sleep 1.5
+
+# --- AppleScript: seleziona profilo e Connect/Disconnect ---
+# Nota: l'interfaccia può variare tra versioni/lingue; lo script cerca:
+# - un popup/tendina/menù dei profili
+# - il bottone 'Connect'/'Connetti' o 'Disconnect'/'Disconnetti'
+# Se necessario, ritocca i riferimenti a controlli in base alla tua UI.
+
+osascript <<OSA
+on run argv
+  set profileName to item 1 of argv
+  set actionName to item 2 of argv
+
+  tell application "FortiClient" to activate
+  delay 0.5
+
+  tell application "System Events"
+    if not (exists process "FortiClient") then return
+    tell process "FortiClient"
+      set frontmost to true
+      delay 0.5
+
+      -- Trova la finestra principale (fallback alla prima se i nomi non corrispondono)
+      set theWin to missing value
+      try
+        set theWin to window 1
+      end try
+      if theWin is missing value then return
+
+      -- 1) Seleziona il profilo dal popup / menu
+      -- Alcune build hanno un "pop up button", altre una "combo box" o una tabella.
+      try
+        if (count of pop up buttons of theWin) > 0 then
+          click pop up button 1 of theWin
+          delay 0.3
+          tell menu 1 of pop up button 1 of theWin
+            click (first menu item whose name is profileName)
+          end tell
+        else if (count of combo boxes of theWin) > 0 then
+          -- Variante con combo box
+          tell combo box 1 of theWin
+            set value to profileName
+          end tell
+        else
+          -- Variante con tabella elenco profili (se presente)
+          if (count of tables of theWin) > 0 then
+            set foundRow to false
+            repeat with r in rows of table 1 of theWin
+              try
+                if (value of static text 1 of r) is profileName then
+                  select r
+                  set foundRow to true
+                  exit repeat
+                end if
+              end try
+            end repeat
+            if not foundRow then error "Profilo non trovato nella tabella."
+          end if
+        end if
+      end try
+      delay 0.3
+
+      -- 2) Click su Connect/Connetti o Disconnect/Disconnetti
+      set connectLabels to {"Connect", "Connetti"}
+      set disconnectLabels to {"Disconnect", "Disconnetti"}
+
+      if actionName is "connect" then
+        my clickFirstMatchingButton(theWin, connectLabels)
+      else if actionName is "disconnect" then
+        my clickFirstMatchingButton(theWin, disconnectLabels)
+      end if
+    end tell
+  end tell
+end run
+
+on clickFirstMatchingButton(theWin, labelList)
+  tell application "System Events"
+    repeat with lbl in labelList
+      try
+        click (first button whose title contains (lbl as text) of theWin)
+        return
+      end try
+    end repeat
+    -- Alcune UI hanno bottoni senza titolo accessibile: prova posizione
+    try
+      click button 1 of theWin
+    end try
+  end tell
+end clickFirstMatchingButton
+OSA \
+"$PROFILE_NAME" "$ACTION"
+
+# --- Cleanup ---
+rm -rf "$TMPDIR"
+
+echo "Operazione terminata (richiesta: $ACTION su \"$PROFILE_NAME\")."
+
+Come usarlo
+
+Con selezione da menu:
+
+~/forticlient-connect.sh
+
+
+Diretto su un profilo specifico:
+
+~/forticlient-connect.sh "Nome Profilo"
+
+
+Per disconnettere lo stesso profilo (stessa finestra):
+
+~/forticlient-connect.sh "Nome Profilo" disconnect
+
+Note e consigli
+
+Permessi Accessibilità: la prima esecuzione potrebbe chiederti di autorizzare Terminal/iTerm in Accessibilità. Concedili, poi rilancia lo script.
+
+Localizzazione UI: se la tua UI non mostra “Connetti/Connect”, cambia le etichette nel blocco connectLabels/ disconnectLabels.
+
+SAML/Browser: se il profilo usa SAML, FortiClient aprirà il browser per l’autenticazione; lo script non può compilare le credenziali per te, ma avrà già selezionato il profilo corretto.
+
+Stabilità nel tempo: aggiornamenti di FortiClient possono cambiare l’ordine/nomi dei controlli; in quel caso dimmelo e ti adatto 2–3 selettori.
+
+Se vuoi, posso anche fornirti una variante con xmlstarlet (estrazione più robusta dei profili) o con un menu a scelta rapida (es. fzf) e una versione “Disconnect All” che scorre i profili aperti e li chiude.
