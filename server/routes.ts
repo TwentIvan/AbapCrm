@@ -280,6 +280,48 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         userId: req.user!.id
       };
       
+      // ALSO save real profiles to database for persistence
+      const connectionsArray = Array.isArray(connections) ? connections : JSON.parse(connections);
+      for (const conn of connectionsArray) {
+        try {
+          // Create a minimal partner entry for discovered connections if needed
+          const discoverPartner = await storage.createPartner({
+            userId: req.user!.id,
+            name: `Discovered from ${hostname}`,
+            company: hostname,
+            type: 'client',
+            email: '',
+            phone: '',
+            address: '',
+            country: '',
+            notes: `Auto-created for real VPN profiles discovered from ${hostname}`,
+            isActive: true
+          });
+
+          // Save the real VPN connection to database
+          const vpnConnectionData = {
+            userId: req.user!.id,
+            partnerId: discoverPartner.id,
+            name: conn.name || `Real VPN ${conn.id}`,
+            description: `${conn.description || ''} (Real profile from ${extraction_method})`,
+            connectionType: 'forticlient' as const,
+            status: 'active' as const,
+            serverHost: conn.server || hostname,
+            serverPort: conn.port || 443,
+            protocol: 'ssl',
+            automationScript: 'applescript-advanced',
+            scriptType: 'real-discovered',
+            notes: `Real FortiClient profile discovered from ${hostname} via ${extraction_method}`,
+            isActive: true
+          };
+          
+          await storage.createVpnConnection(vpnConnectionData);
+          console.log('[VPN-REAL-PROFILES] ✅ Saved real profile to database:', conn.name);
+        } catch (error) {
+          console.error('[VPN-REAL-PROFILES] ⚠️ Could not save to database:', error);
+        }
+      }
+      
       console.log('[VPN-REAL-PROFILES] ✅ Real profiles stored successfully');
       
       res.json({

@@ -276,7 +276,7 @@ export async function discoverVPNConnections(softwareFilter?: string): Promise<V
     console.log('[VPN-DISCOVERY] Software filter:', softwareFilter);
     console.log('[VPN-DISCOVERY] Platform:', process.platform);
     
-    // Check for uploaded connections from local workstation first
+    // First check for uploaded profiles in memory
     if ((global as any).uploadedVPNConnections) {
       const uploaded = (global as any).uploadedVPNConnections;
       console.log('[VPN-DISCOVERY] Using uploaded connections from workstation:', uploaded.hostname);
@@ -316,12 +316,53 @@ export async function discoverVPNConnections(softwareFilter?: string): Promise<V
       
       connections.push(...realConnections);
     } else {
-      console.log('[VPN-DISCOVERY] No uploaded profiles found - running real discovery...');
+      // Check database for previously discovered real profiles
+      console.log('[VPN-DISCOVERY] No uploaded profiles in memory - checking database for discovered profiles...');
+      try {
+        const { DatabaseStorage } = await import('./storage.js');
+        const storage = new DatabaseStorage();
+        
+        // Get user ID from current session context
+        const userId = (global as any).currentUserId || 'unknown';
+        if (userId === 'unknown') {
+          console.log('[VPN-DISCOVERY] ⚠️ No user ID available for database lookup');
+          return [];
+        }
+        
+        // Get all VPN connections that were discovered (have scriptType = 'real-discovered')
+        const allVpnConnections = await storage.getVpnConnections(userId);
+        const discoveredConnections = allVpnConnections.filter(conn => 
+          conn.scriptType === 'real-discovered' || 
+          conn.notes?.includes('Real FortiClient profile discovered') ||
+          conn.description?.includes('Real profile from')
+        );
+        
+        if (discoveredConnections.length > 0) {
+          console.log('[VPN-DISCOVERY] ✅ Found', discoveredConnections.length, 'previously discovered real profiles in database');
+          
+          const dbConnections = discoveredConnections.map(conn => ({
+            id: conn.id,
+            name: conn.name,
+            type: conn.connectionType,
+            status: 'configured',
+            description: conn.description || `Real VPN profile`,
+            server: conn.serverHost,
+            port: conn.serverPort,
+            automationScript: conn.automationScript || 'applescript-advanced'
+          }));
+          
+          connections.push(...dbConnections);
+        } else {
+          console.log('[VPN-DISCOVERY] No previously discovered profiles found in database');
+        }
+      } catch (error) {
+        console.error('[VPN-DISCOVERY] Error checking database for discovered profiles:', error);
+      }
     }
     
-    // If we already have connections from uploaded data, return them
+    // If we already have connections from uploaded data or database, return them
     if (connections.length > 0) {
-      console.log('[VPN-DISCOVERY] Returning uploaded connections');
+      console.log('[VPN-DISCOVERY] Returning discovered/uploaded connections');
       return connections;
     }
     
