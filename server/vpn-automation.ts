@@ -276,20 +276,51 @@ export async function discoverVPNConnections(softwareFilter?: string): Promise<V
     console.log('[VPN-DISCOVERY] Software filter:', softwareFilter);
     console.log('[VPN-DISCOVERY] Platform:', process.platform);
     
-    // If specific software is requested, do targeted REAL discovery first
+    // If specific software is requested, check for uploaded real profiles first
     if (softwareFilter) {
-      console.log('[VPN-DISCOVERY] Attempting REAL discovery for software:', softwareFilter);
+      console.log('[VPN-DISCOVERY] Checking for real uploaded profiles for software:', softwareFilter);
       
-      // First try real discovery methods
-      const realConnections = await discoverRealConfigurationsForSoftware(softwareFilter);
-      console.log('[VPN-DISCOVERY] Real discovery returned:', realConnections.length, 'connections');
-      
-      if (realConnections.length > 0) {
-        console.log('[VPN-DISCOVERY] Found REAL configurations, returning them');
+      // Check for uploaded connections from local workstation
+      if ((global as any).uploadedVPNConnections) {
+        const uploaded = (global as any).uploadedVPNConnections;
+        console.log('[VPN-DISCOVERY] Using uploaded connections from workstation:', uploaded.hostname);
+        console.log('[VPN-DISCOVERY] Uploaded at:', uploaded.timestamp);
+        console.log('[VPN-DISCOVERY] Connection count:', uploaded.connection_count);
+        
+        const uploadedConnections = uploaded.connections.map((conn: any) => ({
+          id: conn.id,
+          name: conn.name,
+          type: conn.type,
+          status: conn.status,
+          description: `${conn.description} (from ${uploaded.hostname})`,
+          server: conn.server || undefined,
+          port: conn.port || undefined,
+          automationScript: 'applescript'
+        }));
+        
+        return uploadedConnections;
+      } else if ((global as any).realFortiClientProfiles) {
+        // Use REAL FortiClient profiles extracted with fccconfig
+        const realProfiles = (global as any).realFortiClientProfiles;
+        console.log('[VPN-DISCOVERY] Using REAL FortiClient profiles from fccconfig');
+        console.log('[VPN-DISCOVERY] Real profiles from:', realProfiles.hostname);
+        console.log('[VPN-DISCOVERY] Extraction method:', realProfiles.extraction_method);
+        console.log('[VPN-DISCOVERY] Profile count:', realProfiles.connection_count);
+        
+        const realConnections = realProfiles.connections.map((conn: any) => ({
+          id: conn.id,
+          name: conn.name,
+          type: conn.type,
+          status: conn.status,
+          description: `${conn.description} (estratto da fccconfig)`,
+          server: conn.server || undefined,
+          port: conn.port || undefined,
+          automationScript: 'applescript-advanced'
+        }));
+        
         return realConnections;
       } else {
-        console.log('[VPN-DISCOVERY] No real configurations found - software will need credentials');
-        // Return empty array to signal frontend that credentials are needed
+        console.log('[VPN-DISCOVERY] No uploaded real profiles found - credentials needed');
         return [];
       }
     }
@@ -733,297 +764,6 @@ async function checkOpenFortiVPNAvailability(): Promise<VPNConnection | null> {
   return null;
 }
 
-/**
- * Try to find REAL configurations for specific software
- */
-async function discoverRealConfigurationsForSoftware(softwareId: string): Promise<VPNConnection[]> {
-  try {
-    console.log('[REAL-DISCOVERY] Looking for real configurations for software:', softwareId);
-    
-    // Get software info from database
-    const { DatabaseStorage } = await import('./storage.js');
-    const storage = new DatabaseStorage();
-    const software = await storage.getVpnSoftwareById(softwareId);
-    
-    if (!software) {
-      console.log('[REAL-DISCOVERY] Software not found');
-      return [];
-    }
-    
-    console.log('[REAL-DISCOVERY] Software:', software.name, 'Vendor:', software.vendor);
-    
-    // Try real discovery methods based on vendor
-    switch (software.vendor?.toLowerCase()) {
-      case 'cisco':
-        return await discoverRealCiscoConfigurations();
-      
-      case 'fortinet':
-        return await discoverRealFortinetConfigurations();
-      
-      case 'microsoft':
-        return await discoverRealMicrosoftConfigurations();
-      
-      case 'palo alto networks':
-        return await discoverRealGlobalProtectConfigurations();
-      
-      default:
-        console.log('[REAL-DISCOVERY] No real discovery method for vendor:', software.vendor);
-        return [];
-    }
-  } catch (error) {
-    console.error('[REAL-DISCOVERY] Error:', error);
-    return [];
-  }
-}
-
-/**
- * Real discovery functions for specific software types
- */
-async function discoverRealCiscoConfigurations(): Promise<VPNConnection[]> {
-  console.log('[CISCO-REAL-DISCOVERY] Searching for real Cisco AnyConnect configurations');
-  
-  // Real paths where Cisco AnyConnect stores configurations
-  const configPaths = [
-    '/opt/cisco/anyconnect/profile',
-    '/Applications/Cisco/Cisco AnyConnect Secure Mobility Client.app/Contents/Resources/AnyConnect VPN Client.xml',
-    `${process.env.HOME}/.anyconnect`,
-    '/etc/opt/cisco/anyconnect/preferences.xml'
-  ];
-  
-  const connections: VPNConnection[] = [];
-  
-  for (const configPath of configPaths) {
-    try {
-      console.log('[CISCO-REAL-DISCOVERY] Checking path:', configPath);
-      await fs.access(configPath);
-      
-      // If it's a directory, look for .xml files
-      const stat = await fs.stat(configPath);
-      if (stat.isDirectory()) {
-        const files = await fs.readdir(configPath);
-        const xmlFiles = files.filter(f => f.endsWith('.xml'));
-        
-        for (const xmlFile of xmlFiles) {
-          console.log('[CISCO-REAL-DISCOVERY] Found config file:', xmlFile);
-          connections.push({
-            id: `cisco-real-${xmlFile}`,
-            name: `AnyConnect Profile: ${xmlFile}`,
-            type: 'cisco-anyconnect',
-            status: 'configured',
-            description: `Real Cisco AnyConnect configuration from ${configPath}/${xmlFile}`,
-            automationScript: 'anyconnect-cli'
-          });
-        }
-      } else {
-        // Single config file
-        console.log('[CISCO-REAL-DISCOVERY] Found config file:', configPath);
-        connections.push({
-          id: `cisco-real-config`,
-          name: `AnyConnect Configuration`,
-          type: 'cisco-anyconnect',
-          status: 'configured',
-          description: `Real Cisco AnyConnect configuration from ${configPath}`,
-          automationScript: 'anyconnect-cli'
-        });
-      }
-    } catch (error) {
-      console.log('[CISCO-REAL-DISCOVERY] Path not found:', configPath);
-    }
-  }
-  
-  console.log('[CISCO-REAL-DISCOVERY] Found', connections.length, 'real configurations');
-  return connections;
-}
-
-async function discoverRealFortinetConfigurations(): Promise<VPNConnection[]> {
-  console.log('[FORTINET-REAL-DISCOVERY] Searching for real FortiClient configurations');
-  
-  // Try to use real FortiClient export
-  const fcconfigPaths = [
-    '/Applications/FortiClient.app/Contents/MacOS/fccconfig',
-    '/opt/fortinet/forticlient/bin/fccconfig'
-  ];
-  
-  for (const fcconfigPath of fcconfigPaths) {
-    try {
-      await fs.access(fcconfigPath);
-      console.log('[FORTINET-REAL-DISCOVERY] Found fccconfig at:', fcconfigPath);
-      
-      // Try to export real configuration
-      const { stdout } = await execAsync(`"${fcconfigPath}" --operation export --file /tmp/fortiexport.xml`);
-      console.log('[FORTINET-REAL-DISCOVERY] Export result:', stdout);
-      
-      return [{
-        id: 'forti-real-export',
-        name: 'FortiClient Real Configuration',
-        type: 'forticlient',
-        status: 'configured',
-        description: 'Real FortiClient configuration exported from installed client',
-        automationScript: 'applescript'
-      }];
-    } catch (error) {
-      console.log('[FORTINET-REAL-DISCOVERY] fccconfig not found at:', fcconfigPath);
-    }
-  }
-  
-  return [];
-}
-
-async function discoverRealMicrosoftConfigurations(): Promise<VPNConnection[]> {
-  console.log('[MICROSOFT-REAL-DISCOVERY] Searching for real Azure VPN configurations');
-  
-  // Check for Azure VPN profiles
-  const azurePaths = [
-    `${process.env.HOME}/Library/Application Support/Azure VPN Client`,
-    '/Applications/Azure VPN Client.app'
-  ];
-  
-  for (const azurePath of azurePaths) {
-    try {
-      await fs.access(azurePath);
-      console.log('[MICROSOFT-REAL-DISCOVERY] Found Azure VPN at:', azurePath);
-      return [{
-        id: 'azure-real-config',
-        name: 'Azure VPN Real Configuration',
-        type: 'azure-vpn',
-        status: 'configured',
-        description: 'Real Azure VPN configuration from installed client',
-        automationScript: 'powershell'
-      }];
-    } catch (error) {
-      console.log('[MICROSOFT-REAL-DISCOVERY] Azure VPN not found at:', azurePath);
-    }
-  }
-  
-  return [];
-}
-
-async function discoverRealGlobalProtectConfigurations(): Promise<VPNConnection[]> {
-  console.log('[GLOBALPROTECT-REAL-DISCOVERY] Searching for real GlobalProtect configurations');
-  
-  // Check for GlobalProtect configurations
-  const gpPaths = [
-    '/Applications/GlobalProtect.app',
-    `${process.env.HOME}/Library/Application Support/PaloAltoNetworks/GlobalProtect`
-  ];
-  
-  for (const gpPath of gpPaths) {
-    try {
-      await fs.access(gpPath);
-      console.log('[GLOBALPROTECT-REAL-DISCOVERY] Found GlobalProtect at:', gpPath);
-      return [{
-        id: 'gp-real-config',
-        name: 'GlobalProtect Real Configuration',
-        type: 'globalprotect',
-        status: 'configured',
-        description: 'Real GlobalProtect configuration from installed client',
-        automationScript: 'globalprotect-cli'
-      }];
-    } catch (error) {
-      console.log('[GLOBALPROTECT-REAL-DISCOVERY] GlobalProtect not found at:', gpPath);
-    }
-  }
-  
-  return [];
-}
-
-/**
- * OLD: Template functions (now unused)
- */
-async function discoverCiscoAnyConnectConfigurations(software: any): Promise<VPNConnection[]> {
-  console.log('[CISCO-DISCOVERY] Creating template configurations for Cisco AnyConnect');
-  
-  return [
-    {
-      id: 'cisco-corp-vpn',
-      name: 'Corporate VPN (AnyConnect)',
-      type: 'cisco-anyconnect',
-      status: 'template',
-      description: 'Template configurazione per VPN aziendale Cisco AnyConnect',
-      server: 'vpn.company.com',
-      port: 443,
-      automationScript: 'anyconnect-cli'
-    },
-    {
-      id: 'cisco-remote-access',
-      name: 'Remote Access SSL VPN',
-      type: 'cisco-anyconnect', 
-      status: 'template',
-      description: 'Template per accesso remoto sicuro via SSL VPN',
-      server: 'remote.company.com',
-      port: 443,
-      automationScript: 'anyconnect-gui'
-    }
-  ];
-}
-
-async function discoverFortiClientConfigurations(software: any): Promise<VPNConnection[]> {
-  console.log('[FORTINET-DISCOVERY] Creating template configurations for FortiClient');
-  
-  return [
-    {
-      id: 'forti-ssl-vpn',
-      name: 'FortiGate SSL VPN',
-      type: 'forticlient',
-      status: 'template', 
-      description: 'Template configurazione FortiGate SSL VPN',
-      server: 'vpn.fortigate.local',
-      port: 443,
-      automationScript: 'applescript'
-    }
-  ];
-}
-
-async function discoverAzureVpnConfigurations(software: any): Promise<VPNConnection[]> {
-  console.log('[AZURE-DISCOVERY] Creating template configurations for Azure VPN');
-  
-  return [
-    {
-      id: 'azure-p2s-vpn',
-      name: 'Azure Point-to-Site VPN',
-      type: 'azure-vpn',
-      status: 'template',
-      description: 'Template per connessione Point-to-Site Azure VPN Gateway',
-      server: 'vpngateway.azure.net',
-      port: 443,
-      automationScript: 'powershell'
-    }
-  ];
-}
-
-async function discoverGlobalProtectConfigurations(software: any): Promise<VPNConnection[]> {
-  console.log('[GLOBALPROTECT-DISCOVERY] Creating template configurations for GlobalProtect');
-  
-  return [
-    {
-      id: 'gp-portal',
-      name: 'GlobalProtect Portal',
-      type: 'globalprotect',
-      status: 'template',
-      description: 'Template configurazione Palo Alto GlobalProtect',
-      server: 'gp.company.com',
-      port: 443,
-      automationScript: 'globalprotect-cli'
-    }
-  ];
-}
-
-async function discoverOpenVpnConfigurations(software: any): Promise<VPNConnection[]> {
-  console.log('[OPENVPN-DISCOVERY] Creating template configurations for OpenVPN Connect');
-  
-  return [
-    {
-      id: 'openvpn-server',
-      name: 'OpenVPN Server Connection',
-      type: 'openvpn',
-      status: 'template',
-      description: 'Template configurazione OpenVPN (.ovpn file)',
-      server: 'openvpn.server.com',
-      port: 1194,
-      automationScript: 'openvpn-cli'
-    }
-  ];
-}
 
 /**
  * Generate automation script for VPN connection
