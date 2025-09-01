@@ -244,6 +244,52 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Upload real FortiClient profiles extracted with fccconfig
+  app.post("/api/vpn/upload-real-profiles", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { source, hostname, timestamp, extraction_method, connection_count, connections } = req.body;
+      
+      console.log('[VPN-REAL-PROFILES] ========== REAL PROFILES UPLOAD ==========');
+      console.log('[VPN-REAL-PROFILES] Source:', source);
+      console.log('[VPN-REAL-PROFILES] Hostname:', hostname);
+      console.log('[VPN-REAL-PROFILES] Extraction method:', extraction_method);
+      console.log('[VPN-REAL-PROFILES] Timestamp:', timestamp);
+      console.log('[VPN-REAL-PROFILES] Profile count:', connection_count);
+      console.log('[VPN-REAL-PROFILES] Profiles:', JSON.stringify(connections, null, 2));
+      
+      // Store the real profiles globally for discovery
+      (global as any).realFortiClientProfiles = {
+        source,
+        hostname,
+        timestamp,
+        extraction_method,
+        connection_count,
+        connections: Array.isArray(connections) ? connections : JSON.parse(connections),
+        userId: req.user!.id
+      };
+      
+      console.log('[VPN-REAL-PROFILES] ✅ Real profiles stored successfully');
+      
+      res.json({
+        success: true,
+        message: "Real FortiClient profiles uploaded successfully",
+        profile_count: connection_count,
+        extraction_method: extraction_method,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('[VPN-REAL-PROFILES] Error uploading real profiles:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Failed to upload real profiles",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Upload local VPN connections from user's workstation
   app.post("/api/vpn/upload-local-connections", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -1822,14 +1868,19 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/vpn-connections", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const connectionData = { ...req.body, userId: req.user!.id };
+      const connectionData = { 
+        ...req.body, 
+        userId: req.user!.id,
+        id: undefined  // Let database generate ID
+      };
       
       // Validate basic required fields
       if (!connectionData.name || !connectionData.partnerId || !connectionData.serverHost || !connectionData.userId) {
         return res.status(400).json({ error: "Missing required fields: name, partnerId, serverHost" });
       }
       
-      const connection = await storage.createVpnConnection(connectionData as any);
+      const validatedData = insertVpnConnectionSchema.parse(connectionData);
+      const connection = await storage.createVpnConnection(validatedData);
       res.status(201).json(connection);
     } catch (error) {
       res.status(400).json({ error: "Invalid VPN connection data", details: error instanceof Error ? error.message : String(error) });

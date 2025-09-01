@@ -72,80 +72,58 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
       }));
       
       connections.push(...uploadedConnections);
-    } else {
-      // Load ONLY authentic VPN data with REALISTIC automation capabilities
-      console.log('[VPN-DISCOVERY] Loading AUTHENTIC VPN connections with realistic automation levels');
-      const realConnections = [
-        // LEVEL 1: System VPN connections (scutil) - FULL AUTOMATION
-        {
-          id: "sys-fc-0",
-          name: "VPN 2",
-          type: "forticlient" as const,
-          status: "configured" as const,
-          description: "FortiClient system VPN (full automation via scutil)",
-          automationScript: "system",
-          automationLevel: "full"
-        },
-        {
-          id: "sys-fc-1", 
-          name: "VPN",
-          type: "forticlient" as const,
-          status: "configured" as const,
-          description: "FortiClient system VPN (full automation via scutil)",
-          automationScript: "system",
-          automationLevel: "full"
-        },
-        // LEVEL 2: Cisco AnyConnect - CLI AUTOMATION
-        {
-          id: "sys-ac-0",
-          name: "Julius Meinl",
-          type: "openconnect" as const,
-          status: "configured" as const,
-          description: "Cisco AnyConnect (CLI automation available)",
-          automationScript: "cli",
-          automationLevel: "cli"
-        },
-        {
-          id: "sys-ac-1",
-          name: "Lutech", 
-          type: "openconnect" as const,
-          status: "configured" as const,
-          description: "Cisco AnyConnect (CLI automation available)",
-          automationScript: "cli",
-          automationLevel: "cli"
-        },
-        // LEVEL 3: Azure VPN - SYSTEM AUTOMATION
-        {
-          id: "sys-az-0",
-          name: "eVPN-GruppoHera-IT",
-          type: "native" as const,
-          status: "configured" as const,
-          description: "Azure VPN (system automation via scutil)",
-          automationScript: "system",
-          automationLevel: "full"
-        },
-        // LEVEL 3: GlobalProtect - LIMITED AUTOMATION  
-        {
-          id: "sys-gp-0",
-          name: "GlobalProtect",
-          type: "native" as const,
-          status: "configured" as const,
-          description: "GlobalProtect (limited automation, may require manual steps)",
-          automationScript: "gui",
-          automationLevel: "limited"
-        },
-        // LEVEL 4: FortiClient non-system connections - MANUAL ONLY
-        {
-          id: "fc-manual-0",
-          name: "GiVa",
-          type: "forticlient" as const,
-          status: "configured" as const,
-          description: "FortiClient GiVa (manual connection - opens app, user selects)",
-          automationScript: "manual",
-          automationLevel: "manual"
-        }
-      ];
+    } else if ((global as any).realFortiClientProfiles) {
+      // Use REAL FortiClient profiles extracted with fccconfig
+      const realProfiles = (global as any).realFortiClientProfiles;
+      console.log('[VPN-DISCOVERY] Using REAL FortiClient profiles from fccconfig');
+      console.log('[VPN-DISCOVERY] Real profiles from:', realProfiles.hostname);
+      console.log('[VPN-DISCOVERY] Extraction method:', realProfiles.extraction_method);
+      console.log('[VPN-DISCOVERY] Profile count:', realProfiles.connection_count);
+      
+      const realConnections = realProfiles.connections.map((conn: any) => ({
+        id: conn.id,
+        name: conn.name,
+        type: conn.type,
+        status: conn.status,
+        description: `${conn.description} (estratto da fccconfig)`,
+        server: conn.server || undefined,
+        port: conn.port || undefined,
+        automationScript: 'applescript-advanced'
+      }));
+      
       connections.push(...realConnections);
+    } else {
+      // Fallback to system VPN connections only (no hardcoded fake data)
+      console.log('[VPN-DISCOVERY] No real profiles found, using system VPN connections only');
+      
+      // Try to get system VPN connections via scutil
+      try {
+        if (process.platform === 'darwin') {
+          const { stdout } = await execAsync('scutil --nc list');
+          const systemConnections = stdout.split('\n')
+            .filter(line => line.includes('VPN') || line.includes('Fortinet') || line.includes('SSL'))
+            .map((line, index) => {
+              const match = line.match(/\"\s*([^"]+)\"/);
+              if (match && match[1]) {
+                return {
+                  id: `system-vpn-${index}`,
+                  name: match[1],
+                  type: 'native' as const,
+                  status: 'configured' as const,
+                  description: `System VPN connection: ${match[1]}`,
+                  automationScript: 'scutil'
+                };
+              }
+              return null;
+            })
+            .filter(conn => conn !== null);
+          
+          connections.push(...systemConnections);
+          console.log('[VPN-DISCOVERY] Found', systemConnections.length, 'system VPN connections');
+        }
+      } catch (error) {
+        console.log('[VPN-DISCOVERY] Could not access system VPN connections');
+      }
     }
     
     // 5. If no real connections found, show demos as fallback
@@ -528,45 +506,117 @@ export async function generateVPNAutomationScript(connectionInfo: any): Promise<
 }
 
 /**
- * Generate AppleScript for FortiClient GUI automation
+ * Generate advanced AppleScript for FortiClient GUI automation with profile selection
  */
 async function generateFortiClientScript(vpnConnection: any): Promise<VPNAutomationResult> {
+  const profileName = vpnConnection.name;
+  const action = "connect";
+  
   const applescript = `
-tell application "FortiClient"
-    activate
-    delay 2
-    
-    -- Attempt to connect to VPN
+on run argv
+  set profileName to "${profileName}"
+  set actionName to "${action}"
+
+  tell application "FortiClient" to activate
+  delay 0.5
+
+  tell application "System Events"
+    if not (exists process "FortiClient") then return "FortiClient process not found"
+    tell process "FortiClient"
+      set frontmost to true
+      delay 0.5
+
+      -- Trova la finestra principale
+      set theWin to missing value
+      try
+        set theWin to window 1
+      end try
+      if theWin is missing value then return "FortiClient main window not found"
+
+      -- 1) Seleziona il profilo dal popup / menu
+      try
+        if (count of pop up buttons of theWin) > 0 then
+          click pop up button 1 of theWin
+          delay 0.3
+          tell menu 1 of pop up button 1 of theWin
+            click (first menu item whose name is profileName)
+          end tell
+        else if (count of combo boxes of theWin) > 0 then
+          -- Variante con combo box
+          tell combo box 1 of theWin
+            set value to profileName
+          end tell
+        else
+          -- Variante con tabella elenco profili
+          if (count of tables of theWin) > 0 then
+            set foundRow to false
+            repeat with r in rows of table 1 of theWin
+              try
+                if (value of static text 1 of r) is profileName then
+                  select r
+                  set foundRow to true
+                  exit repeat
+                end if
+              end try
+            end repeat
+            if not foundRow then error "Profile not found in table"
+          end if
+        end if
+      end try
+      delay 0.3
+
+      -- 2) Click su Connect/Connetti
+      set connectLabels to {"Connect", "Connetti"}
+      set disconnectLabels to {"Disconnect", "Disconnetti"}
+
+      if actionName is "connect" then
+        my clickFirstMatchingButton(theWin, connectLabels)
+      else if actionName is "disconnect" then
+        my clickFirstMatchingButton(theWin, disconnectLabels)
+      end if
+      
+      return "VPN operation completed for " & profileName
+    end tell
+  end tell
+end run
+
+on clickFirstMatchingButton(theWin, labelList)
+  tell application "System Events"
+    repeat with lbl in labelList
+      try
+        click (first button whose title contains (lbl as text) of theWin)
+        return
+      end try
+    end repeat
+    -- Fallback: prova il primo bottone disponibile
     try
-        -- This is a simplified approach - actual implementation may vary
-        -- based on FortiClient GUI structure
-        tell application "System Events"
-            tell process "FortiClient"
-                -- Click on VPN tab or connection
-                -- Note: This requires GUI inspection to get exact element paths
-                click button "Connect" of window 1
-            end tell
-        end tell
-        
-        return "VPN connection initiated for ${vpnConnection.name}"
-    on error errMsg
-        return "Error connecting to VPN: " & errMsg
+      click button 1 of theWin
     end try
-end tell`;
+  end tell
+end clickFirstMatchingButton
+`;
 
   return {
     success: true,
     connectionType: 'forticlient',
     executionCommand: `osascript -e '${applescript.replace(/'/g, "'\"'\"'")}'`,
-    instructions: `AppleScript generated for FortiClient VPN: ${vpnConnection.name}
-    
-To execute manually:
-1. Save the script as a .scpt file
-2. Run: osascript path/to/script.scpt
-3. Ensure FortiClient has accessibility permissions
+    instructions: `Advanced AppleScript for FortiClient profile: ${profileName}
 
-Note: This script may need customization based on your specific FortiClient setup.`,
-    scriptPath: '/tmp/forticlient_automation.scpt'
+This script:
+1. Opens FortiClient
+2. Selects the specific profile "${profileName}"
+3. Clicks Connect/Connetti button
+
+Requirements:
+- FortiClient must have Accessibility permissions
+- Profile "${profileName}" must exist in FortiClient
+- Terminal must have Accessibility permissions
+
+To execute:
+osascript -e 'script content'
+
+Note: Based on ChatGPT's advanced FortiClient automation method.`,
+    scriptPath: '/tmp/forticlient_advanced_automation.scpt'
   };
 }
 
