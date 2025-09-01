@@ -38,33 +38,48 @@ async function discoverCiscoAnyConnectRealConfigurations(): Promise<{
   console.log('[CISCO-DISCOVERY] Starting real Cisco AnyConnect configuration discovery...');
   
   try {
-    // Try to find real VPN connections via scutil
-    const { stdout } = await execAsync('scutil --nc list');
-    const lines = stdout.split('\n').filter(line => 
-      line.includes('AnyConnect') || line.includes('Cisco')
-    );
+    console.log('[CISCO-DISCOVERY] Searching for real Cisco AnyConnect configurations...');
     
-    const realConfigs = [];
-    for (const line of lines) {
-      // Parse real VPN connection info from scutil output
-      const match = line.match(/"(.+?)".*\[(.+?)\]/);
-      if (match) {
-        const [, name, uuid] = match;
-        realConfigs.push({
-          id: uuid,
-          name: name,
-          server: 'unknown', // Would need additional commands to get server info
-          port: 443
-        });
+    // 1. Try Linux approach - search for OpenConnect/Cisco profiles
+    try {
+      const { stdout } = await execAsync('find /etc /home/runner -name "*.conf" -path "*cisco*" -o -name "*.ovpn" -path "*cisco*" 2>/dev/null || true');
+      const configFiles = stdout.trim().split('\n').filter(f => f && f.length > 0);
+      
+      if (configFiles.length > 0) {
+        console.log('[CISCO-DISCOVERY] Found Cisco config files:', configFiles);
+        // Parse real config files here and return them
       }
-    }
+    } catch {}
     
-    console.log('[CISCO-DISCOVERY] Found', realConfigs.length, 'real Cisco configurations via scutil');
-    realConfigs.forEach(config => {
-      console.log('[CISCO-DISCOVERY] -', config.name, 'ID:', config.id);
-    });
+    // 2. Try macOS approach - scutil (if available)
+    try {
+      const { stdout } = await execAsync('scutil --nc list');
+      const lines = stdout.split('\n').filter(line => 
+        line.includes('AnyConnect') || line.includes('Cisco')
+      );
+      
+      const realConfigs = [];
+      for (const line of lines) {
+        const match = line.match(/"(.+?)".*\[(.+?)\]/);
+        if (match) {
+          const [, name, uuid] = match;
+          realConfigs.push({
+            id: uuid,
+            name: name,
+            server: 'unknown',
+            port: 443
+          });
+        }
+      }
+      
+      if (realConfigs.length > 0) {
+        console.log('[CISCO-DISCOVERY] Found', realConfigs.length, 'real Cisco configurations via scutil');
+        return realConfigs;
+      }
+    } catch {}
     
-    return realConfigs;
+    console.log('[CISCO-DISCOVERY] No real Cisco configurations found on this system');
+    return [];
   } catch (error) {
     console.log('[CISCO-DISCOVERY] Error running scutil:', error.message);
     // Return empty array - no fake data!
@@ -84,38 +99,64 @@ async function discoverAzureVPNConfigurations(): Promise<{
   try {
     console.log('[AZURE-DISCOVERY] Searching for real Azure VPN profiles...');
     
-    // Try to find real Azure VPN profiles (would scan actual Azure profile directories)
+    // 1. Try to find real Azure VPN profile files
     const azureProfilePaths = [
       `${process.env.HOME}/Library/Application Support/Azure VPN Client/Profiles`,
       `${process.env.HOME}/.config/azure-vpn-client/profiles`,
-      '/etc/azure-vpn-client/profiles'
+      '/etc/azure-vpn-client/profiles',
+      `${process.env.HOME}/.azure-vpn`
     ];
     
     const realConfigs = [];
     for (const profilePath of azureProfilePaths) {
       try {
         const files = await fs.readdir(profilePath);
-        const profileFiles = files.filter(f => f.endsWith('.json') || f.endsWith('.xml'));
+        const profileFiles = files.filter(f => f.endsWith('.json') || f.endsWith('.xml') || f.endsWith('.ovpn'));
+        
+        console.log(`[AZURE-DISCOVERY] Checking ${profilePath}, found ${profileFiles.length} potential profile files`);
         
         for (const file of profileFiles) {
-          // Parse real profile file to extract connection info
-          const baseName = file.replace(/\.(json|xml)$/, '');
-          realConfigs.push({
-            id: `azure-${baseName}`,
-            name: baseName,
-            server: 'unknown', // Would parse from file content
-            port: 443
-          });
+          try {
+            const fullPath = `${profilePath}/${file}`;
+            const content = await fs.readFile(fullPath, 'utf8');
+            
+            // Parse based on file type
+            let server = 'unknown';
+            let name = file.replace(/\.(json|xml|ovpn)$/, '');
+            
+            if (file.endsWith('.json')) {
+              try {
+                const config = JSON.parse(content);
+                if (config.serverAddress) server = config.serverAddress;
+                if (config.displayName) name = config.displayName;
+              } catch {}
+            } else if (file.endsWith('.xml')) {
+              const serverMatch = content.match(/<ServerAddress>([^<]+)<\/ServerAddress>/);
+              if (serverMatch) server = serverMatch[1];
+              const nameMatch = content.match(/<DisplayName>([^<]+)<\/DisplayName>/);
+              if (nameMatch) name = nameMatch[1];
+            }
+            
+            realConfigs.push({
+              id: `azure-${Buffer.from(fullPath).toString('base64').slice(0, 8)}`,
+              name: name,
+              server: server,
+              port: 443
+            });
+            
+            console.log('[AZURE-DISCOVERY] Found real Azure profile:', name, 'server:', server);
+          } catch (err) {
+            // Skip invalid files
+          }
         }
-        break;
-      } catch {}
+        
+        if (realConfigs.length > 0) break; // Found profiles, no need to check other paths
+      } catch {
+        // Directory doesn't exist, continue
+      }
     }
     
     console.log('[AZURE-DISCOVERY] Found', realConfigs.length, 'real Azure configurations');
-    realConfigs.forEach(config => {
-      console.log('[AZURE-DISCOVERY] -', config.name);
-    });
-    
     return realConfigs;
   } catch (error) {
     console.log('[AZURE-DISCOVERY] Error during discovery:', error.message);
