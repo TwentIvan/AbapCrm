@@ -42,7 +42,7 @@ async function discoverCiscoAnyConnectRealConfigurations(): Promise<{
     
     // 1. Try Linux approach - search for OpenConnect/Cisco profiles
     try {
-      const { stdout } = await execAsync('find /etc /home/runner /tmp -name "*.conf" -path "*cisco*" -o -name "*.ovpn" -path "*cisco*" 2>/dev/null || true');
+      const { stdout } = await execAsync('find /etc /home/runner /tmp -name "*.conf" 2>/dev/null | grep -i cisco || true');
       const configFiles = stdout.trim().split('\n').filter(f => f && f.length > 0);
       
       if (configFiles.length > 0) {
