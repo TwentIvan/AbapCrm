@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,10 +20,18 @@ interface SimpleVPNFormProps {
   partners: Array<{ id: string; name: string; company: string }>;
 }
 
+interface VpnSoftware {
+  id: string;
+  name: string;
+  vendor: string;
+  version?: string;
+  description?: string;
+}
+
 const formSchema = z.object({
   name: z.string().min(1, "Nome richiesto"),
   partnerId: z.string().min(1, "Cliente richiesto"),
-  vpnSoftware: z.enum(['forticlient', 'macos_native', 'openconnect', 'openvpn']),
+  vpnSoftware: z.string().min(1, "Software VPN richiesto"),
   existingConnectionId: z.string().min(1, "Seleziona una connessione esistente"),
 });
 
@@ -41,13 +49,23 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [discoveryComplete, setDiscoveryComplete] = useState(false);
 
+  // Load VPN software from database
+  const { data: vpnSoftware = [], isLoading: isLoadingSoftware } = useQuery<VpnSoftware[]>({
+    queryKey: ["/api/vpn-software"],
+    queryFn: async () => {
+      const res = await fetch("/api/vpn-software", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch VPN software');
+      return res.json();
+    },
+  });
+
   const form = useForm({
     resolver: zodResolver(formSchema),
     mode: "onChange",
     defaultValues: {
       name: "",
       partnerId: "",
-      vpnSoftware: 'forticlient' as const,
+      vpnSoftware: "",
       existingConnectionId: "",
     },
   });
@@ -219,10 +237,23 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="forticlient">FortiClient (FortiGate SSL VPN)</SelectItem>
-                      <SelectItem value="macos_native">VPN nativa macOS (IPSec/IKEv2)</SelectItem>
-                      <SelectItem value="openconnect">OpenConnect (Cisco AnyConnect)</SelectItem>
-                      <SelectItem value="openvpn">OpenVPN (configurazione .ovpn)</SelectItem>
+                      {isLoadingSoftware ? (
+                        <SelectItem value="" disabled>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Caricamento software...
+                        </SelectItem>
+                      ) : vpnSoftware.length > 0 ? (
+                        vpnSoftware.map((software) => (
+                          <SelectItem key={software.id} value={software.id}>
+                            {software.name} {software.vendor && `(${software.vendor})`}
+                            {software.version && ` v${software.version}`}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>
+                          Nessun software disponibile
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
