@@ -1844,8 +1844,7 @@ export class DatabaseStorage implements IStorage {
   // Discovery VPN Software Methods
   async getDiscoveredVpnSoftware(userId: string): Promise<DiscoveredVpnSoftware[]> {
     return await db.select().from(discoveredVpnSoftware)
-      .where(and(eq(discoveredVpnSoftware.userId, userId)))
-      .orderBy(desc(discoveredVpnSoftware.discoveredAt));
+      .where(eq(discoveredVpnSoftware.userId, userId));
   }
 
   async getDiscoveredVpnSoftwareById(id: string, userId: string): Promise<DiscoveredVpnSoftware | undefined> {
