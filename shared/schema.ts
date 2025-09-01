@@ -593,14 +593,12 @@ export const discoveredVpnSoftware = pgTable("discovered_vpn_software", {
   executablePath: text("executable_path"), // Path dell'eseguibile
   
   // Discovery metadata
-  discoveryMethod: text("discovery_method"), // "filesystem", "registry", "command"
-  lastDiscovery: timestamp("last_discovery").defaultNow().notNull(),
+  discoveryMethod: text("discovery_method").default("filesystem").notNull(), // "filesystem", "registry", "command"
   platform: text("platform").default("unknown").notNull(), // "macos", "windows", "linux"
   
-  // Status
-  isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  // Timestamps
+  discoveredAt: timestamp("discovered_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // VPN Configurations Discovery - Configurazioni trovate per ogni software
@@ -628,13 +626,8 @@ export const discoveredVpnConfigurations = pgTable("discovered_vpn_configuration
   extractionMethod: text("extraction_method"), // "fccconfig", "xml_parse", "registry"
   
   // Discovery info
-  lastDiscovered: timestamp("last_discovered").defaultNow().notNull(),
-  lastVerified: timestamp("last_verified"),
-  
-  // Status
-  isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  discoveredAt: timestamp("discovered_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Transport Request files (cofile and data file)
