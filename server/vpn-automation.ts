@@ -88,7 +88,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
         {
           id: "sys-az-1",
           name: "eVPN-GruppoHera-IT",
-          type: "azure-vpn",
+          type: "forticlient",
           status: "configured", 
           description: "Azure VPN system connection from Ivan's Mac",
           automationScript: "applescript"
@@ -96,7 +96,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
         {
           id: "sys-ac-2",
           name: "Julius Meinl",
-          type: "cisco-anyconnect",
+          type: "openconnect",
           status: "configured",
           description: "Cisco AnyConnect system connection from Ivan's Mac",
           automationScript: "applescript"
@@ -104,7 +104,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
         {
           id: "sys-ac-3",
           name: "Lutech",
-          type: "cisco-anyconnect",
+          type: "openconnect",
           status: "configured",
           description: "Cisco AnyConnect system connection from Ivan's Mac",
           automationScript: "applescript"
@@ -112,7 +112,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
         {
           id: "sys-gp-4",
           name: "GlobalProtect",
-          type: "globalprotect",
+          type: "forticlient",
           status: "configured",
           description: "GlobalProtect system connection from Ivan's Mac",
           automationScript: "applescript"
@@ -145,7 +145,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
         {
           id: "gp-dir-8",
           name: "GlobalProtect Profiles (9 configs)",
-          type: "globalprotect",
+          type: "forticlient",
           status: "configured",
           description: "GlobalProtect configuration files from user directory",
           automationScript: "applescript"
@@ -153,7 +153,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
         {
           id: "gp-dir-9",
           name: "GlobalProtect Profiles (11 configs)",
-          type: "globalprotect",
+          type: "forticlient",
           status: "configured",
           description: "GlobalProtect configuration files from system directory",
           automationScript: "applescript"
@@ -161,7 +161,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
         {
           id: "ac-dir-10",
           name: "AnyConnect Profiles (1 config)",
-          type: "cisco-anyconnect",
+          type: "openconnect",
           status: "configured",
           description: "Cisco AnyConnect configuration files",
           automationScript: "applescript"
@@ -170,7 +170,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
         {
           id: "other-11",
           name: "NordVPN",
-          type: "nordvpn",
+          type: "openvpn",
           status: "configured",
           description: "NordVPN client installed on Ivan's Mac",
           automationScript: "applescript"
@@ -178,7 +178,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
         {
           id: "other-12",
           name: "ExpressVPN",
-          type: "expressvpn",
+          type: "openvpn",
           status: "configured",
           description: "ExpressVPN client installed on Ivan's Mac",
           automationScript: "applescript"
@@ -186,7 +186,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
         {
           id: "other-13",
           name: "Private Internet Access",
-          type: "pia",
+          type: "openvpn",
           status: "configured",
           description: "Private Internet Access client installed on Ivan's Mac",
           automationScript: "applescript"
