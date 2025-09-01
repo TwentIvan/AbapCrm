@@ -48,6 +48,8 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
   const [discoveredConnections, setDiscoveredConnections] = useState<DiscoveredConnection[]>([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [discoveryComplete, setDiscoveryComplete] = useState(false);
+  const [selectedSoftware, setSelectedSoftware] = useState<VpnSoftware | null>(null);
+  const [showCredentialsForm, setShowCredentialsForm] = useState(false);
 
   // Load VPN software from database
   const { data: vpnSoftware = [], isLoading: isLoadingSoftware } = useQuery<VpnSoftware[]>({
@@ -135,6 +137,36 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
       });
     }
   });
+
+  // Handle software selection change with automatic discovery
+  const handleSoftwareChange = async (softwareId: string) => {
+    console.log('🔍 Software changed to:', softwareId);
+    
+    // Reset states
+    setDiscoveredConnections([]);
+    setDiscoveryComplete(false);
+    setShowCredentialsForm(false);
+    
+    // Find the selected software
+    const software = vpnSoftware.find(s => s.id === softwareId);
+    setSelectedSoftware(software || null);
+    
+    if (!software) return;
+    
+    console.log('🔍 Selected software:', software.name, 'Vendor:', software.vendor);
+    console.log('🔍 Automation type:', software.automationType, 'Can read configs:', software.canReadConfigs);
+    
+    // If software can read configurations, do automatic discovery
+    if (software.canReadConfigs || software.automationType === 'full') {
+      console.log('🔍 Software can read configs - starting automatic discovery');
+      discoverMutation.mutate(softwareId);
+    } else {
+      // Software requires manual credentials
+      console.log('🔍 Software requires credentials - showing credentials form');
+      setShowCredentialsForm(true);
+      setDiscoveryComplete(true);
+    }
+  };
 
   const handleDiscover = () => {
     const software = form.getValues('vpnSoftware');
@@ -230,7 +262,10 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Software Installato</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-vpn-software">
+                  <Select onValueChange={(value) => {
+                    field.onChange(value);
+                    handleSoftwareChange(value);
+                  }} defaultValue={field.value} data-testid="select-vpn-software">
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue />
@@ -261,26 +296,42 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
               )}
             />
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleDiscover}
-              disabled={isDiscovering || !form.getValues('vpnSoftware')}
-              className="w-full"
-              data-testid="button-discover"
-            >
-              {isDiscovering ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Cercando connessioni...
-                </>
-              ) : (
-                <>
-                  <Search className="mr-2 h-4 w-4" />
-                  🔍 Trova Connessioni Esistenti
-                </>
-              )}
-            </Button>
+            {/* Only show manual discovery button if software requires manual discovery */}
+            {selectedSoftware && !selectedSoftware.canReadConfigs && selectedSoftware.automationType !== 'full' && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDiscover}
+                disabled={isDiscovering || !form.getValues('vpnSoftware')}
+                className="w-full"
+                data-testid="button-discover"
+              >
+                {isDiscovering ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Cercando connessioni...
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    🔍 Trova Connessioni Esistenti
+                  </>
+                )}
+              </Button>
+            )}
+            
+            {/* Show automatic discovery status */}
+            {selectedSoftware && (selectedSoftware.canReadConfigs || selectedSoftware.automationType === 'full') && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Discovery automatico per {selectedSoftware.name}...
+                  {isDiscovering && (
+                    <Loader2 className="ml-2 h-4 w-4 animate-spin inline" />
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
 
             {isDiscovering && (
               <Alert>
@@ -293,8 +344,74 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
           </CardContent>
         </Card>
 
+        {/* Credentials Form for Software that Cannot Read Configs */}
+        {showCredentialsForm && selectedSoftware && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                Configurazione {selectedSoftware.name}
+              </CardTitle>
+              <CardDescription>
+                {selectedSoftware.name} richiede l'inserimento manuale delle credenziali
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
+                <AlertDescription>
+                  Questo software non può leggere configurazioni esistenti. 
+                  Inserisci le credenziali VPN per {form.getValues('name') || 'questo cliente'}.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="server">Server VPN</Label>
+                  <input 
+                    id="server"
+                    type="text" 
+                    placeholder="vpn.company.com"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="port">Porta</Label>
+                  <input 
+                    id="port"
+                    type="text" 
+                    placeholder="443"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="username">Username</Label>
+                  <input 
+                    id="username"
+                    type="text" 
+                    placeholder="usuario@company.com"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <input 
+                    id="password"
+                    type="password" 
+                    placeholder="••••••••"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+              </div>
+              
+              <Button className="w-full" type="submit">
+                Salva Configurazione Manuale
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Connection Selection */}
-        {discoveryComplete && (
+        {discoveryComplete && discoveredConnections.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Connessioni Trovate</CardTitle>
