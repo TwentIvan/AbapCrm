@@ -2233,7 +2233,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
                 configured: connection.status === 'configured',
                 active: false, // VPNConnection.status non include 'active'
                 configPath: null, // Non disponibile dal tipo VPNConnection
-                profileData: connection.details ? JSON.stringify({ details: connection.details }) : null,
+                profileData: connection.description ? JSON.stringify({ description: connection.description }) : null,
                 extractionMethod: connection.type || 'unknown'
               };
               
