@@ -37,6 +37,12 @@ if [ -f "$GP_BINARY" ]; then
     "$GP_BINARY" --disconnect 2>&1 | head -5 && echo "     ✅ --disconnect exists" || echo "     ❌ --disconnect failed"
     "$GP_BINARY" --status 2>&1 | head -5 && echo "     ✅ --status works" || echo "     ❌ --status failed"
     
+    # Test specific connection with fixed name "GiVa"
+    echo "   Testing specific connection 'GiVa':"
+    "$GP_BINARY" --connect "GiVa" 2>&1 | head -5 && echo "     ✅ --connect GiVa attempted" || echo "     ❌ --connect GiVa failed"
+    "$GP_BINARY" -c "GiVa" 2>&1 | head -5 && echo "     ✅ -c GiVa attempted" || echo "     ❌ -c GiVa failed"
+    "$GP_BINARY" connect-to "GiVa" 2>&1 | head -5 && echo "     ✅ connect-to GiVa attempted" || echo "     ❌ connect-to GiVa failed"
+    
 else
     echo "   ❌ GlobalProtect binary not found"
 fi

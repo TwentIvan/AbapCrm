@@ -35,6 +35,12 @@ if [ -f "$FC_BINARY" ]; then
     "$FC_BINARY" --show-profiles 2>&1 | head -5 && echo "     ✅ --show-profiles works" || echo "     ❌ --show-profiles failed"
     "$FC_BINARY" --connect 2>&1 | head -5 && echo "     ✅ --connect exists" || echo "     ❌ --connect failed"
     
+    # Test specific connection with fixed name "GiVa"
+    echo "   Testing specific connection 'GiVa':"
+    "$FC_BINARY" --connect "GiVa" 2>&1 | head -5 && echo "     ✅ --connect GiVa attempted" || echo "     ❌ --connect GiVa failed"
+    "$FC_BINARY" -c "GiVa" 2>&1 | head -5 && echo "     ✅ -c GiVa attempted" || echo "     ❌ -c GiVa failed"
+    "$FC_BINARY" connect "GiVa" 2>&1 | head -5 && echo "     ✅ connect GiVa attempted" || echo "     ❌ connect GiVa failed"
+    
 else
     echo "   ❌ FortiClient binary not found"
 fi
@@ -76,6 +82,22 @@ EOF
     
     result=$(osascript /tmp/test_fc_connections.scpt 2>/dev/null)
     echo "   AppleScript properties result: $result"
+    
+    # Test specific connection with "GiVa"
+    echo "   Testing AppleScript connection to 'GiVa':"
+    cat > /tmp/test_fc_connect_giva.scpt << 'EOF'
+tell application "FortiClient"
+    try
+        connect to "GiVa"
+        return "Connection to GiVa attempted"
+    on error errMsg
+        return "Error connecting to GiVa: " & errMsg
+    end try
+end tell
+EOF
+    
+    result=$(osascript /tmp/test_fc_connect_giva.scpt 2>/dev/null)
+    echo "   AppleScript connect GiVa result: $result"
     
 else
     echo "   ❌ FortiClient does not respond to AppleScript"
