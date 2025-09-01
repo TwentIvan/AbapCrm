@@ -214,7 +214,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       console.log('[VPN-DISCOVERY-API] Starting discovery...');
       
       // Get all available VPN connections for the specified software
-      const allConnections = await discoverVPNConnections(software);
+      const allConnections = await discoverVPNConnections(software, req.user!.id);
       
       console.log('[VPN-DISCOVERY-API] ===== ALL CONNECTIONS FOUND =====');
       console.log('[VPN-DISCOVERY-API] Total connections:', allConnections.length);
@@ -391,7 +391,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.get("/api/vpn/discover", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const availableConnections = await discoverVPNConnections();
+      const availableConnections = await discoverVPNConnections(undefined, req.user!.id);
       res.json(availableConnections);
     } catch (error) {
       console.error('Error discovering VPN connections:', error);
