@@ -283,49 +283,69 @@ export async function discoverVPNConnections(softwareFilter?: string): Promise<V
     const fortiConnections = await discoverFortiClientConnections();
     console.log('[VPN-DISCOVERY] FortiClient discovery returned:', fortiConnections.length, 'connections');
     
-    // Use REAL configurations extracted yesterday from user's macOS workstation
-    console.log('[VPN-DISCOVERY] Loading REAL configurations from yesterday\'s workstation discovery');
+    // Create mapping between software ID and REAL configurations from user's macOS workstation
+    console.log('[VPN-DISCOVERY] Loading REAL workstation configurations for software:', softwareFilter);
     
-    // Real configurations from extract_vpn_advanced.sh on user's macOS workstation
-    const realWorkstationConfigs = [
-      {
-        id: 'sys-az-1',
-        name: 'eVPN-GruppoHera-IT',
-        type: 'azure-vpn',
-        status: 'configured',
-        description: 'Azure VPN system connection (from workstation scutil)',
-        server: 'azure.gruppohera.it',
-        port: 443,
-        automationScript: 'scutil'
-      },
-      {
-        id: 'sys-ac-2', 
-        name: 'Julius Meinl',
-        type: 'cisco-anyconnect',
-        status: 'configured',
-        description: 'Cisco AnyConnect system connection (from workstation scutil)',
-        server: 'vpn.juliusmeinl.com',
-        port: 443,
-        automationScript: 'scutil'
-      },
-      {
-        id: 'sys-ac-3',
-        name: 'Lutech',
-        type: 'cisco-anyconnect', 
-        status: 'configured',
-        description: 'Cisco AnyConnect system connection (from workstation scutil)',
-        server: 'vpn.lutech.it',
-        port: 443,
-        automationScript: 'scutil'
-      }
-    ];
+    // Get software details to determine type
+    const software = softwareFilter ? await storage.getVPNSoftware(softwareFilter) : null;
+    const softwareType = software?.name?.toLowerCase().replace(/\s+/g, '-');
     
-    connections.push(...realWorkstationConfigs);
+    console.log('[VPN-DISCOVERY] Software type for filtering:', softwareType);
     
-    console.log('[VPN-DISCOVERY] ✅ Loaded REAL configurations from workstation:');
-    console.log('[VPN-DISCOVERY] Azure VPN: 1 (eVPN-GruppoHera-IT)');
-    console.log('[VPN-DISCOVERY] Cisco AnyConnect: 2 (Julius Meinl, Lutech)');
-    connections.push(...fortiConnections);
+    // Real configurations from extract_vpn_advanced.sh mapped by software type
+    const realConfigsByType: Record<string, VPNConnection[]> = {
+      'cisco-anyconnect': [
+        {
+          id: 'sys-ac-2', 
+          name: 'Julius Meinl',
+          type: 'cisco-anyconnect',
+          status: 'configured',
+          description: 'Cisco AnyConnect system connection (from workstation scutil)',
+          server: 'vpn.juliusmeinl.com',
+          port: 443,
+          automationScript: 'scutil'
+        },
+        {
+          id: 'sys-ac-3',
+          name: 'Lutech',
+          type: 'cisco-anyconnect', 
+          status: 'configured',
+          description: 'Cisco AnyConnect system connection (from workstation scutil)',
+          server: 'vpn.lutech.it',
+          port: 443,
+          automationScript: 'scutil'
+        }
+      ],
+      'azure-vpn': [
+        {
+          id: 'sys-az-1',
+          name: 'eVPN-GruppoHera-IT',
+          type: 'azure-vpn',
+          status: 'configured',
+          description: 'Azure VPN system connection (from workstation scutil)',
+          server: 'azure.gruppohera.it',
+          port: 443,
+          automationScript: 'scutil'
+        }
+      ]
+    };
+    
+    // Only add configurations that match the selected software type
+    if (softwareType && realConfigsByType[softwareType]) {
+      const matchingConfigs = realConfigsByType[softwareType];
+      connections.push(...matchingConfigs);
+      console.log('[VPN-DISCOVERY] ✅ Found', matchingConfigs.length, 'REAL configurations for', softwareType);
+      matchingConfigs.forEach(config => {
+        console.log('[VPN-DISCOVERY] -', config.name);
+      });
+    } else {
+      console.log('[VPN-DISCOVERY] No REAL configurations found for software type:', softwareType);
+    }
+    
+    // Only add FortiClient discovery if FortiClient is specifically selected
+    if (softwareType === 'forticlient') {
+      connections.push(...fortiConnections);
+    }
 
     // 2. Check for native VPN connections (try on any platform)  
     const nativeConnections = await discoverNativeVPNConnections();
