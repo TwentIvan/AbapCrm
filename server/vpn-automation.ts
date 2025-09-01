@@ -575,6 +575,27 @@ export async function discoverVPNConnections(softwareFilter?: string, userId?: s
     // Load discovered configurations from database for the specific software
     console.log('[VPN-DISCOVERY] Loading discovered configurations from database for software:', softwareFilter);
     
+    // REAL-TIME DISCOVERY: For Cisco, run real discovery directly from filesystem
+    if (softwareFilter === 'a075d943-b930-4513-81d5-b362433514d2') {
+      console.log('[VPN-DISCOVERY] REAL-TIME: Running live Cisco discovery from filesystem...');
+      const realCiscoConfigs = await discoverCiscoAnyConnectRealConfigurations();
+      console.log('[VPN-DISCOVERY] REAL-TIME: Found', realCiscoConfigs.length, 'real Cisco configurations');
+      
+      for (const config of realCiscoConfigs) {
+        connections.push({
+          id: config.id,
+          name: config.name,
+          type: 'cisco-anyconnect',
+          status: 'discovered',
+          description: `${config.name} (real-time discovery)`,
+          server: config.server,
+          port: config.port,
+          automationScript: 'real-time'
+        });
+        console.log('[VPN-DISCOVERY] REAL-TIME: -', config.name, '(', config.server, ':', config.port, ')');
+      }
+    }
+
     if (softwareFilter && userId) {
       // First find the discovered software entry to get the correct ID
       const discoveredSoftware = await storage.getDiscoveredVpnSoftware(userId);
