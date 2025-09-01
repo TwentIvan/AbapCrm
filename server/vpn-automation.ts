@@ -38,51 +38,37 @@ async function discoverCiscoAnyConnectRealConfigurations(): Promise<{
   console.log('[CISCO-DISCOVERY] Starting real Cisco AnyConnect configuration discovery...');
   
   try {
-    // Simulate running scutil --nc list to find real VPN connections
+    // Try to find real VPN connections via scutil
     const { stdout } = await execAsync('scutil --nc list');
     const lines = stdout.split('\n').filter(line => 
       line.includes('AnyConnect') || line.includes('Cisco')
     );
     
-    // Real configurations found via system discovery
-    const realConfigs = [
-      {
-        id: 'sys-ac-2',
-        name: 'Julius Meinl', 
-        server: 'vpn.juliusmeinl.com',
-        port: 443
-      },
-      {
-        id: 'sys-ac-3',
-        name: 'Lutech',
-        server: 'vpn.lutech.it', 
-        port: 443
+    const realConfigs = [];
+    for (const line of lines) {
+      // Parse real VPN connection info from scutil output
+      const match = line.match(/"(.+?)".*\[(.+?)\]/);
+      if (match) {
+        const [, name, uuid] = match;
+        realConfigs.push({
+          id: uuid,
+          name: name,
+          server: 'unknown', // Would need additional commands to get server info
+          port: 443
+        });
       }
-    ];
+    }
     
-    console.log('[CISCO-DISCOVERY] Found', realConfigs.length, 'real Cisco configurations');
+    console.log('[CISCO-DISCOVERY] Found', realConfigs.length, 'real Cisco configurations via scutil');
     realConfigs.forEach(config => {
-      console.log('[CISCO-DISCOVERY] -', config.name, '(', config.server, ')');
+      console.log('[CISCO-DISCOVERY] -', config.name, 'ID:', config.id);
     });
     
     return realConfigs;
   } catch (error) {
-    console.log('[CISCO-DISCOVERY] Error running scutil, using fallback discovery:', error.message);
-    // Return discovered configurations as fallback
-    return [
-      {
-        id: 'sys-ac-2',
-        name: 'Julius Meinl', 
-        server: 'vpn.juliusmeinl.com',
-        port: 443
-      },
-      {
-        id: 'sys-ac-3',
-        name: 'Lutech',
-        server: 'vpn.lutech.it', 
-        port: 443
-      }
-    ];
+    console.log('[CISCO-DISCOVERY] Error running scutil:', error.message);
+    // Return empty array - no fake data!
+    return [];
   }
 }
 
@@ -96,32 +82,44 @@ async function discoverAzureVPNConfigurations(): Promise<{
   port: number;
 }[]> {
   try {
-    console.log('[AZURE-DISCOVERY] Simulating Azure VPN discovery...');
+    console.log('[AZURE-DISCOVERY] Searching for real Azure VPN profiles...');
     
-    // Simulate Azure configuration discovery (in a real scenario this would scan Azure profiles)
-    const realConfigs = [
-      {
-        id: 'azure-corp',
-        name: 'Azure Corporate',
-        server: 'corp-gateway.azure.com',
-        port: 443
-      },
-      {
-        id: 'azure-dev', 
-        name: 'Azure Development',
-        server: 'dev-gateway.azure.com',
-        port: 443
-      }
+    // Try to find real Azure VPN profiles (would scan actual Azure profile directories)
+    const azureProfilePaths = [
+      `${process.env.HOME}/Library/Application Support/Azure VPN Client/Profiles`,
+      `${process.env.HOME}/.config/azure-vpn-client/profiles`,
+      '/etc/azure-vpn-client/profiles'
     ];
     
-    console.log('[AZURE-DISCOVERY] Found', realConfigs.length, 'Azure configurations');
+    const realConfigs = [];
+    for (const profilePath of azureProfilePaths) {
+      try {
+        const files = await fs.readdir(profilePath);
+        const profileFiles = files.filter(f => f.endsWith('.json') || f.endsWith('.xml'));
+        
+        for (const file of profileFiles) {
+          // Parse real profile file to extract connection info
+          const baseName = file.replace(/\.(json|xml)$/, '');
+          realConfigs.push({
+            id: `azure-${baseName}`,
+            name: baseName,
+            server: 'unknown', // Would parse from file content
+            port: 443
+          });
+        }
+        break;
+      } catch {}
+    }
+    
+    console.log('[AZURE-DISCOVERY] Found', realConfigs.length, 'real Azure configurations');
     realConfigs.forEach(config => {
-      console.log('[AZURE-DISCOVERY] -', config.name, '(', config.server, ')');
+      console.log('[AZURE-DISCOVERY] -', config.name);
     });
     
     return realConfigs;
   } catch (error) {
     console.log('[AZURE-DISCOVERY] Error during discovery:', error.message);
+    // Return empty array - no fake data!
     return [];
   }
 }
