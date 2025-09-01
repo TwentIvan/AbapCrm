@@ -238,7 +238,7 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
                     </FormControl>
                     <SelectContent>
                       {isLoadingSoftware ? (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="loading" disabled>
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
                           Caricamento software...
                         </SelectItem>
@@ -250,7 +250,7 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="none" disabled>
                           Nessun software disponibile
                         </SelectItem>
                       )}
