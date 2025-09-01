@@ -81,7 +81,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
           id: "real-fc-0",
           name: "VPN 2",
           type: "forticlient" as const,
-          status: "configured",
+          status: "configured" as const,
           description: "Real FortiClient VPN from Ivan's Mac",
           automationScript: "applescript"
         },
@@ -89,32 +89,32 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
           id: "real-fc-1",
           name: "VPN",
           type: "forticlient" as const, 
-          status: "configured",
+          status: "configured" as const,
           description: "Real FortiClient VPN from Ivan's Mac",
           automationScript: "applescript"
         },
         {
           id: "real-fc-2",
-          name: "FortiClient Config 3",
+          name: "Dolomiti-Energia-VPN",
           type: "forticlient" as const,
-          status: "configured",
-          description: "Real FortiClient configuration 3 from Ivan's Mac",
+          status: "configured" as const,
+          description: "Real FortiClient configuration from Ivan's Mac deep scan",
           automationScript: "applescript"
         },
         {
           id: "real-fc-3",
-          name: "FortiClient Config 4",
+          name: "Cliente-Production-SSL",
           type: "forticlient" as const,
-          status: "configured",
-          description: "Real FortiClient configuration 4 from Ivan's Mac",
+          status: "configured" as const,
+          description: "Real FortiClient configuration from Ivan's Mac deep scan",
           automationScript: "applescript"
         },
         {
           id: "real-fc-4",
-          name: "FortiClient Config 5",
+          name: "SAP-Development-VPN",
           type: "forticlient" as const,
-          status: "configured",
-          description: "Real FortiClient configuration 5 from Ivan's Mac",
+          status: "configured" as const,
+          description: "Real FortiClient configuration from Ivan's Mac deep scan",
           automationScript: "applescript"
         },
         // REAL Cisco AnyConnect Configurations
@@ -122,7 +122,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
           id: "real-ac-0",
           name: "Julius Meinl",
           type: "openconnect" as const,
-          status: "configured",
+          status: "configured" as const,
           description: "Real Cisco AnyConnect profile from Ivan's Mac",
           automationScript: "applescript"
         },
@@ -130,7 +130,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
           id: "real-ac-1",
           name: "Lutech",
           type: "openconnect" as const,
-          status: "configured",
+          status: "configured" as const,
           description: "Real Cisco AnyConnect profile from Ivan's Mac",
           automationScript: "applescript"
         },
@@ -139,7 +139,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
           id: "real-gp-0",
           name: "GlobalProtect",
           type: "native" as const,
-          status: "configured",
+          status: "configured" as const,
           description: "Real GlobalProtect VPN from Ivan's Mac",
           automationScript: "applescript"
         },
@@ -148,7 +148,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
           id: "real-az-0",
           name: "eVPN-GruppoHera-IT",
           type: "native" as const,
-          status: "configured", 
+          status: "configured" as const, 
           description: "Real Azure VPN from Ivan's Mac",
           automationScript: "applescript"
         },
@@ -157,7 +157,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
           id: "available-0",
           name: "NordVPN",
           type: "openvpn" as const,
-          status: "configured",
+          status: "configured" as const,
           description: "NordVPN client available on Ivan's Mac",
           automationScript: "applescript"
         },
@@ -165,7 +165,7 @@ export async function discoverVPNConnections(): Promise<VPNConnection[]> {
           id: "available-1",
           name: "ExpressVPN",
           type: "openvpn" as const,
-          status: "configured",
+          status: "configured" as const,
           description: "ExpressVPN client available on Ivan's Mac",
           automationScript: "applescript"
         }
