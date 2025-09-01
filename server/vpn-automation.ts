@@ -268,38 +268,6 @@ async function discoverForSpecificSoftware(softwareId: string): Promise<VPNConne
 /**
  * Discover available VPN connections for specific software
  */
-// Initialize real profiles like they were yesterday
-function initializeRealProfiles() {
-  if (!(global as any).realFortiClientProfiles) {
-    console.log('[VPN-INIT] Initializing the 2 real FortiClient profiles from yesterday');
-    (global as any).realFortiClientProfiles = {
-      hostname: "MacBook-Pro.local",
-      extraction_method: "fccconfig_export",
-      connection_count: 2,
-      connections: [
-        {
-          id: "forti-corporate-vpn",
-          name: "Corporate SSL VPN",
-          type: "forticlient",
-          status: "configured",
-          description: "Real FortiClient profile - Corporate access",
-          server: "ssl-vpn.company.com",
-          port: 443
-        },
-        {
-          id: "forti-remote-office",
-          name: "Remote Office VPN",
-          type: "forticlient", 
-          status: "configured",
-          description: "Real FortiClient profile - Remote office",
-          server: "remote.office.com",
-          port: 10443
-        }
-      ]
-    };
-  }
-}
-
 export async function discoverVPNConnections(softwareFilter?: string): Promise<VPNConnection[]> {
   const connections: VPNConnection[] = [];
 
@@ -307,9 +275,6 @@ export async function discoverVPNConnections(softwareFilter?: string): Promise<V
     console.log('[VPN-DISCOVERY] Starting VPN discovery...');
     console.log('[VPN-DISCOVERY] Software filter:', softwareFilter);
     console.log('[VPN-DISCOVERY] Platform:', process.platform);
-    
-    // Initialize real profiles if needed
-    initializeRealProfiles();
     
     // If specific software is requested, check for uploaded real profiles first
     if (softwareFilter) {
