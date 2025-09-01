@@ -84,22 +84,9 @@ export default function VPNDiscoveryPage() {
         console.log('🔍 Caricamento software VPN dal database...');
         const res = await fetch("/api/discovered-vpn-software", { credentials: "include" });
         if (!res.ok) {
-          console.log('Database non disponibile o vuoto - eseguo discovery...');
-          // Se il database è vuoto, esegui prima il discovery
-          await runDiscovery();
-          // Poi riprova a caricare dal database
-          const retryRes = await fetch("/api/discovered-vpn-software", { credentials: "include" });
-          if (!retryRes.ok) return [];
-          const retryData = await retryRes.json();
-          return retryData.map((software: any) => ({
-            software: software.softwareKey,
-            name: software.name,
-            installed: software.installed,
-            canReadConfigs: software.canReadConfigs,
-            configCount: software.configCount,
-            description: software.description,
-            automationType: software.automationType
-          }));
+          console.log('Database non disponibile o vuoto - usando discovery real-time');
+          // NON eseguire inserimenti automatici - usa solo discovery real-time!
+          return [];
         }
         const data = await res.json();
         console.log('✅ Software VPN caricato dal database:', data.length, 'elementi');
