@@ -10,18 +10,25 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { useOrganization } from "@/hooks/use-organization";
+import { useQuery } from "@tanstack/react-query";
 import { Building, ChevronDown, Settings, LogOut, Users } from "lucide-react";
 import AccountSettingsDialog from "./account-settings-dialog";
 import ManageOrganizationsDialog from "./manage-organizations-dialog";
 
 export default function AccountManager() {
   const { user } = useAuth();
-  const { organizations, currentOrganization, switchOrganization, isLoading } = useOrganization();
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showManageOrganizations, setShowManageOrganizations] = useState(false);
+  
+  // Carica organizzazioni direttamente
+  const { data: organizations = [], isLoading: orgsLoading } = useQuery<any[]>({
+    queryKey: ["/api/organizations"],
+    enabled: !!user
+  });
+  
+  const currentOrganization = (organizations as any[])[0] || { name: "Personal", userRole: "admin" };
 
-  if (!user || isLoading) {
+  if (!user || orgsLoading) {
     return (
       <div className="flex items-center space-x-2">
         <div className="w-8 h-8 bg-muted rounded-full animate-pulse"></div>
@@ -72,15 +79,15 @@ export default function AccountManager() {
         
         <DropdownMenuContent align="end" className="w-64">
           {/* Organization Switcher */}
-          {organizations.length > 1 && (
+          {(organizations as any[]).length > 1 && (
             <>
               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                 Organizzazioni
               </div>
-              {organizations.map((org) => (
+              {(organizations as any[]).map((org: any) => (
                 <DropdownMenuItem
                   key={org.id}
-                  onClick={() => switchOrganization(org.id)}
+                  onClick={() => {/* TODO: implement switch */}}
                   className={`flex items-center justify-between ${
                     currentOrganization?.id === org.id ? 'bg-muted' : ''
                   }`}
