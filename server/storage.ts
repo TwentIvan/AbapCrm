@@ -46,7 +46,7 @@ const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // Organizations
-  getOrganizations(userId: string): Promise<Organization[]>;
+  getOrganizations(userId: string): Promise<any[]>;
   getOrganization(id: string): Promise<Organization | undefined>;
   createOrganization(organization: InsertOrganization): Promise<Organization>;
   updateOrganization(id: string, organization: Partial<InsertOrganization>): Promise<Organization | undefined>;
@@ -367,7 +367,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Organizations
-  async getOrganizations(userId: string): Promise<Organization[]> {
+  async getOrganizations(userId: string): Promise<any[]> {
     const result = await db
       .select({
         id: organizations.id,
@@ -380,6 +380,8 @@ export class DatabaseStorage implements IStorage {
         country: organizations.country,
         vatNumber: organizations.vatNumber,
         fiscalCode: organizations.fiscalCode,
+        logoUrl: organizations.logoUrl,
+        settings: organizations.settings,
         isActive: organizations.isActive,
         createdAt: organizations.createdAt,
         updatedAt: organizations.updatedAt,
