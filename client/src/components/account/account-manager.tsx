@@ -89,7 +89,7 @@ export default function AccountManager() {
           {organizations.map((org) => (
             <DropdownMenuItem
               key={org.id}
-              className={`flex items-center justify-between cursor-pointer ${
+              className={`flex items-center justify-between cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground ${
                 currentOrganization?.id === org.id ? "bg-muted" : ""
               }`}
               onClick={() => switchOrganization(org.id)}
@@ -97,7 +97,7 @@ export default function AccountManager() {
             >
               <div className="flex items-center space-x-2">
                 <Building className="h-4 w-4" />
-                <span>{org.name}</span>
+                <span className="font-medium">{org.name}</span>
                 {currentOrganization?.id === org.id && (
                   <Check className="h-3 w-3 text-primary" />
                 )}
