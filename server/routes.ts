@@ -253,7 +253,7 @@ export function registerRoutes(app: Express): Server {
       const organizationId = getOrganizationId(req);
       console.log("Processing project data:", processedData);
       const projectData = insertProjectSchema.parse({ ...processedData, organizationId });
-      const project = await storage.createProject(projectData);
+      const project = await storage.createProject({ ...projectData, organizationId });
       res.status(201).json(project);
     } catch (error) {
       console.error("Project creation error:", error);
@@ -491,6 +491,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       for (const conn of connectionsArray) {
         try {
           // Create a minimal partner entry for discovered connections if needed
+          const organizationId = getOrganizationId(req);
           const discoverPartner = await storage.createPartner({
             userId: req.user!.id,
             name: `Discovered from ${hostname}`,
@@ -500,7 +501,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             phone: '',
             address: '',
             country: '',
-            notes: `Auto-created for real VPN profiles discovered from ${hostname}`
+            notes: `Auto-created for real VPN profiles discovered from ${hostname}`,
+            organizationId
           });
 
           // Save the real VPN connection to database
@@ -646,7 +648,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         userId: req.user!.id,
         organizationId: organizationId
       });
-      const task = await storage.createTask(taskData);
+      const task = await storage.createTask({ ...taskData, organizationId });
       res.status(201).json(task);
     } catch (error) {
       res.status(400).json({ error: "Invalid task data", details: error instanceof Error ? error.message : String(error) });
@@ -770,7 +772,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         organizationId: organizationId
       });
       
-      const partner = await storage.createPartner(partnerData);
+      const partner = await storage.createPartner({ ...partnerData, organizationId });
       res.status(201).json(partner);
     } catch (error) {
       res.status(400).json({ error: "Invalid partner data", details: error instanceof Error ? error.message : String(error) });
@@ -849,7 +851,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         organizationId
       });
       
-      const newPartner = await storage.createPartner(partnerData);
+      const newPartner = await storage.createPartner({ ...partnerData, organizationId });
       res.status(201).json({ partner: newPartner, created: true });
       
     } catch (error) {
@@ -1048,7 +1050,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         userId: req.user!.id,
         organizationId: organizationId
       });
-      const deal = await storage.createDeal(dealData);
+      const deal = await storage.createDeal({ ...dealData, organizationId });
       res.status(201).json(deal);
     } catch (error) {
       console.error("Deal creation error:", error);

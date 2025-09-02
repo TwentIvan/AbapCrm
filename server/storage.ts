@@ -340,7 +340,6 @@ export class DatabaseStorage implements IStorage {
       .values({
         name: "Personal",
         description: "Organizzazione personale di " + (insertUser.firstName || insertUser.username),
-        email: insertUser.email,
         isActive: true
       })
       .returning();
@@ -899,9 +898,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPlanningWindows(projectId: string, userId: string): Promise<PlanningWindow[]> {
-    // Verify project belongs to user first
-    const project = await this.getProject(projectId, userId);
-    if (!project) return [];
+    // Verify project exists - since planning windows are not organization-specific
+    // we'll just check if the project exists and belongs to user
+    const [projectCheck] = await db.select().from(projects).where(
+      and(eq(projects.id, projectId), eq(projects.userId, userId))
+    );
+    if (!projectCheck) return [];
     
     return await db.select().from(planningWindows)
       .where(eq(planningWindows.projectId, projectId))
@@ -1576,6 +1578,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select({
       id: sapSystems.id,
       userId: sapSystems.userId,
+      organizationId: sapSystems.organizationId,
       partnerId: sapSystems.partnerId,
       projectId: sapSystems.projectId,
       name: sapSystems.name,
