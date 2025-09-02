@@ -15,7 +15,7 @@ import {
   insertInterventionDocumentSchema, insertSystemCredentialsSchema,
   insertVpnSoftwareSchema, insertVpnSystemsSchema, vpnConnections,
   insertDiscoveredVpnSoftwareSchema, insertDiscoveredVpnConfigurationSchema,
-  insertOrganizationSchema, insertUserOrganizationSchema
+  insertOrganizationSchema, insertUserOrganizationSchema, insertOrganizationInvitationSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -106,6 +106,97 @@ export function registerRoutes(app: Express): Server {
     const removed = await storage.removeUserFromOrganization(req.user!.id, req.params.organizationId);
     if (!removed) return res.sendStatus(404);
     res.sendStatus(204);
+  });
+
+  // Organization Invitations
+  app.post("/api/organizations/:id/invite", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { email, role, message } = req.body;
+      
+      // Verify organization exists and user has admin rights
+      const organization = await storage.getOrganization(req.params.id);
+      if (!organization) return res.status(404).json({ error: "Organization not found" });
+      
+      // Generate unique token for invitation
+      const token = Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // Expires in 7 days
+      
+      const invitation = await storage.createInvitation({
+        organizationId: req.params.id,
+        invitedByUserId: req.user!.id,
+        invitedEmail: email,
+        role: role || "member",
+        message: message || null,
+        token,
+        expiresAt,
+        status: "pending"
+      });
+      
+      res.status(201).json(invitation);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid invitation data" });
+    }
+  });
+
+  app.get("/api/invitations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const user = await storage.getUser(req.user!.id);
+      if (!user || !user.email) return res.status(400).json({ error: "User email not found" });
+      
+      const invitations = await storage.getInvitationsByEmail(user.email);
+      res.json(invitations);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch invitations" });
+    }
+  });
+
+  app.post("/api/invitations/:token/accept", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const invitation = await storage.getInvitationByToken(req.params.token);
+      if (!invitation) return res.status(404).json({ error: "Invitation not found" });
+      
+      if (invitation.status !== "pending") {
+        return res.status(400).json({ error: "Invitation already processed" });
+      }
+      
+      if (new Date() > invitation.expiresAt) {
+        return res.status(400).json({ error: "Invitation expired" });
+      }
+      
+      // Accept invitation and add user to organization
+      await storage.updateInvitationStatus(req.params.token, "accepted");
+      await storage.addUserToOrganization({
+        userId: req.user!.id,
+        organizationId: invitation.organizationId,
+        role: invitation.role,
+        isActive: true
+      });
+      
+      res.json({ message: "Invitation accepted successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to accept invitation" });
+    }
+  });
+
+  app.post("/api/invitations/:token/decline", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const invitation = await storage.getInvitationByToken(req.params.token);
+      if (!invitation) return res.status(404).json({ error: "Invitation not found" });
+      
+      if (invitation.status !== "pending") {
+        return res.status(400).json({ error: "Invitation already processed" });
+      }
+      
+      await storage.updateInvitationStatus(req.params.token, "declined");
+      res.json({ message: "Invitation declined successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to decline invitation" });
+    }
   });
 
   // Projects

@@ -37,12 +37,13 @@ export const organizations = pgTable("organizations", {
 
 // User-Organization many-to-many relationship
 export const userRoleEnum = pgEnum("user_role", ["owner", "admin", "member", "viewer"]);
+export const organizationRoleEnum = pgEnum("organization_role", ["owner", "admin", "member", "viewer"]);
 
 export const userOrganizations = pgTable("user_organizations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
-  role: userRoleEnum("role").default("member").notNull(),
+  role: organizationRoleEnum("role").default("member").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -106,7 +107,7 @@ export const timesheetStatusEnum = pgEnum("timesheet_status", ["draft", "to_send
 export const planningWindows = pgTable("planning_windows", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   projectId: uuid("project_id").references(() => projects.id).notNull(),
-  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
+  // Note: planning windows are NOT segregated by organization - shared planning calendar
   name: text("name").notNull(), // e.g., "Sprint 1", "Phase A", "Q1 Development"
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
@@ -180,7 +181,7 @@ export const calendarEvents = pgTable("calendar_events", {
   endTime: timestamp("end_time").notNull(),
   type: eventTypeEnum("type").default("other").notNull(),
   userId: uuid("user_id").references(() => users.id).notNull(),
-  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
+  // Note: calendar events are NOT segregated by organization - shared planning calendar
   projectId: uuid("project_id").references(() => projects.id),
   partnerId: uuid("partner_id").references(() => partners.id),
   dealId: uuid("deal_id").references(() => deals.id),
@@ -211,7 +212,7 @@ export const messageTypeEnum = pgEnum("message_type", ["email", "chat", "sms", "
 export const messages = pgTable("messages", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
-  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
+  // Note: messages are NOT segregated by organization - shared across all user's orgs
   messageId: text("message_id"), // ID del messaggio originale (es. Message-ID email)
   type: messageTypeEnum("type").default("email").notNull(),
   status: messageStatusEnum("status").default("unread").notNull(),
@@ -1278,3 +1279,27 @@ export type DiscoveredVpnSoftware = typeof discoveredVpnSoftware.$inferSelect;
 export type InsertDiscoveredVpnSoftware = z.infer<typeof insertDiscoveredVpnSoftwareSchema>;
 export type DiscoveredVpnConfiguration = typeof discoveredVpnConfigurations.$inferSelect;
 export type InsertDiscoveredVpnConfiguration = z.infer<typeof insertDiscoveredVpnConfigurationSchema>;
+
+// Organization Invitations
+export const invitationStatusEnum = pgEnum("invitation_status", ["pending", "accepted", "declined", "expired"]);
+
+export const organizationInvitations = pgTable("organization_invitations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  invitedByUserId: uuid("invited_by_user_id").references(() => users.id).notNull(),
+  invitedEmail: text("invited_email").notNull(), // Email dell'utente invitato
+  invitedUserId: uuid("invited_user_id").references(() => users.id), // Null se l'utente non ha ancora account
+  role: organizationRoleEnum("role").default("member").notNull(),
+  status: invitationStatusEnum("status").default("pending").notNull(),
+  message: text("message"), // Messaggio opzionale dall'invitante
+  token: text("token").notNull().unique(), // Token unico per l'invito
+  expiresAt: timestamp("expires_at").notNull(), // Data scadenza invito
+  acceptedAt: timestamp("accepted_at"),
+  declinedAt: timestamp("declined_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type OrganizationInvitation = typeof organizationInvitations.$inferSelect;
+export type InsertOrganizationInvitation = typeof organizationInvitations.$inferInsert;
+export const insertOrganizationInvitationSchema = createInsertSchema(organizationInvitations).omit({ id: true, createdAt: true, updatedAt: true });

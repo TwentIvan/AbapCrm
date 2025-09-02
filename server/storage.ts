@@ -2,10 +2,11 @@ import {
   users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, emailConfigs,
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
-  vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations,
+  vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
   type User, type InsertUser,
   type Organization, type InsertOrganization,
   type UserOrganization, type InsertUserOrganization,
+  type OrganizationInvitation, type InsertOrganizationInvitation,
   type Project, type InsertProject,
   type Task, type InsertTask,
   type Partner, type InsertPartner,
@@ -55,6 +56,12 @@ export interface IStorage {
   getUserOrganizations(userId: string): Promise<UserOrganization[]>;
   addUserToOrganization(userOrganization: InsertUserOrganization): Promise<UserOrganization>;
   removeUserFromOrganization(userId: string, organizationId: string): Promise<boolean>;
+  
+  // Organization Invitations
+  createInvitation(invitation: InsertOrganizationInvitation): Promise<OrganizationInvitation>;
+  getInvitationsByEmail(email: string): Promise<OrganizationInvitation[]>;
+  getInvitationByToken(token: string): Promise<OrganizationInvitation | undefined>;
+  updateInvitationStatus(token: string, status: 'accepted' | 'declined'): Promise<OrganizationInvitation | undefined>;
   
   // Users
   getUsers(): Promise<User[]>;
@@ -324,6 +331,27 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(insertUser)
       .returning();
+    
+    // Create default "Personal" organization for new user
+    const [personalOrg] = await db
+      .insert(organizations)
+      .values({
+        name: "Personal",
+        description: "Organizzazione personale di " + (insertUser.firstName || insertUser.username),
+        email: insertUser.email,
+        isActive: true
+      })
+      .returning();
+    
+    // Add user as admin of their personal organization
+    await db
+      .insert(userOrganizations)
+      .values({
+        userId: user.id,
+        organizationId: personalOrg.id,
+        role: "admin"
+      });
+    
     return user;
   }
 
@@ -430,6 +458,54 @@ export class DatabaseStorage implements IStorage {
         eq(userOrganizations.organizationId, organizationId)
       ));
     return (result.rowCount || 0) > 0;
+  }
+
+  // Organization Invitations
+  async createInvitation(invitation: InsertOrganizationInvitation): Promise<OrganizationInvitation> {
+    const [newInvitation] = await db
+      .insert(organizationInvitations)
+      .values(invitation)
+      .returning();
+    return newInvitation;
+  }
+
+  async getInvitationsByEmail(email: string): Promise<OrganizationInvitation[]> {
+    return await db
+      .select()
+      .from(organizationInvitations)
+      .where(and(
+        eq(organizationInvitations.invitedEmail, email),
+        eq(organizationInvitations.status, "pending")
+      ))
+      .orderBy(desc(organizationInvitations.createdAt));
+  }
+
+  async getInvitationByToken(token: string): Promise<OrganizationInvitation | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(organizationInvitations)
+      .where(eq(organizationInvitations.token, token));
+    return invitation || undefined;
+  }
+
+  async updateInvitationStatus(token: string, status: 'accepted' | 'declined'): Promise<OrganizationInvitation | undefined> {
+    const updateData: any = { 
+      status, 
+      updatedAt: new Date() 
+    };
+    
+    if (status === 'accepted') {
+      updateData.acceptedAt = new Date();
+    } else if (status === 'declined') {
+      updateData.declinedAt = new Date();
+    }
+
+    const [updatedInvitation] = await db
+      .update(organizationInvitations)
+      .set(updateData)
+      .where(eq(organizationInvitations.token, token))
+      .returning();
+    return updatedInvitation || undefined;
   }
 
   // Projects
