@@ -55,10 +55,19 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
   const { data: vpnSoftware = [], isLoading: isLoadingSoftware } = useQuery<VpnSoftware[]>({
     queryKey: ["/api/vpn-software"],
     queryFn: async () => {
-      const res = await fetch("/api/vpn-software", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch VPN software');
-      return res.json();
+      try {
+        const res = await fetch("/api/vpn-software", { credentials: "include" });
+        if (!res.ok) {
+          console.log('[VPN-SOFTWARE] Error loading from database:', res.status);
+          return []; // Return empty array instead of throwing
+        }
+        return res.json();
+      } catch (error) {
+        console.log('[VPN-SOFTWARE] Network error:', error);
+        return []; // Return empty array on any error
+      }
     },
+    retry: false, // Don't retry failed requests
   });
 
   const form = useForm({
