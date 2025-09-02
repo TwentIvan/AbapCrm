@@ -1,5 +1,16 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Global state for current organization ID - will be set by useOrganization hook
+let currentOrganizationId: string | null = null;
+
+export function setCurrentOrganizationId(organizationId: string | null) {
+  currentOrganizationId = organizationId;
+}
+
+export function getCurrentOrganizationId() {
+  return currentOrganizationId;
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -14,9 +25,16 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+  
+  // Add organization header if available
+  if (currentOrganizationId) {
+    headers["X-Organization-Id"] = currentOrganizationId;
+  }
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -31,8 +49,16 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const headers: Record<string, string> = {};
+    
+    // Add organization header if available
+    if (currentOrganizationId) {
+      headers["X-Organization-Id"] = currentOrganizationId;
+    }
+
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { setCurrentOrganizationId as setGlobalOrganizationId } from "@/lib/queryClient";
 
 interface Organization {
   id: string;
@@ -30,6 +31,11 @@ export function useOrganization() {
       setCurrentOrganizationId(defaultOrg.id);
     }
   }, [organizations, currentOrganizationId]);
+
+  // Update global organization ID whenever it changes
+  useEffect(() => {
+    setGlobalOrganizationId(currentOrganizationId);
+  }, [currentOrganizationId]);
 
   // Switch organization
   const switchOrganization = (organizationId: string) => {

@@ -74,34 +74,34 @@ export interface IStorage {
   updateUser(id: string, userData: Partial<InsertUser>): Promise<User | undefined>;
 
   // Projects
-  getProjects(userId: string): Promise<Project[]>;
-  getProject(id: string, userId: string): Promise<Project | undefined>;
-  createProject(project: InsertProject): Promise<Project>;
-  updateProject(id: string, project: Partial<InsertProject>, userId: string): Promise<Project | undefined>;
-  deleteProject(id: string, userId: string): Promise<boolean>;
+  getProjects(userId: string, organizationId: string): Promise<Project[]>;
+  getProject(id: string, userId: string, organizationId: string): Promise<Project | undefined>;
+  createProject(project: InsertProject & { organizationId: string }): Promise<Project>;
+  updateProject(id: string, project: Partial<InsertProject>, userId: string, organizationId: string): Promise<Project | undefined>;
+  deleteProject(id: string, userId: string, organizationId: string): Promise<boolean>;
 
   // Tasks
-  getTasks(userId: string): Promise<Task[]>;
-  getTasksByProject(projectId: string, userId: string): Promise<Task[]>;
-  getTask(id: string, userId: string): Promise<Task | undefined>;
+  getTasks(userId: string, organizationId: string): Promise<Task[]>;
+  getTasksByProject(projectId: string, userId: string, organizationId: string): Promise<Task[]>;
+  getTask(id: string, userId: string, organizationId: string): Promise<Task | undefined>;
   getTaskConnectionInfo(taskId: string, userId: string): Promise<any>;
-  createTask(task: InsertTask): Promise<Task>;
-  updateTask(id: string, task: Partial<InsertTask>, userId: string): Promise<Task | undefined>;
-  deleteTask(id: string, userId: string): Promise<boolean>;
+  createTask(task: InsertTask & { organizationId: string }): Promise<Task>;
+  updateTask(id: string, task: Partial<InsertTask>, userId: string, organizationId: string): Promise<Task | undefined>;
+  deleteTask(id: string, userId: string, organizationId: string): Promise<boolean>;
 
   // Partners
-  getPartners(userId: string): Promise<Partner[]>;
-  getPartner(id: string, userId: string): Promise<Partner | undefined>;
-  createPartner(partner: InsertPartner): Promise<Partner>;
-  updatePartner(id: string, partner: Partial<InsertPartner>, userId: string): Promise<Partner | undefined>;
-  deletePartner(id: string, userId: string): Promise<boolean>;
+  getPartners(userId: string, organizationId: string): Promise<Partner[]>;
+  getPartner(id: string, userId: string, organizationId: string): Promise<Partner | undefined>;
+  createPartner(partner: InsertPartner & { organizationId: string }): Promise<Partner>;
+  updatePartner(id: string, partner: Partial<InsertPartner>, userId: string, organizationId: string): Promise<Partner | undefined>;
+  deletePartner(id: string, userId: string, organizationId: string): Promise<boolean>;
 
   // Deals
-  getDeals(userId: string): Promise<Deal[]>;
-  getDeal(id: string, userId: string): Promise<Deal | undefined>;
-  createDeal(deal: InsertDeal): Promise<Deal>;
-  updateDeal(id: string, deal: Partial<InsertDeal>, userId: string): Promise<Deal | undefined>;
-  deleteDeal(id: string, userId: string): Promise<boolean>;
+  getDeals(userId: string, organizationId: string): Promise<Deal[]>;
+  getDeal(id: string, userId: string, organizationId: string): Promise<Deal | undefined>;
+  createDeal(deal: InsertDeal & { organizationId: string }): Promise<Deal>;
+  updateDeal(id: string, deal: Partial<InsertDeal>, userId: string, organizationId: string): Promise<Deal | undefined>;
+  deleteDeal(id: string, userId: string, organizationId: string): Promise<boolean>;
 
   // Calendar Events
   getCalendarEvents(userId: string): Promise<CalendarEvent[]>;
@@ -570,49 +570,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Projects
-  async getProjects(userId: string): Promise<Project[]> {
+  async getProjects(userId: string, organizationId: string): Promise<Project[]> {
     return await db.select().from(projects)
-      .where(eq(projects.userId, userId))
+      .where(and(eq(projects.userId, userId), eq(projects.organizationId, organizationId)))
       .orderBy(desc(projects.updatedAt));
   }
 
-  async getProject(id: string, userId: string): Promise<Project | undefined> {
+  async getProject(id: string, userId: string, organizationId: string): Promise<Project | undefined> {
     const [project] = await db.select().from(projects)
-      .where(and(eq(projects.id, id), eq(projects.userId, userId)));
+      .where(and(eq(projects.id, id), eq(projects.userId, userId), eq(projects.organizationId, organizationId)));
     return project || undefined;
   }
 
-  async createProject(project: InsertProject & { organizationId?: string }): Promise<Project> {
-    // TODO: Get organizationId from user session when multi-tenant is fully implemented
-    const projectData = {
-      ...project,
-      organizationId: project.organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be' // Temporary fallback
-    };
+  async createProject(project: InsertProject & { organizationId: string }): Promise<Project> {
     const [newProject] = await db
       .insert(projects)
-      .values(projectData)
+      .values(project)
       .returning();
     return newProject;
   }
 
-  async updateProject(id: string, project: Partial<InsertProject>, userId: string): Promise<Project | undefined> {
+  async updateProject(id: string, project: Partial<InsertProject>, userId: string, organizationId: string): Promise<Project | undefined> {
     const [updatedProject] = await db
       .update(projects)
       .set({ ...project, updatedAt: new Date() })
-      .where(and(eq(projects.id, id), eq(projects.userId, userId)))
+      .where(and(eq(projects.id, id), eq(projects.userId, userId), eq(projects.organizationId, organizationId)))
       .returning();
     return updatedProject || undefined;
   }
 
-  async deleteProject(id: string, userId: string): Promise<boolean> {
+  async deleteProject(id: string, userId: string, organizationId: string): Promise<boolean> {
     const result = await db
       .delete(projects)
-      .where(and(eq(projects.id, id), eq(projects.userId, userId)));
+      .where(and(eq(projects.id, id), eq(projects.userId, userId), eq(projects.organizationId, organizationId)));
     return (result.rowCount || 0) > 0;
   }
 
   // Tasks
-  async getTasks(userId: string): Promise<Task[]> {
+  async getTasks(userId: string, organizationId: string): Promise<Task[]> {
     const result = await db.select({
       id: tasks.id,
       title: tasks.title,
@@ -635,21 +630,21 @@ export class DatabaseStorage implements IStorage {
       projectName: projects.name,
     }).from(tasks)
       .leftJoin(projects, eq(tasks.projectId, projects.id))
-      .where(eq(tasks.userId, userId))
+      .where(and(eq(tasks.userId, userId), eq(tasks.organizationId, organizationId)))
       .orderBy(desc(tasks.updatedAt));
     
     return result as any[];
   }
 
-  async getTasksByProject(projectId: string, userId: string): Promise<Task[]> {
+  async getTasksByProject(projectId: string, userId: string, organizationId: string): Promise<Task[]> {
     return await db.select().from(tasks)
-      .where(and(eq(tasks.projectId, projectId), eq(tasks.userId, userId)))
+      .where(and(eq(tasks.projectId, projectId), eq(tasks.userId, userId), eq(tasks.organizationId, organizationId)))
       .orderBy(asc(tasks.createdAt));
   }
 
-  async getTask(id: string, userId: string): Promise<Task | undefined> {
+  async getTask(id: string, userId: string, organizationId: string): Promise<Task | undefined> {
     const [task] = await db.select().from(tasks)
-      .where(and(eq(tasks.id, id), eq(tasks.userId, userId)));
+      .where(and(eq(tasks.id, id), eq(tasks.userId, userId), eq(tasks.organizationId, organizationId)));
     return task || undefined;
   }
 
@@ -743,20 +738,15 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async createTask(task: InsertTask & { organizationId?: string }): Promise<Task> {
-    // TODO: Get organizationId from user session when multi-tenant is fully implemented
-    const taskData = {
-      ...task,
-      organizationId: task.organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be' // Temporary fallback
-    };
+  async createTask(task: InsertTask & { organizationId: string }): Promise<Task> {
     const [newTask] = await db
       .insert(tasks)
-      .values(taskData)
+      .values(task)
       .returning();
     return newTask;
   }
 
-  async updateTask(id: string, task: Partial<InsertTask>, userId: string): Promise<Task | undefined> {
+  async updateTask(id: string, task: Partial<InsertTask>, userId: string, organizationId: string): Promise<Task | undefined> {
     const updateData: any = { ...task, updatedAt: new Date() };
     if (task.status === 'completed') {
       updateData.completedAt = new Date();
@@ -765,87 +755,77 @@ export class DatabaseStorage implements IStorage {
     const [updatedTask] = await db
       .update(tasks)
       .set(updateData)
-      .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
+      .where(and(eq(tasks.id, id), eq(tasks.userId, userId), eq(tasks.organizationId, organizationId)))
       .returning();
     return updatedTask || undefined;
   }
 
-  async deleteTask(id: string, userId: string): Promise<boolean> {
+  async deleteTask(id: string, userId: string, organizationId: string): Promise<boolean> {
     const result = await db
       .delete(tasks)
-      .where(and(eq(tasks.id, id), eq(tasks.userId, userId)));
+      .where(and(eq(tasks.id, id), eq(tasks.userId, userId), eq(tasks.organizationId, organizationId)));
     return (result.rowCount || 0) > 0;
   }
 
   // Partners
-  async getPartners(userId: string): Promise<Partner[]> {
+  async getPartners(userId: string, organizationId: string): Promise<Partner[]> {
     return await db.select().from(partners)
-      .where(eq(partners.userId, userId))
+      .where(and(eq(partners.userId, userId), eq(partners.organizationId, organizationId)))
       .orderBy(desc(partners.updatedAt));
   }
 
-  async getPartner(id: string, userId: string): Promise<Partner | undefined> {
+  async getPartner(id: string, userId: string, organizationId: string): Promise<Partner | undefined> {
     const [partner] = await db.select().from(partners)
-      .where(and(eq(partners.id, id), eq(partners.userId, userId)));
+      .where(and(eq(partners.id, id), eq(partners.userId, userId), eq(partners.organizationId, organizationId)));
     return partner || undefined;
   }
 
-  async createPartner(partner: InsertPartner & { organizationId?: string }): Promise<Partner> {
-    // TODO: Get organizationId from user session when multi-tenant is fully implemented
-    const partnerData = {
-      ...partner,
-      organizationId: partner.organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be' // Temporary fallback
-    };
+  async createPartner(partner: InsertPartner & { organizationId: string }): Promise<Partner> {
     const [newPartner] = await db
       .insert(partners)
-      .values(partnerData)
+      .values(partner)
       .returning();
     return newPartner;
   }
 
-  async updatePartner(id: string, partner: Partial<InsertPartner>, userId: string): Promise<Partner | undefined> {
+  async updatePartner(id: string, partner: Partial<InsertPartner>, userId: string, organizationId: string): Promise<Partner | undefined> {
     const [updatedPartner] = await db
       .update(partners)
       .set({ ...partner, updatedAt: new Date() })
-      .where(and(eq(partners.id, id), eq(partners.userId, userId)))
+      .where(and(eq(partners.id, id), eq(partners.userId, userId), eq(partners.organizationId, organizationId)))
       .returning();
     return updatedPartner || undefined;
   }
 
-  async deletePartner(id: string, userId: string): Promise<boolean> {
+  async deletePartner(id: string, userId: string, organizationId: string): Promise<boolean> {
     const result = await db
       .delete(partners)
-      .where(and(eq(partners.id, id), eq(partners.userId, userId)));
+      .where(and(eq(partners.id, id), eq(partners.userId, userId), eq(partners.organizationId, organizationId)));
     return (result.rowCount || 0) > 0;
   }
 
   // Deals
-  async getDeals(userId: string): Promise<Deal[]> {
+  async getDeals(userId: string, organizationId: string): Promise<Deal[]> {
     return await db.select().from(deals)
-      .where(eq(deals.userId, userId))
+      .where(and(eq(deals.userId, userId), eq(deals.organizationId, organizationId)))
       .orderBy(desc(deals.updatedAt));
   }
 
-  async getDeal(id: string, userId: string): Promise<Deal | undefined> {
+  async getDeal(id: string, userId: string, organizationId: string): Promise<Deal | undefined> {
     const [deal] = await db.select().from(deals)
-      .where(and(eq(deals.id, id), eq(deals.userId, userId)));
+      .where(and(eq(deals.id, id), eq(deals.userId, userId), eq(deals.organizationId, organizationId)));
     return deal || undefined;
   }
 
-  async createDeal(deal: InsertDeal & { organizationId?: string }): Promise<Deal> {
-    // TODO: Get organizationId from user session when multi-tenant is fully implemented
-    const dealData = {
-      ...deal,
-      organizationId: deal.organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be' // Temporary fallback
-    };
+  async createDeal(deal: InsertDeal & { organizationId: string }): Promise<Deal> {
     const [newDeal] = await db
       .insert(deals)
-      .values(dealData)
+      .values(deal)
       .returning();
     return newDeal;
   }
 
-  async updateDeal(id: string, deal: Partial<InsertDeal>, userId: string): Promise<Deal | undefined> {
+  async updateDeal(id: string, deal: Partial<InsertDeal>, userId: string, organizationId: string): Promise<Deal | undefined> {
     const updateData: any = { ...deal, updatedAt: new Date() };
     if (deal.stage === 'won' || deal.stage === 'lost') {
       updateData.actualCloseDate = new Date();
@@ -854,15 +834,15 @@ export class DatabaseStorage implements IStorage {
     const [updatedDeal] = await db
       .update(deals)
       .set(updateData)
-      .where(and(eq(deals.id, id), eq(deals.userId, userId)))
+      .where(and(eq(deals.id, id), eq(deals.userId, userId), eq(deals.organizationId, organizationId)))
       .returning();
     return updatedDeal || undefined;
   }
 
-  async deleteDeal(id: string, userId: string): Promise<boolean> {
+  async deleteDeal(id: string, userId: string, organizationId: string): Promise<boolean> {
     const result = await db
       .delete(deals)
-      .where(and(eq(deals.id, id), eq(deals.userId, userId)));
+      .where(and(eq(deals.id, id), eq(deals.userId, userId), eq(deals.organizationId, organizationId)));
     return (result.rowCount || 0) > 0;
   }
 

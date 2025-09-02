@@ -20,6 +20,15 @@ import {
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
 
+// Helper function to extract organizationId from request header
+function getOrganizationId(req: any): string {
+  const organizationId = req.headers['x-organization-id'] as string;
+  if (!organizationId) {
+    throw new Error('Organization ID is required');
+  }
+  return organizationId;
+}
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -202,15 +211,25 @@ export function registerRoutes(app: Express): Server {
   // Projects
   app.get("/api/projects", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const projects = await storage.getProjects(req.user!.id);
-    res.json(projects);
+    try {
+      const organizationId = getOrganizationId(req);
+      const projects = await storage.getProjects(req.user!.id, organizationId);
+      res.json(projects);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
   });
 
   app.get("/api/projects/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const project = await storage.getProject(req.params.id, req.user!.id);
-    if (!project) return res.sendStatus(404);
-    res.json(project);
+    try {
+      const organizationId = getOrganizationId(req);
+      const project = await storage.getProject(req.params.id, req.user!.id, organizationId);
+      if (!project) return res.sendStatus(404);
+      res.json(project);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
   });
 
   app.post("/api/projects", async (req, res) => {
@@ -231,8 +250,9 @@ export function registerRoutes(app: Express): Server {
         userId: req.user!.id
       };
       
+      const organizationId = getOrganizationId(req);
       console.log("Processing project data:", processedData);
-      const projectData = insertProjectSchema.parse(processedData);
+      const projectData = insertProjectSchema.parse({ ...processedData, organizationId });
       const project = await storage.createProject(projectData);
       res.status(201).json(project);
     } catch (error) {
@@ -250,7 +270,8 @@ export function registerRoutes(app: Express): Server {
         startDate: req.body.startDate ? new Date(req.body.startDate) : null,
         endDate: req.body.endDate ? new Date(req.body.endDate) : null,
       };
-      const project = await storage.updateProject(req.params.id, updateData, req.user!.id);
+      const organizationId = getOrganizationId(req);
+      const project = await storage.updateProject(req.params.id, updateData, req.user!.id, organizationId);
       if (!project) return res.sendStatus(404);
       res.json(project);
     } catch (error) {
@@ -260,23 +281,38 @@ export function registerRoutes(app: Express): Server {
 
   app.delete("/api/projects/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const deleted = await storage.deleteProject(req.params.id, req.user!.id);
-    if (!deleted) return res.sendStatus(404);
-    res.sendStatus(204);
+    try {
+      const organizationId = getOrganizationId(req);
+      const deleted = await storage.deleteProject(req.params.id, req.user!.id, organizationId);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
   });
 
   // Tasks
   app.get("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const tasks = await storage.getTasks(req.user!.id);
-    res.json(tasks);
+    try {
+      const organizationId = getOrganizationId(req);
+      const tasks = await storage.getTasks(req.user!.id, organizationId);
+      res.json(tasks);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
   });
 
   app.get("/api/tasks/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const task = await storage.getTask(req.params.id, req.user!.id);
-    if (!task) return res.sendStatus(404);
-    res.json(task);
+    try {
+      const organizationId = getOrganizationId(req);
+      const task = await storage.getTask(req.params.id, req.user!.id, organizationId);
+      if (!task) return res.sendStatus(404);
+      res.json(task);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
   });
 
   // Get connection info for a task (VPN + SAP)
@@ -576,7 +612,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Get tasks by project
   app.get("/api/tasks/project/:projectId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const tasks = await storage.getTasksByProject(req.params.projectId, req.user!.id);
+    const organizationId = getOrganizationId(req);
+    const tasks = await storage.getTasksByProject(req.params.projectId, req.user!.id, organizationId);
     res.json(tasks);
   });
 
@@ -594,6 +631,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         remainingEffort = Math.round(remainingHours * 60); // Convert to minutes
       }
 
+      const organizationId = getOrganizationId(req);
       const taskData = insertTaskSchema.parse({ 
         title: req.body.title,
         description: req.body.description || null,
@@ -605,7 +643,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         estimatedEffort: estimatedEffort,
         remainingEffort: remainingEffort,
         completionPercentage: completionPercentage,
-        userId: req.user!.id 
+        userId: req.user!.id,
+        organizationId: organizationId
       });
       const task = await storage.createTask(taskData);
       res.status(201).json(task);
@@ -634,7 +673,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       // Auto-calculate remaining effort when completion percentage changes
       if (req.body.completionPercentage !== undefined) {
         // Get current task to access previous remaining effort and estimated effort
-        const currentTask = await storage.getTask(req.params.id, req.user!.id);
+        const organizationId = getOrganizationId(req);
+        const currentTask = await storage.getTask(req.params.id, req.user!.id, organizationId);
         
         if (currentTask && currentTask.estimatedEffort && req.body.completionPercentage > 0) {
           const newCompletionPercentage = req.body.completionPercentage;
@@ -671,7 +711,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         }
       }
 
-      const task = await storage.updateTask(req.params.id, updateData, req.user!.id);
+      const organizationId = getOrganizationId(req);
+      const task = await storage.updateTask(req.params.id, updateData, req.user!.id, organizationId);
       if (!task) return res.sendStatus(404);
       res.json(task);
     } catch (error) {
@@ -682,7 +723,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.delete("/api/tasks/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const deleted = await storage.deleteTask(req.params.id, req.user!.id);
+    const organizationId = getOrganizationId(req);
+    const deleted = await storage.deleteTask(req.params.id, req.user!.id, organizationId);
     if (!deleted) return res.sendStatus(404);
     res.sendStatus(204);
   });
@@ -690,13 +732,15 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Partners
   app.get("/api/partners", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const partners = await storage.getPartners(req.user!.id);
+    const organizationId = getOrganizationId(req);
+    const partners = await storage.getPartners(req.user!.id, organizationId);
     res.json(partners);
   });
 
   app.get("/api/partners/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const partner = await storage.getPartner(req.params.id, req.user!.id);
+    const organizationId = getOrganizationId(req);
+    const partner = await storage.getPartner(req.params.id, req.user!.id, organizationId);
     if (!partner) return res.sendStatus(404);
     res.json(partner);
   });
@@ -705,6 +749,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     try {
+      const organizationId = getOrganizationId(req);
       const partnerData = insertPartnerSchema.parse({
         name: req.body.name,
         email: req.body.email || null,
@@ -721,7 +766,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         website: req.body.website || null,
         type: req.body.type,
         notes: req.body.notes || null,
-        userId: req.user!.id
+        userId: req.user!.id,
+        organizationId: organizationId
       });
       
       const partner = await storage.createPartner(partnerData);
@@ -734,7 +780,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.put("/api/partners/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const partner = await storage.updatePartner(req.params.id, req.body, req.user!.id);
+      const organizationId = getOrganizationId(req);
+      const partner = await storage.updatePartner(req.params.id, req.body, req.user!.id, organizationId);
       if (!partner) return res.sendStatus(404);
       res.json(partner);
     } catch (error) {
@@ -744,7 +791,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.delete("/api/partners/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const deleted = await storage.deletePartner(req.params.id, req.user!.id);
+    const organizationId = getOrganizationId(req);
+    const deleted = await storage.deletePartner(req.params.id, req.user!.id, organizationId);
     if (!deleted) return res.sendStatus(404);
     res.sendStatus(204);
   });
@@ -762,7 +810,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const userId = req.user!.id;
       
       // 1. Prima cerca nei partner esistenti
-      const existingPartners = await storage.getPartners(userId);
+      const organizationId = getOrganizationId(req);
+      const existingPartners = await storage.getPartners(userId, organizationId);
       const foundPartner = existingPartners.find(p => 
         p.name.toLowerCase().includes(groupName.toLowerCase()) ||
         (p.company && p.company.toLowerCase().includes(groupName.toLowerCase()))
@@ -796,7 +845,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         website: companyInfo?.website || null,
         type: 'client',
         notes: `Auto-created from SAP XML import for group: ${groupName}`,
-        userId
+        userId,
+        organizationId
       });
       
       const newPartner = await storage.createPartner(partnerData);
@@ -969,13 +1019,15 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Deals
   app.get("/api/deals", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const deals = await storage.getDeals(req.user!.id);
+    const organizationId = getOrganizationId(req);
+    const deals = await storage.getDeals(req.user!.id, organizationId);
     res.json(deals);
   });
 
   app.get("/api/deals/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const deal = await storage.getDeal(req.params.id, req.user!.id);
+    const organizationId = getOrganizationId(req);
+    const deal = await storage.getDeal(req.params.id, req.user!.id, organizationId);
     if (!deal) return res.sendStatus(404);
     res.json(deal);
   });
@@ -983,6 +1035,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/deals", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
+      const organizationId = getOrganizationId(req);
       const dealData = insertDealSchema.parse({
         title: req.body.title,
         description: req.body.description || null,
@@ -992,7 +1045,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         partnerId: req.body.partnerId,
         expectedCloseDate: req.body.expectedCloseDate,
         notes: req.body.notes || null,
-        userId: req.user!.id
+        userId: req.user!.id,
+        organizationId: organizationId
       });
       const deal = await storage.createDeal(dealData);
       res.status(201).json(deal);
@@ -1005,7 +1059,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.put("/api/deals/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const deal = await storage.updateDeal(req.params.id, req.body, req.user!.id);
+      const organizationId = getOrganizationId(req);
+      const deal = await storage.updateDeal(req.params.id, req.body, req.user!.id, organizationId);
       if (!deal) return res.sendStatus(404);
       res.json(deal);
     } catch (error) {
@@ -1015,7 +1070,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.delete("/api/deals/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const deleted = await storage.deleteDeal(req.params.id, req.user!.id);
+    const organizationId = getOrganizationId(req);
+    const deleted = await storage.deleteDeal(req.params.id, req.user!.id, organizationId);
     if (!deleted) return res.sendStatus(404);
     res.sendStatus(204);
   });
