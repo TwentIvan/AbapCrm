@@ -53,7 +53,7 @@ export default function AccountManager() {
       <div className="flex items-center space-x-2 text-sm">
         <Building className="h-4 w-4 text-muted-foreground" />
         <span className="font-medium text-foreground" data-testid="text-current-organization">
-          {currentOrganization?.name || "Caricamento..."}
+          {currentOrganization?.name || (organizations.length > 0 ? "Seleziona organizzazione" : "Nessuna organizzazione")}
         </span>
         <Badge variant="secondary" className="text-xs">
           {currentOrganization?.userRole || "admin"}
