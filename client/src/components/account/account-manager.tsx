@@ -19,16 +19,8 @@ export default function AccountManager() {
   const { user } = useAuth();
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showManageOrganizations, setShowManageOrganizations] = useState(false);
-  
-  // Carica organizzazioni direttamente
-  const { data: organizations = [], isLoading: orgsLoading } = useQuery<any[]>({
-    queryKey: ["/api/organizations"],
-    enabled: !!user
-  });
-  
-  const currentOrganization = (organizations as any[])[0] || { name: "Personal", userRole: "admin" };
 
-  if (!user || orgsLoading) {
+  if (!user) {
     return (
       <div className="flex items-center space-x-2">
         <div className="w-8 h-8 bg-muted rounded-full animate-pulse"></div>
@@ -44,17 +36,15 @@ export default function AccountManager() {
   return (
     <div className="flex items-center space-x-3">
       {/* Current Organization Display */}
-      {currentOrganization && (
-        <div className="flex items-center space-x-2 text-sm">
-          <Building className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium text-foreground" data-testid="text-current-organization">
-            {currentOrganization.name}
-          </span>
-          <Badge variant="secondary" className="text-xs">
-            {currentOrganization.userRole}
-          </Badge>
-        </div>
-      )}
+      <div className="flex items-center space-x-2 text-sm">
+        <Building className="h-4 w-4 text-muted-foreground" />
+        <span className="font-medium text-foreground" data-testid="text-current-organization">
+          Personal
+        </span>
+        <Badge variant="secondary" className="text-xs">
+          admin
+        </Badge>
+      </div>
 
       {/* Account Dropdown */}
       <DropdownMenu>
@@ -79,32 +69,19 @@ export default function AccountManager() {
         
         <DropdownMenuContent align="end" className="w-64">
           {/* Organization Switcher */}
-          {(organizations as any[]).length > 1 && (
-            <>
-              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                Organizzazioni
-              </div>
-              {(organizations as any[]).map((org: any) => (
-                <DropdownMenuItem
-                  key={org.id}
-                  onClick={() => {/* TODO: implement switch */}}
-                  className={`flex items-center justify-between ${
-                    currentOrganization?.id === org.id ? 'bg-muted' : ''
-                  }`}
-                  data-testid={`button-switch-org-${org.id}`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <Building className="h-4 w-4" />
-                    <span>{org.name}</span>
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {org.userRole}
-                  </Badge>
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-            </>
-          )}
+          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+            Organizzazioni
+          </div>
+          <DropdownMenuItem className="flex items-center justify-between bg-muted">
+            <div className="flex items-center space-x-2">
+              <Building className="h-4 w-4" />
+              <span>Personal</span>
+            </div>
+            <Badge variant="outline" className="text-xs">
+              admin
+            </Badge>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
 
           {/* Account Settings */}
           <DropdownMenuItem 
