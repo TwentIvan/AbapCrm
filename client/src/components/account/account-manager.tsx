@@ -13,13 +13,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { useOrganization } from "@/hooks/use-organization";
 import { Building, ChevronDown, Settings, LogOut, Users, Check } from "lucide-react";
 import AccountSettingsDialog from "./account-settings-dialog";
-import ManageOrganizationsDialog from "./manage-organizations-dialog";
 
 export default function AccountManager() {
   const { user } = useAuth();
   const { organizations, currentOrganization, switchOrganization, isLoading } = useOrganization();
   const [showAccountSettings, setShowAccountSettings] = useState(false);
-  const [showManageOrganizations, setShowManageOrganizations] = useState(false);
+
 
   if (!user) {
     return (
@@ -98,7 +97,7 @@ export default function AccountManager() {
           ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem 
-            onClick={() => setShowManageOrganizations(true)}
+            onClick={() => window.location.href = "/organizations"}
             data-testid="button-manage-organizations"
           >
             <Users className="h-4 w-4 mr-2" />
@@ -155,10 +154,6 @@ export default function AccountManager() {
       <AccountSettingsDialog 
         open={showAccountSettings} 
         onOpenChange={setShowAccountSettings}
-      />
-      <ManageOrganizationsDialog 
-        open={showManageOrganizations} 
-        onOpenChange={setShowManageOrganizations}
       />
     </div>
   );

@@ -8,6 +8,7 @@ import ImageContainer from "@/components/ui/image-container";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: BarChart3, testId: "nav-dashboard" },
+  { name: "Organizations", href: "/organizations", icon: Building, testId: "nav-organizations" },
   { name: "Projects", href: "/projects", icon: FolderOpen, testId: "nav-projects" },
   { name: "Tasks", href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
   { name: "Time Entries", href: "/timesheet", icon: Clock, testId: "nav-timesheet" },
