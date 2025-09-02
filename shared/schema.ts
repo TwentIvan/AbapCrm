@@ -14,6 +14,40 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Organizations - Support for multi-tenant data segregation
+export const organizations = pgTable("organizations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  logoUrl: text("logo_url"),
+  website: text("website"),
+  // Business details
+  fiscalCode: text("fiscal_code"),
+  vatNumber: text("vat_number"),
+  address: text("address"),
+  city: text("city"),
+  postalCode: text("postal_code"),
+  country: text("country").default("IT"),
+  // Settings
+  isActive: boolean("is_active").default(true).notNull(),
+  settings: text("settings"), // JSON string for org-specific settings
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// User-Organization many-to-many relationship
+export const userRoleEnum = pgEnum("user_role", ["owner", "admin", "member", "viewer"]);
+
+export const userOrganizations = pgTable("user_organizations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  role: userRoleEnum("role").default("member").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const projectStatusEnum = pgEnum("project_status", ["planning", "in_progress", "review", "completed", "on_hold"]);
 
 export const projects = pgTable("projects", {
@@ -25,6 +59,7 @@ export const projects = pgTable("projects", {
   dealId: uuid("deal_id").references(() => deals.id), // Collegamento all'accordo per tariffe
   parentProjectId: uuid("parent_project_id"), // Self-reference for project hierarchy
   userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   budget: decimal("budget", { precision: 10, scale: 2 }),
@@ -52,6 +87,7 @@ export const tasks = pgTable("tasks", {
   projectId: uuid("project_id").references(() => projects.id),
   parentTaskId: uuid("parent_task_id"), // Self-reference for task hierarchy
   userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   assignedTo: uuid("assigned_to").references(() => users.id),
   sapSystemId: uuid("sap_system_id").references(() => sapSystems.id), // Collegamento al sistema SAP per connessione automatica
   dueDate: timestamp("due_date"),
@@ -70,6 +106,7 @@ export const timesheetStatusEnum = pgEnum("timesheet_status", ["draft", "to_send
 export const planningWindows = pgTable("planning_windows", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   projectId: uuid("project_id").references(() => projects.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   name: text("name").notNull(), // e.g., "Sprint 1", "Phase A", "Q1 Development"
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
@@ -107,6 +144,7 @@ export const partners = pgTable("partners", {
   website: text("website"),
   type: partnerTypeEnum("type").default("client").notNull(),
   userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -124,6 +162,7 @@ export const deals = pgTable("deals", {
   probability: integer("probability").default(50).notNull(),
   partnerId: uuid("partner_id").references(() => partners.id).notNull(),
   userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   expectedCloseDate: timestamp("expected_close_date"),
   actualCloseDate: timestamp("actual_close_date"),
   notes: text("notes"),
@@ -141,6 +180,7 @@ export const calendarEvents = pgTable("calendar_events", {
   endTime: timestamp("end_time").notNull(),
   type: eventTypeEnum("type").default("other").notNull(),
   userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   projectId: uuid("project_id").references(() => projects.id),
   partnerId: uuid("partner_id").references(() => partners.id),
   dealId: uuid("deal_id").references(() => deals.id),
@@ -153,6 +193,7 @@ export const calendarEvents = pgTable("calendar_events", {
 export const timeEntries = pgTable("time_entries", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   taskId: uuid("task_id").references(() => tasks.id).notNull(),
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time"),
@@ -170,6 +211,7 @@ export const messageTypeEnum = pgEnum("message_type", ["email", "chat", "sms", "
 export const messages = pgTable("messages", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   messageId: text("message_id"), // ID del messaggio originale (es. Message-ID email)
   type: messageTypeEnum("type").default("email").notNull(),
   status: messageStatusEnum("status").default("unread").notNull(),
@@ -328,6 +370,7 @@ export const rateAgreements = pgTable("rate_agreements", {
 export const humanResources = pgTable("human_resources", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   name: text("name").notNull(), // Nome della risorsa (può essere diverso dal nome utente)
   role: text("role").notNull(), // Ruolo: "developer", "analyst", "consultant", "designer", "manager", etc.
   skillLevel: text("skill_level").notNull(), // "junior", "mid", "senior", "lead", "principal"
@@ -358,6 +401,7 @@ export const sapSystemStatusEnum = pgEnum("sap_system_status", ["active", "inact
 export const sapSystems = pgTable("sap_systems", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   partnerId: uuid("partner_id").references(() => partners.id), // Cliente a cui appartiene il sistema (opzionale)
   projectId: uuid("project_id").references(() => projects.id), // Progetto associato opzionale
   name: text("name").notNull(), // Nome del sistema (es. "PRD", "DEV", "QAS")
@@ -391,6 +435,7 @@ export const sapSystemCredentials = pgTable("sap_system_credentials", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   sapSystemId: uuid("sap_system_id").references(() => sapSystems.id).notNull(),
   userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   
   // Credential details
   username: text("username").notNull(),
@@ -467,6 +512,7 @@ export const vpnSystems = pgTable("vpn_systems", {
 export const vpnConnections = pgTable("vpn_connections", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   partnerId: uuid("partner_id").references(() => partners.id).notNull(), // Cliente a cui appartiene la VPN
   
   name: text("name").notNull(), // "Cliente ABC VPN", "Site-to-Site Production"
@@ -935,10 +981,23 @@ export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
 });
 
+// Organization schemas
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserOrganizationSchema = createInsertSchema(userOrganizations).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertProjectSchema = createInsertSchema(projects).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  organizationId: true, // Auto-filled from user session
 });
 
 export const insertTaskSchema = createInsertSchema(tasks).omit({
@@ -946,12 +1005,14 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   createdAt: true,
   updatedAt: true,
   completedAt: true,
+  organizationId: true, // Auto-filled from user session
 });
 
 export const insertPartnerSchema = createInsertSchema(partners).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  organizationId: true, // Auto-filled from user session
 });
 
 export const insertDealSchema = createInsertSchema(deals).omit({
@@ -959,6 +1020,7 @@ export const insertDealSchema = createInsertSchema(deals).omit({
   createdAt: true,
   updatedAt: true,
   actualCloseDate: true,
+  organizationId: true, // Auto-filled from user session
 });
 
 export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({
@@ -1038,6 +1100,12 @@ export const insertRateAgreementSchema = createInsertSchema(rateAgreements).omit
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+// Organization types
+export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type UserOrganization = typeof userOrganizations.$inferSelect;
+export type InsertUserOrganization = z.infer<typeof insertUserOrganizationSchema>;
 export type Project = typeof projects.$inferSelect;
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Task = typeof tasks.$inferSelect;

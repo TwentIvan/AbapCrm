@@ -2,8 +2,10 @@ import {
   users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, emailConfigs,
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
-  vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations,
+  vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations,
   type User, type InsertUser,
+  type Organization, type InsertOrganization,
+  type UserOrganization, type InsertUserOrganization,
   type Project, type InsertProject,
   type Task, type InsertTask,
   type Partner, type InsertPartner,
@@ -42,6 +44,18 @@ import { sql } from "drizzle-orm";
 const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
+  // Organizations
+  getOrganizations(userId: string): Promise<Organization[]>;
+  getOrganization(id: string): Promise<Organization | undefined>;
+  createOrganization(organization: InsertOrganization): Promise<Organization>;
+  updateOrganization(id: string, organization: Partial<InsertOrganization>): Promise<Organization | undefined>;
+  deleteOrganization(id: string): Promise<boolean>;
+  
+  // User-Organization relationships
+  getUserOrganizations(userId: string): Promise<UserOrganization[]>;
+  addUserToOrganization(userOrganization: InsertUserOrganization): Promise<UserOrganization>;
+  removeUserFromOrganization(userId: string, organizationId: string): Promise<boolean>;
+  
   // Users
   getUsers(): Promise<User[]>;
   getUser(id: string): Promise<User | undefined>;
@@ -322,6 +336,102 @@ export class DatabaseStorage implements IStorage {
     return updatedUser || undefined;
   }
 
+  // Organizations
+  async getOrganizations(userId: string): Promise<Organization[]> {
+    const result = await db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        description: organizations.description,
+        website: organizations.website,
+        email: organizations.email,
+        phone: organizations.phone,
+        address: organizations.address,
+        city: organizations.city,
+        postalCode: organizations.postalCode,
+        country: organizations.country,
+        vatNumber: organizations.vatNumber,
+        fiscalCode: organizations.fiscalCode,
+        isActive: organizations.isActive,
+        createdAt: organizations.createdAt,
+        updatedAt: organizations.updatedAt,
+        userRole: userOrganizations.role,
+      })
+      .from(organizations)
+      .innerJoin(userOrganizations, eq(organizations.id, userOrganizations.organizationId))
+      .where(and(
+        eq(userOrganizations.userId, userId),
+        eq(userOrganizations.isActive, true),
+        eq(organizations.isActive, true)
+      ))
+      .orderBy(desc(organizations.updatedAt));
+    
+    return result;
+  }
+
+  async getOrganization(id: string): Promise<Organization | undefined> {
+    const [organization] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, id));
+    return organization || undefined;
+  }
+
+  async createOrganization(organization: InsertOrganization): Promise<Organization> {
+    const [newOrganization] = await db
+      .insert(organizations)
+      .values(organization)
+      .returning();
+    return newOrganization;
+  }
+
+  async updateOrganization(id: string, organization: Partial<InsertOrganization>): Promise<Organization | undefined> {
+    const [updatedOrganization] = await db
+      .update(organizations)
+      .set({ ...organization, updatedAt: new Date() })
+      .where(eq(organizations.id, id))
+      .returning();
+    return updatedOrganization || undefined;
+  }
+
+  async deleteOrganization(id: string): Promise<boolean> {
+    const result = await db
+      .delete(organizations)
+      .where(eq(organizations.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // User-Organization relationships
+  async getUserOrganizations(userId: string): Promise<UserOrganization[]> {
+    return await db
+      .select()
+      .from(userOrganizations)
+      .where(and(
+        eq(userOrganizations.userId, userId),
+        eq(userOrganizations.isActive, true)
+      ))
+      .orderBy(desc(userOrganizations.createdAt));
+  }
+
+  async addUserToOrganization(userOrganization: InsertUserOrganization): Promise<UserOrganization> {
+    const [newUserOrganization] = await db
+      .insert(userOrganizations)
+      .values(userOrganization)
+      .returning();
+    return newUserOrganization;
+  }
+
+  async removeUserFromOrganization(userId: string, organizationId: string): Promise<boolean> {
+    const result = await db
+      .update(userOrganizations)
+      .set({ isActive: false })
+      .where(and(
+        eq(userOrganizations.userId, userId),
+        eq(userOrganizations.organizationId, organizationId)
+      ));
+    return (result.rowCount || 0) > 0;
+  }
+
   // Projects
   async getProjects(userId: string): Promise<Project[]> {
     return await db.select().from(projects)
@@ -335,10 +445,15 @@ export class DatabaseStorage implements IStorage {
     return project || undefined;
   }
 
-  async createProject(project: InsertProject): Promise<Project> {
+  async createProject(project: InsertProject & { organizationId?: string }): Promise<Project> {
+    // TODO: Get organizationId from user session when multi-tenant is fully implemented
+    const projectData = {
+      ...project,
+      organizationId: project.organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be' // Temporary fallback
+    };
     const [newProject] = await db
       .insert(projects)
-      .values(project)
+      .values(projectData)
       .returning();
     return newProject;
   }
@@ -491,10 +606,15 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async createTask(task: InsertTask): Promise<Task> {
+  async createTask(task: InsertTask & { organizationId?: string }): Promise<Task> {
+    // TODO: Get organizationId from user session when multi-tenant is fully implemented
+    const taskData = {
+      ...task,
+      organizationId: task.organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be' // Temporary fallback
+    };
     const [newTask] = await db
       .insert(tasks)
-      .values(task)
+      .values(taskData)
       .returning();
     return newTask;
   }
@@ -533,10 +653,15 @@ export class DatabaseStorage implements IStorage {
     return partner || undefined;
   }
 
-  async createPartner(partner: InsertPartner): Promise<Partner> {
+  async createPartner(partner: InsertPartner & { organizationId?: string }): Promise<Partner> {
+    // TODO: Get organizationId from user session when multi-tenant is fully implemented
+    const partnerData = {
+      ...partner,
+      organizationId: partner.organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be' // Temporary fallback
+    };
     const [newPartner] = await db
       .insert(partners)
-      .values(partner)
+      .values(partnerData)
       .returning();
     return newPartner;
   }
@@ -570,10 +695,15 @@ export class DatabaseStorage implements IStorage {
     return deal || undefined;
   }
 
-  async createDeal(deal: InsertDeal): Promise<Deal> {
+  async createDeal(deal: InsertDeal & { organizationId?: string }): Promise<Deal> {
+    // TODO: Get organizationId from user session when multi-tenant is fully implemented
+    const dealData = {
+      ...deal,
+      organizationId: deal.organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be' // Temporary fallback
+    };
     const [newDeal] = await db
       .insert(deals)
-      .values(deal)
+      .values(dealData)
       .returning();
     return newDeal;
   }

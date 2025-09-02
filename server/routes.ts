@@ -14,7 +14,8 @@ import {
   insertVpnConnectionSchema, insertVpnCredentialsSchema, insertTransportRequestSchema,
   insertInterventionDocumentSchema, insertSystemCredentialsSchema,
   insertVpnSoftwareSchema, insertVpnSystemsSchema, vpnConnections,
-  insertDiscoveredVpnSoftwareSchema, insertDiscoveredVpnConfigurationSchema
+  insertDiscoveredVpnSoftwareSchema, insertDiscoveredVpnConfigurationSchema,
+  insertOrganizationSchema, insertUserOrganizationSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -27,6 +28,84 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const users = await storage.getUsers();
     res.json(users);
+  });
+
+  // Organizations
+  app.get("/api/organizations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const organizations = await storage.getOrganizations(req.user!.id);
+    res.json(organizations);
+  });
+
+  app.get("/api/organizations/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const organization = await storage.getOrganization(req.params.id);
+    if (!organization) return res.sendStatus(404);
+    res.json(organization);
+  });
+
+  app.post("/api/organizations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const data = insertOrganizationSchema.parse(req.body);
+      const organization = await storage.createOrganization(data);
+      
+      // Automatically add the creator as admin of the new organization
+      await storage.addUserToOrganization({
+        userId: req.user!.id,
+        organizationId: organization.id,
+        role: 'admin',
+        isActive: true
+      });
+      
+      res.json(organization);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid organization data" });
+    }
+  });
+
+  app.put("/api/organizations/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const data = insertOrganizationSchema.partial().parse(req.body);
+      const organization = await storage.updateOrganization(req.params.id, data);
+      if (!organization) return res.sendStatus(404);
+      res.json(organization);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid organization data" });
+    }
+  });
+
+  app.delete("/api/organizations/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const deleted = await storage.deleteOrganization(req.params.id);
+    if (!deleted) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  // User-Organization relationships
+  app.get("/api/user-organizations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const userOrganizations = await storage.getUserOrganizations(req.user!.id);
+    res.json(userOrganizations);
+  });
+
+  app.post("/api/user-organizations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const data = insertUserOrganizationSchema.parse(req.body);
+      const userOrganization = await storage.addUserToOrganization(data);
+      res.json(userOrganization);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid user-organization data" });
+    }
+  });
+
+  app.delete("/api/user-organizations/:organizationId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const removed = await storage.removeUserFromOrganization(req.user!.id, req.params.organizationId);
+    if (!removed) return res.sendStatus(404);
+    res.sendStatus(204);
   });
 
   // Projects
@@ -313,7 +392,11 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             isActive: true
           };
           
-          await storage.createVpnConnection(vpnConnectionData, req.user!.id);
+          const vpnConnectionDataWithOrg = {
+            ...vpnConnectionData,
+            organizationId: '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be' // TODO: Get from user session
+          };
+          await storage.createVpnConnection(vpnConnectionDataWithOrg, req.user!.id);
           console.log('[VPN-REAL-PROFILES] ✅ Saved real profile to database:', conn.name);
         } catch (error) {
           console.error('[VPN-REAL-PROFILES] ⚠️ Could not save to database:', error);
