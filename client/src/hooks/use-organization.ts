@@ -6,6 +6,7 @@ interface Organization {
   id: string;
   name: string;
   description?: string;
+  logoUrl?: string;
   userRole: string;
 }
 

@@ -70,9 +70,6 @@ export default function AccountManager() {
         </DropdownMenuTrigger>
         
         <DropdownMenuContent align="start" className="w-64">
-          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-            Organizzazioni
-          </div>
           {organizations.map((org) => (
             <DropdownMenuItem
               key={org.id}
