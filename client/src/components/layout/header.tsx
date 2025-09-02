@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Bell, Plus } from "lucide-react";
+import AccountManager from "@/components/account/account-manager";
 
 interface HeaderProps {
   title: string;
@@ -38,12 +39,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             />
           </div>
           
-          {/* Notifications */}
-          <Button variant="ghost" size="icon" data-testid="button-notifications">
-            <Bell className="h-5 w-5" />
-            <span className="sr-only">Notifications</span>
-          </Button>
-          
           {/* New Button */}
           <Button onClick={() => {
             console.log("🔍 Button New clicked in header");
@@ -52,6 +47,15 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             <Plus className="h-4 w-4 mr-2" />
             New
           </Button>
+
+          {/* Notifications */}
+          <Button variant="ghost" size="icon" data-testid="button-notifications">
+            <Bell className="h-5 w-5" />
+            <span className="sr-only">Notifications</span>
+          </Button>
+          
+          {/* Account Manager */}
+          <AccountManager />
         </div>
       </div>
     </header>
