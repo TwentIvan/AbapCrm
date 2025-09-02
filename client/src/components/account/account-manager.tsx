@@ -17,10 +17,11 @@ import ManageOrganizationsDialog from "./manage-organizations-dialog";
 
 export default function AccountManager() {
   const { user } = useAuth();
+  const { organizations, currentOrganization, switchOrganization, isLoading } = useOrganization();
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showManageOrganizations, setShowManageOrganizations] = useState(false);
 
-  if (!user) {
+  if (!user || isLoading) {
     return (
       <div className="flex items-center space-x-2">
         <div className="w-8 h-8 bg-muted rounded-full animate-pulse"></div>
@@ -35,16 +36,18 @@ export default function AccountManager() {
 
   return (
     <div className="flex items-center space-x-3">
-      {/* Current Organization Display - Simplified */}
-      <div className="flex items-center space-x-2 text-sm">
-        <Building className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium text-foreground" data-testid="text-current-organization">
-          Personal
-        </span>
-        <Badge variant="secondary" className="text-xs">
-          admin
-        </Badge>
-      </div>
+      {/* Current Organization Display */}
+      {currentOrganization && (
+        <div className="flex items-center space-x-2 text-sm">
+          <Building className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium text-foreground" data-testid="text-current-organization">
+            {currentOrganization.name}
+          </span>
+          <Badge variant="secondary" className="text-xs">
+            {currentOrganization.userRole}
+          </Badge>
+        </div>
+      )}
 
       {/* Account Dropdown */}
       <DropdownMenu>
@@ -68,20 +71,33 @@ export default function AccountManager() {
         </DropdownMenuTrigger>
         
         <DropdownMenuContent align="end" className="w-64">
-          {/* Organization Switcher - Simplified */}
-          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-            Organizzazioni
-          </div>
-          <DropdownMenuItem className="flex items-center justify-between bg-muted">
-            <div className="flex items-center space-x-2">
-              <Building className="h-4 w-4" />
-              <span>Personal</span>
-            </div>
-            <Badge variant="outline" className="text-xs">
-              admin
-            </Badge>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          {/* Organization Switcher */}
+          {organizations.length > 1 && (
+            <>
+              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                Organizzazioni
+              </div>
+              {organizations.map((org) => (
+                <DropdownMenuItem
+                  key={org.id}
+                  onClick={() => switchOrganization(org.id)}
+                  className={`flex items-center justify-between ${
+                    currentOrganization?.id === org.id ? 'bg-muted' : ''
+                  }`}
+                  data-testid={`button-switch-org-${org.id}`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <Building className="h-4 w-4" />
+                    <span>{org.name}</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {org.userRole}
+                  </Badge>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+            </>
+          )}
 
           {/* Account Settings */}
           <DropdownMenuItem 
