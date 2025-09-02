@@ -29,6 +29,11 @@ function getOrganizationId(req: any): string {
   return organizationId;
 }
 
+// Helper function to safely get organizationId (returns null if not present)
+function getOptionalOrganizationId(req: any): string | null {
+  return req.headers['x-organization-id'] as string || null;
+}
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -212,7 +217,10 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/projects", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const organizationId = getOrganizationId(req);
+      const organizationId = getOptionalOrganizationId(req);
+      if (!organizationId) {
+        return res.json([]); // Return empty array if no organization context
+      }
       const projects = await storage.getProjects(req.user!.id, organizationId);
       res.json(projects);
     } catch (error) {
@@ -295,7 +303,10 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const organizationId = getOrganizationId(req);
+      const organizationId = getOptionalOrganizationId(req);
+      if (!organizationId) {
+        return res.json([]); // Return empty array if no organization context
+      }
       const tasks = await storage.getTasks(req.user!.id, organizationId);
       res.json(tasks);
     } catch (error) {
@@ -734,7 +745,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Partners
   app.get("/api/partners", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) {
+      return res.json([]); // Return empty array if no organization context
+    }
     const partners = await storage.getPartners(req.user!.id, organizationId);
     res.json(partners);
   });
