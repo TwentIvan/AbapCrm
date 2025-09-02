@@ -12,10 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrganization } from "@/hooks/use-organization";
 import { Building, ChevronDown, Settings, LogOut, Users } from "lucide-react";
+import AccountSettingsDialog from "./account-settings-dialog";
+import ManageOrganizationsDialog from "./manage-organizations-dialog";
 
 export default function AccountManager() {
   const { user } = useAuth();
   const { organizations, currentOrganization, switchOrganization, isLoading } = useOrganization();
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const [showManageOrganizations, setShowManageOrganizations] = useState(false);
 
   if (!user || isLoading) {
     return (
@@ -96,12 +100,18 @@ export default function AccountManager() {
           )}
 
           {/* Account Settings */}
-          <DropdownMenuItem data-testid="button-account-settings">
+          <DropdownMenuItem 
+            onClick={() => setShowAccountSettings(true)}
+            data-testid="button-account-settings"
+          >
             <Settings className="h-4 w-4 mr-2" />
             Impostazioni Account
           </DropdownMenuItem>
           
-          <DropdownMenuItem data-testid="button-manage-organizations">
+          <DropdownMenuItem 
+            onClick={() => setShowManageOrganizations(true)}
+            data-testid="button-manage-organizations"
+          >
             <Users className="h-4 w-4 mr-2" />
             Gestisci Organizzazioni
           </DropdownMenuItem>
@@ -118,6 +128,16 @@ export default function AccountManager() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Dialogs */}
+      <AccountSettingsDialog 
+        open={showAccountSettings} 
+        onOpenChange={setShowAccountSettings}
+      />
+      <ManageOrganizationsDialog 
+        open={showManageOrganizations} 
+        onOpenChange={setShowManageOrganizations}
+      />
     </div>
   );
 }

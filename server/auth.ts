@@ -90,4 +90,129 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
   });
+
+  // User update endpoint
+  app.put("/api/users/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const userId = req.params.id;
+      const currentUserId = req.user.id;
+      
+      // Users can only update their own data
+      if (userId !== currentUserId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const updatedUser = await storage.updateUser(userId, req.body);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Organization endpoints
+  app.get("/api/organizations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const userId = req.user.id;
+      const organizations = await storage.getUserOrganizations(userId);
+      res.json(organizations);
+    } catch (error) {
+      console.error("Error fetching organizations:", error);
+      res.status(500).json({ message: "Failed to fetch organizations" });
+    }
+  });
+
+  app.post("/api/organizations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const userId = req.user.id;
+      const { name, description } = req.body;
+      
+      const organization = await storage.createOrganization({
+        name,
+        description,
+      });
+      
+      // Add user as owner/admin
+      await storage.addUserToOrganization({
+        userId,
+        organizationId: organization.id,
+        role: 'admin',
+        isActive: true,
+      });
+      
+      res.json(organization);
+    } catch (error) {
+      console.error("Error creating organization:", error);
+      res.status(500).json({ message: "Failed to create organization" });
+    }
+  });
+
+  app.post("/api/organizations/:id/invite", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const organizationId = req.params.id;
+      const userId = req.user.id;
+      const { email, role, message } = req.body;
+      
+      // Check if user is admin/owner of the organization
+      const userOrgs = await storage.getUserOrganizations(userId);
+      const org = userOrgs.find(o => o.id === organizationId);
+      
+      if (!org || (org.userRole !== 'admin' && org.userRole !== 'owner')) {
+        return res.status(403).json({ message: "Not authorized to invite users" });
+      }
+      
+      const invitation = await storage.createInvitation({
+        organizationId,
+        invitedEmail: email,
+        role,
+        message,
+        invitedByUserId: userId,
+        token: require('crypto').randomBytes(32).toString('hex'),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      });
+      
+      res.json(invitation);
+    } catch (error) {
+      console.error("Error creating invitation:", error);
+      res.status(500).json({ message: "Failed to create invitation" });
+    }
+  });
+
+  // Invitation endpoints
+  app.get("/api/invitations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const userEmail = req.user.email;
+      const invitations = await storage.getUserInvitations(userEmail);
+      res.json(invitations);
+    } catch (error) {
+      console.error("Error fetching invitations:", error);
+      res.status(500).json({ message: "Failed to fetch invitations" });
+    }
+  });
+
+  app.post("/api/invitations/:token/accept", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const token = req.params.token;
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      
+      const result = await storage.acceptInvitation(token, userId, userEmail);
+      res.json(result);
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+      res.status(500).json({ message: "Failed to accept invitation" });
+    }
+  });
 }

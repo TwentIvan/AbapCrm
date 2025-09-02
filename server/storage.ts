@@ -53,15 +53,17 @@ export interface IStorage {
   deleteOrganization(id: string): Promise<boolean>;
   
   // User-Organization relationships
-  getUserOrganizations(userId: string): Promise<UserOrganization[]>;
+  getUserOrganizations(userId: string): Promise<any[]>;
   addUserToOrganization(userOrganization: InsertUserOrganization): Promise<UserOrganization>;
   removeUserFromOrganization(userId: string, organizationId: string): Promise<boolean>;
   
   // Organization Invitations
   createInvitation(invitation: InsertOrganizationInvitation): Promise<OrganizationInvitation>;
   getInvitationsByEmail(email: string): Promise<OrganizationInvitation[]>;
+  getUserInvitations(email: string): Promise<any[]>;
   getInvitationByToken(token: string): Promise<OrganizationInvitation | undefined>;
   updateInvitationStatus(token: string, status: 'accepted' | 'declined'): Promise<OrganizationInvitation | undefined>;
+  acceptInvitation(token: string, userId: string, userEmail: string): Promise<any>;
   
   // Users
   getUsers(): Promise<User[]>;
@@ -372,8 +374,6 @@ export class DatabaseStorage implements IStorage {
         name: organizations.name,
         description: organizations.description,
         website: organizations.website,
-        email: organizations.email,
-        phone: organizations.phone,
         address: organizations.address,
         city: organizations.city,
         postalCode: organizations.postalCode,
@@ -430,15 +430,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   // User-Organization relationships
-  async getUserOrganizations(userId: string): Promise<UserOrganization[]> {
-    return await db
-      .select()
+  async getUserOrganizations(userId: string): Promise<any[]> {
+    const userOrgs = await db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        description: organizations.description,
+        userRole: userOrganizations.role,
+        createdAt: userOrganizations.createdAt,
+      })
       .from(userOrganizations)
+      .leftJoin(organizations, eq(userOrganizations.organizationId, organizations.id))
       .where(and(
         eq(userOrganizations.userId, userId),
-        eq(userOrganizations.isActive, true)
+        eq(userOrganizations.isActive, true),
+        eq(organizations.isActive, true)
       ))
       .orderBy(desc(userOrganizations.createdAt));
+    
+    return userOrgs;
   }
 
   async addUserToOrganization(userOrganization: InsertUserOrganization): Promise<UserOrganization> {
@@ -506,6 +516,55 @@ export class DatabaseStorage implements IStorage {
       .where(eq(organizationInvitations.token, token))
       .returning();
     return updatedInvitation || undefined;
+  }
+
+  async getUserInvitations(email: string): Promise<any[]> {
+    const invitations = await db
+      .select({
+        id: organizationInvitations.id,
+        token: organizationInvitations.token,
+        role: organizationInvitations.role,
+        message: organizationInvitations.message,
+        organizationName: organizations.name,
+        createdAt: organizationInvitations.createdAt,
+      })
+      .from(organizationInvitations)
+      .leftJoin(organizations, eq(organizationInvitations.organizationId, organizations.id))
+      .where(and(
+        eq(organizationInvitations.invitedEmail, email),
+        eq(organizationInvitations.status, "pending")
+      ))
+      .orderBy(desc(organizationInvitations.createdAt));
+    
+    return invitations;
+  }
+
+  async acceptInvitation(token: string, userId: string, userEmail: string): Promise<any> {
+    const invitation = await this.getInvitationByToken(token);
+    if (!invitation) {
+      throw new Error("Invitation not found");
+    }
+    
+    if (invitation.invitedEmail !== userEmail) {
+      throw new Error("Email does not match invitation");
+    }
+    
+    if (invitation.status !== "pending") {
+      throw new Error("Invitation already processed");
+    }
+    
+    // Accept the invitation
+    await this.updateInvitationStatus(token, 'accepted');
+    
+    // Add user to organization
+    await this.addUserToOrganization({
+      userId,
+      organizationId: invitation.organizationId,
+      role: invitation.role,
+      isActive: true,
+    });
+    
+    return { success: true, organizationId: invitation.organizationId };
   }
 
   // Projects
