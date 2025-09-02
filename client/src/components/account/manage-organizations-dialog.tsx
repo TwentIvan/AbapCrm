@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { useOrganization } from "@/hooks/use-organization";
+// Hook rimosso per evitare problemi
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -23,9 +23,16 @@ interface ManageOrganizationsDialogProps {
 }
 
 export default function ManageOrganizationsDialog({ open, onOpenChange }: ManageOrganizationsDialogProps) {
-  const { organizations, currentOrganization } = useOrganization();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Carica organizzazioni direttamente
+  const { data: organizations = [] } = useQuery<any[]>({
+    queryKey: ["/api/organizations"],
+    enabled: open,
+  });
+  
+  const currentOrganization = organizations[0] || null;
   
   const [newOrgName, setNewOrgName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
@@ -132,9 +139,9 @@ export default function ManageOrganizationsDialog({ open, onOpenChange }: Manage
           <TabsContent value="organizations" className="space-y-4">
             {/* Current Organizations */}
             <div className="space-y-3">
-              <h3 className="text-sm font-medium">Organizzazioni attuali</h3>
+              <h3 className="text-sm font-medium">Organizzazioni attuali ({organizations.length})</h3>
               <div className="space-y-2">
-                {organizations.map((org) => (
+                {organizations.map((org: any) => (
                   <div
                     key={org.id}
                     className="flex items-center justify-between p-3 border rounded-lg"
