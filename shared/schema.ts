@@ -1240,17 +1240,14 @@ export const insertVpnSystemsSchema = createInsertSchema(vpnSystems).omit({
 // Discovery VPN Insert Schemas
 export const insertDiscoveredVpnSoftwareSchema = createInsertSchema(discoveredVpnSoftware).omit({
   id: true,
-  createdAt: true,
+  discoveredAt: true,
   updatedAt: true,
-  lastDiscovery: true,
 });
 
 export const insertDiscoveredVpnConfigurationSchema = createInsertSchema(discoveredVpnConfigurations).omit({
   id: true,
-  createdAt: true,
+  discoveredAt: true,
   updatedAt: true,
-  lastDiscovered: true,
-  lastVerified: true,
 });
 
 // All Types
