@@ -10,13 +10,14 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
-import { Building, ChevronDown, Settings, LogOut, Users } from "lucide-react";
+import { useOrganization } from "@/hooks/use-organization";
+import { Building, ChevronDown, Settings, LogOut, Users, Check } from "lucide-react";
 import AccountSettingsDialog from "./account-settings-dialog";
 import ManageOrganizationsDialog from "./manage-organizations-dialog";
 
 export default function AccountManager() {
   const { user } = useAuth();
+  const { organizations, currentOrganization, switchOrganization, isLoading } = useOrganization();
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showManageOrganizations, setShowManageOrganizations] = useState(false);
 
@@ -25,6 +26,19 @@ export default function AccountManager() {
       <div className="flex items-center space-x-2">
         <div className="w-8 h-8 bg-muted rounded-full animate-pulse"></div>
         <div className="w-24 h-4 bg-muted rounded animate-pulse"></div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 text-sm">
+          <Building className="h-4 w-4 text-muted-foreground" />
+          <div className="w-20 h-4 bg-muted rounded animate-pulse"></div>
+          <div className="w-12 h-4 bg-muted rounded animate-pulse"></div>
+        </div>
+        <div className="w-8 h-8 bg-muted rounded-full animate-pulse"></div>
       </div>
     );
   }
@@ -39,10 +53,10 @@ export default function AccountManager() {
       <div className="flex items-center space-x-2 text-sm">
         <Building className="h-4 w-4 text-muted-foreground" />
         <span className="font-medium text-foreground" data-testid="text-current-organization">
-          Personal
+          {currentOrganization?.name || "Caricamento..."}
         </span>
         <Badge variant="secondary" className="text-xs">
-          admin
+          {currentOrganization?.userRole || "admin"}
         </Badge>
       </div>
 
@@ -72,15 +86,27 @@ export default function AccountManager() {
           <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
             Organizzazioni
           </div>
-          <DropdownMenuItem className="flex items-center justify-between bg-muted">
-            <div className="flex items-center space-x-2">
-              <Building className="h-4 w-4" />
-              <span>Personal</span>
-            </div>
-            <Badge variant="outline" className="text-xs">
-              admin
-            </Badge>
-          </DropdownMenuItem>
+          {organizations.map((org) => (
+            <DropdownMenuItem
+              key={org.id}
+              className={`flex items-center justify-between cursor-pointer ${
+                currentOrganization?.id === org.id ? "bg-muted" : ""
+              }`}
+              onClick={() => switchOrganization(org.id)}
+              data-testid={`button-switch-org-${org.id}`}
+            >
+              <div className="flex items-center space-x-2">
+                <Building className="h-4 w-4" />
+                <span>{org.name}</span>
+                {currentOrganization?.id === org.id && (
+                  <Check className="h-3 w-3 text-primary" />
+                )}
+              </div>
+              <Badge variant="outline" className="text-xs">
+                {org.userRole}
+              </Badge>
+            </DropdownMenuItem>
+          ))}
           <DropdownMenuSeparator />
 
           {/* Account Settings */}
