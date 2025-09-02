@@ -49,16 +49,66 @@ export default function AccountManager() {
 
   return (
     <div className="flex items-center space-x-3">
-      {/* Current Organization Display */}
-      <div className="flex items-center space-x-2 text-sm">
-        <Building className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium text-foreground" data-testid="text-current-organization">
-          {currentOrganization?.name || (organizations.length > 0 ? "Seleziona organizzazione" : "Nessuna organizzazione")}
-        </span>
-        <Badge variant="secondary" className="text-xs">
-          {currentOrganization?.userRole || "admin"}
-        </Badge>
-      </div>
+      {/* Organization Switcher Dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="flex items-center space-x-2 h-auto p-2" data-testid="button-org-switcher">
+            {currentOrganization?.logoUrl ? (
+              <img 
+                src={currentOrganization.logoUrl} 
+                alt={`${currentOrganization.name} logo`}
+                className="h-5 w-5 rounded object-cover"
+              />
+            ) : (
+              <Building className="h-4 w-4 text-muted-foreground" />
+            )}
+            <span className="font-medium text-foreground text-sm" data-testid="text-current-organization">
+              {currentOrganization?.name || (organizations.length > 0 ? "Seleziona organizzazione" : "Nessuna organizzazione")}
+            </span>
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        
+        <DropdownMenuContent align="start" className="w-64">
+          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+            Organizzazioni
+          </div>
+          {organizations.map((org) => (
+            <DropdownMenuItem
+              key={org.id}
+              className={`flex items-center justify-between cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground ${
+                currentOrganization?.id === org.id ? "bg-muted" : ""
+              }`}
+              onClick={() => switchOrganization(org.id)}
+              data-testid={`button-switch-org-${org.id}`}
+            >
+              <div className="flex items-center space-x-2">
+                {org.logoUrl ? (
+                  <img 
+                    src={org.logoUrl} 
+                    alt={`${org.name} logo`}
+                    className="h-4 w-4 rounded object-cover"
+                  />
+                ) : (
+                  <Building className="h-4 w-4" />
+                )}
+                <span className="font-medium">{org.name}</span>
+                {currentOrganization?.id === org.id && (
+                  <Check className="h-3 w-3 text-primary" />
+                )}
+              </div>
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
+            onClick={() => setShowManageOrganizations(true)}
+            data-testid="button-manage-organizations"
+          >
+            <Users className="h-4 w-4 mr-2" />
+            Gestisci Organizzazioni
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* Account Dropdown */}
       <DropdownMenu>
@@ -82,33 +132,6 @@ export default function AccountManager() {
         </DropdownMenuTrigger>
         
         <DropdownMenuContent align="end" className="w-64">
-          {/* Organization Switcher */}
-          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-            Organizzazioni
-          </div>
-          {organizations.map((org) => (
-            <DropdownMenuItem
-              key={org.id}
-              className={`flex items-center justify-between cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground ${
-                currentOrganization?.id === org.id ? "bg-muted" : ""
-              }`}
-              onClick={() => switchOrganization(org.id)}
-              data-testid={`button-switch-org-${org.id}`}
-            >
-              <div className="flex items-center space-x-2">
-                <Building className="h-4 w-4" />
-                <span className="font-medium">{org.name}</span>
-                {currentOrganization?.id === org.id && (
-                  <Check className="h-3 w-3 text-primary" />
-                )}
-              </div>
-              <Badge variant="outline" className="text-xs">
-                {org.userRole}
-              </Badge>
-            </DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
-
           {/* Account Settings */}
           <DropdownMenuItem 
             onClick={() => setShowAccountSettings(true)}
@@ -116,14 +139,6 @@ export default function AccountManager() {
           >
             <Settings className="h-4 w-4 mr-2" />
             Impostazioni Account
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem 
-            onClick={() => setShowManageOrganizations(true)}
-            data-testid="button-manage-organizations"
-          >
-            <Users className="h-4 w-4 mr-2" />
-            Gestisci Organizzazioni
           </DropdownMenuItem>
           
           <DropdownMenuSeparator />
