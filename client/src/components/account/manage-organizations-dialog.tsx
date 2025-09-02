@@ -30,6 +30,11 @@ export default function ManageOrganizationsDialog({ open, onOpenChange }: Manage
   const { data: organizations = [] } = useQuery<any[]>({
     queryKey: ["/api/organizations"],
     enabled: open,
+    queryFn: async () => {
+      const res = await fetch("/api/organizations", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch organizations');
+      return res.json();
+    },
   });
   
   const currentOrganization = organizations[0] || null;
