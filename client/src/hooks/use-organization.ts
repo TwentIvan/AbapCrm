@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { setCurrentOrganizationId as setGlobalOrganizationId } from "@/lib/queryClient";
+import { setCurrentOrganizationId as setGlobalOrganizationId, getQueryFn } from "@/lib/queryClient";
 
 interface Organization {
   id: string;
@@ -17,6 +17,7 @@ export function useOrganization() {
   // Fetch user's organizations
   const { data: organizations = [], isLoading } = useQuery<Organization[]>({
     queryKey: ["/api/organizations"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
   });
 
