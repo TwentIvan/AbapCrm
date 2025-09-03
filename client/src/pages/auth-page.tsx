@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,8 +35,14 @@ export default function AuthPage() {
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   // If user is already authenticated, redirect to home
+  React.useEffect(() => {
+    if (!isLoading && user) {
+      setLocation("/");
+    }
+  }, [isLoading, user, setLocation]);
+
+  // Don't render anything if redirecting
   if (!isLoading && user) {
-    setLocation("/");
     return null;
   }
 
