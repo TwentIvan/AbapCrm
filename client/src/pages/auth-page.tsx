@@ -34,18 +34,7 @@ export default function AuthPage() {
   const [activeTab, setActiveTab] = useState("login");
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
-  // If user is already authenticated, redirect to home
-  React.useEffect(() => {
-    if (!isLoading && user) {
-      setLocation("/");
-    }
-  }, [isLoading, user, setLocation]);
-
-  // Don't render anything if redirecting
-  if (!isLoading && user) {
-    return null;
-  }
-
+  // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURN
   const loginForm = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -63,6 +52,18 @@ export default function AuthPage() {
       lastName: "",
     },
   });
+
+  // If user is already authenticated, redirect to home
+  React.useEffect(() => {
+    if (!isLoading && user) {
+      setLocation("/");
+    }
+  }, [isLoading, user, setLocation]);
+
+  // Don't render anything if redirecting
+  if (!isLoading && user) {
+    return null;
+  }
 
   const onLogin = async (data: LoginForm) => {
     loginMutation.mutate(data, {
