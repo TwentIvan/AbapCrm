@@ -265,7 +265,9 @@ export default function AuthPage() {
                                   <FormLabel className="text-gray-700 dark:text-gray-300">Nome</FormLabel>
                                   <FormControl>
                                     <Input 
-                                      {...field} 
+                                      value={field.value}
+                                      onChange={field.onChange}
+                                      onBlur={field.onBlur}
                                       name="given-name"
                                       id="firstName"
                                       autoComplete="given-name"
@@ -287,7 +289,9 @@ export default function AuthPage() {
                                   <FormLabel className="text-gray-700 dark:text-gray-300">Cognome</FormLabel>
                                   <FormControl>
                                     <Input 
-                                      {...field} 
+                                      value={field.value}
+                                      onChange={field.onChange}
+                                      onBlur={field.onBlur}
                                       name="family-name"
                                       id="lastName"
                                       autoComplete="family-name"
