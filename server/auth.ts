@@ -102,8 +102,18 @@ export function setupAuth(app: Express) {
 
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: string, done) => {
-    const user = await storage.getUser(id);
-    done(null, user);
+    try {
+      const user = await storage.getUser(id);
+      if (!user) {
+        // User doesn't exist anymore - clear session
+        return done(null, false);
+      }
+      done(null, user);
+    } catch (error) {
+      console.error('[AUTH] Failed to deserialize user:', error);
+      // Clear session if user can't be found
+      done(null, false);
+    }
   });
 
   app.post("/api/register", async (req, res, next) => {
