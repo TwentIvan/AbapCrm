@@ -51,6 +51,7 @@ function Router() {
       <ProtectedRoute path="/vpn-discovery" component={VPNDiscoveryPage} />
       <ProtectedRoute path="/system-credentials" component={SystemCredentialsPage} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/login" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
   );
