@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, Users, Calendar, TrendingUp, Shield, Zap } from "lucide-react";
+import { SiGoogle } from "react-icons/si";
 import hubUpLogo from "@assets/generated_images/hub_up_logo.png";
 import ImageContainer from "@/components/ui/image-container";
 
@@ -152,6 +153,29 @@ export default function AuthPage() {
                     </Button>
                   </form>
                 </Form>
+                
+                {/* OAuth Section */}
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
+                
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  data-testid="button-google-login"
+                  onClick={() => window.location.href = '/api/auth/google'}
+                >
+                  <SiGoogle className="mr-2 h-4 w-4" />
+                  Sign in with Google
+                </Button>
               </TabsContent>
               
               <TabsContent value="register">
@@ -261,6 +285,29 @@ export default function AuthPage() {
                     </Button>
                   </form>
                 </Form>
+                
+                {/* OAuth Section */}
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
+                
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  data-testid="button-google-register"
+                  onClick={() => window.location.href = '/api/auth/google'}
+                >
+                  <SiGoogle className="mr-2 h-4 w-4" />
+                  Sign up with Google
+                </Button>
               </TabsContent>
             </Tabs>
           </CardContent>

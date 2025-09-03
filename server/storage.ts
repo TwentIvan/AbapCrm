@@ -70,6 +70,8 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByProvider(provider: string, externalId: string): Promise<User | undefined>;
+  linkOAuthProvider(userId: string, provider: string, externalId: string, profileImageUrl?: string): Promise<User>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, userData: Partial<InsertUser>): Promise<User | undefined>;
 
@@ -326,6 +328,36 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user || undefined;
+  }
+
+  async getUserByProvider(provider: string, externalId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(
+      and(
+        eq(users.provider, provider as any),
+        eq(users.externalId, externalId)
+      )
+    );
+    return user || undefined;
+  }
+
+  async linkOAuthProvider(userId: string, provider: string, externalId: string, profileImageUrl?: string): Promise<User> {
+    const updateData: any = {
+      provider: provider as any,
+      externalId,
+      isEmailVerified: true
+    };
+    
+    if (profileImageUrl) {
+      updateData.profileImageUrl = profileImageUrl;
+    }
+
+    const [user] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {

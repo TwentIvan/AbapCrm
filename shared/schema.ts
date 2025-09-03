@@ -988,6 +988,10 @@ export const interventionDocumentsRelations = relations(interventionDocuments, (
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
+}).extend({
+  // Make password optional for OAuth users
+  password: z.string().optional(),
+  username: z.string().optional(),
 });
 
 // Organization schemas
