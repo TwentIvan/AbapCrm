@@ -76,9 +76,8 @@ export function setupAuth(app: Express) {
           user = await storage.getUserByEmail(profile.emails?.[0]?.value || "");
           
           if (user) {
-            // Link Google account to existing user
-            user = await storage.linkOAuthProvider(user.id, "google", profile.id, profile.photos?.[0]?.value);
-            return done(null, user);
+            // Email already registered - return error
+            return done(new Error(`Utente già registrato con ${profile.emails?.[0]?.value}`), false);
           }
 
           // Create new user
