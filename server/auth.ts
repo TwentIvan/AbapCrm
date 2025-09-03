@@ -7,6 +7,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import { emailService } from "./email-service";
 
 declare global {
   namespace Express {
@@ -106,20 +107,52 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/register", async (req, res, next) => {
-    const existingUser = await storage.getUserByUsername(req.body.username);
-    if (existingUser) {
-      return res.status(400).send("Username already exists");
+    try {
+      // Check for existing username
+      const existingUser = await storage.getUserByUsername(req.body.username);
+      if (existingUser) {
+        return res.status(400).send("Username already exists");
+      }
+
+      // Check for existing email
+      const existingEmailUser = await storage.getUserByEmail(req.body.email);
+      if (existingEmailUser) {
+        return res.status(400).send("Email already exists");
+      }
+
+      const user = await storage.createUser({
+        ...req.body,
+        password: await hashPassword(req.body.password),
+        isEmailVerified: false, // New users need email verification
+      });
+
+      // Generate and save email verification token
+      const verificationToken = emailService.generateVerificationToken();
+      await storage.createEmailVerificationToken(user.id, user.email, verificationToken);
+
+      // Send verification email
+      const emailSent = await emailService.sendVerificationEmail(
+        user.email, 
+        user.firstName || user.username || 'Utente', 
+        verificationToken
+      );
+
+      if (!emailSent) {
+        console.error('[AUTH] Failed to send verification email to', user.email);
+        // Don't fail registration if email sending fails
+      }
+
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.status(201).json({
+          ...user,
+          message: "Registrazione completata. Controlla la tua email per confermare l'account."
+        });
+      });
+    } catch (error) {
+      console.error('[AUTH] Registration error:', error);
+      res.status(500).send("Registration failed");
     }
-
-    const user = await storage.createUser({
-      ...req.body,
-      password: await hashPassword(req.body.password),
-    });
-
-    req.login(user, (err) => {
-      if (err) return next(err);
-      res.status(201).json(user);
-    });
   });
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
@@ -274,5 +307,121 @@ export function setupAuth(app: Express) {
       console.error("Error accepting invitation:", error);
       res.status(500).json({ message: "Failed to accept invitation" });
     }
+  });
+
+  // Email verification endpoint
+  app.get("/api/verify-email", async (req, res) => {
+    try {
+      const token = req.query.token as string;
+      
+      if (!token) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Token di verifica mancante" 
+        });
+      }
+
+      // Get token details before verification
+      const tokenRecord = await storage.getEmailVerificationToken(token);
+      if (!tokenRecord) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Token di verifica non valido o scaduto" 
+        });
+      }
+
+      // Verify the token (this also updates the user's email verification status)
+      const success = await storage.verifyEmailToken(token);
+      
+      if (success) {
+        // Get updated user info
+        const user = await storage.getUser(tokenRecord.userId);
+        
+        // Send welcome email
+        if (user) {
+          await emailService.sendWelcomeEmail(
+            user.email, 
+            user.firstName || user.username || 'Utente'
+          );
+        }
+
+        res.json({ 
+          success: true, 
+          message: "Email verificata con successo! Ora puoi accedere a tutte le funzionalità del CRM." 
+        });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          message: "Errore durante la verifica. Il token potrebbe essere scaduto." 
+        });
+      }
+    } catch (error) {
+      console.error('[AUTH] Email verification error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Errore del server durante la verifica" 
+      });
+    }
+  });
+
+  // Frontend route for email verification page
+  app.get("/verify-email", (req, res) => {
+    // Return a simple HTML page that handles the verification
+    const token = req.query.token as string;
+    
+    if (!token) {
+      return res.send(`
+        <html>
+          <head><title>Verifica Email - Errore</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2 style="color: #dc3545;">Token di verifica mancante</h2>
+            <p>Il link di verifica non è valido.</p>
+            <a href="/" style="color: #007bff;">Torna alla homepage</a>
+          </body>
+        </html>
+      `);
+    }
+
+    res.send(`
+      <html>
+        <head>
+          <title>Verifica Email</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            .loader { border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite; margin: 20px auto; }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            .success { color: #28a745; }
+            .error { color: #dc3545; }
+          </style>
+        </head>
+        <body>
+          <h2>Verifica in corso...</h2>
+          <div class="loader"></div>
+          <div id="result"></div>
+          
+          <script>
+            fetch('/api/verify-email?token=${token}')
+              .then(response => response.json())
+              .then(data => {
+                const loader = document.querySelector('.loader');
+                const result = document.getElementById('result');
+                loader.style.display = 'none';
+                
+                if (data.success) {
+                  result.innerHTML = '<h2 class="success">✓ Email verificata con successo!</h2><p>' + data.message + '</p><a href="/" style="color: #007bff;">Accedi al CRM</a>';
+                } else {
+                  result.innerHTML = '<h2 class="error">✗ Verifica fallita</h2><p>' + data.message + '</p><a href="/" style="color: #007bff;">Torna alla homepage</a>';
+                }
+              })
+              .catch(error => {
+                const loader = document.querySelector('.loader');
+                const result = document.getElementById('result');
+                loader.style.display = 'none';
+                result.innerHTML = '<h2 class="error">✗ Errore di connessione</h2><p>Si è verificato un errore durante la verifica.</p><a href="/" style="color: #007bff;">Torna alla homepage</a>';
+              });
+          </script>
+        </body>
+      </html>
+    `);
   });
 }

@@ -1312,3 +1312,19 @@ export const organizationInvitations = pgTable("organization_invitations", {
 export type OrganizationInvitation = typeof organizationInvitations.$inferSelect;
 export type InsertOrganizationInvitation = typeof organizationInvitations.$inferInsert;
 export const insertOrganizationInvitationSchema = createInsertSchema(organizationInvitations).omit({ id: true, createdAt: true, updatedAt: true });
+
+// Email Verification Tokens
+export const emailVerificationTokens = pgTable("email_verification_tokens", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  email: text("email").notNull(), // Email da verificare
+  token: text("token").notNull().unique(), // Token unico per la verifica
+  expiresAt: timestamp("expires_at").notNull(), // Data scadenza token (24 ore)
+  verifiedAt: timestamp("verified_at"), // Quando è stato verificato
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type EmailVerificationToken = typeof emailVerificationTokens.$inferSelect;
+export type InsertEmailVerificationToken = typeof emailVerificationTokens.$inferInsert;
+export const insertEmailVerificationTokenSchema = createInsertSchema(emailVerificationTokens).omit({ id: true, createdAt: true, updatedAt: true });

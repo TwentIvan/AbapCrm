@@ -3,6 +3,7 @@ import {
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
+  emailVerificationTokens,
   type User, type InsertUser,
   type Organization, type InsertOrganization,
   type UserOrganization, type InsertUserOrganization,
@@ -33,7 +34,8 @@ import {
   type VpnSoftware, type InsertVpnSoftware,
   type VpnSystems, type InsertVpnSystems,
   type DiscoveredVpnSoftware, type InsertDiscoveredVpnSoftware,
-  type DiscoveredVpnConfiguration, type InsertDiscoveredVpnConfiguration
+  type DiscoveredVpnConfiguration, type InsertDiscoveredVpnConfiguration,
+  type EmailVerificationToken, type InsertEmailVerificationToken
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull } from "drizzle-orm";
@@ -296,6 +298,12 @@ export interface IStorage {
   createDiscoveredVpnConfiguration(config: InsertDiscoveredVpnConfiguration): Promise<DiscoveredVpnConfiguration>;
   updateDiscoveredVpnConfiguration(id: string, config: Partial<InsertDiscoveredVpnConfiguration>, userId: string): Promise<DiscoveredVpnConfiguration | undefined>;
   deleteDiscoveredVpnConfiguration(id: string, userId: string): Promise<boolean>;
+
+  // Email Verification Tokens
+  createEmailVerificationToken(userId: string, email: string, token: string): Promise<EmailVerificationToken>;
+  getEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined>;
+  verifyEmailToken(token: string): Promise<boolean>;
+  deleteExpiredEmailTokens(): Promise<boolean>;
 
   sessionStore: session.Store;
 }
@@ -2251,6 +2259,69 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(discoveredVpnConfigurations)
       .where(and(eq(discoveredVpnConfigurations.id, id), eq(discoveredVpnConfigurations.userId, userId)));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Email Verification Tokens
+  async createEmailVerificationToken(userId: string, email: string, token: string): Promise<EmailVerificationToken> {
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // Token expires in 24 hours
+    
+    const [newToken] = await db
+      .insert(emailVerificationTokens)
+      .values({
+        userId,
+        email,
+        token,
+        expiresAt
+      })
+      .returning();
+    return newToken;
+  }
+
+  async getEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined> {
+    const [tokenRecord] = await db.select()
+      .from(emailVerificationTokens)
+      .where(and(
+        eq(emailVerificationTokens.token, token),
+        sql`${emailVerificationTokens.verifiedAt} IS NULL` // Not yet verified
+      ));
+    return tokenRecord || undefined;
+  }
+
+  async verifyEmailToken(token: string): Promise<boolean> {
+    // Get the token record first
+    const [tokenRecord] = await db.select()
+      .from(emailVerificationTokens)
+      .where(and(
+        eq(emailVerificationTokens.token, token),
+        sql`${emailVerificationTokens.expiresAt} > NOW()`, // Not expired
+        sql`${emailVerificationTokens.verifiedAt} IS NULL` // Not yet verified
+      ));
+
+    if (!tokenRecord) {
+      return false; // Token not found or already used/expired
+    }
+
+    // Update the token as verified
+    await db
+      .update(emailVerificationTokens)
+      .set({ verifiedAt: new Date() })
+      .where(eq(emailVerificationTokens.id, tokenRecord.id));
+
+    // Update the user's email as verified
+    await db
+      .update(users)
+      .set({ isEmailVerified: true })
+      .where(eq(users.id, tokenRecord.userId));
+
+    return true;
+  }
+
+  async deleteExpiredEmailTokens(): Promise<boolean> {
+    const result = await db
+      .delete(emailVerificationTokens)
+      .where(sql`${emailVerificationTokens.expiresAt} < NOW()`);
     return (result.rowCount || 0) > 0;
   }
 }
