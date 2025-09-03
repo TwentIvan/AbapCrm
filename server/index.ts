@@ -3,6 +3,25 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { autoInitializeEmailServices } from "./email-auto-init";
 
+// Add global error handlers to prevent server crashes
+process.on('uncaughtException', (error) => {
+  console.error('[PROCESS] Uncaught Exception:', error);
+  // Don't exit the process for email-related errors
+  if (error.message?.includes('Timed out while authenticating') || 
+      error.message?.includes('IMAP') ||
+      (error as any).source === 'timeout-auth') {
+    console.error('[PROCESS] Email service error caught, server continuing...');
+    return;
+  }
+  console.error('[PROCESS] Critical error, exiting...');
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[PROCESS] Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit for email-related rejections
+});
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

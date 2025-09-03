@@ -48,12 +48,28 @@ export class ImapEmailService {
     this.imap.once('error', (err: Error) => {
       console.error('[IMAP] Connection error:', err.message);
       this.isConnected = false;
+      // Don't let IMAP errors crash the server
+      this.handleConnectionError(err);
     });
 
     this.imap.once('end', () => {
       console.log('[IMAP] Connection ended');
       this.isConnected = false;
     });
+  }
+
+  private handleConnectionError(err: Error) {
+    // Log the error but don't let it propagate
+    console.error('[IMAP] Handling connection error gracefully:', err.message);
+    
+    // Clean up polling if it exists
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
+    
+    // Set a flag to prevent automatic reconnection attempts
+    this.isConnected = false;
   }
 
   private openFolder() {
@@ -234,7 +250,12 @@ export class ImapEmailService {
   public connect() {
     if (!this.isConnected) {
       console.log('[IMAP] Connecting to Gmail...');
-      this.imap.connect();
+      try {
+        this.imap.connect();
+      } catch (error) {
+        console.error('[IMAP] Failed to initiate connection:', error);
+        this.handleConnectionError(error as Error);
+      }
     }
   }
 
@@ -271,15 +292,20 @@ export class ImapEmailService {
 let emailService: ImapEmailService | null = null;
 
 export const initializeEmailService = (config: ImapConfig) => {
-  if (emailService) {
-    emailService.disconnect();
+  try {
+    if (emailService) {
+      emailService.disconnect();
+    }
+    
+    emailService = new ImapEmailService(config);
+    emailService.connect();
+    emailService.startPolling(2); // Check every 2 minutes
+    
+    return emailService;
+  } catch (error) {
+    console.error('[IMAP] Failed to initialize email service:', error);
+    throw error; // Re-throw to be caught by caller
   }
-  
-  emailService = new ImapEmailService(config);
-  emailService.connect();
-  emailService.startPolling(2); // Check every 2 minutes
-  
-  return emailService;
 };
 
 export const getEmailService = () => emailService;

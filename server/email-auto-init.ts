@@ -33,6 +33,7 @@ export async function autoInitializeEmailServices() {
               console.log(`[EMAIL-INIT] ✓ Email service restored for ${activeConfig.email}`);
             } catch (error) {
               console.error(`[EMAIL-INIT] ✗ Failed to restore email service for ${activeConfig.email}:`, error);
+              // Continue with other users even if one fails
             }
           }
         } catch (error) {
