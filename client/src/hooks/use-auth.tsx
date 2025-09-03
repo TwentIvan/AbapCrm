@@ -71,12 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
-      // Redirect to auth page after successful logout
-      window.location.href = "/auth";
+      queryClient.clear(); // Clear all cached data
+      // Force a full page refresh to ensure complete logout
+      window.location.replace("/auth");
     },
     onError: (error: Error) => {
       toast({
-        title: "Logout failed",
+        title: "Logout fallito",
         description: error.message,
         variant: "destructive",
       });

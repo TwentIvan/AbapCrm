@@ -172,10 +172,25 @@ export function setupAuth(app: Express) {
     }
   );
 
+  app.get("/api/logout", (req, res, next) => {
+    req.logout((err) => {
+      if (err) return next(err);
+      req.session.destroy((err) => {
+        if (err) return next(err);
+        res.clearCookie('connect.sid');
+        res.sendStatus(200);
+      });
+    });
+  });
+
   app.post("/api/logout", (req, res, next) => {
     req.logout((err) => {
       if (err) return next(err);
-      res.sendStatus(200);
+      req.session.destroy((err) => {
+        if (err) return next(err);
+        res.clearCookie('connect.sid');
+        res.sendStatus(200);
+      });
     });
   });
 
