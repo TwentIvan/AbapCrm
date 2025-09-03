@@ -425,12 +425,44 @@ export class DatabaseStorage implements IStorage {
 
   async deleteOrganization(id: string): Promise<boolean> {
     try {
-      // First, remove all user-organization relationships
+      // Delete all related data in the correct order
+      
+      // 1. Delete time entries
+      await db
+        .delete(timeEntries)
+        .where(eq(timeEntries.organizationId, id));
+      
+      // 2. Delete tasks
+      await db
+        .delete(tasks)
+        .where(eq(tasks.organizationId, id));
+      
+      // 3. Delete projects
+      await db
+        .delete(projects)
+        .where(eq(projects.organizationId, id));
+      
+      // 4. Delete deals
+      await db
+        .delete(deals)
+        .where(eq(deals.organizationId, id));
+      
+      // 5. Delete partners
+      await db
+        .delete(partners)
+        .where(eq(partners.organizationId, id));
+      
+      // 6. Delete organization invitations
+      await db
+        .delete(organizationInvitations)
+        .where(eq(organizationInvitations.organizationId, id));
+      
+      // 7. Delete user-organization relationships
       await db
         .delete(userOrganizations)
         .where(eq(userOrganizations.organizationId, id));
       
-      // Then delete the organization
+      // 8. Finally delete the organization
       const result = await db
         .delete(organizations)
         .where(eq(organizations.id, id));
