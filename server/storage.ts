@@ -424,10 +424,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteOrganization(id: string): Promise<boolean> {
-    const result = await db
-      .delete(organizations)
-      .where(eq(organizations.id, id));
-    return (result.rowCount || 0) > 0;
+    try {
+      // First, remove all user-organization relationships
+      await db
+        .delete(userOrganizations)
+        .where(eq(userOrganizations.organizationId, id));
+      
+      // Then delete the organization
+      const result = await db
+        .delete(organizations)
+        .where(eq(organizations.id, id));
+      
+      return (result.rowCount || 0) > 0;
+    } catch (error) {
+      console.error("Error deleting organization:", error);
+      return false;
+    }
   }
 
   // User-Organization relationships
