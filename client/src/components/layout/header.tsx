@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Bell, Plus } from "lucide-react";
+import { Search, Bell, Plus, Mail, Calendar, FolderTree } from "lucide-react";
 import AccountManager from "@/components/account/account-manager";
 
 interface HeaderProps {
@@ -37,6 +38,30 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               className="pl-10 pr-4 w-64"
               data-testid="input-search"
             />
+          </div>
+          
+          {/* Quick Access Buttons */}
+          <div className="flex items-center space-x-2">
+            <Link href="/messages">
+              <Button variant="ghost" size="icon" data-testid="button-messages">
+                <Mail className="h-5 w-5" />
+                <span className="sr-only">Messages</span>
+              </Button>
+            </Link>
+            
+            <Link href="/calendar">
+              <Button variant="ghost" size="icon" data-testid="button-calendar">
+                <Calendar className="h-5 w-5" />
+                <span className="sr-only">Calendar</span>
+              </Button>
+            </Link>
+            
+            <Link href="/planning-calendar">
+              <Button variant="ghost" size="icon" data-testid="button-planning-calendar">
+                <FolderTree className="h-5 w-5" />
+                <span className="sr-only">Planning Calendar</span>
+              </Button>
+            </Link>
           </div>
           
           {/* New Button */}

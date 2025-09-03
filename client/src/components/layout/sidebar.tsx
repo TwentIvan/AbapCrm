@@ -1,36 +1,36 @@
+import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import hubUpLogo from "@assets/generated_images/hub_up_logo.png";
 import ImageContainer from "@/components/ui/image-container";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: BarChart3, testId: "nav-dashboard" },
   { name: "Organizations", href: "/organizations", icon: Building, testId: "nav-organizations" },
   { name: "Projects", href: "/projects", icon: FolderOpen, testId: "nav-projects" },
   { name: "Tasks", href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
-  { name: "Time Entries", href: "/timesheet", icon: Clock, testId: "nav-timesheet" },
-  { name: "Timesheets", href: "/timesheets", icon: Clock, testId: "nav-timesheets" },
-  { name: "Deals", href: "/deals", icon: Handshake, testId: "nav-deals" },
   { name: "Partners", href: "/partners", icon: Building, testId: "nav-partners" },
   { name: "Sales Orders", href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
   { name: "Rate Agreements", href: "/rate-agreements", icon: DollarSign, testId: "nav-rate-agreements" },
   { name: "Human Resources", href: "/human-resources", icon: Users, testId: "nav-human-resources" },
   { name: "SAP Systems", href: "/sap-systems", icon: Server, testId: "nav-sap-systems" },
-  { name: "VPN Systems", href: "/vpn-systems", icon: Shield, testId: "nav-vpn-systems" },
   { name: "VPN Connections", href: "/vpn-connections", icon: Wifi, testId: "nav-vpn-connections" },
-  { name: "VPN Discovery", href: "/vpn-discovery", icon: Radar, testId: "nav-vpn-discovery" },
   { name: "System Credentials", href: "/system-credentials", icon: Key, testId: "nav-system-credentials" },
-  { name: "Messages", href: "/messages", icon: Mail, testId: "nav-messages" },
-  { name: "Calendar", href: "/calendar", icon: Calendar, testId: "nav-calendar" },
-  { name: "Planning Calendar", href: "/planning-calendar", icon: FolderTree, testId: "nav-planning-calendar" },
+];
+
+const timeManagementItems = [
+  { name: "Time Entries", href: "/timesheet", icon: Clock, testId: "nav-timesheet" },
+  { name: "Timesheets", href: "/timesheets", icon: Clock, testId: "nav-timesheets" },
 ];
 
 export default function Sidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
+  const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(
+    timeManagementItems.some(item => location === item.href)
+  );
 
   return (
     <aside className="w-64 bg-card border-r border-border flex flex-col">
@@ -72,6 +72,54 @@ export default function Sidebar() {
             </Link>
           );
         })}
+        
+        {/* Time Management Section */}
+        <div className="space-y-1">
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full justify-start space-x-3",
+              "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            )}
+            onClick={() => setIsTimeManagementOpen(!isTimeManagementOpen)}
+            data-testid="nav-time-management"
+          >
+            <Clock className="h-5 w-5" />
+            <span>Time Management</span>
+            {isTimeManagementOpen ? (
+              <ChevronDown className="h-4 w-4 ml-auto" />
+            ) : (
+              <ChevronRight className="h-4 w-4 ml-auto" />
+            )}
+          </Button>
+          
+          {isTimeManagementOpen && (
+            <div className="ml-6 space-y-1">
+              {timeManagementItems.map((item) => {
+                const isActive = location === item.href;
+                const Icon = item.icon;
+                
+                return (
+                  <Link key={item.name} href={item.href}>
+                    <Button
+                      variant={isActive ? "default" : "ghost"}
+                      className={cn(
+                        "w-full justify-start space-x-3 text-sm",
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      )}
+                      data-testid={item.testId}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{item.name}</span>
+                    </Button>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </nav>
 
       {/* User Profile */}
