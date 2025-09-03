@@ -234,7 +234,6 @@ export default function AuthPage() {
                         </div>
                       </div>
                       
-                      {/* Google OAuth temporaneamente disabilitato per sviluppo
                       <Button
                         type="button"
                         variant="outline"
@@ -245,7 +244,6 @@ export default function AuthPage() {
                         <SiGoogle className="mr-2 h-4 w-4" />
                         Accedi con Google
                       </Button>
-                      */}
                     </TabsContent>
                     
                     <TabsContent value="register" className="space-y-4">
@@ -377,7 +375,6 @@ export default function AuthPage() {
                         </div>
                       </div>
                       
-                      {/* Google OAuth temporaneamente disabilitato per sviluppo
                       <Button
                         type="button"
                         variant="outline"
@@ -388,7 +385,6 @@ export default function AuthPage() {
                         <SiGoogle className="mr-2 h-4 w-4" />
                         Registrati con Google
                       </Button>
-                      */}
                     </TabsContent>
                   </Tabs>
                 </CardContent>
