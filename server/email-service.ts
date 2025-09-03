@@ -12,7 +12,14 @@ export class EmailService {
 
   constructor() {
     this.fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@example.com';
-    this.baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+    
+    // Use Replit domain in cloud environment, fallback to localhost for development
+    if (process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN) {
+      const domain = process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN;
+      this.baseUrl = `https://${domain}`;
+    } else {
+      this.baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+    }
   }
 
   /**
