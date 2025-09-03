@@ -43,10 +43,10 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Local Strategy
+  // Local Strategy - using email as username
   passport.use(
-    new LocalStrategy(async (username, password, done) => {
-      const user = await storage.getUserByUsername(username);
+    new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
+      const user = await storage.getUserByEmail(email);
       if (!user || !user.password || !(await comparePasswords(password, user.password))) {
         return done(null, false);
       } else {
@@ -83,6 +83,7 @@ export function setupAuth(app: Express) {
           // Create new user
           const newUser = await storage.createUser({
             email: profile.emails?.[0]?.value || "",
+            username: profile.emails?.[0]?.value || "", // Use email as username
             firstName: profile.name?.givenName || "",
             lastName: profile.name?.familyName || "",
             provider: "google",
@@ -107,12 +108,6 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      // Check for existing username
-      const existingUser = await storage.getUserByUsername(req.body.username);
-      if (existingUser) {
-        return res.status(400).send("Username already exists");
-      }
-
       // Check for existing email
       const existingEmailUser = await storage.getUserByEmail(req.body.email);
       if (existingEmailUser) {
@@ -121,6 +116,7 @@ export function setupAuth(app: Express) {
 
       const user = await storage.createUser({
         ...req.body,
+        username: req.body.email, // Use email as username
         password: await hashPassword(req.body.password),
         isEmailVerified: false, // New users need email verification
       });

@@ -14,12 +14,11 @@ import { SiGoogle } from "react-icons/si";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const loginSchema = z.object({
-  username: z.string().min(1, "Username richiesto"),
+  email: z.string().email("Inserisci un'email valida"),
   password: z.string().min(1, "Password richiesta"),
 });
 
 const registerSchema = z.object({
-  username: z.string().min(3, "Username deve avere almeno 3 caratteri"),
   email: z.string().email("Inserisci un'email valida"),
   password: z.string().min(6, "Password deve avere almeno 6 caratteri"),
   firstName: z.string().min(1, "Nome richiesto"),
@@ -44,7 +43,7 @@ export default function AuthPage() {
   const loginForm = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
   });
@@ -52,7 +51,6 @@ export default function AuthPage() {
   const registerForm = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      username: "",
       email: "",
       password: "",
       firstName: "",
@@ -175,15 +173,17 @@ export default function AuthPage() {
                         <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
                           <FormField
                             control={loginForm.control}
-                            name="username"
+                            name="email"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-gray-700 dark:text-gray-300">Username</FormLabel>
+                                <FormLabel className="text-gray-700 dark:text-gray-300">Email</FormLabel>
                                 <FormControl>
                                   <Input 
                                     {...field} 
-                                    data-testid="input-username"
-                                    placeholder="Il tuo username" 
+                                    type="email"
+                                    autoComplete="email"
+                                    data-testid="input-email"
+                                    placeholder="La tua email" 
                                     className="h-11"
                                   />
                                 </FormControl>
@@ -261,6 +261,7 @@ export default function AuthPage() {
                                   <FormControl>
                                     <Input 
                                       {...field} 
+                                      autoComplete="given-name"
                                       data-testid="input-first-name"
                                       placeholder="Nome" 
                                       className="h-11"
@@ -280,6 +281,7 @@ export default function AuthPage() {
                                   <FormControl>
                                     <Input 
                                       {...field} 
+                                      autoComplete="family-name"
                                       data-testid="input-last-name"
                                       placeholder="Cognome" 
                                       className="h-11"
@@ -290,25 +292,6 @@ export default function AuthPage() {
                               )}
                             />
                           </div>
-                          
-                          <FormField
-                            control={registerForm.control}
-                            name="username"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700 dark:text-gray-300">Username</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    {...field} 
-                                    data-testid="input-register-username"
-                                    placeholder="Scegli un username" 
-                                    className="h-11"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
                           
                           <FormField
                             control={registerForm.control}
@@ -325,6 +308,7 @@ export default function AuthPage() {
                                   <Input 
                                     {...field} 
                                     type="email"
+                                    autoComplete="email"
                                     data-testid="input-email"
                                     placeholder="La tua email" 
                                     className="h-11"
