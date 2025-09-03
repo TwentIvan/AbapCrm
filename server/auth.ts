@@ -49,9 +49,14 @@ export function setupAuth(app: Express) {
       const user = await storage.getUserByEmail(email);
       if (!user || !user.password || !(await comparePasswords(password, user.password))) {
         return done(null, false);
-      } else {
-        return done(null, user);
       }
+      
+      // Check if email is verified
+      if (!user.isEmailVerified) {
+        return done(new Error("Email non verificata. Controlla la tua email e clicca sul link di conferma."), false);
+      }
+      
+      return done(null, user);
     }),
   );
 
@@ -147,12 +152,10 @@ export function setupAuth(app: Express) {
         // Don't fail registration if email sending fails
       }
 
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.status(201).json({
-          ...user,
-          message: "Registrazione completata. Controlla la tua email per confermare l'account."
-        });
+      // NO AUTO-LOGIN: User must verify email first
+      res.status(201).json({
+        success: true,
+        message: "Registrazione completata. Controlla la tua email per confermare l'account."
       });
     } catch (error) {
       console.error('[AUTH] Registration error:', error);
