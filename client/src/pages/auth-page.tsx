@@ -31,9 +31,15 @@ type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, loginMutation, registerMutation, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("login");
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
+  // If user is already authenticated, redirect to home
+  if (!isLoading && user) {
+    setLocation("/");
+    return null;
+  }
 
   const loginForm = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
