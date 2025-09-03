@@ -4,13 +4,21 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Auth providers enum
+export const authProviderEnum = pgEnum("auth_provider", ["local", "google", "apple"]);
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  username: text("username").unique(), // Made optional for OAuth users
+  password: text("password"), // Made optional for OAuth users
   email: text("email").notNull().unique(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
+  profileImageUrl: text("profile_image_url"), // For OAuth profile pictures
+  // OAuth fields
+  provider: authProviderEnum("provider").default("local").notNull(),
+  externalId: text("external_id"), // Provider's user ID
+  isEmailVerified: boolean("is_email_verified").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
