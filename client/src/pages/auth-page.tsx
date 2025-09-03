@@ -170,7 +170,7 @@ export default function AuthPage() {
                     
                     <TabsContent value="login" className="space-y-4">
                       <Form {...loginForm}>
-                        <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
+                        <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4" autoComplete="on">
                           <FormField
                             control={loginForm.control}
                             name="email"
@@ -181,6 +181,8 @@ export default function AuthPage() {
                                   <Input 
                                     {...field} 
                                     type="email"
+                                    name="email"
+                                    id="loginEmail"
                                     autoComplete="email"
                                     data-testid="input-email"
                                     placeholder="La tua email" 
@@ -202,6 +204,9 @@ export default function AuthPage() {
                                   <Input 
                                     {...field} 
                                     type="password"
+                                    name="current-password"
+                                    id="loginPassword"
+                                    autoComplete="current-password"
                                     data-testid="input-password"
                                     placeholder="La tua password" 
                                     className="h-11"
@@ -250,7 +255,7 @@ export default function AuthPage() {
                     
                     <TabsContent value="register" className="space-y-4">
                       <Form {...registerForm}>
-                        <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+                        <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4" autoComplete="on">
                           <div className="grid grid-cols-2 gap-3">
                             <FormField
                               control={registerForm.control}
@@ -261,6 +266,8 @@ export default function AuthPage() {
                                   <FormControl>
                                     <Input 
                                       {...field} 
+                                      name="given-name"
+                                      id="firstName"
                                       autoComplete="given-name"
                                       data-testid="input-first-name"
                                       placeholder="Nome" 
@@ -281,6 +288,8 @@ export default function AuthPage() {
                                   <FormControl>
                                     <Input 
                                       {...field} 
+                                      name="family-name"
+                                      id="lastName"
                                       autoComplete="family-name"
                                       data-testid="input-last-name"
                                       placeholder="Cognome" 
@@ -308,6 +317,8 @@ export default function AuthPage() {
                                   <Input 
                                     {...field} 
                                     type="email"
+                                    name="email"
+                                    id="registerEmail"
                                     autoComplete="email"
                                     data-testid="input-email"
                                     placeholder="La tua email" 
@@ -329,6 +340,9 @@ export default function AuthPage() {
                                   <Input 
                                     {...field} 
                                     type="password"
+                                    name="new-password"
+                                    id="registerPassword"
+                                    autoComplete="new-password"
                                     data-testid="input-register-password"
                                     placeholder="Crea una password" 
                                     className="h-11"
