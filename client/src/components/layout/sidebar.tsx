@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, ChevronRight, ChevronDown, GripVertical } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import hubUpLogo from "@assets/generated_images/hub_up_logo.png";
 import ImageContainer from "@/components/ui/image-container";
@@ -90,7 +90,7 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '260px', minWidth: '260px' }}>
+      <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '220px', minWidth: '220px' }}>
         <Icon className="h-5 w-5 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
         <span className="text-base font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
       </div>
@@ -131,17 +131,18 @@ function SortableParentItem({ item, children, isOpen, onToggle }: { item: any; c
           className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
           {...listeners} 
         />
-        <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', minWidth: '260px' }}>
+        <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', minWidth: '220px' }}>
           <Icon className="h-6 w-6 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
           <span className="text-base font-medium flex-1" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
           <button 
             onClick={(e) => { e.stopPropagation(); onToggle(); }}
-            className="ml-2 p-1 rounded-full hover:bg-white/20 transition-colors"
+            className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center"
+            style={{ borderColor: 'rgba(59, 130, 246, 0.9)', color: 'rgba(59, 130, 246, 0.9)' }}
           >
             {isOpen ? (
-              <ChevronDown className="h-4 w-4" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+              <Minus className="h-3 w-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
             ) : (
-              <ChevronRight className="h-4 w-4" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+              <Plus className="h-3 w-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
             )}
           </button>
         </div>
@@ -186,7 +187,7 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <div className="flex items-center px-3 py-1 rounded-full nav-box transition-colors" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '240px', minWidth: '240px' }}>
+      <div className="flex items-center px-3 py-1 rounded-full nav-box transition-colors" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '200px', minWidth: '200px' }}>
         <Icon className="h-5 w-5 flex-shrink-0 mr-2" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
         <span className="text-sm font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
       </div>
