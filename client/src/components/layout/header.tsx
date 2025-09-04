@@ -79,9 +79,8 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
     
     // Se il button corrente è a sinistra di quello in hover, si sposta a sinistra
     if (currentIndex < hoveredIndex) {
-      // I box si espandono verso SINISTRA, quindi spostamento minore
-      // Provo con un valore più piccolo per ridurre gli spazi bianchi
-      return 'translateX(-80px)'; 
+      // Mantenere la distanza iniziale (space-x-2 = 8px)
+      return 'translateX(-16px)'; 
     }
     
     return 'translateX(0)';
