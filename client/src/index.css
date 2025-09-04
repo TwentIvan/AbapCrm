@@ -108,3 +108,9 @@
 .uppy-Dashboard-AddFiles-title {
   display: none !important;
 }
+
+/* Sidebar hover effects - only on box */
+.sidebar-nav-item:hover .nav-box {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
