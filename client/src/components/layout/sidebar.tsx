@@ -111,7 +111,7 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
       ref={setNodeRef} 
       style={style} 
       className={cn(
-        "w-full p-1.5 rounded-md group flex items-center space-x-3 cursor-pointer transition-colors ml-4",
+        "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors ml-4",
         isActive
           ? "bg-primary text-primary-foreground"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -121,11 +121,11 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
       onClick={() => window.location.href = item.href}
     >
       <GripVertical 
-        className="h-4 w-4 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
+        className="h-5 w-5 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <Icon className="h-4 w-4 flex-shrink-0" />
-      <span className="text-sm">{item.name}</span>
+      <Icon className="h-6 w-6 flex-shrink-0" />
+      <span>{item.name}</span>
     </div>
   );
 }
@@ -239,7 +239,7 @@ export default function Sidebar() {
             onClick={() => setIsSystemsOpen(!isSystemsOpen)}
             data-testid="nav-systems"
           >
-            <GripVertical className="h-5 w-5 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
+            <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
             <Shield className="h-6 w-6" />
             <span className="text-base font-medium">Systems</span>
             {isSystemsOpen ? (
@@ -280,7 +280,7 @@ export default function Sidebar() {
             onClick={() => setIsTimeManagementOpen(!isTimeManagementOpen)}
             data-testid="nav-time-management"
           >
-            <GripVertical className="h-5 w-5 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
+            <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
             <Clock className="h-6 w-6" />
             <span className="text-base font-medium">Time Management</span>
             {isTimeManagementOpen ? (
