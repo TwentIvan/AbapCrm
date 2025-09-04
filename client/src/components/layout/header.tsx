@@ -2,8 +2,15 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Mail, Calendar, FolderTree, Building, User } from "lucide-react";
+import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrganization } from "@/hooks/use-organization";
 
@@ -15,8 +22,8 @@ interface HeaderProps {
 
 export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const { user } = useAuth();
-  const { currentOrganization } = useOrganization();
+  const { user, logoutMutation } = useAuth();
+  const { organizations, currentOrganization, switchOrganization } = useOrganization();
 
   const userInitials = user?.firstName && user?.lastName 
     ? `${user.firstName[0]}${user.lastName[0]}` 
@@ -82,22 +89,58 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           
           {/* User & Organization Box with Switch */}
           {user && (
-            <div className="bg-muted/20 border border-muted rounded-full px-3 py-1 flex items-center space-x-3">
+            <div className="bg-muted/20 border border-muted rounded-full px-4 py-2 flex items-center space-x-4">
               {/* Logo Organizzazione - Sinistra (cliccabile per switch) */}
-              <div className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center cursor-pointer hover:bg-accent" onClick={() => console.log('Switch org')}>
-                {currentOrganization?.logoUrl ? (
-                  <img 
-                    src={currentOrganization.logoUrl} 
-                    alt={`${currentOrganization.name} logo`}
-                    className="w-6 h-6 rounded-full object-cover"
-                  />
-                ) : (
-                  <Building className="h-4 w-4 text-muted-foreground" />
-                )}
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="w-10 h-10 rounded-full bg-background border border-border hover:bg-accent">
+                    {currentOrganization?.logoUrl ? (
+                      <img 
+                        src={currentOrganization.logoUrl} 
+                        alt={`${currentOrganization.name} logo`}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <Building className="h-6 w-6 text-muted-foreground" />
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64">
+                  {organizations?.map((org) => (
+                    <DropdownMenuItem
+                      key={org.id}
+                      className={`flex items-center justify-between cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground ${
+                        currentOrganization?.id === org.id ? "bg-muted" : ""
+                      }`}
+                      onClick={() => switchOrganization(org.id)}
+                    >
+                      <div className="flex items-center space-x-2">
+                        {org.logoUrl ? (
+                          <img 
+                            src={org.logoUrl} 
+                            alt={`${org.name} logo`}
+                            className="h-4 w-4 rounded object-cover"
+                          />
+                        ) : (
+                          <Building className="h-4 w-4" />
+                        )}
+                        <span className="font-medium">{org.name}</span>
+                        {currentOrganization?.id === org.id && (
+                          <Check className="h-3 w-3 text-primary" />
+                        )}
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => window.location.href = "/organizations"}>
+                    <Users className="h-4 w-4 mr-2" />
+                    Gestisci Organizzazioni
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               
               {/* Nomi */}
-              <div className="flex flex-col text-xs leading-tight min-w-0">
+              <div className="flex flex-col text-sm leading-tight min-w-0">
                 <span className="font-medium text-foreground truncate">
                   {user.firstName && user.lastName 
                     ? `${user.firstName} ${user.lastName}` 
@@ -108,14 +151,29 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </span>
               </div>
               
-              {/* Avatar Utente - Destra */}
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                <Avatar className="w-8 h-8">
-                  <AvatarFallback className="text-xs font-medium text-primary-foreground bg-primary">
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+              {/* Avatar Utente - Destra (cliccabile per logout/impostazioni) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="w-10 h-10 rounded-full bg-primary hover:bg-primary/90">
+                    <Avatar className="w-10 h-10">
+                      <AvatarFallback className="text-sm font-medium text-primary-foreground bg-primary">
+                        {userInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => console.log('Account Settings')}>
+                    <User className="mr-2 h-4 w-4" />
+                    Impostazioni Account
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => logoutMutation.mutate()} className="text-destructive">
+                    <User className="mr-2 h-4 w-4" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
         </div>
