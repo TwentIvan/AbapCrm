@@ -1,0 +1,69 @@
+Giovedì 4 settembre 2025
+
+Ecco le novità di Replit:
+
+Agente generale : l'agente ora funziona con qualsiasi framework o progetto su Replit
+Crea immagini : genera elementi visivi direttamente nei tuoi progetti con Imagen 4 di Google
+Temi delle app : crea app belle e coerenti con i nostri nuovi temi
+Database divisi : esegui test in sicurezza senza interrompere le app live con database di produzione e sviluppo separati
+Facciamo un salto 👇
+
+🆕 Agente generale
+
+Agent ora funziona con qualsiasi framework o progetto esistente. Importa da GitHub, riorganizza la tua base di codice, crea un gioco o impara un linguaggio.
+
+Se eseguito su Replit, funziona anche con Agent. Scopri di più qui.
+
+🖼️ Generazione di immagini in Agent
+
+Ti serviva un'immagine promozionale per la tua landing page? Generala.
+
+Non dovrai più cercare foto stock o aprire altre app. Le tue idee diventano visibili senza uscire da Replit. Agent genererà immagini con i modelli più recenti e più belli.
+
+Per saperne di più clicca qui.
+
+🧑‍🎨 Temi per app
+
+Crea splendide app web con stili personalizzati. Imposta il tuo brand una volta e usalo ovunque.
+
+Ora le app hanno un aspetto professionale fin dall'inizio. Utilizza gli stessi colori, font e layout. Niente più app banali o stili da rifare ogni volta.
+
+Per saperne di più, consulta la nostra documentazione.
+
+🗃️ Database separati per produzione e sviluppo
+
+Ogni app Replit ora ha database di produzione e sviluppo separati. Non dovrai più preoccuparti di modificare i dati utente durante lo sviluppo della tua app!
+
+Anche il nostro pannello del database riprogettato è mirato a rendere le cose più semplici da capire e da gestire.
+
+Per saperne di più, consulta la nostra documentazione.
+
+📌 Altre nuove funzionalità
+
+Ricerca file più intelligente : l'agente trova i file più velocemente nei tuoi progetti
+Scarica cartelle : prendi intere cartelle di progetto con un clic
+Editor visivo migliorato : selettore colore e flusso di messa a fuoco migliorati
+Aggiornamenti live iOS : controlla i progetti in esecuzione dalla schermata di blocco
+Sposta app : trasferisci facilmente le app personali agli account aziendali/di team
+Domini di posta elettronica : aggiungi record MX per i domini acquistati tramite Replit
+Attiva/disattiva tema : cambia la modalità chiaro/scuro dal menu del tuo avatar
+Condividi link di creazione : genera link che creano app da prompt all'istante
+Suggerimenti di rollback : ottieni consigli intelligenti di rollback con l'attivazione/disattivazione della data
+Annulla abbonamenti : annulla gli abbonamenti dell'organizzazione senza eliminare l'organizzazione
+Claude Opus 4.1 : abbiamo portato il miglior modello di Anthropic in modalità ad alta potenza
+Certificazione SOC 2 : Replit è ora certificata SOC 2 Tipo II
+Potete trovare aggiornamenti settimanali e altro ancora nel nostro changelog.
+
+📹 Video e tutorial
+Ho pubblicato tutorial sul mio canale e su Replit YouTube . Ecco alcuni punti salienti:
+
+	Giocare	
+Masterclass sui dati: tutto quello che devi sapere sull'archiviazione dei dati su Replit.
+
+	Giocare	
+Immagini migliori: impara suggerimenti strutturati per la generazione di immagini, quindi applicali utilizzando la generazione di immagini in Agent.
+
+🔮 Guardando avanti
+Per agosto è tutto, non vedo l'ora di mostrarvi cosa stiamo sviluppando a settembre. Nel frattempo, continuate a creare e condividere le vostre app.
+
+Migliore,
