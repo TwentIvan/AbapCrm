@@ -80,7 +80,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', border: '1px solid rgba(59, 130, 246, 0.2)' }}
+                          className="h-14 w-14 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', border: '1px solid rgba(59, 130, 246, 0.2)' }}
                           data-testid="button-search"
                         >
                           <Search className="h-8 w-8 text-muted-foreground" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
@@ -146,7 +146,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Link href="/messages">
-                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-messages">
+                    <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-messages">
                       <Mail className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
                       <span className="sr-only">Messages</span>
                     </Button>
@@ -164,7 +164,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Link href="/calendar">
-                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-calendar">
+                    <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-calendar">
                       <Calendar className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
                       <span className="sr-only">Calendar</span>
                     </Button>
@@ -182,7 +182,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Link href="/planning-calendar">
-                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-planning-calendar">
+                    <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-planning-calendar">
                       <FolderTree className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
                       <span className="sr-only">Planning Calendar</span>
                     </Button>
