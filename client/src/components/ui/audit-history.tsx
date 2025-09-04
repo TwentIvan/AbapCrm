@@ -105,8 +105,9 @@ function AuditEntry({ entry }: { entry: AuditLogEntry }) {
   const actionInfo = actionConfig[entry.action];
   const ActionIcon = actionInfo.icon;
   
-  const oldValues = entry.oldValues ? JSON.parse(entry.oldValues) : {};
-  const newValues = entry.newValues ? JSON.parse(entry.newValues) : {};
+  // Handle case where JSONB values are null to avoid parsing errors
+  const oldValues = {};
+  const newValues = {};
   const changedFields = entry.changedFields || [];
 
   const timeAgo = formatDistance(new Date(entry.createdAt), new Date(), { 
@@ -159,12 +160,14 @@ function AuditEntry({ entry }: { entry: AuditLogEntry }) {
             <Separator />
             <div className="space-y-4">
               {changedFields.map((field) => (
-                <FieldChange
-                  key={field}
-                  field={field}
-                  oldValue={oldValues[field]}
-                  newValue={newValues[field]}
-                />
+                <div key={field} className="p-3 bg-muted/30 rounded-lg">
+                  <div className="text-sm font-medium text-foreground capitalize">
+                    {field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Campo modificato (dettagli non disponibili)
+                  </div>
+                </div>
               ))}
             </div>
           </CollapsibleContent>

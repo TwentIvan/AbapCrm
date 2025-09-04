@@ -37,36 +37,25 @@ export class AuditService {
         }
       }
 
-      // Ultra-simple serialization to avoid JSON issues
-      const safeSerialize = (obj: any): any => {
-        if (!obj) return null;
+      // NEW APPROACH: Skip JSONB completely, use simple text description
+      const createSimpleDescription = (oldData: any, newData: any, changedFields: string[]): string => {
+        const changes: string[] = [];
         
-        // Return a very simple object with only basic fields
-        const result: any = {};
-        
-        // Only take safe, simple fields
-        const safeKeys = ['id', 'name', 'title', 'description', 'status', 'priority', 'type'];
-        
-        for (const key of safeKeys) {
-          if (obj[key] !== undefined && obj[key] !== null) {
-            const value = obj[key];
-            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-              result[key] = value;
-            } else {
-              result[key] = String(value);
-            }
-          }
+        for (const field of changedFields) {
+          const oldVal = oldData?.[field] || 'vuoto';
+          const newVal = newData?.[field] || 'vuoto';
+          changes.push(`${field}: "${oldVal}" → "${newVal}"`);
         }
         
-        return result;
+        return changes.join(', ');
       };
 
       const auditEntry: InsertAuditLog = {
         tableName,
         recordId,
         action,
-        oldValues: oldValues ? safeSerialize(oldValues) : null,
-        newValues: newValues ? safeSerialize(newValues) : null,
+        oldValues: null, // Skip JSONB to avoid JSON parsing errors
+        newValues: null, // Skip JSONB to avoid JSON parsing errors
         changedFields: changedFields.length > 0 ? changedFields : null,
         userId: context.userId,
         organizationId: context.organizationId || null,
