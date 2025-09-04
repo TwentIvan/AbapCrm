@@ -224,7 +224,34 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           {/* User & Organization Box with Switch */}
           {user && (
             <div className="rounded-full px-4 py-2 flex items-center space-x-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-              {/* Logo Organizzazione - Sinistra (cliccabile per switch) */}
+              {/* Language Selector - Bandiera Circolare */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="w-10 h-10 rounded-full bg-background border border-border hover:bg-accent p-0" data-testid="button-language-flag">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-lg">
+                      {language === "it" ? "🇮🇹" : "🇬🇧"}
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem 
+                    onClick={() => setLanguage("it")}
+                    className="flex items-center justify-between"
+                  >
+                    <span>🇮🇹 Italiano</span>
+                    {language === "it" && <Check className="h-4 w-4" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setLanguage("en")}
+                    className="flex items-center justify-between"
+                  >
+                    <span>🇬🇧 English</span>
+                    {language === "en" && <Check className="h-4 w-4" />}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Logo Organizzazione - Centro (cliccabile per switch) */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="w-14 h-14 rounded-full bg-background border border-border hover:bg-accent">
