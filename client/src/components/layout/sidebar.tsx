@@ -79,7 +79,7 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
           data-testid={item.testId}
         >
           <div className="flex items-center space-x-3 flex-1">
-            <GripVertical className="h-4 w-4 opacity-0 group-hover:opacity-50 cursor-grab" {...listeners} />
+            <GripVertical className="h-5 w-5 opacity-60 group-hover:opacity-100 cursor-grab text-muted-foreground" {...listeners} />
             <Icon className="h-6 w-6" />
             <span>{item.name}</span>
           </div>
@@ -173,7 +173,7 @@ export default function Sidebar() {
           </Button>
           
           {isSystemsOpen && (
-            <div className="ml-3 space-y-1">
+            <div className="ml-6 space-y-1">
               <DndContext 
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -183,9 +183,7 @@ export default function Sidebar() {
                   {systemsItems.map((item) => {
                     const isActive = location === item.href;
                     return (
-                      <div key={item.id} className="ml-3">
-                        <SortableNavItem item={item} isActive={isActive} />
-                      </div>
+                      <SortableNavItem key={item.id} item={item} isActive={isActive} />
                     );
                   })}
                 </SortableContext>
@@ -215,7 +213,7 @@ export default function Sidebar() {
           </Button>
           
           {isTimeManagementOpen && (
-            <div className="ml-3 space-y-1">
+            <div className="ml-6 space-y-1">
               <DndContext 
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -225,9 +223,7 @@ export default function Sidebar() {
                   {timeManagementItems.map((item) => {
                     const isActive = location === item.href;
                     return (
-                      <div key={item.id} className="ml-3">
-                        <SortableNavItem item={item} isActive={isActive} />
-                      </div>
+                      <SortableNavItem key={item.id} item={item} isActive={isActive} />
                     );
                   })}
                 </SortableContext>
