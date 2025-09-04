@@ -238,7 +238,6 @@ export function UniversalTable({
       {/* Info risultati */}
       <div className="text-sm text-gray-500">
         {sortedData.length} di {data.length} elementi visualizzati
-        {searchTerm && ` (filtrati per "${searchTerm}")`}
       </div>
     </div>
   );
