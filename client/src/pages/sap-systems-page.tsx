@@ -247,8 +247,6 @@ export default function SapSystemsPage() {
       data={systems || []}
       columns={columns}
       enableSelection={true}
-      enableSearch={true}
-      searchPlaceholder="Cerca sistema SAP..."
       onSelectionChange={(rows) => setSelectedSystems(rows as SapSystem[])}
       onRowClick={handleEdit}
       bulkActions={[

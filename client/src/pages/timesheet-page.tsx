@@ -481,17 +481,17 @@ export default function TimesheetPage() {
             {/* View Toggle */}
             <div className="flex bg-muted rounded-lg p-1">
               <Button
-                variant={viewMode === "cards" ? "default" : "ghost"}
+                variant={"ghost"}
                 size="sm"
-                onClick={() => updateLayout({ viewMode: "cards" })}
+                onClick={() => updateLayout({})}
                 data-testid="button-view-cards"
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
               <Button
-                variant={viewMode === "list" ? "default" : "ghost"}
+                variant={"default"}
                 size="sm"
-                onClick={() => updateLayout({ viewMode: "list" })}
+                onClick={() => updateLayout({})}
                 data-testid="button-view-list"
               >
                 <List className="h-4 w-4" />
@@ -568,7 +568,6 @@ export default function TimesheetPage() {
           tableId="timesheet-entries"
           columns={columns}
           data={tableData}
-          searchPlaceholder="Cerca time entries..."
           configurableColumns={true}
           enableAdvancedFilters={true}
           filterColumns={[

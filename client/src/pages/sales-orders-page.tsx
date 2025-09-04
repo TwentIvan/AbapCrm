@@ -212,32 +212,23 @@ export default function SalesOrdersPage() {
                 onDeleteLayout={deleteLayout}
                 onConfigureTable={() => setShowConfigDialog(true)}
               />
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowConfigDialog(true)}
-                data-testid="button-configure-columns"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Configura
-              </Button>
             </div>
 
             {/* View Toggle */}
             <div className="flex bg-muted rounded-lg p-1">
               <Button
-                variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                variant={'ghost'}
                 size="sm"
-                onClick={() => updateLayout({ viewMode: 'cards' })}
+                onClick={() => updateLayout({})}
                 data-testid="button-view-cards"
               >
                 <Grid3X3 className="mr-2 h-4 w-4" />
                 Cards
               </Button>
               <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                variant={'default'}
                 size="sm"
-                onClick={() => updateLayout({ viewMode: 'list' })}
+                onClick={() => updateLayout({})}
                 data-testid="button-view-list"
               >
                 <List className="mr-2 h-4 w-4" />
@@ -250,8 +241,6 @@ export default function SalesOrdersPage() {
             data={salesOrders}
             columns={columns}
             enableSelection={true}
-            enableSearch={true}
-            searchPlaceholder="Cerca ordini..."
             onSelectionChange={(rows) => setSelectedOrders(rows as SalesOrder[])}
             onRowClick={handleEdit}
             bulkActions={[

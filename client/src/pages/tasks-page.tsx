@@ -721,8 +721,6 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
               data={tasks || []}
               columns={tableColumns}
               enableSelection={true}
-              enableSearch={true}
-              searchPlaceholder="Cerca tasks..."
               onSelectionChange={(rows) => setSelectedTasks(rows as Task[])}
               onRowClick={handleEdit}
               bulkActions={[
@@ -823,6 +821,16 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
 
       {/* Table Configuration Dialog */}
       <TableConfiguration
+        tableId="tasks"
+        availableColumns={[
+          { id: 'title', label: 'Title' },
+          { id: 'status', label: 'Status' },
+          { id: 'priority', label: 'Priority' },
+          { id: 'projectId', label: 'Project' },
+          { id: 'assigneeId', label: 'Assignee' },
+          { id: 'dueDate', label: 'Due Date' },
+          { id: 'estimatedEffort', label: 'Estimated Effort' }
+        ]}
         isOpen={showConfigDialog}
         onOpenChange={setShowConfigDialog}
         editingLayout={editingLayout}
