@@ -223,15 +223,19 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           
           {/* User & Organization Box with Switch */}
           {user && (
-            <div className="rounded-full px-4 py-2 flex items-center space-x-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-              {/* Language Selector - Bandiera Circolare */}
+            <div className="relative rounded-full px-4 py-2 flex items-center space-x-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+              {/* Language Selector - Semicerchio Bandiera */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-10 h-10 rounded-full bg-background border border-border hover:bg-accent p-0" data-testid="button-language-flag">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-lg">
-                      {language === "it" ? "🇮🇹" : "🇬🇧"}
-                    </div>
-                  </Button>
+                  <div 
+                    className="absolute left-0 top-0 h-full w-6 rounded-l-full cursor-pointer hover:opacity-80 transition-opacity"
+                    style={{
+                      background: language === "it" 
+                        ? 'linear-gradient(to bottom, #009246 33%, #FFFFFF 33%, #FFFFFF 66%, #CE2B37 66%)'
+                        : 'linear-gradient(to bottom, #012169 40%, #FFFFFF 40%, #FFFFFF 60%, #C8102E 60%)'
+                    }}
+                    data-testid="button-language-semicircle"
+                  />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   <DropdownMenuItem 
