@@ -85,7 +85,7 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
         {...listeners} 
       />
       <Icon className="h-6 w-6 flex-shrink-0" />
-      <span className="text-base font-medium">{item.name}</span>
+      <span className="text-lg font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
     </div>
   );
 }
@@ -126,7 +126,7 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
         {...listeners} 
       />
       <Icon className="h-5 w-5 flex-shrink-0" />
-      <span className="text-sm">{item.name}</span>
+      <span className="text-base" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
     </div>
   );
 }
