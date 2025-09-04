@@ -173,29 +173,23 @@ export default function Sidebar() {
           </Button>
           
           {isSystemsOpen && (
-            <div className="ml-6 space-y-1">
-              {systemsItems.map((item) => {
-                const isActive = location === item.href;
-                const Icon = item.icon;
-                
-                return (
-                  <Link key={item.name} href={item.href}>
-                    <Button
-                      variant={isActive ? "default" : "ghost"}
-                      className={cn(
-                        "w-full justify-start space-x-3",
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                      )}
-                      data-testid={item.testId}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <span className="text-sm">{item.name}</span>
-                    </Button>
-                  </Link>
-                );
-              })}
+            <div className="ml-3 space-y-1">
+              <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={(event) => handleDragEnd(event, systemsItems, setSystemsItems)}
+              >
+                <SortableContext items={systemsItems.map(item => item.id)} strategy={verticalListSortingStrategy}>
+                  {systemsItems.map((item) => {
+                    const isActive = location === item.href;
+                    return (
+                      <div key={item.id} className="ml-3">
+                        <SortableNavItem item={item} isActive={isActive} />
+                      </div>
+                    );
+                  })}
+                </SortableContext>
+              </DndContext>
             </div>
           )}
         </div>
@@ -211,7 +205,7 @@ export default function Sidebar() {
             onClick={() => setIsTimeManagementOpen(!isTimeManagementOpen)}
             data-testid="nav-time-management"
           >
-            <Clock className="h-5 w-5" />
+            <Clock className="h-6 w-6" />
             <span>Time Management</span>
             {isTimeManagementOpen ? (
               <ChevronDown className="h-4 w-4 ml-auto" />
@@ -221,29 +215,23 @@ export default function Sidebar() {
           </Button>
           
           {isTimeManagementOpen && (
-            <div className="ml-6 space-y-1">
-              {timeManagementItems.map((item) => {
-                const isActive = location === item.href;
-                const Icon = item.icon;
-                
-                return (
-                  <Link key={item.name} href={item.href}>
-                    <Button
-                      variant={isActive ? "default" : "ghost"}
-                      className={cn(
-                        "w-full justify-start space-x-3 text-sm",
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                      )}
-                      data-testid={item.testId}
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span>{item.name}</span>
-                    </Button>
-                  </Link>
-                );
-              })}
+            <div className="ml-3 space-y-1">
+              <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={(event) => handleDragEnd(event, timeManagementItems, setTimeManagementItems)}
+              >
+                <SortableContext items={timeManagementItems.map(item => item.id)} strategy={verticalListSortingStrategy}>
+                  {timeManagementItems.map((item) => {
+                    const isActive = location === item.href;
+                    return (
+                      <div key={item.id} className="ml-3">
+                        <SortableNavItem item={item} isActive={isActive} />
+                      </div>
+                    );
+                  })}
+                </SortableContext>
+              </DndContext>
             </div>
           )}
         </div>

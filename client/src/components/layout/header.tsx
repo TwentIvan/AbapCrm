@@ -2,8 +2,11 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Mail, Calendar, FolderTree, Building } from "lucide-react";
+import { Search, Mail, Calendar, FolderTree, Building, User } from "lucide-react";
 import AccountManager from "@/components/account/account-manager";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/use-auth";
+import { useOrganization } from "@/hooks/use-organization";
 
 interface HeaderProps {
   title: string;
@@ -13,6 +16,12 @@ interface HeaderProps {
 
 export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const { user } = useAuth();
+  const { currentOrganization } = useOrganization();
+
+  const userInitials = user?.firstName && user?.lastName 
+    ? `${user.firstName[0]}${user.lastName[0]}` 
+    : user?.username?.[0]?.toUpperCase() || "U";
 
   return (
     <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-10">
@@ -72,10 +81,52 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           </div>
 
           
-          {/* User & Organization Box */}
-          <div className="bg-muted/20 border border-muted rounded-lg p-2 flex items-center space-x-2">
-            <AccountManager />
-          </div>
+          {/* User & Organization Box with Semicircles */}
+          {user && (
+            <div className="relative flex items-center">
+              {/* Container con semicerchi */}
+              <div className="bg-muted/20 border border-muted rounded-full px-3 py-1 flex items-center space-x-3">
+                {/* Logo Organizzazione - Sinistra */}
+                <div className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center">
+                  {currentOrganization?.logoUrl ? (
+                    <img 
+                      src={currentOrganization.logoUrl} 
+                      alt={`${currentOrganization.name} logo`}
+                      className="w-6 h-6 rounded-full object-cover"
+                    />
+                  ) : (
+                    <Building className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+                
+                {/* Nomi */}
+                <div className="flex flex-col text-xs leading-tight min-w-0">
+                  <span className="font-medium text-foreground truncate">
+                    {user.firstName && user.lastName 
+                      ? `${user.firstName} ${user.lastName}` 
+                      : user.username}
+                  </span>
+                  <span className="text-muted-foreground truncate">
+                    {currentOrganization?.name || "Nessuna org"}
+                  </span>
+                </div>
+                
+                {/* Avatar Utente - Destra */}
+                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                  <Avatar className="w-8 h-8">
+                    <AvatarFallback className="text-xs font-medium text-primary-foreground bg-primary">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              </div>
+              
+              {/* Hidden AccountManager per mantenere funzionalità dropdown */}
+              <div className="absolute top-0 right-0 opacity-0 pointer-events-auto">
+                <AccountManager />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
