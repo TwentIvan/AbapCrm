@@ -149,7 +149,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                           }}
                           data-testid="button-search"
                         >
-                          <Search className="h-8 w-8 text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                          <Search className="h-8 w-8 text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280', transform: 'scaleX(-1)' }} />
                           <div className="min-w-0 opacity-0 pointer-events-none">
                             <h2 className="text-lg font-semibold truncate">
                               A
@@ -162,7 +162,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                       </PopoverTrigger>
                       <PopoverContent className="w-80 p-2" align="start">
                         <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" style={{ transform: 'translateY(-50%) scaleX(-1)' }} />
                           <Input
                             type="text"
                             placeholder="Cerca in tutto il CRM..."
