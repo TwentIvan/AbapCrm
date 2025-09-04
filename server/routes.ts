@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
+import { db } from "./db";
 import { generateVPNAutomationScript, discoverVPNConnections, discoverAvailableVPNSoftware, testVPNConnection } from "./vpn-automation";
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
