@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, ChevronRight, Clock, Edit, Plus, Trash } from "lucide-react";
 import { formatDistance } from "date-fns";
 import { it } from "date-fns/locale";
+import { apiRequest } from "@/lib/queryClient";
 
 interface AuditHistoryProps {
   tableName: string;
@@ -233,13 +234,7 @@ export default function AuditHistory({ tableName, recordId, title = "Storico Mod
     queryKey: [`audit`, tableName, recordId],
     queryFn: async () => {
       console.log(`[AUDIT-FRONTEND] Executing query for /api/audit/${tableName}/${recordId}`);
-      const res = await fetch(`/api/audit/${tableName}/${recordId}`, {
-        credentials: "include",
-      });
-      if (!res.ok) {
-        console.error(`[AUDIT-FRONTEND] API call failed: ${res.status} ${res.statusText}`);
-        throw new Error("Errore nel caricamento dello storico");
-      }
+      const res = await apiRequest("GET", `/api/audit/${tableName}/${recordId}`);
       const data = await res.json();
       console.log(`[AUDIT-FRONTEND] API response:`, data);
       return data;
