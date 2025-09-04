@@ -230,7 +230,7 @@ export default function AuditHistory({ tableName, recordId, title = "Storico Mod
   console.log(`[AUDIT-FRONTEND] AuditHistory called with tableName=${tableName}, recordId=${recordId}`);
   
   const { data: auditLogs = [], isLoading, error } = useQuery<AuditLogEntry[]>({
-    queryKey: [`/api/audit/${tableName}/${recordId}`],
+    queryKey: [`audit`, tableName, recordId],
     queryFn: async () => {
       console.log(`[AUDIT-FRONTEND] Executing query for /api/audit/${tableName}/${recordId}`);
       const res = await fetch(`/api/audit/${tableName}/${recordId}`, {
@@ -244,6 +244,9 @@ export default function AuditHistory({ tableName, recordId, title = "Storico Mod
       console.log(`[AUDIT-FRONTEND] API response:`, data);
       return data;
     },
+    staleTime: 0, // Always refresh
+    refetchOnMount: true, // Always refetch when component mounts
+    enabled: !!(tableName && recordId), // Only run when we have both params
   });
 
   console.log(`[AUDIT-FRONTEND] Query state: loading=${isLoading}, error=${error}, logs=${auditLogs.length}`);
