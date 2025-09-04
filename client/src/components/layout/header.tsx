@@ -79,8 +79,8 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
     
     // Se il button corrente è a sinistra di quello in hover, si sposta a sinistra
     if (currentIndex < hoveredIndex) {
-      // Spazio per il text espanso
-      return 'translateX(-120px)'; 
+      // Calcolo preciso: spostamento = larghezza espansa - larghezza iniziale = 200px - 56px = 144px
+      return 'translateX(-144px)'; 
     }
     
     return 'translateX(0)';
