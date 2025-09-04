@@ -70,36 +70,22 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
     <div 
       ref={setNodeRef} 
       style={style} 
-      className="w-full p-2 rounded-md group flex items-center cursor-pointer transition-all duration-300 hover:bg-accent hover:text-accent-foreground"
+      className={cn(
+        "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors",
+        isActive
+          ? "bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+      )}
       data-testid={item.testId}
       {...attributes}
       onClick={() => window.location.href = item.href}
     >
       <GripVertical 
-        className="h-4 w-4 opacity-60 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0 mr-2" 
+        className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <div 
-        className="flex items-center justify-center rounded-full transition-all duration-300 group-hover:justify-start group-hover:px-4"
-        style={{ 
-          backgroundColor: 'rgba(59, 130, 246, 0.1)', 
-          border: '1px solid rgba(59, 130, 246, 0.2)',
-          width: '40px',
-          height: '40px',
-          minWidth: '40px'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.width = 'auto';
-          e.currentTarget.style.minWidth = '180px';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.width = '40px';
-          e.currentTarget.style.minWidth = '40px';
-        }}
-      >
-        <Icon className="h-5 w-5 flex-shrink-0" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-        <span className="text-sm font-medium ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
-      </div>
+      <Icon className="h-6 w-6 flex-shrink-0" />
+      <span className="text-base font-medium px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'rgba(59, 130, 246, 0.9)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>{item.name}</span>
     </div>
   );
 }
@@ -125,36 +111,22 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
     <div 
       ref={setNodeRef} 
       style={style} 
-      className="w-full p-2 rounded-md group flex items-center cursor-pointer transition-all duration-300 hover:bg-accent hover:text-accent-foreground ml-4"
+      className={cn(
+        "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors ml-4",
+        isActive
+          ? "bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:bg-slate-100 hover:text-accent-foreground"
+      )}
       data-testid={item.testId}
       {...attributes}
       onClick={() => window.location.href = item.href}
     >
       <GripVertical 
-        className="h-3 w-3 opacity-60 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0 mr-2" 
+        className="h-5 w-5 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <div 
-        className="flex items-center justify-center rounded-full transition-all duration-300 group-hover:justify-start group-hover:px-3"
-        style={{ 
-          backgroundColor: 'rgba(59, 130, 246, 0.1)', 
-          border: '1px solid rgba(59, 130, 246, 0.2)',
-          width: '32px',
-          height: '32px',
-          minWidth: '32px'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.width = 'auto';
-          e.currentTarget.style.minWidth = '150px';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.width = '32px';
-          e.currentTarget.style.minWidth = '32px';
-        }}
-      >
-        <Icon className="h-4 w-4 flex-shrink-0" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-        <span className="text-xs font-medium ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
-      </div>
+      <Icon className="h-5 w-5 flex-shrink-0" />
+      <span className="text-sm px-2 py-1 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'rgba(59, 130, 246, 0.9)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>{item.name}</span>
     </div>
   );
 }
@@ -275,29 +247,10 @@ export default function Sidebar() {
             )}
             data-testid="nav-systems"
           >
-            <div className="w-full p-2 rounded-md group flex items-center cursor-pointer transition-all duration-300">
-              <GripVertical className="h-4 w-4 opacity-60 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0 mr-2" />
-              <div 
-                className="flex items-center justify-center rounded-full transition-all duration-300 group-hover:justify-start group-hover:px-4"
-                style={{ 
-                  backgroundColor: 'rgba(59, 130, 246, 0.1)', 
-                  border: '1px solid rgba(59, 130, 246, 0.2)',
-                  width: '40px',
-                  height: '40px',
-                  minWidth: '40px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.width = 'auto';
-                  e.currentTarget.style.minWidth = '180px';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.width = '40px';
-                  e.currentTarget.style.minWidth = '40px';
-                }}
-              >
-                <Shield className="h-5 w-5 flex-shrink-0" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-                <span className="text-sm font-medium ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{t("nav.systems")}</span>
-              </div>
+            <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
+              <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" style={{ width: '1.5rem', height: '1.5rem' }} />
+              <Shield className="h-6 w-6" style={{ width: '1.5rem', height: '1.5rem' }} />
+              <span className="text-base font-medium px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'rgba(59, 130, 246, 0.9)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>{t("nav.systems")}</span>
             </div>
           </Button>
           
@@ -335,29 +288,10 @@ export default function Sidebar() {
             )}
             data-testid="nav-time-management"
           >
-            <div className="w-full p-2 rounded-md group flex items-center cursor-pointer transition-all duration-300">
-              <GripVertical className="h-4 w-4 opacity-60 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0 mr-2" />
-              <div 
-                className="flex items-center justify-center rounded-full transition-all duration-300 group-hover:justify-start group-hover:px-4"
-                style={{ 
-                  backgroundColor: 'rgba(59, 130, 246, 0.1)', 
-                  border: '1px solid rgba(59, 130, 246, 0.2)',
-                  width: '40px',
-                  height: '40px',
-                  minWidth: '40px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.width = 'auto';
-                  e.currentTarget.style.minWidth = '200px';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.width = '40px';
-                  e.currentTarget.style.minWidth = '40px';
-                }}
-              >
-                <Clock className="h-5 w-5 flex-shrink-0" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-                <span className="text-sm font-medium ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{t("nav.timeManagement")}</span>
-              </div>
+            <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
+              <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" style={{ width: '1.5rem', height: '1.5rem' }} />
+              <Clock className="h-6 w-6" style={{ width: '1.5rem', height: '1.5rem' }} />
+              <span className="text-base font-medium px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'rgba(59, 130, 246, 0.9)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>{t("nav.timeManagement")}</span>
             </div>
           </Button>
           
