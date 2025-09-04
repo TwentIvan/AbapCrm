@@ -133,14 +133,15 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           
           {/* Search Box - espandibile */}
           <div 
-            className="flex items-center px-2 py-2 shadow-sm cursor-pointer transition-all duration-300"
+            className="flex items-center shadow-sm cursor-pointer transition-all duration-300"
             style={{ 
               backgroundColor: 'rgba(59, 130, 246, 0.1)',
               borderRadius: '0 3rem 3rem 0',
               border: '1px solid rgba(59, 130, 246, 0.2)',
               height: '100%',
               width: isSearchOpen ? '300px' : 'auto',
-              minWidth: isSearchOpen ? '300px' : 'auto'
+              minWidth: isSearchOpen ? '300px' : 'auto',
+              padding: isSearchOpen ? '0 16px' : '8px'
             }}
             onClick={() => !isSearchOpen && setIsSearchOpen(true)}
             data-testid="button-search"
@@ -154,14 +155,14 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </div>
               </>
             ) : (
-              <div className="flex items-center w-full space-x-2">
-                <Search className="h-5 w-5 text-primary flex-shrink-0" style={{ transform: 'scaleX(-1)' }} />
+              <>
+                <Search className="h-5 w-5 text-primary flex-shrink-0 mr-3" style={{ transform: 'scaleX(-1)' }} />
                 <Input
                   type="text"
                   placeholder={`Cerca in ${title}...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 h-8 border-0 bg-transparent focus:ring-0 text-sm px-0"
+                  className="flex-1 border-0 bg-transparent focus:ring-0 text-sm px-0 h-full"
                   data-testid="input-search"
                   autoFocus
                   onBlur={() => !searchQuery && setIsSearchOpen(false)}
@@ -169,7 +170,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  className="h-6 px-2 text-xs bg-primary/10 hover:bg-primary/20"
+                  className="px-2 text-xs bg-primary/10 hover:bg-primary/20 ml-2 h-full max-h-8"
                   onClick={(e) => {
                     e.stopPropagation();
                     // TODO: implementare ricerca globale
@@ -180,7 +181,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-6 w-6"
+                  className="w-6 h-full max-h-8 ml-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     setSearchQuery("");
@@ -189,7 +190,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 >
                   <X className="h-3 w-3" />
                 </Button>
-              </div>
+              </>
             )}
           </div>
         </div>
