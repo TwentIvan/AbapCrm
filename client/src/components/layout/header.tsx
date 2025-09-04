@@ -162,7 +162,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     setIsSearchOpen(false);
                   }}
                 >
-                  <X className="h-8 w-8" />
+                  <X className="h-8 w-8" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
                 </button>
                 <input
                   type="text"
@@ -181,7 +181,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     // TODO: implementare ricerca globale
                   }}
                 >
-                  <Globe className="h-8 w-8" />
+                  <Globe className="h-8 w-8" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
                 </button>
               </>
             )}
