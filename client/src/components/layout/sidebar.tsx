@@ -241,7 +241,7 @@ export default function Sidebar() {
           >
             <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
             <Shield className="h-6 w-6" />
-            <span>Systems</span>
+            <span className="text-base font-medium">Systems</span>
             {isSystemsOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
             ) : (
@@ -260,7 +260,7 @@ export default function Sidebar() {
                   {systemsItems.map((item: any) => {
                     const isActive = location === item.href;
                     return (
-                      <SortableNavItem key={item.id} item={item} isActive={isActive} />
+                      <SortableSubNavItem key={item.id} item={item} isActive={isActive} />
                     );
                   })}
                 </SortableContext>
@@ -282,7 +282,7 @@ export default function Sidebar() {
           >
             <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
             <Clock className="h-6 w-6" />
-            <span>Time Management</span>
+            <span className="text-base font-medium">Time Management</span>
             {isTimeManagementOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
             ) : (
@@ -301,7 +301,7 @@ export default function Sidebar() {
                   {timeManagementItems.map((item: any) => {
                     const isActive = location === item.href;
                     return (
-                      <SortableNavItem key={item.id} item={item} isActive={isActive} />
+                      <SortableSubNavItem key={item.id} item={item} isActive={isActive} />
                     );
                   })}
                 </SortableContext>
