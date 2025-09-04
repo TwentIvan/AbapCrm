@@ -133,15 +133,13 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           
           {/* Search Box - espandibile */}
           <div 
-            className="flex items-center shadow-sm cursor-pointer transition-all duration-300"
+            className="flex items-center px-4 py-2 shadow-sm cursor-pointer transition-all duration-300"
             style={{ 
               backgroundColor: 'rgba(59, 130, 246, 0.1)',
               borderRadius: '0 3rem 3rem 0',
               border: '1px solid rgba(59, 130, 246, 0.2)',
-              height: '48px',
               width: isSearchOpen ? '300px' : 'auto',
-              minWidth: isSearchOpen ? '300px' : 'auto',
-              padding: isSearchOpen ? '0 16px' : '8px'
+              minWidth: isSearchOpen ? '300px' : 'auto'
             }}
             onClick={() => !isSearchOpen && setIsSearchOpen(true)}
             data-testid="button-search"
@@ -163,19 +161,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="flex-1 border-0 bg-transparent focus:ring-0 focus:outline-0 text-sm px-0 text-foreground placeholder:text-muted-foreground"
-                  style={{ 
-                    height: '40px', 
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    outline: 'none'
-                  }}
                   data-testid="input-search"
                   autoFocus
                   onBlur={() => !searchQuery && setIsSearchOpen(false)}
                 />
                 <button
-                  className="px-2 text-xs bg-primary/10 hover:bg-primary/20 ml-2 rounded text-foreground transition-colors"
-                  style={{ height: '40px' }}
+                  className="px-2 py-1 text-xs bg-primary/10 hover:bg-primary/20 ml-2 rounded text-foreground transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     // TODO: implementare ricerca globale
@@ -184,8 +175,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   Globale
                 </button>
                 <button
-                  className="w-8 ml-1 rounded hover:bg-primary/10 text-foreground transition-colors flex items-center justify-center"
-                  style={{ height: '40px' }}
+                  className="w-8 h-8 ml-1 rounded hover:bg-primary/10 text-foreground transition-colors flex items-center justify-center"
                   onClick={(e) => {
                     e.stopPropagation();
                     setSearchQuery("");
