@@ -138,7 +138,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               backgroundColor: 'rgba(59, 130, 246, 0.1)',
               borderRadius: '0 3rem 3rem 0',
               border: '1px solid rgba(59, 130, 246, 0.2)',
-              height: '52px',
+              height: '48px',
               width: isSearchOpen ? '300px' : 'auto',
               minWidth: isSearchOpen ? '300px' : 'auto',
               padding: isSearchOpen ? '0 16px' : '8px'
