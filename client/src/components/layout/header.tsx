@@ -258,7 +258,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                         className="w-12 h-12 rounded-full object-cover"
                       />
                     ) : (
-                      <User className="h-12 w-12 text-muted-foreground" />
+                      <User className="text-muted-foreground" style={{ width: '3rem', height: '3rem' }} />
                     )}
                   </Button>
                 </DropdownMenuTrigger>
