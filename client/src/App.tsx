@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/use-auth";
+import { useOrganization } from "@/hooks/use-organization";
 import { ProtectedRoute } from "./lib/protected-route";
 
 import AuthPage from "@/pages/auth-page";
@@ -25,6 +26,9 @@ import VPNConnectionsPage from "@/pages/vpn-connections-page";
 import NotFound from "@/pages/not-found";
 
 function Router() {
+  // Initialize organization context
+  useOrganization();
+  
   return (
     <Switch>
       <ProtectedRoute path="/" component={OrganizationsPage} />
