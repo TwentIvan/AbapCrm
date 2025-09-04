@@ -83,7 +83,7 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <Icon className="h-10 w-10 flex-shrink-0" />
+      <Icon className="h-8 w-8 flex-shrink-0" />
       <span className="text-base font-medium">{item.name}</span>
     </div>
   );
@@ -92,9 +92,36 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
 export default function Sidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
-  const [navigation, setNavigation] = useState(defaultNavigation);
-  const [systemsItems, setSystemsItems] = useState(defaultSystemsItems);
-  const [timeManagementItems, setTimeManagementItems] = useState(defaultTimeManagementItems);
+  const [navigation, setNavigation] = useState(() => {
+    const saved = localStorage.getItem('sidebar-main-order');
+    if (saved) {
+      try {
+        const order = JSON.parse(saved);
+        return order.map((id: string) => defaultNavigation.find(item => item.id === id)).filter(Boolean);
+      } catch {}
+    }
+    return defaultNavigation;
+  });
+  const [systemsItems, setSystemsItems] = useState(() => {
+    const saved = localStorage.getItem('sidebar-systems-order');
+    if (saved) {
+      try {
+        const order = JSON.parse(saved);
+        return order.map((id: string) => defaultSystemsItems.find(item => item.id === id)).filter(Boolean);
+      } catch {}
+    }
+    return defaultSystemsItems;
+  });
+  const [timeManagementItems, setTimeManagementItems] = useState(() => {
+    const saved = localStorage.getItem('sidebar-time-order');
+    if (saved) {
+      try {
+        const order = JSON.parse(saved);
+        return order.map((id: string) => defaultTimeManagementItems.find(item => item.id === id)).filter(Boolean);
+      } catch {}
+    }
+    return defaultTimeManagementItems;
+  });
   const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(
     defaultTimeManagementItems.some(item => location === item.href)
   );
@@ -113,13 +140,17 @@ export default function Sidebar() {
     })
   );
 
-  function handleDragEnd(event: DragEndEvent, items: any[], setItems: any) {
+  function handleDragEnd(event: DragEndEvent, items: any[], setItems: any, storageKey: string) {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
       const oldIndex = items.findIndex(item => item.id === active.id);
       const newIndex = items.findIndex(item => item.id === over.id);
-      setItems(arrayMove(items, oldIndex, newIndex));
+      const newItems = arrayMove(items, oldIndex, newIndex);
+      setItems(newItems);
+      
+      // Save order to localStorage
+      localStorage.setItem(storageKey, JSON.stringify(newItems.map(item => item.id)));
     }
   }
 
@@ -144,7 +175,7 @@ export default function Sidebar() {
         <DndContext 
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragEnd={(event) => handleDragEnd(event, navigation, setNavigation)}
+          onDragEnd={(event) => handleDragEnd(event, navigation, setNavigation, 'sidebar-main-order')}
         >
           <SortableContext items={navigation.map(item => item.id)} strategy={verticalListSortingStrategy}>
             {navigation.map((item) => {
@@ -167,7 +198,7 @@ export default function Sidebar() {
             onClick={() => setIsSystemsOpen(!isSystemsOpen)}
             data-testid="nav-systems"
           >
-            <Shield className="h-10 w-10" />
+            <Shield className="h-8 w-8" />
             <span>Systems</span>
             {isSystemsOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
@@ -181,7 +212,7 @@ export default function Sidebar() {
               <DndContext 
                 sensors={sensors}
                 collisionDetection={closestCenter}
-                onDragEnd={(event) => handleDragEnd(event, systemsItems, setSystemsItems)}
+                onDragEnd={(event) => handleDragEnd(event, systemsItems, setSystemsItems, 'sidebar-systems-order')}
               >
                 <SortableContext items={systemsItems.map(item => item.id)} strategy={verticalListSortingStrategy}>
                   {systemsItems.map((item) => {
@@ -207,7 +238,7 @@ export default function Sidebar() {
             onClick={() => setIsTimeManagementOpen(!isTimeManagementOpen)}
             data-testid="nav-time-management"
           >
-            <Clock className="h-10 w-10" />
+            <Clock className="h-8 w-8" />
             <span>Time Management</span>
             {isTimeManagementOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
@@ -221,7 +252,7 @@ export default function Sidebar() {
               <DndContext 
                 sensors={sensors}
                 collisionDetection={closestCenter}
-                onDragEnd={(event) => handleDragEnd(event, timeManagementItems, setTimeManagementItems)}
+                onDragEnd={(event) => handleDragEnd(event, timeManagementItems, setTimeManagementItems, 'sidebar-time-order')}
               >
                 <SortableContext items={timeManagementItems.map(item => item.id)} strategy={verticalListSortingStrategy}>
                   {timeManagementItems.map((item) => {

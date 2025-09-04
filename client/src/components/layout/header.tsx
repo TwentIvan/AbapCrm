@@ -58,7 +58,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   className="h-12 w-12 rounded-full bg-muted/20 border border-muted hover:bg-accent"
                   data-testid="button-search"
                 >
-                  <Search className="h-8 w-8 text-muted-foreground" />
+                  <Search className="h-10 w-10 text-muted-foreground" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 p-2" align="start">
@@ -93,28 +93,28 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           <div className="flex items-center space-x-2">
             <Link href="/organizations">
               <Button variant="ghost" size="icon" data-testid="button-organizations">
-                <Building className="h-8 w-8" />
+                <Building className="h-10 w-10" />
                 <span className="sr-only">Organizations</span>
               </Button>
             </Link>
             
             <Link href="/messages">
               <Button variant="ghost" size="icon" data-testid="button-messages">
-                <Mail className="h-8 w-8" />
+                <Mail className="h-10 w-10" />
                 <span className="sr-only">Messages</span>
               </Button>
             </Link>
             
             <Link href="/calendar">
               <Button variant="ghost" size="icon" data-testid="button-calendar">
-                <Calendar className="h-8 w-8" />
+                <Calendar className="h-10 w-10" />
                 <span className="sr-only">Calendar</span>
               </Button>
             </Link>
             
             <Link href="/planning-calendar">
               <Button variant="ghost" size="icon" data-testid="button-planning-calendar">
-                <FolderTree className="h-8 w-8" />
+                <FolderTree className="h-10 w-10" />
                 <span className="sr-only">Planning Calendar</span>
               </Button>
             </Link>
@@ -127,15 +127,15 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               {/* Logo Organizzazione - Sinistra (cliccabile per switch) */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-12 h-12 rounded-full bg-background border border-border hover:bg-accent">
+                  <Button variant="ghost" size="icon" className="w-14 h-14 rounded-full bg-background border border-border hover:bg-accent">
                     {currentOrganization?.logoUrl ? (
                       <img 
                         src={currentOrganization.logoUrl} 
                         alt={`${currentOrganization.name} logo`}
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-12 h-12 rounded-full object-cover"
                       />
                     ) : (
-                      <Building className="h-8 w-8 text-muted-foreground" />
+                      <Building className="h-10 w-10 text-muted-foreground" />
                     )}
                   </Button>
                 </DropdownMenuTrigger>
@@ -188,9 +188,9 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               {/* Avatar Utente - Destra (cliccabile per logout/impostazioni) */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-12 h-12 rounded-full bg-primary hover:bg-primary/90">
-                    <Avatar className="w-12 h-12">
-                      <AvatarFallback className="text-base font-medium text-primary-foreground bg-primary">
+                  <Button variant="ghost" size="icon" className="w-14 h-14 rounded-full bg-primary hover:bg-primary/90">
+                    <Avatar className="w-14 h-14">
+                      <AvatarFallback className="text-lg font-medium text-primary-foreground bg-primary">
                         {userInitials}
                       </AvatarFallback>
                     </Avatar>
