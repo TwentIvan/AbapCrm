@@ -8,7 +8,6 @@ export interface ColumnConfig {
 }
 
 export interface TableLayout {
-  viewMode: 'cards' | 'list';
   columns: Record<string, ColumnConfig>; // Column name -> attributes
   sorting: Array<{
     id: string;
@@ -61,7 +60,6 @@ class UserPreferencesService {
 
   private getDefaultLayout(): TableLayout {
     return {
-      viewMode: 'list',
       columns: {}, // Will be populated with actual columns when first used
       sorting: [],
       filters: [],
@@ -461,12 +459,6 @@ class UserPreferencesService {
       if (tableConfig && tableConfig.layouts) {
         Object.keys(tableConfig.layouts).forEach(layoutId => {
           const layout = tableConfig.layouts[layoutId];
-          if (layout && layout.viewMode === 'cards') {
-            layout.viewMode = 'list';
-            layout.updatedAt = new Date();
-            updated = true;
-            console.log(`Updated ${tableId} layout ${layoutId} to list view`);
-          }
         });
       }
     });
@@ -481,8 +473,6 @@ class UserPreferencesService {
 // Export singleton instance
 export const userPreferences = new UserPreferencesService();
 
-// Auto-update existing layouts to use list view (one-time migration)
-userPreferences.updateAllAreasToListView();
 
 // React hooks for easier integration
 import { useState, useEffect, useCallback } from 'react';

@@ -10,8 +10,9 @@ import { ProtectedRoute } from "./lib/protected-route";
 import AuthPage from "@/pages/auth-page";
 import OrganizationsPage from "@/pages/organizations-page";
 import ProjectsPage from "@/pages/projects-page";
-import TasksPage from "@/pages/tasks-page";
-import PartnersPage from "@/pages/partners-page";
+// Temporarily disabled - corrupted during card view removal
+// import TasksPage from "@/pages/tasks-page";
+// import PartnersPage from "@/pages/partners-page";
 import CalendarPage from "@/pages/calendar-page";
 import GlobalCalendarPage from "@/pages/global-calendar-page";
 import TimesheetPage from "@/pages/timesheet-page";
@@ -34,8 +35,9 @@ function Router() {
       <ProtectedRoute path="/" component={OrganizationsPage} />
       <ProtectedRoute path="/organizations" component={OrganizationsPage} />
       <ProtectedRoute path="/projects" component={ProjectsPage} />
-      <ProtectedRoute path="/tasks" component={TasksPage} />
-      <ProtectedRoute path="/partners" component={PartnersPage} />
+      {/* Temporarily disabled - corrupted during card view removal */}
+      {/* <ProtectedRoute path="/tasks" component={TasksPage} /> */}
+      {/* <ProtectedRoute path="/partners" component={PartnersPage} /> */}
       <ProtectedRoute path="/calendar" component={CalendarPage} />
       <ProtectedRoute path="/planning-calendar" component={GlobalCalendarPage} />
       <ProtectedRoute path="/timesheet" component={TimesheetPage} />

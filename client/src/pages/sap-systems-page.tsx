@@ -330,14 +330,6 @@ export default function SapSystemsPage() {
                   Configure (Coming Soon)
                 </Button>
                 
-                <Button 
-                  variant="outline" 
-                  onClick={() => updateLayout({ viewMode: viewMode === 'list' ? 'cards' : 'list' })}
-                  data-testid="button-toggle-view"
-                >
-                  {viewMode === 'cards' ? <List className="mr-2 h-4 w-4" /> : <Grid3X3 className="mr-2 h-4 w-4" />}
-                  {viewMode === 'cards' ? 'List View' : 'Card View'}
-                </Button>
                 
                 <Button 
                   variant="outline" 
@@ -360,7 +352,7 @@ export default function SapSystemsPage() {
               Current layout: {currentLayoutName || 'Default'}
             </div>
 
-            {viewMode === 'cards' ? renderGrid() : renderTable()}
+            {renderTable()}
           </div>
         </main>
       </div>
