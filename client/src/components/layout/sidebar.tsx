@@ -89,6 +89,47 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
   );
 }
 
+// Sortable Sub-Navigation Item Component (smaller)
+function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const Icon = item.icon;
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={cn(
+        "w-full p-1.5 rounded-md group flex items-center space-x-3 cursor-pointer transition-colors ml-4",
+        isActive
+          ? "bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+      )}
+      data-testid={item.testId}
+      {...attributes}
+      onClick={() => window.location.href = item.href}
+    >
+      <GripVertical 
+        className="h-4 w-4 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
+        {...listeners} 
+      />
+      <Icon className="h-4 w-4 flex-shrink-0" />
+      <span className="text-sm">{item.name}</span>
+    </div>
+  );
+}
+
 export default function Sidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
@@ -200,7 +241,7 @@ export default function Sidebar() {
           >
             <GripVertical className="h-5 w-5 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
             <Shield className="h-6 w-6" />
-            <span>Systems</span>
+            <span className="text-base font-medium">Systems</span>
             {isSystemsOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
             ) : (
@@ -219,7 +260,7 @@ export default function Sidebar() {
                   {systemsItems.map((item: any) => {
                     const isActive = location === item.href;
                     return (
-                      <SortableNavItem key={item.id} item={item} isActive={isActive} />
+                      <SortableSubNavItem key={item.id} item={item} isActive={isActive} />
                     );
                   })}
                 </SortableContext>
@@ -241,7 +282,7 @@ export default function Sidebar() {
           >
             <GripVertical className="h-5 w-5 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
             <Clock className="h-6 w-6" />
-            <span>Time Management</span>
+            <span className="text-base font-medium">Time Management</span>
             {isTimeManagementOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
             ) : (
@@ -260,7 +301,7 @@ export default function Sidebar() {
                   {timeManagementItems.map((item: any) => {
                     const isActive = location === item.href;
                     return (
-                      <SortableNavItem key={item.id} item={item} isActive={isActive} />
+                      <SortableSubNavItem key={item.id} item={item} isActive={isActive} />
                     );
                   })}
                 </SortableContext>
