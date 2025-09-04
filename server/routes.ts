@@ -744,10 +744,16 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.delete("/api/tasks/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
-    const deleted = await storage.deleteTask(req.params.id, req.user!.id, organizationId);
-    if (!deleted) return res.sendStatus(404);
-    res.sendStatus(204);
+    try {
+      const organizationId = getOrganizationId(req);
+      const auditContext = AuditService.createContext(req);
+      const deleted = await storage.deleteTask(req.params.id, req.user!.id, organizationId, auditContext);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("[DELETE TASK] Error:", error);
+      res.sendStatus(500);
+    }
   });
 
   // Partners
@@ -817,10 +823,16 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.delete("/api/partners/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
-    const deleted = await storage.deletePartner(req.params.id, req.user!.id, organizationId);
-    if (!deleted) return res.sendStatus(404);
-    res.sendStatus(204);
+    try {
+      const organizationId = getOrganizationId(req);
+      const auditContext = AuditService.createContext(req);
+      const deleted = await storage.deletePartner(req.params.id, req.user!.id, organizationId, auditContext);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("[DELETE PARTNER] Error:", error);
+      res.sendStatus(500);
+    }
   });
 
   // Search or create partner automatically 
@@ -1098,10 +1110,16 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.delete("/api/deals/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
-    const deleted = await storage.deleteDeal(req.params.id, req.user!.id, organizationId);
-    if (!deleted) return res.sendStatus(404);
-    res.sendStatus(204);
+    try {
+      const organizationId = getOrganizationId(req);
+      const auditContext = AuditService.createContext(req);
+      const deleted = await storage.deleteDeal(req.params.id, req.user!.id, organizationId, auditContext);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("[DELETE DEAL] Error:", error);
+      res.sendStatus(500);
+    }
   });
 
   // Calendar Events
@@ -1133,7 +1151,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.put("/api/calendar-events/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const event = await storage.updateCalendarEvent(req.params.id, req.body, req.user!.id);
+      const auditContext = AuditService.createContext(req);
+      const event = await storage.updateCalendarEvent(req.params.id, req.body, req.user!.id, auditContext);
       if (!event) return res.sendStatus(404);
       res.json(event);
     } catch (error) {
@@ -1143,9 +1162,15 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.delete("/api/calendar-events/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const deleted = await storage.deleteCalendarEvent(req.params.id, req.user!.id);
-    if (!deleted) return res.sendStatus(404);
-    res.sendStatus(204);
+    try {
+      const auditContext = AuditService.createContext(req);
+      const deleted = await storage.deleteCalendarEvent(req.params.id, req.user!.id, auditContext);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("[DELETE CALENDAR EVENT] Error:", error);
+      res.sendStatus(500);
+    }
   });
 
   // Planning Windows

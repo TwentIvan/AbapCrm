@@ -953,10 +953,29 @@ export class DatabaseStorage implements IStorage {
     return updatedTask || undefined;
   }
 
-  async deleteTask(id: string, userId: string, organizationId: string): Promise<boolean> {
+  async deleteTask(id: string, userId: string, organizationId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<boolean> {
+    // Get old values for audit trail
+    const oldTask = auditContext ? await this.getTask(id, userId, organizationId) : null;
+    
     const result = await db
       .delete(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, userId), eq(tasks.organizationId, organizationId)));
+    
+    // Log audit trail for task deletion
+    if (auditContext && oldTask && (result.rowCount || 0) > 0) {
+      await AuditService.logDelete(
+        'tasks',
+        oldTask.id,
+        oldTask,
+        {
+          userId: auditContext.userId,
+          organizationId: organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return (result.rowCount || 0) > 0;
   }
 
@@ -1026,10 +1045,29 @@ export class DatabaseStorage implements IStorage {
     return updatedPartner || undefined;
   }
 
-  async deletePartner(id: string, userId: string, organizationId: string): Promise<boolean> {
+  async deletePartner(id: string, userId: string, organizationId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<boolean> {
+    // Get old values for audit trail
+    const oldPartner = auditContext ? await this.getPartner(id, userId, organizationId) : null;
+    
     const result = await db
       .delete(partners)
       .where(and(eq(partners.id, id), eq(partners.userId, userId), eq(partners.organizationId, organizationId)));
+    
+    // Log audit trail for partner deletion
+    if (auditContext && oldPartner && (result.rowCount || 0) > 0) {
+      await AuditService.logDelete(
+        'partners',
+        oldPartner.id,
+        oldPartner,
+        {
+          userId: auditContext.userId,
+          organizationId: organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return (result.rowCount || 0) > 0;
   }
 
@@ -1104,10 +1142,29 @@ export class DatabaseStorage implements IStorage {
     return updatedDeal || undefined;
   }
 
-  async deleteDeal(id: string, userId: string, organizationId: string): Promise<boolean> {
+  async deleteDeal(id: string, userId: string, organizationId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<boolean> {
+    // Get old values for audit trail
+    const oldDeal = auditContext ? await this.getDeal(id, userId, organizationId) : null;
+    
     const result = await db
       .delete(deals)
       .where(and(eq(deals.id, id), eq(deals.userId, userId), eq(deals.organizationId, organizationId)));
+    
+    // Log audit trail for deal deletion
+    if (auditContext && oldDeal && (result.rowCount || 0) > 0) {
+      await AuditService.logDelete(
+        'deals',
+        oldDeal.id,
+        oldDeal,
+        {
+          userId: auditContext.userId,
+          organizationId: organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return (result.rowCount || 0) > 0;
   }
 
@@ -1167,7 +1224,7 @@ export class DatabaseStorage implements IStorage {
         updatedEvent,
         {
           userId: auditContext.userId,
-          organizationId: null, // Calendar events might not have organizationId
+          organizationId: '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be', // Default org for calendar events
           userAgent: auditContext.userAgent,
           ipAddress: auditContext.ipAddress,
         }
@@ -1177,10 +1234,29 @@ export class DatabaseStorage implements IStorage {
     return updatedEvent || undefined;
   }
 
-  async deleteCalendarEvent(id: string, userId: string): Promise<boolean> {
+  async deleteCalendarEvent(id: string, userId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<boolean> {
+    // Get old values for audit trail
+    const oldEvent = auditContext ? await this.getCalendarEvent(id, userId) : null;
+    
     const result = await db
       .delete(calendarEvents)
       .where(and(eq(calendarEvents.id, id), eq(calendarEvents.userId, userId)));
+    
+    // Log audit trail for calendar event deletion
+    if (auditContext && oldEvent && (result.rowCount || 0) > 0) {
+      await AuditService.logDelete(
+        'calendar_events',
+        oldEvent.id,
+        oldEvent,
+        {
+          userId: auditContext.userId,
+          organizationId: '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be', // Default org for calendar events
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return (result.rowCount || 0) > 0;
   }
 

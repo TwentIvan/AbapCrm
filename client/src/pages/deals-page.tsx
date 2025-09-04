@@ -527,6 +527,62 @@ export default function DealsPage() {
         }}
         onCancel={() => setShowConfigDialog(false)}
       />
+
+      {/* Edit Deal Dialog */}
+      {showForm && (
+        <Dialog open={showForm} onOpenChange={(open) => {
+          if (!open) {
+            setShowForm(false);
+            setEditingDeal(null);
+          }
+        }}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>
+                {editingDeal ? "Modifica Deal" : "Nuovo Deal"}
+              </DialogTitle>
+              <DialogDescription>
+                {editingDeal ? "Modifica i dettagli del deal selezionato" : "Crea un nuovo deal"}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <Tabs defaultValue="details" className="w-full h-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details" data-testid="tab-deal-details">
+                  <span>Dettagli</span>
+                </TabsTrigger>
+                {editingDeal && (
+                  <TabsTrigger value="history" data-testid="tab-deal-history">
+                    <History className="h-4 w-4 mr-2" />
+                    <span>Storico Modifiche</span>
+                  </TabsTrigger>
+                )}
+              </TabsList>
+              
+              <TabsContent value="details" className="mt-6">
+                <DealForm 
+                  deal={editingDeal} 
+                  onSuccess={() => {
+                    setShowForm(false);
+                    setEditingDeal(null);
+                    queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+                  }}
+                />
+              </TabsContent>
+              
+              {editingDeal && (
+                <TabsContent value="history" className="mt-6">
+                  <AuditHistory 
+                    tableName="deals" 
+                    recordId={editingDeal.id}
+                    title="Storico Modifiche Deal"
+                  />
+                </TabsContent>
+              )}
+            </Tabs>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
