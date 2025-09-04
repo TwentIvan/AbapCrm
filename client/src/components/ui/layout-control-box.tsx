@@ -57,7 +57,7 @@ export function LayoutControlBox({
             <DropdownMenuItem
               key={layout.id}
               onClick={() => onLoadLayout(layout.id)}
-              className={currentLayoutName === layout.name ? "bg-primary/10" : ""}
+              className={currentLayoutName === layout.name ? "bg-muted/50" : ""}
               data-testid={`layout-option-${layout.id}`}
             >
               <Layout className="mr-2 h-4 w-4" />
