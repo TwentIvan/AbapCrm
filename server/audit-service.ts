@@ -65,10 +65,11 @@ export class AuditService {
 
       // Use simplified audit table without JSONB issues
       try {
-        await db.execute(sql`
+        const fields = changedFields.join(',');
+        await db.execute(sql.raw(`
           INSERT INTO audit_simple (table_name, record_id, action, changed_fields, user_id, organization_id)
-          VALUES (${tableName}, ${recordId}, ${action}, ${changedFields.join(',')}, ${context.userId}, ${context.organizationId})
-        `);
+          VALUES ('${tableName}', '${recordId}', '${action}', '${fields}', '${context.userId}', '${context.organizationId}')
+        `));
         
         console.log(`[AUDIT] ✅ SAVED ${action} ${tableName}:${recordId} by user:${context.userId}`);
       } catch (insertError) {

@@ -2926,8 +2926,9 @@ Format the response as professional documentation suitable for client delivery.`
         return res.status(400).json({ error: "Invalid table name" });
       }
       
-      // Use simplified audit table with proper parameter syntax
-      const result = await db.execute(sql`
+      // Use raw SQL query to avoid parameter issues
+      const organizationId = (req.user as any).organizationId;
+      const result = await db.execute(sql.raw(`
         SELECT 
           a.id,
           a.table_name as tableName,
@@ -2941,9 +2942,9 @@ Format the response as professional documentation suitable for client delivery.`
           u.email as user_email
         FROM audit_simple a
         LEFT JOIN users u ON a.user_id = u.id
-        WHERE a.table_name = ${tableName} AND a.record_id = ${recordId} AND a.organization_id = ${(req.user as any).organizationId}
+        WHERE a.table_name = '${tableName}' AND a.record_id = '${recordId}' AND a.organization_id = '${organizationId}'
         ORDER BY a.created_at DESC
-      `);
+      `));
 
       // Transform to match expected format
       const logs = result.rows.map((row: any) => ({
