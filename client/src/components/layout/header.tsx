@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Bell, Mail, Calendar, FolderTree, Building } from "lucide-react";
+import { Search, Mail, Calendar, FolderTree, Building } from "lucide-react";
 import AccountManager from "@/components/account/account-manager";
 
 interface HeaderProps {
@@ -44,41 +44,38 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           <div className="flex items-center space-x-2">
             <Link href="/organizations">
               <Button variant="ghost" size="icon" data-testid="button-organizations">
-                <Building className="h-6 w-6" />
+                <Building className="h-7 w-7" />
                 <span className="sr-only">Organizations</span>
               </Button>
             </Link>
             
             <Link href="/messages">
               <Button variant="ghost" size="icon" data-testid="button-messages">
-                <Mail className="h-6 w-6" />
+                <Mail className="h-7 w-7" />
                 <span className="sr-only">Messages</span>
               </Button>
             </Link>
             
             <Link href="/calendar">
               <Button variant="ghost" size="icon" data-testid="button-calendar">
-                <Calendar className="h-6 w-6" />
+                <Calendar className="h-7 w-7" />
                 <span className="sr-only">Calendar</span>
               </Button>
             </Link>
             
             <Link href="/planning-calendar">
               <Button variant="ghost" size="icon" data-testid="button-planning-calendar">
-                <FolderTree className="h-5 w-5" />
+                <FolderTree className="h-7 w-7" />
                 <span className="sr-only">Planning Calendar</span>
               </Button>
             </Link>
           </div>
 
-          {/* Notifications */}
-          <Button variant="ghost" size="icon" data-testid="button-notifications">
-            <Bell className="h-5 w-5" />
-            <span className="sr-only">Notifications</span>
-          </Button>
           
-          {/* Account Manager */}
-          <AccountManager />
+          {/* User & Organization Box */}
+          <div className="bg-muted/20 border border-muted rounded-lg p-2 flex items-center space-x-2">
+            <AccountManager />
+          </div>
         </div>
       </div>
     </header>
