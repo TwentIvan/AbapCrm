@@ -66,25 +66,25 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
   const Icon = item.icon;
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes}>
-      <Link href={item.href}>
-        <Button
-          variant={isActive ? "default" : "ghost"}
-          className={cn(
-            "w-full justify-start space-x-3 group",
-            isActive
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-          )}
-          data-testid={item.testId}
-        >
-          <div className="flex items-center space-x-3 flex-1">
-            <GripVertical className="h-10 w-10 opacity-90 group-hover:opacity-100 cursor-grab text-muted-foreground" {...listeners} />
-            <Icon className="h-12 w-12" />
-            <span>{item.name}</span>
-          </div>
-        </Button>
-      </Link>
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={cn(
+        "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors",
+        isActive
+          ? "bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+      )}
+      data-testid={item.testId}
+      {...attributes}
+      onClick={() => window.location.href = item.href}
+    >
+      <GripVertical 
+        className="h-12 w-12 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
+        {...listeners} 
+      />
+      <Icon className="h-16 w-16 flex-shrink-0" />
+      <span className="text-base font-medium">{item.name}</span>
     </div>
   );
 }
@@ -161,18 +161,18 @@ export default function Sidebar() {
           <Button
             variant="ghost"
             className={cn(
-              "w-full justify-start space-x-3",
+              "w-full justify-start space-x-4 p-2 h-auto",
               "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
             onClick={() => setIsSystemsOpen(!isSystemsOpen)}
             data-testid="nav-systems"
           >
-            <Shield className="h-12 w-12" />
+            <Shield className="h-16 w-16" />
             <span>Systems</span>
             {isSystemsOpen ? (
-              <ChevronDown className="h-8 w-8 ml-auto" />
+              <ChevronDown className="h-10 w-10 ml-auto" />
             ) : (
-              <ChevronRight className="h-8 w-8 ml-auto" />
+              <ChevronRight className="h-10 w-10 ml-auto" />
             )}
           </Button>
           
@@ -201,18 +201,18 @@ export default function Sidebar() {
           <Button
             variant="ghost"
             className={cn(
-              "w-full justify-start space-x-3",
+              "w-full justify-start space-x-4 p-2 h-auto",
               "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
             onClick={() => setIsTimeManagementOpen(!isTimeManagementOpen)}
             data-testid="nav-time-management"
           >
-            <Clock className="h-12 w-12" />
+            <Clock className="h-16 w-16" />
             <span>Time Management</span>
             {isTimeManagementOpen ? (
-              <ChevronDown className="h-8 w-8 ml-auto" />
+              <ChevronDown className="h-10 w-10 ml-auto" />
             ) : (
-              <ChevronRight className="h-8 w-8 ml-auto" />
+              <ChevronRight className="h-10 w-10 ml-auto" />
             )}
           </Button>
           
