@@ -703,20 +703,56 @@ export class DatabaseStorage implements IStorage {
     return project || undefined;
   }
 
-  async createProject(project: InsertProject & { organizationId: string }): Promise<Project> {
+  async createProject(project: InsertProject & { organizationId: string }, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Project> {
     const [newProject] = await db
       .insert(projects)
       .values(project)
       .returning();
+    
+    // Log audit trail for project creation
+    if (auditContext) {
+      await AuditService.logCreate(
+        'projects',
+        newProject.id,
+        newProject,
+        {
+          userId: auditContext.userId,
+          organizationId: project.organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return newProject;
   }
 
-  async updateProject(id: string, project: Partial<InsertProject>, userId: string, organizationId: string): Promise<Project | undefined> {
+  async updateProject(id: string, project: Partial<InsertProject>, userId: string, organizationId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Project | undefined> {
+    // Get old values for audit trail
+    const oldProject = auditContext ? await this.getProject(id, userId, organizationId) : null;
+    
     const [updatedProject] = await db
       .update(projects)
       .set({ ...project, updatedAt: new Date() })
       .where(and(eq(projects.id, id), eq(projects.userId, userId), eq(projects.organizationId, organizationId)))
       .returning();
+    
+    // Log audit trail for project update
+    if (auditContext && updatedProject && oldProject) {
+      await AuditService.logUpdate(
+        'projects',
+        updatedProject.id,
+        oldProject,
+        updatedProject,
+        {
+          userId: auditContext.userId,
+          organizationId: organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return updatedProject || undefined;
   }
 

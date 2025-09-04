@@ -17,10 +17,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { TableConfiguration } from "@/components/ui/table-configuration";
-import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2 } from "lucide-react";
+import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2, History } from "lucide-react";
 import { Project, Partner } from "@shared/schema";
 import ProjectForm from "@/components/forms/project-form";
 import ProjectPlanner from "@/components/planning/project-planner";
+import AuditHistory from "@/components/ui/audit-history";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const statusColors = {
   planning: "bg-blue-100 text-blue-800",
@@ -446,7 +448,7 @@ export default function ProjectsPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingProject ? "Modifica Progetto" : "Nuovo Progetto"}
@@ -455,14 +457,49 @@ export default function ProjectsPage() {
               {editingProject ? "Aggiorna" : "Crea"} un progetto SAP ABAP
             </DialogDescription>
           </DialogHeader>
-          <ProjectForm 
-            project={editingProject || undefined}
-            onSuccess={() => {
-              setShowForm(false);
-              setEditingProject(null);
-              queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-            }}
-          />
+          
+          {editingProject ? (
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details" className="flex items-center space-x-2">
+                  <Code className="h-4 w-4" />
+                  <span>Dettagli</span>
+                </TabsTrigger>
+                <TabsTrigger value="history" className="flex items-center space-x-2">
+                  <History className="h-4 w-4" />
+                  <span>Storico Modifiche</span>
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="details" className="mt-6">
+                <ProjectForm 
+                  project={editingProject || undefined}
+                  onSuccess={() => {
+                    setShowForm(false);
+                    setEditingProject(null);
+                    queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+                  }}
+                />
+              </TabsContent>
+              
+              <TabsContent value="history" className="mt-6">
+                <AuditHistory 
+                  tableName="projects" 
+                  recordId={editingProject.id}
+                  title="Storico Modifiche Progetto"
+                />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <ProjectForm 
+              project={editingProject || undefined}
+              onSuccess={() => {
+                setShowForm(false);
+                setEditingProject(null);
+                queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

@@ -221,14 +221,10 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOptionalOrganizationId(req);
-      console.log("GET /api/projects - Organization ID:", organizationId);
-      console.log("Headers:", req.headers);
       if (!organizationId) {
-        console.log("No organization ID provided, returning empty array");
         return res.json([]); // Return empty array if no organization context
       }
       const projects = await storage.getProjects(req.user!.id, organizationId);
-      console.log("Found projects:", projects.length);
       res.json(projects);
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -269,7 +265,8 @@ export function registerRoutes(app: Express): Server {
       const organizationId = getOrganizationId(req);
       console.log("Processing project data:", processedData);
       const projectData = insertProjectSchema.parse({ ...processedData, organizationId });
-      const project = await storage.createProject({ ...projectData, organizationId });
+      const auditContext = AuditService.createContext(req);
+      const project = await storage.createProject({ ...projectData, organizationId }, auditContext);
       res.status(201).json(project);
     } catch (error) {
       console.error("Project creation error:", error);
@@ -287,7 +284,8 @@ export function registerRoutes(app: Express): Server {
         endDate: req.body.endDate ? new Date(req.body.endDate) : null,
       };
       const organizationId = getOrganizationId(req);
-      const project = await storage.updateProject(req.params.id, updateData, req.user!.id, organizationId);
+      const auditContext = AuditService.createContext(req);
+      const project = await storage.updateProject(req.params.id, updateData, req.user!.id, organizationId, auditContext);
       if (!project) return res.sendStatus(404);
       res.json(project);
     } catch (error) {
