@@ -84,15 +84,15 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           {/* User & Organization Box with Semicircles */}
           {user && (
             <div className="relative flex items-center">
-              {/* Container con semicerchi - più grande */}
-              <div className="bg-muted/20 border border-muted rounded-full px-4 py-2 flex items-center space-x-4">
+              {/* Container con semicerchi */}
+              <div className="bg-muted/20 border border-muted rounded-full px-3 py-1 flex items-center space-x-3">
                 {/* Logo Organizzazione - Solo se presente */}
                 {currentOrganization?.logoUrl && (
-                  <div className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center">
                     <img 
                       src={currentOrganization.logoUrl} 
                       alt={`${currentOrganization.name} logo`}
-                      className="w-8 h-8 rounded-full object-cover"
+                      className="w-6 h-6 rounded-full object-cover"
                     />
                   </div>
                 )}
@@ -110,17 +110,17 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </div>
                 
                 {/* Avatar Utente - Destra */}
-                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                  <Avatar className="w-10 h-10">
-                    <AvatarFallback className="text-sm font-medium text-primary-foreground bg-primary">
+                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                  <Avatar className="w-8 h-8">
+                    <AvatarFallback className="text-xs font-medium text-primary-foreground bg-primary">
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
                 </div>
               </div>
               
-              {/* Switch Organization Button - Visible */}
-              <div className="absolute inset-0 flex items-center justify-center">
+              {/* Hidden AccountManager per funzionalità dropdown */}
+              <div className="absolute top-0 right-0 opacity-0 pointer-events-auto">
                 <AccountManager />
               </div>
             </div>

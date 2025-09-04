@@ -166,14 +166,14 @@ export default function Sidebar() {
             <Shield className="h-6 w-6" />
             <span>Systems</span>
             {isSystemsOpen ? (
-              <ChevronDown className="h-4 w-4 ml-auto" />
+              <ChevronDown className="h-6 w-6 ml-auto" />
             ) : (
-              <ChevronRight className="h-4 w-4 ml-auto" />
+              <ChevronRight className="h-6 w-6 ml-auto" />
             )}
           </Button>
           
           {isSystemsOpen && (
-            <div className="ml-6 space-y-1">
+            <div className="space-y-1">
               <DndContext 
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -206,14 +206,14 @@ export default function Sidebar() {
             <Clock className="h-6 w-6" />
             <span>Time Management</span>
             {isTimeManagementOpen ? (
-              <ChevronDown className="h-4 w-4 ml-auto" />
+              <ChevronDown className="h-6 w-6 ml-auto" />
             ) : (
-              <ChevronRight className="h-4 w-4 ml-auto" />
+              <ChevronRight className="h-6 w-6 ml-auto" />
             )}
           </Button>
           
           {isTimeManagementOpen && (
-            <div className="ml-6 space-y-1">
+            <div className="space-y-1">
               <DndContext 
                 sensors={sensors}
                 collisionDetection={closestCenter}
