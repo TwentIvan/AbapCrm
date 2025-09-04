@@ -254,8 +254,8 @@ export default function Sidebar() {
             <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
               <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
               <div className="flex items-center px-3 py-2 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '200px', minWidth: '200px' }}>
-                <Shield className="h-6 w-6 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-                <span className="text-base font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{t("nav.systems")}</span>
+                <Shield className="h-8 w-8 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+                <span className="text-lg font-semibold" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{t("nav.systems")}</span>
               </div>
             </div>
           </Button>
@@ -297,8 +297,8 @@ export default function Sidebar() {
             <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
               <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
               <div className="flex items-center px-3 py-2 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '200px', minWidth: '200px' }}>
-                <Clock className="h-6 w-6 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-                <span className="text-base font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{t("nav.timeManagement")}</span>
+                <Clock className="h-8 w-8 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+                <span className="text-lg font-semibold" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{t("nav.timeManagement")}</span>
               </div>
             </div>
           </Button>
