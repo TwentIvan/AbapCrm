@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, Globe } from "lucide-react";
+import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -180,59 +180,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </TooltipContent>
               </Tooltip>
 
-              {/* Language Selector */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-language">
-                          <Globe className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem 
-                          onClick={() => setLanguage("it")}
-                          className="flex items-center justify-between"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div 
-                              className="w-6 h-6 rounded-full flex-shrink-0"
-                              style={{
-                                background: 'linear-gradient(to right, #009246 33%, #FFFFFF 33%, #FFFFFF 67%, #CE2B37 67%)'
-                              }}
-                            />
-                            <span>Italiano</span>
-                          </div>
-                          {language === "it" && <Check className="h-4 w-4" />}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => setLanguage("en")}
-                          className="flex items-center justify-between"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div 
-                              className="w-6 h-6 rounded-full bg-cover bg-center flex-shrink-0"
-                              style={{
-                                backgroundImage: 'url(https://cdn-icons-png.flaticon.com/128/197/197374.png)'
-                              }}
-                            />
-                            <span>English</span>
-                          </div>
-                          {language === "en" && <Check className="h-4 w-4" />}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent 
-                  className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
-                  style={{ minWidth: '240px', backgroundColor: '#ebf3fe', borderColor: 'rgba(59, 130, 246, 0.2)' }}
-                  sideOffset={10}
-                >
-                  {t("header.language")}
-                </TooltipContent>
-              </Tooltip>
             </div>
           </TooltipProvider>
 
