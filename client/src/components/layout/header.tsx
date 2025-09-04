@@ -20,6 +20,8 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useOrganization } from "@/hooks/use-organization";
 import { useTranslation, Language } from "@/lib/i18n";
+import italianFlagImg from "@assets/generated_images/Italian_flag_flat_design_aba5eb7c.png";
+import ukFlagImg from "@assets/generated_images/UK_Union_Jack_flag_0a8318de.png";
 
 interface HeaderProps {
   title: string;
@@ -234,17 +236,9 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     data-testid="button-language-flag"
                   >
                     <div 
-                      className="w-12 h-12 rounded-full"
+                      className="w-12 h-12 rounded-full bg-cover bg-center"
                       style={{
-                        background: language === "it" 
-                          ? 'linear-gradient(to right, #009246 33%, #FFFFFF 33%, #FFFFFF 67%, #CE2B37 67%)'
-                          : `
-                            linear-gradient(45deg, #012169 30%, #FFFFFF 30%, #FFFFFF 32%, #C8102E 32%, #C8102E 34%, #FFFFFF 34%, #FFFFFF 66%, #C8102E 66%, #C8102E 68%, #FFFFFF 68%, #FFFFFF 70%, #012169 70%),
-                            linear-gradient(-45deg, #012169 30%, #FFFFFF 30%, #FFFFFF 32%, #C8102E 32%, #C8102E 34%, #FFFFFF 34%, #FFFFFF 66%, #C8102E 66%, #C8102E 68%, #FFFFFF 68%, #FFFFFF 70%, #012169 70%),
-                            linear-gradient(to right, #C8102E 45%, #FFFFFF 45%, #FFFFFF 55%, #C8102E 55%),
-                            linear-gradient(to bottom, #C8102E 45%, #FFFFFF 45%, #FFFFFF 55%, #C8102E 55%),
-                            #012169
-                          `
+                        backgroundImage: `url(${language === "it" ? italianFlagImg : ukFlagImg})`
                       }}
                     />
                   </Button>
