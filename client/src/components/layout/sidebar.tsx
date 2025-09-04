@@ -114,7 +114,7 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
         "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors ml-4",
         isActive
           ? "bg-primary text-primary-foreground"
-          : "text-muted-foreground hover:bg-primary/10 hover:text-accent-foreground"
+          : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground"
       )}
       data-testid={item.testId}
       {...attributes}
