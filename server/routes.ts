@@ -2927,7 +2927,16 @@ Format the response as professional documentation suitable for client delivery.`
       }
       
       // Get audit trail from new simple table
-      const organizationId = (req.user as any).organizationId;
+      const user = req.user as any;
+      const organizationId = user.organizationId;
+      
+      console.log(`[AUDIT API] Looking for ${tableName}:${recordId} in org: ${organizationId}`);
+      
+      if (!organizationId) {
+        console.error("[AUDIT API] No organizationId found for user:", user.id);
+        return res.json([]); // Return empty if no organization
+      }
+      
       const result = await db.execute(sql.raw(`
         SELECT 
           a.id,

@@ -31,6 +31,11 @@ interface AuditLogEntry {
   };
   userAgent: string | null;
   ipAddress: string | null;
+  fieldChanges?: Array<{
+    field: string;
+    oldValue: string;
+    newValue: string;
+  }>;
 }
 
 const actionConfig = {
@@ -159,16 +164,42 @@ function AuditEntry({ entry }: { entry: AuditLogEntry }) {
           <CollapsibleContent className="space-y-3">
             <Separator />
             <div className="space-y-4">
-              {changedFields.map((field) => (
-                <div key={field} className="p-3 bg-muted/30 rounded-lg">
-                  <div className="text-sm font-medium text-foreground capitalize">
-                    {field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+              {entry.fieldChanges && entry.fieldChanges.length > 0 ? (
+                entry.fieldChanges.map((change: any, idx: number) => (
+                  <div key={idx} className="p-3 bg-muted/30 rounded-lg">
+                    <div className="text-sm font-medium text-foreground capitalize">
+                      {change.field.replace(/([A-Z])/g, ' $1').replace(/^./, (str: string) => str.toUpperCase())}
+                    </div>
+                    <div className="text-xs space-y-1 mt-1">
+                      {change.oldValue && (
+                        <div className="flex items-start space-x-2">
+                          <span className="text-muted-foreground min-w-0 flex-shrink-0">Prima:</span>
+                          <span className="text-red-600 dark:text-red-400 break-words">
+                            {change.oldValue}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-start space-x-2">
+                        <span className="text-muted-foreground min-w-0 flex-shrink-0">Dopo:</span>
+                        <span className="text-green-600 dark:text-green-400 break-words">
+                          {change.newValue}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Campo modificato (dettagli non disponibili)
+                ))
+              ) : (
+                changedFields.map((field) => (
+                  <div key={field} className="p-3 bg-muted/30 rounded-lg">
+                    <div className="text-sm font-medium text-foreground capitalize">
+                      {field.replace(/([A-Z])/g, ' $1').replace(/^./, (str: string) => str.toUpperCase())}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Campo modificato
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CollapsibleContent>
         </Collapsible>
