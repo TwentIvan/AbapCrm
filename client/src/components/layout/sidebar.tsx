@@ -5,7 +5,7 @@ import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
-import hubUpLogo from "@assets/generated_images/hub_up_logo.png";
+import newLogo from "@assets/thu solo logo_1757017376100.jpg";
 import ImageContainer from "@/components/ui/image-container";
 import {
   DndContext,
@@ -279,8 +279,8 @@ export default function Sidebar() {
       <div className="p-6 border-b border-border">
         <div className="flex justify-center">
           <ImageContainer
-            src={hubUpLogo}
-            alt="The Hub Up"
+            src={newLogo}
+            alt="App Logo"
             fallbackType="logo"
             size="custom"
             containerClassName="w-64 h-44"
