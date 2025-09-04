@@ -37,44 +37,50 @@ export class AuditService {
         }
       }
 
-      // Helper function to safely serialize data for JSON storage
+      // Helper function to create valid JSON string for TEXT storage
       const safeSerialize = (obj: any): string | null => {
         if (!obj) return null;
+        
         try {
-          // Create a clean copy of the object to avoid circular references and non-serializable values
-          const cleanObj = JSON.parse(JSON.stringify(obj, (key, value) => {
-            // Convert Date objects to ISO strings
-            if (value instanceof Date) {
-              return value.toISOString();
-            }
-            // Remove functions, symbols, and undefined values
-            if (typeof value === 'function' || typeof value === 'symbol' || value === undefined) {
-              return null;
-            }
-            // Handle BigInt
-            if (typeof value === 'bigint') {
-              return value.toString();
-            }
-            return value;
-          }));
+          // Create a simplified clean object with only basic types
+          const cleanObj: any = {};
           
-          // Now serialize the cleaned object
-          return JSON.stringify(cleanObj);
-        } catch (err) {
-          console.error("[AUDIT] JSON serialization error:", err);
-          console.error("[AUDIT] Problematic object:", obj);
-          
-          // Fallback: create a minimal safe version
-          try {
-            const fallback = {
-              id: obj?.id || 'unknown',
-              type: typeof obj,
-              error: 'Serialization failed - complex object structure'
-            };
-            return JSON.stringify(fallback);
-          } catch {
-            return JSON.stringify({ error: 'Complete serialization failure' });
+          for (const [key, value] of Object.entries(obj)) {
+            // Skip problematic keys that might cause JSON issues
+            if (key.includes('$') || key.includes('.') || key.includes('"')) {
+              continue;
+            }
+            
+            if (value === null || value === undefined) {
+              cleanObj[key] = null;
+            } else if (value instanceof Date) {
+              cleanObj[key] = value.toISOString();
+            } else if (typeof value === 'string') {
+              // Escape quotes and special characters
+              cleanObj[key] = value.replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+            } else if (typeof value === 'number' || typeof value === 'boolean') {
+              cleanObj[key] = value;
+            } else {
+              // For complex types, convert to string safely
+              cleanObj[key] = String(value).slice(0, 100); // Limit length
+            }
           }
+          
+          // Create the JSON string with extra validation
+          const jsonString = JSON.stringify(cleanObj);
+          
+          // Validate that it's actually valid JSON by parsing it back
+          JSON.parse(jsonString);
+          
+          return jsonString;
+        } catch (err) {
+          console.error("[AUDIT] JSON serialization failed:", err);
+          
+          // Safe minimal fallback that we know works
+          return JSON.stringify({
+            record_id: String(obj?.id || 'unknown'),
+            audit_error: 'Failed to serialize complex data'
+          });
         }
       };
 
@@ -82,8 +88,8 @@ export class AuditService {
         tableName,
         recordId,
         action,
-        oldValues: safeSerialize(oldValues),
-        newValues: safeSerialize(newValues),
+        oldValues: oldValues ? safeSerialize(oldValues) : null,
+        newValues: newValues ? safeSerialize(newValues) : null,
         changedFields: changedFields.length > 0 ? changedFields : null,
         userId: context.userId,
         organizationId: context.organizationId || null,
