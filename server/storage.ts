@@ -895,15 +895,34 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async createTask(task: InsertTask & { organizationId: string }): Promise<Task> {
+  async createTask(task: InsertTask & { organizationId: string }, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Task> {
     const [newTask] = await db
       .insert(tasks)
       .values(task)
       .returning();
+    
+    // Log audit trail for task creation
+    if (auditContext) {
+      await AuditService.logCreate(
+        'tasks',
+        newTask.id,
+        newTask,
+        {
+          userId: auditContext.userId,
+          organizationId: task.organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return newTask;
   }
 
-  async updateTask(id: string, task: Partial<InsertTask>, userId: string, organizationId: string): Promise<Task | undefined> {
+  async updateTask(id: string, task: Partial<InsertTask>, userId: string, organizationId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Task | undefined> {
+    // Get old values for audit trail
+    const oldTask = auditContext ? await this.getTask(id, userId, organizationId) : null;
+    
     const updateData: any = { ...task, updatedAt: new Date() };
     if (task.status === 'completed') {
       updateData.completedAt = new Date();
@@ -914,6 +933,23 @@ export class DatabaseStorage implements IStorage {
       .set(updateData)
       .where(and(eq(tasks.id, id), eq(tasks.userId, userId), eq(tasks.organizationId, organizationId)))
       .returning();
+    
+    // Log audit trail for task update
+    if (auditContext && updatedTask && oldTask) {
+      await AuditService.logUpdate(
+        'tasks',
+        updatedTask.id,
+        oldTask,
+        updatedTask,
+        {
+          userId: auditContext.userId,
+          organizationId: organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return updatedTask || undefined;
   }
 
@@ -937,20 +973,56 @@ export class DatabaseStorage implements IStorage {
     return partner || undefined;
   }
 
-  async createPartner(partner: InsertPartner & { organizationId: string }): Promise<Partner> {
+  async createPartner(partner: InsertPartner & { organizationId: string }, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Partner> {
     const [newPartner] = await db
       .insert(partners)
       .values(partner)
       .returning();
+    
+    // Log audit trail for partner creation
+    if (auditContext) {
+      await AuditService.logCreate(
+        'partners',
+        newPartner.id,
+        newPartner,
+        {
+          userId: auditContext.userId,
+          organizationId: partner.organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return newPartner;
   }
 
-  async updatePartner(id: string, partner: Partial<InsertPartner>, userId: string, organizationId: string): Promise<Partner | undefined> {
+  async updatePartner(id: string, partner: Partial<InsertPartner>, userId: string, organizationId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Partner | undefined> {
+    // Get old values for audit trail
+    const oldPartner = auditContext ? await this.getPartner(id, userId, organizationId) : null;
+    
     const [updatedPartner] = await db
       .update(partners)
       .set({ ...partner, updatedAt: new Date() })
       .where(and(eq(partners.id, id), eq(partners.userId, userId), eq(partners.organizationId, organizationId)))
       .returning();
+    
+    // Log audit trail for partner update
+    if (auditContext && updatedPartner && oldPartner) {
+      await AuditService.logUpdate(
+        'partners',
+        updatedPartner.id,
+        oldPartner,
+        updatedPartner,
+        {
+          userId: auditContext.userId,
+          organizationId: organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return updatedPartner || undefined;
   }
 
@@ -974,15 +1046,34 @@ export class DatabaseStorage implements IStorage {
     return deal || undefined;
   }
 
-  async createDeal(deal: InsertDeal & { organizationId: string }): Promise<Deal> {
+  async createDeal(deal: InsertDeal & { organizationId: string }, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Deal> {
     const [newDeal] = await db
       .insert(deals)
       .values(deal)
       .returning();
+    
+    // Log audit trail for deal creation
+    if (auditContext) {
+      await AuditService.logCreate(
+        'deals',
+        newDeal.id,
+        newDeal,
+        {
+          userId: auditContext.userId,
+          organizationId: deal.organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return newDeal;
   }
 
-  async updateDeal(id: string, deal: Partial<InsertDeal>, userId: string, organizationId: string): Promise<Deal | undefined> {
+  async updateDeal(id: string, deal: Partial<InsertDeal>, userId: string, organizationId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Deal | undefined> {
+    // Get old values for audit trail
+    const oldDeal = auditContext ? await this.getDeal(id, userId, organizationId) : null;
+    
     const updateData: any = { ...deal, updatedAt: new Date() };
     if (deal.stage === 'won' || deal.stage === 'lost') {
       updateData.actualCloseDate = new Date();
@@ -993,6 +1084,23 @@ export class DatabaseStorage implements IStorage {
       .set(updateData)
       .where(and(eq(deals.id, id), eq(deals.userId, userId), eq(deals.organizationId, organizationId)))
       .returning();
+    
+    // Log audit trail for deal update
+    if (auditContext && updatedDeal && oldDeal) {
+      await AuditService.logUpdate(
+        'deals',
+        updatedDeal.id,
+        oldDeal,
+        updatedDeal,
+        {
+          userId: auditContext.userId,
+          organizationId: organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return updatedDeal || undefined;
   }
 
@@ -1016,20 +1124,56 @@ export class DatabaseStorage implements IStorage {
     return event || undefined;
   }
 
-  async createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent> {
+  async createCalendarEvent(event: InsertCalendarEvent, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<CalendarEvent> {
     const [newEvent] = await db
       .insert(calendarEvents)
       .values(event)
       .returning();
+    
+    // Log audit trail for calendar event creation
+    if (auditContext) {
+      await AuditService.logCreate(
+        'calendar_events',
+        newEvent.id,
+        newEvent,
+        {
+          userId: auditContext.userId,
+          organizationId: null, // Calendar events might not have organizationId
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return newEvent;
   }
 
-  async updateCalendarEvent(id: string, event: Partial<InsertCalendarEvent>, userId: string): Promise<CalendarEvent | undefined> {
+  async updateCalendarEvent(id: string, event: Partial<InsertCalendarEvent>, userId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<CalendarEvent | undefined> {
+    // Get old values for audit trail
+    const oldEvent = auditContext ? await this.getCalendarEvent(id, userId) : null;
+    
     const [updatedEvent] = await db
       .update(calendarEvents)
       .set({ ...event, updatedAt: new Date() })
       .where(and(eq(calendarEvents.id, id), eq(calendarEvents.userId, userId)))
       .returning();
+    
+    // Log audit trail for calendar event update
+    if (auditContext && updatedEvent && oldEvent) {
+      await AuditService.logUpdate(
+        'calendar_events',
+        updatedEvent.id,
+        oldEvent,
+        updatedEvent,
+        {
+          userId: auditContext.userId,
+          organizationId: null, // Calendar events might not have organizationId
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return updatedEvent || undefined;
   }
 

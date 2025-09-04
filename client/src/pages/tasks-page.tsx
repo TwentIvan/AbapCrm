@@ -10,10 +10,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square, Trash2, ExternalLink } from "lucide-react";
+import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square, Trash2, ExternalLink, History } from "lucide-react";
 import type { Task, Project, TimeEntry } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
+import { useOrganization } from "@/hooks/use-organization";
 import TaskForm from "@/components/forms/task-form";
+import AuditHistory from "@/components/ui/audit-history";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TimeTracker } from "@/components/timesheet/time-tracker";
 import { CompletionDialog } from "@/components/timesheet/completion-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -283,6 +286,8 @@ export default function TasksPage() {
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  
+  const { currentOrganizationId } = useOrganization();
 
   // Debug dialog states when they change
   useEffect(() => {
@@ -933,15 +938,39 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
       </Dialog>
 
       <Dialog open={showEditDialog} onOpenChange={handleCloseEditDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
+            <DialogTitle>Modifica Task</DialogTitle>
           </DialogHeader>
+          
           {editingTask && (
-            <TaskForm 
-              task={editingTask} 
-              onSuccess={handleCloseEditDialog} 
-            />
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details" className="flex items-center space-x-2">
+                  <Edit className="h-4 w-4" />
+                  <span>Dettagli</span>
+                </TabsTrigger>
+                <TabsTrigger value="history" className="flex items-center space-x-2">
+                  <History className="h-4 w-4" />
+                  <span>Storico Modifiche</span>
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="details" className="mt-6">
+                <TaskForm 
+                  task={editingTask} 
+                  onSuccess={handleCloseEditDialog} 
+                />
+              </TabsContent>
+              
+              <TabsContent value="history" className="mt-6">
+                <AuditHistory 
+                  tableName="tasks" 
+                  recordId={editingTask.id}
+                  title="Storico Modifiche Task"
+                />
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>

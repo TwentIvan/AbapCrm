@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useTableLayout } from "@/lib/user-preferences";
+import { useOrganization } from "@/hooks/use-organization";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,10 +17,12 @@ import { DataTable, createImageColumn, createBadgeColumn, createTextColumn } fro
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import ImageContainer from "@/components/ui/image-container";
-import { Building, Mail, Phone, MapPin, MoreHorizontal, Grid3X3, List, Edit, Trash2 } from "lucide-react";
+import { Building, Mail, Phone, MapPin, MoreHorizontal, Grid3X3, List, Edit, Trash2, History } from "lucide-react";
 import { Partner } from "@shared/schema";
 import AdvancedPartnerForm from "@/components/forms/advanced-partner-form";
 import SimplePartnerForm from "@/components/forms/simple-partner-form";
+import AuditHistory from "@/components/ui/audit-history";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const typeColors = {
   client: "bg-blue-100 text-blue-800",
@@ -47,6 +50,7 @@ export default function PartnersPage() {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { currentOrganizationId } = useOrganization();
 
   // Use the table layout hook for persistent preferences
   const { 
@@ -64,11 +68,8 @@ export default function PartnersPage() {
 
   const { data: partners, isLoading } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
-    queryFn: async () => {
-      const res = await fetch("/api/partners", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch partners');
-      return res.json();
-    },
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
   });
 
   const deleteMutation = useMutation({
@@ -501,15 +502,40 @@ export default function PartnersPage() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Modifica Partner</DialogTitle>
+            <DialogDescription>Aggiorna informazioni del partner</DialogDescription>
           </DialogHeader>
+          
           {selectedPartner && (
-            <AdvancedPartnerForm 
-              existingPartner={selectedPartner}
-              onSuccess={() => {
-                setShowEditDialog(false);
-                setSelectedPartner(null);
-              }} 
-            />
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details" className="flex items-center space-x-2">
+                  <Edit className="h-4 w-4" />
+                  <span>Dettagli</span>
+                </TabsTrigger>
+                <TabsTrigger value="history" className="flex items-center space-x-2">
+                  <History className="h-4 w-4" />
+                  <span>Storico Modifiche</span>
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="details" className="mt-6">
+                <AdvancedPartnerForm 
+                  existingPartner={selectedPartner}
+                  onSuccess={() => {
+                    setShowEditDialog(false);
+                    setSelectedPartner(null);
+                  }} 
+                />
+              </TabsContent>
+              
+              <TabsContent value="history" className="mt-6">
+                <AuditHistory 
+                  tableName="partners" 
+                  recordId={selectedPartner.id}
+                  title="Storico Modifiche Partner"
+                />
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>

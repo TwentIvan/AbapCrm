@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
+import { useOrganization } from "@/hooks/use-organization";
 import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
@@ -15,9 +16,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { TableConfiguration } from "@/components/ui/table-configuration";
-import { Handshake, DollarSign, Calendar, TrendingUp, MoreHorizontal, Grid3X3, List, Edit, Trash2 } from "lucide-react";
+import { Handshake, DollarSign, Calendar, TrendingUp, MoreHorizontal, Grid3X3, List, Edit, Trash2, History } from "lucide-react";
 import { Deal } from "@shared/schema";
 import DealForm from "@/components/forms/deal-form";
+import AuditHistory from "@/components/ui/audit-history";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const stageColors = {
   prospecting: "bg-blue-100 text-blue-800",
@@ -48,6 +51,7 @@ export default function DealsPage() {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { currentOrganizationId } = useOrganization();
 
   // Use the table layout hook for persistent preferences
   const { 
@@ -65,11 +69,8 @@ export default function DealsPage() {
 
   const { data: deals = [], isLoading } = useQuery<Deal[]>({
     queryKey: ["/api/deals"],
-    queryFn: async () => {
-      const res = await fetch("/api/deals", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch deals');
-      return res.json();
-    },
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
   });
 
   const deleteMutation = useMutation({

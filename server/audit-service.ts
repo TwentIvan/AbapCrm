@@ -37,12 +37,33 @@ export class AuditService {
         }
       }
 
+      // Helper function to safely serialize data for JSON storage
+      const safeSerialize = (obj: any): string | null => {
+        if (!obj) return null;
+        try {
+          return JSON.stringify(obj, (key, value) => {
+            // Convert Date objects to ISO strings for proper JSON serialization
+            if (value instanceof Date) {
+              return value.toISOString();
+            }
+            // Handle other non-serializable values
+            if (typeof value === 'function' || typeof value === 'symbol') {
+              return undefined;
+            }
+            return value;
+          });
+        } catch (err) {
+          console.error("[AUDIT] JSON serialization error:", err);
+          return null;
+        }
+      };
+
       const auditEntry: InsertAuditLog = {
         tableName,
         recordId,
         action,
-        oldValues: oldValues ? JSON.stringify(oldValues) : null,
-        newValues: newValues ? JSON.stringify(newValues) : null,
+        oldValues: safeSerialize(oldValues),
+        newValues: safeSerialize(newValues),
         changedFields: changedFields.length > 0 ? changedFields : null,
         userId: context.userId,
         organizationId: context.organizationId || null,

@@ -665,7 +665,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         userId: req.user!.id,
         organizationId: organizationId
       });
-      const task = await storage.createTask({ ...taskData, organizationId });
+      const auditContext = AuditService.createContext(req);
+      const task = await storage.createTask({ ...taskData, organizationId }, auditContext);
       res.status(201).json(task);
     } catch (error) {
       res.status(400).json({ error: "Invalid task data", details: error instanceof Error ? error.message : String(error) });
@@ -731,7 +732,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       }
 
       const organizationId = getOrganizationId(req);
-      const task = await storage.updateTask(req.params.id, updateData, req.user!.id, organizationId);
+      const auditContext = AuditService.createContext(req);
+      const task = await storage.updateTask(req.params.id, updateData, req.user!.id, organizationId, auditContext);
       if (!task) return res.sendStatus(404);
       res.json(task);
     } catch (error) {
@@ -792,7 +794,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         organizationId: organizationId
       });
       
-      const partner = await storage.createPartner({ ...partnerData, organizationId });
+      const auditContext = AuditService.createContext(req);
+      const partner = await storage.createPartner({ ...partnerData, organizationId }, auditContext);
       res.status(201).json(partner);
     } catch (error) {
       res.status(400).json({ error: "Invalid partner data", details: error instanceof Error ? error.message : String(error) });
@@ -803,7 +806,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOrganizationId(req);
-      const partner = await storage.updatePartner(req.params.id, req.body, req.user!.id, organizationId);
+      const auditContext = AuditService.createContext(req);
+      const partner = await storage.updatePartner(req.params.id, req.body, req.user!.id, organizationId, auditContext);
       if (!partner) return res.sendStatus(404);
       res.json(partner);
     } catch (error) {
@@ -1070,7 +1074,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         userId: req.user!.id,
         organizationId: organizationId
       });
-      const deal = await storage.createDeal({ ...dealData, organizationId });
+      const auditContext = AuditService.createContext(req);
+      const deal = await storage.createDeal({ ...dealData, organizationId }, auditContext);
       res.status(201).json(deal);
     } catch (error) {
       console.error("Deal creation error:", error);
@@ -1082,7 +1087,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOrganizationId(req);
-      const deal = await storage.updateDeal(req.params.id, req.body, req.user!.id, organizationId);
+      const auditContext = AuditService.createContext(req);
+      const deal = await storage.updateDeal(req.params.id, req.body, req.user!.id, organizationId, auditContext);
       if (!deal) return res.sendStatus(404);
       res.json(deal);
     } catch (error) {
@@ -1116,7 +1122,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const eventData = insertCalendarEventSchema.parse({ ...req.body, userId: req.user!.id });
-      const event = await storage.createCalendarEvent(eventData);
+      const auditContext = AuditService.createContext(req);
+      const event = await storage.createCalendarEvent(eventData, auditContext);
       res.status(201).json(event);
     } catch (error) {
       res.status(400).json({ error: "Invalid calendar event data" });
