@@ -126,7 +126,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           </TooltipProvider>
           
           {/* Area Title with Icon */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 bg-card border border-border rounded-lg px-4 py-3 shadow-sm">
             <AreaIcon className="text-primary" style={{ width: '2rem', height: '2rem' }} />
             <div>
               <h2 className="text-2xl font-semibold text-foreground" data-testid="text-page-title">
