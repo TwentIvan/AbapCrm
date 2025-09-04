@@ -1,8 +1,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, X, Trash2 } from "lucide-react";
+import { X, Trash2 } from "lucide-react";
 
 export interface TableColumn {
   key: string;
@@ -17,8 +16,6 @@ interface UniversalTableProps {
   data: any[];
   columns: TableColumn[];
   enableSelection?: boolean;
-  enableSearch?: boolean;
-  searchPlaceholder?: string;
   onSelectionChange?: (selectedItems: any[]) => void;
   onRowClick?: (item: any) => void;
   bulkActions?: Array<{
@@ -34,8 +31,6 @@ export function UniversalTable({
   data,
   columns,
   enableSelection = false,
-  enableSearch = true,
-  searchPlaceholder = "Cerca...",
   onSelectionChange,
   onRowClick,
   bulkActions = [],
@@ -44,27 +39,12 @@ export function UniversalTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<string>("");
   const [sortDesc, setSortDesc] = useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-
-  // Filtro dati in base alla ricerca
-  const filteredData = useMemo(() => {
-    if (!searchTerm.trim()) return data;
-    
-    return data.filter(item => {
-      return columns.some(col => {
-        if (!col.searchable) return false;
-        
-        const value = col.accessor ? col.accessor(item) : item[col.key];
-        return String(value || "").toLowerCase().includes(searchTerm.toLowerCase());
-      });
-    });
-  }, [data, searchTerm, columns]);
 
   // Ordina dati
   const sortedData = useMemo(() => {
-    if (!sortField) return filteredData;
+    if (!sortField) return data;
     
-    return [...filteredData].sort((a, b) => {
+    return [...data].sort((a, b) => {
       const column = columns.find(col => col.key === sortField);
       let aVal = column?.accessor ? column.accessor(a) : a[sortField];
       let bVal = column?.accessor ? column.accessor(b) : b[sortField];
@@ -80,7 +60,7 @@ export function UniversalTable({
       const result = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sortDesc ? -result : result;
     });
-  }, [filteredData, sortField, sortDesc, columns]);
+  }, [data, sortField, sortDesc, columns]);
 
   // Gestione selezione
   const handleItemSelect = (id: string) => {
@@ -165,18 +145,6 @@ export function UniversalTable({
         </div>
       )}
 
-      {/* Barra ricerca */}
-      {enableSearch && (
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder={searchPlaceholder}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      )}
 
       {/* Tabella */}
       <div className="rounded-md border">
