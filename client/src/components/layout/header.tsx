@@ -157,34 +157,36 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             ) : (
               <>
                 <Search className="text-primary flex-shrink-0 mr-3" style={{ width: '1.25rem', height: '1.25rem', transform: 'scaleX(-1)' }} />
-                <Input
+                <input
                   type="text"
                   placeholder={`Cerca in ${title}...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 border-0 bg-transparent focus:ring-0 text-sm px-0"
-                  style={{ height: 'calc(100% - 8px)', minHeight: '32px' }}
+                  className="flex-1 border-0 bg-transparent focus:ring-0 focus:outline-0 text-sm px-0 text-foreground placeholder:text-muted-foreground"
+                  style={{ 
+                    height: '100%', 
+                    minHeight: '40px',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    outline: 'none'
+                  }}
                   data-testid="input-search"
                   autoFocus
                   onBlur={() => !searchQuery && setIsSearchOpen(false)}
                 />
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="px-2 text-xs bg-primary/10 hover:bg-primary/20 ml-2"
-                  style={{ height: 'calc(100% - 8px)', minHeight: '32px' }}
+                <button
+                  className="px-2 text-xs bg-primary/10 hover:bg-primary/20 ml-2 rounded text-foreground transition-colors"
+                  style={{ height: '100%', minHeight: '40px' }}
                   onClick={(e) => {
                     e.stopPropagation();
                     // TODO: implementare ricerca globale
                   }}
                 >
                   Globale
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="w-8 ml-1"
-                  style={{ height: 'calc(100% - 8px)', minHeight: '32px' }}
+                </button>
+                <button
+                  className="w-8 ml-1 rounded hover:bg-primary/10 text-foreground transition-colors flex items-center justify-center"
+                  style={{ height: '100%', minHeight: '40px' }}
                   onClick={(e) => {
                     e.stopPropagation();
                     setSearchQuery("");
@@ -192,7 +194,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   }}
                 >
                   <X className="h-4 w-4" />
-                </Button>
+                </button>
               </>
             )}
           </div>
