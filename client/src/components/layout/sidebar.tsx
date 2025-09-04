@@ -124,8 +124,8 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
         className="h-5 w-5 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <Icon className="h-6 w-6 flex-shrink-0" />
-      <span>{item.name}</span>
+      <Icon className="h-5 w-5 flex-shrink-0" />
+      <span className="text-sm">{item.name}</span>
     </div>
   );
 }
@@ -240,7 +240,7 @@ export default function Sidebar() {
             data-testid="nav-systems"
           >
             <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
-            <Shield className="h-6 w-6" />
+            <Shield className="h-5 w-5" />
             <span className="text-base font-medium">Systems</span>
             {isSystemsOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
@@ -281,7 +281,7 @@ export default function Sidebar() {
             data-testid="nav-time-management"
           >
             <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
-            <Clock className="h-6 w-6" />
+            <Clock className="h-5 w-5" />
             <span className="text-base font-medium">Time Management</span>
             {isTimeManagementOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
