@@ -150,12 +150,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                           data-testid="button-search"
                         >
                           <Search className="h-8 w-8 text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                          <div className="opacity-0 pointer-events-none absolute" style={{ width: 0, overflow: 'hidden' }}>
-                            <h2 className="text-lg font-semibold whitespace-nowrap">
-                              Placeholder
+                          <div className="min-w-0 opacity-0 pointer-events-none">
+                            <h2 className="text-lg font-semibold truncate">
+                              A
                             </h2>
-                            <p className="text-sm whitespace-nowrap">
-                              Height match
+                            <p className="text-sm truncate">
+                              B
                             </p>
                           </div>
                         </div>
