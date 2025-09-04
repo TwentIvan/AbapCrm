@@ -69,9 +69,11 @@ export class AuditService {
           const oldValue = oldValues[field] || null;
           const newValue = newValues[field] || null;
           
+          // Use organizationId if available, otherwise use user_id as fallback
+          const orgId = context.organizationId || context.userId;
           await db.execute(sql.raw(`
             INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
-            VALUES ('${recordId}', '${tableName}', '${field}', '${String(oldValue)}', '${String(newValue)}', '${context.userId}', '${context.organizationId}')
+            VALUES ('${recordId}', '${tableName}', '${field}', '${String(oldValue)}', '${String(newValue)}', '${context.userId}', '${orgId}')
           `));
         }
         console.log(`[AUDIT] ✅ SAVED ${changedFields.length} field changes for ${tableName}:${recordId} by user:${context.userId}`);
@@ -79,9 +81,11 @@ export class AuditService {
         // For CREATE, log each field as new (old_value = null)
         for (const [field, value] of Object.entries(newValues)) {
           if (field !== 'id') { // Skip ID field
+            // Use organizationId if available, otherwise use user_id as fallback
+            const orgId = context.organizationId || context.userId;
             await db.execute(sql.raw(`
               INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
-              VALUES ('${recordId}', '${tableName}', '${field}', null, '${String(value)}', '${context.userId}', '${context.organizationId}')
+              VALUES ('${recordId}', '${tableName}', '${field}', null, '${String(value)}', '${context.userId}', '${orgId}')
             `));
           }
         }
@@ -90,9 +94,11 @@ export class AuditService {
         // For DELETE, log each field as deleted (new_value = null)
         for (const [field, value] of Object.entries(oldValues)) {
           if (field !== 'id') { // Skip ID field
+            // Use organizationId if available, otherwise use user_id as fallback
+            const orgId = context.organizationId || context.userId;
             await db.execute(sql.raw(`
               INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
-              VALUES ('${recordId}', '${tableName}', '${field}', '${String(value)}', null, '${context.userId}', '${context.organizationId}')
+              VALUES ('${recordId}', '${tableName}', '${field}', '${String(value)}', null, '${context.userId}', '${orgId}')
             `));
           }
         }
