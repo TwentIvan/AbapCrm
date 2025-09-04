@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X } from "lucide-react";
+import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -30,6 +30,7 @@ interface HeaderProps {
 export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
   const { organizations, currentOrganization, switchOrganization } = useOrganization();
   const { language, setLanguage, t } = useTranslation();
@@ -38,21 +39,38 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
     ? `${user.firstName[0]}${user.lastName[0]}` 
     : user?.username?.[0]?.toUpperCase() || "U";
 
+  // Mappatura route -> icona per l'area corrente
+  const getAreaIcon = (path: string) => {
+    const routeIconMap = {
+      '/': Building,
+      '/organizations': Building,
+      '/projects': FolderOpen,
+      '/tasks': CheckSquare,
+      '/partners': Handshake,
+      '/calendar': Calendar,
+      '/planning-calendar': Calendar,
+      '/timesheet': Clock,
+      '/timesheets': Clock,
+      '/messages': Mail,
+      '/rate-agreements': DollarSign,
+      '/human-resources': Users,
+      '/sales-orders': FileText,
+      '/sap-systems': Server,
+      '/system-credentials': Key,
+      '/vpn-connections': Wifi,
+    };
+    
+    return routeIconMap[path] || Building; // Default a Building se non trovato
+  };
+
+  const AreaIcon = getAreaIcon(location);
+
   return (
     <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-10">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-foreground" data-testid="text-page-title">
-            {title}
-          </h2>
-          <p className="text-muted-foreground" data-testid="text-page-subtitle">
-            {subtitle}
-          </p>
-        </div>
-        
         <div className="flex items-center space-x-4">
+          {/* Search Icon - spostata a sinistra */}
           <TooltipProvider delayDuration={300}>
-            {/* Search Icon */}
             <div className="relative">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -105,7 +123,24 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </TooltipContent>
               </Tooltip>
             </div>
-            
+          </TooltipProvider>
+          
+          {/* Area Title with Icon */}
+          <div className="flex items-center space-x-3">
+            <AreaIcon className="text-primary" style={{ width: '2rem', height: '2rem' }} />
+            <div>
+              <h2 className="text-2xl font-semibold text-foreground" data-testid="text-page-title">
+                {title}
+              </h2>
+              <p className="text-muted-foreground" data-testid="text-page-subtitle">
+                {subtitle}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-4">
+          <TooltipProvider delayDuration={300}>
             {/* Quick Access Buttons */}
             <div className="flex items-center space-x-2">
               <Tooltip>
