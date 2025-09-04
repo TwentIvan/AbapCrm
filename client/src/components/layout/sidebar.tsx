@@ -229,15 +229,17 @@ export default function Sidebar() {
         </DndContext>
         
         {/* Systems Section */}
-        <div className="space-y-1">
+        <div 
+          className="space-y-1"
+          onMouseEnter={() => setIsSystemsOpen(true)}
+          onMouseLeave={() => setIsSystemsOpen(false)}
+        >
           <Button
             variant="ghost"
             className={cn(
               "w-full justify-start space-x-4 h-auto p-0",
               "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
-            onMouseEnter={() => setIsSystemsOpen(true)}
-            onMouseLeave={() => setIsSystemsOpen(false)}
             data-testid="nav-systems"
           >
             <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
@@ -268,15 +270,17 @@ export default function Sidebar() {
         </div>
 
         {/* Time Management Section */}
-        <div className="space-y-1">
+        <div 
+          className="space-y-1"
+          onMouseEnter={() => setIsTimeManagementOpen(true)}
+          onMouseLeave={() => setIsTimeManagementOpen(false)}
+        >
           <Button
             variant="ghost"
             className={cn(
               "w-full justify-start space-x-4 h-auto p-0",
               "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
-            onMouseEnter={() => setIsTimeManagementOpen(true)}
-            onMouseLeave={() => setIsTimeManagementOpen(false)}
             data-testid="nav-time-management"
           >
             <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
