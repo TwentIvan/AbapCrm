@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock } from "lucide-react";
+import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock, Settings, LogOut } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -338,12 +338,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => console.log('Account Settings')}>
-                    <User className="mr-2 h-5 w-5" />
+                    <Settings className="mr-2 h-5 w-5" style={{ color: '#6b7280' }} />
                     Impostazioni Account
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => logoutMutation.mutate()} className="text-destructive">
-                    <User className="mr-2 h-5 w-5" />
+                    <LogOut className="mr-2 h-5 w-5" style={{ color: '#ef4444' }} />
                     Logout
                   </DropdownMenuItem>
                 </DropdownMenuContent>
