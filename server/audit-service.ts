@@ -64,8 +64,12 @@ export class AuditService {
       };
 
       // Use simple audit_trail table - one row per changed field
-      if (action === "UPDATE" && changedFields.length > 0 && oldValues && newValues) {
-        for (const field of changedFields) {
+      // Exclude system fields that shouldn't be tracked
+      const excludeFields = ['id', 'updatedAt', 'createdAt', 'created_at', 'updated_at'];
+      const fieldsToTrack = changedFields.filter(field => !excludeFields.includes(field));
+      
+      if (action === "UPDATE" && fieldsToTrack.length > 0 && oldValues && newValues) {
+        for (const field of fieldsToTrack) {
           const oldValue = oldValues[field] || null;
           const newValue = newValues[field] || null;
           
@@ -78,27 +82,29 @@ export class AuditService {
             VALUES ('${recordId}', '${tableName}', '${field}', '${String(oldValue)}', '${String(newValue)}', '${context.userId}', '${context.organizationId}')
           `));
         }
-        console.log(`[AUDIT] ✅ SAVED ${changedFields.length} field changes for ${tableName}:${recordId} by user:${context.userId}`);
+        console.log(`[AUDIT] ✅ SAVED ${fieldsToTrack.length} field changes for ${tableName}:${recordId} by user:${context.userId} (excluded: ${changedFields.filter(f => excludeFields.includes(f)).join(', ')})`);
       } else if (action === "CREATE" && newValues) {
-        // For CREATE, log each field as new (old_value = null)
-        for (const [field, value] of Object.entries(newValues)) {
-          if (field !== 'id') { // Skip ID field
-            await db.execute(sql.raw(`
-              INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
-              VALUES ('${recordId}', '${tableName}', '${field}', null, '${String(value)}', '${context.userId}', '${context.organizationId}')
-            `));
-          }
+        // For CREATE, log each field as new (old_value = null), excluding system fields
+        const excludeFields = ['id', 'updatedAt', 'createdAt', 'created_at', 'updated_at'];
+        const fieldsToCreate = Object.entries(newValues).filter(([field]) => !excludeFields.includes(field));
+        
+        for (const [field, value] of fieldsToCreate) {
+          await db.execute(sql.raw(`
+            INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
+            VALUES ('${recordId}', '${tableName}', '${field}', null, '${String(value)}', '${context.userId}', '${context.organizationId}')
+          `));
         }
         console.log(`[AUDIT] ✅ SAVED CREATE for ${tableName}:${recordId} by user:${context.userId}`);
       } else if (action === "DELETE" && oldValues) {
-        // For DELETE, log each field as deleted (new_value = null)
-        for (const [field, value] of Object.entries(oldValues)) {
-          if (field !== 'id') { // Skip ID field
-            await db.execute(sql.raw(`
-              INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
-              VALUES ('${recordId}', '${tableName}', '${field}', '${String(value)}', null, '${context.userId}', '${context.organizationId}')
-            `));
-          }
+        // For DELETE, log each field as deleted (new_value = null), excluding system fields
+        const excludeFields = ['id', 'updatedAt', 'createdAt', 'created_at', 'updated_at'];
+        const fieldsToDelete = Object.entries(oldValues).filter(([field]) => !excludeFields.includes(field));
+        
+        for (const [field, value] of fieldsToDelete) {
+          await db.execute(sql.raw(`
+            INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
+            VALUES ('${recordId}', '${tableName}', '${field}', '${String(value)}', null, '${context.userId}', '${context.organizationId}')
+          `));
         }
         console.log(`[AUDIT] ✅ SAVED DELETE for ${tableName}:${recordId} by user:${context.userId}`);
       }
