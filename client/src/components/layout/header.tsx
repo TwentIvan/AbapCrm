@@ -172,7 +172,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             className="flex items-center space-x-3 px-4 py-2 shadow-sm"
             style={{ 
               background: 'linear-gradient(to right, rgba(59, 130, 246, 0.15), rgba(255, 255, 255, 0.8))',
-              borderRadius: '1.75rem 0 0 1.75rem',
+              borderRadius: '3rem 0 0 3rem',
               border: '1px solid rgba(59, 130, 246, 0.2)'
             }}
           >
