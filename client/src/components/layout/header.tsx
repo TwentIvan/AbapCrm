@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users } from "lucide-react";
+import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -11,6 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrganization } from "@/hooks/use-organization";
 
@@ -22,6 +27,7 @@ interface HeaderProps {
 
 export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { user, logoutMutation } = useAuth();
   const { organizations, currentOrganization, switchOrganization } = useOrganization();
 
@@ -42,45 +48,73 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         </div>
         
         <div className="flex items-center space-x-4">
-          {/* Search */}
+          {/* Search Icon */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 w-64"
-              data-testid="input-search"
-            />
+            <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-12 w-12 rounded-full bg-muted/20 border border-muted hover:bg-accent"
+                  data-testid="button-search"
+                >
+                  <Search className="h-8 w-8 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-2" align="start">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+                  <Input
+                    type="text"
+                    placeholder="Cerca in tutto il CRM..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-10 h-12 text-base"
+                    data-testid="input-search"
+                    autoFocus
+                  />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setIsSearchOpen(false);
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
           
           {/* Quick Access Buttons */}
           <div className="flex items-center space-x-2">
             <Link href="/organizations">
               <Button variant="ghost" size="icon" data-testid="button-organizations">
-                <Building className="h-7 w-7" />
+                <Building className="h-8 w-8" />
                 <span className="sr-only">Organizations</span>
               </Button>
             </Link>
             
             <Link href="/messages">
               <Button variant="ghost" size="icon" data-testid="button-messages">
-                <Mail className="h-7 w-7" />
+                <Mail className="h-8 w-8" />
                 <span className="sr-only">Messages</span>
               </Button>
             </Link>
             
             <Link href="/calendar">
               <Button variant="ghost" size="icon" data-testid="button-calendar">
-                <Calendar className="h-7 w-7" />
+                <Calendar className="h-8 w-8" />
                 <span className="sr-only">Calendar</span>
               </Button>
             </Link>
             
             <Link href="/planning-calendar">
               <Button variant="ghost" size="icon" data-testid="button-planning-calendar">
-                <FolderTree className="h-7 w-7" />
+                <FolderTree className="h-8 w-8" />
                 <span className="sr-only">Planning Calendar</span>
               </Button>
             </Link>
@@ -93,15 +127,15 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               {/* Logo Organizzazione - Sinistra (cliccabile per switch) */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-10 h-10 rounded-full bg-background border border-border hover:bg-accent">
+                  <Button variant="ghost" size="icon" className="w-12 h-12 rounded-full bg-background border border-border hover:bg-accent">
                     {currentOrganization?.logoUrl ? (
                       <img 
                         src={currentOrganization.logoUrl} 
                         alt={`${currentOrganization.name} logo`}
-                        className="w-8 h-8 rounded-full object-cover"
+                        className="w-10 h-10 rounded-full object-cover"
                       />
                     ) : (
-                      <Building className="h-6 w-6 text-muted-foreground" />
+                      <Building className="h-8 w-8 text-muted-foreground" />
                     )}
                   </Button>
                 </DropdownMenuTrigger>
@@ -140,7 +174,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               </DropdownMenu>
               
               {/* Nomi */}
-              <div className="flex flex-col text-sm leading-tight min-w-0">
+              <div className="flex flex-col text-base leading-tight min-w-0">
                 <span className="font-medium text-foreground truncate">
                   {user.firstName && user.lastName 
                     ? `${user.firstName} ${user.lastName}` 
@@ -154,9 +188,9 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               {/* Avatar Utente - Destra (cliccabile per logout/impostazioni) */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-10 h-10 rounded-full bg-primary hover:bg-primary/90">
-                    <Avatar className="w-10 h-10">
-                      <AvatarFallback className="text-sm font-medium text-primary-foreground bg-primary">
+                  <Button variant="ghost" size="icon" className="w-12 h-12 rounded-full bg-primary hover:bg-primary/90">
+                    <Avatar className="w-12 h-12">
+                      <AvatarFallback className="text-base font-medium text-primary-foreground bg-primary">
                         {userInitials}
                       </AvatarFallback>
                     </Avatar>
@@ -164,12 +198,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => console.log('Account Settings')}>
-                    <User className="mr-2 h-4 w-4" />
+                    <User className="mr-2 h-5 w-5" />
                     Impostazioni Account
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => logoutMutation.mutate()} className="text-destructive">
-                    <User className="mr-2 h-4 w-4" />
+                    <User className="mr-2 h-5 w-5" />
                     Logout
                   </DropdownMenuItem>
                 </DropdownMenuContent>

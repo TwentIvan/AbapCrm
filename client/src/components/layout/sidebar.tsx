@@ -80,10 +80,10 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
       onClick={() => window.location.href = item.href}
     >
       <GripVertical 
-        className="h-12 w-12 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
+        className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <Icon className="h-16 w-16 flex-shrink-0" />
+      <Icon className="h-10 w-10 flex-shrink-0" />
       <span className="text-base font-medium">{item.name}</span>
     </div>
   );
@@ -167,12 +167,12 @@ export default function Sidebar() {
             onClick={() => setIsSystemsOpen(!isSystemsOpen)}
             data-testid="nav-systems"
           >
-            <Shield className="h-16 w-16" />
+            <Shield className="h-10 w-10" />
             <span>Systems</span>
             {isSystemsOpen ? (
-              <ChevronDown className="h-10 w-10 ml-auto" />
+              <ChevronDown className="h-6 w-6 ml-auto" />
             ) : (
-              <ChevronRight className="h-10 w-10 ml-auto" />
+              <ChevronRight className="h-6 w-6 ml-auto" />
             )}
           </Button>
           
@@ -207,12 +207,12 @@ export default function Sidebar() {
             onClick={() => setIsTimeManagementOpen(!isTimeManagementOpen)}
             data-testid="nav-time-management"
           >
-            <Clock className="h-16 w-16" />
+            <Clock className="h-10 w-10" />
             <span>Time Management</span>
             {isTimeManagementOpen ? (
-              <ChevronDown className="h-10 w-10 ml-auto" />
+              <ChevronDown className="h-6 w-6 ml-auto" />
             ) : (
-              <ChevronRight className="h-10 w-10 ml-auto" />
+              <ChevronRight className="h-6 w-6 ml-auto" />
             )}
           </Button>
           
