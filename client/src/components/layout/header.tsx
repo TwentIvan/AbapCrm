@@ -79,8 +79,8 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
     
     // Se il button corrente è a sinistra di quello in hover, si sposta a sinistra
     if (currentIndex < hoveredIndex) {
-      // Mantenere la distanza iniziale (space-x-2 = 8px)
-      return 'translateX(-16px)'; 
+      // Raddoppio per distanza migliore
+      return 'translateX(-32px)'; 
     }
     
     return 'translateX(0)';
