@@ -233,7 +233,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     className="w-14 h-14 rounded-full bg-background border border-border hover:bg-accent flex-shrink-0 p-0 overflow-hidden" 
                     data-testid="button-language-flag"
                   >
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-3xl">
                       {language === "it" ? "🇮🇹" : "🇬🇧"}
                     </div>
                   </Button>
