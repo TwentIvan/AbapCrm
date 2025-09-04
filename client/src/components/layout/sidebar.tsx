@@ -92,7 +92,8 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
       />
       <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '220px', minWidth: '220px' }}>
         <Icon className="h-5 w-5 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-        <span className="text-base font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
+        <span className="text-base font-medium flex-1" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
+        <div className="ml-2 w-6 h-6 opacity-0" />
       </div>
     </div>
   );
@@ -189,7 +190,8 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
       />
       <div className="flex items-center px-3 py-1 rounded-full nav-box transition-colors" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '200px', minWidth: '200px' }}>
         <Icon className="h-5 w-5 flex-shrink-0 mr-2" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-        <span className="text-sm font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
+        <span className="text-sm font-medium flex-1" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
+        <div className="ml-2 w-6 h-6 opacity-0" />
       </div>
     </div>
   );
