@@ -240,7 +240,7 @@ export default function Sidebar() {
             data-testid="nav-systems"
           >
             <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
-            <Shield className="h-5 w-5" />
+            <Shield className="h-6 w-6" />
             <span className="text-base font-medium">Systems</span>
             {isSystemsOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
@@ -281,7 +281,7 @@ export default function Sidebar() {
             data-testid="nav-time-management"
           >
             <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
-            <Clock className="h-5 w-5" />
+            <Clock className="h-6 w-6" />
             <span className="text-base font-medium">Time Management</span>
             {isTimeManagementOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
