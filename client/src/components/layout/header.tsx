@@ -239,11 +239,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                         background: language === "it" 
                           ? 'linear-gradient(to right, #009246 33%, #FFFFFF 33%, #FFFFFF 67%, #CE2B37 67%)'
                           : `
-                            radial-gradient(circle, transparent 30%, #C8102E 30%, #C8102E 35%, transparent 35%),
-                            linear-gradient(45deg, #012169 25%, transparent 25%, transparent 75%, #012169 75%),
-                            linear-gradient(-45deg, #012169 25%, transparent 25%, transparent 75%, #012169 75%),
-                            linear-gradient(to right, #C8102E 40%, #FFFFFF 40%, #FFFFFF 60%, #C8102E 60%),
-                            linear-gradient(to bottom, #C8102E 40%, #FFFFFF 40%, #FFFFFF 60%, #C8102E 60%),
+                            linear-gradient(45deg, #012169 30%, #FFFFFF 30%, #FFFFFF 32%, #C8102E 32%, #C8102E 34%, #FFFFFF 34%, #FFFFFF 66%, #C8102E 66%, #C8102E 68%, #FFFFFF 68%, #FFFFFF 70%, #012169 70%),
+                            linear-gradient(-45deg, #012169 30%, #FFFFFF 30%, #FFFFFF 32%, #C8102E 32%, #C8102E 34%, #FFFFFF 34%, #FFFFFF 66%, #C8102E 66%, #C8102E 68%, #FFFFFF 68%, #FFFFFF 70%, #012169 70%),
+                            linear-gradient(to right, #C8102E 45%, #FFFFFF 45%, #FFFFFF 55%, #C8102E 55%),
+                            linear-gradient(to bottom, #C8102E 45%, #FFFFFF 45%, #FFFFFF 55%, #C8102E 55%),
                             #012169
                           `
                       }}
