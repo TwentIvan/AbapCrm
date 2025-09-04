@@ -55,7 +55,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-12 w-12 rounded-full bg-muted/20 border border-muted hover:bg-accent"
+                  className="h-12 w-12 rounded-full bg-primary/10 hover:bg-primary/20 border border-primary/20"
                   data-testid="button-search"
                 >
                   <Search className="h-8 w-8 text-muted-foreground" style={{ width: '2rem', height: '2rem' }} />
@@ -92,29 +92,29 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           {/* Quick Access Buttons */}
           <div className="flex items-center space-x-2">
             <Link href="/organizations">
-              <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" data-testid="button-organizations">
-                <Building className="h-8 w-8" style={{ width: '2rem', height: '2rem' }} />
+              <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-primary/10 hover:bg-primary/20" data-testid="button-organizations">
+                <Building className="h-8 w-8 text-gray-700 dark:text-gray-300" style={{ width: '2rem', height: '2rem' }} />
                 <span className="sr-only">Organizations</span>
               </Button>
             </Link>
             
             <Link href="/messages">
-              <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" data-testid="button-messages">
-                <Mail className="h-8 w-8" style={{ width: '2rem', height: '2rem' }} />
+              <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-primary/10 hover:bg-primary/20" data-testid="button-messages">
+                <Mail className="h-8 w-8 text-gray-700 dark:text-gray-300" style={{ width: '2rem', height: '2rem' }} />
                 <span className="sr-only">Messages</span>
               </Button>
             </Link>
             
             <Link href="/calendar">
-              <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" data-testid="button-calendar">
-                <Calendar className="h-8 w-8" style={{ width: '2rem', height: '2rem' }} />
+              <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-primary/10 hover:bg-primary/20" data-testid="button-calendar">
+                <Calendar className="h-8 w-8 text-gray-700 dark:text-gray-300" style={{ width: '2rem', height: '2rem' }} />
                 <span className="sr-only">Calendar</span>
               </Button>
             </Link>
             
             <Link href="/planning-calendar">
-              <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" data-testid="button-planning-calendar">
-                <FolderTree className="h-8 w-8" style={{ width: '2rem', height: '2rem' }} />
+              <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-primary/10 hover:bg-primary/20" data-testid="button-planning-calendar">
+                <FolderTree className="h-8 w-8 text-gray-700 dark:text-gray-300" style={{ width: '2rem', height: '2rem' }} />
                 <span className="sr-only">Planning Calendar</span>
               </Button>
             </Link>
