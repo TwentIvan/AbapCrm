@@ -63,9 +63,11 @@ export class AuditService {
         ipAddress: context.ipAddress || null,
       };
 
-      // COMPLETELY DISABLED - Skip all audit operations until we fix database schema issues
-      console.log(`[AUDIT] DISABLED - Would have logged ${action} ${tableName}:${recordId} for user:${context.userId}`);
-      return; // Early return, skip database insertion completely
+      // Use simplified audit table without JSONB issues
+      await db.execute(`
+        INSERT INTO audit_simple (table_name, record_id, action, changed_fields, user_id, organization_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [tableName, recordId, action, changedFields.join(','), context.userId, context.organizationId]);
       
       console.log(`[AUDIT] ${action} ${tableName}:${recordId} by user:${context.userId}`);
     } catch (error) {

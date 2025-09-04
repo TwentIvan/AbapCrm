@@ -2924,8 +2924,46 @@ Format the response as professional documentation suitable for client delivery.`
         return res.status(400).json({ error: "Invalid table name" });
       }
       
-      const auditHistory = await AuditService.getAuditHistory(tableName, recordId);
-      res.json(auditHistory);
+      // Use simplified audit table
+      const result = await db.execute(`
+        SELECT 
+          a.id,
+          a.table_name as tableName,
+          a.record_id as recordId,
+          a.action,
+          a.changed_fields as changedFields,
+          a.created_at as createdAt,
+          u.id as user_id,
+          u.first_name as user_firstName,
+          u.last_name as user_lastName,
+          u.email as user_email
+        FROM audit_simple a
+        LEFT JOIN users u ON a.user_id = u.id
+        WHERE a.table_name = $1 AND a.record_id = $2 AND a.organization_id = $3
+        ORDER BY a.created_at DESC
+      `, [tableName, recordId, (req.user as any).organizationId]);
+
+      // Transform to match expected format
+      const logs = result.rows.map((row: any) => ({
+        id: row.id,
+        tableName: row.tablename,
+        recordId: row.recordid,
+        action: row.action,
+        oldValues: null,
+        newValues: null,
+        changedFields: row.changedfields ? row.changedfields.split(',') : [],
+        createdAt: row.createdat,
+        user: {
+          id: row.user_id,
+          firstName: row.user_firstname || 'Unknown',
+          lastName: row.user_lastname || 'User',
+          email: row.user_email || 'unknown@example.com',
+        },
+        userAgent: null,
+        ipAddress: null,
+      }));
+
+      res.json(logs);
     } catch (error) {
       console.error("Audit history error:", error);
       res.status(500).json({ 
