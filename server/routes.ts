@@ -2926,9 +2926,64 @@ Format the response as professional documentation suitable for client delivery.`
         return res.status(400).json({ error: "Invalid table name" });
       }
       
-      // AUDIT DISABLED - Return empty array for now
-      console.log(`[AUDIT] Requested history for ${tableName}:${recordId} - returning empty (audit disabled)`);
-      res.json([]);
+      // Get audit trail from new simple table
+      const organizationId = (req.user as any).organizationId;
+      const result = await db.execute(sql.raw(`
+        SELECT 
+          a.id,
+          a.record_id,
+          a.table_name,
+          a.field_name,
+          a.old_value,
+          a.new_value,
+          a.created_at,
+          u.id as user_id,
+          u.first_name as user_firstName,
+          u.last_name as user_lastName,
+          u.email as user_email
+        FROM audit_trail a
+        LEFT JOIN users u ON a.user_id = u.id
+        WHERE a.table_name = '${tableName}' AND a.record_id = '${recordId}' AND a.organization_id = '${organizationId}'
+        ORDER BY a.created_at DESC
+      `));
+
+      // Group by timestamp to create audit entries
+      const auditMap = new Map();
+      for (const row of result.rows) {
+        const timestamp = row.created_at;
+        if (!auditMap.has(timestamp)) {
+          auditMap.set(timestamp, {
+            id: row.id,
+            tableName: row.table_name,
+            recordId: row.record_id,
+            action: row.old_value === null ? 'CREATE' : (row.new_value === null ? 'DELETE' : 'UPDATE'),
+            oldValues: null,
+            newValues: null,
+            changedFields: [],
+            createdAt: row.created_at,
+            user: {
+              id: row.user_id,
+              firstName: row.user_firstname || 'Unknown',
+              lastName: row.user_lastname || 'User',
+              email: row.user_email || 'unknown@example.com',
+            },
+            userAgent: null,
+            ipAddress: null,
+            fieldChanges: []
+          });
+        }
+        
+        const entry = auditMap.get(timestamp);
+        entry.changedFields.push(row.field_name);
+        entry.fieldChanges.push({
+          field: row.field_name,
+          oldValue: row.old_value,
+          newValue: row.new_value
+        });
+      }
+
+      const logs = Array.from(auditMap.values());
+      res.json(logs);
     } catch (error) {
       console.error("Audit history error:", error);
       res.status(500).json({ 

@@ -63,9 +63,41 @@ export class AuditService {
         ipAddress: context.ipAddress || null,
       };
 
-      // COMPLETELY DISABLE AUDIT UNTIL WE FIX DATABASE COMPATIBILITY ISSUES
-      console.log(`[AUDIT] DISABLED - Would log ${action} ${tableName}:${recordId} fields:[${changedFields.join(',')}] by user:${context.userId}`);
-      return; // Skip all database operations
+      // Use simple audit_trail table - one row per changed field
+      if (action === "UPDATE" && changedFields.length > 0 && oldValues && newValues) {
+        for (const field of changedFields) {
+          const oldValue = oldValues[field] || null;
+          const newValue = newValues[field] || null;
+          
+          await db.execute(sql.raw(`
+            INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
+            VALUES ('${recordId}', '${tableName}', '${field}', '${String(oldValue)}', '${String(newValue)}', '${context.userId}', '${context.organizationId}')
+          `));
+        }
+        console.log(`[AUDIT] ✅ SAVED ${changedFields.length} field changes for ${tableName}:${recordId} by user:${context.userId}`);
+      } else if (action === "CREATE" && newValues) {
+        // For CREATE, log each field as new (old_value = null)
+        for (const [field, value] of Object.entries(newValues)) {
+          if (field !== 'id') { // Skip ID field
+            await db.execute(sql.raw(`
+              INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
+              VALUES ('${recordId}', '${tableName}', '${field}', null, '${String(value)}', '${context.userId}', '${context.organizationId}')
+            `));
+          }
+        }
+        console.log(`[AUDIT] ✅ SAVED CREATE for ${tableName}:${recordId} by user:${context.userId}`);
+      } else if (action === "DELETE" && oldValues) {
+        // For DELETE, log each field as deleted (new_value = null)
+        for (const [field, value] of Object.entries(oldValues)) {
+          if (field !== 'id') { // Skip ID field
+            await db.execute(sql.raw(`
+              INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
+              VALUES ('${recordId}', '${tableName}', '${field}', '${String(value)}', null, '${context.userId}', '${context.organizationId}')
+            `));
+          }
+        }
+        console.log(`[AUDIT] ✅ SAVED DELETE for ${tableName}:${recordId} by user:${context.userId}`);
+      }
       
       console.log(`[AUDIT] ${action} ${tableName}:${recordId} by user:${context.userId}`);
     } catch (error) {
