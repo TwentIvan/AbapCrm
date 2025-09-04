@@ -283,7 +283,8 @@ export default function Sidebar() {
             alt="App Logo"
             fallbackType="logo"
             size="custom"
-            containerClassName="w-72 h-64"
+            containerClassName="w-64 h-44"
+            className="object-contain"
             data-testid="img-app-logo"
           />
         </div>
