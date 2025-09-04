@@ -114,7 +114,7 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
         "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors ml-4",
         isActive
           ? "bg-primary text-primary-foreground"
-          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          : "text-muted-foreground hover:bg-primary/5 hover:text-accent-foreground"
       )}
       data-testid={item.testId}
       {...attributes}
@@ -234,7 +234,7 @@ export default function Sidebar() {
             variant="ghost"
             className={cn(
               "w-full justify-start space-x-4 h-auto p-0",
-              "text-muted-foreground hover:bg-primary/5 hover:text-accent-foreground"
+              "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
             onMouseEnter={() => setIsSystemsOpen(true)}
             onMouseLeave={() => setIsSystemsOpen(false)}
@@ -273,7 +273,7 @@ export default function Sidebar() {
             variant="ghost"
             className={cn(
               "w-full justify-start space-x-4 h-auto p-0",
-              "text-muted-foreground hover:bg-primary/5 hover:text-accent-foreground"
+              "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
             onMouseEnter={() => setIsTimeManagementOpen(true)}
             onMouseLeave={() => setIsTimeManagementOpen(false)}
