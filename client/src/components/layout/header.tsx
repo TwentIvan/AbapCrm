@@ -63,7 +63,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                           className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', border: '1px solid rgba(59, 130, 246, 0.2)' }}
                           data-testid="button-search"
                         >
-                          <Search className="h-8 w-8 text-muted-foreground" style={{ width: '2rem', height: '2rem', color: '#4b5563' }} />
+                          <Search className="h-8 w-8 text-muted-foreground" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-80 p-2" align="start">
@@ -95,8 +95,8 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent 
-                  className="rounded-2xl px-4 py-3 text-base font-medium bg-popover text-popover-foreground shadow-lg border"
-                  style={{ minWidth: '240px' }}
+                  className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
+                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                   sideOffset={10}
                 >
                   Ricerca Globale CRM
@@ -110,14 +110,14 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 <TooltipTrigger asChild>
                   <Link href="/organizations">
                     <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-organizations">
-                      <Building className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#4b5563' }} />
+                      <Building className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
                       <span className="sr-only">Organizations</span>
                     </Button>
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent 
-                  className="rounded-2xl px-4 py-3 text-base font-medium bg-popover text-popover-foreground shadow-lg border"
-                  style={{ minWidth: '240px' }}
+                  className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
+                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                   sideOffset={10}
                 >
                   Gestione Organizzazioni
@@ -128,14 +128,14 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 <TooltipTrigger asChild>
                   <Link href="/messages">
                     <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-messages">
-                      <Mail className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#4b5563' }} />
+                      <Mail className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
                       <span className="sr-only">Messages</span>
                     </Button>
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent 
-                  className="rounded-2xl px-4 py-3 text-base font-medium bg-popover text-popover-foreground shadow-lg border"
-                  style={{ minWidth: '240px' }}
+                  className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
+                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                   sideOffset={10}
                 >
                   Messaggi e Email
@@ -146,14 +146,14 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 <TooltipTrigger asChild>
                   <Link href="/calendar">
                     <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-calendar">
-                      <Calendar className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#4b5563' }} />
+                      <Calendar className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
                       <span className="sr-only">Calendar</span>
                     </Button>
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent 
-                  className="rounded-2xl px-4 py-3 text-base font-medium bg-popover text-popover-foreground shadow-lg border"
-                  style={{ minWidth: '240px' }}
+                  className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
+                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                   sideOffset={10}
                 >
                   Calendario Eventi
@@ -164,14 +164,14 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 <TooltipTrigger asChild>
                   <Link href="/planning-calendar">
                     <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-planning-calendar">
-                      <FolderTree className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#4b5563' }} />
+                      <FolderTree className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
                       <span className="sr-only">Planning Calendar</span>
                     </Button>
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent 
-                  className="rounded-2xl px-4 py-3 text-base font-medium bg-popover text-popover-foreground shadow-lg border"
-                  style={{ minWidth: '240px' }}
+                  className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
+                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                   sideOffset={10}
                 >
                   Pianificazione Progetti
@@ -183,7 +183,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           
           {/* User & Organization Box with Switch */}
           {user && (
-            <div className="bg-muted/20 border border-muted rounded-full px-4 py-2 flex items-center space-x-4">
+            <div className="rounded-full px-4 py-2 flex items-center space-x-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
               {/* Logo Organizzazione - Sinistra (cliccabile per switch) */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
