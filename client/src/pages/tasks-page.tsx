@@ -316,7 +316,6 @@ export default function TasksPage() {
     deleteLayout,
     updateExistingLayout,
   } = useTableLayout('tasks');
-  const viewMode = layout.viewMode;
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -700,17 +699,6 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
               onDeleteLayout={deleteLayout}
               onConfigureTable={() => setShowConfigDialog(true)}
             />
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowConfigDialog(true)}
-                data-testid="button-configure-columns"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Configura
-              </Button>
-            </div>
-
           </div>
 
           {isLoading ? (

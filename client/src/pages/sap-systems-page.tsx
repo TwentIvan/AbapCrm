@@ -59,7 +59,6 @@ export default function SapSystemsPage() {
     deleteLayout,
     updateExistingLayout,
   } = useTableLayout('sap-systems');
-  const viewMode = layout.viewMode;
 
   const { data: systems, isLoading } = useQuery<SapSystem[]>({
     queryKey: ["/api/sap-systems"],

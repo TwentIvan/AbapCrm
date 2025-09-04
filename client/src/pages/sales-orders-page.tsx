@@ -41,7 +41,6 @@ export default function SalesOrdersPage() {
     layout, currentLayoutName, savedLayouts, updateLayout, 
     saveLayoutAs, loadLayout, renameLayout, deleteLayout, updateExistingLayout
   } = useTableLayout('sales-orders');
-  const viewMode = layout.viewMode;
 
   const { data: salesOrders = [], isLoading } = useQuery<SalesOrder[]>({
     queryKey: ["/api/sales-orders"],

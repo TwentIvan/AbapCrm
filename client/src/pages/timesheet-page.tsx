@@ -125,7 +125,6 @@ export default function TimesheetPage() {
     deleteLayout,
     updateExistingLayout,
   } = useTableLayout('timesheet');
-  const viewMode = layout.viewMode;
 
   const { data: timeEntries = [] } = useQuery<TimeEntry[]>({
     queryKey: ["/api/time-entries"],

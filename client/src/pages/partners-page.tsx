@@ -65,7 +65,6 @@ export default function PartnersPage() {
     deleteLayout,
     updateExistingLayout,
   } = useTableLayout('partners');
-  const viewMode = layout.viewMode;
 
   const { data: partners, isLoading } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
@@ -274,17 +273,6 @@ export default function PartnersPage() {
               onDeleteLayout={deleteLayout}
               onConfigureTable={() => setShowConfigDialog(true)}
             />
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowConfigDialog(true)}
-                data-testid="button-configure-columns"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Configura
-              </Button>
-            </div>
-
           </div>
           {isLoading ? (
             <div className="space-y-4">
@@ -321,131 +309,6 @@ export default function PartnersPage() {
               enableClipboardCopy={true}
               editingLayout={editingLayout}
             />
-          )}
-              {partners?.map((partner) => (
-                <Card key={partner.id} className="hover:shadow-lg transition-shadow" data-testid={`card-partner-${partner.id}`}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3">
-                        {partner.logoUrl ? (
-                          <ImageContainer
-                            src={partner.logoUrl}
-                            alt={`${partner.name} logo`}
-                            fallbackType="logo"
-                            size="md"
-                            data-testid={`img-partner-logo-${partner.id}`}
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                            <Building className="h-5 w-5 text-primary" />
-                          </div>
-                        )}
-                        <div>
-                          <CardTitle className="text-lg" data-testid={`text-partner-name-${partner.id}`}>
-                            {partner.name}
-                          </CardTitle>
-                          <Badge 
-                            className={typeColors[partner.type]}
-                            data-testid={`badge-partner-type-${partner.id}`}
-                          >
-                            {typeLabels[partner.type]}
-                          </Badge>
-                        </div>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" data-testid={`button-partner-menu-card-${partner.id}`}>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem 
-                            onClick={() => handleEdit(partner)}
-                            data-testid={`menu-edit-partner-card-${partner.id}`}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Modifica
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleDelete(partner)}
-                            className="text-destructive"
-                            data-testid={`menu-delete-partner-card-${partner.id}`}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Elimina
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="space-y-3">
-                    {partner.company && (
-                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <Building className="h-4 w-4" />
-                        <span data-testid={`text-partner-company-${partner.id}`}>{partner.company}</span>
-                      </div>
-                    )}
-                    
-                    {partner.position && (
-                      <p className="text-sm text-muted-foreground" data-testid={`text-partner-position-${partner.id}`}>
-                        {partner.position}
-                      </p>
-                    )}
-                    
-                    <div className="space-y-2">
-                      {partner.email && (
-                        <div className="flex items-center space-x-2 text-sm">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <a 
-                            href={`mailto:${partner.email}`}
-                            className="text-primary hover:underline"
-                            data-testid={`link-partner-email-${partner.id}`}
-                          >
-                            {partner.email}
-                          </a>
-                        </div>
-                      )}
-                      
-                      {partner.phone && (
-                        <div className="flex items-center space-x-2 text-sm">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <a 
-                            href={`tel:${partner.phone}`}
-                            className="text-primary hover:underline"
-                            data-testid={`link-partner-phone-${partner.id}`}
-                          >
-                            {partner.phone}
-                          </a>
-                        </div>
-                      )}
-                      
-                      {partner.address && (
-                        <div className="flex items-start space-x-2 text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4 mt-0.5" />
-                          <span data-testid={`text-partner-address-${partner.id}`}>{partner.address}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {partner.fiscalCode && (
-                      <div className="text-xs text-muted-foreground">
-                        <span>CF: {partner.fiscalCode}</span>
-                        {partner.vatNumber && <span className="ml-3">P.IVA: {partner.vatNumber}</span>}
-                      </div>
-                    )}
-                    
-                    {partner.notes && (
-                      <div className="pt-2 border-t border-border">
-                        <p className="text-xs text-muted-foreground line-clamp-2" data-testid={`text-partner-notes-${partner.id}`}>
-                          {partner.notes}
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
           )}
         </div>
       </main>
