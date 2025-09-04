@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { db } from "./db";
+import { sql } from "drizzle-orm";
 import { generateVPNAutomationScript, discoverVPNConnections, discoverAvailableVPNSoftware, testVPNConnection } from "./vpn-automation";
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
@@ -2925,8 +2926,8 @@ Format the response as professional documentation suitable for client delivery.`
         return res.status(400).json({ error: "Invalid table name" });
       }
       
-      // Use simplified audit table
-      const result = await db.execute(`
+      // Use simplified audit table with proper parameter syntax
+      const result = await db.execute(sql`
         SELECT 
           a.id,
           a.table_name as tableName,
@@ -2940,9 +2941,9 @@ Format the response as professional documentation suitable for client delivery.`
           u.email as user_email
         FROM audit_simple a
         LEFT JOIN users u ON a.user_id = u.id
-        WHERE a.table_name = $1 AND a.record_id = $2 AND a.organization_id = $3
+        WHERE a.table_name = ${tableName} AND a.record_id = ${recordId} AND a.organization_id = ${(req.user as any).organizationId}
         ORDER BY a.created_at DESC
-      `, [tableName, recordId, (req.user as any).organizationId]);
+      `);
 
       // Transform to match expected format
       const logs = result.rows.map((row: any) => ({

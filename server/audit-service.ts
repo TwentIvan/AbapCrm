@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { auditLogs, type InsertAuditLog } from "@shared/schema";
-import { eq, and, inArray, lt, desc } from "drizzle-orm";
+import { eq, and, inArray, lt, desc, sql } from "drizzle-orm";
 import type { Request } from "express";
 
 type AuditableData = Record<string, any>;
@@ -65,10 +65,10 @@ export class AuditService {
 
       // Use simplified audit table without JSONB issues
       try {
-        await db.execute(`
+        await db.execute(sql`
           INSERT INTO audit_simple (table_name, record_id, action, changed_fields, user_id, organization_id)
-          VALUES ($1, $2, $3, $4, $5, $6)
-        `, [tableName, recordId, action, changedFields.join(','), context.userId, context.organizationId]);
+          VALUES (${tableName}, ${recordId}, ${action}, ${changedFields.join(',')}, ${context.userId}, ${context.organizationId})
+        `);
         
         console.log(`[AUDIT] ✅ SAVED ${action} ${tableName}:${recordId} by user:${context.userId}`);
       } catch (insertError) {
