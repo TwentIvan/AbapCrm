@@ -49,7 +49,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         </div>
         
         <div className="flex items-center space-x-4">
-          <TooltipProvider>
+          <TooltipProvider delayDuration={300}>
             {/* Search Icon */}
             <div className="relative">
               <Tooltip>
@@ -94,8 +94,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     </Popover>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent className="rounded-2xl px-4 py-3 text-base font-medium" style={{ minWidth: '240px' }}>
-                  <p>Ricerca Globale CRM</p>
+                <TooltipContent 
+                  className="rounded-2xl px-4 py-3 text-base font-medium bg-popover text-popover-foreground shadow-lg border"
+                  style={{ minWidth: '240px' }}
+                  sideOffset={10}
+                >
+                  Ricerca Globale CRM
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -111,8 +115,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     </Button>
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent className="rounded-2xl px-4 py-3 text-base font-medium" style={{ minWidth: '240px' }}>
-                  <p>Gestione Organizzazioni</p>
+                <TooltipContent 
+                  className="rounded-2xl px-4 py-3 text-base font-medium bg-popover text-popover-foreground shadow-lg border"
+                  style={{ minWidth: '240px' }}
+                  sideOffset={10}
+                >
+                  Gestione Organizzazioni
                 </TooltipContent>
               </Tooltip>
               
@@ -125,8 +133,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     </Button>
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent className="rounded-2xl px-4 py-3 text-base font-medium" style={{ minWidth: '240px' }}>
-                  <p>Messaggi e Email</p>
+                <TooltipContent 
+                  className="rounded-2xl px-4 py-3 text-base font-medium bg-popover text-popover-foreground shadow-lg border"
+                  style={{ minWidth: '240px' }}
+                  sideOffset={10}
+                >
+                  Messaggi e Email
                 </TooltipContent>
               </Tooltip>
               
@@ -139,8 +151,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     </Button>
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent className="rounded-2xl px-4 py-3 text-base font-medium" style={{ minWidth: '240px' }}>
-                  <p>Calendario Eventi</p>
+                <TooltipContent 
+                  className="rounded-2xl px-4 py-3 text-base font-medium bg-popover text-popover-foreground shadow-lg border"
+                  style={{ minWidth: '240px' }}
+                  sideOffset={10}
+                >
+                  Calendario Eventi
                 </TooltipContent>
               </Tooltip>
               
@@ -153,8 +169,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     </Button>
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent className="rounded-2xl px-4 py-3 text-base font-medium" style={{ minWidth: '240px' }}>
-                  <p>Pianificazione Progetti</p>
+                <TooltipContent 
+                  className="rounded-2xl px-4 py-3 text-base font-medium bg-popover text-popover-foreground shadow-lg border"
+                  style={{ minWidth: '240px' }}
+                  sideOffset={10}
+                >
+                  Pianificazione Progetti
                 </TooltipContent>
               </Tooltip>
             </div>
