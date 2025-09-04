@@ -234,20 +234,16 @@ export default function Sidebar() {
             variant="ghost"
             className={cn(
               "w-full justify-start space-x-4 h-auto p-0",
-              "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              "text-muted-foreground hover:bg-primary/5 hover:text-accent-foreground"
             )}
-            onClick={() => setIsSystemsOpen(!isSystemsOpen)}
+            onMouseEnter={() => setIsSystemsOpen(true)}
+            onMouseLeave={() => setIsSystemsOpen(false)}
             data-testid="nav-systems"
           >
             <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
               <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" style={{ width: '1.5rem', height: '1.5rem' }} />
               <Shield className="h-6 w-6" style={{ width: '1.5rem', height: '1.5rem' }} />
               <span className="text-base font-medium">Systems</span>
-              {isSystemsOpen ? (
-                <ChevronDown className="h-6 w-6 ml-auto" />
-              ) : (
-                <ChevronRight className="h-6 w-6 ml-auto" />
-              )}
             </div>
           </Button>
           
@@ -277,20 +273,16 @@ export default function Sidebar() {
             variant="ghost"
             className={cn(
               "w-full justify-start space-x-4 h-auto p-0",
-              "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              "text-muted-foreground hover:bg-primary/5 hover:text-accent-foreground"
             )}
-            onClick={() => setIsTimeManagementOpen(!isTimeManagementOpen)}
+            onMouseEnter={() => setIsTimeManagementOpen(true)}
+            onMouseLeave={() => setIsTimeManagementOpen(false)}
             data-testid="nav-time-management"
           >
             <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
               <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" style={{ width: '1.5rem', height: '1.5rem' }} />
               <Clock className="h-6 w-6" style={{ width: '1.5rem', height: '1.5rem' }} />
               <span className="text-base font-medium">Time Management</span>
-              {isTimeManagementOpen ? (
-                <ChevronDown className="h-6 w-6 ml-auto" />
-              ) : (
-                <ChevronRight className="h-6 w-6 ml-auto" />
-              )}
             </div>
           </Button>
           
