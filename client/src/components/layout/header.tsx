@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X } from "lucide-react";
+import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, Globe } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/popover";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrganization } from "@/hooks/use-organization";
+import { useTranslation, Language } from "@/lib/i18n";
 
 interface HeaderProps {
   title: string;
@@ -31,6 +32,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { user, logoutMutation } = useAuth();
   const { organizations, currentOrganization, switchOrganization } = useOrganization();
+  const { language, setLanguage, t } = useTranslation();
 
   const userInitials = user?.firstName && user?.lastName 
     ? `${user.firstName[0]}${user.lastName[0]}` 
@@ -99,7 +101,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   style={{ minWidth: '240px', backgroundColor: '#ebf3fe', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                   sideOffset={10}
                 >
-                  Ricerca Globale CRM
+                  {t("header.search")}
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -120,7 +122,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   style={{ minWidth: '240px', backgroundColor: '#ebf3fe', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                   sideOffset={10}
                 >
-                  Gestione Organizzazioni
+                  {t("nav.organizations")}
                 </TooltipContent>
               </Tooltip>
               
@@ -138,7 +140,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   style={{ minWidth: '240px', backgroundColor: '#ebf3fe', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                   sideOffset={10}
                 >
-                  Messaggi e Email
+                  {t("nav.messages")}
                 </TooltipContent>
               </Tooltip>
               
@@ -175,6 +177,44 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   sideOffset={10}
                 >
                   Pianificazione Progetti
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Language Selector */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-language">
+                          <Globe className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          onClick={() => setLanguage("it")}
+                          className="flex items-center justify-between"
+                        >
+                          <span>🇮🇹 Italiano</span>
+                          {language === "it" && <Check className="h-4 w-4" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => setLanguage("en")}
+                          className="flex items-center justify-between"
+                        >
+                          <span>🇬🇧 English</span>
+                          {language === "en" && <Check className="h-4 w-4" />}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent 
+                  className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
+                  style={{ minWidth: '240px', backgroundColor: '#ebf3fe', borderColor: 'rgba(59, 130, 246, 0.2)' }}
+                  sideOffset={10}
+                >
+                  {t("header.language")}
                 </TooltipContent>
               </Tooltip>
             </div>

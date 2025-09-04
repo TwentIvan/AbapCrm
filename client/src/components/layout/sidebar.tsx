@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, ChevronRight, ChevronDown, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,26 +27,26 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// Main navigation (Organizations già rimosso dalla lista principale)
-const defaultNavigation = [
-  { id: "1", name: "Projects", href: "/projects", icon: FolderOpen, testId: "nav-projects" },
-  { id: "2", name: "Tasks", href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
-  { id: "3", name: "Partners", href: "/partners", icon: Handshake, testId: "nav-partners" },
-  { id: "4", name: "Sales Orders", href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
-  { id: "5", name: "Rate Agreements", href: "/rate-agreements", icon: DollarSign, testId: "nav-rate-agreements" },
-  { id: "6", name: "Human Resources", href: "/human-resources", icon: Users, testId: "nav-human-resources" },
+// Main navigation (Organizations già rimosso dalla lista principale)  
+const getDefaultNavigation = (t: any) => [
+  { id: "1", name: t("nav.projects"), href: "/projects", icon: FolderOpen, testId: "nav-projects" },
+  { id: "2", name: t("nav.tasks"), href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
+  { id: "3", name: t("nav.partners"), href: "/partners", icon: Handshake, testId: "nav-partners" },
+  { id: "4", name: t("nav.salesOrders"), href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
+  { id: "5", name: t("nav.rateAgreements"), href: "/rate-agreements", icon: DollarSign, testId: "nav-rate-agreements" },
+  { id: "6", name: t("nav.humanResources"), href: "/human-resources", icon: Users, testId: "nav-human-resources" },
 ];
 
 // Systems group
-const defaultSystemsItems = [
-  { id: "s1", name: "SAP Systems", href: "/sap-systems", icon: Server, testId: "nav-sap-systems" },
-  { id: "s2", name: "VPN Connections", href: "/vpn-connections", icon: Wifi, testId: "nav-vpn-connections" },
-  { id: "s3", name: "System Credentials", href: "/system-credentials", icon: Key, testId: "nav-system-credentials" },
+const getDefaultSystemsItems = (t: any) => [
+  { id: "s1", name: t("nav.sapSystems"), href: "/sap-systems", icon: Server, testId: "nav-sap-systems" },
+  { id: "s2", name: t("nav.vpnConnections"), href: "/vpn-connections", icon: Wifi, testId: "nav-vpn-connections" },
+  { id: "s3", name: t("nav.systemCredentials"), href: "/system-credentials", icon: Key, testId: "nav-system-credentials" },
 ];
 
-const defaultTimeManagementItems = [
-  { id: "t1", name: "Time Entries", href: "/timesheet", icon: Clock, testId: "nav-timesheet" },
-  { id: "t2", name: "Timesheets", href: "/timesheets", icon: Clock, testId: "nav-timesheets" },
+const getDefaultTimeManagementItems = (t: any) => [
+  { id: "t1", name: t("nav.timeEntries"), href: "/timesheet", icon: Clock, testId: "nav-timesheet" },
+  { id: "t2", name: t("nav.timesheets"), href: "/timesheets", icon: Clock, testId: "nav-timesheets" },
 ];
 
 // Sortable Navigation Item Component
@@ -133,41 +134,45 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
 export default function Sidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
+  const { t } = useTranslation();
   const [navigation, setNavigation] = useState(() => {
+    const defaultNav = getDefaultNavigation(t);
     const saved = localStorage.getItem('sidebar-main-order');
     if (saved) {
       try {
         const order = JSON.parse(saved);
-        return order.map((id: string) => defaultNavigation.find(item => item.id === id)).filter(Boolean);
+        return order.map((id: string) => defaultNav.find(item => item.id === id)).filter(Boolean);
       } catch {}
     }
-    return defaultNavigation;
+    return defaultNav;
   });
   const [systemsItems, setSystemsItems] = useState(() => {
+    const defaultSystems = getDefaultSystemsItems(t);
     const saved = localStorage.getItem('sidebar-systems-order');
     if (saved) {
       try {
         const order = JSON.parse(saved);
-        return order.map((id: string) => defaultSystemsItems.find(item => item.id === id)).filter(Boolean);
+        return order.map((id: string) => defaultSystems.find(item => item.id === id)).filter(Boolean);
       } catch {}
     }
-    return defaultSystemsItems;
+    return defaultSystems;
   });
   const [timeManagementItems, setTimeManagementItems] = useState(() => {
+    const defaultTime = getDefaultTimeManagementItems(t);
     const saved = localStorage.getItem('sidebar-time-order');
     if (saved) {
       try {
         const order = JSON.parse(saved);
-        return order.map((id: string) => defaultTimeManagementItems.find(item => item.id === id)).filter(Boolean);
+        return order.map((id: string) => defaultTime.find(item => item.id === id)).filter(Boolean);
       } catch {}
     }
-    return defaultTimeManagementItems;
+    return defaultTime;
   });
   const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(
-    defaultTimeManagementItems.some(item => location === item.href)
+    getDefaultTimeManagementItems(t).some(item => location === item.href)
   );
   const [isSystemsOpen, setIsSystemsOpen] = useState(
-    defaultSystemsItems.some(item => location === item.href)
+    getDefaultSystemsItems(t).some(item => location === item.href)
   );
 
   const sensors = useSensors(
@@ -245,7 +250,7 @@ export default function Sidebar() {
             <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
               <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" style={{ width: '1.5rem', height: '1.5rem' }} />
               <Shield className="h-6 w-6" style={{ width: '1.5rem', height: '1.5rem' }} />
-              <span className="text-base font-medium">Systems</span>
+              <span className="text-base font-medium">{t("nav.systems")}</span>
             </div>
           </Button>
           
@@ -286,7 +291,7 @@ export default function Sidebar() {
             <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
               <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" style={{ width: '1.5rem', height: '1.5rem' }} />
               <Clock className="h-6 w-6" style={{ width: '1.5rem', height: '1.5rem' }} />
-              <span className="text-base font-medium">Time Management</span>
+              <span className="text-base font-medium">{t("nav.timeManagement")}</span>
             </div>
           </Button>
           
