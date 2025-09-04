@@ -107,144 +107,83 @@ function FieldChange({ field, oldValue, newValue }: { field: string; oldValue: a
 }
 
 function AuditEntry({ entry }: { entry: AuditLogEntry }) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const actionInfo = actionConfig[entry.action];
   const ActionIcon = actionInfo.icon;
   
-  // Handle case where JSONB values are null to avoid parsing errors
-  const oldValues = {};
-  const newValues = {};
-  const changedFields = entry.changedFields || [];
-
-  const timeAgo = formatDistance(new Date(entry.createdAt), new Date(), { 
-    addSuffix: true,
-    locale: it 
-  });
+  // Format date and time
+  const createdDate = new Date(entry.createdAt);
+  const dateStr = createdDate.toLocaleDateString('it-IT');
+  const timeStr = createdDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div className="border border-border rounded-lg p-4 space-y-3">
+      {/* Header with action, date and time */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2">
-            <ActionIcon className="h-4 w-4" />
-            <Badge variant="secondary" className={actionInfo.color}>
-              {actionInfo.label}
-            </Badge>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            <Clock className="h-3 w-3 inline mr-1" />
-            {timeAgo}
-          </div>
+        <div className="flex items-center space-x-2">
+          <ActionIcon className="h-4 w-4" />
+          <Badge variant="secondary" className={actionInfo.color}>
+            {actionInfo.label}
+          </Badge>
         </div>
-        {changedFields.length > 0 && (
-          <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-xs">
-                {changedFields.length} campo{changedFields.length > 1 ? 'i' : ''} modificat{changedFields.length > 1 ? 'i' : 'o'}
-                {isExpanded ? (
-                  <ChevronDown className="h-3 w-3 ml-1" />
-                ) : (
-                  <ChevronRight className="h-3 w-3 ml-1" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
-        )}
+        <div className="text-xs text-muted-foreground">
+          {dateStr} • {timeStr}
+        </div>
       </div>
 
-      <div className="flex items-center space-x-2 text-sm">
-        <span className="text-muted-foreground">da</span>
-        <span className="font-medium text-foreground">
-          {entry.user.firstName} {entry.user.lastName}
-        </span>
-        <span className="text-muted-foreground text-xs">({entry.user.email})</span>
-      </div>
-
-      {changedFields.length > 0 && (
-        <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-          <CollapsibleContent className="space-y-3">
-            <Separator />
-            <div className="space-y-4">
-              {entry.fieldChanges && entry.fieldChanges.length > 0 ? (
-                entry.fieldChanges.map((change: any, idx: number) => (
-                  <div key={idx} className="p-3 bg-muted/30 rounded-lg">
-                    <div className="text-sm font-medium text-foreground capitalize">
-                      {change.field.replace(/([A-Z])/g, ' $1').replace(/^./, (str: string) => str.toUpperCase())}
-                    </div>
-                    <div className="text-xs space-y-1 mt-1">
-                      {change.oldValue && (
-                        <div className="flex items-start space-x-2">
-                          <span className="text-muted-foreground min-w-0 flex-shrink-0">Prima:</span>
-                          <span className="text-red-600 dark:text-red-400 break-words">
-                            {change.oldValue}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex items-start space-x-2">
-                        <span className="text-muted-foreground min-w-0 flex-shrink-0">Dopo:</span>
-                        <span className="text-green-600 dark:text-green-400 break-words">
-                          {change.newValue}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                changedFields.map((field) => (
-                  <div key={field} className="p-3 bg-muted/30 rounded-lg">
-                    <div className="text-sm font-medium text-foreground capitalize">
-                      {field.replace(/([A-Z])/g, ' $1').replace(/^./, (str: string) => str.toUpperCase())}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Campo modificato
-                    </div>
-                  </div>
-                ))
-              )}
+      {/* Field changes - compact display */}
+      {entry.fieldChanges && entry.fieldChanges.length > 0 && (
+        <div className="space-y-2">
+          {entry.fieldChanges.map((change: any, idx: number) => (
+            <div key={idx} className="bg-muted/30 rounded-lg p-3 space-y-2">
+              <div className="font-medium text-sm text-foreground">
+                {change.field.replace(/([A-Z])/g, ' $1').replace(/^./, (str: string) => str.toUpperCase())}
+              </div>
+              <div className="text-xs space-y-1">
+                <div className="flex items-start space-x-2">
+                  <span className="text-muted-foreground min-w-0 flex-shrink-0">Da:</span>
+                  <span className="font-mono bg-red-50 text-red-800 dark:bg-red-900 dark:text-red-200 px-2 py-1 rounded text-xs break-all">
+                    {change.oldValue || "vuoto"}
+                  </span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <span className="text-muted-foreground min-w-0 flex-shrink-0">A:</span>
+                  <span className="font-mono bg-green-50 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-1 rounded text-xs break-all">
+                    {change.newValue || "vuoto"}
+                  </span>
+                </div>
+              </div>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-
-      {entry.action === "CREATE" && newValues && (
-        <div className="text-xs text-muted-foreground">
-          Record creato con {Object.keys(newValues).length} campi
+          ))}
         </div>
       )}
 
-      {entry.action === "DELETE" && oldValues && (
-        <div className="text-xs text-muted-foreground">
-          Record eliminato (conteneva {Object.keys(oldValues).length} campi)
+      {/* Fallback for entries without detailed fieldChanges */}
+      {(!entry.fieldChanges || entry.fieldChanges.length === 0) && entry.changedFields && entry.changedFields.length > 0 && (
+        <div className="text-sm text-muted-foreground">
+          Campi modificati: {entry.changedFields.filter(f => f !== 'id').join(', ')}
         </div>
       )}
 
-      {entry.ipAddress && (
-        <div className="text-xs text-muted-foreground">
-          IP: {entry.ipAddress}
-        </div>
-      )}
+      {/* User info at bottom */}
+      <div className="text-xs text-muted-foreground border-t border-border pt-2">
+        <span className="font-medium">{entry.user.firstName} {entry.user.lastName}</span>
+        <span className="ml-2">({entry.user.email})</span>
+      </div>
     </div>
   );
 }
 
 export default function AuditHistory({ tableName, recordId, title = "Storico Modifiche" }: AuditHistoryProps) {
-  console.log(`[AUDIT-FRONTEND] AuditHistory called with tableName=${tableName}, recordId=${recordId}`);
-  
   const { data: auditLogs = [], isLoading, error } = useQuery<AuditLogEntry[]>({
     queryKey: [`audit`, tableName, recordId],
     queryFn: async () => {
-      console.log(`[AUDIT-FRONTEND] Executing query for /api/audit/${tableName}/${recordId}`);
       const res = await apiRequest("GET", `/api/audit/${tableName}/${recordId}`);
-      const data = await res.json();
-      console.log(`[AUDIT-FRONTEND] API response:`, data);
-      return data;
+      return res.json();
     },
     staleTime: 0, // Always refresh
     refetchOnMount: true, // Always refetch when component mounts
     enabled: !!(tableName && recordId), // Only run when we have both params
   });
-
-  console.log(`[AUDIT-FRONTEND] Query state: loading=${isLoading}, error=${error}, logs=${auditLogs.length}`);
 
   if (error) {
     return (
