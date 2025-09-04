@@ -49,6 +49,12 @@ const getDefaultTimeManagementItems = (t: any) => [
   { id: "t2", name: t("nav.timesheets"), href: "/timesheets", icon: Clock, testId: "nav-timesheets" },
 ];
 
+// Parent sections
+const getDefaultParentItems = (t: any) => [
+  { id: "p1", name: t("nav.systems"), icon: Shield, testId: "nav-systems", type: "systems" },
+  { id: "p2", name: t("nav.timeManagement"), icon: Clock, testId: "nav-time-management", type: "timeManagement" },
+];
+
 // Sortable Navigation Item Component
 function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
   const {
@@ -88,6 +94,50 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
         <Icon className="h-5 w-5 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
         <span className="text-base font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
       </div>
+    </div>
+  );
+}
+
+// Sortable Parent Item Component (same as main nav but handles children)
+function SortableParentItem({ item, children, isOpen, onToggle }: { item: any; children: React.ReactNode; isOpen: boolean; onToggle: () => void }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const Icon = item.icon;
+
+  return (
+    <div className="space-y-1">
+      <div 
+        ref={setNodeRef} 
+        style={style} 
+        className={cn(
+          "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors",
+          "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        )}
+        data-testid={item.testId}
+        {...attributes}
+        onMouseEnter={onToggle}
+      >
+        <GripVertical 
+          className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
+          {...listeners} 
+        />
+        <div className="flex items-center px-3 py-2 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '200px', minWidth: '200px' }}>
+          <Icon className="h-5 w-5 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+          <span className="text-base font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
+        </div>
+      </div>
+      {isOpen && children}
     </div>
   );
 }
@@ -172,6 +222,17 @@ export default function Sidebar() {
     }
     return defaultTime;
   });
+  const [parentItems, setParentItems] = useState(() => {
+    const defaultParent = getDefaultParentItems(t);
+    const saved = localStorage.getItem('sidebar-parent-order');
+    if (saved) {
+      try {
+        const order = JSON.parse(saved);
+        return order.map((id: string) => defaultParent.find(item => item.id === id)).filter(Boolean);
+      } catch {}
+    }
+    return defaultParent;
+  });
   const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(
     getDefaultTimeManagementItems(t).some(item => location === item.href)
   );
@@ -237,90 +298,58 @@ export default function Sidebar() {
           </SortableContext>
         </DndContext>
         
-        {/* Systems Section */}
+        {/* Parent Sections (Systems & Time Management) */}
         <div 
-          className="space-y-1"
           onMouseEnter={() => setIsSystemsOpen(true)}
           onMouseLeave={() => setIsSystemsOpen(false)}
         >
-          <Button
-            variant="ghost"
-            className={cn(
-              "w-full justify-start space-x-4 h-auto p-0",
-              "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            )}
-            data-testid="nav-systems"
+          <DndContext 
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(event) => handleDragEnd(event, parentItems, setParentItems, 'sidebar-parent-order')}
           >
-            <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
-              <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
-              <div className="flex items-center px-3 py-2 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '200px', minWidth: '200px' }}>
-                <Shield className="h-8 w-8 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-                <span className="text-lg font-semibold" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{t("nav.systems")}</span>
-              </div>
-            </div>
-          </Button>
-          
-          {isSystemsOpen && (
-            <div className="space-y-1">
-              <DndContext 
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={(event) => handleDragEnd(event, systemsItems, setSystemsItems, 'sidebar-systems-order')}
-              >
-                <SortableContext items={systemsItems.map((item: any) => item.id)} strategy={verticalListSortingStrategy}>
-                  {systemsItems.map((item: any) => {
-                    const isActive = location === item.href;
-                    return (
-                      <SortableSubNavItem key={item.id} item={item} isActive={isActive} />
-                    );
-                  })}
-                </SortableContext>
-              </DndContext>
-            </div>
-          )}
-        </div>
-
-        {/* Time Management Section */}
-        <div 
-          className="space-y-1"
-          onMouseEnter={() => setIsTimeManagementOpen(true)}
-          onMouseLeave={() => setIsTimeManagementOpen(false)}
-        >
-          <Button
-            variant="ghost"
-            className={cn(
-              "w-full justify-start space-x-4 h-auto p-0",
-              "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            )}
-            data-testid="nav-time-management"
-          >
-            <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
-              <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
-              <div className="flex items-center px-3 py-2 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '200px', minWidth: '200px' }}>
-                <Clock className="h-8 w-8 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-                <span className="text-lg font-semibold" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{t("nav.timeManagement")}</span>
-              </div>
-            </div>
-          </Button>
-          
-          {isTimeManagementOpen && (
-            <div className="space-y-1">
-              <DndContext 
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={(event) => handleDragEnd(event, timeManagementItems, setTimeManagementItems, 'sidebar-time-order')}
-              >
-                <SortableContext items={timeManagementItems.map((item: any) => item.id)} strategy={verticalListSortingStrategy}>
-                  {timeManagementItems.map((item: any) => {
-                    const isActive = location === item.href;
-                    return (
-                      <SortableSubNavItem key={item.id} item={item} isActive={isActive} />
-                    );
-                  })}
-                </SortableContext>
-              </DndContext>
-            </div>
-          )}
+            <SortableContext items={parentItems.map((item: any) => item.id)} strategy={verticalListSortingStrategy}>
+              {parentItems.map((item: any) => {
+                const isSystemsItem = item.type === 'systems';
+                const isTimeItem = item.type === 'timeManagement';
+                const isOpen = isSystemsItem ? isSystemsOpen : (isTimeItem ? isTimeManagementOpen : false);
+                
+                return (
+                  <div 
+                    key={item.id}
+                    onMouseEnter={() => isSystemsItem ? setIsSystemsOpen(true) : (isTimeItem ? setIsTimeManagementOpen(true) : null)}
+                    onMouseLeave={() => isSystemsItem ? setIsSystemsOpen(false) : (isTimeItem ? setIsTimeManagementOpen(false) : null)}
+                  >
+                    <SortableParentItem
+                      item={item}
+                      isOpen={isOpen}
+                      onToggle={() => isSystemsItem ? setIsSystemsOpen(true) : (isTimeItem ? setIsTimeManagementOpen(true) : null)}
+                      children={
+                        isOpen && (
+                          <div className="space-y-1">
+                            <DndContext 
+                              sensors={sensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={(event) => isSystemsItem ? handleDragEnd(event, systemsItems, setSystemsItems, 'sidebar-systems-order') : handleDragEnd(event, timeManagementItems, setTimeManagementItems, 'sidebar-time-order')}
+                            >
+                              <SortableContext items={(isSystemsItem ? systemsItems : timeManagementItems).map((item: any) => item.id)} strategy={verticalListSortingStrategy}>
+                                {(isSystemsItem ? systemsItems : timeManagementItems).map((subItem: any) => {
+                                  const isActive = location === subItem.href;
+                                  return (
+                                    <SortableSubNavItem key={subItem.id} item={subItem} isActive={isActive} />
+                                  );
+                                })}
+                              </SortableContext>
+                            </DndContext>
+                          </div>
+                        )
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </SortableContext>
+          </DndContext>
         </div>
       </nav>
 
