@@ -90,7 +90,7 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '200px', minWidth: '200px' }}>
+      <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '260px', minWidth: '260px' }}>
         <Icon className="h-5 w-5 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
         <span className="text-base font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
       </div>
@@ -98,7 +98,7 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
   );
 }
 
-// Sortable Parent Item Component (same as main nav but handles children)
+// Sortable Parent Item Component (with expand/collapse button)
 function SortableParentItem({ item, children, isOpen, onToggle }: { item: any; children: React.ReactNode; isOpen: boolean; onToggle: () => void }) {
   const {
     attributes,
@@ -121,20 +121,29 @@ function SortableParentItem({ item, children, isOpen, onToggle }: { item: any; c
         ref={setNodeRef} 
         style={style} 
         className={cn(
-          "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors sidebar-nav-item",
+          "w-full p-2 rounded-md group flex items-center space-x-3 cursor-pointer transition-colors sidebar-nav-item",
           "text-muted-foreground"
         )}
         data-testid={item.testId}
         {...attributes}
-        onMouseEnter={onToggle}
       >
         <GripVertical 
           className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
           {...listeners} 
         />
-        <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '200px', minWidth: '200px' }}>
+        <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', minWidth: '260px' }}>
           <Icon className="h-6 w-6 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-          <span className="text-base font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
+          <span className="text-base font-medium flex-1" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onToggle(); }}
+            className="ml-2 p-1 rounded-full hover:bg-white/20 transition-colors"
+          >
+            {isOpen ? (
+              <ChevronDown className="h-4 w-4" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+            ) : (
+              <ChevronRight className="h-4 w-4" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+            )}
+          </button>
         </div>
       </div>
       {isOpen && children}
@@ -177,7 +186,7 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <div className="flex items-center px-3 py-1 rounded-full nav-box transition-colors" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '220px', minWidth: '220px' }}>
+      <div className="flex items-center px-3 py-1 rounded-full nav-box transition-colors" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '240px', minWidth: '240px' }}>
         <Icon className="h-5 w-5 flex-shrink-0 mr-2" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
         <span className="text-sm font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
       </div>
@@ -233,12 +242,8 @@ export default function Sidebar() {
     }
     return defaultParent;
   });
-  const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(
-    getDefaultTimeManagementItems(t).some(item => location === item.href)
-  );
-  const [isSystemsOpen, setIsSystemsOpen] = useState(
-    getDefaultSystemsItems(t).some(item => location === item.href)
-  );
+  const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(false);
+  const [isSystemsOpen, setIsSystemsOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -299,10 +304,7 @@ export default function Sidebar() {
         </DndContext>
         
         {/* Parent Sections (Systems & Time Management) */}
-        <div 
-          onMouseEnter={() => setIsSystemsOpen(true)}
-          onMouseLeave={() => setIsSystemsOpen(false)}
-        >
+        <div>
           <DndContext 
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -315,15 +317,11 @@ export default function Sidebar() {
                 const isOpen = isSystemsItem ? isSystemsOpen : (isTimeItem ? isTimeManagementOpen : false);
                 
                 return (
-                  <div 
-                    key={item.id}
-                    onMouseEnter={() => isSystemsItem ? setIsSystemsOpen(true) : (isTimeItem ? setIsTimeManagementOpen(true) : null)}
-                    onMouseLeave={() => isSystemsItem ? setIsSystemsOpen(false) : (isTimeItem ? setIsTimeManagementOpen(false) : null)}
-                  >
+                  <div key={item.id}>
                     <SortableParentItem
                       item={item}
                       isOpen={isOpen}
-                      onToggle={() => isSystemsItem ? setIsSystemsOpen(true) : (isTimeItem ? setIsTimeManagementOpen(true) : null)}
+                      onToggle={() => isSystemsItem ? setIsSystemsOpen(!isSystemsOpen) : (isTimeItem ? setIsTimeManagementOpen(!isTimeManagementOpen) : null)}
                       children={
                         isOpen && (
                           <div className="space-y-1">
