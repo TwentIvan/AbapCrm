@@ -228,13 +228,13 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div 
-                    className="absolute left-0 top-0 h-full w-6 cursor-pointer hover:opacity-80 transition-opacity"
+                    className="absolute left-0 top-0 h-full w-4 cursor-pointer hover:opacity-80 transition-opacity"
                     style={{
                       background: language === "it" 
-                        ? 'linear-gradient(to bottom, #009246 30%, #FFFFFF 30%, #FFFFFF 70%, #CE2B37 70%)'
-                        : 'linear-gradient(to bottom, #012169 30%, #FFFFFF 30%, #FFFFFF 70%, #C8102E 70%)',
-                      clipPath: 'ellipse(100% 50% at 0% 50%)',
-                      borderRadius: '0 50% 50% 0'
+                        ? 'linear-gradient(to bottom, #009246 25%, #FFFFFF 25%, #FFFFFF 75%, #CE2B37 75%)'
+                        : 'linear-gradient(45deg, #012169 25%, #FFFFFF 25%, #FFFFFF 50%, #C8102E 50%, #C8102E 75%, #FFFFFF 75%)',
+                      clipPath: 'ellipse(50% 100% at 100% 50%)',
+                      borderRadius: '50% 0 0 50%'
                     }}
                     data-testid="button-language-semicircle"
                   />
