@@ -54,43 +54,45 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             <div className="relative">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-                    <PopoverTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', border: '1px solid rgba(59, 130, 246, 0.2)' }}
-                        data-testid="button-search"
-                      >
-                        <Search className="h-8 w-8 text-muted-foreground" style={{ width: '2rem', height: '2rem', color: '#4b5563' }} />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-2" align="start">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-                        <Input
-                          type="text"
-                          placeholder="Cerca in tutto il CRM..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-10 pr-10 h-12 text-base"
-                          data-testid="input-search"
-                          autoFocus
-                        />
+                  <div>
+                    <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+                      <PopoverTrigger asChild>
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8"
-                          onClick={() => {
-                            setSearchQuery("");
-                            setIsSearchOpen(false);
-                          }}
+                          className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', border: '1px solid rgba(59, 130, 246, 0.2)' }}
+                          data-testid="button-search"
                         >
-                          <X className="h-4 w-4" />
+                          <Search className="h-8 w-8 text-muted-foreground" style={{ width: '2rem', height: '2rem', color: '#4b5563' }} />
                         </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-2" align="start">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+                          <Input
+                            type="text"
+                            placeholder="Cerca in tutto il CRM..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10 pr-10 h-12 text-base"
+                            data-testid="input-search"
+                            autoFocus
+                          />
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8"
+                            onClick={() => {
+                              setSearchQuery("");
+                              setIsSearchOpen(false);
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent className="rounded-2xl px-4 py-3 text-base font-medium" style={{ minWidth: '240px' }}>
                   <p>Ricerca Globale CRM</p>
