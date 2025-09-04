@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useTableLayout } from "@/lib/user-preferences";
+import { useOrganization } from "@/hooks/use-organization";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +43,7 @@ export default function ProjectsPage() {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { currentOrganizationId } = useOrganization();
 
   const { 
     layout, 
@@ -58,20 +60,14 @@ export default function ProjectsPage() {
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
-    queryFn: async () => {
-      const res = await fetch("/api/projects", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch projects');
-      return res.json();
-    },
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId, // Wait for organization context
   });
 
   const { data: partners = [] } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
-    queryFn: async () => {
-      const res = await fetch("/api/partners", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch partners');
-      return res.json();
-    },
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId, // Wait for organization context
   });
 
   const deleteMutation = useMutation({

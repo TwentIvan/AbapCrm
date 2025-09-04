@@ -221,12 +221,17 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOptionalOrganizationId(req);
+      console.log("GET /api/projects - Organization ID:", organizationId);
+      console.log("Headers:", req.headers);
       if (!organizationId) {
+        console.log("No organization ID provided, returning empty array");
         return res.json([]); // Return empty array if no organization context
       }
       const projects = await storage.getProjects(req.user!.id, organizationId);
+      console.log("Found projects:", projects.length);
       res.json(projects);
     } catch (error) {
+      console.error("Error fetching projects:", error);
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }
   });
