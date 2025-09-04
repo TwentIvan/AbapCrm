@@ -173,7 +173,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             style={{ 
               background: 'linear-gradient(to right, rgba(59, 130, 246, 0.15), rgba(255, 255, 255, 0.8))',
               borderRadius: '1.75rem 0 0 1.75rem',
-              border: 'none'
+              border: '1px solid rgba(59, 130, 246, 0.2)'
             }}
           >
             <AreaIcon className="text-primary flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
