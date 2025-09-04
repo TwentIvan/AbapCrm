@@ -138,7 +138,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               backgroundColor: 'rgba(59, 130, 246, 0.1)',
               borderRadius: '0 3rem 3rem 0',
               border: '1px solid rgba(59, 130, 246, 0.2)',
-              height: '100%',
+              height: '52px',
               width: isSearchOpen ? '300px' : 'auto',
               minWidth: isSearchOpen ? '300px' : 'auto',
               padding: isSearchOpen ? '0 16px' : '8px'
@@ -164,8 +164,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="flex-1 border-0 bg-transparent focus:ring-0 focus:outline-0 text-sm px-0 text-foreground placeholder:text-muted-foreground"
                   style={{ 
-                    height: '100%', 
-                    minHeight: '40px',
+                    height: '40px', 
                     backgroundColor: 'transparent',
                     border: 'none',
                     outline: 'none'
@@ -176,7 +175,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 />
                 <button
                   className="px-2 text-xs bg-primary/10 hover:bg-primary/20 ml-2 rounded text-foreground transition-colors"
-                  style={{ height: '100%', minHeight: '40px' }}
+                  style={{ height: '40px' }}
                   onClick={(e) => {
                     e.stopPropagation();
                     // TODO: implementare ricerca globale
@@ -186,7 +185,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </button>
                 <button
                   className="w-8 ml-1 rounded hover:bg-primary/10 text-foreground transition-colors flex items-center justify-center"
-                  style={{ height: '100%', minHeight: '40px' }}
+                  style={{ height: '40px' }}
                   onClick={(e) => {
                     e.stopPropagation();
                     setSearchQuery("");
