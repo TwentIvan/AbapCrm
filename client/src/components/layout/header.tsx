@@ -140,7 +140,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
                       <PopoverTrigger asChild>
                         <div 
-                          className="flex items-center space-x-3 px-2 py-2 shadow-sm cursor-pointer" 
+                          className="flex items-center justify-center px-2 py-2 shadow-sm cursor-pointer" 
                           style={{ 
                             backgroundColor: 'rgba(59, 130, 246, 0.1)',
                             borderRadius: '0 3rem 3rem 0',
@@ -149,7 +149,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                           }}
                           data-testid="button-search"
                         >
-                          <Search className="h-8 w-8 text-muted-foreground flex-shrink-0" style={{ width: '2.25rem', height: '2.25rem', color: '#6b7280', transform: 'scaleX(-1)' }} />
+                          <Search className="h-8 w-8 text-primary flex-shrink-0" style={{ width: '2.25rem', height: '2.25rem', transform: 'scaleX(-1)' }} />
                           <div className="min-w-0 opacity-0 pointer-events-none">
                             <h2 className="text-lg font-semibold truncate">
                               A
