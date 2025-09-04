@@ -224,18 +224,30 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           {/* User & Organization Box with Switch */}
           {user && (
             <div className="relative rounded-full px-4 py-2 flex items-center space-x-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-              {/* Language Selector - Box Circolare */}
+              {/* Language Selector - Bandiera Flat */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="w-10 h-10 rounded-full bg-background border border-border hover:bg-accent flex-shrink-0" 
-                    data-testid="button-language-box"
+                    className="w-14 h-14 rounded-full bg-background border border-border hover:bg-accent flex-shrink-0 p-0 overflow-hidden" 
+                    data-testid="button-language-flag"
                   >
-                    <div className="w-6 h-6 rounded text-sm flex items-center justify-center">
-                      {language === "it" ? "🇮🇹" : "🇬🇧"}
-                    </div>
+                    <div 
+                      className="w-12 h-12 rounded-full"
+                      style={{
+                        background: language === "it" 
+                          ? 'linear-gradient(to right, #009246 33%, #FFFFFF 33%, #FFFFFF 67%, #CE2B37 67%)'
+                          : `
+                            radial-gradient(circle, transparent 30%, #C8102E 30%, #C8102E 35%, transparent 35%),
+                            linear-gradient(45deg, #012169 25%, transparent 25%, transparent 75%, #012169 75%),
+                            linear-gradient(-45deg, #012169 25%, transparent 25%, transparent 75%, #012169 75%),
+                            linear-gradient(to right, #C8102E 40%, #FFFFFF 40%, #FFFFFF 60%, #C8102E 60%),
+                            linear-gradient(to bottom, #C8102E 40%, #FFFFFF 40%, #FFFFFF 60%, #C8102E 60%),
+                            #012169
+                          `
+                      }}
+                    />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
