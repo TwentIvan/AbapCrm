@@ -79,8 +79,8 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
     
     // Se il button corrente è a sinistra di quello in hover, si sposta a sinistra
     if (currentIndex < hoveredIndex) {
-      // Calcolo corretto: 200px (larghezza espansa) - 56px (larghezza iniziale) = 144px di espansione
-      return 'translateX(-144px)'; 
+      // Aumentato per compensare gap + espansione reale
+      return 'translateX(-168px)'; 
     }
     
     return 'translateX(0)';
@@ -184,7 +184,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         <div className="flex items-center space-x-4">
           <TooltipProvider delayDuration={300}>
             {/* Quick Access Buttons */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center">
               {/* Messages Button */}
               <Link href="/messages">
                 <Button 
