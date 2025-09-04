@@ -1341,8 +1341,8 @@ export const auditLogs = pgTable("audit_logs", {
   action: auditActionEnum("action").notNull(),
   
   // Change details
-  oldValues: text("old_values"), // JSON string of old field values (null for CREATE)
-  newValues: text("new_values"), // JSON string of new field values (null for DELETE)
+  oldValues: jsonb("old_values"), // JSON object of old field values (null for CREATE)
+  newValues: jsonb("new_values"), // JSON object of new field values (null for DELETE)  
   changedFields: text("changed_fields").array(), // Array of field names that changed
   
   // Context

@@ -37,17 +37,17 @@ export class AuditService {
         }
       }
 
-      // Helper function to create valid JSON string for TEXT storage
-      const safeSerialize = (obj: any): string | null => {
+      // Helper function to create clean object for JSONB storage
+      const safeSerialize = (obj: any): any => {
         if (!obj) return null;
         
         try {
-          // Create a simplified clean object with only basic types
+          // Create a clean object for JSONB
           const cleanObj: any = {};
           
           for (const [key, value] of Object.entries(obj)) {
-            // Skip problematic keys that might cause JSON issues
-            if (key.includes('$') || key.includes('.') || key.includes('"')) {
+            // Skip problematic keys
+            if (key.includes('$') || key.includes('.')) {
               continue;
             }
             
@@ -55,32 +55,24 @@ export class AuditService {
               cleanObj[key] = null;
             } else if (value instanceof Date) {
               cleanObj[key] = value.toISOString();
-            } else if (typeof value === 'string') {
-              // Escape quotes and special characters
-              cleanObj[key] = value.replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
-            } else if (typeof value === 'number' || typeof value === 'boolean') {
+            } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
               cleanObj[key] = value;
+            } else if (Array.isArray(value)) {
+              cleanObj[key] = value.filter(v => v !== null && v !== undefined);
             } else {
-              // For complex types, convert to string safely
-              cleanObj[key] = String(value).slice(0, 100); // Limit length
+              // For complex objects, convert to string
+              cleanObj[key] = String(value);
             }
           }
           
-          // Create the JSON string with extra validation
-          const jsonString = JSON.stringify(cleanObj);
-          
-          // Validate that it's actually valid JSON by parsing it back
-          JSON.parse(jsonString);
-          
-          return jsonString;
+          return cleanObj; // Return object directly for JSONB
         } catch (err) {
-          console.error("[AUDIT] JSON serialization failed:", err);
+          console.error("[AUDIT] Object serialization failed:", err);
           
-          // Safe minimal fallback that we know works
-          return JSON.stringify({
+          return {
             record_id: String(obj?.id || 'unknown'),
-            audit_error: 'Failed to serialize complex data'
-          });
+            audit_error: 'Failed to serialize data'
+          };
         }
       };
 
@@ -97,6 +89,7 @@ export class AuditService {
         ipAddress: context.ipAddress || null,
       };
 
+      console.log("[AUDIT] Attempting to save:", JSON.stringify(auditEntry, null, 2));
       await db.insert(auditLogs).values(auditEntry);
       
       console.log(`[AUDIT] ${action} ${tableName}:${recordId} by user:${context.userId}`);
