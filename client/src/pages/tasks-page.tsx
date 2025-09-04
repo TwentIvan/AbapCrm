@@ -739,150 +739,6 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
       </main>
       
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-                <Card 
-                  key={task.id} 
-                  className={`transition-all hover:shadow-md ${
-                    task.status === "completed" ? "opacity-75" : ""
-                  }`}
-                  data-testid={`card-task-${task.id}`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start space-x-3">
-                      <Checkbox
-                        checked={task.status === "completed"}
-                        onCheckedChange={() => toggleTaskComplete(task)}
-                        className="mt-1"
-                        data-testid={`checkbox-task-${task.id}`}
-                      />
-                      
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div className="flex items-start justify-between">
-                          <h3 
-                            className={`font-medium ${
-                              task.status === "completed" 
-                                ? "line-through text-muted-foreground" 
-                                : "text-foreground"
-                            }`}
-                            data-testid={`text-task-title-${task.id}`}
-                          >
-                            {task.title}
-                          </h3>
-                          
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditTask(task)}
-                              data-testid={`button-edit-task-${task.id}`}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleTaskExpanded(task.id)}
-                              data-testid={`button-toggle-timer-${task.id}`}
-                            >
-                              <Clock className="h-4 w-4 mr-1" />
-                              Timer
-                              {expandedTasks.has(task.id) ? (
-                                <ChevronDown className="h-3 w-3 ml-1" />
-                              ) : (
-                                <ChevronRight className="h-3 w-3 ml-1" />
-                              )}
-                            </Button>
-                            <Badge 
-                              className={priorityColors[task.priority]}
-                              data-testid={`badge-task-priority-${task.id}`}
-                            >
-                              {task.priority}
-                            </Badge>
-                            <Badge 
-                              className={statusColors[task.status]}
-                              data-testid={`badge-task-status-${task.id}`}
-                            >
-                              {statusLabels[task.status]}
-                            </Badge>
-                          </div>
-                        </div>
-                        
-                        {task.description && (
-                          <p 
-                            className={`text-sm ${
-                              task.status === "completed" 
-                                ? "text-muted-foreground" 
-                                : "text-muted-foreground"
-                            }`}
-                            data-testid={`text-task-description-${task.id}`}
-                          >
-                            {task.description}
-                          </p>
-                        )}
-                        
-                        {/* Task Time Information */}
-                        <div className="flex items-center space-x-4 text-xs text-muted-foreground">
-                          {task.estimatedEffort && (
-                            <div className="flex items-center space-x-1">
-                              <Clock className="h-3 w-3" />
-                              <span>{task.estimatedEffort}h estimated</span>
-                            </div>
-                          )}
-                          
-                          {task.remainingEffort !== null && task.remainingEffort > 0 && task.completionPercentage > 0 && (
-                            <div className="flex items-center space-x-1">
-                              <TrendingDown className="h-3 w-3" />
-                              <span className="text-blue-600 dark:text-blue-400 font-medium">
-                                {Math.round((task.remainingEffort / 60) * 10) / 10}h remaining
-                              </span>
-                            </div>
-                          )}
-                          
-                          {task.completionPercentage > 0 && (
-                            <div className="flex items-center space-x-1">
-                              <BarChart3 className="h-3 w-3" />
-                              <span>{task.completionPercentage}% complete</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {task.dueDate && (
-                          <div className="flex items-center space-x-1">
-                            {isOverdue(task.dueDate) && task.status !== "completed" ? (
-                              <AlertCircle className="h-4 w-4 text-red-500" />
-                            ) : (
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                            )}
-                            <span 
-                              className={`text-xs ${
-                                isOverdue(task.dueDate) && task.status !== "completed"
-                                  ? "text-red-600 font-medium"
-                                  : "text-muted-foreground"
-                              }`}
-                              data-testid={`text-task-due-date-${task.id}`}
-                            >
-                              Due: {new Date(task.dueDate).toLocaleDateString()}
-                              {isOverdue(task.dueDate) && task.status !== "completed" && " (Overdue)"}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {/* Time Tracker Collapsible */}
-                        {expandedTasks.has(task.id) && (
-                          <div className="mt-4 pt-4 border-t border-border">
-                            <TimeTracker task={task} />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
-      
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Task</DialogTitle>
@@ -950,16 +806,16 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
       <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Conferma Eliminazione Multipla</AlertDialogTitle>
+            <AlertDialogTitle>Elimina Tasks Selezionati</AlertDialogTitle>
             <AlertDialogDescription>
-              Sei sicuro di voler eliminare {selectedTasks.length} tasks selezionati? 
+              Sei sicuro di voler eliminare i {selectedTasks.length} task selezionati? 
               Questa azione non può essere annullata.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
             <AlertDialogAction onClick={confirmBulkDelete}>
-              Elimina {selectedTasks.length} Tasks
+              Elimina {selectedTasks.length} Task
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -967,18 +823,6 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
 
       {/* Table Configuration Dialog */}
       <TableConfiguration
-        tableId="tasks"
-        availableColumns={[
-          { id: 'title', label: 'Title' },
-          { id: 'status', label: 'Status' },
-          { id: 'priority', label: 'Priority' },
-          { id: 'projectId', label: 'Project' },
-          { id: 'assigneeId', label: 'Assignee' },
-          { id: 'dueDate', label: 'Due Date' },
-          { id: 'estimatedEffort', label: 'Estimated Effort' },
-          { id: 'timeTracker', label: 'Timer' },
-          { id: 'actions', label: 'Actions' },
-        ]}
         isOpen={showConfigDialog}
         onOpenChange={setShowConfigDialog}
         editingLayout={editingLayout}
@@ -990,4 +834,4 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
       />
     </div>
   );
-}
+} 
