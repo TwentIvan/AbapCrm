@@ -41,20 +41,40 @@ export class AuditService {
       const safeSerialize = (obj: any): string | null => {
         if (!obj) return null;
         try {
-          return JSON.stringify(obj, (key, value) => {
-            // Convert Date objects to ISO strings for proper JSON serialization
+          // Create a clean copy of the object to avoid circular references and non-serializable values
+          const cleanObj = JSON.parse(JSON.stringify(obj, (key, value) => {
+            // Convert Date objects to ISO strings
             if (value instanceof Date) {
               return value.toISOString();
             }
-            // Handle other non-serializable values
-            if (typeof value === 'function' || typeof value === 'symbol') {
-              return undefined;
+            // Remove functions, symbols, and undefined values
+            if (typeof value === 'function' || typeof value === 'symbol' || value === undefined) {
+              return null;
+            }
+            // Handle BigInt
+            if (typeof value === 'bigint') {
+              return value.toString();
             }
             return value;
-          });
+          }));
+          
+          // Now serialize the cleaned object
+          return JSON.stringify(cleanObj);
         } catch (err) {
           console.error("[AUDIT] JSON serialization error:", err);
-          return null;
+          console.error("[AUDIT] Problematic object:", obj);
+          
+          // Fallback: create a minimal safe version
+          try {
+            const fallback = {
+              id: obj?.id || 'unknown',
+              type: typeof obj,
+              error: 'Serialization failed - complex object structure'
+            };
+            return JSON.stringify(fallback);
+          } catch {
+            return JSON.stringify({ error: 'Complete serialization failure' });
+          }
         }
       };
 
