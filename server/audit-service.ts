@@ -115,10 +115,12 @@ export class AuditService {
    */
   static createContext(req: Request): AuditContext {
     const user = req.user as any;
-    // Import getOrganizationId function to get correct org ID
-    const getOrganizationId = (r: any) => {
-      const user = r.user as any;
-      return user?.organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be'; // Default org
+    
+    // Use the same getOrganizationId function as the routes
+    const getOrganizationId = (r: any): string => {
+      const organizationId = r.headers['x-organization-id'] as string;
+      // Return default organization if header not present
+      return organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be';
     };
     
     return {
