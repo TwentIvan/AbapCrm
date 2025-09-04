@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock, Settings, LogOut } from "lucide-react";
+import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock, Settings, LogOut, Globe } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -154,7 +154,16 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               </>
             ) : (
               <>
-                <Search className="text-primary flex-shrink-0 mr-3" style={{ width: '1.25rem', height: '1.25rem', transform: 'scaleX(-1)' }} />
+                <button
+                  className="w-8 h-8 mr-3 rounded hover:bg-primary/10 text-foreground transition-colors flex items-center justify-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSearchQuery("");
+                    setIsSearchOpen(false);
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </button>
                 <input
                   type="text"
                   placeholder={`Cerca in ${title}...`}
@@ -166,23 +175,13 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   onBlur={() => !searchQuery && setIsSearchOpen(false)}
                 />
                 <button
-                  className="px-2 py-1 text-xs bg-primary/10 hover:bg-primary/20 ml-2 rounded text-foreground transition-colors"
+                  className="w-8 h-8 ml-2 rounded hover:bg-primary/10 text-foreground transition-colors flex items-center justify-center bg-primary/10 hover:bg-primary/20"
                   onClick={(e) => {
                     e.stopPropagation();
                     // TODO: implementare ricerca globale
                   }}
                 >
-                  Globale
-                </button>
-                <button
-                  className="w-8 h-8 ml-1 rounded hover:bg-primary/10 text-foreground transition-colors flex items-center justify-center"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSearchQuery("");
-                    setIsSearchOpen(false);
-                  }}
-                >
-                  <X className="h-4 w-4" />
+                  <Globe className="h-4 w-4" />
                 </button>
               </>
             )}
