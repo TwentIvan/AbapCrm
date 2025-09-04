@@ -168,13 +168,20 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           </TooltipProvider>
           
           {/* Area Title with Icon */}
-          <div className="flex items-center space-x-3 bg-card border border-border rounded-lg px-4 py-3 shadow-sm">
-            <AreaIcon className="text-primary" style={{ width: '2rem', height: '2rem' }} />
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground" data-testid="text-page-title">
+          <div 
+            className="flex items-center space-x-3 h-14 px-4 shadow-sm"
+            style={{ 
+              background: 'linear-gradient(to right, rgba(59, 130, 246, 0.15), rgba(255, 255, 255, 0.8))',
+              borderRadius: '0.75rem 0 0 0.75rem',
+              border: 'none'
+            }}
+          >
+            <AreaIcon className="text-primary flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-foreground truncate" data-testid="text-page-title">
                 {title}
               </h2>
-              <p className="text-muted-foreground" data-testid="text-page-subtitle">
+              <p className="text-sm text-muted-foreground truncate" data-testid="text-page-subtitle">
                 {subtitle}
               </p>
             </div>
