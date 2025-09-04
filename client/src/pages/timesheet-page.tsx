@@ -562,7 +562,7 @@ export default function TimesheetPage() {
       </div>
 
       {/* Time Entries Content */}
-      {viewMode === "list" ? (
+      {true ? (
         <DataTable
           key={`timesheet-${currentLayoutName}`}
           tableId="timesheet-entries"
