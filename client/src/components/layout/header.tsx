@@ -145,24 +145,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             <div className="flex items-center space-x-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link href="/organizations">
-                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-organizations">
-                      <Building className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                      <span className="sr-only">Organizations</span>
-                    </Button>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent 
-                  className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
-                  style={{ minWidth: '240px', backgroundColor: '#ebf3fe', borderColor: 'rgba(59, 130, 246, 0.2)' }}
-                  sideOffset={10}
-                >
-                  {t("nav.organizations")}
-                </TooltipContent>
-              </Tooltip>
-              
-              <Tooltip>
-                <TooltipTrigger asChild>
                   <Link href="/messages">
                     <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-messages">
                       <Mail className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
@@ -314,7 +296,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                             className="h-4 w-4 rounded object-cover"
                           />
                         ) : (
-                          <User className="h-4 w-4" />
+                          <User className="h-4 w-4" style={{ color: '#6b7280' }} />
                         )}
                         <span className="font-medium">{org.name}</span>
                         {currentOrganization?.id === org.id && (
@@ -325,7 +307,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   ))}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => window.location.href = "/organizations"}>
-                    <Users className="h-4 w-4 mr-2" />
+                    <Building className="h-4 w-4 mr-2" style={{ color: '#6b7280' }} />
                     Gestisci Organizzazioni
                   </DropdownMenuItem>
                 </DropdownMenuContent>
