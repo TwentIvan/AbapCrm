@@ -2924,10 +2924,10 @@ Format the response as professional documentation suitable for client delivery.`
         return res.status(400).json({ error: "Invalid table name" });
       }
       
-      // Get audit trail from new simple table
+      // Get audit trail from new simple table - use the SAME logic as audit saving
       const user = req.user as any;
-      // Use the same organization logic as other endpoints
-      const organizationId = getOrganizationId(req);
+      const auditContext = AuditService.createContext(req);
+      const organizationId = auditContext.organizationId;
       
       console.log(`[AUDIT API] Looking for ${tableName}:${recordId} in org: ${organizationId}`);
       const result = await db.execute(sql.raw(`
