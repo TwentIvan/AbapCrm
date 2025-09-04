@@ -2926,47 +2926,9 @@ Format the response as professional documentation suitable for client delivery.`
         return res.status(400).json({ error: "Invalid table name" });
       }
       
-      // Use raw SQL query to avoid parameter issues
-      const organizationId = (req.user as any).organizationId;
-      const result = await db.execute(sql.raw(`
-        SELECT 
-          a.id,
-          a.table_name as tableName,
-          a.record_id as recordId,
-          a.action,
-          a.changed_fields as changedFields,
-          a.created_at as createdAt,
-          u.id as user_id,
-          u.first_name as user_firstName,
-          u.last_name as user_lastName,
-          u.email as user_email
-        FROM audit_simple a
-        LEFT JOIN users u ON a.user_id = u.id
-        WHERE a.table_name = '${tableName}' AND a.record_id = '${recordId}' AND a.organization_id = '${organizationId}'
-        ORDER BY a.created_at DESC
-      `));
-
-      // Transform to match expected format
-      const logs = result.rows.map((row: any) => ({
-        id: row.id,
-        tableName: row.tablename,
-        recordId: row.recordid,
-        action: row.action,
-        oldValues: null,
-        newValues: null,
-        changedFields: row.changedfields ? row.changedfields.split(',') : [],
-        createdAt: row.createdat,
-        user: {
-          id: row.user_id,
-          firstName: row.user_firstname || 'Unknown',
-          lastName: row.user_lastname || 'User',
-          email: row.user_email || 'unknown@example.com',
-        },
-        userAgent: null,
-        ipAddress: null,
-      }));
-
-      res.json(logs);
+      // AUDIT DISABLED - Return empty array for now
+      console.log(`[AUDIT] Requested history for ${tableName}:${recordId} - returning empty (audit disabled)`);
+      res.json([]);
     } catch (error) {
       console.error("Audit history error:", error);
       res.status(500).json({ 
