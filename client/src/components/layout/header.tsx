@@ -169,7 +169,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           
           {/* Area Title with Icon */}
           <div 
-            className="flex items-center space-x-3 h-14 px-4 shadow-sm"
+            className="flex items-center space-x-3 px-4 py-2 shadow-sm"
             style={{ 
               background: 'linear-gradient(to right, rgba(59, 130, 246, 0.15), rgba(255, 255, 255, 0.8))',
               borderRadius: '1.75rem 0 0 1.75rem',
