@@ -92,28 +92,28 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           {/* Quick Access Buttons */}
           <div className="flex items-center space-x-2">
             <Link href="/organizations">
-              <Button variant="ghost" size="icon" data-testid="button-organizations">
+              <Button variant="ghost" size="icon" className="h-16 w-16" data-testid="button-organizations">
                 <Building className="h-16 w-16" />
                 <span className="sr-only">Organizations</span>
               </Button>
             </Link>
             
             <Link href="/messages">
-              <Button variant="ghost" size="icon" data-testid="button-messages">
+              <Button variant="ghost" size="icon" className="h-16 w-16" data-testid="button-messages">
                 <Mail className="h-16 w-16" />
                 <span className="sr-only">Messages</span>
               </Button>
             </Link>
             
             <Link href="/calendar">
-              <Button variant="ghost" size="icon" data-testid="button-calendar">
+              <Button variant="ghost" size="icon" className="h-16 w-16" data-testid="button-calendar">
                 <Calendar className="h-16 w-16" />
                 <span className="sr-only">Calendar</span>
               </Button>
             </Link>
             
             <Link href="/planning-calendar">
-              <Button variant="ghost" size="icon" data-testid="button-planning-calendar">
+              <Button variant="ghost" size="icon" className="h-16 w-16" data-testid="button-planning-calendar">
                 <FolderTree className="h-16 w-16" />
                 <span className="sr-only">Planning Calendar</span>
               </Button>
