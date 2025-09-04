@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LayoutManager } from "@/components/ui/layout-manager";
+import { LayoutControlBox } from "@/components/ui/layout-control-box";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -691,14 +692,14 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
           {/* Layout Management and View Toggle */}
           <div className="flex justify-between items-center mb-4">
             {/* Layout Manager */}
-            <div className="flex items-center gap-4">
-              <LayoutManager
-                currentLayoutName={currentLayoutName}
-                savedLayouts={savedLayouts}
-                onLoadLayout={loadLayout}
-                onRenameLayout={renameLayout}
-                onDeleteLayout={deleteLayout}
-              />
+            <LayoutControlBox
+              currentLayoutName={currentLayoutName}
+              savedLayouts={savedLayouts}
+              onLoadLayout={loadLayout}
+              onRenameLayout={renameLayout}
+              onDeleteLayout={deleteLayout}
+              onConfigureTable={() => setShowConfigDialog(true)}
+            />
               <Button 
                 variant="outline" 
                 size="sm" 

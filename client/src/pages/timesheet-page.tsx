@@ -15,6 +15,7 @@ import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endO
 import type { TimeEntry, Task, Project } from "@shared/schema";
 import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
+import { LayoutControlBox } from "@/components/ui/layout-control-box";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import type { ColumnDef } from "@tanstack/react-table";
 import Sidebar from "@/components/layout/sidebar";
@@ -469,16 +470,13 @@ export default function TimesheetPage() {
           {/* Layout Management and View Toggle */}
           <div className="flex justify-between items-center mb-4">
             {/* Layout Manager */}
-            <LayoutManager
+            <LayoutControlBox
               currentLayoutName={currentLayoutName}
               savedLayouts={savedLayouts}
               onLoadLayout={loadLayout}
               onRenameLayout={renameLayout}
               onDeleteLayout={deleteLayout}
-              onEditLayout={(layout) => {
-                setEditingLayout(layout);
-                setShowConfigDialog(true);
-              }}
+              onConfigureTable={() => setShowConfigDialog(true)}
             />
 
             {/* View Toggle */}

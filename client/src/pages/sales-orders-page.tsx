@@ -6,6 +6,7 @@ import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LayoutManager } from "@/components/ui/layout-manager";
+import { LayoutControlBox } from "@/components/ui/layout-control-box";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
@@ -204,12 +205,13 @@ export default function SalesOrdersPage() {
         <main className="p-6 space-y-6">
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-4">
-              <LayoutManager
+              <LayoutControlBox
                 currentLayoutName={currentLayoutName}
                 savedLayouts={savedLayouts}
                 onLoadLayout={loadLayout}
                 onRenameLayout={renameLayout}
                 onDeleteLayout={deleteLayout}
+                onConfigureTable={() => setShowConfigDialog(true)}
               />
               <Button 
                 variant="outline" 

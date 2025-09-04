@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
+import { LayoutControlBox } from "@/components/ui/layout-control-box";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Server, Building, MoreHorizontal, Grid3X3, List, Edit, Trash2, Key, Wifi, Upload } from "lucide-react";
 import { SapSystem } from "@shared/schema";
@@ -320,15 +321,14 @@ export default function SapSystemsPage() {
                   </Button>
                 )}
                 
-                <Button
-                  variant="outline"
-                  onClick={() => setShowConfigDialog(true)}
-                  data-testid="button-table-config"
-                  disabled
-                >
-                  <Grid3X3 className="mr-2 h-4 w-4" />
-                  Configure (Coming Soon)
-                </Button>
+                <LayoutControlBox
+                  currentLayoutName={currentLayoutName}
+                  savedLayouts={savedLayouts}
+                  onLoadLayout={loadLayout}
+                  onRenameLayout={renameLayout}
+                  onDeleteLayout={deleteLayout}
+                  onConfigureTable={() => setShowConfigDialog(true)}
+                />
                 
                 
                 <Button 
@@ -347,10 +347,7 @@ export default function SapSystemsPage() {
               </div>
             </div>
 
-            {/* Layout Manager - Simplified for now */}
-            <div className="text-sm text-gray-500 mb-4">
-              Current layout: {currentLayoutName || 'Default'}
-            </div>
+            {/* Layout Control Box now unified */}
 
             {renderTable()}
           </div>

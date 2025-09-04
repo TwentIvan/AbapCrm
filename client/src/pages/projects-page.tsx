@@ -16,6 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
+import { LayoutControlBox } from "@/components/ui/layout-control-box";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2, History } from "lucide-react";
 import { Project, Partner } from "@shared/schema";
@@ -252,28 +253,16 @@ export default function ProjectsPage() {
         />
         
         <div className="p-6">
-          {/* Layout Management and View Toggle */}
-          <div className="flex justify-between items-center mb-4">
-            {/* Layout Manager */}
-            <div className="flex items-center gap-4">
-              <LayoutManager
-                currentLayoutName={currentLayoutName}
-                savedLayouts={savedLayouts}
-                onLoadLayout={loadLayout}
-                onRenameLayout={renameLayout}
-                onDeleteLayout={deleteLayout}
-              />
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowConfigDialog(true)}
-                data-testid="button-configure-columns"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Configura
-              </Button>
-            </div>
-
+          {/* Layout Control Box */}
+          <div className="flex justify-start items-center mb-4">
+            <LayoutControlBox
+              currentLayoutName={currentLayoutName}
+              savedLayouts={savedLayouts}
+              onLoadLayout={loadLayout}
+              onRenameLayout={renameLayout}
+              onDeleteLayout={deleteLayout}
+              onConfigureTable={() => setShowConfigDialog(true)}
+            />
           </div>
 
           {isLoading ? (

@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DataTable, createImageColumn, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
+import { LayoutControlBox } from "@/components/ui/layout-control-box";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import ImageContainer from "@/components/ui/image-container";
 import { Building, Mail, Phone, MapPin, MoreHorizontal, Grid3X3, List, Edit, Trash2, History } from "lucide-react";
@@ -265,14 +266,14 @@ export default function PartnersPage() {
           {/* Layout Management and View Toggle */}
           <div className="flex justify-between items-center mb-4">
             {/* Layout Manager */}
-            <div className="flex items-center gap-4">
-              <LayoutManager
-                currentLayoutName={currentLayoutName}
-                savedLayouts={savedLayouts}
-                onLoadLayout={loadLayout}
-                onRenameLayout={renameLayout}
-                onDeleteLayout={deleteLayout}
-              />
+            <LayoutControlBox
+              currentLayoutName={currentLayoutName}
+              savedLayouts={savedLayouts}
+              onLoadLayout={loadLayout}
+              onRenameLayout={renameLayout}
+              onDeleteLayout={deleteLayout}
+              onConfigureTable={() => setShowConfigDialog(true)}
+            />
               <Button 
                 variant="outline" 
                 size="sm" 
