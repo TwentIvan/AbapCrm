@@ -110,7 +110,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   return (
     <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-10">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-1">
+        <div className="flex items-stretch space-x-1">
           {/* Area Title with Icon */}
           <div 
             className="flex items-center space-x-3 px-4 py-2 shadow-sm"
@@ -145,8 +145,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                             backgroundColor: 'rgba(59, 130, 246, 0.1)',
                             borderRadius: '0 3rem 3rem 0',
                             border: '1px solid rgba(59, 130, 246, 0.2)',
-                            height: 'auto',
-                            minHeight: '3.75rem'
+                            height: '100%'
                           }}
                           data-testid="button-search"
                         >
