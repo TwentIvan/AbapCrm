@@ -43,6 +43,8 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 import { sql } from "drizzle-orm";
+import scrypt from "scrypt-js";
+import { AuditService } from "./audit-service";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -50,8 +52,8 @@ export interface IStorage {
   // Organizations
   getOrganizations(userId: string): Promise<any[]>;
   getOrganization(id: string): Promise<Organization | undefined>;
-  createOrganization(organization: InsertOrganization): Promise<Organization>;
-  updateOrganization(id: string, organization: Partial<InsertOrganization>): Promise<Organization | undefined>;
+  createOrganization(organization: InsertOrganization, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Organization>;
+  updateOrganization(id: string, organization: Partial<InsertOrganization>, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Organization | undefined>;
   deleteOrganization(id: string): Promise<boolean>;
   
   // User-Organization relationships
@@ -446,20 +448,56 @@ export class DatabaseStorage implements IStorage {
     return organization || undefined;
   }
 
-  async createOrganization(organization: InsertOrganization): Promise<Organization> {
+  async createOrganization(organization: InsertOrganization, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Organization> {
     const [newOrganization] = await db
       .insert(organizations)
       .values(organization)
       .returning();
+    
+    // Log audit trail for organization creation
+    if (auditContext) {
+      await AuditService.logCreate(
+        'organizations',
+        newOrganization.id,
+        newOrganization,
+        {
+          userId: auditContext.userId,
+          organizationId: newOrganization.id,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return newOrganization;
   }
 
-  async updateOrganization(id: string, organization: Partial<InsertOrganization>): Promise<Organization | undefined> {
+  async updateOrganization(id: string, organization: Partial<InsertOrganization>, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Organization | undefined> {
+    // Get old values for audit trail
+    const oldOrganization = auditContext ? await this.getOrganization(id) : null;
+    
     const [updatedOrganization] = await db
       .update(organizations)
       .set({ ...organization, updatedAt: new Date() })
       .where(eq(organizations.id, id))
       .returning();
+    
+    // Log audit trail for organization update
+    if (auditContext && updatedOrganization && oldOrganization) {
+      await AuditService.logUpdate(
+        'organizations',
+        updatedOrganization.id,
+        oldOrganization,
+        updatedOrganization,
+        {
+          userId: auditContext.userId,
+          organizationId: updatedOrganization.id,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
     return updatedOrganization || undefined;
   }
 

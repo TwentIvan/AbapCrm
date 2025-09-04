@@ -1328,3 +1328,47 @@ export const emailVerificationTokens = pgTable("email_verification_tokens", {
 export type EmailVerificationToken = typeof emailVerificationTokens.$inferSelect;
 export type InsertEmailVerificationToken = typeof emailVerificationTokens.$inferInsert;
 export const insertEmailVerificationTokenSchema = createInsertSchema(emailVerificationTokens).omit({ id: true, createdAt: true, updatedAt: true });
+
+// Audit Log System - Universal change tracking for all entities
+export const auditActionEnum = pgEnum("audit_action", ["CREATE", "UPDATE", "DELETE"]);
+
+export const auditLogs = pgTable("audit_logs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Tracking info
+  tableName: text("table_name").notNull(), // "projects", "tasks", "partners", etc.
+  recordId: text("record_id").notNull(), // UUID of the modified record
+  action: auditActionEnum("action").notNull(),
+  
+  // Change details
+  oldValues: text("old_values"), // JSON string of old field values (null for CREATE)
+  newValues: text("new_values"), // JSON string of new field values (null for DELETE)
+  changedFields: text("changed_fields").array(), // Array of field names that changed
+  
+  // Context
+  userId: uuid("user_id").references(() => users.id).notNull(), // Who made the change
+  userAgent: text("user_agent"), // Browser/client info
+  ipAddress: text("ip_address"), // IP address
+  
+  // Organization context (for data segregation)
+  organizationId: uuid("organization_id").references(() => organizations.id),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+
+// Relations for audit logs
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [auditLogs.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [auditLogs.organizationId],
+    references: [organizations.id],
+  }),
+}));

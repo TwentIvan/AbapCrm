@@ -10,8 +10,10 @@ import { UniversalTable, createStandardColumns, TableColumn } from "@/components
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Building, Trash2, Globe, MapPin, Users, Mail } from "lucide-react";
+import { Building, Trash2, Globe, MapPin, Users, Mail, History } from "lucide-react";
 import OrganizationForm from "@/components/forms/organization-form";
+import AuditHistory from "@/components/ui/audit-history";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface OrganizationWithDetails {
   id: string;
@@ -250,7 +252,7 @@ export default function OrganizationsPage() {
 
           {/* Create/Edit Dialog */}
           <Dialog open={showForm} onOpenChange={setShowForm}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingItem ? "Modifica Organizzazione" : "Nuova Organizzazione"}
@@ -259,18 +261,57 @@ export default function OrganizationsPage() {
                   {editingItem ? "Aggiorna" : "Aggiungi"} le informazioni dell'organizzazione
                 </DialogDescription>
               </DialogHeader>
-              <OrganizationForm
-                organization={editingItem}
-                onSuccess={() => {
-                  setShowForm(false);
-                  setEditingItem(null);
-                  queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
-                }}
-                onCancel={() => {
-                  setShowForm(false);
-                  setEditingItem(null);
-                }}
-              />
+              
+              {editingItem ? (
+                <Tabs defaultValue="details" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="details" className="flex items-center space-x-2">
+                      <Building className="h-4 w-4" />
+                      <span>Dettagli</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="history" className="flex items-center space-x-2">
+                      <History className="h-4 w-4" />
+                      <span>Storico Modifiche</span>
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="details" className="mt-6">
+                    <OrganizationForm
+                      organization={editingItem}
+                      onSuccess={() => {
+                        setShowForm(false);
+                        setEditingItem(null);
+                        queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+                      }}
+                      onCancel={() => {
+                        setShowForm(false);
+                        setEditingItem(null);
+                      }}
+                    />
+                  </TabsContent>
+                  
+                  <TabsContent value="history" className="mt-6">
+                    <AuditHistory 
+                      tableName="organizations" 
+                      recordId={editingItem.id}
+                      title="Storico Modifiche Organizzazione"
+                    />
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                <OrganizationForm
+                  organization={editingItem}
+                  onSuccess={() => {
+                    setShowForm(false);
+                    setEditingItem(null);
+                    queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+                  }}
+                  onCancel={() => {
+                    setShowForm(false);
+                    setEditingItem(null);
+                  }}
+                />
+              )}
             </DialogContent>
           </Dialog>
 

@@ -19,6 +19,7 @@ import {
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
+import { AuditService } from "./audit-service";
 
 // Helper function to extract organizationId from request header
 function getOrganizationId(req: any): string {
@@ -62,7 +63,8 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const data = insertOrganizationSchema.parse(req.body);
-      const organization = await storage.createOrganization(data);
+      const auditContext = AuditService.createContext(req);
+      const organization = await storage.createOrganization(data, auditContext);
       
       // Automatically add the creator as admin of the new organization
       await storage.addUserToOrganization({
@@ -82,7 +84,8 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const data = insertOrganizationSchema.partial().parse(req.body);
-      const organization = await storage.updateOrganization(req.params.id, data);
+      const auditContext = AuditService.createContext(req);
+      const organization = await storage.updateOrganization(req.params.id, data, auditContext);
       if (!organization) return res.sendStatus(404);
       res.json(organization);
     } catch (error) {
@@ -2887,6 +2890,36 @@ Format the response as professional documentation suitable for client delivery.`
       console.error("AI documentation generation error:", error);
       res.status(500).json({ 
         error: "Failed to generate AI documentation", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
+  // Audit API endpoints
+  app.get("/api/audit/:tableName/:recordId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { tableName, recordId } = req.params;
+      
+      // Validate table name to prevent injection
+      const allowedTables = [
+        'projects', 'tasks', 'partners', 'deals', 'calendar_events', 
+        'time_entries', 'messages', 'timesheets', 'sales_orders',
+        'rate_agreements', 'human_resources', 'sap_systems', 
+        'vpn_connections', 'system_credentials', 'organizations'
+      ];
+      
+      if (!allowedTables.includes(tableName)) {
+        return res.status(400).json({ error: "Invalid table name" });
+      }
+      
+      const auditHistory = await AuditService.getAuditHistory(tableName, recordId);
+      res.json(auditHistory);
+    } catch (error) {
+      console.error("Audit history error:", error);
+      res.status(500).json({ 
+        error: "Failed to retrieve audit history", 
         details: error instanceof Error ? error.message : String(error) 
       });
     }
