@@ -131,73 +131,67 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             </div>
           </div>
           
-          {/* Search Icon - a destra del box titolo in semicerchio */}
-          <TooltipProvider delayDuration={300}>
-            <div className="relative">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-                      <PopoverTrigger asChild>
-                        <div 
-                          className="flex items-center justify-center px-2 py-2 shadow-sm cursor-pointer" 
-                          style={{ 
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            borderRadius: '0 3rem 3rem 0',
-                            border: '1px solid rgba(59, 130, 246, 0.2)',
-                            height: '100%'
-                          }}
-                          data-testid="button-search"
-                        >
-                          <Search className="h-8 w-8 text-primary flex-shrink-0" style={{ width: '2.25rem', height: '2.25rem', transform: 'scaleX(-1) translateX(-0.5rem)' }} />
-                          <div className="min-w-0 opacity-0 pointer-events-none">
-                            <h2 className="text-lg font-semibold truncate">
-                              A
-                            </h2>
-                            <p className="text-sm truncate">
-                              B
-                            </p>
-                          </div>
-                        </div>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80 p-2" align="start">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" style={{ transform: 'translateY(-50%) scaleX(-1)' }} />
-                          <Input
-                            type="text"
-                            placeholder="Cerca in tutto il CRM..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 pr-10 h-12 text-base"
-                            data-testid="input-search"
-                            autoFocus
-                          />
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8"
-                            onClick={() => {
-                              setSearchQuery("");
-                              setIsSearchOpen(false);
-                            }}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent 
-                  className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
-                  style={{ minWidth: '240px', backgroundColor: '#ebf3fe', borderColor: 'rgba(59, 130, 246, 0.2)' }}
-                  sideOffset={10}
+          {/* Search Box - espandibile */}
+          <div 
+            className="flex items-center px-2 py-2 shadow-sm cursor-pointer transition-all duration-300"
+            style={{ 
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderRadius: '0 3rem 3rem 0',
+              border: '1px solid rgba(59, 130, 246, 0.2)',
+              height: '100%',
+              width: isSearchOpen ? '300px' : 'auto',
+              minWidth: isSearchOpen ? '300px' : 'auto'
+            }}
+            onClick={() => !isSearchOpen && setIsSearchOpen(true)}
+            data-testid="button-search"
+          >
+            {!isSearchOpen ? (
+              <>
+                <Search className="h-8 w-8 text-primary flex-shrink-0" style={{ width: '2.25rem', height: '2.25rem', transform: 'scaleX(-1) translateX(-0.5rem)' }} />
+                <div className="min-w-0 opacity-0 pointer-events-none">
+                  <h2 className="text-lg font-semibold truncate">A</h2>
+                  <p className="text-sm truncate">B</p>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center w-full space-x-2">
+                <Search className="h-5 w-5 text-primary flex-shrink-0" style={{ transform: 'scaleX(-1)' }} />
+                <Input
+                  type="text"
+                  placeholder={`Cerca in ${title}...`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 h-8 border-0 bg-transparent focus:ring-0 text-sm px-0"
+                  data-testid="input-search"
+                  autoFocus
+                  onBlur={() => !searchQuery && setIsSearchOpen(false)}
+                />
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="h-6 px-2 text-xs bg-primary/10 hover:bg-primary/20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // TODO: implementare ricerca globale
+                  }}
                 >
-                  {t("header.search")}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </TooltipProvider>
+                  Globale
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSearchQuery("");
+                    setIsSearchOpen(false);
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center space-x-4">
