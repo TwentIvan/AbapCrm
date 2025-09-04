@@ -66,25 +66,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
 
   const AreaIcon = getAreaIcon(location);
 
-  // Helper function per calcolare lo spostamento di ogni button in base al hover
-  const getButtonTransform = (buttonId: string, hoveredId: string | null) => {
-    if (!hoveredId) return 'translateX(0)';
-    
-    const buttons = ['messages', 'calendar', 'planning'];
-    const currentIndex = buttons.indexOf(buttonId);
-    const hoveredIndex = buttons.indexOf(hoveredId);
-    
-    // Se il button corrente è quello in hover, non si sposta
-    if (currentIndex === hoveredIndex) return 'translateX(0)';
-    
-    // Se il button corrente è a sinistra di quello in hover, si sposta a sinistra
-    if (currentIndex < hoveredIndex) {
-      return 'translateX(-120px)'; // Spazio per il text espanso
-    }
-    
-    return 'translateX(0)';
-  };
-
   // Helper function per lo stile di ogni button
   const getButtonStyle = (buttonId: string, hoveredId: string | null) => {
     const isHovered = buttonId === hoveredId;
@@ -92,14 +73,14 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
       backgroundColor: 'rgba(59, 130, 246, 0.1)',
       borderRadius: isHovered ? '2rem' : '50%',
       border: '1px solid rgba(59, 130, 246, 0.2)',
-      width: isHovered ? 'auto' : '3.5rem',
+      width: isHovered ? '200px' : '3.5rem',
       height: '3.5rem',
-      minWidth: isHovered ? '200px' : '3.5rem',
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      transform: getButtonTransform(buttonId, hoveredId),
       overflow: 'hidden',
       paddingLeft: isHovered ? '1rem' : undefined,
       paddingRight: isHovered ? '1rem' : undefined,
+      justifyContent: isHovered ? 'flex-start' : 'center',
+      zIndex: isHovered ? 10 : 1,
     };
   };
 
@@ -180,12 +161,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         <div className="flex items-center space-x-4">
           <TooltipProvider delayDuration={300}>
             {/* Quick Access Buttons */}
-            <div className="flex items-center space-x-2">
+            <div className="relative flex items-center" style={{ width: '280px', height: '3.5rem' }}>
               {/* Messages Button */}
-              <Link href="/messages">
+              <Link href="/messages" className="absolute left-0">
                 <Button 
                   variant="ghost" 
-                  className="flex items-center justify-start"
+                  className="flex items-center"
                   style={getButtonStyle('messages', hoveredButton)}
                   onMouseEnter={() => setHoveredButton('messages')}
                   onMouseLeave={() => setHoveredButton(null)}
@@ -201,10 +182,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               </Link>
               
               {/* Calendar Button */}
-              <Link href="/calendar">
+              <Link href="/calendar" className="absolute" style={{ left: '4rem' }}>
                 <Button 
                   variant="ghost" 
-                  className="flex items-center justify-start"
+                  className="flex items-center"
                   style={getButtonStyle('calendar', hoveredButton)}
                   onMouseEnter={() => setHoveredButton('calendar')}
                   onMouseLeave={() => setHoveredButton(null)}
@@ -220,10 +201,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               </Link>
               
               {/* Planning Calendar Button */}
-              <Link href="/planning-calendar">
+              <Link href="/planning-calendar" className="absolute" style={{ left: '8rem' }}>
                 <Button 
                   variant="ghost" 
-                  className="flex items-center justify-start"
+                  className="flex items-center"
                   style={getButtonStyle('planning', hoveredButton)}
                   onMouseEnter={() => setHoveredButton('planning')}
                   onMouseLeave={() => setHoveredButton(null)}
