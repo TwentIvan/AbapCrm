@@ -20,8 +20,6 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useOrganization } from "@/hooks/use-organization";
 import { useTranslation, Language } from "@/lib/i18n";
-import italianFlagImg from "@assets/generated_images/Italian_flag_flat_design_aba5eb7c.png";
-import ukFlagImg from "@assets/generated_images/UK_Union_Jack_flag_0a8318de.png";
 
 interface HeaderProps {
   title: string;
@@ -235,12 +233,9 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     className="w-14 h-14 rounded-full bg-background border border-border hover:bg-accent flex-shrink-0 p-0 overflow-hidden" 
                     data-testid="button-language-flag"
                   >
-                    <div 
-                      className="w-12 h-12 rounded-full bg-cover bg-center"
-                      style={{
-                        backgroundImage: `url(${language === "it" ? italianFlagImg : ukFlagImg})`
-                      }}
-                    />
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl">
+                      {language === "it" ? "🇮🇹" : "🇬🇧"}
+                    </div>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
