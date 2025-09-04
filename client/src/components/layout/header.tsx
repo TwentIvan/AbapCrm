@@ -195,14 +195,30 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                           onClick={() => setLanguage("it")}
                           className="flex items-center justify-between"
                         >
-                          <span>🇮🇹 Italiano</span>
+                          <div className="flex items-center space-x-3">
+                            <div 
+                              className="w-6 h-6 rounded-full flex-shrink-0"
+                              style={{
+                                background: 'linear-gradient(to right, #009246 33%, #FFFFFF 33%, #FFFFFF 67%, #CE2B37 67%)'
+                              }}
+                            />
+                            <span>Italiano</span>
+                          </div>
                           {language === "it" && <Check className="h-4 w-4" />}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => setLanguage("en")}
                           className="flex items-center justify-between"
                         >
-                          <span>🇬🇧 English</span>
+                          <div className="flex items-center space-x-3">
+                            <div 
+                              className="w-6 h-6 rounded-full bg-cover bg-center flex-shrink-0"
+                              style={{
+                                backgroundImage: 'url(https://cdn-icons-png.flaticon.com/128/197/197374.png)'
+                              }}
+                            />
+                            <span>English</span>
+                          </div>
                           {language === "en" && <Check className="h-4 w-4" />}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -255,14 +271,30 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     onClick={() => setLanguage("it")}
                     className="flex items-center justify-between"
                   >
-                    <span>🇮🇹 Italiano</span>
+                    <div className="flex items-center space-x-3">
+                      <div 
+                        className="w-6 h-6 rounded-full flex-shrink-0"
+                        style={{
+                          background: 'linear-gradient(to right, #009246 33%, #FFFFFF 33%, #FFFFFF 67%, #CE2B37 67%)'
+                        }}
+                      />
+                      <span>Italiano</span>
+                    </div>
                     {language === "it" && <Check className="h-4 w-4" />}
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={() => setLanguage("en")}
                     className="flex items-center justify-between"
                   >
-                    <span>🇬🇧 English</span>
+                    <div className="flex items-center space-x-3">
+                      <div 
+                        className="w-6 h-6 rounded-full bg-cover bg-center flex-shrink-0"
+                        style={{
+                          backgroundImage: 'url(https://cdn-icons-png.flaticon.com/128/197/197374.png)'
+                        }}
+                      />
+                      <span>English</span>
+                    </div>
                     {language === "en" && <Check className="h-4 w-4" />}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
