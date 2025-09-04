@@ -37,43 +37,28 @@ export class AuditService {
         }
       }
 
-      // Helper function to create clean object for JSONB storage
+      // Ultra-simple serialization to avoid JSON issues
       const safeSerialize = (obj: any): any => {
         if (!obj) return null;
         
-        try {
-          // Create a clean object for JSONB
-          const cleanObj: any = {};
-          
-          for (const [key, value] of Object.entries(obj)) {
-            // Skip problematic keys
-            if (key.includes('$') || key.includes('.')) {
-              continue;
-            }
-            
-            if (value === null || value === undefined) {
-              cleanObj[key] = null;
-            } else if (value instanceof Date) {
-              cleanObj[key] = value.toISOString();
-            } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-              cleanObj[key] = value;
-            } else if (Array.isArray(value)) {
-              cleanObj[key] = value.filter(v => v !== null && v !== undefined);
+        // Return a very simple object with only basic fields
+        const result: any = {};
+        
+        // Only take safe, simple fields
+        const safeKeys = ['id', 'name', 'title', 'description', 'status', 'priority', 'type'];
+        
+        for (const key of safeKeys) {
+          if (obj[key] !== undefined && obj[key] !== null) {
+            const value = obj[key];
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+              result[key] = value;
             } else {
-              // For complex objects, convert to string
-              cleanObj[key] = String(value);
+              result[key] = String(value);
             }
           }
-          
-          return cleanObj; // Return object directly for JSONB
-        } catch (err) {
-          console.error("[AUDIT] Object serialization failed:", err);
-          
-          return {
-            record_id: String(obj?.id || 'unknown'),
-            audit_error: 'Failed to serialize data'
-          };
         }
+        
+        return result;
       };
 
       const auditEntry: InsertAuditLog = {
@@ -89,7 +74,7 @@ export class AuditService {
         ipAddress: context.ipAddress || null,
       };
 
-      console.log("[AUDIT] Attempting to save:", JSON.stringify(auditEntry, null, 2));
+      // Try to save audit entry
       await db.insert(auditLogs).values(auditEntry);
       
       console.log(`[AUDIT] ${action} ${tableName}:${recordId} by user:${context.userId}`);
