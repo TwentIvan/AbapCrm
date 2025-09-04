@@ -26,10 +26,8 @@ import { AuditService } from "./audit-service";
 // Helper function to extract organizationId from request header
 function getOrganizationId(req: any): string {
   const organizationId = req.headers['x-organization-id'] as string;
-  if (!organizationId) {
-    throw new Error('Organization ID is required');
-  }
-  return organizationId;
+  // Return default organization if header not present
+  return organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be';
 }
 
 // Helper function to safely get organizationId (returns null if not present)
