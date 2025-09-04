@@ -58,7 +58,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   className="h-12 w-12 rounded-full bg-muted/20 border border-muted hover:bg-accent"
                   data-testid="button-search"
                 >
-                  <Search className="h-10 w-10 text-muted-foreground" />
+                  <Search className="h-12 w-12 text-muted-foreground" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 p-2" align="start">
@@ -93,28 +93,28 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           <div className="flex items-center space-x-2">
             <Link href="/organizations">
               <Button variant="ghost" size="icon" data-testid="button-organizations">
-                <Building className="h-10 w-10" />
+                <Building className="h-12 w-12" />
                 <span className="sr-only">Organizations</span>
               </Button>
             </Link>
             
             <Link href="/messages">
               <Button variant="ghost" size="icon" data-testid="button-messages">
-                <Mail className="h-10 w-10" />
+                <Mail className="h-12 w-12" />
                 <span className="sr-only">Messages</span>
               </Button>
             </Link>
             
             <Link href="/calendar">
               <Button variant="ghost" size="icon" data-testid="button-calendar">
-                <Calendar className="h-10 w-10" />
+                <Calendar className="h-12 w-12" />
                 <span className="sr-only">Calendar</span>
               </Button>
             </Link>
             
             <Link href="/planning-calendar">
               <Button variant="ghost" size="icon" data-testid="button-planning-calendar">
-                <FolderTree className="h-10 w-10" />
+                <FolderTree className="h-12 w-12" />
                 <span className="sr-only">Planning Calendar</span>
               </Button>
             </Link>
@@ -135,7 +135,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                         className="w-12 h-12 rounded-full object-cover"
                       />
                     ) : (
-                      <Building className="h-10 w-10 text-muted-foreground" />
+                      <Building className="h-12 w-12 text-muted-foreground" />
                     )}
                   </Button>
                 </DropdownMenuTrigger>

@@ -83,7 +83,7 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <Icon className="h-8 w-8 flex-shrink-0" />
+      <Icon className="h-6 w-6 flex-shrink-0" />
       <span className="text-base font-medium">{item.name}</span>
     </div>
   );
@@ -155,7 +155,7 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-64 bg-card border-r border-border flex flex-col">
+    <aside className="w-80 bg-card border-r border-border flex flex-col">
       {/* Logo and Brand */}
       <div className="p-6 border-b border-border">
         <div className="flex justify-center">
@@ -177,8 +177,8 @@ export default function Sidebar() {
           collisionDetection={closestCenter}
           onDragEnd={(event) => handleDragEnd(event, navigation, setNavigation, 'sidebar-main-order')}
         >
-          <SortableContext items={navigation.map(item => item.id)} strategy={verticalListSortingStrategy}>
-            {navigation.map((item) => {
+          <SortableContext items={navigation.map((item: any) => item.id)} strategy={verticalListSortingStrategy}>
+            {navigation.map((item: any) => {
               const isActive = location === item.href;
               return (
                 <SortableNavItem key={item.id} item={item} isActive={isActive} />
@@ -198,7 +198,8 @@ export default function Sidebar() {
             onClick={() => setIsSystemsOpen(!isSystemsOpen)}
             data-testid="nav-systems"
           >
-            <Shield className="h-8 w-8" />
+            <GripVertical className="h-5 w-5 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
+            <Shield className="h-6 w-6" />
             <span>Systems</span>
             {isSystemsOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
@@ -214,8 +215,8 @@ export default function Sidebar() {
                 collisionDetection={closestCenter}
                 onDragEnd={(event) => handleDragEnd(event, systemsItems, setSystemsItems, 'sidebar-systems-order')}
               >
-                <SortableContext items={systemsItems.map(item => item.id)} strategy={verticalListSortingStrategy}>
-                  {systemsItems.map((item) => {
+                <SortableContext items={systemsItems.map((item: any) => item.id)} strategy={verticalListSortingStrategy}>
+                  {systemsItems.map((item: any) => {
                     const isActive = location === item.href;
                     return (
                       <SortableNavItem key={item.id} item={item} isActive={isActive} />
@@ -238,7 +239,8 @@ export default function Sidebar() {
             onClick={() => setIsTimeManagementOpen(!isTimeManagementOpen)}
             data-testid="nav-time-management"
           >
-            <Clock className="h-8 w-8" />
+            <GripVertical className="h-5 w-5 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
+            <Clock className="h-6 w-6" />
             <span>Time Management</span>
             {isTimeManagementOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
@@ -254,8 +256,8 @@ export default function Sidebar() {
                 collisionDetection={closestCenter}
                 onDragEnd={(event) => handleDragEnd(event, timeManagementItems, setTimeManagementItems, 'sidebar-time-order')}
               >
-                <SortableContext items={timeManagementItems.map(item => item.id)} strategy={verticalListSortingStrategy}>
-                  {timeManagementItems.map((item) => {
+                <SortableContext items={timeManagementItems.map((item: any) => item.id)} strategy={verticalListSortingStrategy}>
+                  {timeManagementItems.map((item: any) => {
                     const isActive = location === item.href;
                     return (
                       <SortableNavItem key={item.id} item={item} isActive={isActive} />
