@@ -224,19 +224,19 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           {/* User & Organization Box with Switch */}
           {user && (
             <div className="relative rounded-full px-4 py-2 flex items-center space-x-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-              {/* Language Selector - Semicerchio Bandiera */}
+              {/* Language Selector - Box Circolare */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <div 
-                    className="absolute left-0 top-1/2 transform -translate-y-1/2 h-8 w-4 cursor-pointer hover:opacity-80 transition-opacity overflow-hidden"
-                    style={{
-                      background: language === "it" 
-                        ? 'linear-gradient(to bottom, #009246 33%, #FFFFFF 33%, #FFFFFF 67%, #CE2B37 67%)'
-                        : 'linear-gradient(to bottom, #012169 40%, #FFFFFF 40%, #FFFFFF 60%, #C8102E 60%)',
-                      borderRadius: '0 50px 50px 0'
-                    }}
-                    data-testid="button-language-semicircle"
-                  />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="w-10 h-10 rounded-full bg-background border border-border hover:bg-accent flex-shrink-0" 
+                    data-testid="button-language-box"
+                  >
+                    <div className="w-6 h-6 rounded text-sm flex items-center justify-center">
+                      {language === "it" ? "🇮🇹" : "🇬🇧"}
+                    </div>
+                  </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   <DropdownMenuItem 
