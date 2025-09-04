@@ -84,8 +84,10 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <Icon className="h-6 w-6 flex-shrink-0" />
-      <span className="text-base font-medium px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'rgba(59, 130, 246, 0.9)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>{item.name}</span>
+      <div className="flex items-center px-3 py-2 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '200px', minWidth: '200px' }}>
+        <Icon className="h-5 w-5 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+        <span className="text-base font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
+      </div>
     </div>
   );
 }
@@ -125,8 +127,10 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
         className="h-5 w-5 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <Icon className="h-5 w-5 flex-shrink-0" />
-      <span className="text-sm px-2 py-1 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'rgba(59, 130, 246, 0.9)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>{item.name}</span>
+      <div className="flex items-center px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '180px', minWidth: '180px' }}>
+        <Icon className="h-4 w-4 flex-shrink-0 mr-2" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+        <span className="text-sm font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
+      </div>
     </div>
   );
 }
@@ -248,9 +252,11 @@ export default function Sidebar() {
             data-testid="nav-systems"
           >
             <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
-              <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" style={{ width: '1.5rem', height: '1.5rem' }} />
-              <Shield className="h-6 w-6" style={{ width: '1.5rem', height: '1.5rem' }} />
-              <span className="text-base font-medium px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'rgba(59, 130, 246, 0.9)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>{t("nav.systems")}</span>
+              <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
+              <div className="flex items-center px-3 py-2 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '200px', minWidth: '200px' }}>
+                <Shield className="h-5 w-5 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+                <span className="text-base font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{t("nav.systems")}</span>
+              </div>
             </div>
           </Button>
           
@@ -289,9 +295,11 @@ export default function Sidebar() {
             data-testid="nav-time-management"
           >
             <div className="w-full p-2 rounded-md flex items-center space-x-4 cursor-pointer">
-              <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" style={{ width: '1.5rem', height: '1.5rem' }} />
-              <Clock className="h-6 w-6" style={{ width: '1.5rem', height: '1.5rem' }} />
-              <span className="text-base font-medium px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'rgba(59, 130, 246, 0.9)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>{t("nav.timeManagement")}</span>
+              <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
+              <div className="flex items-center px-3 py-2 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '200px', minWidth: '200px' }}>
+                <Clock className="h-5 w-5 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+                <span className="text-base font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{t("nav.timeManagement")}</span>
+              </div>
             </div>
           </Button>
           
