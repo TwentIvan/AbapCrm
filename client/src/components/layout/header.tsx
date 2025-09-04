@@ -140,14 +140,11 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
                       <PopoverTrigger asChild>
                         <div 
-                          className="flex items-center justify-center shadow-sm cursor-pointer" 
+                          className="flex items-center justify-center px-4 py-2 shadow-sm cursor-pointer" 
                           style={{ 
                             backgroundColor: 'rgba(59, 130, 246, 0.1)',
                             borderRadius: '0 3rem 3rem 0',
-                            border: '1px solid rgba(59, 130, 246, 0.2)',
-                            padding: '0.5rem 1rem',
-                            height: '100%',
-                            minHeight: '3.5rem'
+                            border: '1px solid rgba(59, 130, 246, 0.2)'
                           }}
                           data-testid="button-search"
                         >
