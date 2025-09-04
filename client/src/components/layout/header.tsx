@@ -149,7 +149,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                           }}
                           data-testid="button-search"
                         >
-                          <Search className="h-8 w-8 text-primary flex-shrink-0" style={{ width: '2.25rem', height: '2.25rem', transform: 'scaleX(-1)' }} />
+                          <Search className="h-8 w-8 text-primary flex-shrink-0" style={{ width: '2.25rem', height: '2.25rem', transform: 'scaleX(-1) translateX(0.25rem)' }} />
                           <div className="min-w-0 opacity-0 pointer-events-none">
                             <h2 className="text-lg font-semibold truncate">
                               A
