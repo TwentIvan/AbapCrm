@@ -96,7 +96,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </TooltipTrigger>
                 <TooltipContent 
                   className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
-                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
+                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.9)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                   sideOffset={10}
                 >
                   Ricerca Globale CRM
@@ -117,7 +117,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </TooltipTrigger>
                 <TooltipContent 
                   className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
-                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
+                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.9)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                   sideOffset={10}
                 >
                   Gestione Organizzazioni
@@ -135,7 +135,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </TooltipTrigger>
                 <TooltipContent 
                   className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
-                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
+                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.9)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                   sideOffset={10}
                 >
                   Messaggi e Email
@@ -153,7 +153,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </TooltipTrigger>
                 <TooltipContent 
                   className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
-                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
+                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.9)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                   sideOffset={10}
                 >
                   Calendario Eventi
@@ -171,7 +171,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </TooltipTrigger>
                 <TooltipContent 
                   className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
-                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
+                  style={{ minWidth: '240px', backgroundColor: 'rgba(59, 130, 246, 0.9)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                   sideOffset={10}
                 >
                   Pianificazione Progetti
