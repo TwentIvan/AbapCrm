@@ -258,7 +258,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                         className="w-12 h-12 rounded-full object-cover"
                       />
                     ) : (
-                      <Building className="h-12 w-12 text-muted-foreground" />
+                      <Users className="h-8 w-8 text-muted-foreground" />
                     )}
                   </Button>
                 </DropdownMenuTrigger>
@@ -279,7 +279,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                             className="h-4 w-4 rounded object-cover"
                           />
                         ) : (
-                          <Building className="h-4 w-4" />
+                          <Users className="h-4 w-4" />
                         )}
                         <span className="font-medium">{org.name}</span>
                         {currentOrganization?.id === org.id && (
