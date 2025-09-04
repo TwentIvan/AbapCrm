@@ -156,13 +156,14 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               </>
             ) : (
               <>
-                <Search className="h-5 w-5 text-primary flex-shrink-0 mr-3" style={{ transform: 'scaleX(-1)' }} />
+                <Search className="text-primary flex-shrink-0 mr-3" style={{ width: '1.25rem', height: '1.25rem', transform: 'scaleX(-1)' }} />
                 <Input
                   type="text"
                   placeholder={`Cerca in ${title}...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 border-0 bg-transparent focus:ring-0 text-sm px-0 h-full"
+                  className="flex-1 border-0 bg-transparent focus:ring-0 text-sm px-0"
+                  style={{ height: 'calc(100% - 8px)', minHeight: '32px' }}
                   data-testid="input-search"
                   autoFocus
                   onBlur={() => !searchQuery && setIsSearchOpen(false)}
@@ -170,7 +171,8 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  className="px-2 text-xs bg-primary/10 hover:bg-primary/20 ml-2 h-full max-h-8"
+                  className="px-2 text-xs bg-primary/10 hover:bg-primary/20 ml-2"
+                  style={{ height: 'calc(100% - 8px)', minHeight: '32px' }}
                   onClick={(e) => {
                     e.stopPropagation();
                     // TODO: implementare ricerca globale
@@ -181,14 +183,15 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="w-6 h-full max-h-8 ml-1"
+                  className="w-8 ml-1"
+                  style={{ height: 'calc(100% - 8px)', minHeight: '32px' }}
                   onClick={(e) => {
                     e.stopPropagation();
                     setSearchQuery("");
                     setIsSearchOpen(false);
                   }}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-4 w-4" />
                 </Button>
               </>
             )}
