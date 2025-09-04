@@ -81,48 +81,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           </div>
 
           
-          {/* User & Organization Box with Semicircles */}
+          {/* User & Organization Box with Switch */}
           {user && (
             <div className="relative flex items-center">
-              {/* Container con semicerchi */}
-              <div className="bg-muted/20 border border-muted rounded-full px-3 py-1 flex items-center space-x-3">
-                {/* Logo Organizzazione - Solo se presente */}
-                {currentOrganization?.logoUrl && (
-                  <div className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center">
-                    <img 
-                      src={currentOrganization.logoUrl} 
-                      alt={`${currentOrganization.name} logo`}
-                      className="w-6 h-6 rounded-full object-cover"
-                    />
-                  </div>
-                )}
-                
-                {/* Nomi */}
-                <div className="flex flex-col text-xs leading-tight min-w-0">
-                  <span className="font-medium text-foreground truncate">
-                    {user.firstName && user.lastName 
-                      ? `${user.firstName} ${user.lastName}` 
-                      : user.username}
-                  </span>
-                  <span className="text-muted-foreground truncate">
-                    {currentOrganization?.name || "Nessuna org"}
-                  </span>
-                </div>
-                
-                {/* Avatar Utente - Destra */}
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                  <Avatar className="w-8 h-8">
-                    <AvatarFallback className="text-xs font-medium text-primary-foreground bg-primary">
-                      {userInitials}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-              </div>
-              
-              {/* Hidden AccountManager per funzionalità dropdown */}
-              <div className="absolute top-0 right-0 opacity-0 pointer-events-auto">
-                <AccountManager />
-              </div>
+              <AccountManager />
             </div>
           )}
         </div>
