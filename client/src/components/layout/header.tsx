@@ -110,8 +110,28 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   return (
     <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-10">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          {/* Search Icon - spostata a sinistra */}
+        <div className="flex items-center space-x-0">
+          {/* Area Title with Icon */}
+          <div 
+            className="flex items-center space-x-3 px-4 py-2 shadow-sm"
+            style={{ 
+              background: 'linear-gradient(to right, rgba(59, 130, 246, 0.15), rgba(255, 255, 255, 0.8))',
+              borderRadius: '3rem 0 0 3rem',
+              border: '1px solid rgba(59, 130, 246, 0.2)'
+            }}
+          >
+            <AreaIcon className="text-primary flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold truncate" data-testid="text-page-title" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>
+                {title}
+              </h2>
+              <p className="text-sm text-muted-foreground truncate" data-testid="text-page-subtitle">
+                {subtitle}
+              </p>
+            </div>
+          </div>
+          
+          {/* Search Icon - a destra del box titolo in semicerchio */}
           <TooltipProvider delayDuration={300}>
             <div className="relative">
               <Tooltip>
@@ -119,14 +139,18 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   <div>
                     <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
                       <PopoverTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-14 w-14 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', border: '1px solid rgba(59, 130, 246, 0.2)' }}
+                        <div 
+                          className="flex items-center justify-center px-4 py-2 shadow-sm cursor-pointer" 
+                          style={{ 
+                            background: 'linear-gradient(to right, rgba(255, 255, 255, 0.8), rgba(59, 130, 246, 0.15))',
+                            borderRadius: '0 3rem 3rem 0',
+                            border: '1px solid rgba(59, 130, 246, 0.2)',
+                            borderLeft: 'none'
+                          }}
                           data-testid="button-search"
                         >
                           <Search className="h-8 w-8 text-muted-foreground" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                        </Button>
+                        </div>
                       </PopoverTrigger>
                       <PopoverContent className="w-80 p-2" align="start">
                         <div className="relative">
@@ -166,26 +190,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               </Tooltip>
             </div>
           </TooltipProvider>
-          
-          {/* Area Title with Icon */}
-          <div 
-            className="flex items-center space-x-3 px-4 py-2 shadow-sm"
-            style={{ 
-              background: 'linear-gradient(to right, rgba(59, 130, 246, 0.15), rgba(255, 255, 255, 0.8))',
-              borderRadius: '3rem 0 0 3rem',
-              border: '1px solid rgba(59, 130, 246, 0.2)'
-            }}
-          >
-            <AreaIcon className="text-primary flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
-            <div className="min-w-0">
-              <h2 className="text-lg font-semibold text-foreground truncate" data-testid="text-page-title">
-                {title}
-              </h2>
-              <p className="text-sm text-muted-foreground truncate" data-testid="text-page-subtitle">
-                {subtitle}
-              </p>
-            </div>
-          </div>
         </div>
 
         <div className="flex items-center space-x-4">
