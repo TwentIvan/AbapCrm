@@ -69,11 +69,13 @@ export class AuditService {
           const oldValue = oldValues[field] || null;
           const newValue = newValues[field] || null;
           
-          // Use organizationId if available, otherwise use user_id as fallback
-          const orgId = context.organizationId || context.userId;
+          // organizationId should always be provided in context
+          if (!context.organizationId) {
+            throw new Error('organizationId is required for audit logging');
+          }
           await db.execute(sql.raw(`
             INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
-            VALUES ('${recordId}', '${tableName}', '${field}', '${String(oldValue)}', '${String(newValue)}', '${context.userId}', '${orgId}')
+            VALUES ('${recordId}', '${tableName}', '${field}', '${String(oldValue)}', '${String(newValue)}', '${context.userId}', '${context.organizationId}')
           `));
         }
         console.log(`[AUDIT] ✅ SAVED ${changedFields.length} field changes for ${tableName}:${recordId} by user:${context.userId}`);
@@ -81,11 +83,9 @@ export class AuditService {
         // For CREATE, log each field as new (old_value = null)
         for (const [field, value] of Object.entries(newValues)) {
           if (field !== 'id') { // Skip ID field
-            // Use organizationId if available, otherwise use user_id as fallback
-            const orgId = context.organizationId || context.userId;
             await db.execute(sql.raw(`
               INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
-              VALUES ('${recordId}', '${tableName}', '${field}', null, '${String(value)}', '${context.userId}', '${orgId}')
+              VALUES ('${recordId}', '${tableName}', '${field}', null, '${String(value)}', '${context.userId}', '${context.organizationId}')
             `));
           }
         }
@@ -94,11 +94,9 @@ export class AuditService {
         // For DELETE, log each field as deleted (new_value = null)
         for (const [field, value] of Object.entries(oldValues)) {
           if (field !== 'id') { // Skip ID field
-            // Use organizationId if available, otherwise use user_id as fallback
-            const orgId = context.organizationId || context.userId;
             await db.execute(sql.raw(`
               INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
-              VALUES ('${recordId}', '${tableName}', '${field}', '${String(value)}', null, '${context.userId}', '${orgId}')
+              VALUES ('${recordId}', '${tableName}', '${field}', '${String(value)}', null, '${context.userId}', '${context.organizationId}')
             `));
           }
         }
@@ -117,9 +115,15 @@ export class AuditService {
    */
   static createContext(req: Request): AuditContext {
     const user = req.user as any;
+    // Import getOrganizationId function to get correct org ID
+    const getOrganizationId = (r: any) => {
+      const user = r.user as any;
+      return user?.organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be'; // Default org
+    };
+    
     return {
       userId: user?.id,
-      organizationId: user?.organizationId,
+      organizationId: getOrganizationId(req),
       userAgent: req.get('User-Agent'),
       ipAddress: req.ip || req.connection.remoteAddress,
     };

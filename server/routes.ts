@@ -2928,52 +2928,28 @@ Format the response as professional documentation suitable for client delivery.`
       
       // Get audit trail from new simple table
       const user = req.user as any;
-      const organizationId = user.organizationId;
+      // Use the same organization logic as other endpoints
+      const organizationId = getOrganizationId(req);
       
       console.log(`[AUDIT API] Looking for ${tableName}:${recordId} in org: ${organizationId}`);
-      
-      // If no organizationId, search by user_id instead
-      let result;
-      if (organizationId) {
-        result = await db.execute(sql.raw(`
-          SELECT 
-            a.id,
-            a.record_id,
-            a.table_name,
-            a.field_name,
-            a.old_value,
-            a.new_value,
-            a.created_at,
-            u.id as user_id,
-            u.first_name as user_firstName,
-            u.last_name as user_lastName,
-            u.email as user_email
-          FROM audit_trail a
-          LEFT JOIN users u ON a.user_id = u.id
-          WHERE a.table_name = '${tableName}' AND a.record_id = '${recordId}' AND a.organization_id = '${organizationId}'
-          ORDER BY a.created_at DESC
-        `));
-      } else {
-        console.warn("[AUDIT API] No organizationId, filtering by user_id:", user.id);
-        result = await db.execute(sql.raw(`
-          SELECT 
-            a.id,
-            a.record_id,
-            a.table_name,
-            a.field_name,
-            a.old_value,
-            a.new_value,
-            a.created_at,
-            u.id as user_id,
-            u.first_name as user_firstName,
-            u.last_name as user_lastName,
-            u.email as user_email
-          FROM audit_trail a
-          LEFT JOIN users u ON a.user_id = u.id
-          WHERE a.table_name = '${tableName}' AND a.record_id = '${recordId}' AND a.user_id = '${user.id}'
-          ORDER BY a.created_at DESC
-        `));
-      }
+      const result = await db.execute(sql.raw(`
+        SELECT 
+          a.id,
+          a.record_id,
+          a.table_name,
+          a.field_name,
+          a.old_value,
+          a.new_value,
+          a.created_at,
+          u.id as user_id,
+          u.first_name as user_firstName,
+          u.last_name as user_lastName,
+          u.email as user_email
+        FROM audit_trail a
+        LEFT JOIN users u ON a.user_id = u.id
+        WHERE a.table_name = '${tableName}' AND a.record_id = '${recordId}' AND a.organization_id = '${organizationId}'
+        ORDER BY a.created_at DESC
+      `));
 
       // Group by timestamp to create audit entries
       const auditMap = new Map();
