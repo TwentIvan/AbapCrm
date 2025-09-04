@@ -133,7 +133,7 @@ function SortableParentItem({ item, children, isOpen, onToggle }: { item: any; c
           {...listeners} 
         />
         <div className="flex items-center px-3 py-2 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '200px', minWidth: '200px' }}>
-          <Icon className="h-5 w-5 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+          <Icon className="h-6 w-6 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
           <span className="text-base font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
         </div>
       </div>
@@ -167,18 +167,18 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
         "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors ml-4",
         isActive
           ? "bg-primary text-primary-foreground"
-          : "text-muted-foreground hover:bg-slate-100 hover:text-accent-foreground"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
       )}
       data-testid={item.testId}
       {...attributes}
       onClick={() => window.location.href = item.href}
     >
       <GripVertical 
-        className="h-5 w-5 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
+        className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <div className="flex items-center px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '180px', minWidth: '180px' }}>
-        <Icon className="h-4 w-4 flex-shrink-0 mr-2" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+      <div className="flex items-center px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', width: '220px', minWidth: '220px' }}>
+        <Icon className="h-5 w-5 flex-shrink-0 mr-2" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
         <span className="text-sm font-medium" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
       </div>
     </div>
