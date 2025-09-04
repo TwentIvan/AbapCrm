@@ -149,7 +149,15 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                           }}
                           data-testid="button-search"
                         >
-                          <Search className="h-8 w-8 text-muted-foreground" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                          <Search className="h-8 w-8 text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                          <div className="min-w-0 opacity-0 pointer-events-none">
+                            <h2 className="text-lg font-semibold truncate">
+                              Placeholder
+                            </h2>
+                            <p className="text-sm truncate">
+                              Height match
+                            </p>
+                          </div>
                         </div>
                       </PopoverTrigger>
                       <PopoverContent className="w-80 p-2" align="start">
