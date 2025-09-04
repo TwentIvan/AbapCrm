@@ -284,50 +284,13 @@ export default function PartnersPage() {
               </Button>
             </div>
 
-            {/* View Toggle */}
-            <div className="flex bg-muted rounded-lg p-1">
-              <Button
-                variant={viewMode === 'cards' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => updateLayout({ viewMode: 'cards' })}
-                data-testid="button-view-cards"
-              >
-                <Grid3X3 className="mr-2 h-4 w-4" />
-                Cards
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => updateLayout({ viewMode: 'list' })}
-                data-testid="button-view-list"
-              >
-                <List className="mr-2 h-4 w-4" />
-                List
-              </Button>
-            </div>
           </div>
           {isLoading ? (
-            viewMode === 'cards' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <Card key={i}>
-                    <CardHeader>
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-3 w-1/2" />
-                    </CardHeader>
-                    <CardContent>
-                      <Skeleton className="h-16 w-full" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {[...Array(6)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            )
+            <div className="space-y-4">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
           ) : partners?.length === 0 ? (
             <div className="text-center py-12">
               <Building className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -337,7 +300,7 @@ export default function PartnersPage() {
                 Add Partner
               </Button>
             </div>
-          ) : viewMode === 'list' ? (
+          ) : (
             <DataTable
               key={`partners-table-${currentLayoutName}-${JSON.stringify(layout.columns)}`}
               columns={tableColumns}
@@ -357,8 +320,7 @@ export default function PartnersPage() {
               enableClipboardCopy={true}
               editingLayout={editingLayout}
             />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          )}
               {partners?.map((partner) => (
                 <Card key={partner.id} className="hover:shadow-lg transition-shadow" data-testid={`card-partner-${partner.id}`}>
                   <CardHeader>

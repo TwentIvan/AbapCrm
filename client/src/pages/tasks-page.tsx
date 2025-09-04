@@ -710,51 +710,14 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
               </Button>
             </div>
 
-            {/* View Toggle */}
-            <div className="flex bg-muted rounded-lg p-1">
-              <Button
-                variant={viewMode === 'cards' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => updateLayout({ viewMode: 'cards' })}
-                data-testid="button-view-cards"
-              >
-                <Grid3X3 className="mr-2 h-4 w-4" />
-                Cards
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => updateLayout({ viewMode: 'list' })}
-                data-testid="button-view-list"
-              >
-                <List className="mr-2 h-4 w-4" />
-                List
-              </Button>
-            </div>
           </div>
 
           {isLoading ? (
-            viewMode === 'cards' ? (
-              <div className="space-y-4">
-                {[...Array(8)].map((_, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <Skeleton className="h-4 w-4" />
-                        <Skeleton className="h-4 flex-1" />
-                        <Skeleton className="h-6 w-20" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {[...Array(6)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            )
+            <div className="space-y-4">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
           ) : tasks?.length === 0 ? (
             <div className="text-center py-12">
               <CheckSquare className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -764,7 +727,7 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
                 Create Task
               </Button>
             </div>
-          ) : viewMode === 'list' ? (
+          ) : (
             <UniversalTable
               data={tasks || []}
               columns={tableColumns}
@@ -782,9 +745,11 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
                 }
               ]}
             />
-          ) : (
-            <div className="space-y-4">
-              {tasks?.map((task) => (
+          )}
+        </div>
+      </main>
+      
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
                 <Card 
                   key={task.id} 
                   className={`transition-all hover:shadow-md ${

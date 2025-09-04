@@ -274,51 +274,14 @@ export default function ProjectsPage() {
               </Button>
             </div>
 
-            {/* View Toggle */}
-            <div className="flex bg-muted rounded-lg p-1">
-              <Button
-                variant={viewMode === 'cards' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => updateLayout({ viewMode: 'cards' })}
-                data-testid="button-view-cards"
-              >
-                <Grid3X3 className="mr-2 h-4 w-4" />
-                Cards
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => updateLayout({ viewMode: 'list' })}
-                data-testid="button-view-list"
-              >
-                <List className="mr-2 h-4 w-4" />
-                List
-              </Button>
-            </div>
           </div>
 
           {isLoading ? (
-            viewMode === 'cards' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <Card key={i}>
-                    <CardHeader>
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-3 w-1/2" />
-                    </CardHeader>
-                    <CardContent>
-                      <Skeleton className="h-16 w-full" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {[...Array(6)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            )
+            <div className="space-y-4">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
           ) : projects?.length === 0 ? (
             <div className="text-center py-12">
               <Code className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -328,7 +291,7 @@ export default function ProjectsPage() {
                 Crea Progetto
               </Button>
             </div>
-          ) : viewMode === 'list' ? (
+          ) : (
             <UniversalTable
               data={projects}
               columns={columns}
@@ -346,102 +309,6 @@ export default function ProjectsPage() {
                 }
               ]}
             />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {projects?.map((project) => (
-                <Card key={project.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleEdit(project)}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-1 flex-1">
-                        <CardTitle className="text-lg" data-testid={`text-project-name-${project.id}`}>
-                          {project.name}
-                        </CardTitle>
-                        <div className="flex items-center space-x-2">
-                          <Badge 
-                            variant="secondary" 
-                            className={statusColors[project.status as keyof typeof statusColors]}
-                            data-testid={`badge-project-status-${project.id}`}
-                          >
-                            {project.status}
-                          </Badge>
-                          {project.clientId && (
-                            <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                              <User className="h-4 w-4" />
-                              <span data-testid={`text-project-client-${project.id}`}>{project.clientId}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex space-x-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenPlanner(project);
-                          }}
-                          data-testid={`button-planner-project-${project.id}`}
-                          title="Project Planner"
-                        >
-                          <Target className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(project);
-                          }}
-                          data-testid={`button-edit-project-${project.id}`}
-                          title="Edit Project"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="space-y-4">
-                    {project.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-project-description-${project.id}`}>
-                        {project.description}
-                      </p>
-                    )}
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium" data-testid={`text-project-progress-${project.id}`}>
-                          {project.progress}%
-                        </span>
-                      </div>
-                      <Progress value={project.progress} className="h-2" />
-                    </div>
-                    
-                    <div className="flex items-center justify-between pt-2">
-                      {project.budget && (
-                        <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                          <DollarSign className="h-4 w-4" />
-                          <span data-testid={`text-project-budget-${project.id}`}>
-                            {formatBudget(project.budget)}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {project.endDate && (
-                        <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4" />
-                          <span data-testid={`text-project-end-date-${project.id}`}>
-                            {formatDate(project.endDate)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
           )}
         </div>
       </main>

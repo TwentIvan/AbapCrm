@@ -7,14 +7,18 @@ import { cn } from "@/lib/utils";
 import hubUpLogo from "@assets/generated_images/hub_up_logo.png";
 import ImageContainer from "@/components/ui/image-container";
 
+// Main navigation (Organizations già rimosso dalla lista principale)
 const navigation = [
-  { name: "Organizations", href: "/organizations", icon: Building, testId: "nav-organizations" },
   { name: "Projects", href: "/projects", icon: FolderOpen, testId: "nav-projects" },
   { name: "Tasks", href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
-  { name: "Partners", href: "/partners", icon: Building, testId: "nav-partners" },
+  { name: "Partners", href: "/partners", icon: Handshake, testId: "nav-partners" },
   { name: "Sales Orders", href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
   { name: "Rate Agreements", href: "/rate-agreements", icon: DollarSign, testId: "nav-rate-agreements" },
   { name: "Human Resources", href: "/human-resources", icon: Users, testId: "nav-human-resources" },
+];
+
+// Systems group
+const systemsItems = [
   { name: "SAP Systems", href: "/sap-systems", icon: Server, testId: "nav-sap-systems" },
   { name: "VPN Connections", href: "/vpn-connections", icon: Wifi, testId: "nav-vpn-connections" },
   { name: "System Credentials", href: "/system-credentials", icon: Key, testId: "nav-system-credentials" },
@@ -30,6 +34,9 @@ export default function Sidebar() {
   const { user, logoutMutation } = useAuth();
   const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(
     timeManagementItems.some(item => location === item.href)
+  );
+  const [isSystemsOpen, setIsSystemsOpen] = useState(
+    systemsItems.some(item => location === item.href)
   );
 
   return (
@@ -73,6 +80,54 @@ export default function Sidebar() {
           );
         })}
         
+        {/* Systems Section */}
+        <div className="space-y-1">
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full justify-start space-x-3",
+              "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            )}
+            onClick={() => setIsSystemsOpen(!isSystemsOpen)}
+            data-testid="nav-systems"
+          >
+            <Shield className="h-5 w-5" />
+            <span>Systems</span>
+            {isSystemsOpen ? (
+              <ChevronDown className="h-4 w-4 ml-auto" />
+            ) : (
+              <ChevronRight className="h-4 w-4 ml-auto" />
+            )}
+          </Button>
+          
+          {isSystemsOpen && (
+            <div className="ml-6 space-y-1">
+              {systemsItems.map((item) => {
+                const isActive = location === item.href;
+                const Icon = item.icon;
+                
+                return (
+                  <Link key={item.name} href={item.href}>
+                    <Button
+                      variant={isActive ? "default" : "ghost"}
+                      className={cn(
+                        "w-full justify-start space-x-3",
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      )}
+                      data-testid={item.testId}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="text-sm">{item.name}</span>
+                    </Button>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Time Management Section */}
         <div className="space-y-1">
           <Button
