@@ -239,8 +239,8 @@ export default function Sidebar() {
             onClick={() => setIsSystemsOpen(!isSystemsOpen)}
             data-testid="nav-systems"
           >
-            <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
-            <Shield className="h-6 w-6" />
+            <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" style={{ width: '1.5rem', height: '1.5rem' }} />
+            <Shield className="h-6 w-6" style={{ width: '1.5rem', height: '1.5rem' }} />
             <span className="text-base font-medium">Systems</span>
             {isSystemsOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
@@ -280,8 +280,8 @@ export default function Sidebar() {
             onClick={() => setIsTimeManagementOpen(!isTimeManagementOpen)}
             data-testid="nav-time-management"
           >
-            <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" />
-            <Clock className="h-6 w-6" />
+            <GripVertical className="h-6 w-6 opacity-80 hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" style={{ width: '1.5rem', height: '1.5rem' }} />
+            <Clock className="h-6 w-6" style={{ width: '1.5rem', height: '1.5rem' }} />
             <span className="text-base font-medium">Time Management</span>
             {isTimeManagementOpen ? (
               <ChevronDown className="h-6 w-6 ml-auto" />
