@@ -79,8 +79,13 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
     
     // Se il button corrente è a sinistra di quello in hover, si sposta a sinistra
     if (currentIndex < hoveredIndex) {
-      // Provo valore empirico più preciso
-      return 'translateX(-135px)'; 
+      // Calcolo basato sulla posizione finale del box espanso
+      // Box espanso arriva a: posizione_iniziale + 200px
+      // "Posta" deve spostarsi per non sovrapporsi: 200px - 56px (dimensione iniziale) = 144px
+      const expandedWidth = 200; // minWidth del box espanso
+      const initialWidth = 56; // 3.5rem = 56px
+      const displacement = expandedWidth - initialWidth;
+      return `translateX(-${displacement}px)`; 
     }
     
     return 'translateX(0)';
