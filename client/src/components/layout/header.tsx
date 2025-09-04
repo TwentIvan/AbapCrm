@@ -30,6 +30,7 @@ interface HeaderProps {
 export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [hoveredButton, setHoveredButton] = useState<string | null>(null);
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
   const { organizations, currentOrganization, switchOrganization } = useOrganization();
@@ -64,6 +65,43 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   };
 
   const AreaIcon = getAreaIcon(location);
+
+  // Helper function per calcolare lo spostamento di ogni button in base al hover
+  const getButtonTransform = (buttonId: string, hoveredId: string | null) => {
+    if (!hoveredId) return 'translateX(0)';
+    
+    const buttons = ['messages', 'calendar', 'planning'];
+    const currentIndex = buttons.indexOf(buttonId);
+    const hoveredIndex = buttons.indexOf(hoveredId);
+    
+    // Se il button corrente è quello in hover, non si sposta
+    if (currentIndex === hoveredIndex) return 'translateX(0)';
+    
+    // Se il button corrente è a sinistra di quello in hover, si sposta a sinistra
+    if (currentIndex < hoveredIndex) {
+      return 'translateX(-120px)'; // Spazio per il text espanso
+    }
+    
+    return 'translateX(0)';
+  };
+
+  // Helper function per lo stile di ogni button
+  const getButtonStyle = (buttonId: string, hoveredId: string | null) => {
+    const isHovered = buttonId === hoveredId;
+    return {
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      borderRadius: isHovered ? '2rem' : '50%',
+      border: '1px solid rgba(59, 130, 246, 0.2)',
+      width: isHovered ? 'auto' : '3.5rem',
+      height: '3.5rem',
+      minWidth: isHovered ? '200px' : '3.5rem',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      transform: getButtonTransform(buttonId, hoveredId),
+      overflow: 'hidden',
+      paddingLeft: isHovered ? '1rem' : undefined,
+      paddingRight: isHovered ? '1rem' : undefined,
+    };
+  };
 
   return (
     <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-10">
@@ -143,59 +181,62 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           <TooltipProvider delayDuration={300}>
             {/* Quick Access Buttons */}
             <div className="flex items-center space-x-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link href="/messages">
-                    <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-messages">
-                      <Mail className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                      <span className="sr-only">Messages</span>
-                    </Button>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent 
-                  className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
-                  style={{ minWidth: '240px', backgroundColor: '#ebf3fe', borderColor: 'rgba(59, 130, 246, 0.2)' }}
-                  sideOffset={10}
+              {/* Messages Button */}
+              <Link href="/messages">
+                <Button 
+                  variant="ghost" 
+                  className="flex items-center justify-start"
+                  style={getButtonStyle('messages', hoveredButton)}
+                  onMouseEnter={() => setHoveredButton('messages')}
+                  onMouseLeave={() => setHoveredButton(null)}
+                  data-testid="button-messages"
                 >
-                  {t("nav.messages")}
-                </TooltipContent>
-              </Tooltip>
+                  <Mail className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                  {hoveredButton === 'messages' && (
+                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                      {t("nav.messages")}
+                    </span>
+                  )}
+                </Button>
+              </Link>
               
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link href="/calendar">
-                    <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-calendar">
-                      <Calendar className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                      <span className="sr-only">Calendar</span>
-                    </Button>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent 
-                  className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
-                  style={{ minWidth: '240px', backgroundColor: '#ebf3fe', borderColor: 'rgba(59, 130, 246, 0.2)' }}
-                  sideOffset={10}
+              {/* Calendar Button */}
+              <Link href="/calendar">
+                <Button 
+                  variant="ghost" 
+                  className="flex items-center justify-start"
+                  style={getButtonStyle('calendar', hoveredButton)}
+                  onMouseEnter={() => setHoveredButton('calendar')}
+                  onMouseLeave={() => setHoveredButton(null)}
+                  data-testid="button-calendar"
                 >
-                  Calendario Eventi
-                </TooltipContent>
-              </Tooltip>
+                  <Calendar className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                  {hoveredButton === 'calendar' && (
+                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                      Calendario Eventi
+                    </span>
+                  )}
+                </Button>
+              </Link>
               
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link href="/planning-calendar">
-                    <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%' }} data-testid="button-planning-calendar">
-                      <FolderTree className="h-8 w-8" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                      <span className="sr-only">Planning Calendar</span>
-                    </Button>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent 
-                  className="rounded-full px-6 py-3 text-base font-medium shadow-lg border"
-                  style={{ minWidth: '240px', backgroundColor: '#ebf3fe', borderColor: 'rgba(59, 130, 246, 0.2)' }}
-                  sideOffset={10}
+              {/* Planning Calendar Button */}
+              <Link href="/planning-calendar">
+                <Button 
+                  variant="ghost" 
+                  className="flex items-center justify-start"
+                  style={getButtonStyle('planning', hoveredButton)}
+                  onMouseEnter={() => setHoveredButton('planning')}
+                  onMouseLeave={() => setHoveredButton(null)}
+                  data-testid="button-planning-calendar"
                 >
-                  Pianificazione Progetti
-                </TooltipContent>
-              </Tooltip>
+                  <FolderTree className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                  {hoveredButton === 'planning' && (
+                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                      Pianificazione Progetti
+                    </span>
+                  )}
+                </Button>
+              </Link>
 
             </div>
           </TooltipProvider>
