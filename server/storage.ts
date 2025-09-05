@@ -477,36 +477,42 @@ export class DatabaseStorage implements IStorage {
   private TASK_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache for preloaded data
 
   async getOrganizations(userId: string): Promise<any[]> {
-    // Check cache first
-    const cached = this.orgCache.get(userId);
-    if (cached && (Date.now() - cached.timestamp) < this.ORG_CACHE_TTL) {
-      return cached.orgs;
-    }
+    try {
+      // Check cache first
+      const cached = this.orgCache.get(userId);
+      if (cached && (Date.now() - cached.timestamp) < this.ORG_CACHE_TTL) {
+        return cached.orgs;
+      }
 
-    // Cache miss - query database
-    const result = await db
-      .select({
-        id: organizations.id,
-        name: organizations.name,
-        isActive: organizations.isActive,
-        theme: organizations.theme,
-        partnerId: organizations.partnerId,
-        userRole: userOrganizations.role,
-        createdAt: organizations.createdAt,
-        updatedAt: organizations.updatedAt,
-      })
-      .from(organizations)
-      .innerJoin(userOrganizations, eq(organizations.id, userOrganizations.organizationId))
-      .where(and(
-        eq(userOrganizations.userId, userId),
-        eq(userOrganizations.isActive, true)
-      ))
-      .orderBy(desc(organizations.updatedAt));
-    
-    // Cache the result
-    this.orgCache.set(userId, { orgs: result, timestamp: Date.now() });
-    
-    return result;
+      // Cache miss - query database
+      const result = await db
+        .select({
+          id: organizations.id,
+          name: organizations.name,
+          isActive: organizations.isActive,
+          theme: organizations.theme,
+          partnerId: organizations.partnerId,
+          userRole: userOrganizations.role,
+          createdAt: organizations.createdAt,
+          updatedAt: organizations.updatedAt,
+        })
+        .from(organizations)
+        .innerJoin(userOrganizations, eq(organizations.id, userOrganizations.organizationId))
+        .where(and(
+          eq(userOrganizations.userId, userId),
+          eq(userOrganizations.isActive, true)
+        ))
+        .orderBy(desc(organizations.updatedAt));
+      
+      // Cache the result
+      this.orgCache.set(userId, { orgs: result, timestamp: Date.now() });
+      
+      return result;
+    } catch (error) {
+      console.error('Error fetching organizations:', error);
+      // Return empty array on database errors to prevent frontend crashes
+      return [];
+    }
   }
 
   async getOrganization(id: string): Promise<Organization | undefined> {
