@@ -47,31 +47,18 @@ export default function OrganizationsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/organizations/${id}`),
     onSuccess: async () => {
-      // Force clear ALL cache completely
-      queryClient.clear();
-      // Wait and refetch fresh data
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["/api/organizations"] });
-      }, 100);
-      setShowDeleteDialog(false);
-      setEditingItem(null);
-      toast({ title: "Eliminato", description: "Organizzazione eliminata con successo" });
+      // Force complete cache invalidation with timestamp to bypass HTTP cache
+      const timestamp = Date.now();
+      queryClient.removeQueries({ queryKey: ["/api/organizations"] });
+      queryClient.setQueryData(["/api/organizations", timestamp], undefined);
+      
+      // Force a completely fresh request
+      window.location.reload();
     },
     onError: (error: any) => {
-      // Handle deletion errors (like 404)
       console.error("Delete error:", error);
-      // Force refresh data anyway to sync UI with backend
-      queryClient.clear();
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["/api/organizations"] });
-      }, 100);
-      setShowDeleteDialog(false);
-      setEditingItem(null);
-      toast({ 
-        title: "Aggiornato", 
-        description: "Lista sincronizzata con il database",
-        variant: "default"
-      });
+      // Force complete refresh to sync with DB even on error
+      window.location.reload();
     }
   });
 
