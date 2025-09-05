@@ -120,31 +120,24 @@ function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild =
 
   const Icon = item.icon;
 
-  const handleToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onToggle();
-  };
-
   return (
     <div className="space-y-1">
+      {/* Wrapper sortable senza eventi di click */}
       <div 
         ref={setNodeRef} 
         style={style} 
         className="w-full p-2 rounded-md group flex items-center space-x-3 transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
         data-testid={item.testId}
         {...attributes}
-        onClick={(e) => e.stopPropagation()}
       >
         <div
           className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0 flex items-center justify-center"
           {...listeners}
-          onMouseDown={(e) => e.stopPropagation()}
         >
           <GripVertical className="h-4 w-4" />
         </div>
         <div 
-          className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" 
+          className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1 pointer-events-none" 
           style={{ 
             backgroundColor: hasActiveChild ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.1)', 
             border: '1px solid rgba(59, 130, 246, 0.2)', 
@@ -154,10 +147,14 @@ function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild =
         >
           <Icon className="h-6 w-6 flex-shrink-0 mr-3 text-muted-foreground" />
           <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
+          {/* Pulsante toggle completamente isolato */}
           <button 
-            onClick={handleToggle}
-            onMouseDown={(e) => e.stopPropagation()}
-            className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              onToggle();
+            }}
+            className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center pointer-events-auto"
             style={{ borderColor: 'rgba(59, 130, 246, 0.9)', color: 'rgba(59, 130, 246, 0.9)' }}
           >
             {isOpen ? (
