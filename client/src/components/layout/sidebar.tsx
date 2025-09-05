@@ -3,29 +3,10 @@ import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, GripVertical } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import newLogo from "@assets/thu solo logo_1757017376100.jpg";
 import ImageContainer from "@/components/ui/image-container";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import {
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 
 // Main navigation (Organizations già rimosso dalla lista principale)  
 const getDefaultNavigation = (t: any) => [
@@ -55,37 +36,17 @@ const getDefaultParentItems = (t: any) => [
   { id: "p2", name: t("nav.timeManagement"), icon: Clock, testId: "nav-time-management", type: "timeManagement" },
 ];
 
-// Sortable Navigation Item Component
-function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
+// Simple Navigation Item Component
+function NavItem({ item, isActive }: { item: any; isActive: boolean }) {
   const [, setLocation] = useLocation();
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: item.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
   const Icon = item.icon;
 
   return (
     <div 
-        ref={setNodeRef} 
-        style={style} 
-        className="w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
-        data-testid={item.testId}
-        {...attributes}
-        onClick={() => setLocation(item.href)}
-      >
-      <GripVertical 
-        className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
-        {...listeners} 
-      />
+      className="w-full p-2 rounded-md group flex items-center cursor-pointer transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
+      data-testid={item.testId}
+      onClick={() => setLocation(item.href)}
+    >
       <div 
         className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" 
         style={{ 
@@ -97,47 +58,23 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
       >
         <Icon className="h-5 w-5 flex-shrink-0 mr-3 text-muted-foreground" />
         <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
-        <div className="ml-2 w-6 h-6 opacity-0" />
       </div>
     </div>
   );
 }
 
-// Sortable Parent Item Component (with expand/collapse button)
-function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }: { item: any; children: React.ReactNode; isOpen: boolean; onToggle: () => void; hasActiveChild?: boolean }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: item.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
+// Simple Parent Item Component (with expand/collapse button)
+function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }: { item: any; children: React.ReactNode; isOpen: boolean; onToggle: () => void; hasActiveChild?: boolean }) {
   const Icon = item.icon;
 
   return (
     <div className="space-y-1">
-      {/* Wrapper sortable senza eventi di click */}
       <div 
-        ref={setNodeRef} 
-        style={style} 
-        className="w-full p-2 rounded-md group flex items-center space-x-3 transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
+        className="w-full p-2 rounded-md group flex items-center transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
         data-testid={item.testId}
-        {...attributes}
       >
-        <div
-          className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0 flex items-center justify-center"
-          {...listeners}
-        >
-          <GripVertical className="h-4 w-4" />
-        </div>
         <div 
-          className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1 pointer-events-none" 
+          className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" 
           style={{ 
             backgroundColor: hasActiveChild ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.1)', 
             border: '1px solid rgba(59, 130, 246, 0.2)', 
@@ -147,14 +84,9 @@ function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild =
         >
           <Icon className="h-6 w-6 flex-shrink-0 mr-3 text-muted-foreground" />
           <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
-          {/* Pulsante toggle completamente isolato */}
           <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              onToggle();
-            }}
-            className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center pointer-events-auto"
+            onClick={onToggle}
+            className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center"
             style={{ borderColor: 'rgba(59, 130, 246, 0.9)', color: 'rgba(59, 130, 246, 0.9)' }}
           >
             {isOpen ? (
@@ -170,46 +102,14 @@ function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild =
   );
 }
 
-// Sortable Sub-Navigation Item Component (smaller)
-function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }) {
+// Simple Sub-Navigation Item Component (smaller)
+function SubNavItem({ item, isActive }: { item: any; isActive: boolean }) {
   const [, setLocation] = useLocation();
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ 
-    id: item.id,
-    disabled: false
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
   const Icon = item.icon;
 
   return (
-    <div className="ml-4 relative">
-      {/* Elemento sortable invisibile */}
-      <div 
-        ref={setNodeRef} 
-        style={style} 
-        className="absolute inset-0 pointer-events-none"
-        {...attributes}
-      />
-      
-      {/* Contenuto visibile e interattivo, separato dal sortable */}
-      <div className="w-full p-2 rounded-md group flex items-center space-x-4 transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20">
-        <div
-          className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0 flex items-center justify-center"
-          {...listeners}
-        >
-          <GripVertical className="h-4 w-4" />
-        </div>
-        
+    <div className="ml-4">
+      <div className="w-full p-2 rounded-md group flex items-center transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20">
         <button 
           className="flex items-center px-3 py-1 rounded-full nav-box transition-colors flex-1 cursor-pointer border-0 bg-transparent" 
           style={{ 
@@ -218,18 +118,12 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
             minWidth: '220px', 
             maxWidth: '220px' 
           }}
-          onClick={(e) => {
-            console.log('Child clicked:', item.name, 'href:', item.href);
-            e.stopPropagation();
-            e.preventDefault(); 
-            setLocation(item.href);
-          }}
+          onClick={() => setLocation(item.href)}
           data-testid={item.testId}
           type="button"
         >
           <Icon className="h-5 w-5 flex-shrink-0 mr-2 text-muted-foreground" />
           <span className="text-sm font-medium flex-1 text-muted-foreground text-left">{item.name}</span>
-          <div className="ml-2 w-6 h-6 opacity-0" />
         </button>
       </div>
     </div>
@@ -240,77 +134,12 @@ export default function Sidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
   const { t } = useTranslation();
-  const [navigation, setNavigation] = useState(() => {
-    const defaultNav = getDefaultNavigation(t);
-    const saved = localStorage.getItem('sidebar-main-order');
-    if (saved) {
-      try {
-        const order = JSON.parse(saved);
-        return order.map((id: string) => defaultNav.find(item => item.id === id)).filter(Boolean);
-      } catch {}
-    }
-    return defaultNav;
-  });
-  const [systemsItems, setSystemsItems] = useState(() => {
-    const defaultSystems = getDefaultSystemsItems(t);
-    const saved = localStorage.getItem('sidebar-systems-order');
-    if (saved) {
-      try {
-        const order = JSON.parse(saved);
-        return order.map((id: string) => defaultSystems.find(item => item.id === id)).filter(Boolean);
-      } catch {}
-    }
-    return defaultSystems;
-  });
-  const [timeManagementItems, setTimeManagementItems] = useState(() => {
-    const defaultTime = getDefaultTimeManagementItems(t);
-    const saved = localStorage.getItem('sidebar-time-order');
-    if (saved) {
-      try {
-        const order = JSON.parse(saved);
-        return order.map((id: string) => defaultTime.find(item => item.id === id)).filter(Boolean);
-      } catch {}
-    }
-    return defaultTime;
-  });
-  const [parentItems, setParentItems] = useState(() => {
-    const defaultParent = getDefaultParentItems(t);
-    const saved = localStorage.getItem('sidebar-parent-order');
-    if (saved) {
-      try {
-        const order = JSON.parse(saved);
-        return order.map((id: string) => defaultParent.find(item => item.id === id)).filter(Boolean);
-      } catch {}
-    }
-    return defaultParent;
-  });
+  const navigation = getDefaultNavigation(t);
+  const systemsItems = getDefaultSystemsItems(t);
+  const timeManagementItems = getDefaultTimeManagementItems(t);
+  const parentItems = getDefaultParentItems(t);
   const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(false);
   const [isSystemsOpen, setIsSystemsOpen] = useState(false);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  function handleDragEnd(event: DragEndEvent, items: any[], setItems: any, storageKey: string) {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = items.findIndex(item => item.id === active.id);
-      const newIndex = items.findIndex(item => item.id === over.id);
-      const newItems = arrayMove(items, oldIndex, newIndex);
-      setItems(newItems);
-      
-      // Save order to localStorage
-      localStorage.setItem(storageKey, JSON.stringify(newItems.map(item => item.id)));
-    }
-  }
 
   return (
     <aside className="w-80 bg-card border-r border-border flex flex-col">
@@ -331,78 +160,54 @@ export default function Sidebar() {
 
       {/* Navigation Menu */}
       <nav className="flex-1 p-4 space-y-2">
-        <DndContext 
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={(event) => handleDragEnd(event, navigation, setNavigation, 'sidebar-main-order')}
-        >
-          <SortableContext items={navigation.map((item: any) => item.id)} strategy={verticalListSortingStrategy}>
-            {navigation.map((item: any) => {
-              const isActive = location === item.href;
-              return (
-                <SortableNavItem key={item.id} item={item} isActive={isActive} />
-              );
-            })}
-          </SortableContext>
-        </DndContext>
+        {/* Main Navigation */}
+        {navigation.map((item: any) => {
+          const isActive = location === item.href;
+          return (
+            <NavItem key={item.id} item={item} isActive={isActive} />
+          );
+        })}
         
         {/* Parent Sections (Systems & Time Management) */}
         <div>
-          <DndContext 
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={(event) => handleDragEnd(event, parentItems, setParentItems, 'sidebar-parent-order')}
-          >
-            <SortableContext items={parentItems.map((item: any) => item.id)} strategy={verticalListSortingStrategy}>
-              {parentItems.map((item: any) => {
-                const isSystemsItem = item.type === 'systems';
-                const isTimeItem = item.type === 'timeManagement';
-                const isOpen = isSystemsItem ? isSystemsOpen : (isTimeItem ? isTimeManagementOpen : false);
-                
-                // Check if any child is active
-                const childItems = isSystemsItem ? systemsItems : timeManagementItems;
-                const hasActiveChild = childItems.some((subItem: any) => location === subItem.href);
-                
-                return (
-                  <div key={item.id}>
-                    <SortableParentItem
-                      item={item}
-                      isOpen={isOpen}
-                      hasActiveChild={hasActiveChild}
-                      onToggle={() => {
-                        console.log('Toggle called for:', item.type, 'current state:', isOpen);
-                        if (isSystemsItem) {
-                          setIsSystemsOpen(!isSystemsOpen);
-                        } else if (isTimeItem) {
-                          setIsTimeManagementOpen(!isTimeManagementOpen);
-                        }
-                      }}
-                      children={
-                        isOpen && (
-                          <div className="space-y-1">
-                            <DndContext 
-                              sensors={sensors}
-                              collisionDetection={closestCenter}
-                              onDragEnd={(event) => isSystemsItem ? handleDragEnd(event, systemsItems, setSystemsItems, 'sidebar-systems-order') : handleDragEnd(event, timeManagementItems, setTimeManagementItems, 'sidebar-time-order')}
-                            >
-                              <SortableContext items={(isSystemsItem ? systemsItems : timeManagementItems).map((item: any) => item.id)} strategy={verticalListSortingStrategy}>
-                                {(isSystemsItem ? systemsItems : timeManagementItems).map((subItem: any) => {
-                                  const isActive = location === subItem.href;
-                                  return (
-                                    <SortableSubNavItem key={subItem.id} item={subItem} isActive={isActive} />
-                                  );
-                                })}
-                              </SortableContext>
-                            </DndContext>
-                          </div>
-                        )
-                      }
-                    />
-                  </div>
-                );
-              })}
-            </SortableContext>
-          </DndContext>
+          {parentItems.map((item: any) => {
+            const isSystemsItem = item.type === 'systems';
+            const isTimeItem = item.type === 'timeManagement';
+            const isOpen = isSystemsItem ? isSystemsOpen : (isTimeItem ? isTimeManagementOpen : false);
+            
+            // Check if any child is active
+            const childItems = isSystemsItem ? systemsItems : timeManagementItems;
+            const hasActiveChild = childItems.some((subItem: any) => location === subItem.href);
+            
+            return (
+              <div key={item.id}>
+                <ParentItem
+                  item={item}
+                  isOpen={isOpen}
+                  hasActiveChild={hasActiveChild}
+                  onToggle={() => {
+                    if (isSystemsItem) {
+                      setIsSystemsOpen(!isSystemsOpen);
+                    } else if (isTimeItem) {
+                      setIsTimeManagementOpen(!isTimeManagementOpen);
+                    }
+                  }}
+                  children={
+                    isOpen && (
+                      <div className="space-y-1">
+                        {(isSystemsItem ? systemsItems : timeManagementItems).map((subItem: any) => {
+                          const isActive = location === subItem.href;
+                          return (
+                            <SubNavItem key={subItem.id} item={subItem} isActive={isActive} />
+                          );
+                        })}
+                      </div>
+                    )
+                  }
+                />
+              </div>
+            );
+          })}
         </div>
       </nav>
 
