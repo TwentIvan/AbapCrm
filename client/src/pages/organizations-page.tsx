@@ -35,13 +35,16 @@ export default function OrganizationsPage() {
   const { toast } = useToast();
   const { onDeleteSuccess } = useStandardCrud("organizations");
 
-  const { data: items = [], isLoading, isError } = useQuery<OrganizationWithDetails[]>({
+  const { data: items, isLoading, isError } = useQuery<OrganizationWithDetails[]>({
     queryKey: ["/api/organizations"],
     queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000, // Cache per 5 minuti - invalidato da operazioni CRUD
     refetchOnMount: false, // Non serve refetch automatico - gestito da cache manager
     refetchOnWindowFocus: false, // Non serve refetch automatico
   });
+
+  // Ensure items is always an array, never null
+  const safeItems = items || [];
 
 
   const deleteMutation = useMutation({
@@ -180,7 +183,7 @@ export default function OrganizationsPage() {
 
           {/* Cards Grid View Only */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(items || []).map((item) => (
+            {safeItems.map((item) => (
               <Card key={item.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleEdit(item)}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
