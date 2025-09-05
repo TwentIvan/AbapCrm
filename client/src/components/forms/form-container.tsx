@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Maximize2, Minimize2 } from "lucide-react";
+import { ArrowLeft, Maximize2, Minimize2, X } from "lucide-react";
 
 interface FormContainerProps {
   // Dialog mode props
@@ -80,35 +80,22 @@ export default function FormContainer({
       <div className="min-h-screen bg-muted/20">
         <div className="container mx-auto py-8 px-4">
           <div className="mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={switchToDialog}
-                data-testid="button-back"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Indietro
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-                {description && (
-                  <p className="text-muted-foreground mt-1">{description}</p>
-                )}
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+              {description && (
+                <p className="text-muted-foreground mt-1">{description}</p>
+              )}
             </div>
             
-            {showModeToggle && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={switchToDialog}
-                data-testid="button-minimize"
-              >
-                <Minimize2 className="h-4 w-4 mr-2" />
-                Modalità Finestra
-              </Button>
-            )}
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={switchToDialog}
+              data-testid="button-close"
+              title="Chiudi"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
           
           <Card className={`${maxWidth} mx-auto`}>
