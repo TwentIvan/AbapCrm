@@ -319,11 +319,11 @@ export default function TasksPage() {
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
-    queryFn: async () => {
-      const res = await fetch("/api/tasks", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch tasks');
-      return res.json();
-    },
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId, // Wait for organization context
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnMount: false, // Use cache if available
+    refetchOnWindowFocus: false,
   });
 
   const updateTaskMutation = useMutation({
