@@ -39,6 +39,12 @@ export default function OrganizationsPage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
+  // Debug log for isActive values
+  if (items && items.length > 0) {
+    console.log("DEBUG Organizations data:", items);
+    console.log("DEBUG First org isActive type:", typeof items[0].isActive, "value:", items[0].isActive);
+  }
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/organizations/${id}`),
     onSuccess: () => {
