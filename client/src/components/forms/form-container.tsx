@@ -62,6 +62,13 @@ export default function FormContainer({
     if (fullPageRoute) {
       const basePath = fullPageRoute.split("/").slice(0, -1).join("/");
       setLocation(basePath || "/");
+    } else {
+      // Fallback: go back in history or to home
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        setLocation("/");
+      }
     }
   };
   
