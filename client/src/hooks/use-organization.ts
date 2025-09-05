@@ -16,6 +16,7 @@ export function useOrganization() {
   const queryClient = useQueryClient();
 
   // Fetch user's organizations with aggressive caching
+  // Note: This query should NOT have enabled condition as it's needed to SET the organization context
   const { data: organizations = [], isLoading } = useQuery<Organization[]>({
     queryKey: ["/api/organizations"],
     queryFn: getQueryFn({ on401: "returnNull" }),
@@ -30,13 +31,15 @@ export function useOrganization() {
 
   // Set default organization on load
   useEffect(() => {
+    console.log('🔍 Organization setup:', { organizations, currentOrganizationId, isLoading });
     if (organizations && organizations.length > 0 && !currentOrganizationId) {
       // Look for "Personal" organization first, otherwise take the first one
       const personalOrg = organizations.find(org => org.name === "Personal");
       const defaultOrg = personalOrg || organizations[0];
+      console.log('🎯 Auto-selecting organization:', defaultOrg.name, defaultOrg.id);
       setCurrentOrganizationId(defaultOrg.id);
     }
-  }, [organizations, currentOrganizationId]);
+  }, [organizations, currentOrganizationId, isLoading]);
 
   // Update global organization ID whenever it changes
   useEffect(() => {
