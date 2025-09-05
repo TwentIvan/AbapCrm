@@ -276,7 +276,7 @@ export default function PartnersPage() {
               onConfigureTable={() => setShowConfigDialog(true)}
             />
           </div>
-          {isLoading && partners.length === 0 ? (
+          {isLoading && (!partners || partners.length === 0) ? (
             <div className="space-y-4">
               {[...Array(6)].map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
