@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { getQueryFn, queryClient, apiRequest } from "@/lib/queryClient";
-import { Building, Trash2, Users, History, Edit, User } from "lucide-react";
+import { Building, Trash2, Users, History, Edit, User, Plus } from "lucide-react";
 import OrganizationForm from "@/components/forms/organization-form";
 import AuditHistory from "@/components/ui/audit-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -155,6 +155,18 @@ export default function OrganizationsPage() {
           onNewClick={handleAdd}
         />
         <main className="p-6 space-y-6">
+          {/* Header with Add Button */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold">Le tue organizzazioni</h2>
+              <p className="text-muted-foreground">Gestisci e crea nuove organizzazioni</p>
+            </div>
+            <Button onClick={handleAdd} data-testid="button-add-organization">
+              <Plus className="h-4 w-4 mr-2" />
+              Nuova Organizzazione
+            </Button>
+          </div>
+
           {/* Cards Grid View Only */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {items.map((item) => (
