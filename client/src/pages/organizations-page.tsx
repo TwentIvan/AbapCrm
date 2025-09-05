@@ -7,7 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { getQueryFn, queryClient, apiRequest } from "@/lib/queryClient";
 import { Building, Trash2, Users, History, Edit, User } from "lucide-react";
 import OrganizationForm from "@/components/forms/organization-form";
 import AuditHistory from "@/components/ui/audit-history";
@@ -35,11 +35,8 @@ export default function OrganizationsPage() {
 
   const { data: items = [], isLoading } = useQuery<OrganizationWithDetails[]>({
     queryKey: ["/api/organizations"],
-    queryFn: async () => {
-      const res = await fetch("/api/organizations", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch');
-      return res.json();
-    },
+    queryFn: getQueryFn({ on401: "throw" }),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const deleteMutation = useMutation({
@@ -115,6 +112,11 @@ export default function OrganizationsPage() {
       purple: "hsl(262.1, 83.3%, 57.8%)",
       orange: "hsl(24.6, 95%, 53.1%)",
       red: "hsl(0, 72.2%, 50.6%)",
+      pink: "hsl(330, 81%, 60%)",
+      yellow: "hsl(45, 93%, 55%)",
+      teal: "hsl(178, 68%, 42%)",
+      indigo: "hsl(239, 84%, 67%)",
+      gray: "hsl(220, 13%, 46%)",
     };
     return themeColors[theme] || themeColors.blue;
   };
@@ -126,6 +128,11 @@ export default function OrganizationsPage() {
       purple: "Viola",
       orange: "Arancione",
       red: "Rosso",
+      pink: "Rosa",
+      yellow: "Giallo",
+      teal: "Teal",
+      indigo: "Indaco",
+      gray: "Grigio",
     };
     return themeLabels[theme] || "Blu";
   };
@@ -186,11 +193,18 @@ export default function OrganizationsPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Stato:</span>
                       <div className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${
-                        item.isActive 
+                        item.isActive === true
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {item.isActive ? 'Attiva' : 'Inattiva'}
+                        {item.isActive === true ? 'Attiva' : 'Inattiva'}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Partner:</span>
+                      <div className="flex items-center">
+                        <User className="h-4 w-4 mr-1 text-muted-foreground" />
+                        <span className="text-sm">{item.partnerId ? "Associato" : "Nessuno"}</span>
                       </div>
                     </div>
                   </div>

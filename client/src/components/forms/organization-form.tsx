@@ -4,8 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { Building } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useOrganization } from "@/hooks/use-organization";
 import {
   Select,
   SelectContent,
@@ -36,6 +38,15 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { currentOrganizationId } = useOrganization();
+
+  // Load available partners for selection
+  const { data: partners = [] } = useQuery({
+    queryKey: ["/api/partners", currentOrganizationId],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
   const getThemeColor = (theme: string) => {
     const themeColors: { [key: string]: string } = {
@@ -44,6 +55,11 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
       purple: "hsl(262.1, 83.3%, 57.8%)",
       orange: "hsl(24.6, 95%, 53.1%)",
       red: "hsl(0, 72.2%, 50.6%)",
+      pink: "hsl(330, 81%, 60%)",
+      yellow: "hsl(45, 93%, 55%)",
+      teal: "hsl(178, 68%, 42%)",
+      indigo: "hsl(239, 84%, 67%)",
+      gray: "hsl(220, 13%, 46%)",
     };
     return themeColors[theme] || themeColors.blue;
   };
@@ -80,7 +96,7 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
     }
   };
 
-  const handleChange = (field: string, value: string | boolean) => {
+  const handleChange = (field: string, value: string | boolean | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -128,32 +144,62 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
             <SelectContent>
               <SelectItem value="blue">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300 bg-blue-500" />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("blue") }} />
                   Blu
                 </div>
               </SelectItem>
               <SelectItem value="green">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300 bg-green-500" />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("green") }} />
                   Verde
                 </div>
               </SelectItem>
               <SelectItem value="purple">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300 bg-purple-500" />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("purple") }} />
                   Viola
                 </div>
               </SelectItem>
               <SelectItem value="orange">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300 bg-orange-500" />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("orange") }} />
                   Arancione
                 </div>
               </SelectItem>
               <SelectItem value="red">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300 bg-red-500" />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("red") }} />
                   Rosso
+                </div>
+              </SelectItem>
+              <SelectItem value="pink">
+                <div className="flex items-center">
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("pink") }} />
+                  Rosa
+                </div>
+              </SelectItem>
+              <SelectItem value="yellow">
+                <div className="flex items-center">
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("yellow") }} />
+                  Giallo
+                </div>
+              </SelectItem>
+              <SelectItem value="teal">
+                <div className="flex items-center">
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("teal") }} />
+                  Teal
+                </div>
+              </SelectItem>
+              <SelectItem value="indigo">
+                <div className="flex items-center">
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("indigo") }} />
+                  Indaco
+                </div>
+              </SelectItem>
+              <SelectItem value="gray">
+                <div className="flex items-center">
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("gray") }} />
+                  Grigio
                 </div>
               </SelectItem>
             </SelectContent>
@@ -163,13 +209,26 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
         {/* Partner - Se non è Personal può avere partner associato */}
         <div>
           <Label htmlFor="partnerId">Partner Associato</Label>
-          <Input
-            id="partnerId"
-            value={formData.partnerId || ""}
-            onChange={(e) => handleChange("partnerId", e.target.value || null)}
-            placeholder="ID del partner (opzionale)"
-            data-testid="input-organization-partner"
-          />
+          <Select value={formData.partnerId || ""} onValueChange={(value) => handleChange("partnerId", value || null)}>
+            <SelectTrigger data-testid="select-organization-partner">
+              <SelectValue placeholder="Seleziona partner (opzionale)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">
+                <span className="text-muted-foreground">Nessun partner</span>
+              </SelectItem>
+              {partners.map((partner: any) => (
+                <SelectItem key={partner.id} value={partner.id}>
+                  <div className="flex items-center">
+                    <div className="w-4 h-4 rounded-full mr-2 bg-blue-500 flex items-center justify-center text-white text-xs">
+                      {partner.name?.charAt(0)?.toUpperCase() || "P"}
+                    </div>
+                    <span>{partner.name} {partner.surname ? `${partner.surname}` : ""}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <p className="text-sm text-muted-foreground mt-1">
             Partner associato a questa organizzazione (anagrafica contatto)
           </p>
