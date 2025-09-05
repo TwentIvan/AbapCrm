@@ -134,19 +134,22 @@ function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild =
           {...listeners} 
         />
         <div 
-          className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1 cursor-pointer" 
+          className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" 
           style={{ 
             backgroundColor: hasActiveChild ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.1)', 
             border: '1px solid rgba(59, 130, 246, 0.2)', 
             minWidth: '240px', 
             maxWidth: '240px' 
           }}
-          onClick={(e) => { e.stopPropagation(); onToggle(); }}
         >
           <Icon className="h-6 w-6 flex-shrink-0 mr-3 text-muted-foreground" />
           <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
           <button 
-            onClick={(e) => { e.stopPropagation(); }}
+            onClick={(e) => { 
+              e.stopPropagation();
+              e.preventDefault();
+              onToggle(); 
+            }}
             className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center"
             style={{ borderColor: 'rgba(59, 130, 246, 0.9)', color: 'rgba(59, 130, 246, 0.9)' }}
           >
