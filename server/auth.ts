@@ -19,14 +19,17 @@ const scryptAsync = promisify(scrypt);
 
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  const buf = (await scryptAsync(password, salt, 32)) as Buffer; // Ridotto da 64 a 32 per performance
   return `${buf.toString("hex")}.${salt}`;
 }
 
 async function comparePasswords(supplied: string, stored: string) {
   const [hashed, salt] = stored.split(".");
   const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+  
+  // Compatibilità retroattiva: determina se è hash legacy (64 bytes) o nuovo (32 bytes)
+  const keyLength = hashedBuf.length;
+  const suppliedBuf = (await scryptAsync(supplied, salt, keyLength)) as Buffer;
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
