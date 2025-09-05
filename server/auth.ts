@@ -219,9 +219,33 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/user", (req, res) => {
+  app.get("/api/user", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    // Auto-preload on first user request if not already cached
+    const userId = req.user.id;
+    if (!storage.isUserDataCached(userId)) {
+      console.log(`[AUTO-PRELOAD] Starting preload for user ${userId} on first access`);
+      storage.preloadUserData(userId).catch(error => {
+        console.error('[AUTO-PRELOAD] Failed:', error);
+      });
+    }
+    
     res.json(req.user);
+  });
+
+  // Manual preload endpoint for testing
+  app.post("/api/preload", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      console.log(`[MANUAL-PRELOAD] Starting for user ${req.user.id}`);
+      await storage.preloadUserData(req.user.id);
+      res.json({ success: true, message: "Preload completed" });
+    } catch (error) {
+      console.error('[MANUAL-PRELOAD] Failed:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
   });
 
   // User update endpoint

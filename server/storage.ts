@@ -327,6 +327,13 @@ export class DatabaseStorage implements IStorage {
     console.log("[PERF] Using in-memory session store for optimal performance");
   }
 
+  // Check if user data is already cached
+  isUserDataCached(userId: string): boolean {
+    const userCached = this.userCache.has(userId);
+    const orgCached = this.orgCache.has(userId);
+    return userCached && orgCached;
+  }
+
   // Preload ALL user data at login for instant cache performance
   async preloadUserData(userId: string): Promise<void> {
     const startTime = Date.now();
@@ -340,30 +347,37 @@ export class DatabaseStorage implements IStorage {
       const organizations = await this.getOrganizations(userId);
       console.log(`[PRELOAD] Loaded ${organizations.length} organizations`);
       
-      // 3. Preload ALL projects for ALL organizations
+      // 3. Preload ALL projects, partners, tasks for ALL organizations
       let totalProjects = 0;
       let totalPartners = 0;
       let totalTasks = 0;
       
       for (const org of organizations) {
-        // Preload projects for this org
-        const projects = await this.getProjects(userId, org.id);
-        totalProjects += projects.length;
-        
-        // Preload partners for this org  
-        const partners = await this.getPartners(userId, org.id);
-        totalPartners += partners.length;
-        
-        // Preload tasks for this org
-        const tasks = await this.getTasks(userId, org.id);
-        totalTasks += tasks.length;
+        try {
+          // Preload projects for this org
+          const projects = await this.getProjects(userId, org.id);
+          totalProjects += projects.length;
+          
+          // Preload partners for this org  
+          const partners = await this.getPartners(userId, org.id);
+          totalPartners += partners.length;
+          
+          // Preload tasks for this org
+          const tasks = await this.getTasks(userId, org.id);
+          totalTasks += tasks.length;
+          
+          console.log(`[PRELOAD] Org ${org.name}: ${projects.length} projects, ${partners.length} partners, ${tasks.length} tasks`);
+        } catch (orgError) {
+          console.error(`[PRELOAD] Failed for org ${org.id}:`, orgError);
+        }
       }
       
       const duration = Date.now() - startTime;
-      console.log(`[PRELOAD] Completed in ${duration}ms: ${organizations.length} orgs, ${totalProjects} projects, ${totalPartners} partners, ${totalTasks} tasks`);
+      console.log(`[PRELOAD] ✅ COMPLETED in ${duration}ms: ${organizations.length} orgs, ${totalProjects} projects, ${totalPartners} partners, ${totalTasks} tasks`);
       
     } catch (error) {
-      console.error(`[PRELOAD] Failed for user ${userId}:`, error);
+      console.error(`[PRELOAD] ❌ FAILED for user ${userId}:`, error);
+      throw error;
     }
   }
 
