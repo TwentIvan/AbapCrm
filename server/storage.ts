@@ -336,48 +336,30 @@ export class DatabaseStorage implements IStorage {
 
   // Preload ALL user data at login for instant cache performance
   async preloadUserData(userId: string): Promise<void> {
-    const startTime = Date.now();
-    console.log(`[PRELOAD] Starting full data preload for user ${userId}`);
-    
     try {
       // 1. Preload user data (if not already cached)
       await this.getUser(userId);
       
       // 2. Preload ALL organizations for this user
       const organizations = await this.getOrganizations(userId);
-      console.log(`[PRELOAD] Loaded ${organizations.length} organizations`);
       
-      // 3. Preload ALL projects, partners, tasks for ALL organizations
-      let totalProjects = 0;
-      let totalPartners = 0;
-      let totalTasks = 0;
-      
-      for (const org of organizations) {
+      // 3. Preload ALL projects, partners, tasks for ALL organizations in parallel
+      const preloadPromises = organizations.map(async (org) => {
         try {
-          // Preload projects for this org
-          const projects = await this.getProjects(userId, org.id);
-          totalProjects += projects.length;
-          
-          // Preload partners for this org  
-          const partners = await this.getPartners(userId, org.id);
-          totalPartners += partners.length;
-          
-          // Preload tasks for this org
-          const tasks = await this.getTasks(userId, org.id);
-          totalTasks += tasks.length;
-          
-          console.log(`[PRELOAD] Org ${org.name}: ${projects.length} projects, ${partners.length} partners, ${tasks.length} tasks`);
+          await Promise.all([
+            this.getProjects(userId, org.id),
+            this.getPartners(userId, org.id),
+            this.getTasks(userId, org.id)
+          ]);
         } catch (orgError) {
-          console.error(`[PRELOAD] Failed for org ${org.id}:`, orgError);
+          // Ignore individual org errors
         }
-      }
+      });
       
-      const duration = Date.now() - startTime;
-      console.log(`[PRELOAD] ✅ COMPLETED in ${duration}ms: ${organizations.length} orgs, ${totalProjects} projects, ${totalPartners} partners, ${totalTasks} tasks`);
+      await Promise.all(preloadPromises);
       
     } catch (error) {
-      console.error(`[PRELOAD] ❌ FAILED for user ${userId}:`, error);
-      throw error;
+      // Ignore preload errors - non-critical
     }
   }
 
@@ -864,13 +846,11 @@ export class DatabaseStorage implements IStorage {
 
   // Tasks with caching
   async getTasks(userId: string, organizationId: string): Promise<Task[]> {
-    const startTime = Date.now();
     const cacheKey = `${userId}-${organizationId}`;
     
     // Check cache first
     const cached = this.taskCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp) < this.TASK_CACHE_TTL) {
-      console.log(`[PERF] getTasks cache hit for ${cacheKey} in ${Date.now() - startTime}ms`);
       return cached.tasks;
     }
 
@@ -903,8 +883,6 @@ export class DatabaseStorage implements IStorage {
     // Cache the result
     this.taskCache.set(cacheKey, { tasks: result as any[], timestamp: Date.now() });
     
-    const duration = Date.now() - startTime;
-    console.log(`[PERF] getTasks took ${duration}ms for ${cacheKey}`);
     return result as any[];
   }
 
@@ -1096,13 +1074,11 @@ export class DatabaseStorage implements IStorage {
 
   // Partners with caching
   async getPartners(userId: string, organizationId: string): Promise<Partner[]> {
-    const startTime = Date.now();
     const cacheKey = `${userId}-${organizationId}`;
     
     // Check cache first
     const cached = this.partnerCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp) < this.PARTNER_CACHE_TTL) {
-      console.log(`[PERF] getPartners cache hit for ${cacheKey} in ${Date.now() - startTime}ms`);
       return cached.partners;
     }
 
@@ -1114,8 +1090,6 @@ export class DatabaseStorage implements IStorage {
     // Cache the result
     this.partnerCache.set(cacheKey, { partners: result, timestamp: Date.now() });
     
-    const duration = Date.now() - startTime;
-    console.log(`[PERF] getPartners took ${duration}ms for ${cacheKey}`);
     return result;
   }
 
