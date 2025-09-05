@@ -409,6 +409,7 @@ export class DatabaseStorage implements IStorage {
 
   // Organizations
   async getOrganizations(userId: string): Promise<any[]> {
+    const startTime = Date.now();
     const result = await db
       .select({
         id: organizations.id,
@@ -428,6 +429,8 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(desc(organizations.updatedAt));
     
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] getOrganizations took ${duration}ms for user ${userId}`);
     return result;
   }
 

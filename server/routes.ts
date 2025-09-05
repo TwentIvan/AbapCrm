@@ -48,7 +48,10 @@ export function registerRoutes(app: Express): Server {
   // Organizations
   app.get("/api/organizations", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const startTime = Date.now();
     const organizations = await storage.getOrganizations(req.user!.id);
+    const totalTime = Date.now() - startTime;
+    console.log(`[PERF] /api/organizations total request time: ${totalTime}ms`);
     res.json(organizations);
   });
 
