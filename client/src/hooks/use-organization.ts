@@ -31,12 +31,10 @@ export function useOrganization() {
 
   // Set default organization on load
   useEffect(() => {
-    console.log('🔍 Organization setup:', { organizations, currentOrganizationId, isLoading });
     if (organizations && organizations.length > 0 && !currentOrganizationId) {
       // Look for "Personal" organization first, otherwise take the first one
       const personalOrg = organizations.find(org => org.name === "Personal");
       const defaultOrg = personalOrg || organizations[0];
-      console.log('🎯 Auto-selecting organization:', defaultOrg.name, defaultOrg.id);
       setCurrentOrganizationId(defaultOrg.id);
     }
   }, [organizations, currentOrganizationId, isLoading]);

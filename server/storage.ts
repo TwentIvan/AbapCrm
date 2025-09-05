@@ -572,6 +572,13 @@ export class DatabaseStorage implements IStorage {
 
   async deleteOrganization(id: string): Promise<boolean> {
     try {
+      // 🚨 PROTECTION: Prevent deletion of Personal organizations
+      const org = await db.select().from(organizations).where(eq(organizations.id, id)).limit(1);
+      if (org.length > 0 && org[0].name === "Personal") {
+        console.log("🚨 Blocked deletion of Personal organization:", id);
+        return false;
+      }
+
       // Delete all related data in the correct order
       
       // 1. Delete time entries
