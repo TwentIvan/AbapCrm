@@ -380,7 +380,8 @@ export class DatabaseStorage implements IStorage {
     const [personalOrg] = await db
       .insert(organizations)
       .values({
-        name: "Personal"
+        name: "Personal",
+        isActive: true
       })
       .returning();
     
@@ -412,6 +413,7 @@ export class DatabaseStorage implements IStorage {
         id: organizations.id,
         name: organizations.name,
         partnerId: organizations.partnerId,
+        isActive: organizations.isActive,
         userRole: userOrganizations.role,
         createdAt: organizations.createdAt,
         updatedAt: organizations.updatedAt,

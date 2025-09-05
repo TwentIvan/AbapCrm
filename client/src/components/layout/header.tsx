@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock, Settings, LogOut, Globe } from "lucide-react";
+import { ThemeSelector } from "@/components/theme/theme-selector";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -248,6 +249,9 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   )}
                 </Button>
               </Link>
+              
+              {/* Theme Selector */}
+              <ThemeSelector />
 
             </div>
           </TooltipProvider>

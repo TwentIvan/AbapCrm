@@ -1,16 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { LayoutManager } from "@/components/ui/layout-manager";
-import { UniversalTable, createStandardColumns, TableColumn } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Building, Trash2, Globe, MapPin, Users, Mail, History } from "lucide-react";
+import { Building, Trash2, Users, History, Edit, User } from "lucide-react";
 import OrganizationForm from "@/components/forms/organization-form";
 import AuditHistory from "@/components/ui/audit-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,15 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 interface OrganizationWithDetails {
   id: string;
   name: string;
-  description?: string;
-  logoUrl?: string;
-  website?: string;
-  fiscalCode?: string;
-  vatNumber?: string;
-  address?: string;
-  city?: string;
-  postalCode?: string;
-  country?: string;
+  partnerId?: string | null;
   isActive: boolean;
   userRole: string;
   createdAt: string;
@@ -39,16 +29,8 @@ export default function OrganizationsPage() {
   const [showForm, setShowForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
-  const [showConfigDialog, setShowConfigDialog] = useState(false);
-  const [editingLayout, setEditingLayout] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const {
-    layout, currentLayoutName, savedLayouts, updateLayout, 
-    saveLayoutAs, loadLayout, renameLayout, deleteLayout, updateExistingLayout
-  } = useTableLayout('organizations');
-  const viewMode = layout.viewMode;
 
   const { data: items = [], isLoading } = useQuery<OrganizationWithDetails[]>({
     queryKey: ["/api/organizations"],
@@ -114,101 +96,7 @@ export default function OrganizationsPage() {
     bulkDeleteMutation.mutate(selectedItems);
   };
 
-  const columns: TableColumn[] = [
-    {
-      key: "logoUrl",
-      label: "Logo",
-      sortable: false,
-      searchable: false,
-      render: (item: OrganizationWithDetails) => (
-        <div className="w-8 h-8 flex items-center justify-center">
-          {item.logoUrl ? (
-            <img
-              src={item.logoUrl}
-              alt={`${item.name} logo`}
-              className="w-8 h-8 rounded object-cover"
-            />
-          ) : (
-            <Building className="h-5 w-5 text-muted-foreground" />
-          )}
-        </div>
-      ),
-    },
-    createStandardColumns.text("name", "Nome"),
-    {
-      key: "description",
-      label: "Descrizione",
-      sortable: true,
-      searchable: true,
-      render: (item: OrganizationWithDetails) => (
-        <div className="text-sm text-muted-foreground max-w-xs truncate">
-          {item.description || "-"}
-        </div>
-      ),
-    },
-    {
-      key: "website",
-      label: "Website",
-      sortable: true,
-      searchable: true,
-      render: (item: OrganizationWithDetails) => (
-        item.website ? (
-          <a 
-            href={item.website} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="flex items-center text-blue-600 hover:text-blue-800"
-          >
-            <Globe className="h-4 w-4 mr-1" />
-            <span className="text-sm truncate max-w-xs">
-              {item.website.replace(/^https?:\/\//, '')}
-            </span>
-          </a>
-        ) : (
-          <span className="text-muted-foreground">-</span>
-        )
-      ),
-    },
-    {
-      key: "city",
-      label: "Luogo",
-      sortable: true,
-      searchable: true,
-      render: (item: OrganizationWithDetails) => (
-        <div className="flex items-center text-sm text-muted-foreground">
-          <MapPin className="h-4 w-4 mr-1" />
-          {item.city ? `${item.city}${item.country ? `, ${item.country}` : ''}` : '-'}
-        </div>
-      ),
-    },
-    {
-      key: "userRole",
-      label: "Ruolo",
-      sortable: true,
-      searchable: true,
-      render: (item: OrganizationWithDetails) => (
-        <div className="flex items-center text-sm">
-          <Users className="h-4 w-4 mr-1 text-muted-foreground" />
-          <span className="capitalize">{item.userRole}</span>
-        </div>
-      ),
-    },
-    {
-      key: "isActive",
-      label: "Stato",
-      sortable: true,
-      searchable: false,
-      render: (item: OrganizationWithDetails) => (
-        <div className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${
-          item.isActive 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-red-100 text-red-800'
-        }`}>
-          {item.isActive ? 'Attiva' : 'Inattiva'}
-        </div>
-      ),
-    },
-  ];
+  // Cards view only - no table columns needed
 
   return (
     <div className="flex h-screen">
@@ -220,35 +108,59 @@ export default function OrganizationsPage() {
           onNewClick={handleAdd}
         />
         <main className="p-6 space-y-6">
-          <LayoutManager
-            currentLayoutName={currentLayoutName}
-            savedLayouts={savedLayouts}
-            onLoadLayout={loadLayout}
-            onRenameLayout={renameLayout}
-            onDeleteLayout={deleteLayout}
-            onEditLayout={(layoutToEdit) => {
-              setEditingLayout(layoutToEdit);
-              setShowConfigDialog(true);
-            }}
-          />
-
-          <UniversalTable
-            data={items}
-            columns={columns}
-            enableSelection={true}
-            enableSearch={true}
-            searchPlaceholder="Cerca organizzazioni..."
-            onSelectionChange={(rows) => setSelectedItems(rows as OrganizationWithDetails[])}
-            onRowClick={handleEdit}
-            bulkActions={[
-              {
-                label: "Elimina Selezionate",
-                icon: Trash2,
-                variant: "destructive",
-                onClick: () => handleDelete(selectedItems)
-              }
-            ]}
-          />
+          {/* Cards Grid View Only */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {items.map((item) => (
+              <Card key={item.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleEdit(item)}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white text-lg font-semibold">
+                        {item.name.charAt(0).toUpperCase()}
+                      </div>
+                      <CardTitle className="text-lg">{item.name}</CardTitle>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEdit(item); }}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDelete([item]); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Partner:</span>
+                      <div className="flex items-center">
+                        <User className="h-4 w-4 mr-1 text-muted-foreground" />
+                        <span className="text-sm">{item.partnerId ? "Collegato" : "Nessuno"}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Stato:</span>
+                      <div className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${
+                        item.isActive 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {item.isActive ? 'Attiva' : 'Inattiva'}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Ruolo:</span>
+                      <div className="flex items-center">
+                        <Users className="h-4 w-4 mr-1 text-muted-foreground" />
+                        <span className="text-sm capitalize">{item.userRole}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
           {/* Create/Edit Dialog */}
           <Dialog open={showForm} onOpenChange={setShowForm}>

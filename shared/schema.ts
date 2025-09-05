@@ -26,7 +26,8 @@ export const users = pgTable("users", {
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
-  partnerId: uuid("partner_id"), // Optional partner reference, relation added later
+  partnerId: uuid("partner_id"), // Optional partner reference
+  isActive: boolean("is_active").default(true).notNull(), // Status field
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

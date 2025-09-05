@@ -5,8 +5,9 @@ import { setCurrentOrganizationId as setGlobalOrganizationId, getQueryFn } from 
 interface Organization {
   id: string;
   name: string;
-  userRole: string;
   partnerId?: string | null; // Optional partner reference
+  isActive: boolean; // Status field
+  userRole: string;
 }
 
 export function useOrganization() {
