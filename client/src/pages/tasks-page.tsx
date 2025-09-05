@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
@@ -15,6 +16,7 @@ import type { Task, Project, TimeEntry } from "@shared/schema";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/hooks/use-organization";
 import TaskForm from "@/components/forms/task-form";
+import TaskFormContainer from "@/components/forms/task-form-container";
 import AuditHistory from "@/components/ui/audit-history";
 import { MessageHistory } from "@/components/ui/message-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -279,9 +281,15 @@ function TaskTimerButtons({ task }: { task: Task }) {
 }
 
 export default function TasksPage() {
+  const [location] = useLocation();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  
+  // Route detection for full-page mode
+  const isFullPageMode = location.startsWith("/tasks/");
+  const isCreateMode = location === "/tasks/new";
+  const isEditMode = location.includes("/edit");
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [selectedTasks, setSelectedTasks] = useState<Task[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -489,6 +497,20 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
     setEditingTask(null);
     setShowCreateDialog(true);
   };
+  
+  // Handle full-page mode: when user navigates directly to /tasks/new or /tasks/:id/edit
+  if (isFullPageMode) {
+    return (
+      <TaskFormContainer
+        open={false} // Not used in full-page mode
+        onOpenChange={() => {}} // Not used in full-page mode
+        editingTask={editingTask}
+        onSuccess={() => {
+          setEditingTask(null);
+        }}
+      />
+    );
+  }
 
   const handleSingleDelete = (task: Task) => {
     setEditingTask(task);
@@ -737,64 +759,23 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
         </div>
       </main>
       
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create New Task</DialogTitle>
-          </DialogHeader>
-          <TaskForm onSuccess={() => setShowCreateDialog(false)} />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showEditDialog} onOpenChange={handleCloseEditDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Modifica Task</DialogTitle>
-          </DialogHeader>
-          
-          {editingTask && (
-            <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="details" className="flex items-center space-x-2">
-                  <Edit className="h-4 w-4" />
-                  <span>Dettagli</span>
-                </TabsTrigger>
-                <TabsTrigger value="messages" className="flex items-center space-x-2">
-                  <MessageSquare className="h-4 w-4" />
-                  <span>Messaggi</span>
-                </TabsTrigger>
-                <TabsTrigger value="history" className="flex items-center space-x-2">
-                  <History className="h-4 w-4" />
-                  <span>Storico Modifiche</span>
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="details" className="mt-6">
-                <TaskForm 
-                  task={editingTask} 
-                  onSuccess={handleCloseEditDialog} 
-                />
-              </TabsContent>
-              
-              <TabsContent value="messages" className="mt-6">
-                <MessageHistory 
-                  tableName="tasks" 
-                  recordId={editingTask.id}
-                  title="Storico Messaggi Task"
-                />
-              </TabsContent>
-              
-              <TabsContent value="history" className="mt-6">
-                <AuditHistory 
-                  tableName="tasks" 
-                  recordId={editingTask.id}
-                  title="Storico Modifiche Task"
-                />
-              </TabsContent>
-            </Tabs>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Form Container - supports both dialog and full-page modes */}
+      <TaskFormContainer
+        open={showCreateDialog || showEditDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowCreateDialog(false);
+            setShowEditDialog(false);
+            setEditingTask(null);
+          }
+        }}
+        editingTask={editingTask}
+        onSuccess={() => {
+          setShowCreateDialog(false);
+          setShowEditDialog(false);
+          setEditingTask(null);
+        }}
+      />
 
       {/* Single Delete Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

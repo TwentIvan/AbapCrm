@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
@@ -21,6 +22,7 @@ import ImageContainer from "@/components/ui/image-container";
 import { Building, Mail, Phone, MapPin, MoreHorizontal, Grid3X3, List, Edit, Trash2, History, MessageSquare } from "lucide-react";
 import { Partner } from "@shared/schema";
 import AdvancedPartnerForm from "@/components/forms/advanced-partner-form";
+import PartnerFormContainer from "@/components/forms/partner-form-container";
 import SimplePartnerForm from "@/components/forms/simple-partner-form";
 import AuditHistory from "@/components/ui/audit-history";
 import { MessageHistory } from "@/components/ui/message-history";
@@ -41,10 +43,16 @@ const typeLabels = {
 };
 
 export default function PartnersPage() {
+  const [location] = useLocation();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  
+  // Route detection for full-page mode
+  const isFullPageMode = location.startsWith("/partners/");
+  const isCreateMode = location === "/partners/new";
+  const isEditMode = location.includes("/edit");
   const [selectedPartners, setSelectedPartners] = useState<Partner[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
@@ -144,6 +152,20 @@ export default function PartnersPage() {
     setSelectedPartner(partner);
     setShowEditDialog(true);
   };
+  
+  // Handle full-page mode: when user navigates directly to /partners/new or /partners/:id/edit
+  if (isFullPageMode) {
+    return (
+      <PartnerFormContainer
+        open={false} // Not used in full-page mode
+        onOpenChange={() => {}} // Not used in full-page mode
+        editingPartner={selectedPartner}
+        onSuccess={() => {
+          setSelectedPartner(null);
+        }}
+      />
+    );
+  }
 
   const handleDelete = (partner: Partner) => {
     setSelectedPartner(partner);
@@ -317,70 +339,23 @@ export default function PartnersPage() {
         </div>
       </main>
       
-      {/* Create Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Crea Nuovo Partner</DialogTitle>
-          </DialogHeader>
-          <AdvancedPartnerForm onSuccess={() => setShowCreateDialog(false)} />
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Modifica Partner</DialogTitle>
-            <DialogDescription>Aggiorna informazioni del partner</DialogDescription>
-          </DialogHeader>
-          
-          {selectedPartner && (
-            <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="details" className="flex items-center space-x-2">
-                  <Edit className="h-4 w-4" />
-                  <span>Dettagli</span>
-                </TabsTrigger>
-                <TabsTrigger value="messages" className="flex items-center space-x-2">
-                  <MessageSquare className="h-4 w-4" />
-                  <span>Messaggi</span>
-                </TabsTrigger>
-                <TabsTrigger value="history" className="flex items-center space-x-2">
-                  <History className="h-4 w-4" />
-                  <span>Storico Modifiche</span>
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="details" className="mt-6">
-                <AdvancedPartnerForm 
-                  existingPartner={selectedPartner}
-                  onSuccess={() => {
-                    setShowEditDialog(false);
-                    setSelectedPartner(null);
-                  }} 
-                />
-              </TabsContent>
-              
-              <TabsContent value="messages" className="mt-6">
-                <MessageHistory 
-                  tableName="partners" 
-                  recordId={selectedPartner.id}
-                  title="Storico Messaggi Partner"
-                />
-              </TabsContent>
-              
-              <TabsContent value="history" className="mt-6">
-                <AuditHistory 
-                  tableName="partners" 
-                  recordId={selectedPartner.id}
-                  title="Storico Modifiche Partner"
-                />
-              </TabsContent>
-            </Tabs>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Form Container - supports both dialog and full-page modes */}
+      <PartnerFormContainer
+        open={showCreateDialog || showEditDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowCreateDialog(false);
+            setShowEditDialog(false);
+            setSelectedPartner(null);
+          }
+        }}
+        editingPartner={selectedPartner}
+        onSuccess={() => {
+          setShowCreateDialog(false);
+          setShowEditDialog(false);
+          setSelectedPartner(null);
+        }}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
