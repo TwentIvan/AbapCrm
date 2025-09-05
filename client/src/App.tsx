@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { I18nProvider } from "@/lib/i18n";
 import { useOrganization } from "@/hooks/use-organization";
 import { ProtectedRoute } from "./lib/protected-route";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 
 import AuthPage from "@/pages/auth-page";
 import OrganizationsPage from "@/pages/organizations-page";
@@ -60,10 +61,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <I18nProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
+          <ThemeProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </ThemeProvider>
         </I18nProvider>
       </AuthProvider>
     </QueryClientProvider>

@@ -25,10 +25,12 @@ export function LayoutControlBox({
 
   return (
     <div 
-      className={`flex items-center px-3 py-2 rounded-full transition-colors border ${
-        hoveredSection ? 'bg-muted/50' : 'bg-muted/30'
-      } border-muted`}
-      style={{ minWidth: '280px' }}
+      className="flex items-center px-3 py-2 rounded-full transition-colors" 
+      style={{ 
+        backgroundColor: hoveredSection ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)', 
+        border: '1px solid rgba(59, 130, 246, 0.2)',
+        minWidth: '280px'
+      }}
       onMouseEnter={() => setHoveredSection('main')}
       onMouseLeave={() => setHoveredSection(null)}
     >
@@ -46,7 +48,7 @@ export function LayoutControlBox({
           <Button 
             variant="ghost" 
             size="sm" 
-            className="p-1 h-8 w-8 rounded-full hover:bg-muted/50"
+            className="p-1 h-8 w-8 rounded-full hover:bg-white/20"
             data-testid="button-layout-selector"
           >
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -57,7 +59,7 @@ export function LayoutControlBox({
             <DropdownMenuItem
               key={layout.id}
               onClick={() => onLoadLayout(layout.id)}
-              className={currentLayoutName === layout.name ? "bg-muted/50" : ""}
+              className={currentLayoutName === layout.name ? "bg-primary/10" : ""}
               data-testid={`layout-option-${layout.id}`}
             >
               <Layout className="mr-2 h-4 w-4" />
@@ -76,7 +78,7 @@ export function LayoutControlBox({
           variant="ghost" 
           size="sm" 
           onClick={onConfigureTable}
-          className="p-1 h-8 w-8 rounded-full hover:bg-muted/50 ml-1"
+          className="p-1 h-8 w-8 rounded-full hover:bg-white/20 ml-1"
           data-testid="button-configure-table"
         >
           <Settings className="h-4 w-4 text-muted-foreground" />

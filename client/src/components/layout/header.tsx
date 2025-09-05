@@ -20,6 +20,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useOrganization } from "@/hooks/use-organization";
 import { useTranslation, Language } from "@/lib/i18n";
+import { ThemeSelector } from "@/components/ui/theme-selector";
 
 interface HeaderProps {
   title: string;
@@ -90,9 +91,9 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const getButtonStyle = (buttonId: string, hoveredId: string | null) => {
     const isHovered = buttonId === hoveredId;
     return {
-      backgroundColor: 'rgba(107, 114, 128, 0.1)', // muted color
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
       borderRadius: isHovered ? '2rem' : '50%',
-      border: '1px solid rgba(107, 114, 128, 0.2)', // muted border
+      border: '1px solid rgba(59, 130, 246, 0.2)',
       width: isHovered ? 'auto' : '3.5rem',
       height: '3.5rem',
       minWidth: isHovered ? '200px' : '3.5rem',
@@ -113,10 +114,11 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         <div className="flex items-stretch space-x-1">
           {/* Area Title with Icon */}
           <div 
-            className="flex items-center space-x-3 px-4 py-2 shadow-sm border border-muted"
+            className="flex items-center space-x-3 px-4 py-2 shadow-sm"
             style={{ 
-              background: 'linear-gradient(to right, rgba(107, 114, 128, 0.15), rgba(255, 255, 255, 0.8))',
-              borderRadius: '3rem 0 0 3rem'
+              background: 'linear-gradient(to right, rgba(59, 130, 246, 0.15), rgba(255, 255, 255, 0.8))',
+              borderRadius: '3rem 0 0 3rem',
+              border: '1px solid rgba(59, 130, 246, 0.2)'
             }}
           >
             <AreaIcon className="text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
@@ -132,9 +134,11 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           
           {/* Search Box - espandibile */}
           <div 
-            className="flex items-center px-4 py-2 shadow-sm cursor-pointer transition-all duration-300 bg-muted/30 border border-muted"
+            className="flex items-center px-4 py-2 shadow-sm cursor-pointer transition-all duration-300"
             style={{ 
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
               borderRadius: '0 3rem 3rem 0',
+              border: '1px solid rgba(59, 130, 246, 0.2)',
               width: isSearchOpen ? '300px' : 'auto',
               minWidth: isSearchOpen ? '300px' : 'auto'
             }}
@@ -152,7 +156,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             ) : (
               <>
                 <button
-                  className="w-8 h-8 mr-3 rounded hover:bg-muted/50 text-foreground transition-colors flex items-center justify-center"
+                  className="w-8 h-8 mr-3 rounded hover:bg-primary/10 text-foreground transition-colors flex items-center justify-center"
                   onClick={(e) => {
                     e.stopPropagation();
                     setSearchQuery("");
@@ -172,7 +176,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   onBlur={() => !searchQuery && setIsSearchOpen(false)}
                 />
                 <button
-                  className="w-8 h-8 ml-2 rounded hover:bg-muted/50 text-foreground transition-colors flex items-center justify-center bg-muted/30 hover:bg-muted/50"
+                  className="w-8 h-8 ml-2 rounded hover:bg-primary/10 text-foreground transition-colors flex items-center justify-center bg-primary/10 hover:bg-primary/20"
                   onClick={(e) => {
                     e.stopPropagation();
                     // TODO: implementare ricerca globale
@@ -252,7 +256,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           
           {/* User & Organization Box with Switch */}
           {user && (
-            <div className="relative rounded-full px-4 py-2 flex items-center space-x-4 bg-muted/30 border border-muted">
+            <div className="relative rounded-full px-4 py-2 flex items-center space-x-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+              {/* Theme Selector */}
+              <ThemeSelector variant="dropdown" size="sm" />
+              
               {/* Language Selector - Bandiera Flat */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

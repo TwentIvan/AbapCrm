@@ -8,6 +8,7 @@ interface Organization {
   description?: string;
   logoUrl?: string;
   userRole: string;
+  settings?: string | null; // JSON string for organization-specific settings
 }
 
 export function useOrganization() {
