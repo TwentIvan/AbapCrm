@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
@@ -21,6 +22,7 @@ import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2, History, MessageSquare } from "lucide-react";
 import { Project, Partner } from "@shared/schema";
 import ProjectForm from "@/components/forms/project-form";
+import ProjectFormContainer from "@/components/forms/project-form-container";
 import ProjectPlanner from "@/components/planning/project-planner";
 import AuditHistory from "@/components/ui/audit-history";
 import { MessageHistory } from "@/components/ui/message-history";
@@ -35,9 +37,15 @@ const statusColors = {
 };
 
 export default function ProjectsPage() {
+  const [location] = useLocation();
   const [selectedProjects, setSelectedProjects] = useState<Project[]>([]);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [showForm, setShowForm] = useState(false);
+  
+  // Route detection for full-page mode
+  const isFullPageMode = location.startsWith("/projects/");
+  const isCreateMode = location === "/projects/new";
+  const isEditMode = location.includes("/edit");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
@@ -121,6 +129,20 @@ export default function ProjectsPage() {
     setEditingProject(null);
     setShowForm(true);
   };
+  
+  // Handle full-page mode: when user navigates directly to /projects/new or /projects/:id/edit
+  if (isFullPageMode) {
+    return (
+      <ProjectFormContainer
+        open={false} // Not used in full-page mode
+        onOpenChange={() => {}} // Not used in full-page mode
+        editingProject={editingProject}
+        onSuccess={() => {
+          setEditingProject(null);
+        }}
+      />
+    );
+  }
 
   const handleSingleDelete = (project: Project) => {
     setEditingProject(project);
@@ -309,74 +331,16 @@ export default function ProjectsPage() {
         </div>
       </main>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingProject ? "Modifica Progetto" : "Nuovo Progetto"}
-            </DialogTitle>
-            <DialogDescription>
-              {editingProject ? "Aggiorna" : "Crea"} un progetto SAP ABAP
-            </DialogDescription>
-          </DialogHeader>
-          
-          {editingProject ? (
-            <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="details" className="flex items-center space-x-2">
-                  <Code className="h-4 w-4" />
-                  <span>Dettagli</span>
-                </TabsTrigger>
-                <TabsTrigger value="messages" className="flex items-center space-x-2">
-                  <MessageSquare className="h-4 w-4" />
-                  <span>Messaggi</span>
-                </TabsTrigger>
-                <TabsTrigger value="history" className="flex items-center space-x-2">
-                  <History className="h-4 w-4" />
-                  <span>Storico Modifiche</span>
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="details" className="mt-6">
-                <ProjectForm 
-                  project={editingProject || undefined}
-                  onSuccess={() => {
-                    setShowForm(false);
-                    setEditingProject(null);
-                    queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-                  }}
-                />
-              </TabsContent>
-              
-              <TabsContent value="messages" className="mt-6">
-                <MessageHistory 
-                  tableName="projects" 
-                  recordId={editingProject.id}
-                  title="Storico Messaggi Progetto"
-                />
-              </TabsContent>
-              
-              <TabsContent value="history" className="mt-6">
-                <AuditHistory 
-                  tableName="projects" 
-                  recordId={editingProject.id}
-                  title="Storico Modifiche Progetto"
-                />
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <ProjectForm 
-              project={editingProject || undefined}
-              onSuccess={() => {
-                setShowForm(false);
-                setEditingProject(null);
-                queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Form Container - supports both dialog and full-page modes */}
+      <ProjectFormContainer
+        open={showForm}
+        onOpenChange={setShowForm}
+        editingProject={editingProject}
+        onSuccess={() => {
+          setShowForm(false);
+          setEditingProject(null);
+        }}
+      />
 
       {/* Project Planner Dialog */}
       <Dialog open={showPlanner} onOpenChange={handleClosePlanner}>

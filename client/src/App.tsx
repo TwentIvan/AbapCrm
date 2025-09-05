@@ -36,8 +36,14 @@ function Router() {
       <ProtectedRoute path="/" component={OrganizationsPage} />
       <ProtectedRoute path="/organizations" component={OrganizationsPage} />
       <ProtectedRoute path="/projects" component={ProjectsPage} />
+      <ProtectedRoute path="/projects/new" component={ProjectsPage} />
+      <ProtectedRoute path="/projects/:id/edit" component={ProjectsPage} />
       <ProtectedRoute path="/tasks" component={TasksPage} />
+      <ProtectedRoute path="/tasks/new" component={TasksPage} />
+      <ProtectedRoute path="/tasks/:id/edit" component={TasksPage} />
       <ProtectedRoute path="/partners" component={PartnersPage} />
+      <ProtectedRoute path="/partners/new" component={PartnersPage} />
+      <ProtectedRoute path="/partners/:id/edit" component={PartnersPage} />
       <ProtectedRoute path="/calendar" component={CalendarPage} />
       <ProtectedRoute path="/planning-calendar" component={GlobalCalendarPage} />
       <ProtectedRoute path="/timesheet" component={TimesheetPage} />
