@@ -41,12 +41,14 @@ import { db } from "./db";
 import { eq, and, desc, asc, isNotNull } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
+import MemoryStore from "memorystore";
 import { pool } from "./db";
 import { sql } from "drizzle-orm";
 import scrypt from "scrypt-js";
 import { AuditService } from "./audit-service";
 
 const PostgresSessionStore = connectPg(session);
+const MemorySessionStore = MemoryStore(session);
 
 export interface IStorage {
   // Organizations
@@ -314,16 +316,15 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    this.sessionStore = new PostgresSessionStore({ 
-      pool, 
-      createTableIfMissing: true,
-      // Performance optimizations for session store
-      ttl: 30 * 24 * 60 * 60, // 30 days TTL
-      disableTouch: false, // Keep session alive on activity
-      createTableIfMissing: true,
-      tableName: 'session', 
-      schemaName: 'public'
+    // Use in-memory session store for maximum performance
+    // Sessions will be lost on server restart but performance is critical
+    this.sessionStore = new MemorySessionStore({
+      checkPeriod: 86400000, // prune expired entries every 24h
+      ttl: 30 * 24 * 60 * 60 * 1000, // 30 days TTL
+      max: 1000, // max 1000 sessions in memory
     });
+    
+    console.log("[PERF] Using in-memory session store for optimal performance");
   }
 
   // Users with in-memory cache for performance
