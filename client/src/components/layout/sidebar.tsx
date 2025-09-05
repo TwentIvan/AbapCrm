@@ -118,7 +118,10 @@ function SubNavItem({ item, isActive }: { item: any; isActive: boolean }) {
             minWidth: '220px', 
             maxWidth: '220px' 
           }}
-          onClick={() => setLocation(item.href)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setLocation(item.href);
+          }}
           data-testid={item.testId}
           type="button"
         >
