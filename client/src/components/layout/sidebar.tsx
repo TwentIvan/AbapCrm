@@ -74,7 +74,7 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
         data-testid={item.testId}
       >
         <div 
-          className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" 
+          className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1 pointer-events-none" 
           style={{ 
             backgroundColor: hasActiveChild ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.1)', 
             border: '1px solid rgba(59, 130, 246, 0.2)', 
@@ -85,11 +85,8 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
           <Icon className="h-6 w-6 flex-shrink-0 mr-3 text-muted-foreground" />
           <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
           <button 
-            onClick={(e) => {
-              e.stopPropagation(); // Previene la propagazione
-              onToggle();
-            }}
-            className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center"
+            onClick={onToggle}
+            className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center pointer-events-auto"
             style={{ borderColor: 'rgba(59, 130, 246, 0.9)', color: 'rgba(59, 130, 246, 0.9)' }}
           >
             {isOpen ? (
@@ -121,8 +118,7 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
             minWidth: '220px', 
             maxWidth: '220px' 
           }}
-          onClick={(e) => {
-            e.stopPropagation(); // Previene la propagazione al parent
+          onClick={() => {
             console.log('Child clicked:', item.name);
             setLocation(item.href);
           }}
