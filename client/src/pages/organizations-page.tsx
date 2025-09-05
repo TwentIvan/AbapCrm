@@ -7,7 +7,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { getQueryFn, queryClient, apiRequest } from "@/lib/queryClient";
+import { getQueryFn, apiRequest } from "@/lib/queryClient";
+import { useStandardCrud } from "@/lib/cache-manager";
 import { Building, Trash2, Users, History, Edit, User } from "lucide-react";
 import { Plus } from "lucide-react";
 import OrganizationForm from "@/components/forms/organization-form";
@@ -32,33 +33,35 @@ export default function OrganizationsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const { onDeleteSuccess } = useStandardCrud("organizations");
 
   const { data: items = [], isLoading, isError } = useQuery<OrganizationWithDetails[]>({
     queryKey: ["/api/organizations"],
     queryFn: getQueryFn({ on401: "throw" }),
-    staleTime: 0, // No cache - always fresh
-    refetchOnMount: true, // Always refetch to catch changes
-    refetchOnWindowFocus: true, // Force refetch on focus to fix sync issues
-    cacheTime: 0, // Don't cache results at all to avoid desync
+    staleTime: 5 * 60 * 1000, // Cache per 5 minuti - invalidato da operazioni CRUD
+    refetchOnMount: false, // Non serve refetch automatico - gestito da cache manager
+    refetchOnWindowFocus: false, // Non serve refetch automatico
   });
 
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/organizations/${id}`),
     onSuccess: async () => {
-      // Force complete cache invalidation with timestamp to bypass HTTP cache
-      const timestamp = Date.now();
-      queryClient.removeQueries({ queryKey: ["/api/organizations"] });
-      queryClient.setQueryData(["/api/organizations", timestamp], undefined);
-      
-      // Force a completely fresh request
-      window.location.reload();
+      await onDeleteSuccess();
+      setShowDeleteDialog(false);
+      setEditingItem(null);
+      toast({ title: "Eliminato", description: "Organizzazione eliminata con successo" });
     },
-    onError: (error: any) => {
+    onError: async (error: any) => {
       console.error("Delete error:", error);
-      // Force complete refresh to sync with DB even on error
-      window.location.reload();
+      // Anche in caso di errore, sincronizza la cache
+      await onDeleteSuccess();
+      setShowDeleteDialog(false);
+      setEditingItem(null);
+      toast({ 
+        title: "Lista aggiornata", 
+        description: "I dati sono stati sincronizzati con il database"
+      });
     }
   });
 
@@ -69,10 +72,7 @@ export default function OrganizationsPage() {
       }
     },
     onSuccess: async () => {
-      // Force invalidate all organization-related queries
-      await queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
-      // Force refetch to ensure UI updates
-      await queryClient.refetchQueries({ queryKey: ["/api/organizations"] });
+      await onDeleteSuccess();
       setSelectedItems([]);
       setShowBulkDeleteDialog(false);
       toast({ title: "Eliminati", description: "Organizzazioni eliminate con successo" });
@@ -268,7 +268,6 @@ export default function OrganizationsPage() {
                       onSuccess={() => {
                         setShowForm(false);
                         setEditingItem(null);
-                        queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
                       }}
                       onCancel={() => {
                         setShowForm(false);
@@ -291,7 +290,6 @@ export default function OrganizationsPage() {
                   onSuccess={() => {
                     setShowForm(false);
                     setEditingItem(null);
-                    queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
                   }}
                   onCancel={() => {
                     setShowForm(false);

@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { Building } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "@/hooks/use-organization";
+import { useStandardCrud } from "@/lib/cache-manager";
 import {
   Select,
   SelectContent,
@@ -39,9 +40,10 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { currentOrganizationId } = useOrganization();
+  const { onCreateSuccess, onUpdateSuccess } = useStandardCrud("organizations");
 
   // Load available partners for selection
-  const { data: partners = [] } = useQuery({
+  const { data: partners = [] } = useQuery<any[]>({
     queryKey: ["/api/partners"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
@@ -72,6 +74,7 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
       if (organization) {
         // Update existing organization
         await apiRequest("PUT", `/api/organizations/${organization.id}`, formData);
+        await onUpdateSuccess();
         toast({
           title: "Successo",
           description: "Organizzazione aggiornata con successo",
@@ -79,14 +82,13 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
       } else {
         // Create new organization
         await apiRequest("POST", "/api/organizations", formData);
+        await onCreateSuccess();
         toast({
           title: "Successo",
           description: "Organizzazione creata con successo",
         });
       }
 
-      // Invalida la cache per far apparire subito la nuova organizzazione
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
       onSuccess();
     } catch (error) {
       toast({
