@@ -295,7 +295,6 @@ export default function VPNConnectionsPage() {
             data={vpnConnections}
             columns={columns}
             enableSelection={true}
-            searchPlaceholder="Cerca connessioni VPN..."
             onSelectionChange={(rows) => setSelectedConnections(rows as VpnConnection[])}
             onRowClick={handleEdit}
             bulkActions={[

@@ -25,6 +25,7 @@ import SalesOrdersPage from "@/pages/sales-orders-page";
 import SapSystemsPage from "@/pages/sap-systems-page";
 import { SystemCredentialsPage } from "@/pages/system-credentials-page";
 import VPNConnectionsPage from "@/pages/vpn-connections-page";
+import AccountPage from "@/pages/account-page";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -61,6 +62,8 @@ function Router() {
       <ProtectedRoute path="/system-credentials" component={SystemCredentialsPage} />
       <ProtectedRoute path="/system-credentials/new" component={SystemCredentialsPage} />
       <ProtectedRoute path="/system-credentials/:id/edit" component={SystemCredentialsPage} />
+      <ProtectedRoute path="/account" component={AccountPage} />
+      <ProtectedRoute path="/account/settings" component={AccountPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/login" component={AuthPage} />
       <Route component={NotFound} />

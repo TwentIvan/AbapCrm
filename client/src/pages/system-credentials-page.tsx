@@ -278,7 +278,6 @@ export function SystemCredentialsPage() {
             data={credentials}
             columns={columns}
             enableSelection={true}
-            searchPlaceholder="Cerca credenziali..."
             onSelectionChange={(rows) => setSelectedCredentials(rows as SystemCredentials[])}
             onRowClick={handleEdit}
             bulkActions={[
