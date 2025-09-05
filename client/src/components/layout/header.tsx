@@ -131,16 +131,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               </p>
             </div>
           </div>
-
-          {/* Crea nuova button - posizionato a sinistra accanto al titolo */}
-          {onNewClick && (
-            <Button 
-              onClick={onNewClick}
-              className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white ml-3 shadow-sm"
-            >
-              <span className="text-sm font-medium">Crea nuova</span>
-            </Button>
-          )}
           
           {/* Search Box - espandibile */}
           <div 
