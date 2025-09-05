@@ -80,8 +80,8 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
         className={cn(
           "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors sidebar-nav-item",
           isActive
-            ? "bg-muted/50 text-muted-foreground"
-            : "text-muted-foreground"
+            ? "bg-blue-100 dark:bg-blue-900/30"
+            : "text-muted-foreground hover:bg-muted/20"
         )}
         data-testid={item.testId}
         {...attributes}
@@ -91,9 +91,17 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', minWidth: '240px', maxWidth: '240px' }}>
-        <Icon className="h-5 w-5 flex-shrink-0 mr-3 text-muted-foreground" />
-        <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
+      <div 
+        className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" 
+        style={{ 
+          backgroundColor: isActive ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.1)', 
+          border: isActive ? '2px solid rgba(59, 130, 246, 0.6)' : '1px solid rgba(59, 130, 246, 0.2)', 
+          minWidth: '240px', 
+          maxWidth: '240px' 
+        }}
+      >
+        <Icon className={cn("h-5 w-5 flex-shrink-0 mr-3", isActive ? "text-blue-700 dark:text-blue-300" : "text-muted-foreground")} />
+        <span className={cn("text-base font-medium flex-1", isActive ? "text-blue-800 dark:text-blue-200" : "text-muted-foreground")}>{item.name}</span>
         <div className="ml-2 w-6 h-6 opacity-0" />
       </div>
     </div>
@@ -101,7 +109,7 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
 }
 
 // Sortable Parent Item Component (with expand/collapse button)
-function SortableParentItem({ item, children, isOpen, onToggle }: { item: any; children: React.ReactNode; isOpen: boolean; onToggle: () => void }) {
+function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }: { item: any; children: React.ReactNode; isOpen: boolean; onToggle: () => void; hasActiveChild?: boolean }) {
   const {
     attributes,
     listeners,
@@ -124,7 +132,9 @@ function SortableParentItem({ item, children, isOpen, onToggle }: { item: any; c
         style={style} 
         className={cn(
           "w-full p-2 rounded-md group flex items-center space-x-3 cursor-pointer transition-colors sidebar-nav-item",
-          "text-muted-foreground"
+          hasActiveChild
+            ? "bg-blue-50 dark:bg-blue-900/20"
+            : "text-muted-foreground hover:bg-muted/20"
         )}
         data-testid={item.testId}
         {...attributes}
@@ -133,9 +143,17 @@ function SortableParentItem({ item, children, isOpen, onToggle }: { item: any; c
           className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
           {...listeners} 
         />
-        <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', minWidth: '240px', maxWidth: '240px' }}>
-          <Icon className="h-6 w-6 flex-shrink-0 mr-3 text-muted-foreground" />
-          <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
+        <div 
+          className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" 
+          style={{ 
+            backgroundColor: hasActiveChild ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)', 
+            border: hasActiveChild ? '2px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)', 
+            minWidth: '240px', 
+            maxWidth: '240px' 
+          }}
+        >
+          <Icon className={cn("h-6 w-6 flex-shrink-0 mr-3", hasActiveChild ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} />
+          <span className={cn("text-base font-medium flex-1", hasActiveChild ? "text-blue-700 dark:text-blue-300" : "text-muted-foreground")}>{item.name}</span>
           <button 
             onClick={(e) => { e.stopPropagation(); onToggle(); }}
             className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center"
@@ -178,8 +196,8 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
       className={cn(
         "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors ml-4 sidebar-nav-item",
         isActive
-          ? "bg-muted/50 text-muted-foreground"
-          : "text-muted-foreground"
+          ? "bg-blue-50 dark:bg-blue-900/20"
+          : "text-muted-foreground hover:bg-muted/20"
       )}
       data-testid={item.testId}
       {...attributes}
@@ -189,9 +207,17 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <div className="flex items-center px-3 py-1 rounded-full nav-box transition-colors flex-1" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', minWidth: '220px', maxWidth: '220px' }}>
-        <Icon className="h-5 w-5 flex-shrink-0 mr-2 text-muted-foreground" />
-        <span className="text-sm font-medium flex-1 text-muted-foreground">{item.name}</span>
+      <div 
+        className="flex items-center px-3 py-1 rounded-full nav-box transition-colors flex-1" 
+        style={{ 
+          backgroundColor: isActive ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.08)', 
+          border: isActive ? '2px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.15)', 
+          minWidth: '220px', 
+          maxWidth: '220px' 
+        }}
+      >
+        <Icon className={cn("h-5 w-5 flex-shrink-0 mr-2", isActive ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} />
+        <span className={cn("text-sm font-medium flex-1", isActive ? "text-blue-700 dark:text-blue-300" : "text-muted-foreground")}>{item.name}</span>
         <div className="ml-2 w-6 h-6 opacity-0" />
       </div>
     </div>
@@ -321,11 +347,16 @@ export default function Sidebar() {
                 const isTimeItem = item.type === 'timeManagement';
                 const isOpen = isSystemsItem ? isSystemsOpen : (isTimeItem ? isTimeManagementOpen : false);
                 
+                // Check if any child is active
+                const childItems = isSystemsItem ? systemsItems : timeManagementItems;
+                const hasActiveChild = childItems.some((subItem: any) => location === subItem.href);
+                
                 return (
                   <div key={item.id}>
                     <SortableParentItem
                       item={item}
                       isOpen={isOpen}
+                      hasActiveChild={hasActiveChild}
                       onToggle={() => isSystemsItem ? setIsSystemsOpen(!isSystemsOpen) : (isTimeItem ? setIsTimeManagementOpen(!isTimeManagementOpen) : null)}
                       children={
                         isOpen && (
