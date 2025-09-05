@@ -15,10 +15,13 @@ export function useOrganization() {
   const [currentOrganizationId, setCurrentOrganizationId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch user's organizations
+  // Fetch user's organizations with aggressive caching
   const { data: organizations = [], isLoading } = useQuery<Organization[]>({
     queryKey: ["/api/organizations"],
     queryFn: getQueryFn({ on401: "returnNull" }),
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnMount: false, // Don't refetch if data exists
+    refetchOnWindowFocus: false,
     retry: false,
   });
 
