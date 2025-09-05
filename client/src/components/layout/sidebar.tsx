@@ -187,7 +187,10 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
       className="w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors ml-4 sidebar-nav-item text-muted-foreground hover:bg-muted/20"
       data-testid={item.testId}
       {...attributes}
-      onClick={() => setLocation(item.href)}
+      onClick={(e) => {
+        e.stopPropagation(); // Evita che si chiuda il padre
+        setLocation(item.href);
+      }}
     >
       <GripVertical 
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
