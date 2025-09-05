@@ -428,7 +428,6 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(desc(organizations.updatedAt));
     
-    console.log("DEBUG getOrganizations query result:", result);
     return result;
   }
 

@@ -39,11 +39,6 @@ export default function OrganizationsPage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Debug log for isActive values
-  if (items && items.length > 0) {
-    console.log("DEBUG Organizations data:", items);
-    console.log("DEBUG First org isActive type:", typeof items[0].isActive, "value:", items[0].isActive);
-  }
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/organizations/${id}`),
@@ -199,7 +194,7 @@ export default function OrganizationsPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Stato:</span>
                       <div className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${
-                        item.isActive === true
+                        item.isActive !== false
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-red-100 text-red-800'
                       }`}>
