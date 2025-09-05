@@ -221,7 +221,12 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
             minWidth: '220px', 
             maxWidth: '220px' 
           }}
-          onClick={() => setLocation(item.href)}
+          onClick={(e) => {
+            console.log('Child clicked:', item.name, 'href:', item.href);
+            e.stopPropagation();
+            e.preventDefault(); 
+            setLocation(item.href);
+          }}
           data-testid={item.testId}
           type="button"
         >
@@ -367,7 +372,14 @@ export default function Sidebar() {
                       item={item}
                       isOpen={isOpen}
                       hasActiveChild={hasActiveChild}
-                      onToggle={() => isSystemsItem ? setIsSystemsOpen(!isSystemsOpen) : (isTimeItem ? setIsTimeManagementOpen(!isTimeManagementOpen) : null)}
+                      onToggle={() => {
+                        console.log('Toggle called for:', item.type, 'current state:', isOpen);
+                        if (isSystemsItem) {
+                          setIsSystemsOpen(!isSystemsOpen);
+                        } else if (isTimeItem) {
+                          setIsTimeManagementOpen(!isTimeManagementOpen);
+                        }
+                      }}
                       children={
                         isOpen && (
                           <div className="space-y-1">
