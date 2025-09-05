@@ -77,12 +77,7 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
     <div 
         ref={setNodeRef} 
         style={style} 
-        className={cn(
-          "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors sidebar-nav-item",
-          isActive
-            ? "bg-blue-100 dark:bg-blue-900/30"
-            : "text-muted-foreground hover:bg-muted/20"
-        )}
+        className="w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
         data-testid={item.testId}
         {...attributes}
         onClick={() => setLocation(item.href)}
@@ -94,14 +89,14 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
       <div 
         className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" 
         style={{ 
-          backgroundColor: isActive ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.1)', 
-          border: isActive ? '2px solid rgba(59, 130, 246, 0.6)' : '1px solid rgba(59, 130, 246, 0.2)', 
+          backgroundColor: isActive ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.1)', 
+          border: '1px solid rgba(59, 130, 246, 0.2)', 
           minWidth: '240px', 
           maxWidth: '240px' 
         }}
       >
-        <Icon className={cn("h-5 w-5 flex-shrink-0 mr-3", isActive ? "text-blue-700 dark:text-blue-300" : "text-muted-foreground")} />
-        <span className={cn("text-base font-medium flex-1", isActive ? "text-blue-800 dark:text-blue-200" : "text-muted-foreground")}>{item.name}</span>
+        <Icon className="h-5 w-5 flex-shrink-0 mr-3 text-muted-foreground" />
+        <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
         <div className="ml-2 w-6 h-6 opacity-0" />
       </div>
     </div>
@@ -130,12 +125,7 @@ function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild =
       <div 
         ref={setNodeRef} 
         style={style} 
-        className={cn(
-          "w-full p-2 rounded-md group flex items-center space-x-3 cursor-pointer transition-colors sidebar-nav-item",
-          hasActiveChild
-            ? "bg-blue-50 dark:bg-blue-900/20"
-            : "text-muted-foreground hover:bg-muted/20"
-        )}
+        className="w-full p-2 rounded-md group flex items-center space-x-3 cursor-pointer transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
         data-testid={item.testId}
         {...attributes}
       >
@@ -146,14 +136,14 @@ function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild =
         <div 
           className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" 
           style={{ 
-            backgroundColor: hasActiveChild ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)', 
-            border: hasActiveChild ? '2px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.2)', 
+            backgroundColor: hasActiveChild ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.1)', 
+            border: '1px solid rgba(59, 130, 246, 0.2)', 
             minWidth: '240px', 
             maxWidth: '240px' 
           }}
         >
-          <Icon className={cn("h-6 w-6 flex-shrink-0 mr-3", hasActiveChild ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} />
-          <span className={cn("text-base font-medium flex-1", hasActiveChild ? "text-blue-700 dark:text-blue-300" : "text-muted-foreground")}>{item.name}</span>
+          <Icon className="h-6 w-6 flex-shrink-0 mr-3 text-muted-foreground" />
+          <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
           <button 
             onClick={(e) => { e.stopPropagation(); onToggle(); }}
             className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center"
@@ -174,6 +164,7 @@ function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild =
 
 // Sortable Sub-Navigation Item Component (smaller)
 function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }) {
+  const [, setLocation] = useLocation();
   const {
     attributes,
     listeners,
@@ -193,15 +184,10 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
     <div 
       ref={setNodeRef} 
       style={style} 
-      className={cn(
-        "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors ml-4 sidebar-nav-item",
-        isActive
-          ? "bg-blue-50 dark:bg-blue-900/20"
-          : "text-muted-foreground hover:bg-muted/20"
-      )}
+      className="w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors ml-4 sidebar-nav-item text-muted-foreground hover:bg-muted/20"
       data-testid={item.testId}
       {...attributes}
-      onClick={() => {/* Navigation handled by Link wrapper */}}
+      onClick={() => setLocation(item.href)}
     >
       <GripVertical 
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
@@ -210,14 +196,14 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
       <div 
         className="flex items-center px-3 py-1 rounded-full nav-box transition-colors flex-1" 
         style={{ 
-          backgroundColor: isActive ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.08)', 
-          border: isActive ? '2px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(59, 130, 246, 0.15)', 
+          backgroundColor: isActive ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.08)', 
+          border: '1px solid rgba(59, 130, 246, 0.15)', 
           minWidth: '220px', 
           maxWidth: '220px' 
         }}
       >
-        <Icon className={cn("h-5 w-5 flex-shrink-0 mr-2", isActive ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} />
-        <span className={cn("text-sm font-medium flex-1", isActive ? "text-blue-700 dark:text-blue-300" : "text-muted-foreground")}>{item.name}</span>
+        <Icon className="h-5 w-5 flex-shrink-0 mr-2 text-muted-foreground" />
+        <span className="text-sm font-medium flex-1 text-muted-foreground">{item.name}</span>
         <div className="ml-2 w-6 h-6 opacity-0" />
       </div>
     </div>
