@@ -47,20 +47,8 @@ export function registerRoutes(app: Express): Server {
 
   // Organizations
   app.get("/api/organizations", async (req, res) => {
-    const requestStart = Date.now();
-    console.log(`[PERF] /api/organizations request started`);
-    
-    if (!req.isAuthenticated()) {
-      console.log(`[PERF] /api/organizations 401 unauthorized after ${Date.now() - requestStart}ms`);
-      return res.sendStatus(401);
-    }
-    
-    const authTime = Date.now() - requestStart;
-    console.log(`[PERF] /api/organizations auth check took ${authTime}ms`);
-    
+    if (!req.isAuthenticated()) return res.sendStatus(401);
     const organizations = await storage.getOrganizations(req.user!.id);
-    const totalTime = Date.now() - requestStart;
-    console.log(`[PERF] /api/organizations total request time: ${totalTime}ms`);
     res.json(organizations);
   });
 

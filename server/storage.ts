@@ -386,12 +386,9 @@ export class DatabaseStorage implements IStorage {
   private USER_CACHE_TTL = 60 * 1000; // 1 minute cache
 
   async getUser(id: string): Promise<User | undefined> {
-    const startTime = Date.now();
-    
     // Check cache first
     const cached = this.userCache.get(id);
     if (cached && (Date.now() - cached.timestamp) < this.USER_CACHE_TTL) {
-      console.log(`[PERF] getUser cache hit for ${id} in ${Date.now() - startTime}ms`);
       return cached.user;
     }
 
@@ -402,8 +399,6 @@ export class DatabaseStorage implements IStorage {
     // Cache the result
     this.userCache.set(id, { user: result, timestamp: Date.now() });
     
-    const duration = Date.now() - startTime;
-    console.log(`[PERF] getUser DB query for ${id} took ${duration}ms`);
     return result;
   }
 
@@ -500,12 +495,9 @@ export class DatabaseStorage implements IStorage {
   private TASK_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache for preloaded data
 
   async getOrganizations(userId: string): Promise<any[]> {
-    const startTime = Date.now();
-    
     // Check cache first
     const cached = this.orgCache.get(userId);
     if (cached && (Date.now() - cached.timestamp) < this.ORG_CACHE_TTL) {
-      console.log(`[PERF] getOrganizations cache hit for ${userId} in ${Date.now() - startTime}ms`);
       return cached.orgs;
     }
 
@@ -532,8 +524,6 @@ export class DatabaseStorage implements IStorage {
     // Cache the result
     this.orgCache.set(userId, { orgs: result, timestamp: Date.now() });
     
-    const duration = Date.now() - startTime;
-    console.log(`[PERF] getOrganizations took ${duration}ms for user ${userId}`);
     return result;
   }
 
@@ -787,13 +777,11 @@ export class DatabaseStorage implements IStorage {
 
   // Projects with caching
   async getProjects(userId: string, organizationId: string): Promise<Project[]> {
-    const startTime = Date.now();
     const cacheKey = `${userId}-${organizationId}`;
     
     // Check cache first
     const cached = this.projectCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp) < this.PROJECT_CACHE_TTL) {
-      console.log(`[PERF] getProjects cache hit for ${cacheKey} in ${Date.now() - startTime}ms`);
       return cached.projects;
     }
 
@@ -805,8 +793,6 @@ export class DatabaseStorage implements IStorage {
     // Cache the result
     this.projectCache.set(cacheKey, { projects: result, timestamp: Date.now() });
     
-    const duration = Date.now() - startTime;
-    console.log(`[PERF] getProjects took ${duration}ms for ${cacheKey}`);
     return result;
   }
 
