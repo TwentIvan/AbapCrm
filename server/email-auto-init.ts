@@ -19,13 +19,18 @@ export async function autoInitializeEmailServices() {
           if (activeConfig) {
             console.log(`[EMAIL-INIT] Restoring email service for user: ${activeConfig.email}`);
             
+            // Usa la prima cartella dall'array, o "INBOX" come default
+            const firstFolder = activeConfig.folders && activeConfig.folders.length > 0 
+              ? activeConfig.folders[0] 
+              : "INBOX";
+            
             const config = {
               user: activeConfig.email,
               password: activeConfig.password,
               host: activeConfig.host,
               port: activeConfig.port,
               tls: activeConfig.tls,
-              folder: activeConfig.folder
+              folder: firstFolder
             };
             
             try {

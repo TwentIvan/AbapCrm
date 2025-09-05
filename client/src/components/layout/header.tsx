@@ -21,6 +21,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useOrganization } from "@/hooks/use-organization";
 import { useTranslation, Language } from "@/lib/i18n";
+import AccountSettingsDialog from "@/components/account/account-settings-dialog";
 
 interface HeaderProps {
   title: string;
@@ -32,6 +33,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
   const { organizations, currentOrganization, switchOrganization } = useOrganization();
@@ -375,7 +377,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => console.log('Account Settings')}>
+                  <DropdownMenuItem 
+                    onClick={() => setShowAccountSettings(true)}
+                    data-testid="button-account-settings"
+                  >
                     <Settings className="mr-2 h-5 w-5" style={{ color: '#6b7280' }} />
                     Impostazioni Account
                   </DropdownMenuItem>
@@ -390,6 +395,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           )}
         </div>
       </div>
+      
+      {/* Account Settings Dialog */}
+      <AccountSettingsDialog 
+        open={showAccountSettings} 
+        onOpenChange={setShowAccountSettings}
+      />
     </header>
   );
 }

@@ -1786,13 +1786,18 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       // Create new active config
       const savedConfig = await storage.createEmailConfig(validatedData);
 
+      // Usa la prima cartella dall'array, o "INBOX" come default
+      const firstFolder = savedConfig.folders && savedConfig.folders.length > 0 
+        ? savedConfig.folders[0] 
+        : "INBOX";
+      
       const config = {
         user: savedConfig.email,
         password: savedConfig.password,
         host: savedConfig.host,
         port: savedConfig.port,
         tls: savedConfig.tls,
-        folder: savedConfig.folder
+        folder: firstFolder
       };
 
       // Disconnect existing service first
@@ -1827,7 +1832,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       config: activeConfig ? {
         id: activeConfig.id,
         email: activeConfig.email,
-        folder: activeConfig.folder,
+        folders: activeConfig.folders,
+        folder: activeConfig.folders && activeConfig.folders.length > 0 ? activeConfig.folders[0] : "INBOX",
         host: activeConfig.host,
         port: activeConfig.port
       } : null
@@ -1843,6 +1849,119 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
     
     res.json({ message: "Email service disconnected" });
+  });
+
+  // Get all email configurations for user
+  app.get("/api/email/configs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const configs = await storage.getEmailConfigs(req.user!.id);
+      res.json(configs);
+    } catch (error) {
+      console.error("Get email configs error:", error);
+      res.status(500).json({ error: "Failed to get email configurations" });
+    }
+  });
+
+  // Create new email configuration
+  app.post("/api/email/configs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const validatedData = insertEmailConfigSchema.parse({
+        ...req.body,
+        userId: req.user!.id
+      });
+      
+      const newConfig = await storage.createEmailConfig(validatedData);
+      res.json(newConfig);
+    } catch (error) {
+      console.error("Create email config error:", error);
+      res.status(500).json({ error: "Failed to create email configuration" });
+    }
+  });
+
+  // Update email configuration
+  app.put("/api/email/configs/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { id } = req.params;
+      const validatedData = insertEmailConfigSchema.partial().parse(req.body);
+      
+      const updatedConfig = await storage.updateEmailConfig(id, validatedData, req.user!.id);
+      if (!updatedConfig) {
+        return res.status(404).json({ error: "Email configuration not found" });
+      }
+      
+      res.json(updatedConfig);
+    } catch (error) {
+      console.error("Update email config error:", error);
+      res.status(500).json({ error: "Failed to update email configuration" });
+    }
+  });
+
+  // Delete email configuration
+  app.delete("/api/email/configs/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteEmailConfig(id, req.user!.id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Email configuration not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete email config error:", error);
+      res.status(500).json({ error: "Failed to delete email configuration" });
+    }
+  });
+
+  // Set active email configuration
+  app.post("/api/email/configs/:id/activate", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { id } = req.params;
+      
+      // Deactivate all configs for this user
+      await storage.deactivateAllEmailConfigs(req.user!.id);
+      
+      // Activate the selected config
+      const config = await storage.getEmailConfig(id, req.user!.id);
+      if (!config) {
+        return res.status(404).json({ error: "Email configuration not found" });
+      }
+      
+      const updatedConfig = await storage.updateEmailConfig(id, { isActive: true }, req.user!.id);
+      
+      // Restart email service with new config
+      const existingService = getEmailService();
+      if (existingService) {
+        existingService.disconnect();
+      }
+      
+      if (updatedConfig) {
+        const firstFolder = updatedConfig.folders && updatedConfig.folders.length > 0 
+          ? updatedConfig.folders[0] 
+          : "INBOX";
+        
+        const imapConfig = {
+          user: updatedConfig.email,
+          password: updatedConfig.password,
+          host: updatedConfig.host,
+          port: updatedConfig.port,
+          tls: updatedConfig.tls,
+          folder: firstFolder
+        };
+        
+        initializeEmailService(imapConfig);
+      }
+      
+      res.json(updatedConfig);
+    } catch (error) {
+      console.error("Activate email config error:", error);
+      res.status(500).json({ error: "Failed to activate email configuration" });
+    }
   });
 
   // Email sync endpoint for manual refresh
