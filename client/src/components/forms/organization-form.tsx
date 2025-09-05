@@ -209,12 +209,12 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
         {/* Partner - Se non è Personal può avere partner associato */}
         <div>
           <Label htmlFor="partnerId">Partner Associato</Label>
-          <Select value={formData.partnerId || ""} onValueChange={(value) => handleChange("partnerId", value || null)}>
+          <Select value={formData.partnerId || "none"} onValueChange={(value) => handleChange("partnerId", value === "none" ? null : value)}>
             <SelectTrigger data-testid="select-organization-partner">
               <SelectValue placeholder="Seleziona partner (opzionale)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">
+              <SelectItem value="none">
                 <span className="text-muted-foreground">Nessun partner</span>
               </SelectItem>
               {partners.map((partner: any) => (
