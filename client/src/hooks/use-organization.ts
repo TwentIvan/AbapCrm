@@ -15,15 +15,22 @@ export function useOrganization() {
   const [currentOrganizationId, setCurrentOrganizationId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch user's organizations with aggressive caching
-  // Note: This query should NOT have enabled condition as it's needed to SET the organization context
-  const { data: organizations = [], isLoading } = useQuery<Organization[]>({
+  // Fetch user's organizations - NO CACHE to ensure login state changes are detected
+  const { data: organizations = [], isLoading, error } = useQuery<Organization[]>({
     queryKey: ["/api/organizations"],
     queryFn: getQueryFn({ on401: "returnNull" }),
-    staleTime: 30 * 60 * 1000, // 30 minutes
-    refetchOnMount: false, // Don't refetch if data exists
-    refetchOnWindowFocus: false,
-    retry: false,
+    staleTime: 0, // No cache - always fresh
+    refetchOnMount: true, // Always refetch 
+    refetchOnWindowFocus: true, // Refetch on focus to catch session changes
+    retry: 1,
+  });
+
+  // Debug logging
+  console.log('🔍 Organization query status:', { 
+    organizations, 
+    isLoading, 
+    error: error?.message,
+    length: organizations?.length 
   });
 
   // Get current organization details
@@ -51,11 +58,18 @@ export function useOrganization() {
     queryClient.invalidateQueries();
   };
 
+  // Force reload organizations when user logs in
+  const reloadOrganizations = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+  };
+
   return {
     organizations,
     currentOrganization,
     currentOrganizationId,
     switchOrganization,
-    isLoading
+    reloadOrganizations,
+    isLoading,
+    error
   };
 }
