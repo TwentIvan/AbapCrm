@@ -204,7 +204,7 @@ export default function AccountSettingsDialog({ open, onOpenChange }: AccountSet
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Impostazioni Account</DialogTitle>
           <DialogDescription>

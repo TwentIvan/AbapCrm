@@ -168,7 +168,7 @@ export function useFormRouting(basePath: string, entityId?: string) {
     isCreate: location === routes.create,
     isEdit: entityId ? location === routes.edit(entityId) : false,
     isList: location === routes.list,
-    isFullPage: location.startsWith(`${basePath}/`),
+    isFullPage: location === routes.create || (entityId && location === routes.edit(entityId)),
   };
   
   return {

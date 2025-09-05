@@ -45,9 +45,9 @@ export default function ProjectFormContainer({
   const project = currentRoute.isFullPage ? fullPageProject : editingProject;
   const isEditing = !!project;
   
-  // Type safety check
-  if (currentRoute.isEdit && !project) {
-    return null; // Still loading project data
+  // Type safety check - show loading instead of null
+  if (currentRoute.isEdit && !project && currentRoute.isFullPage) {
+    return <div className="p-8 text-center">Caricamento progetto...</div>;
   }
   
   // Handle success callback
@@ -69,7 +69,8 @@ export default function ProjectFormContainer({
     }
   };
   
-  // Don't render in full page mode if we're in dialog-only routes
+  // Only return null if we're in full page mode but not on a valid route
+  // In dialog mode, we always render regardless of route
   if (currentRoute.isFullPage && !currentRoute.isCreate && !currentRoute.isEdit) {
     return null;
   }
