@@ -120,6 +120,12 @@ function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild =
 
   const Icon = item.icon;
 
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onToggle();
+  };
+
   return (
     <div className="space-y-1">
       <div 
@@ -128,11 +134,15 @@ function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild =
         className="w-full p-2 rounded-md group flex items-center space-x-3 transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
         data-testid={item.testId}
         {...attributes}
+        onClick={(e) => e.stopPropagation()}
       >
-        <GripVertical 
-          className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
-          {...listeners} 
-        />
+        <div
+          className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0 flex items-center justify-center"
+          {...listeners}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="h-4 w-4" />
+        </div>
         <div 
           className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" 
           style={{ 
@@ -145,11 +155,8 @@ function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild =
           <Icon className="h-6 w-6 flex-shrink-0 mr-3 text-muted-foreground" />
           <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
           <button 
-            onClick={(e) => { 
-              e.stopPropagation();
-              e.preventDefault();
-              onToggle(); 
-            }}
+            onClick={handleToggle}
+            onMouseDown={(e) => e.stopPropagation()}
             className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center"
             style={{ borderColor: 'rgba(59, 130, 246, 0.9)', color: 'rgba(59, 130, 246, 0.9)' }}
           >
@@ -175,7 +182,10 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
     setNodeRef,
     transform,
     transition,
-  } = useSortable({ id: item.id });
+  } = useSortable({ 
+    id: item.id,
+    disabled: false
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -184,6 +194,12 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
 
   const Icon = item.icon;
 
+  const handleNavClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setLocation(item.href);
+  };
+
   return (
     <div 
       ref={setNodeRef} 
@@ -191,11 +207,15 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
       className="w-full p-2 rounded-md group flex items-center space-x-4 transition-colors ml-4 sidebar-nav-item text-muted-foreground hover:bg-muted/20"
       data-testid={item.testId}
       {...attributes}
+      onClick={(e) => e.stopPropagation()}
     >
-      <GripVertical 
-        className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
-        {...listeners} 
-      />
+      <div
+        className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0 flex items-center justify-center"
+        {...listeners}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
       <div 
         className="flex items-center px-3 py-1 rounded-full nav-box transition-colors flex-1 cursor-pointer" 
         style={{ 
@@ -204,11 +224,8 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
           minWidth: '220px', 
           maxWidth: '220px' 
         }}
-        onClick={(e) => {
-          e.stopPropagation(); // Evita che si chiuda il padre
-          e.preventDefault(); // Previene comportamenti default
-          setLocation(item.href);
-        }}
+        onClick={handleNavClick}
+        onMouseDown={(e) => e.stopPropagation()}
       >
         <Icon className="h-5 w-5 flex-shrink-0 mr-2 text-muted-foreground" />
         <span className="text-sm font-medium flex-1 text-muted-foreground">{item.name}</span>
