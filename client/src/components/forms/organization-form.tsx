@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, getQueryFn } from "@/lib/queryClient";
+import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
 import { Building } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "@/hooks/use-organization";
@@ -84,6 +84,9 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
           description: "Organizzazione creata con successo",
         });
       }
+
+      // Invalida la cache per far apparire subito la nuova organizzazione
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
       onSuccess();
     } catch (error) {
       toast({
