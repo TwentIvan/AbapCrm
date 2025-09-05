@@ -102,8 +102,14 @@ export function setupAuth(app: Express) {
 
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: string, done) => {
+    const startTime = Date.now();
+    console.log(`[PERF] deserializeUser started for user ${id}`);
+    
     try {
       const user = await storage.getUser(id);
+      const authTime = Date.now() - startTime;
+      console.log(`[PERF] deserializeUser completed in ${authTime}ms for user ${id}`);
+      
       if (!user) {
         // User doesn't exist anymore - clear session
         return done(null, false);
