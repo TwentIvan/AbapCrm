@@ -37,8 +37,8 @@ export default function OrganizationsPage() {
   const { data: items = [], isLoading, isError } = useQuery<OrganizationWithDetails[]>({
     queryKey: ["/api/organizations"],
     queryFn: getQueryFn({ on401: "throw" }),
-    staleTime: 30 * 60 * 1000, // 30 minutes
-    refetchOnMount: false, // Don't refetch if data exists
+    staleTime: 0, // No cache - always fresh to see new organizations immediately
+    refetchOnMount: true, // Always refetch to catch changes
     refetchOnWindowFocus: false,
   });
 
