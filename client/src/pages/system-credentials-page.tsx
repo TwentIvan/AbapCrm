@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -18,11 +19,18 @@ import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Plus, Edit, Trash2, Key, Grid3X3, List, MoreHorizontal } from "lucide-react";
 import { SystemCredentials } from "@shared/schema";
 import { SystemCredentialsForm } from "@/components/forms/system-credentials-form";
+import SystemCredentialsFormContainer from "@/components/forms/system-credentials-form-container";
 
 export function SystemCredentialsPage() {
+  const [location] = useLocation();
   const [selectedCredentials, setSelectedCredentials] = useState<SystemCredentials[]>([]);
   const [editingCredential, setEditingCredential] = useState<SystemCredentials | null>(null);
   const [showForm, setShowForm] = useState(false);
+  
+  // Route detection for full-page mode
+  const isFullPageMode = location.startsWith("/system-credentials/");
+  const isCreateMode = location === "/system-credentials/new";
+  const isEditMode = location.includes("/edit");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
@@ -43,7 +51,6 @@ export function SystemCredentialsPage() {
     deleteLayout,
     updateExistingLayout,
   } = useTableLayout('system-credentials');
-  const viewMode = layout.viewMode;
 
   const { data: credentials = [], isLoading } = useQuery<SystemCredentials[]>({
     queryKey: ["/api/system-credentials"],
@@ -112,6 +119,20 @@ export function SystemCredentialsPage() {
       deleteMutation.mutate(editingCredential.id);
     }
   };
+  
+  // Handle full-page mode: when user navigates directly to /system-credentials/new or /system-credentials/:id/edit
+  if (isFullPageMode) {
+    return (
+      <SystemCredentialsFormContainer
+        open={false} // Not used in full-page mode
+        onOpenChange={() => {}} // Not used in full-page mode
+        editingCredential={editingCredential}
+        onSuccess={() => {
+          setEditingCredential(null);
+        }}
+      />
+    );
+  }
 
   const confirmBulkDelete = () => {
     bulkDeleteMutation.mutate(selectedCredentials);
@@ -233,18 +254,18 @@ export function SystemCredentialsPage() {
             {/* View Toggle */}
             <div className="flex bg-muted rounded-lg p-1">
               <Button
-                variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                variant='default'
                 size="sm"
-                onClick={() => updateLayout({ viewMode: 'cards' })}
+                onClick={() => updateLayout({})}
                 data-testid="button-view-cards"
               >
                 <Grid3X3 className="mr-2 h-4 w-4" />
                 Cards
               </Button>
               <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                variant='ghost'
                 size="sm"
-                onClick={() => updateLayout({ viewMode: 'list' })}
+                onClick={() => updateLayout({})}
                 data-testid="button-view-list"
               >
                 <List className="mr-2 h-4 w-4" />
@@ -257,7 +278,6 @@ export function SystemCredentialsPage() {
             data={credentials}
             columns={columns}
             enableSelection={true}
-            enableSearch={true}
             searchPlaceholder="Cerca credenziali..."
             onSelectionChange={(rows) => setSelectedCredentials(rows as SystemCredentials[])}
             onRowClick={handleEdit}
@@ -272,31 +292,21 @@ export function SystemCredentialsPage() {
           />
         </div>
 
-        {/* Create/Edit Dialog */}
-        <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingCredential ? "Modifica Credenziali" : "Nuove Credenziali"}
-              </DialogTitle>
-              <DialogDescription>
-                {editingCredential ? "Aggiorna" : "Aggiungi"} le credenziali di sistema
-              </DialogDescription>
-            </DialogHeader>
-            <SystemCredentialsForm
-              credential={editingCredential}
-              onSuccess={() => {
-                setShowForm(false);
-                setEditingCredential(null);
-                queryClient.invalidateQueries({ queryKey: ["/api/system-credentials"] });
-              }}
-              onCancel={() => {
-                setShowForm(false);
-                setEditingCredential(null);
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        {/* Form Container - supports both dialog and full-page modes */}
+        <SystemCredentialsFormContainer
+          open={showForm}
+          onOpenChange={(open) => {
+            setShowForm(open);
+            if (!open) {
+              setEditingCredential(null);
+            }
+          }}
+          editingCredential={editingCredential}
+          onSuccess={() => {
+            setShowForm(false);
+            setEditingCredential(null);
+          }}
+        />
 
         {/* Single Delete Confirmation Dialog */}
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

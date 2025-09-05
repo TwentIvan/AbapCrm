@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -20,6 +21,7 @@ import { Server, Building, MoreHorizontal, Grid3X3, List, Edit, Trash2, Key, Wif
 import { SapSystem } from "@shared/schema";
 import SapSystemForm from "../components/forms/sap-system-form";
 import SapLandscapeImport from "../components/forms/sap-landscape-import";
+import SapSystemFormContainer from "../components/forms/sap-system-form-container";
 
 const landscapeColors = {
   development: "bg-blue-100 text-blue-800",
@@ -34,11 +36,17 @@ const landscapeLabels = {
 };
 
 export default function SapSystemsPage() {
+  const [location] = useLocation();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [selectedSystem, setSelectedSystem] = useState<SapSystem | null>(null);
+  
+  // Route detection for full-page mode
+  const isFullPageMode = location.startsWith("/sap-systems/");
+  const isCreateMode = location === "/sap-systems/new";
+  const isEditMode = location.includes("/edit");
   const [selectedSystems, setSelectedSystems] = useState<SapSystem[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
@@ -148,6 +156,20 @@ export default function SapSystemsPage() {
     setShowEditDialog(false);
     setSelectedSystem(null);
   };
+  
+  // Handle full-page mode: when user navigates directly to /sap-systems/new or /sap-systems/:id/edit
+  if (isFullPageMode) {
+    return (
+      <SapSystemFormContainer
+        open={false} // Not used in full-page mode
+        onOpenChange={() => {}} // Not used in full-page mode
+        editingSystem={selectedSystem}
+        onSuccess={() => {
+          setSelectedSystem(null);
+        }}
+      />
+    );
+  }
 
   // SISTEMA UNIVERSALE: Configurazione colonne standardizzata
   const columns = [
@@ -351,26 +373,23 @@ export default function SapSystemsPage() {
         </main>
       </div>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={showCreateDialog || showEditDialog} onOpenChange={() => handleFormClose()}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {showEditDialog ? "Edit SAP System" : "Add New SAP System"}
-            </DialogTitle>
-            <DialogDescription>
-              {showEditDialog 
-                ? "Update the SAP system configuration and connection details."
-                : "Create a new SAP system configuration for your environment."
-              }
-            </DialogDescription>
-          </DialogHeader>
-          <SapSystemForm
-            system={selectedSystem}
-            onSuccess={handleFormClose}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Form Container - supports both dialog and full-page modes */}
+      <SapSystemFormContainer
+        open={showCreateDialog || showEditDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowCreateDialog(false);
+            setShowEditDialog(false);
+            setSelectedSystem(null);
+          }
+        }}
+        editingSystem={selectedSystem}
+        onSuccess={() => {
+          setShowCreateDialog(false);
+          setShowEditDialog(false);
+          setSelectedSystem(null);
+        }}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

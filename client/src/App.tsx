@@ -53,8 +53,14 @@ function Router() {
       <ProtectedRoute path="/human-resources" component={HumanResourcesPage} />
       <ProtectedRoute path="/sales-orders" component={SalesOrdersPage} />
       <ProtectedRoute path="/sap-systems" component={SapSystemsPage} />
+      <ProtectedRoute path="/sap-systems/new" component={SapSystemsPage} />
+      <ProtectedRoute path="/sap-systems/:id/edit" component={SapSystemsPage} />
       <ProtectedRoute path="/vpn-connections" component={VPNConnectionsPage} />
+      <ProtectedRoute path="/vpn-connections/new" component={VPNConnectionsPage} />
+      <ProtectedRoute path="/vpn-connections/:id/edit" component={VPNConnectionsPage} />
       <ProtectedRoute path="/system-credentials" component={SystemCredentialsPage} />
+      <ProtectedRoute path="/system-credentials/new" component={SystemCredentialsPage} />
+      <ProtectedRoute path="/system-credentials/:id/edit" component={SystemCredentialsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/login" component={AuthPage} />
       <Route component={NotFound} />

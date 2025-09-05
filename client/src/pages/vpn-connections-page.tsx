@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
@@ -13,12 +14,19 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { VpnConnection, Partner } from "@shared/schema";
 import SimpleVPNForm from "@/components/forms/simple-vpn-form";
+import VpnConnectionFormContainer from "@/components/forms/vpn-connection-form-container";
 import { Trash2, Settings, CheckCircle, XCircle, Play, Loader2 } from "lucide-react";
 
 export default function VPNConnectionsPage() {
+  const [location] = useLocation();
   const [selectedConnections, setSelectedConnections] = useState<VpnConnection[]>([]);
   const [editingConnection, setEditingConnection] = useState<VpnConnection | null>(null);
   const [showForm, setShowForm] = useState(false);
+  
+  // Route detection for full-page mode
+  const isFullPageMode = location.startsWith("/vpn-connections/");
+  const isCreateMode = location === "/vpn-connections/new";
+  const isEditMode = location.includes("/edit");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [testingConnection, setTestingConnection] = useState<string | null>(null);
@@ -29,7 +37,6 @@ export default function VPNConnectionsPage() {
     layout, currentLayoutName, savedLayouts, updateLayout, 
     saveLayoutAs, loadLayout, renameLayout, deleteLayout
   } = useTableLayout('vpn-connections');
-  const viewMode = layout.viewMode;
 
   // Fetch VPN connections
   const { data: vpnConnections = [], isLoading } = useQuery<VpnConnection[]>({
@@ -141,6 +148,20 @@ export default function VPNConnectionsPage() {
   const confirmBulkDelete = () => {
     bulkDeleteMutation.mutate(selectedConnections);
   };
+  
+  // Handle full-page mode: when user navigates directly to /vpn-connections/new or /vpn-connections/:id/edit
+  if (isFullPageMode) {
+    return (
+      <VpnConnectionFormContainer
+        open={false} // Not used in full-page mode
+        onOpenChange={() => {}} // Not used in full-page mode
+        editingConnection={editingConnection}
+        onSuccess={() => {
+          setEditingConnection(null);
+        }}
+      />
+    );
+  }
 
   // Table columns
   const columns = [
@@ -274,7 +295,6 @@ export default function VPNConnectionsPage() {
             data={vpnConnections}
             columns={columns}
             enableSelection={true}
-            enableSearch={true}
             searchPlaceholder="Cerca connessioni VPN..."
             onSelectionChange={(rows) => setSelectedConnections(rows as VpnConnection[])}
             onRowClick={handleEdit}
@@ -288,46 +308,23 @@ export default function VPNConnectionsPage() {
             ]}
           />
 
-          {/* Create/Edit Dialog */}
-          <Dialog open={showForm} onOpenChange={(open) => {
-            console.log("🔍 Dialog onOpenChange called with:", open);
-            setShowForm(open);
-          }}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingConnection ? "Modifica Connessione VPN" : "Nuova Connessione VPN"}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingConnection ? "Aggiorna" : "Aggiungi"} connessione VPN per accesso remoto
-                </DialogDescription>
-              </DialogHeader>
-              {showForm && !editingConnection && (
-                <SimpleVPNForm
-                  partners={partners?.map(p => ({ id: p.id, name: p.name || 'N/A', company: p.company || 'N/A' })) || []}
-                  onSuccess={() => {
-                    console.log("🔍 Simple VPN form success callback");
-                    setShowForm(false);
-                    setEditingConnection(null);
-                    queryClient.invalidateQueries({ queryKey: ["/api/vpn-connections"] });
-                  }}
-                  onCancel={() => {
-                    console.log("🔍 Simple VPN form cancel callback");
-                    setShowForm(false);
-                    setEditingConnection(null);
-                  }}
-                />
-              )}
-              {showForm && editingConnection && (
-                <div className="p-4 text-center">
-                  <p className="text-muted-foreground">
-                    La modifica di connessioni VPN esistenti non è ancora supportata.<br/>
-                    Elimina la connessione e ricreala se necessario.
-                  </p>
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
+          {/* Form Container - supports both dialog and full-page modes */}
+          <VpnConnectionFormContainer
+            open={showForm}
+            onOpenChange={(open) => {
+              console.log("🔍 VPN Form container onOpenChange called with:", open);
+              setShowForm(open);
+              if (!open) {
+                setEditingConnection(null);
+              }
+            }}
+            editingConnection={editingConnection}
+            onSuccess={() => {
+              console.log("🔍 VPN Form container success callback");
+              setShowForm(false);
+              setEditingConnection(null);
+            }}
+          />
 
           {/* Single Delete Dialog */}
           <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
