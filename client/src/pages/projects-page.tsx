@@ -18,11 +18,12 @@ import { UniversalTable, createStandardColumns } from "@/components/ui/universal
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { LayoutControlBox } from "@/components/ui/layout-control-box";
 import { TableConfiguration } from "@/components/ui/table-configuration";
-import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2, History } from "lucide-react";
+import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2, History, MessageSquare } from "lucide-react";
 import { Project, Partner } from "@shared/schema";
 import ProjectForm from "@/components/forms/project-form";
 import ProjectPlanner from "@/components/planning/project-planner";
 import AuditHistory from "@/components/ui/audit-history";
+import { MessageHistory } from "@/components/ui/message-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const statusColors = {
@@ -322,10 +323,14 @@ export default function ProjectsPage() {
           
           {editingProject ? (
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="details" className="flex items-center space-x-2">
                   <Code className="h-4 w-4" />
                   <span>Dettagli</span>
+                </TabsTrigger>
+                <TabsTrigger value="messages" className="flex items-center space-x-2">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Messaggi</span>
                 </TabsTrigger>
                 <TabsTrigger value="history" className="flex items-center space-x-2">
                   <History className="h-4 w-4" />
@@ -341,6 +346,14 @@ export default function ProjectsPage() {
                     setEditingProject(null);
                     queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
                   }}
+                />
+              </TabsContent>
+              
+              <TabsContent value="messages" className="mt-6">
+                <MessageHistory 
+                  tableName="projects" 
+                  recordId={editingProject.id}
+                  title="Storico Messaggi Progetto"
                 />
               </TabsContent>
               

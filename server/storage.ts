@@ -1,5 +1,5 @@
 import { 
-  users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, emailConfigs,
+  users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, messageLinks, emailConfigs,
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
@@ -17,6 +17,7 @@ import {
   type TimeEntry, type InsertTimeEntry,
   type Message, type InsertMessage,
   type Comment, type InsertComment,
+  type MessageLink, type InsertMessageLink,
   type EmailConfig, type InsertEmailConfig,
   type TimeNormalizationConfig, type InsertTimeNormalizationConfig,
   type SalesOrder, type InsertSalesOrder,
@@ -308,6 +309,13 @@ export interface IStorage {
   getEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined>;
   verifyEmailToken(token: string): Promise<boolean>;
   deleteExpiredEmailTokens(): Promise<boolean>;
+
+  // Message Links
+  getLinkedMessages(tableName: string, recordId: string, organizationId: string): Promise<MessageLink[]>;
+  getMessageLinks(messageId: string): Promise<MessageLink[]>;
+  createMessageLink(link: InsertMessageLink): Promise<MessageLink>;
+  updateMessageLink(id: string, updates: Partial<InsertMessageLink>, userId: string): Promise<MessageLink | undefined>;
+  deleteMessageLink(id: string, userId: string): Promise<boolean>;
 
   sessionStore: session.Store;
 }
@@ -2736,6 +2744,81 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(emailVerificationTokens)
       .where(sql`${emailVerificationTokens.expiresAt} < NOW()`);
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Message Links implementation
+  async getLinkedMessages(tableName: string, recordId: string, organizationId: string): Promise<MessageLink[]> {
+    return await db.query.messageLinks.findMany({
+      where: and(
+        eq(messageLinks.linkedTableName, tableName),
+        eq(messageLinks.linkedRecordId, recordId),
+        eq(messageLinks.organizationId, organizationId)
+      ),
+      with: {
+        message: {
+          with: {
+            user: {
+              columns: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              }
+            }
+          }
+        },
+        user: {
+          columns: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          }
+        }
+      },
+      orderBy: desc(messageLinks.createdAt),
+    });
+  }
+
+  async getMessageLinks(messageId: string): Promise<MessageLink[]> {
+    return await db.query.messageLinks.findMany({
+      where: eq(messageLinks.messageId, messageId),
+      with: {
+        user: {
+          columns: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          }
+        }
+      },
+      orderBy: desc(messageLinks.createdAt),
+    });
+  }
+
+  async createMessageLink(link: InsertMessageLink): Promise<MessageLink> {
+    const [newLink] = await db
+      .insert(messageLinks)
+      .values(link)
+      .returning();
+    return newLink;
+  }
+
+  async updateMessageLink(id: string, updates: Partial<InsertMessageLink>, userId: string): Promise<MessageLink | undefined> {
+    const [updated] = await db
+      .update(messageLinks)
+      .set(updates)
+      .where(eq(messageLinks.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteMessageLink(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(messageLinks)
+      .where(eq(messageLinks.id, id));
     return (result.rowCount || 0) > 0;
   }
 }

@@ -1,6 +1,9 @@
 import OpenAI from "openai";
 import { storage } from "./storage";
+import { MessageLogService } from "./message-log-service";
 import type { Project, Task, Partner, Message } from "@shared/schema";
+
+const messageLogService = new MessageLogService();
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -19,13 +22,18 @@ interface AnalysisResult {
 }
 
 export class AIService {
-  async analyzeMessage(message: Message, userId: string): Promise<AnalysisResult> {
+  async analyzeMessage(message: Message, userId: string, organizationId?: string): Promise<AnalysisResult> {
     try {
+      // Skip AI analysis if no organization context
+      if (!organizationId) {
+        return { suggestions: [] };
+      }
+
       // Fetch user's data for context
       const [projects, tasks, partners] = await Promise.all([
-        storage.getProjects(userId),
-        storage.getTasks(userId),
-        storage.getPartners(userId)
+        storage.getProjects(userId, organizationId),
+        storage.getTasks(userId, organizationId),
+        storage.getPartners(userId, organizationId)
       ]);
 
       // Prepare context for AI
@@ -139,14 +147,15 @@ export class AIService {
     }
   }
 
-  async updateMessageWithSuggestion(messageId: string, suggestion: AISuggestion, userId: string): Promise<void> {
+  async updateMessageWithSuggestion(messageId: string, suggestion: AISuggestion, userId: string, organizationId?: string): Promise<void> {
     try {
+      // Update the message with confidence score and reason
       const updateData: any = {
         confidenceScore: suggestion.confidence,
         matchingReason: suggestion.reason
       };
 
-      // Set the appropriate association
+      // Set the appropriate association (keep existing behavior for backward compatibility)
       switch (suggestion.type) {
         case 'project':
           updateData.projectId = suggestion.id;
@@ -160,6 +169,31 @@ export class AIService {
       }
 
       await storage.updateMessage(messageId, updateData, userId);
+
+      // Create automatic message link if organization ID is available
+      if (organizationId && suggestion.confidence >= 0.7) {
+        try {
+          const tableName = suggestion.type === 'partner' ? 'partners' : 
+                           suggestion.type === 'project' ? 'projects' : 'tasks';
+          
+          await MessageLogService.linkMessage(
+            messageId,
+            tableName,
+            suggestion.id,
+            { userId, organizationId },
+            {
+              notes: `Auto-linked by AI with ${(suggestion.confidence * 100).toFixed(1)}% confidence: ${suggestion.reason}`,
+              isAutomatic: true,
+              linkType: "discussion"
+            }
+          );
+
+          console.log(`[AI] Auto-created message link: ${messageId} -> ${tableName}/${suggestion.id} (confidence: ${suggestion.confidence})`);
+        } catch (linkError) {
+          console.error("Error creating automatic message link:", linkError);
+          // Don't throw - the message update should still succeed even if linking fails
+        }
+      }
     } catch (error) {
       console.error("Error updating message with suggestion:", error);
     }

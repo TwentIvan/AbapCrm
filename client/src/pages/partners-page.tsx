@@ -18,11 +18,12 @@ import { LayoutManager } from "@/components/ui/layout-manager";
 import { LayoutControlBox } from "@/components/ui/layout-control-box";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import ImageContainer from "@/components/ui/image-container";
-import { Building, Mail, Phone, MapPin, MoreHorizontal, Grid3X3, List, Edit, Trash2, History } from "lucide-react";
+import { Building, Mail, Phone, MapPin, MoreHorizontal, Grid3X3, List, Edit, Trash2, History, MessageSquare } from "lucide-react";
 import { Partner } from "@shared/schema";
 import AdvancedPartnerForm from "@/components/forms/advanced-partner-form";
 import SimplePartnerForm from "@/components/forms/simple-partner-form";
 import AuditHistory from "@/components/ui/audit-history";
+import { MessageHistory } from "@/components/ui/message-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const typeColors = {
@@ -336,10 +337,14 @@ export default function PartnersPage() {
           
           {selectedPartner && (
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="details" className="flex items-center space-x-2">
                   <Edit className="h-4 w-4" />
                   <span>Dettagli</span>
+                </TabsTrigger>
+                <TabsTrigger value="messages" className="flex items-center space-x-2">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Messaggi</span>
                 </TabsTrigger>
                 <TabsTrigger value="history" className="flex items-center space-x-2">
                   <History className="h-4 w-4" />
@@ -354,6 +359,14 @@ export default function PartnersPage() {
                     setShowEditDialog(false);
                     setSelectedPartner(null);
                   }} 
+                />
+              </TabsContent>
+              
+              <TabsContent value="messages" className="mt-6">
+                <MessageHistory 
+                  tableName="partners" 
+                  recordId={selectedPartner.id}
+                  title="Storico Messaggi Partner"
                 />
               </TabsContent>
               

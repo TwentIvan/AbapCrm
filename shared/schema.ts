@@ -251,6 +251,22 @@ export const comments = pgTable("comments", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Message Links - Sistema per collegare messaggi a qualsiasi entità del CRM
+export const messageLinkTypeEnum = pgEnum("message_link_type", ["discussion", "attachment", "reference", "notification"]);
+
+export const messageLinks = pgTable("message_links", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  messageId: uuid("message_id").references(() => messages.id).notNull(),
+  linkedTableName: text("linked_table_name").notNull(), // "projects", "tasks", "partners", "deals", etc.
+  linkedRecordId: text("linked_record_id").notNull(), // UUID del record collegato
+  linkType: messageLinkTypeEnum("link_type").default("discussion").notNull(),
+  isAutomatic: boolean("is_automatic").default(false).notNull(), // Se collegato automaticamente dall'AI
+  userId: uuid("user_id").references(() => users.id).notNull(), // Chi ha creato il collegamento
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  notes: text("notes"), // Note aggiuntive sul collegamento
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Configurazioni email IMAP salvate per ogni utente
 export const emailConfigs = pgTable("email_configs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -867,6 +883,7 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
   task: one(tasks, { fields: [messages.taskId], references: [tasks.id] }),
   partner: one(partners, { fields: [messages.partnerId], references: [partners.id] }),
   comments: many(comments),
+  messageLinks: many(messageLinks),
 }));
 
 export const commentsRelations = relations(comments, ({ one }) => ({
@@ -1065,6 +1082,12 @@ export const insertCommentSchema = createInsertSchema(comments).omit({
   updatedAt: true,
 });
 
+export const insertMessageLinkSchema = createInsertSchema(messageLinks).omit({
+  id: true,
+  createdAt: true,
+  organizationId: true, // Auto-filled from user session
+});
+
 export const insertEmailConfigSchema = createInsertSchema(emailConfigs).omit({
   id: true,
   createdAt: true,
@@ -1136,6 +1159,8 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
+export type MessageLink = typeof messageLinks.$inferSelect;
+export type InsertMessageLink = z.infer<typeof insertMessageLinkSchema>;
 export type EmailConfig = typeof emailConfigs.$inferSelect;
 export type InsertEmailConfig = z.infer<typeof insertEmailConfigSchema>;
 export type TimeNormalizationConfig = typeof timeNormalizationConfigs.$inferSelect;
@@ -1364,6 +1389,22 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   }),
 }));
 
+// Relations for message links
+export const messageLinksRelations = relations(messageLinks, ({ one }) => ({
+  message: one(messages, {
+    fields: [messageLinks.messageId],
+    references: [messages.id],
+  }),
+  user: one(users, {
+    fields: [messageLinks.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [messageLinks.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
 export const organizationsRelations = relations(organizations, ({ one, many }) => ({
   partner: one(partners, { fields: [organizations.partnerId], references: [partners.id] }),
   userOrganizations: many(userOrganizations),
@@ -1373,6 +1414,7 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
   deals: many(deals),
   calendarEvents: many(calendarEvents),
   messages: many(messages),
+  messageLinks: many(messageLinks),
   salesOrders: many(salesOrders),
   sapSystems: many(sapSystems),
   vpnConnections: many(vpnConnections),

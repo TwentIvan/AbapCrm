@@ -10,7 +10,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { 
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, 
   insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema,
-  insertMessageSchema, insertCommentSchema, insertEmailConfigSchema, insertTimesheetSchema,
+  insertMessageSchema, insertCommentSchema, insertMessageLinkSchema, insertEmailConfigSchema, insertTimesheetSchema,
   insertSalesOrderSchema, insertSalesOrderItemSchema, insertRateAgreementSchema,
   insertHumanResourceSchema, insertSapSystemSchema, insertSapSystemCredentialsSchema,
   insertVpnConnectionSchema, insertVpnCredentialsSchema, insertTransportRequestSchema,
@@ -22,6 +22,7 @@ import {
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
 import { AuditService } from "./audit-service";
+import { MessageLogService } from "./message-log-service";
 
 // Helper function to extract organizationId from request header
 function getOrganizationId(req: any): string {
@@ -1652,6 +1653,121 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Apply suggestion error:", error);
       res.status(500).json({ error: "Failed to apply suggestion" });
+    }
+  });
+
+  // Message Links
+  app.get("/api/messages/linked/:tableName/:recordId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { tableName, recordId } = req.params;
+      const organizationId = getOrganizationId(req);
+      
+      const linkedMessages = await MessageLogService.getLinkedMessages(tableName, recordId, organizationId);
+      res.json(linkedMessages);
+    } catch (error) {
+      console.error("Get linked messages error:", error);
+      res.status(500).json({ error: "Failed to get linked messages" });
+    }
+  });
+
+  app.post("/api/messages/:messageId/link", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { messageId } = req.params;
+      const data = insertMessageLinkSchema.parse({
+        ...req.body,
+        messageId,
+        userId: req.user!.id
+      });
+      
+      const context = MessageLogService.createContext(req);
+      const link = await MessageLogService.linkMessage(
+        messageId,
+        data.linkedTableName,
+        data.linkedRecordId,
+        context,
+        {
+          linkType: data.linkType,
+          isAutomatic: data.isAutomatic,
+          notes: data.notes || undefined
+        }
+      );
+      
+      res.json(link);
+    } catch (error) {
+      console.error("Link message error:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid link data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to link message" });
+      }
+    }
+  });
+
+  app.get("/api/messages/:messageId/links", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { messageId } = req.params;
+      const links = await MessageLogService.getMessageLinks(messageId);
+      res.json(links);
+    } catch (error) {
+      console.error("Get message links error:", error);
+      res.status(500).json({ error: "Failed to get message links" });
+    }
+  });
+
+  app.put("/api/message-links/:linkId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { linkId } = req.params;
+      const { notes, linkType } = req.body;
+      
+      const updates: any = {};
+      if (notes !== undefined) updates.notes = notes;
+      if (linkType !== undefined) updates.linkType = linkType;
+      
+      const updatedLink = await MessageLogService.updateLink(linkId, updates, req.user!.id);
+      if (!updatedLink) return res.sendStatus(404);
+      
+      res.json(updatedLink);
+    } catch (error) {
+      console.error("Update message link error:", error);
+      res.status(500).json({ error: "Failed to update message link" });
+    }
+  });
+
+  app.delete("/api/message-links/:linkId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { linkId } = req.params;
+      const success = await MessageLogService.unlinkMessage(linkId, req.user!.id);
+      if (!success) return res.sendStatus(404);
+      
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Unlink message error:", error);
+      res.status(500).json({ error: "Failed to unlink message" });
+    }
+  });
+
+  app.post("/api/messages/:messageId/link-bulk", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { messageId } = req.params;
+      const { links, isAutomatic = false } = req.body;
+      
+      if (!Array.isArray(links) || links.length === 0) {
+        return res.status(400).json({ error: "Links array is required" });
+      }
+      
+      const context = MessageLogService.createContext(req);
+      const results = await MessageLogService.linkMessageBulk(messageId, links, context, isAutomatic);
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Bulk link message error:", error);
+      res.status(500).json({ error: "Failed to bulk link message" });
     }
   });
 

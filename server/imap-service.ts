@@ -228,12 +228,17 @@ export class ImapEmailService {
       // Run AI analysis in background - with error handling for quota limits
       if (process.env.OPENAI_API_KEY) {
         try {
-          const analysis = await aiService.analyzeMessage(savedMessage, messageData.userId);
+          // Get user's first organization for AI context
+          const userOrganizations = await storage.getUserOrganizations(messageData.userId);
+          const organizationId = userOrganizations.length > 0 ? userOrganizations[0].organizationId : undefined;
+          
+          const analysis = await aiService.analyzeMessage(savedMessage, messageData.userId, organizationId);
           if (analysis.bestMatch) {
             await aiService.updateMessageWithSuggestion(
               savedMessage.id, 
               analysis.bestMatch, 
-              messageData.userId
+              messageData.userId,
+              organizationId
             );
             console.log(`[IMAP] AI analysis completed for email ${savedMessage.id}`);
           }

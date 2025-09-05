@@ -10,12 +10,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square, Trash2, ExternalLink, History } from "lucide-react";
+import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square, Trash2, ExternalLink, History, MessageSquare } from "lucide-react";
 import type { Task, Project, TimeEntry } from "@shared/schema";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/hooks/use-organization";
 import TaskForm from "@/components/forms/task-form";
 import AuditHistory from "@/components/ui/audit-history";
+import { MessageHistory } from "@/components/ui/message-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TimeTracker } from "@/components/timesheet/time-tracker";
 import { CompletionDialog } from "@/components/timesheet/completion-dialog";
@@ -753,10 +754,14 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
           
           {editingTask && (
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="details" className="flex items-center space-x-2">
                   <Edit className="h-4 w-4" />
                   <span>Dettagli</span>
+                </TabsTrigger>
+                <TabsTrigger value="messages" className="flex items-center space-x-2">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Messaggi</span>
                 </TabsTrigger>
                 <TabsTrigger value="history" className="flex items-center space-x-2">
                   <History className="h-4 w-4" />
@@ -768,6 +773,14 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
                 <TaskForm 
                   task={editingTask} 
                   onSuccess={handleCloseEditDialog} 
+                />
+              </TabsContent>
+              
+              <TabsContent value="messages" className="mt-6">
+                <MessageHistory 
+                  tableName="tasks" 
+                  recordId={editingTask.id}
+                  title="Storico Messaggi Task"
                 />
               </TabsContent>
               
