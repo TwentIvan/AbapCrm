@@ -143,13 +143,33 @@ export default function Sidebar() {
   const parentItems = getDefaultParentItems(t);
   const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(false);
   const [isSystemsOpen, setIsSystemsOpen] = useState(false);
-  // Semplice funzione di toggle senza logica di timing
+  
+  // Auto-open parent menus when child is active
+  const systemsItems = getDefaultSystemsItems(t);
+  const timeManagementItems = getDefaultTimeManagementItems(t);
+  const hasActiveSystemsChild = systemsItems.some((item: any) => location === item.href);
+  const hasActiveTimeChild = timeManagementItems.some((item: any) => location === item.href);
+  
+  // Keep menus open if they have active children
+  const shouldSystemsBeOpen = isSystemsOpen || hasActiveSystemsChild;
+  const shouldTimeManagementBeOpen = isTimeManagementOpen || hasActiveTimeChild;
+  // Semplice funzione di toggle - chiude solo se non ci sono figli attivi
   const handleToggle = (type: string) => {
     console.log('Executing toggle for:', type);
     
     if (type === 'systems') {
+      // Non chiudere se c'è un figlio attivo
+      if (hasActiveSystemsChild && isSystemsOpen) {
+        console.log('Preventing systems close - has active child');
+        return;
+      }
       setIsSystemsOpen(!isSystemsOpen);
     } else if (type === 'timeManagement') {
+      // Non chiudere se c'è un figlio attivo
+      if (hasActiveTimeChild && isTimeManagementOpen) {
+        console.log('Preventing timeManagement close - has active child');
+        return;
+      }
       setIsTimeManagementOpen(!isTimeManagementOpen);
     }
   };
@@ -186,11 +206,10 @@ export default function Sidebar() {
           {parentItems.map((item: any) => {
             const isSystemsItem = item.type === 'systems';
             const isTimeItem = item.type === 'timeManagement';
-            const isOpen = isSystemsItem ? isSystemsOpen : (isTimeItem ? isTimeManagementOpen : false);
+            const isOpen = isSystemsItem ? shouldSystemsBeOpen : (isTimeItem ? shouldTimeManagementBeOpen : false);
             
-            // Check if any child is active
-            const childItems = isSystemsItem ? systemsItems : timeManagementItems;
-            const hasActiveChild = childItems.some((subItem: any) => location === subItem.href);
+            // Check if any child is active  
+            const hasActiveChild = isSystemsItem ? hasActiveSystemsChild : hasActiveTimeChild;
             
             return (
               <div key={item.id}>
