@@ -413,27 +413,16 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: organizations.id,
         name: organizations.name,
-        description: organizations.description,
-        website: organizations.website,
-        address: organizations.address,
-        city: organizations.city,
-        postalCode: organizations.postalCode,
-        country: organizations.country,
-        vatNumber: organizations.vatNumber,
-        fiscalCode: organizations.fiscalCode,
-        logoUrl: organizations.logoUrl,
-        settings: organizations.settings,
-        isActive: organizations.isActive,
+        partnerId: organizations.partnerId,
+        userRole: userOrganizations.role,
         createdAt: organizations.createdAt,
         updatedAt: organizations.updatedAt,
-        userRole: userOrganizations.role,
       })
       .from(organizations)
       .innerJoin(userOrganizations, eq(organizations.id, userOrganizations.organizationId))
       .where(and(
         eq(userOrganizations.userId, userId),
-        eq(userOrganizations.isActive, true),
-        eq(organizations.isActive, true)
+        eq(userOrganizations.isActive, true)
       ))
       .orderBy(desc(organizations.updatedAt));
     
@@ -558,7 +547,6 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: organizations.id,
         name: organizations.name,
-        description: organizations.description,
         userRole: userOrganizations.role,
         createdAt: userOrganizations.createdAt,
       })
@@ -566,8 +554,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(organizations, eq(userOrganizations.organizationId, organizations.id))
       .where(and(
         eq(userOrganizations.userId, userId),
-        eq(userOrganizations.isActive, true),
-        eq(organizations.isActive, true)
+        eq(userOrganizations.isActive, true)
       ))
       .orderBy(desc(userOrganizations.createdAt));
     

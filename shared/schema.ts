@@ -26,19 +26,7 @@ export const users = pgTable("users", {
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
-  description: text("description"),
-  logoUrl: text("logo_url"),
-  website: text("website"),
-  // Business details
-  fiscalCode: text("fiscal_code"),
-  vatNumber: text("vat_number"),
-  address: text("address"),
-  city: text("city"),
-  postalCode: text("postal_code"),
-  country: text("country").default("IT"),
-  // Settings
-  isActive: boolean("is_active").default(true).notNull(),
-  settings: text("settings"), // JSON string for org-specific settings
+  partnerId: uuid("partner_id"), // Optional partner reference, relation added later
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -828,6 +816,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
 
 export const partnersRelations = relations(partners, ({ one, many }) => ({
   user: one(users, { fields: [partners.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [partners.organizationId], references: [organizations.id], relationName: "organizationPartners" }),
   projects: many(projects),
   deals: many(deals),
   calendarEvents: many(calendarEvents),
@@ -1371,4 +1360,18 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
     fields: [auditLogs.organizationId],
     references: [organizations.id],
   }),
+}));
+
+export const organizationsRelations = relations(organizations, ({ one, many }) => ({
+  partner: one(partners, { fields: [organizations.partnerId], references: [partners.id] }),
+  userOrganizations: many(userOrganizations),
+  projects: many(projects),
+  tasks: many(tasks),
+  partners: many(partners, { relationName: "organizationPartners" }),
+  deals: many(deals),
+  calendarEvents: many(calendarEvents),
+  messages: many(messages),
+  salesOrders: many(salesOrders),
+  sapSystems: many(sapSystems),
+  vpnConnections: many(vpnConnections),
 }));

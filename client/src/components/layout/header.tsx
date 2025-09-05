@@ -20,7 +20,6 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useOrganization } from "@/hooks/use-organization";
 import { useTranslation, Language } from "@/lib/i18n";
-import { ThemeSelector } from "@/components/ui/theme-selector";
 
 interface HeaderProps {
   title: string;
@@ -257,9 +256,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           {/* User & Organization Box with Switch */}
           {user && (
             <div className="relative rounded-full px-4 py-2 flex items-center space-x-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-              {/* Theme Selector */}
-              <ThemeSelector variant="dropdown" size="sm" />
-              
               {/* Language Selector - Bandiera Flat */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -324,15 +320,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="w-14 h-14 rounded-full bg-background border border-border hover:bg-accent">
-                    {currentOrganization?.logoUrl ? (
-                      <img 
-                        src={currentOrganization.logoUrl} 
-                        alt={`${currentOrganization.name} logo`}
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                    ) : (
-                      <User className="text-muted-foreground" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                    )}
+                    <User className="text-muted-foreground" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-64">
@@ -345,15 +333,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                       onClick={() => switchOrganization(org.id)}
                     >
                       <div className="flex items-center space-x-2">
-                        {org.logoUrl ? (
-                          <img 
-                            src={org.logoUrl} 
-                            alt={`${org.name} logo`}
-                            className="h-4 w-4 rounded object-cover"
-                          />
-                        ) : (
-                          <User className="h-4 w-4" style={{ color: '#6b7280' }} />
-                        )}
+                        <User className="h-4 w-4" style={{ color: '#6b7280' }} />
                         <span className="font-medium">{org.name}</span>
                         {currentOrganization?.id === org.id && (
                           <Check className="h-3 w-3 text-primary" />

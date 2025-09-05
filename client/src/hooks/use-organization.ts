@@ -5,10 +5,8 @@ import { setCurrentOrganizationId as setGlobalOrganizationId, getQueryFn } from 
 interface Organization {
   id: string;
   name: string;
-  description?: string;
-  logoUrl?: string;
   userRole: string;
-  settings?: string | null; // JSON string for organization-specific settings
+  partnerId?: string | null; // Optional partner reference
 }
 
 export function useOrganization() {
