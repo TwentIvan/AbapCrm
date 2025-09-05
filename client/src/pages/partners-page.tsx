@@ -69,7 +69,9 @@ export default function PartnersPage() {
   const { data: partners, isLoading } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
     queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!currentOrganizationId,
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnMount: false, // Use cache if available
+    refetchOnWindowFocus: false,
   });
 
   const deleteMutation = useMutation({
