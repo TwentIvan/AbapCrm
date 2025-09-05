@@ -85,7 +85,10 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
           <Icon className="h-6 w-6 flex-shrink-0 mr-3 text-muted-foreground" />
           <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
           <button 
-            onClick={onToggle}
+            onClick={(e) => {
+              e.stopPropagation(); // Previene la propagazione
+              onToggle();
+            }}
             className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center"
             style={{ borderColor: 'rgba(59, 130, 246, 0.9)', color: 'rgba(59, 130, 246, 0.9)' }}
           >
@@ -118,9 +121,9 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
             minWidth: '220px', 
             maxWidth: '220px' 
           }}
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation(); // Previene la propagazione al parent
             console.log('Child clicked:', item.name);
-            onChildClick(); // Aggiorna il timestamp
             setLocation(item.href);
           }}
           data-testid={item.testId}
@@ -144,19 +147,9 @@ export default function Sidebar() {
   const parentItems = getDefaultParentItems(t);
   const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(false);
   const [isSystemsOpen, setIsSystemsOpen] = useState(false);
-  const [lastClickTime, setLastClickTime] = useState(0);
-
-  // Funzione intelligente per il toggle che evita chiusure accidentali
+  // Semplice funzione di toggle senza logica di timing
   const handleToggle = (type: string) => {
-    const now = Date.now();
-    // Se l'ultimo click è stato meno di 100ms fa, ignora (probabilmente è un child click)
-    if (now - lastClickTime < 100) {
-      console.log('Ignoring toggle due to recent child click');
-      return;
-    }
-    
     console.log('Executing toggle for:', type);
-    setLastClickTime(now);
     
     if (type === 'systems') {
       setIsSystemsOpen(!isSystemsOpen);
@@ -220,7 +213,7 @@ export default function Sidebar() {
                               key={subItem.id} 
                               item={subItem} 
                               isActive={isActive} 
-                              onChildClick={() => setLastClickTime(Date.now())}
+                              onChildClick={() => {}}
                             />
                           );
                         })}
