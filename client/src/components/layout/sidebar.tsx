@@ -125,7 +125,7 @@ function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild =
       <div 
         ref={setNodeRef} 
         style={style} 
-        className="w-full p-2 rounded-md group flex items-center space-x-3 cursor-pointer transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
+        className="w-full p-2 rounded-md group flex items-center space-x-3 transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
         data-testid={item.testId}
         {...attributes}
       >
@@ -134,18 +134,19 @@ function SortableParentItem({ item, children, isOpen, onToggle, hasActiveChild =
           {...listeners} 
         />
         <div 
-          className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" 
+          className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1 cursor-pointer" 
           style={{ 
             backgroundColor: hasActiveChild ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.1)', 
             border: '1px solid rgba(59, 130, 246, 0.2)', 
             minWidth: '240px', 
             maxWidth: '240px' 
           }}
+          onClick={(e) => { e.stopPropagation(); onToggle(); }}
         >
           <Icon className="h-6 w-6 flex-shrink-0 mr-3 text-muted-foreground" />
           <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
           <button 
-            onClick={(e) => { e.stopPropagation(); onToggle(); }}
+            onClick={(e) => { e.stopPropagation(); }}
             className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center"
             style={{ borderColor: 'rgba(59, 130, 246, 0.9)', color: 'rgba(59, 130, 246, 0.9)' }}
           >
@@ -184,25 +185,26 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
     <div 
       ref={setNodeRef} 
       style={style} 
-      className="w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors ml-4 sidebar-nav-item text-muted-foreground hover:bg-muted/20"
+      className="w-full p-2 rounded-md group flex items-center space-x-4 transition-colors ml-4 sidebar-nav-item text-muted-foreground hover:bg-muted/20"
       data-testid={item.testId}
       {...attributes}
-      onClick={(e) => {
-        e.stopPropagation(); // Evita che si chiuda il padre
-        setLocation(item.href);
-      }}
     >
       <GripVertical 
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
       <div 
-        className="flex items-center px-3 py-1 rounded-full nav-box transition-colors flex-1" 
+        className="flex items-center px-3 py-1 rounded-full nav-box transition-colors flex-1 cursor-pointer" 
         style={{ 
           backgroundColor: isActive ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.08)', 
           border: '1px solid rgba(59, 130, 246, 0.15)', 
           minWidth: '220px', 
           maxWidth: '220px' 
+        }}
+        onClick={(e) => {
+          e.stopPropagation(); // Evita che si chiuda il padre
+          e.preventDefault(); // Previene comportamenti default
+          setLocation(item.href);
         }}
       >
         <Icon className="h-5 w-5 flex-shrink-0 mr-2 text-muted-foreground" />
