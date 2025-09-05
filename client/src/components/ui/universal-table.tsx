@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { X, Trash2 } from "lucide-react";
@@ -27,7 +27,7 @@ interface UniversalTableProps {
   emptyMessage?: string;
 }
 
-export function UniversalTable({
+const UniversalTableComponent = memo(function UniversalTable({
   data,
   columns,
   enableSelection = false,
@@ -40,12 +40,14 @@ export function UniversalTable({
   const [sortField, setSortField] = useState<string>("");
   const [sortDesc, setSortDesc] = useState<boolean>(false);
 
-  // Ordina dati
+  // Ordina dati - OTTIMIZZATO per performance
   const sortedData = useMemo(() => {
-    if (!sortField) return data;
+    if (!sortField || !data.length) return data;
+    
+    const column = columns.find(col => col.key === sortField);
+    if (!column?.sortable) return data;
     
     return [...data].sort((a, b) => {
-      const column = columns.find(col => col.key === sortField);
       let aVal = column?.accessor ? column.accessor(a) : a[sortField];
       let bVal = column?.accessor ? column.accessor(b) : b[sortField];
       
@@ -53,16 +55,18 @@ export function UniversalTable({
       if (aVal == null) aVal = "";
       if (bVal == null) bVal = "";
       
-      // Conversione a stringa per confronto
-      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+      // Conversione a stringa solo se necessario
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
       
       const result = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sortDesc ? -result : result;
     });
   }, [data, sortField, sortDesc, columns]);
 
-  // Gestione selezione
+  // Gestione selezione - OTTIMIZZATO
   const handleItemSelect = (id: string) => {
     const newSelected = new Set(selectedIds);
     if (selectedIds.has(id)) {
@@ -72,9 +76,11 @@ export function UniversalTable({
     }
     setSelectedIds(newSelected);
     
-    // Notifica parent
-    const selectedItems = sortedData.filter(item => newSelected.has(item.id));
-    onSelectionChange?.(selectedItems);
+    // Notifica parent - calcolo lazy
+    if (onSelectionChange) {
+      const selectedItems = data.filter(item => newSelected.has(item.id));
+      onSelectionChange(selectedItems);
+    }
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -241,7 +247,9 @@ export function UniversalTable({
       </div>
     </div>
   );
-}
+});
+
+export const UniversalTable = UniversalTableComponent;
 
 // Helper per creare colonne standard rapidamente
 export const createStandardColumns = {
