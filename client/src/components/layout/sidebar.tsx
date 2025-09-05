@@ -57,6 +57,7 @@ const getDefaultParentItems = (t: any) => [
 
 // Sortable Navigation Item Component
 function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
+  const [, setLocation] = useLocation();
   const {
     attributes,
     listeners,
@@ -74,18 +75,18 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
 
   return (
     <div 
-      ref={setNodeRef} 
-      style={style} 
-      className={cn(
-        "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors sidebar-nav-item",
-        isActive
-          ? "bg-muted/50 text-muted-foreground"
-          : "text-muted-foreground"
-      )}
-      data-testid={item.testId}
-      {...attributes}
-      onClick={() => window.location.href = item.href}
-    >
+        ref={setNodeRef} 
+        style={style} 
+        className={cn(
+          "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors sidebar-nav-item",
+          isActive
+            ? "bg-muted/50 text-muted-foreground"
+            : "text-muted-foreground"
+        )}
+        data-testid={item.testId}
+        {...attributes}
+        onClick={() => setLocation(item.href)}
+      >
       <GripVertical 
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
@@ -182,7 +183,7 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
       )}
       data-testid={item.testId}
       {...attributes}
-      onClick={() => window.location.href = item.href}
+      onClick={() => {/* Navigation handled by Link wrapper */}}
     >
       <GripVertical 
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
