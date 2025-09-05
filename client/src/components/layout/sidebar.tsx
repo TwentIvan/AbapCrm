@@ -72,6 +72,10 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
       <div 
         className="w-full p-2 rounded-md group flex items-center transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
         data-testid={item.testId}
+        onClick={(e) => {
+          console.log('Parent container clicked for:', item.name);
+          e.stopPropagation();
+        }}
       >
         <div 
           className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" 
@@ -81,11 +85,19 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
             minWidth: '240px', 
             maxWidth: '240px' 
           }}
+          onClick={(e) => {
+            console.log('Parent nav area clicked for:', item.name);
+            e.stopPropagation();
+          }}
         >
           <Icon className="h-6 w-6 flex-shrink-0 mr-3 text-muted-foreground" />
           <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
           <button 
-            onClick={onToggle}
+            onClick={(e) => {
+              console.log('Parent toggle button clicked for:', item.name);
+              e.stopPropagation();
+              onToggle();
+            }}
             className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center"
             style={{ borderColor: 'rgba(59, 130, 246, 0.9)', color: 'rgba(59, 130, 246, 0.9)' }}
           >
@@ -108,8 +120,15 @@ function SubNavItem({ item, isActive }: { item: any; isActive: boolean }) {
   const Icon = item.icon;
 
   return (
-    <div className="ml-4">
-      <div className="w-full p-2 rounded-md group flex items-center transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20">
+    <div className="ml-4" onClick={(e) => {
+      console.log('Child container clicked for:', item.name);
+      e.stopPropagation();
+    }}>
+      <div className="w-full p-2 rounded-md group flex items-center transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
+           onClick={(e) => {
+             console.log('Child inner container clicked for:', item.name);
+             e.stopPropagation();
+           }}>
         <button 
           className="flex items-center px-3 py-1 rounded-full nav-box transition-colors flex-1 cursor-pointer border-0 bg-transparent" 
           style={{ 
@@ -119,7 +138,9 @@ function SubNavItem({ item, isActive }: { item: any; isActive: boolean }) {
             maxWidth: '220px' 
           }}
           onClick={(e) => {
+            console.log('Child button clicked for:', item.name, 'navigating to:', item.href);
             e.stopPropagation();
+            e.preventDefault();
             setLocation(item.href);
           }}
           data-testid={item.testId}
