@@ -434,8 +434,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Organizations
+  // Cache for organizations
+  private orgCache = new Map<string, { orgs: any[]; timestamp: number }>();
+  private ORG_CACHE_TTL = 30 * 1000; // 30 seconds cache
+
   async getOrganizations(userId: string): Promise<any[]> {
     const startTime = Date.now();
+    
+    // Check cache first
+    const cached = this.orgCache.get(userId);
+    if (cached && (Date.now() - cached.timestamp) < this.ORG_CACHE_TTL) {
+      console.log(`[PERF] getOrganizations cache hit for ${userId} in ${Date.now() - startTime}ms`);
+      return cached.orgs;
+    }
+
+    // Cache miss - query database
     const result = await db
       .select({
         id: organizations.id,
@@ -454,6 +467,9 @@ export class DatabaseStorage implements IStorage {
         eq(userOrganizations.isActive, true)
       ))
       .orderBy(desc(organizations.updatedAt));
+    
+    // Cache the result
+    this.orgCache.set(userId, { orgs: result, timestamp: Date.now() });
     
     const duration = Date.now() - startTime;
     console.log(`[PERF] getOrganizations took ${duration}ms for user ${userId}`);
