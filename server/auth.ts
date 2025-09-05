@@ -171,7 +171,16 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
+  app.post("/api/login", passport.authenticate("local"), async (req, res) => {
+    // Preload all user data for instant performance
+    console.log(`[LOGIN] User ${req.user.id} logged in, starting data preload...`);
+    
+    // Don't wait for preload to complete - send login response immediately  
+    // Preload happens in background for better UX
+    storage.preloadUserData(req.user.id).catch(error => {
+      console.error('[LOGIN] Preload failed:', error);
+    });
+    
     res.status(200).json(req.user);
   });
 

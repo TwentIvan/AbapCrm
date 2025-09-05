@@ -327,6 +327,46 @@ export class DatabaseStorage implements IStorage {
     console.log("[PERF] Using in-memory session store for optimal performance");
   }
 
+  // Preload ALL user data at login for instant cache performance
+  async preloadUserData(userId: string): Promise<void> {
+    const startTime = Date.now();
+    console.log(`[PRELOAD] Starting full data preload for user ${userId}`);
+    
+    try {
+      // 1. Preload user data (if not already cached)
+      await this.getUser(userId);
+      
+      // 2. Preload ALL organizations for this user
+      const organizations = await this.getOrganizations(userId);
+      console.log(`[PRELOAD] Loaded ${organizations.length} organizations`);
+      
+      // 3. Preload ALL projects for ALL organizations
+      let totalProjects = 0;
+      let totalPartners = 0;
+      let totalTasks = 0;
+      
+      for (const org of organizations) {
+        // Preload projects for this org
+        const projects = await this.getProjects(userId, org.id);
+        totalProjects += projects.length;
+        
+        // Preload partners for this org  
+        const partners = await this.getPartners(userId, org.id);
+        totalPartners += partners.length;
+        
+        // Preload tasks for this org
+        const tasks = await this.getTasks(userId, org.id);
+        totalTasks += tasks.length;
+      }
+      
+      const duration = Date.now() - startTime;
+      console.log(`[PRELOAD] Completed in ${duration}ms: ${organizations.length} orgs, ${totalProjects} projects, ${totalPartners} partners, ${totalTasks} tasks`);
+      
+    } catch (error) {
+      console.error(`[PRELOAD] Failed for user ${userId}:`, error);
+    }
+  }
+
   // Users with in-memory cache for performance
   private userCache = new Map<string, { user: User | undefined; timestamp: number }>();
   private USER_CACHE_TTL = 60 * 1000; // 1 minute cache
@@ -435,13 +475,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Organizations
-  // Cache for organizations, projects, and partners
+  // Cache for organizations, projects, partners, and tasks
   private orgCache = new Map<string, { orgs: any[]; timestamp: number }>();
   private projectCache = new Map<string, { projects: any[]; timestamp: number }>();
   private partnerCache = new Map<string, { partners: any[]; timestamp: number }>();
-  private ORG_CACHE_TTL = 30 * 1000; // 30 seconds cache
-  private PROJECT_CACHE_TTL = 30 * 1000; // 30 seconds cache
-  private PARTNER_CACHE_TTL = 30 * 1000; // 30 seconds cache
+  private taskCache = new Map<string, { tasks: any[]; timestamp: number }>();
+  private ORG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache for preloaded data
+  private PROJECT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache for preloaded data
+  private PARTNER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache for preloaded data
+  private TASK_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache for preloaded data
 
   async getOrganizations(userId: string): Promise<any[]> {
     const startTime = Date.now();
@@ -820,8 +862,19 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
-  // Tasks
+  // Tasks with caching
   async getTasks(userId: string, organizationId: string): Promise<Task[]> {
+    const startTime = Date.now();
+    const cacheKey = `${userId}-${organizationId}`;
+    
+    // Check cache first
+    const cached = this.taskCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < this.TASK_CACHE_TTL) {
+      console.log(`[PERF] getTasks cache hit for ${cacheKey} in ${Date.now() - startTime}ms`);
+      return cached.tasks;
+    }
+
+    // Cache miss - query database
     const result = await db.select({
       id: tasks.id,
       title: tasks.title,
@@ -847,6 +900,11 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(tasks.userId, userId), eq(tasks.organizationId, organizationId)))
       .orderBy(desc(tasks.updatedAt));
     
+    // Cache the result
+    this.taskCache.set(cacheKey, { tasks: result as any[], timestamp: Date.now() });
+    
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] getTasks took ${duration}ms for ${cacheKey}`);
     return result as any[];
   }
 
