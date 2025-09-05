@@ -79,7 +79,7 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
       className={cn(
         "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors sidebar-nav-item",
         isActive
-          ? "bg-primary text-primary-foreground"
+          ? "bg-muted/50 text-muted-foreground"
           : "text-muted-foreground"
       )}
       data-testid={item.testId}
@@ -90,9 +90,9 @@ function SortableNavItem({ item, isActive }: { item: any; isActive: boolean }) {
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', minWidth: '240px', maxWidth: '240px' }}>
-        <Icon className="h-5 w-5 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-        <span className="text-base font-medium flex-1" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
+      <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1 bg-muted/30 border border-muted" style={{ minWidth: '240px', maxWidth: '240px' }}>
+        <Icon className="h-5 w-5 flex-shrink-0 mr-3 text-muted-foreground" />
+        <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
         <div className="ml-2 w-6 h-6 opacity-0" />
       </div>
     </div>
@@ -132,18 +132,17 @@ function SortableParentItem({ item, children, isOpen, onToggle }: { item: any; c
           className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
           {...listeners} 
         />
-        <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', minWidth: '240px', maxWidth: '240px' }}>
-          <Icon className="h-6 w-6 flex-shrink-0 mr-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-          <span className="text-base font-medium flex-1" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
+        <div className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1 bg-muted/30 border border-muted" style={{ minWidth: '240px', maxWidth: '240px' }}>
+          <Icon className="h-6 w-6 flex-shrink-0 mr-3 text-muted-foreground" />
+          <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
           <button 
             onClick={(e) => { e.stopPropagation(); onToggle(); }}
-            className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center"
-            style={{ borderColor: 'rgba(59, 130, 246, 0.9)', color: 'rgba(59, 130, 246, 0.9)' }}
+            className="ml-2 w-6 h-6 rounded-full border border-muted-foreground hover:bg-muted/50 transition-colors flex items-center justify-center text-muted-foreground"
           >
             {isOpen ? (
-              <Minus className="h-3 w-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+              <Minus className="h-3 w-3 text-muted-foreground" />
             ) : (
-              <Plus className="h-3 w-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+              <Plus className="h-3 w-3 text-muted-foreground" />
             )}
           </button>
         </div>
@@ -177,7 +176,7 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
       className={cn(
         "w-full p-2 rounded-md group flex items-center space-x-4 cursor-pointer transition-colors ml-4 sidebar-nav-item",
         isActive
-          ? "bg-primary text-primary-foreground"
+          ? "bg-muted/50 text-muted-foreground"
           : "text-muted-foreground"
       )}
       data-testid={item.testId}
@@ -188,9 +187,9 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0" 
         {...listeners} 
       />
-      <div className="flex items-center px-3 py-1 rounded-full nav-box transition-colors flex-1" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', minWidth: '220px', maxWidth: '220px' }}>
-        <Icon className="h-5 w-5 flex-shrink-0 mr-2" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
-        <span className="text-sm font-medium flex-1" style={{ color: 'rgba(59, 130, 246, 0.9)' }}>{item.name}</span>
+      <div className="flex items-center px-3 py-1 rounded-full nav-box transition-colors flex-1 bg-muted/30 border border-muted" style={{ minWidth: '220px', maxWidth: '220px' }}>
+        <Icon className="h-5 w-5 flex-shrink-0 mr-2 text-muted-foreground" />
+        <span className="text-sm font-medium flex-1 text-muted-foreground">{item.name}</span>
         <div className="ml-2 w-6 h-6 opacity-0" />
       </div>
     </div>
