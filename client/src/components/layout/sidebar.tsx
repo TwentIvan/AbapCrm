@@ -194,12 +194,6 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
 
   const Icon = item.icon;
 
-  const handleNavClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setLocation(item.href);
-  };
-
   return (
     <div 
       ref={setNodeRef} 
@@ -207,30 +201,32 @@ function SortableSubNavItem({ item, isActive }: { item: any; isActive: boolean }
       className="w-full p-2 rounded-md group flex items-center space-x-4 transition-colors ml-4 sidebar-nav-item text-muted-foreground hover:bg-muted/20"
       data-testid={item.testId}
       {...attributes}
-      onClick={(e) => e.stopPropagation()}
     >
       <div
         className="h-6 w-6 opacity-80 group-hover:opacity-100 cursor-grab text-muted-foreground flex-shrink-0 flex items-center justify-center"
         {...listeners}
-        onMouseDown={(e) => e.stopPropagation()}
       >
         <GripVertical className="h-4 w-4" />
       </div>
-      <div 
-        className="flex items-center px-3 py-1 rounded-full nav-box transition-colors flex-1 cursor-pointer" 
+      <button 
+        className="flex items-center px-3 py-1 rounded-full nav-box transition-colors flex-1 cursor-pointer border-0 bg-transparent" 
         style={{ 
           backgroundColor: isActive ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.08)', 
           border: '1px solid rgba(59, 130, 246, 0.15)', 
           minWidth: '220px', 
           maxWidth: '220px' 
         }}
-        onClick={handleNavClick}
-        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          setLocation(item.href);
+        }}
+        type="button"
       >
         <Icon className="h-5 w-5 flex-shrink-0 mr-2 text-muted-foreground" />
-        <span className="text-sm font-medium flex-1 text-muted-foreground">{item.name}</span>
+        <span className="text-sm font-medium flex-1 text-muted-foreground text-left">{item.name}</span>
         <div className="ml-2 w-6 h-6 opacity-0" />
-      </div>
+      </button>
     </div>
   );
 }
