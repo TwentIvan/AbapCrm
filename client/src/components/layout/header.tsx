@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock, Settings, LogOut, Globe, ExternalLink } from "lucide-react";
+import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock, Settings, LogOut, Globe } from "lucide-react";
 import { ThemeSelector } from "@/components/theme/theme-selector";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -21,7 +21,6 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useOrganization } from "@/hooks/use-organization";
 import { useTranslation, Language } from "@/lib/i18n";
-import AccountSettingsDialog from "@/components/account/account-settings-dialog";
 
 interface HeaderProps {
   title: string;
@@ -33,7 +32,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
-  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
   const { organizations, currentOrganization, switchOrganization } = useOrganization();
@@ -377,17 +375,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem 
-                    onClick={() => setShowAccountSettings(true)}
-                    data-testid="button-account-settings"
-                  >
-                    <Settings className="mr-2 h-5 w-5" style={{ color: '#6b7280' }} />
-                    Impostazioni Account
-                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/account/settings" data-testid="link-account-settings-fullpage">
-                      <ExternalLink className="mr-2 h-5 w-5" style={{ color: '#6b7280' }} />
-                      Impostazioni (Finestra Intera)
+                    <Link href="/account/settings" data-testid="link-account-settings">
+                      <Settings className="mr-2 h-5 w-5" style={{ color: '#6b7280' }} />
+                      Impostazioni Account
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -401,12 +392,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           )}
         </div>
       </div>
-      
-      {/* Account Settings Dialog */}
-      <AccountSettingsDialog 
-        open={showAccountSettings} 
-        onOpenChange={setShowAccountSettings}
-      />
     </header>
   );
 }
