@@ -145,8 +145,6 @@ export default function Sidebar() {
   const [isSystemsOpen, setIsSystemsOpen] = useState(false);
   
   // Auto-open parent menus when child is active
-  const systemsItems = getDefaultSystemsItems(t);
-  const timeManagementItems = getDefaultTimeManagementItems(t);
   const hasActiveSystemsChild = systemsItems.some((item: any) => location === item.href);
   const hasActiveTimeChild = timeManagementItems.some((item: any) => location === item.href);
   
