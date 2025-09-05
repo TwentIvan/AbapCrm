@@ -26,7 +26,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { Mail, Trash2, Plus, Power, PowerOff } from "lucide-react";
+import { Mail, Trash2, Plus, Power, PowerOff, HelpCircle, ExternalLink } from "lucide-react";
 import type { EmailConfig } from "@shared/schema";
 
 interface AccountSettingsDialogProps {
@@ -360,7 +360,9 @@ export default function AccountSettingsDialog({ open, onOpenChange }: AccountSet
                     {editingConfig ? "Modifica Configurazione" : "Nuova Configurazione Email"}
                   </CardTitle>
                   <CardDescription>
-                    Configura la connessione IMAP per sincronizzare le email
+                    Configura la connessione IMAP per sincronizzare le email.
+                    <br />
+                    <strong>Importante:</strong> Per Gmail/Outlook, devi generare una "App Password" dalle impostazioni del tuo account, non usare la password normale.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -378,15 +380,36 @@ export default function AccountSettingsDialog({ open, onOpenChange }: AccountSet
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="password">Password</Label>
+                        <Label htmlFor="password">App Password</Label>
                         <Input
                           id="password"
                           type="password"
                           value={emailFormData.password}
                           onChange={(e) => setEmailFormData(prev => ({ ...prev, password: e.target.value }))}
+                          placeholder="Non la password normale, ma l'App Password"
                           data-testid="input-config-password"
                           required
                         />
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <p>⚠️ <strong>Non usare la password normale!</strong> Genera una App Password dal tuo account email.</p>
+                          <details className="mt-2">
+                            <summary className="cursor-pointer text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                              <HelpCircle className="h-3 w-3" />
+                              Come generare App Password
+                            </summary>
+                            <div className="mt-2 p-2 bg-muted rounded text-xs space-y-2">
+                              <div>
+                                <strong>Gmail:</strong> Account Google → Sicurezza → Verifica in due passaggi → Password per le app
+                              </div>
+                              <div>
+                                <strong>Outlook:</strong> Account Microsoft → Sicurezza → Opzioni di sicurezza avanzate → Password per le app
+                              </div>
+                              <div>
+                                <strong>Altri provider:</strong> Cerca "App Password" o "Password applicazione" nelle impostazioni
+                              </div>
+                            </div>
+                          </details>
+                        </div>
                       </div>
                     </div>
                     
