@@ -20,6 +20,7 @@ interface OrganizationFormProps {
     name: string;
     isActive: boolean;
     theme: string;
+    partnerId?: string | null;
   } | null;
   onSuccess: () => void;
   onCancel: () => void;
@@ -30,6 +31,7 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
     name: organization?.name || "",
     isActive: organization?.isActive ?? true,
     theme: organization?.theme || "blue",
+    partnerId: organization?.partnerId || null,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -156,6 +158,21 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
               </SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Partner - Se non è Personal può avere partner associato */}
+        <div>
+          <Label htmlFor="partnerId">Partner Associato</Label>
+          <Input
+            id="partnerId"
+            value={formData.partnerId || ""}
+            onChange={(e) => handleChange("partnerId", e.target.value || null)}
+            placeholder="ID del partner (opzionale)"
+            data-testid="input-organization-partner"
+          />
+          <p className="text-sm text-muted-foreground mt-1">
+            Partner associato a questa organizzazione (anagrafica contatto)
+          </p>
         </div>
 
         {/* Stato Attivo - Solo se non è Personal */}

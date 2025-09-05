@@ -415,6 +415,7 @@ export class DatabaseStorage implements IStorage {
         name: organizations.name,
         isActive: organizations.isActive,
         theme: organizations.theme,
+        partnerId: organizations.partnerId,
         userRole: userOrganizations.role,
         createdAt: organizations.createdAt,
         updatedAt: organizations.updatedAt,

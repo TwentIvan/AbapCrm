@@ -250,8 +250,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </Button>
               </Link>
               
-              {/* Theme Selector */}
-              <ThemeSelector />
 
             </div>
           </TooltipProvider>

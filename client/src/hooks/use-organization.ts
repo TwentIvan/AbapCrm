@@ -7,6 +7,7 @@ interface Organization {
   name: string;
   isActive: boolean; // Status field
   theme: string; // Theme color
+  partnerId?: string | null; // Partner reference
   userRole: string;
 }
 

@@ -18,6 +18,7 @@ interface OrganizationWithDetails {
   name: string;
   isActive: boolean;
   theme: string;
+  partnerId?: string | null;
   userRole: string;
   createdAt: string;
   updatedAt: string;
@@ -190,13 +191,6 @@ export default function OrganizationsPage() {
                           : 'bg-red-100 text-red-800'
                       }`}>
                         {item.isActive ? 'Attiva' : 'Inattiva'}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Ruolo:</span>
-                      <div className="flex items-center">
-                        <Users className="h-4 w-4 mr-1 text-muted-foreground" />
-                        <span className="text-sm capitalize">{item.userRole}</span>
                       </div>
                     </div>
                   </div>
