@@ -380,9 +380,7 @@ export class DatabaseStorage implements IStorage {
     const [personalOrg] = await db
       .insert(organizations)
       .values({
-        name: "Personal",
-        description: "Organizzazione personale di " + (insertUser.firstName || insertUser.username),
-        isActive: true
+        name: "Personal"
       })
       .returning();
     
@@ -1182,7 +1180,7 @@ export class DatabaseStorage implements IStorage {
         newEvent,
         {
           userId: auditContext.userId,
-          organizationId: null, // Calendar events might not have organizationId
+          organizationId: undefined, // Calendar events might not have organizationId
           userAgent: auditContext.userAgent,
           ipAddress: auditContext.ipAddress,
         }

@@ -185,7 +185,7 @@ export function UniversalTable({
             </tr>
           </thead>
           <tbody>
-            {sortedData.length > 0 ? (
+            {sortedData && sortedData.length > 0 ? (
               sortedData.map((item) => (
                 <tr 
                   key={item.id}
