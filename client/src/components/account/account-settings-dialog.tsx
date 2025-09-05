@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import EmailConfig from "@/components/email-config";
 
 interface AccountSettingsDialogProps {
   open: boolean;
@@ -72,8 +73,9 @@ export default function AccountSettingsDialog({ open, onOpenChange }: AccountSet
         </DialogHeader>
 
         <Tabs defaultValue="account" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="account">Account</TabsTrigger>
+            <TabsTrigger value="email">Email</TabsTrigger>
             <TabsTrigger value="preferences">Preferenze</TabsTrigger>
           </TabsList>
           
@@ -128,6 +130,10 @@ export default function AccountSettingsDialog({ open, onOpenChange }: AccountSet
                 </Button>
               </div>
             </form>
+          </TabsContent>
+          
+          <TabsContent value="email" className="space-y-4">
+            <EmailConfig />
           </TabsContent>
           
           <TabsContent value="preferences" className="space-y-4">
