@@ -25,13 +25,6 @@ export function useOrganization() {
     retry: 1,
   });
 
-  // Debug logging
-  console.log('🔍 Organization query status:', { 
-    organizations, 
-    isLoading, 
-    error: error?.message,
-    length: organizations?.length 
-  });
 
   // Get current organization details
   const currentOrganization = organizations?.find(org => org.id === currentOrganizationId);

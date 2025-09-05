@@ -158,17 +158,6 @@ export default function OrganizationsPage() {
           onNewClick={handleAdd}
         />
         <main className="p-6 space-y-6">
-          {/* Header with Add Button */}
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-bold">Le tue organizzazioni</h2>
-              <p className="text-muted-foreground">Gestisci e crea nuove organizzazioni</p>
-            </div>
-            <Button onClick={handleAdd} data-testid="button-add-organization">
-              <Plus className="h-4 w-4 mr-2" />
-              Nuova Organizzazione
-            </Button>
-          </div>
 
           {/* Cards Grid View Only */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
