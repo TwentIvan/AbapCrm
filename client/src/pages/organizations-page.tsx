@@ -45,8 +45,11 @@ export default function OrganizationsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/organizations/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+    onSuccess: async () => {
+      // Force invalidate all organization-related queries
+      await queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+      // Force refetch to ensure UI updates
+      await queryClient.refetchQueries({ queryKey: ["/api/organizations"] });
       setShowDeleteDialog(false);
       setEditingItem(null);
       toast({ title: "Eliminato", description: "Organizzazione eliminata con successo" });
@@ -59,8 +62,11 @@ export default function OrganizationsPage() {
         await apiRequest("DELETE", `/api/organizations/${item.id}`);
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+    onSuccess: async () => {
+      // Force invalidate all organization-related queries
+      await queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+      // Force refetch to ensure UI updates
+      await queryClient.refetchQueries({ queryKey: ["/api/organizations"] });
       setSelectedItems([]);
       setShowBulkDeleteDialog(false);
       toast({ title: "Eliminati", description: "Organizzazioni eliminate con successo" });
