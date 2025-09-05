@@ -34,7 +34,7 @@ export default function OrganizationsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: items = [], isLoading } = useQuery<OrganizationWithDetails[]>({
+  const { data: items = [], isLoading, isError } = useQuery<OrganizationWithDetails[]>({
     queryKey: ["/api/organizations"],
     queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -170,7 +170,7 @@ export default function OrganizationsPage() {
 
           {/* Cards Grid View Only */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {items.map((item) => (
+            {(items || []).map((item) => (
               <Card key={item.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleEdit(item)}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
