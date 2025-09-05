@@ -42,7 +42,7 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
 
   // Load available partners for selection
   const { data: partners = [] } = useQuery({
-    queryKey: ["/api/partners", currentOrganizationId],
+    queryKey: ["/api/partners"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
     staleTime: 5 * 60 * 1000, // 5 minutes
