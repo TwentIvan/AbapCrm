@@ -435,9 +435,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Organizations
-  // Cache for organizations
+  // Cache for organizations, projects, and partners
   private orgCache = new Map<string, { orgs: any[]; timestamp: number }>();
+  private projectCache = new Map<string, { projects: any[]; timestamp: number }>();
+  private partnerCache = new Map<string, { partners: any[]; timestamp: number }>();
   private ORG_CACHE_TTL = 30 * 1000; // 30 seconds cache
+  private PROJECT_CACHE_TTL = 30 * 1000; // 30 seconds cache
+  private PARTNER_CACHE_TTL = 30 * 1000; // 30 seconds cache
 
   async getOrganizations(userId: string): Promise<any[]> {
     const startTime = Date.now();
@@ -725,11 +729,29 @@ export class DatabaseStorage implements IStorage {
     return { success: true, organizationId: invitation.organizationId };
   }
 
-  // Projects
+  // Projects with caching
   async getProjects(userId: string, organizationId: string): Promise<Project[]> {
-    return await db.select().from(projects)
+    const startTime = Date.now();
+    const cacheKey = `${userId}-${organizationId}`;
+    
+    // Check cache first
+    const cached = this.projectCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < this.PROJECT_CACHE_TTL) {
+      console.log(`[PERF] getProjects cache hit for ${cacheKey} in ${Date.now() - startTime}ms`);
+      return cached.projects;
+    }
+
+    // Cache miss - query database
+    const result = await db.select().from(projects)
       .where(and(eq(projects.userId, userId), eq(projects.organizationId, organizationId)))
       .orderBy(desc(projects.updatedAt));
+    
+    // Cache the result
+    this.projectCache.set(cacheKey, { projects: result, timestamp: Date.now() });
+    
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] getProjects took ${duration}ms for ${cacheKey}`);
+    return result;
   }
 
   async getProject(id: string, userId: string, organizationId: string): Promise<Project | undefined> {
@@ -1014,11 +1036,29 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
-  // Partners
+  // Partners with caching
   async getPartners(userId: string, organizationId: string): Promise<Partner[]> {
-    return await db.select().from(partners)
+    const startTime = Date.now();
+    const cacheKey = `${userId}-${organizationId}`;
+    
+    // Check cache first
+    const cached = this.partnerCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < this.PARTNER_CACHE_TTL) {
+      console.log(`[PERF] getPartners cache hit for ${cacheKey} in ${Date.now() - startTime}ms`);
+      return cached.partners;
+    }
+
+    // Cache miss - query database
+    const result = await db.select().from(partners)
       .where(and(eq(partners.userId, userId), eq(partners.organizationId, organizationId)))
       .orderBy(desc(partners.updatedAt));
+    
+    // Cache the result
+    this.partnerCache.set(cacheKey, { partners: result, timestamp: Date.now() });
+    
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] getPartners took ${duration}ms for ${cacheKey}`);
+    return result;
   }
 
   async getPartner(id: string, userId: string, organizationId: string): Promise<Partner | undefined> {
