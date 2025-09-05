@@ -276,7 +276,7 @@ export const emailConfigs = pgTable("email_configs", {
   host: text("host").notNull().default("imap.gmail.com"),
   port: integer("port").notNull().default(993),
   tls: boolean("tls").notNull().default(true),
-  folder: text("folder").notNull().default("INBOX"),
+  folders: text("folders").array().notNull().default([]), // Array di cartelle da monitorare
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
