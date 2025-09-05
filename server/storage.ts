@@ -316,14 +316,40 @@ export class DatabaseStorage implements IStorage {
   constructor() {
     this.sessionStore = new PostgresSessionStore({ 
       pool, 
-      createTableIfMissing: true 
+      createTableIfMissing: true,
+      // Performance optimizations for session store
+      ttl: 30 * 24 * 60 * 60, // 30 days TTL
+      disableTouch: false, // Keep session alive on activity
+      createTableIfMissing: true,
+      tableName: 'session', 
+      schemaName: 'public'
     });
   }
 
-  // Users
+  // Users with in-memory cache for performance
+  private userCache = new Map<string, { user: User | undefined; timestamp: number }>();
+  private USER_CACHE_TTL = 60 * 1000; // 1 minute cache
+
   async getUser(id: string): Promise<User | undefined> {
+    const startTime = Date.now();
+    
+    // Check cache first
+    const cached = this.userCache.get(id);
+    if (cached && (Date.now() - cached.timestamp) < this.USER_CACHE_TTL) {
+      console.log(`[PERF] getUser cache hit for ${id} in ${Date.now() - startTime}ms`);
+      return cached.user;
+    }
+
+    // Cache miss - query database
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+    const result = user || undefined;
+    
+    // Cache the result
+    this.userCache.set(id, { user: result, timestamp: Date.now() });
+    
+    const duration = Date.now() - startTime;
+    console.log(`[PERF] getUser DB query for ${id} took ${duration}ms`);
+    return result;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
