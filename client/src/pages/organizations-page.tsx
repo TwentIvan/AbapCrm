@@ -37,22 +37,41 @@ export default function OrganizationsPage() {
   const { data: items = [], isLoading, isError } = useQuery<OrganizationWithDetails[]>({
     queryKey: ["/api/organizations"],
     queryFn: getQueryFn({ on401: "throw" }),
-    staleTime: 0, // No cache - always fresh to see new organizations immediately
+    staleTime: 0, // No cache - always fresh
     refetchOnMount: true, // Always refetch to catch changes
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true, // Force refetch on focus to fix sync issues
+    cacheTime: 0, // Don't cache results at all to avoid desync
   });
 
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/organizations/${id}`),
     onSuccess: async () => {
-      // Force invalidate all organization-related queries
-      await queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
-      // Force refetch to ensure UI updates
-      await queryClient.refetchQueries({ queryKey: ["/api/organizations"] });
+      // Force clear ALL cache completely
+      queryClient.clear();
+      // Wait and refetch fresh data
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["/api/organizations"] });
+      }, 100);
       setShowDeleteDialog(false);
       setEditingItem(null);
       toast({ title: "Eliminato", description: "Organizzazione eliminata con successo" });
+    },
+    onError: (error: any) => {
+      // Handle deletion errors (like 404)
+      console.error("Delete error:", error);
+      // Force refresh data anyway to sync UI with backend
+      queryClient.clear();
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["/api/organizations"] });
+      }, 100);
+      setShowDeleteDialog(false);
+      setEditingItem(null);
+      toast({ 
+        title: "Aggiornato", 
+        description: "Lista sincronizzata con il database",
+        variant: "default"
+      });
     }
   });
 
