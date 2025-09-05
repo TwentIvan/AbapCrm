@@ -2,26 +2,24 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Building, Globe, MapPin, Hash, CreditCard } from "lucide-react";
+import { Building } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface OrganizationFormProps {
   organization?: {
     id: string;
     name: string;
-    description?: string;
-    logoUrl?: string;
-    website?: string;
-    fiscalCode?: string;
-    vatNumber?: string;
-    address?: string;
-    city?: string;
-    postalCode?: string;
-    country?: string;
     isActive: boolean;
+    theme: string;
   } | null;
   onSuccess: () => void;
   onCancel: () => void;
@@ -30,20 +28,23 @@ interface OrganizationFormProps {
 export default function OrganizationForm({ organization, onSuccess, onCancel }: OrganizationFormProps) {
   const [formData, setFormData] = useState({
     name: organization?.name || "",
-    description: organization?.description || "",
-    logoUrl: organization?.logoUrl || "",
-    website: organization?.website || "",
-    fiscalCode: organization?.fiscalCode || "",
-    vatNumber: organization?.vatNumber || "",
-    address: organization?.address || "",
-    city: organization?.city || "",
-    postalCode: organization?.postalCode || "",
-    country: organization?.country || "IT",
     isActive: organization?.isActive ?? true,
+    theme: organization?.theme || "blue",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  const getThemeColor = (theme: string) => {
+    const themeColors: { [key: string]: string } = {
+      blue: "hsl(221.2, 83.2%, 53.3%)",
+      green: "hsl(142.1, 76.2%, 36.3%)",
+      purple: "hsl(262.1, 83.3%, 57.8%)",
+      orange: "hsl(24.6, 95%, 53.1%)",
+      red: "hsl(0, 72.2%, 50.6%)",
+    };
+    return themeColors[theme] || themeColors.blue;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,11 +82,13 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const isPersonalOrg = organization?.name === "Personal";
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {/* Nome */}
-        <div className="col-span-2">
+        <div>
           <Label htmlFor="name">Nome Organizzazione *</Label>
           <div className="relative">
             <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -96,165 +99,85 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
               placeholder="Nome dell'organizzazione"
               className="pl-10"
               required
+              disabled={isPersonalOrg}
               data-testid="input-organization-name"
             />
           </div>
+          {isPersonalOrg && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Il nome dell'organizzazione Personal non può essere modificato
+            </p>
+          )}
         </div>
 
-        {/* Descrizione */}
-        <div className="col-span-2">
-          <Label htmlFor="description">Descrizione</Label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => handleChange("description", e.target.value)}
-            placeholder="Descrizione dell'organizzazione"
-            rows={3}
-            data-testid="input-organization-description"
-          />
+        {/* Tema */}
+        <div>
+          <Label htmlFor="theme">Tema Colore</Label>
+          <Select value={formData.theme} onValueChange={(value) => handleChange("theme", value)}>
+            <SelectTrigger data-testid="select-organization-theme">
+              <div className="flex items-center">
+                <div 
+                  className="w-4 h-4 rounded-full mr-2 border border-gray-300"
+                  style={{ backgroundColor: getThemeColor(formData.theme) }}
+                />
+                <SelectValue placeholder="Seleziona tema" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="blue">
+                <div className="flex items-center">
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300 bg-blue-500" />
+                  Blu
+                </div>
+              </SelectItem>
+              <SelectItem value="green">
+                <div className="flex items-center">
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300 bg-green-500" />
+                  Verde
+                </div>
+              </SelectItem>
+              <SelectItem value="purple">
+                <div className="flex items-center">
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300 bg-purple-500" />
+                  Viola
+                </div>
+              </SelectItem>
+              <SelectItem value="orange">
+                <div className="flex items-center">
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300 bg-orange-500" />
+                  Arancione
+                </div>
+              </SelectItem>
+              <SelectItem value="red">
+                <div className="flex items-center">
+                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300 bg-red-500" />
+                  Rosso
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* Logo URL */}
-        <div className="col-span-2">
-          <Label htmlFor="logoUrl">URL Logo</Label>
-          <Input
-            id="logoUrl"
-            type="url"
-            value={formData.logoUrl}
-            onChange={(e) => handleChange("logoUrl", e.target.value)}
-            placeholder="https://esempio.com/logo.png"
-            data-testid="input-organization-logo"
-          />
-        </div>
-
-        {/* Website */}
-        <div className="col-span-2">
-          <Label htmlFor="website">Sito Web</Label>
-          <div className="relative">
-            <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="website"
-              type="url"
-              value={formData.website}
-              onChange={(e) => handleChange("website", e.target.value)}
-              placeholder="https://www.esempio.com"
-              className="pl-10"
-              data-testid="input-organization-website"
+        {/* Stato Attivo - Solo se non è Personal */}
+        {!isPersonalOrg && (
+          <div className="flex items-center justify-between">
+            <Label htmlFor="isActive">Organizzazione Attiva</Label>
+            <Switch
+              id="isActive"
+              checked={formData.isActive}
+              onCheckedChange={(checked) => handleChange("isActive", checked)}
+              data-testid="switch-organization-active"
             />
           </div>
-        </div>
-
-        {/* Codice Fiscale */}
-        <div>
-          <Label htmlFor="fiscalCode">Codice Fiscale</Label>
-          <div className="relative">
-            <Hash className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="fiscalCode"
-              value={formData.fiscalCode}
-              onChange={(e) => handleChange("fiscalCode", e.target.value)}
-              placeholder="ABCDEF12G34H567I"
-              className="pl-10"
-              data-testid="input-organization-fiscal-code"
-            />
-          </div>
-        </div>
-
-        {/* Partita IVA */}
-        <div>
-          <Label htmlFor="vatNumber">Partita IVA</Label>
-          <div className="relative">
-            <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="vatNumber"
-              value={formData.vatNumber}
-              onChange={(e) => handleChange("vatNumber", e.target.value)}
-              placeholder="12345678901"
-              className="pl-10"
-              data-testid="input-organization-vat-number"
-            />
-          </div>
-        </div>
-
-        {/* Indirizzo */}
-        <div className="col-span-2">
-          <Label htmlFor="address">Indirizzo</Label>
-          <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="address"
-              value={formData.address}
-              onChange={(e) => handleChange("address", e.target.value)}
-              placeholder="Via Roma 123"
-              className="pl-10"
-              data-testid="input-organization-address"
-            />
-          </div>
-        </div>
-
-        {/* Città */}
-        <div>
-          <Label htmlFor="city">Città</Label>
-          <Input
-            id="city"
-            value={formData.city}
-            onChange={(e) => handleChange("city", e.target.value)}
-            placeholder="Milano"
-            data-testid="input-organization-city"
-          />
-        </div>
-
-        {/* CAP */}
-        <div>
-          <Label htmlFor="postalCode">CAP</Label>
-          <Input
-            id="postalCode"
-            value={formData.postalCode}
-            onChange={(e) => handleChange("postalCode", e.target.value)}
-            placeholder="20121"
-            data-testid="input-organization-postal-code"
-          />
-        </div>
-
-        {/* Paese */}
-        <div>
-          <Label htmlFor="country">Paese</Label>
-          <Input
-            id="country"
-            value={formData.country}
-            onChange={(e) => handleChange("country", e.target.value)}
-            placeholder="IT"
-            data-testid="input-organization-country"
-          />
-        </div>
-
-        {/* Stato Attivo */}
-        <div className="col-span-2 flex items-center space-x-2">
-          <Switch
-            id="isActive"
-            checked={formData.isActive}
-            onCheckedChange={(checked) => handleChange("isActive", checked)}
-            data-testid="switch-organization-active"
-          />
-          <Label htmlFor="isActive">Organizzazione attiva</Label>
-        </div>
+        )}
       </div>
 
-      <div className="flex justify-end space-x-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          data-testid="button-cancel"
-        >
+      <div className="flex justify-end space-x-2">
+        <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Annulla
         </Button>
-        <Button
-          type="submit"
-          disabled={isSubmitting || !formData.name}
-          data-testid="button-save"
-        >
-          {isSubmitting ? "Salvando..." : (organization ? "Aggiorna" : "Crea")}
+        <Button type="submit" disabled={isSubmitting} data-testid="button-save">
+          {isSubmitting ? "Salvataggio..." : organization ? "Aggiorna" : "Crea"}
         </Button>
       </div>
     </form>

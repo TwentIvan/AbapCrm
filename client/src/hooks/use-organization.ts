@@ -5,8 +5,8 @@ import { setCurrentOrganizationId as setGlobalOrganizationId, getQueryFn } from 
 interface Organization {
   id: string;
   name: string;
-  partnerId?: string | null; // Optional partner reference
   isActive: boolean; // Status field
+  theme: string; // Theme color
   userRole: string;
 }
 

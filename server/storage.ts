@@ -381,7 +381,8 @@ export class DatabaseStorage implements IStorage {
       .insert(organizations)
       .values({
         name: "Personal",
-        isActive: true
+        isActive: true,
+        theme: "blue"
       })
       .returning();
     
@@ -412,8 +413,8 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: organizations.id,
         name: organizations.name,
-        partnerId: organizations.partnerId,
         isActive: organizations.isActive,
+        theme: organizations.theme,
         userRole: userOrganizations.role,
         createdAt: organizations.createdAt,
         updatedAt: organizations.updatedAt,

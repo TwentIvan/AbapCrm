@@ -26,8 +26,8 @@ export const users = pgTable("users", {
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
-  partnerId: uuid("partner_id"), // Optional partner reference
   isActive: boolean("is_active").default(true).notNull(), // Status field
+  theme: text("theme").default("blue").notNull(), // Theme color
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -1364,7 +1364,6 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
 }));
 
 export const organizationsRelations = relations(organizations, ({ one, many }) => ({
-  partner: one(partners, { fields: [organizations.partnerId], references: [partners.id] }),
   userOrganizations: many(userOrganizations),
   projects: many(projects),
   tasks: many(tasks),

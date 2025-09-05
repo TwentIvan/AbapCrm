@@ -16,8 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 interface OrganizationWithDetails {
   id: string;
   name: string;
-  partnerId?: string | null;
   isActive: boolean;
+  theme: string;
   userRole: string;
   createdAt: string;
   updatedAt: string;
@@ -82,7 +82,17 @@ export default function OrganizationsPage() {
 
   const handleDelete = (items: OrganizationWithDetails[]) => {
     if (items.length === 0) return;
-    setSelectedItems(items);
+    // Filter out Personal organizations (cannot be deleted)
+    const deletableItems = items.filter(item => !isPersonalOrg(item));
+    if (deletableItems.length === 0) {
+      toast({ 
+        title: "Impossibile eliminare", 
+        description: "L'organizzazione Personal non può essere eliminata",
+        variant: "destructive"
+      });
+      return;
+    }
+    setSelectedItems(deletableItems);
     setShowBulkDeleteDialog(true);
   };
 
@@ -94,6 +104,34 @@ export default function OrganizationsPage() {
 
   const confirmBulkDelete = () => {
     bulkDeleteMutation.mutate(selectedItems);
+  };
+
+  // Helper functions for theme
+  const getThemeColor = (theme: string) => {
+    const themeColors: { [key: string]: string } = {
+      blue: "hsl(221.2, 83.2%, 53.3%)",
+      green: "hsl(142.1, 76.2%, 36.3%)",
+      purple: "hsl(262.1, 83.3%, 57.8%)",
+      orange: "hsl(24.6, 95%, 53.1%)",
+      red: "hsl(0, 72.2%, 50.6%)",
+    };
+    return themeColors[theme] || themeColors.blue;
+  };
+
+  const getThemeLabel = (theme: string) => {
+    const themeLabels: { [key: string]: string } = {
+      blue: "Blu",
+      green: "Verde", 
+      purple: "Viola",
+      orange: "Arancione",
+      red: "Rosso",
+    };
+    return themeLabels[theme] || "Blu";
+  };
+
+  // Check if organization is Personal (cannot be deleted)
+  const isPersonalOrg = (org: OrganizationWithDetails) => {
+    return org.name === "Personal";
   };
 
   // Cards view only - no table columns needed
@@ -124,19 +162,24 @@ export default function OrganizationsPage() {
                       <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEdit(item); }}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDelete([item]); }}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {!isPersonalOrg(item) && (
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDelete([item]); }}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Partner:</span>
+                      <span className="text-sm text-muted-foreground">Tema:</span>
                       <div className="flex items-center">
-                        <User className="h-4 w-4 mr-1 text-muted-foreground" />
-                        <span className="text-sm">{item.partnerId ? "Collegato" : "Nessuno"}</span>
+                        <div 
+                          className="w-4 h-4 rounded-full mr-2 border border-gray-300"
+                          style={{ backgroundColor: getThemeColor(item.theme) }}
+                        />
+                        <span className="text-sm capitalize">{getThemeLabel(item.theme)}</span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
