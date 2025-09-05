@@ -375,11 +375,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem asChild>
-                    <Link href="/account/settings" data-testid="link-account-settings">
-                      <Settings className="mr-2 h-5 w-5" style={{ color: '#6b7280' }} />
-                      Impostazioni Account
-                    </Link>
+                  <DropdownMenuItem 
+                    onClick={() => window.location.href = "/account/settings"}
+                    data-testid="button-account-settings-fullscreen"
+                  >
+                    <Settings className="mr-2 h-5 w-5" style={{ color: '#6b7280' }} />
+                    Impostazioni Account
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => logoutMutation.mutate()} className="text-destructive">
