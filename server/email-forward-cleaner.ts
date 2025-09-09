@@ -550,8 +550,11 @@ export class EmailForwardCleaner {
     // Prima aggiungiamo debug per capire come è strutturato l'HTML
     console.log(`[EMAIL-CLEANER] DEBUG: Looking for cut point in HTML (${htmlBody.length} chars)`);
     
-    // DEBUG: Mostra solo conferma che stiamo cercando
-    console.log('[EMAIL-CLEANER] Looking for recipient list pattern with &gt;; separators');
+    // DEBUG: Mostra campioni dell'HTML per trovare pattern reali
+    const beginning = htmlBody.substring(0, 2000);
+    const searchPoint = htmlBody.substring(100000, 102000); // Cerca più avanti nell'HTML
+    console.log('[EMAIL-CLEANER] HTML BEGINNING:', beginning);
+    console.log('[EMAIL-CLEANER] HTML AT 100k chars:', searchPoint);
     
     // Lista di pattern basati sulla struttura HTML reale osservata
     const forwardMarkers = [
