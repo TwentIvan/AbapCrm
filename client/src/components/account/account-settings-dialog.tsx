@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -66,10 +67,24 @@ export default function AccountSettingsDialog({ open, onOpenChange }: AccountSet
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Impostazioni Account</DialogTitle>
-          <DialogDescription>
-            Gestisci le informazioni del tuo account
-          </DialogDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle>Impostazioni Account</DialogTitle>
+              <DialogDescription>
+                Gestisci le informazioni del tuo account
+              </DialogDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.href = "/account/settings"}
+              data-testid="button-expand-fullscreen"
+              className="flex items-center gap-2"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Finestra Intera
+            </Button>
+          </div>
         </DialogHeader>
 
         <Tabs defaultValue="account" className="w-full">
