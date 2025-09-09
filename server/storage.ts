@@ -2857,7 +2857,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     if (auditContext) {
-      await AuditService.logChange('organizationDomains', newDomain.id, 'create', null, newDomain, auditContext.userId, auditContext.userAgent, auditContext.ipAddress);
+      await AuditService.logChange('organizationDomains', newDomain.id, 'CREATE', auditContext, undefined, newDomain);
     }
     
     return newDomain;
@@ -2873,7 +2873,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     if (updated && auditContext && oldRecord) {
-      await AuditService.logChange('organizationDomains', id, 'update', oldRecord, updated, auditContext.userId, auditContext.userAgent, auditContext.ipAddress);
+      await AuditService.logChange('organizationDomains', id, 'UPDATE', auditContext, oldRecord, updated);
     }
     
     return updated || undefined;
@@ -2908,7 +2908,7 @@ export class DatabaseStorage implements IStorage {
           }
         }
       },
-      orderBy: [asc(emailConfigs.email), asc(emailConfigs.folderName)],
+      orderBy: [asc(emailConfigs.email)],
     });
   }
 }

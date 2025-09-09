@@ -17,7 +17,8 @@ import {
   insertInterventionDocumentSchema, insertSystemCredentialsSchema,
   insertVpnSoftwareSchema, insertVpnSystemsSchema, vpnConnections,
   insertDiscoveredVpnSoftwareSchema, insertDiscoveredVpnConfigurationSchema,
-  insertOrganizationSchema, insertUserOrganizationSchema, insertOrganizationInvitationSchema
+  insertOrganizationSchema, insertUserOrganizationSchema, insertOrganizationInvitationSchema,
+  insertOrganizationDomainSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -1993,6 +1994,103 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Email sync error:", error);
       res.status(500).json({ error: "Failed to sync emails" });
+    }
+  });
+
+  // Organization Domains Management
+  app.get("/api/organization-domains", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const domains = await storage.getOrganizationDomains(organizationId);
+      res.json(domains);
+    } catch (error) {
+      console.error("Get organization domains error:", error);
+      res.status(500).json({ error: "Failed to get organization domains" });
+    }
+  });
+
+  app.post("/api/organization-domains", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const validatedData = insertOrganizationDomainSchema.parse({
+        ...req.body,
+        organizationId
+      });
+      
+      const auditContext = AuditService.createContext(req);
+      const newDomain = await storage.createOrganizationDomain(validatedData, auditContext);
+      res.json(newDomain);
+    } catch (error) {
+      console.error("Create organization domain error:", error);
+      res.status(500).json({ error: "Failed to create organization domain" });
+    }
+  });
+
+  app.put("/api/organization-domains/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { id } = req.params;
+      const validatedData = insertOrganizationDomainSchema.partial().parse(req.body);
+      
+      const auditContext = AuditService.createContext(req);
+      const updatedDomain = await storage.updateOrganizationDomain(id, validatedData, auditContext);
+      
+      if (!updatedDomain) {
+        return res.status(404).json({ error: "Organization domain not found" });
+      }
+      
+      res.json(updatedDomain);
+    } catch (error) {
+      console.error("Update organization domain error:", error);
+      res.status(500).json({ error: "Failed to update organization domain" });
+    }
+  });
+
+  app.delete("/api/organization-domains/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteOrganizationDomain(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Organization domain not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete organization domain error:", error);
+      res.status(500).json({ error: "Failed to delete organization domain" });
+    }
+  });
+
+  app.delete("/api/organization-domains", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: "Invalid or empty ids array" });
+      }
+      
+      const deletedCount = await storage.deleteOrganizationDomains(ids);
+      res.json({ success: true, deletedCount });
+    } catch (error) {
+      console.error("Bulk delete organization domains error:", error);
+      res.status(500).json({ error: "Failed to delete organization domains" });
+    }
+  });
+
+  // Email Accounts Extended Management
+  app.get("/api/email-accounts", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const emailAccounts = await storage.getEmailConfigsByOrganization(organizationId);
+      res.json(emailAccounts);
+    } catch (error) {
+      console.error("Get email accounts error:", error);
+      res.status(500).json({ error: "Failed to get email accounts" });
     }
   });
 
