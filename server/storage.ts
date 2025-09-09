@@ -3,7 +3,7 @@ import {
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
-  emailVerificationTokens,
+  emailVerificationTokens, organizationDomains,
   type User, type InsertUser,
   type Organization, type InsertOrganization,
   type UserOrganization, type InsertUserOrganization,
@@ -36,7 +36,8 @@ import {
   type VpnSystems, type InsertVpnSystems,
   type DiscoveredVpnSoftware, type InsertDiscoveredVpnSoftware,
   type DiscoveredVpnConfiguration, type InsertDiscoveredVpnConfiguration,
-  type EmailVerificationToken, type InsertEmailVerificationToken
+  type EmailVerificationToken, type InsertEmailVerificationToken,
+  type OrganizationDomain, type InsertOrganizationDomain
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull } from "drizzle-orm";
@@ -316,6 +317,17 @@ export interface IStorage {
   createMessageLink(link: InsertMessageLink): Promise<MessageLink>;
   updateMessageLink(id: string, updates: Partial<InsertMessageLink>, userId: string): Promise<MessageLink | undefined>;
   deleteMessageLink(id: string, userId: string): Promise<boolean>;
+
+  // Organization Domains
+  getOrganizationDomains(organizationId: string): Promise<OrganizationDomain[]>;
+  getOrganizationDomain(id: string): Promise<OrganizationDomain | undefined>;
+  createOrganizationDomain(domain: InsertOrganizationDomain, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<OrganizationDomain>;
+  updateOrganizationDomain(id: string, domain: Partial<InsertOrganizationDomain>, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<OrganizationDomain | undefined>;
+  deleteOrganizationDomain(id: string): Promise<boolean>;
+  deleteOrganizationDomains(ids: string[]): Promise<number>;
+
+  // Email Configurations Extended
+  getEmailConfigsByOrganization(organizationId: string): Promise<EmailConfig[]>;
 
   sessionStore: session.Store;
 }
@@ -2821,6 +2833,83 @@ export class DatabaseStorage implements IStorage {
       .delete(messageLinks)
       .where(eq(messageLinks.id, id));
     return (result.rowCount || 0) > 0;
+  }
+
+  // Organization Domains Implementation
+  async getOrganizationDomains(organizationId: string): Promise<OrganizationDomain[]> {
+    return await db.query.organizationDomains.findMany({
+      where: eq(organizationDomains.organizationId, organizationId),
+      orderBy: asc(organizationDomains.domain),
+    });
+  }
+
+  async getOrganizationDomain(id: string): Promise<OrganizationDomain | undefined> {
+    const domain = await db.query.organizationDomains.findFirst({
+      where: eq(organizationDomains.id, id),
+    });
+    return domain || undefined;
+  }
+
+  async createOrganizationDomain(domain: InsertOrganizationDomain, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<OrganizationDomain> {
+    const [newDomain] = await db
+      .insert(organizationDomains)
+      .values(domain)
+      .returning();
+    
+    if (auditContext) {
+      await AuditService.logChange('organizationDomains', newDomain.id, 'create', null, newDomain, auditContext.userId, auditContext.userAgent, auditContext.ipAddress);
+    }
+    
+    return newDomain;
+  }
+
+  async updateOrganizationDomain(id: string, domain: Partial<InsertOrganizationDomain>, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<OrganizationDomain | undefined> {
+    const oldRecord = auditContext ? await this.getOrganizationDomain(id) : null;
+    
+    const [updated] = await db
+      .update(organizationDomains)
+      .set(domain)
+      .where(eq(organizationDomains.id, id))
+      .returning();
+    
+    if (updated && auditContext && oldRecord) {
+      await AuditService.logChange('organizationDomains', id, 'update', oldRecord, updated, auditContext.userId, auditContext.userAgent, auditContext.ipAddress);
+    }
+    
+    return updated || undefined;
+  }
+
+  async deleteOrganizationDomain(id: string): Promise<boolean> {
+    const result = await db
+      .delete(organizationDomains)
+      .where(eq(organizationDomains.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async deleteOrganizationDomains(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    const result = await db
+      .delete(organizationDomains)
+      .where(sql`${organizationDomains.id} = ANY(${ids})`);
+    return result.rowCount || 0;
+  }
+
+  // Email Configurations Extended Implementation  
+  async getEmailConfigsByOrganization(organizationId: string): Promise<EmailConfig[]> {
+    return await db.query.emailConfigs.findMany({
+      where: eq(emailConfigs.organizationId, organizationId),
+      with: {
+        user: {
+          columns: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          }
+        }
+      },
+      orderBy: [asc(emailConfigs.email), asc(emailConfigs.folderName)],
+    });
   }
 }
 
