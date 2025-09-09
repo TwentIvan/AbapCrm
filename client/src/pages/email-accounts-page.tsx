@@ -153,6 +153,56 @@ export default function EmailAccountsPage() {
     );
   }
 
+  // Email Account Edit Dialog with Tabs (including AuditHistory)
+  const EmailAccountEditDialog = () => {
+    return (
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Modifica Account Email</DialogTitle>
+            <DialogDescription>
+              Configura le impostazioni per l'account {selectedAccount?.email}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Tabs defaultValue="details" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="details" className="flex items-center space-x-2">
+                <Mail className="h-4 w-4" />
+                <span>Configurazione</span>
+              </TabsTrigger>
+              <TabsTrigger value="history" className="flex items-center space-x-2">
+                <History className="h-4 w-4" />
+                <span>Storico Modifiche</span>
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="details" className="mt-6">
+              <div className="space-y-4">
+                <div className="text-sm text-muted-foreground">
+                  Form di configurazione account email sarà implementato qui.
+                  <br />Account: {selectedAccount?.email}
+                  <br />Server: {selectedAccount?.host}:{selectedAccount?.port}
+                  <br />Forwarding: {selectedAccount?.isForwarder ? 'Abilitato' : 'Disabilitato'}
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="history" className="mt-6">
+              {selectedAccount && (
+                <AuditHistory 
+                  tableName="email_configs" 
+                  recordId={selectedAccount.id}
+                  title="Storico Modifiche Account Email"
+                />
+              )}
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   const handleDelete = (account: EmailConfig) => {
     setSelectedAccount(account);
     setShowDeleteDialog(true);
@@ -427,6 +477,9 @@ export default function EmailAccountsPage() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
+      
+      {/* Email Account Edit Dialog */}
+      <EmailAccountEditDialog />
       
       {/* Table Configuration Dialog */}
       <TableConfiguration
