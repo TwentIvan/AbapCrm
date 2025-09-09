@@ -544,25 +544,26 @@ export class EmailForwardCleaner {
     // Prima aggiungiamo debug per capire come è strutturato l'HTML
     console.log(`[EMAIL-CLEANER] DEBUG: Looking for cut point in HTML (${htmlBody.length} chars)`);
     
-    // DEBUG: Mostra più campioni dell'HTML per trovare il contenuto del messaggio
-    const beginning = htmlBody.substring(0, 1000);
-    const middle = htmlBody.substring(Math.floor(htmlBody.length/2), Math.floor(htmlBody.length/2) + 1000);
-    const end = htmlBody.substring(htmlBody.length - 1000);
+    // DEBUG: Mostra solo conferma che stiamo cercando
+    console.log('[EMAIL-CLEANER] Looking for recipient list pattern with &gt;; separators');
     
-    console.log('[EMAIL-CLEANER] DEBUG HTML BEGINNING:', beginning);
-    console.log('[EMAIL-CLEANER] DEBUG HTML MIDDLE:', middle);
-    console.log('[EMAIL-CLEANER] DEBUG HTML END:', end);
-    
-    // Lista di pattern migliorati basati su strutture HTML reali
+    // Lista di pattern basati sulla struttura HTML reale osservata
     const forwardMarkers = [
-      // Headers di forwarded message (più flessibili)
+      // PATTERN SPECIFICO per le email Outlook/Lutech che mostrano lista destinatari
+      // Cerca sequenze di email separate da "&gt;;" (codifica HTML di ">;")
+      /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^<]*<\/[^>]*>&gt;;\s*[^<]*&lt;[^>]*>[^<]*[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi,
+      
+      // Pattern per lista di destinatari con &gt;; separators
+      /&gt;;\s*[^<]*&lt;[^>]*>[^<]*@[^<]*<\/[^>]*>&gt;;/gi,
+      
+      // Headers di forwarded message (tradizionali)
       /[-]{8,}\s*Forwarded message\s*[-]{8,}/gi,
       /[-]{8,}\s*Messaggio inoltrato\s*[-]{8,}/gi,
       /Begin forwarded message:/gi,
       /[-]{8,}\s*Original Message\s*[-]{8,}/gi,
       /[-]{8,}\s*Messaggio originale\s*[-]{8,}/gi,
       
-      // Email headers pattern (più realistici)
+      // Email headers pattern
       /From:\s*[^\r\n<]+[\r\n\s]*Date:/gi,
       /Da:\s*[^\r\n<]+[\r\n\s]*Data:/gi,
       
@@ -577,10 +578,10 @@ export class EmailForwardCleaner {
       // Outlook style
       /<div[^>]*style="[^"]*border-top/gi,
       
-      // HR separator (più specifico)
+      // HR separator
       /<hr[^>]*style/gi,
       
-      // "On ... wrote:" patterns (più flessibili)
+      // "On ... wrote:" patterns
       /On\s+[^,\n<]+,?\s*[^<\n]*\s*wrote:/gi,
       /Il giorno\s+[^<\n]+\s+ha scritto:/gi,
       
@@ -588,8 +589,8 @@ export class EmailForwardCleaner {
       /<table[^>]*>[^<]*<(?:tr|td)[^>]*>[^<]*(?:From|Da):/gi,
       
       // Generic forwarding patterns
-      /_{10,}/g, // Long underscores
-      /={10,}/g, // Long equals
+      /_{10,}/g,
+      /={10,}/g,
     ];
 
     let earliestPosition = -1;
