@@ -506,21 +506,75 @@ export class EmailForwardCleaner {
     return null;
   }
 
-  // Preserva formattazione HTML originale completa
+  // Preserva formattazione HTML originale completa ma rimuove le sezioni di inoltro
   private static preserveHtmlFormatting(htmlBody: string): string | null {
     try {
       if (!htmlBody || htmlBody.trim().length < 50) return null;
 
-      // Mantiene l'HTML originale completo senza pulizia aggressiva
+      // Mantiene l'HTML originale ma rimuove le sezioni di inoltro
       let preserved = htmlBody;
 
-      // Rimuove solo i wrapper di inoltro più evidenti ma mantiene il contenuto
-      preserved = preserved.replace(/<div[^>]*>---------- Forwarded message ---------<\/div>/gi, '');
-      preserved = preserved.replace(/<div[^>]*>---------- Messaggio inoltrato ----------<\/div>/gi, '');
+      // Pattern HTML più completi per sezioni di inoltro da rimuovere completamente
+      const htmlForwardPatterns = [
+        // Forwarded message headers
+        /<div[^>]*>[\s]*---------- Forwarded message ---------[\s\S]*$/gi,
+        /<div[^>]*>[\s]*---------- Messaggio inoltrato ----------[\s\S]*$/gi,
+        /<div[^>]*>[\s]*Begin forwarded message:[\s\S]*$/gi,
+        /<div[^>]*>[\s]*---------- Original Message ----------[\s\S]*$/gi,
+        /<div[^>]*>[\s]*---------- Messaggio originale ----------[\s\S]*$/gi,
+        
+        // Email headers in HTML (From, Date, Subject, To patterns)
+        /<div[^>]*>[\s]*From:[\s\S]*?Subject:[\s\S]*?To:[\s\S]*$/gi,
+        /<div[^>]*>[\s]*Da:[\s\S]*?Data:[\s\S]*?Oggetto:[\s\S]*?A:[\s\S]*$/gi,
+        /<p[^>]*>[\s]*From:[\s\S]*?Subject:[\s\S]*?To:[\s\S]*$/gi,
+        /<p[^>]*>[\s]*Da:[\s\S]*?Data:[\s\S]*?Oggetto:[\s\S]*?A:[\s\S]*$/gi,
+        
+        // Blockquotes containing forwarded content
+        /<blockquote[^>]*type="cite"[\s\S]*<\/blockquote>/gi,
+        /<blockquote[^>]*>[\s\S]*?From:[\s\S]*?Subject:[\s\S]*?<\/blockquote>/gi,
+        
+        // HR separators followed by forwarded content  
+        /<hr[^>]*>[\s\S]*$/gi,
+        
+        // Outlook-style forwarded sections
+        /<div[^>]*class="[^"]*OutlookMessageHeader[^"]*"[\s\S]*$/gi,
+        /<div[^>]*class="[^"]*gmail_quote[^"]*"[\s\S]*$/gi,
+        
+        // Generic patterns for "On date, person wrote:" in various languages
+        /<div[^>]*>[\s]*On .* wrote:[\s\S]*$/gi,
+        /<div[^>]*>[\s]*Il giorno .* ha scritto:[\s\S]*$/gi,
+        /<div[^>]*>[\s]*Le .* a écrit[\s\S]*$/gi,
+        /<div[^>]*>[\s]*Am .* schrieb[\s\S]*$/gi,
+        
+        // Table-based email headers
+        /<table[^>]*>[\s\S]*?From:[\s\S]*?Subject:[\s\S]*?<\/table>[\s\S]*$/gi,
+      ];
+
+      // Rimuove le sezioni HTML di inoltro
+      htmlForwardPatterns.forEach(pattern => {
+        const match = preserved.match(pattern);
+        if (match) {
+          preserved = preserved.substring(0, match.index || 0);
+        }
+      });
       
-      // Mantiene tutte le formattazioni: grassetto, corsivo, colori, link, tabelle, etc.
-      console.log('[EMAIL-CLEANER] Preserved HTML formatting:', preserved.length, 'characters');
-      return preserved.trim();
+      // Rimuove anche singoli elementi di inoltro senza tagliare tutto il contenuto
+      preserved = preserved.replace(/<div[^>]*>[\s]*---------- Forwarded message ---------[\s]*<\/div>/gi, '');
+      preserved = preserved.replace(/<div[^>]*>[\s]*---------- Messaggio inoltrato ----------[\s]*<\/div>/gi, '');
+      preserved = preserved.replace(/<div[^>]*>[\s]*Begin forwarded message:[\s]*<\/div>/gi, '');
+      preserved = preserved.replace(/<div[^>]*>[\s]*---------- Original Message ----------[\s]*<\/div>/gi, '');
+      
+      // Chiude eventuali tag aperti dopo la rimozione
+      preserved = this.closeOpenHtmlTags(preserved);
+      
+      // Pulisce whitespace HTML in eccesso
+      preserved = preserved
+        .replace(/\s*<\/div>\s*<div[^>]*>\s*/gi, '</div><div>')
+        .replace(/\s*<\/p>\s*<p[^>]*>\s*/gi, '</p><p>')
+        .trim();
+
+      console.log(`[EMAIL-CLEANER] Preserved HTML formatting: ${preserved.length} characters`);
+      return preserved.length > 100 ? preserved : null;
 
     } catch (error) {
       console.log('[EMAIL-CLEANER] Error preserving HTML formatting:', error);
