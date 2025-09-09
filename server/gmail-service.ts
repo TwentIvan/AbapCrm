@@ -30,7 +30,7 @@ export class GmailService {
       const gmailConfig = emailConfigs.find((config: EmailConfig) => 
         config.isActive && 
         !config.isForwarder && 
-        config.host.includes('gmail')
+        (config.host.includes('gmail') || config.email.includes('@gmail.com'))
       );
 
       if (!gmailConfig) {
@@ -40,11 +40,15 @@ export class GmailService {
 
       this.senderConfig = gmailConfig;
 
-      // Crea transporter nodemailer per Gmail
+      // Crea transporter nodemailer per Gmail (usa sempre configurazione SMTP per Gmail)
+      const smtpHost = 'smtp.gmail.com';
+      const smtpPort = 587; // Porta TLS per Gmail SMTP
+      
       this.transporter = nodemailer.createTransport({
-        host: gmailConfig.host,
-        port: gmailConfig.port,
-        secure: gmailConfig.tls, // true for 465, false for other ports
+        host: smtpHost,
+        port: smtpPort,
+        secure: false, // true solo per porta 465, false per 587
+        requireTLS: true, // Forza TLS per Gmail
         auth: {
           user: gmailConfig.email,
           pass: gmailConfig.password,
@@ -53,6 +57,9 @@ export class GmailService {
         pool: true,
         maxConnections: 5,
         maxMessages: 100,
+        // Debug per Gmail
+        debug: true,
+        logger: false,
       });
 
       // Verifica la connessione
