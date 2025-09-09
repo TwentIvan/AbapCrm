@@ -506,23 +506,32 @@ export class EmailForwardCleaner {
     return null;
   }
 
-  // Preserva formattazione HTML originale completa ma "implode" i thread invece di rimuoverli
+  // Preserva formattazione HTML originale ma rimuove le sezioni di inoltro
   private static preserveHtmlFormatting(htmlBody: string): string | null {
     try {
       if (!htmlBody || htmlBody.trim().length < 50) return null;
 
-      // Nuovo approccio: "implode" i thread di inoltro invece di rimuoverli
-      let processed = this.implodeForwardedThreads(htmlBody);
+      // Step 1: Prima trova e taglia al punto di inoltro (logica originale)
+      let cutPoint = this.findForwardCutPoint(htmlBody);
+      let processed = htmlBody;
       
-      console.log(`[EMAIL-CLEANER] Imploded threads, remaining: ${processed.length} characters`);
+      if (cutPoint > 0) {
+        // Taglia l'HTML al punto trovato (elimina la sezione di inoltro)
+        processed = htmlBody.substring(0, cutPoint);
+        processed = this.closeOpenHtmlTags(processed);
+        console.log(`[EMAIL-CLEANER] Cut at position ${cutPoint}, remaining: ${processed.length} chars`);
+      } else {
+        // Se non trova un punto di taglio chiaro, pulisce solo gli header
+        processed = this.removeForwardingHeaders(htmlBody);
+        console.log(`[EMAIL-CLEANER] Removed headers only, remaining: ${processed.length} chars`);
+      }
       
-      // Verifica meno aggressiva: mantiene l'HTML a meno che non sia veramente vuoto
+      // Verifica finale: se troppo corto usa il testo
       if (processed.trim().length < 100) {
-        console.log('[EMAIL-CLEANER] After processing too short, using text body');
+        console.log('[EMAIL-CLEANER] After cutting too short, using text body');
         return null;
       }
 
-      // Rimuove la verifica signature troppo aggressiva
       console.log(`[EMAIL-CLEANER] Preserved HTML formatting: ${processed.length} characters`);
       return processed;
 
@@ -576,11 +585,11 @@ export class EmailForwardCleaner {
     return earliestPosition;
   }
 
-  // "Implode" i thread di inoltro: li compatta invece di rimuoverli completamente  
-  private static implodeForwardedThreads(htmlBody: string): string {
+  // Rimuove solo gli header di forwarding ma mantiene tutto il contenuto
+  private static removeForwardingHeaders(htmlBody: string): string {
     let processed = htmlBody;
     
-    // Step 1: Rimuove solo header specifici di forwarding ma mantiene il contenuto
+    // Rimuove solo header specifici di forwarding
     const headerPatterns = [
       /<div[^>]*>[\s]*---------- Forwarded message ---------[\s]*<\/div>/gi,
       /<div[^>]*>[\s]*---------- Messaggio inoltrato ----------[\s]*<\/div>/gi,
@@ -591,12 +600,8 @@ export class EmailForwardCleaner {
     headerPatterns.forEach(pattern => {
       processed = processed.replace(pattern, '');
     });
-
-    // Step 2: "Implode" le sezioni di thread lunghi trasformandole in summary compatti
-    processed = this.compactEmailHeaders(processed);
-    processed = this.compactLongQuotes(processed);
     
-    // Step 3: Pulizia leggera
+    // Pulizia leggera
     processed = processed
       .replace(/\n\s*\n\s*\n/g, '\n\n') // Max 2 newlines
       .replace(/>\s+</g, '><')          // Rimuove spazi tra tag
