@@ -12,11 +12,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Settings, CheckCircle, AlertCircle, Trash2, Plus, Edit, Power, Eye, EyeOff, Forward } from "lucide-react";
+import { Mail, Settings, CheckCircle, AlertCircle, Trash2, Plus, Edit, Power, Eye, EyeOff, Forward, Send } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import type { EmailConfig, InsertEmailConfig } from "@shared/schema";
+import { EmailSendDialog } from "@/components/email-send-dialog";
 
 const emailConfigSchema = z.object({
   email: z.string().email("Inserisci un indirizzo email valido"),
@@ -45,6 +46,7 @@ export default function EmailConfig() {
   const [editingConfig, setEditingConfig] = useState<EmailConfig | null>(null);
   const [configToDelete, setConfigToDelete] = useState<EmailConfig | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [showSendDialog, setShowSendDialog] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();

@@ -293,6 +293,8 @@ export const emailConfigs = pgTable("email_configs", {
   // NUOVI CAMPI per gestione forwarding intelligente
   isForwarder: boolean("is_forwarder").default(false).notNull(), // Se questo account inoltra tipicamente email
   customSignature: text("custom_signature"), // Firma personalizzata di questo account (per rimozione più precisa)
+  // NUOVO: Account IMAP da usare per l'invio (per account inoltranti)
+  sendingAccountId: uuid("sending_account_id"), // Quale account usare per inviare email da questo inoltrante (UUID di altra EmailConfig)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
