@@ -401,7 +401,18 @@ export class EmailForwardCleaner {
     
     // Pattern per rimuovere le intestazioni HTML di Outlook
     const headerPatterns = [
-      // Rimuove sezioni con From/To/Subject/Date in formato HTML
+      // NUOVI pattern specifici per Outlook formato italiano dentro <font>
+      /<div[^>]*id\s*=\s*["']?divRplyFwdMsg["']?[^>]*>[\s\S]*?<\/div>/gi,
+      /<font[^>]*>[\s\S]*?<b>\s*(?:Da|Inviato|A|Cc|Oggetto)\s*:<\/b>[\s\S]*?<\/font>/gi,
+      
+      // Pattern specifici per linee di header in italiano
+      /<b>\s*Da\s*:<\/b>[^<]*(?:<[^>]*>[^<]*)*<br\s*\/?>/gi,
+      /<b>\s*Inviato\s*:<\/b>[^<]*<br\s*\/?>/gi,
+      /<b>\s*A\s*:<\/b>[^<]*(?:<[^>]*>[^<]*)*<br\s*\/?>/gi,
+      /<b>\s*Cc\s*:<\/b>[^<]*(?:<[^>]*>[^<]*)*<br\s*\/?>/gi,
+      /<b>\s*Oggetto\s*:<\/b>[^<]*<br\s*\/?>/gi,
+      
+      // Pattern originali per altri formati
       /<div[^>]*>\s*<b>\s*From:\s*<\/b>[^<]*<[^>]*>[^<]*<\/[^>]*>[\s\S]*?<\/div>/gi,
       /<div[^>]*>\s*<b>\s*To:\s*<\/b>[^<]*<[^>]*>[^<]*<\/[^>]*>[\s\S]*?<\/div>/gi,
       /<div[^>]*>\s*<b>\s*Subject:\s*<\/b>[^<]*<\/div>/gi,
