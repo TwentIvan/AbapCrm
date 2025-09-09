@@ -521,8 +521,8 @@ export class EmailForwardCleaner {
       const cutPoint = this.findForwardCutPoint(htmlBody);
       
       if (cutPoint > 0) {
-        // Taglia l'HTML al punto trovato, preservando solo la parte originale
-        const cleanedHtml = htmlBody.substring(0, cutPoint).trim();
+        // Taglia l'HTML al punto trovato, preservando tutto DOPO la firma (contenuto inoltrato)
+        const cleanedHtml = htmlBody.substring(cutPoint).trim();
         console.log(`[EMAIL-CLEANER] ✓ Cut HTML at position ${cutPoint}, result: ${cleanedHtml.length} chars`);
         
         // Verifica che il risultato abbia contenuto utile
