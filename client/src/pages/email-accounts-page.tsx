@@ -71,7 +71,7 @@ export default function EmailAccountsPage() {
   } = useTableLayout('email-accounts');
 
   const { data: emailAccounts, isLoading } = useQuery<EmailConfig[]>({
-    queryKey: ["/api/email-accounts"],
+    queryKey: ["/api/email/configs"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId, // Wait for organization context
     staleTime: 30 * 60 * 1000, // 30 minutes
@@ -81,7 +81,7 @@ export default function EmailAccountsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (accountId: string) => {
-      const response = await fetch(`/api/email-accounts/${accountId}`, {
+      const response = await fetch(`/api/email/configs/${accountId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -91,7 +91,7 @@ export default function EmailAccountsPage() {
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email-accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email/configs"] });
       toast({
         title: "Account email eliminato",
         description: "L'account email è stato eliminato con successo.",
@@ -111,7 +111,7 @@ export default function EmailAccountsPage() {
   const bulkDeleteMutation = useMutation({
     mutationFn: async (accountIds: string[]) => {
       const promises = accountIds.map(id => 
-        fetch(`/api/email-accounts/${id}`, {
+        fetch(`/api/email/configs/${id}`, {
           method: 'DELETE',
           credentials: 'include'
         })
@@ -126,7 +126,7 @@ export default function EmailAccountsPage() {
       return responses;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email-accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email/configs"] });
       toast({
         title: "Account email eliminati",
         description: `${selectedAccounts.length} account eliminati con successo.`,

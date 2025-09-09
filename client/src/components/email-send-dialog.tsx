@@ -113,6 +113,7 @@ export function EmailSendDialog({ open, onOpenChange }: EmailSendDialogProps) {
     
     sendEmailMutation.mutate({
       ...data,
+      from: data.from === "__default__" ? undefined : data.from, // Convert back to undefined for default
       to: recipients.join(", "),
       // Use HTML if provided, otherwise convert text to HTML
       html: data.html || (data.text ? `<p>${data.text.replace(/\n/g, '<br>')}</p>` : ""),
@@ -169,7 +170,7 @@ export function EmailSendDialog({ open, onOpenChange }: EmailSendDialogProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Account predefinito</SelectItem>
+                            <SelectItem value="__default__">Account predefinito</SelectItem>
                             {senders?.map((sender) => (
                               <SelectItem key={sender.email} value={sender.email}>
                                 <div className="flex items-center gap-2">
