@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Settings, CheckCircle, AlertCircle, Trash2, Plus, Edit, Power, Eye, EyeOff } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import type { EmailConfig, InsertEmailConfig } from "@shared/schema";
 
 const emailConfigSchema = z.object({
@@ -39,6 +39,7 @@ export default function EmailConfig() {
   // Query per ottenere tutte le configurazioni email
   const { data: emailConfigs = [], isLoading } = useQuery<EmailConfig[]>({
     queryKey: ["/api/email/configs"],
+    queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!user,
   });
 
