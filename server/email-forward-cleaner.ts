@@ -544,42 +544,67 @@ export class EmailForwardCleaner {
 
   // Trova il punto ottimale dove tagliare l'HTML per rimuovere la sezione di inoltro
   private static findForwardCutPoint(htmlBody: string): number {
-    // Lista di pattern in ordine di priorità (dal più specifico al più generico)
+    // Prima aggiungiamo debug per capire come è strutturato l'HTML
+    console.log(`[EMAIL-CLEANER] DEBUG: Looking for cut point in HTML (${htmlBody.length} chars)`);
+    
+    // Lista di pattern migliorati basati su strutture HTML reali
     const forwardMarkers = [
-      // Headers di forwarded message
-      /---------- Forwarded message ---------/gi,
-      /---------- Messaggio inoltrato ----------/gi,
+      // Headers di forwarded message (più flessibili)
+      /[-]{8,}\s*Forwarded message\s*[-]{8,}/gi,
+      /[-]{8,}\s*Messaggio inoltrato\s*[-]{8,}/gi,
       /Begin forwarded message:/gi,
-      /---------- Original Message ----------/gi,
-      /---------- Messaggio originale ----------/gi,
+      /[-]{8,}\s*Original Message\s*[-]{8,}/gi,
+      /[-]{8,}\s*Messaggio originale\s*[-]{8,}/gi,
       
-      // Email headers pattern
-      /<div[^>]*>\s*From:\s*[^<]+<\/div>\s*<div[^>]*>\s*Date:/gi,
-      /<div[^>]*>\s*Da:\s*[^<]+<\/div>\s*<div[^>]*>\s*Data:/gi,
-      /<p[^>]*>\s*From:\s*.*?\s*Date:/gi,
+      // Email headers pattern (più realistici)
+      /From:\s*[^\r\n<]+[\r\n\s]*Date:/gi,
+      /Da:\s*[^\r\n<]+[\r\n\s]*Data:/gi,
       
-      // HR separator
-      /<hr[^>]*>/gi,
+      // Headers HTML con o senza div
+      /<(?:div|p|span)[^>]*>\s*From:\s*[^<]+<\/(?:div|p|span)>/gi,
+      /<(?:div|p|span)[^>]*>\s*Da:\s*[^<]+<\/(?:div|p|span)>/gi,
       
-      // Gmail/Outlook quote patterns
+      // Gmail style quotes
       /<div[^>]*class="[^"]*gmail_quote/gi,
-      /<blockquote[^>]*type="cite"/gi,
+      /<blockquote[^>]*>/gi,
       
-      // "On ... wrote:" patterns
-      /<div[^>]*>\s*On .* wrote:/gi,
-      /<div[^>]*>\s*Il giorno .* ha scritto:/gi,
+      // Outlook style
+      /<div[^>]*style="[^"]*border-top/gi,
+      
+      // HR separator (più specifico)
+      /<hr[^>]*style/gi,
+      
+      // "On ... wrote:" patterns (più flessibili)
+      /On\s+[^,\n<]+,?\s*[^<\n]*\s*wrote:/gi,
+      /Il giorno\s+[^<\n]+\s+ha scritto:/gi,
+      
+      // Outlook message header table
+      /<table[^>]*>[^<]*<(?:tr|td)[^>]*>[^<]*(?:From|Da):/gi,
+      
+      // Generic forwarding patterns
+      /_{10,}/g, // Long underscores
+      /={10,}/g, // Long equals
     ];
 
-    // Trova il primo marker che appare nell'HTML
     let earliestPosition = -1;
+    let foundPattern = '';
     
-    for (const pattern of forwardMarkers) {
+    for (let i = 0; i < forwardMarkers.length; i++) {
+      const pattern = forwardMarkers[i];
       const match = htmlBody.match(pattern);
       if (match && match.index !== undefined) {
+        console.log(`[EMAIL-CLEANER] DEBUG: Found marker "${pattern}" at position ${match.index}`);
         if (earliestPosition === -1 || match.index < earliestPosition) {
           earliestPosition = match.index;
+          foundPattern = pattern.toString();
         }
       }
+    }
+    
+    if (earliestPosition > 0) {
+      console.log(`[EMAIL-CLEANER] DEBUG: Will cut at position ${earliestPosition} using pattern ${foundPattern}`);
+    } else {
+      console.log(`[EMAIL-CLEANER] DEBUG: No cut point found, will try header removal only`);
     }
 
     return earliestPosition;
