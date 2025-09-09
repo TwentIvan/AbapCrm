@@ -506,13 +506,30 @@ export class EmailForwardCleaner {
     return null;
   }
 
-  // Per le email inoltrate, disabilita completamente HTML e usa solo testo
+  // Per le email inoltrate, cerca di tagliare solo la parte di inoltro
   private static preserveHtmlFormatting(htmlBody: string): string | null {
     try {
-      console.log(`[EMAIL-CLEANER] DISABLING HTML for forwarded email - using text only`);
+      console.log(`[EMAIL-CLEANER] Attempting to cut forwarded content from HTML (${htmlBody.length} chars)`);
       
-      // Ritorna null per forzare l'uso del text body al posto dell'HTML
-      // Il text body è molto più pulito e senza formattazione di inoltro
+      // Trova il punto dove inizia la sezione di inoltro
+      const cutPoint = this.findForwardCutPoint(htmlBody);
+      
+      if (cutPoint > 0) {
+        // Taglia l'HTML al punto trovato, preservando solo la parte originale
+        const cleanedHtml = htmlBody.substring(0, cutPoint).trim();
+        console.log(`[EMAIL-CLEANER] ✓ Cut HTML at position ${cutPoint}, result: ${cleanedHtml.length} chars`);
+        
+        // Verifica che il risultato abbia contenuto utile
+        if (cleanedHtml.length > 50) {
+          return cleanedHtml;
+        } else {
+          console.log(`[EMAIL-CLEANER] ✗ Cut HTML too short, falling back to text body`);
+        }
+      } else {
+        console.log(`[EMAIL-CLEANER] ✗ No cut point found, falling back to text body`);
+      }
+      
+      // Se non riesce a tagliare l'HTML in modo efficace, usa il text body
       return null;
 
     } catch (error) {
