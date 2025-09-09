@@ -547,59 +547,53 @@ export class EmailForwardCleaner {
 
   // Trova il punto ottimale dove tagliare l'HTML per rimuovere la sezione di inoltro
   private static findForwardCutPoint(htmlBody: string): number {
-    // Prima aggiungiamo debug per capire come è strutturato l'HTML
     console.log(`[EMAIL-CLEANER] DEBUG: Looking for cut point in HTML (${htmlBody.length} chars)`);
     
-    // DEBUG: Mostra campioni dell'HTML per trovare pattern reali
-    const beginning = htmlBody.substring(0, 2000);
-    const searchPoint = htmlBody.substring(100000, 102000); // Cerca più avanti nell'HTML
-    console.log('[EMAIL-CLEANER] HTML BEGINNING:', beginning);
-    console.log('[EMAIL-CLEANER] HTML AT 100k chars:', searchPoint);
+    // APPROCCIO OUTLOOK: Cerca la fine della firma e mantieni tutto il resto
+    // La firma di Outlook ha id="Signature" o class="signature"
+    const signatureEndPatterns = [
+      // Fine div con id="Signature"
+      /<\/div>[\s]*<\/div>[\s]*(?=<div[^>]*(?:id="divRplyFwdMsg"|class="[^"]*BodyFragment))/i,
+      // Fine div generale prima del contenuto inoltrato
+      /<\/div>[\s]*(?=<div[^>]*(?:dir=|style="[^"]*border-top))/i,
+      // Fine sezione firma prima di HR separator
+      /<\/div>[\s]*(?=<hr)/i,
+      // Fine elementi firma prima di contenuto principale
+      /<\/p>[\s]*<\/div>[\s]*(?=<div[^>]*(?!id="Signature"))/i
+    ];
     
-    // Lista di pattern basati sulla struttura HTML reale osservata
+    console.log('[EMAIL-CLEANER] Searching for signature end patterns...');
+    
+    // Prima prova con i pattern di fine firma (approccio Outlook)
+    for (const pattern of signatureEndPatterns) {
+      const match = htmlBody.match(pattern);
+      if (match && match.index !== undefined) {
+        const cutPoint = match.index + match[0].length;
+        console.log(`[EMAIL-CLEANER] ✓ Found signature end at position ${cutPoint}`);
+        return cutPoint; // Mantieni tutto DOPO la firma
+      }
+    }
+    
+    // Fallback: pattern tradizionali di inoltro
     const forwardMarkers = [
-      // PATTERN SPECIFICO per le email Outlook/Lutech che mostrano lista destinatari
-      // Cerca sequenze di email separate da "&gt;;" (codifica HTML di ">;")
-      /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^<]*<\/[^>]*>&gt;;\s*[^<]*&lt;[^>]*>[^<]*[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi,
+      // Outlook divRplyFwdMsg (il più specifico)
+      /<div[^>]*id[\s]*=[\s]*["']?divRplyFwdMsg["']?[^>]*>/i,
+      /<div[^>]*class[\s]*=[\s]*["']?[^"']*BodyFragment[^"']*["']?[^>]*>/i,
       
-      // Pattern per lista di destinatari con &gt;; separators
-      /&gt;;\s*[^<]*&lt;[^>]*>[^<]*@[^<]*<\/[^>]*>&gt;;/gi,
+      // Headers HTML bold di Outlook
+      /<b>\s*From:\s*<\/b>/i,
+      /<b>\s*Da:\s*<\/b>/i,
       
-      // Headers di forwarded message (tradizionali)
+      // Headers di forwarded message tradizionali
       /[-]{8,}\s*Forwarded message\s*[-]{8,}/gi,
-      /[-]{8,}\s*Messaggio inoltrato\s*[-]{8,}/gi,
-      /Begin forwarded message:/gi,
       /[-]{8,}\s*Original Message\s*[-]{8,}/gi,
-      /[-]{8,}\s*Messaggio originale\s*[-]{8,}/gi,
       
-      // Email headers pattern
-      /From:\s*[^\r\n<]+[\r\n\s]*Date:/gi,
-      /Da:\s*[^\r\n<]+[\r\n\s]*Data:/gi,
-      
-      // Headers HTML con o senza div
-      /<(?:div|p|span)[^>]*>\s*From:\s*[^<]+<\/(?:div|p|span)>/gi,
-      /<(?:div|p|span)[^>]*>\s*Da:\s*[^<]+<\/(?:div|p|span)>/gi,
+      // HR separator
+      /<hr[^>]*>/i,
       
       // Gmail style quotes
       /<div[^>]*class="[^"]*gmail_quote/gi,
-      /<blockquote[^>]*>/gi,
-      
-      // Outlook style
-      /<div[^>]*style="[^"]*border-top/gi,
-      
-      // HR separator
-      /<hr[^>]*style/gi,
-      
-      // "On ... wrote:" patterns
-      /On\s+[^,\n<]+,?\s*[^<\n]*\s*wrote:/gi,
-      /Il giorno\s+[^<\n]+\s+ha scritto:/gi,
-      
-      // Outlook message header table
-      /<table[^>]*>[^<]*<(?:tr|td)[^>]*>[^<]*(?:From|Da):/gi,
-      
-      // Generic forwarding patterns
-      /_{10,}/g,
-      /={10,}/g,
+      /<blockquote[^>]*>/gi
     ];
 
     let earliestPosition = -1;
