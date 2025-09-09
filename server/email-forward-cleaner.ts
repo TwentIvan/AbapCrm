@@ -362,6 +362,12 @@ export class EmailForwardCleaner {
   private static isOnlySignatureHtml(html: string): boolean {
     if (!html) return true;
     
+    // Se l'HTML è molto lungo (> 10KB), sicuramente non è solo una firma
+    if (html.length > 10000) {
+      console.log(`[EMAIL-CLEANER] HTML is ${html.length} chars, too long to be only signature`);
+      return false;
+    }
+    
     // Rimuove tutti i tag HTML per analizzare solo il testo
     const textContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     
