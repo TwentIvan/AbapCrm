@@ -506,37 +506,14 @@ export class EmailForwardCleaner {
     return null;
   }
 
-  // Preserva formattazione HTML originale ma rimuove le sezioni di inoltro
+  // Per le email inoltrate, disabilita completamente HTML e usa solo testo
   private static preserveHtmlFormatting(htmlBody: string): string | null {
     try {
-      if (!htmlBody || htmlBody.trim().length < 50) return null;
-
-      // NUOVO APPROCCIO: Divide a metà e mantiene solo la prima metà
-      // Le email inoltrate hanno il contenuto originale all'inizio e l'inoltro dopo
-      const halfWayPoint = Math.floor(htmlBody.length / 2);
-      let processed = htmlBody.substring(0, halfWayPoint);
+      console.log(`[EMAIL-CLEANER] DISABLING HTML for forwarded email - using text only`);
       
-      // Chiude i tag HTML che potrebbero essere stati tagliati
-      processed = this.closeOpenHtmlTags(processed);
-      
-      console.log(`[EMAIL-CLEANER] BRUTALE: Cut at halfway point (${halfWayPoint}), remaining: ${processed.length} chars`);
-      
-      // Se la prima metà è ancora molto lunga, tagliamo di più
-      if (processed.length > 50000) {
-        const quarterPoint = Math.floor(htmlBody.length / 4);
-        processed = htmlBody.substring(0, quarterPoint);
-        processed = this.closeOpenHtmlTags(processed);
-        console.log(`[EMAIL-CLEANER] BRUTALE: Cut at quarter point (${quarterPoint}), remaining: ${processed.length} chars`);
-      }
-      
-      // Verifica finale: se troppo corto usa il testo
-      if (processed.trim().length < 200) {
-        console.log('[EMAIL-CLEANER] After brutal cutting too short, using text body');
-        return null;
-      }
-
-      console.log(`[EMAIL-CLEANER] Preserved HTML formatting (brutal): ${processed.length} characters`);
-      return processed;
+      // Ritorna null per forzare l'uso del text body al posto dell'HTML
+      // Il text body è molto più pulito e senza formattazione di inoltro
+      return null;
 
     } catch (error) {
       console.log('[EMAIL-CLEANER] Error preserving HTML formatting:', error);
