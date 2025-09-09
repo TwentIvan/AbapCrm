@@ -1807,7 +1807,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         host: savedConfig.host,
         port: savedConfig.port,
         tls: savedConfig.tls,
-        folder: firstFolder
+        folder: firstFolder,
+        userId: req.user!.id
       };
 
       // Disconnect existing service first
@@ -1961,7 +1962,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
           host: updatedConfig.host,
           port: updatedConfig.port,
           tls: updatedConfig.tls,
-          folder: firstFolder
+          folder: firstFolder,
+          userId: req.user!.id
         };
         
         initializeEmailService(imapConfig);
