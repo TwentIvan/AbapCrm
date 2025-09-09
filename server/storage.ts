@@ -324,15 +324,14 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    // Use in-memory session store for maximum performance
-    // Sessions will be lost on server restart but performance is critical
-    this.sessionStore = new MemorySessionStore({
-      checkPeriod: 86400000, // prune expired entries every 24h
-      ttl: 30 * 24 * 60 * 60 * 1000, // 30 days TTL
-      max: 1000, // max 1000 sessions in memory
+    // Use PostgreSQL session store for persistent sessions across server restarts
+    this.sessionStore = new PostgresSessionStore({
+      pool: pool, // PostgreSQL connection pool
+      tableName: 'session', // Table name for sessions
+      createTableIfMissing: false, // Table already exists
     });
     
-    console.log("[PERF] Using in-memory session store for optimal performance");
+    console.log("[SESSION] Using PostgreSQL session store for persistent sessions");
   }
 
   // Check if user data is already cached
