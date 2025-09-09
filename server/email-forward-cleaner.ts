@@ -511,67 +511,28 @@ export class EmailForwardCleaner {
     try {
       if (!htmlBody || htmlBody.trim().length < 50) return null;
 
-      // Mantiene l'HTML originale ma rimuove le sezioni di inoltro
+      // Approccio più intelligente: trova il punto di taglio ottimale
+      let cutPoint = this.findForwardCutPoint(htmlBody);
       let preserved = htmlBody;
-
-      // Pattern HTML più completi per sezioni di inoltro da rimuovere completamente
-      const htmlForwardPatterns = [
-        // Forwarded message headers
-        /<div[^>]*>[\s]*---------- Forwarded message ---------[\s\S]*$/gi,
-        /<div[^>]*>[\s]*---------- Messaggio inoltrato ----------[\s\S]*$/gi,
-        /<div[^>]*>[\s]*Begin forwarded message:[\s\S]*$/gi,
-        /<div[^>]*>[\s]*---------- Original Message ----------[\s\S]*$/gi,
-        /<div[^>]*>[\s]*---------- Messaggio originale ----------[\s\S]*$/gi,
-        
-        // Email headers in HTML (From, Date, Subject, To patterns)
-        /<div[^>]*>[\s]*From:[\s\S]*?Subject:[\s\S]*?To:[\s\S]*$/gi,
-        /<div[^>]*>[\s]*Da:[\s\S]*?Data:[\s\S]*?Oggetto:[\s\S]*?A:[\s\S]*$/gi,
-        /<p[^>]*>[\s]*From:[\s\S]*?Subject:[\s\S]*?To:[\s\S]*$/gi,
-        /<p[^>]*>[\s]*Da:[\s\S]*?Data:[\s\S]*?Oggetto:[\s\S]*?A:[\s\S]*$/gi,
-        
-        // Blockquotes containing forwarded content
-        /<blockquote[^>]*type="cite"[\s\S]*<\/blockquote>/gi,
-        /<blockquote[^>]*>[\s\S]*?From:[\s\S]*?Subject:[\s\S]*?<\/blockquote>/gi,
-        
-        // HR separators followed by forwarded content  
-        /<hr[^>]*>[\s\S]*$/gi,
-        
-        // Outlook-style forwarded sections
-        /<div[^>]*class="[^"]*OutlookMessageHeader[^"]*"[\s\S]*$/gi,
-        /<div[^>]*class="[^"]*gmail_quote[^"]*"[\s\S]*$/gi,
-        
-        // Generic patterns for "On date, person wrote:" in various languages
-        /<div[^>]*>[\s]*On .* wrote:[\s\S]*$/gi,
-        /<div[^>]*>[\s]*Il giorno .* ha scritto:[\s\S]*$/gi,
-        /<div[^>]*>[\s]*Le .* a écrit[\s\S]*$/gi,
-        /<div[^>]*>[\s]*Am .* schrieb[\s\S]*$/gi,
-        
-        // Table-based email headers
-        /<table[^>]*>[\s\S]*?From:[\s\S]*?Subject:[\s\S]*?<\/table>[\s\S]*$/gi,
-      ];
-
-      // Rimuove le sezioni HTML di inoltro
-      htmlForwardPatterns.forEach(pattern => {
-        const match = preserved.match(pattern);
-        if (match) {
-          preserved = preserved.substring(0, match.index || 0);
-        }
-      });
       
-      // Rimuove anche singoli elementi di inoltro senza tagliare tutto il contenuto
-      preserved = preserved.replace(/<div[^>]*>[\s]*---------- Forwarded message ---------[\s]*<\/div>/gi, '');
-      preserved = preserved.replace(/<div[^>]*>[\s]*---------- Messaggio inoltrato ----------[\s]*<\/div>/gi, '');
-      preserved = preserved.replace(/<div[^>]*>[\s]*Begin forwarded message:[\s]*<\/div>/gi, '');
-      preserved = preserved.replace(/<div[^>]*>[\s]*---------- Original Message ----------[\s]*<\/div>/gi, '');
+      if (cutPoint > 0) {
+        // Taglia l'HTML al punto trovato
+        preserved = htmlBody.substring(0, cutPoint);
+        
+        // Chiude correttamente i tag aperti
+        preserved = this.closeOpenHtmlTags(preserved);
+        console.log(`[EMAIL-CLEANER] Cut HTML at position ${cutPoint}, remaining: ${preserved.length} chars`);
+      } else {
+        // Se non trova un punto di taglio, applica pulizia leggera
+        preserved = this.lightCleanForwardedHtml(htmlBody);
+        console.log(`[EMAIL-CLEANER] Applied light cleaning, remaining: ${preserved.length} chars`);
+      }
       
-      // Chiude eventuali tag aperti dopo la rimozione
-      preserved = this.closeOpenHtmlTags(preserved);
-      
-      // Pulisce whitespace HTML in eccesso
-      preserved = preserved
-        .replace(/\s*<\/div>\s*<div[^>]*>\s*/gi, '</div><div>')
-        .replace(/\s*<\/p>\s*<p[^>]*>\s*/gi, '</p><p>')
-        .trim();
+      // Verifica finale: se rimane solo signature, restituisce null
+      if (this.isOnlySignatureHtml(preserved)) {
+        console.log('[EMAIL-CLEANER] After processing contains only signature, using text body');
+        return null;
+      }
 
       console.log(`[EMAIL-CLEANER] Preserved HTML formatting: ${preserved.length} characters`);
       return preserved.length > 100 ? preserved : null;
@@ -581,6 +542,75 @@ export class EmailForwardCleaner {
     }
 
     return null;
+  }
+
+  // Trova il punto ottimale dove tagliare l'HTML per rimuovere la sezione di inoltro
+  private static findForwardCutPoint(htmlBody: string): number {
+    // Lista di pattern in ordine di priorità (dal più specifico al più generico)
+    const forwardMarkers = [
+      // Headers di forwarded message
+      /---------- Forwarded message ---------/gi,
+      /---------- Messaggio inoltrato ----------/gi,
+      /Begin forwarded message:/gi,
+      /---------- Original Message ----------/gi,
+      /---------- Messaggio originale ----------/gi,
+      
+      // Email headers pattern
+      /<div[^>]*>\s*From:\s*[^<]+<\/div>\s*<div[^>]*>\s*Date:/gi,
+      /<div[^>]*>\s*Da:\s*[^<]+<\/div>\s*<div[^>]*>\s*Data:/gi,
+      /<p[^>]*>\s*From:\s*.*?\s*Date:/gi,
+      
+      // HR separator
+      /<hr[^>]*>/gi,
+      
+      // Gmail/Outlook quote patterns
+      /<div[^>]*class="[^"]*gmail_quote/gi,
+      /<blockquote[^>]*type="cite"/gi,
+      
+      // "On ... wrote:" patterns
+      /<div[^>]*>\s*On .* wrote:/gi,
+      /<div[^>]*>\s*Il giorno .* ha scritto:/gi,
+    ];
+
+    // Trova il primo marker che appare nell'HTML
+    let earliestPosition = -1;
+    
+    for (const pattern of forwardMarkers) {
+      const match = htmlBody.match(pattern);
+      if (match && match.index !== undefined) {
+        if (earliestPosition === -1 || match.index < earliestPosition) {
+          earliestPosition = match.index;
+        }
+      }
+    }
+
+    return earliestPosition;
+  }
+
+  // Pulizia leggera che rimuove solo elementi specifici senza tagliare tutto
+  private static lightCleanForwardedHtml(htmlBody: string): string {
+    let cleaned = htmlBody;
+    
+    // Rimuove solo elementi specifici di forwarding
+    const lightPatterns = [
+      /<div[^>]*>[\s]*---------- Forwarded message ---------[\s]*<\/div>/gi,
+      /<div[^>]*>[\s]*---------- Messaggio inoltrato ----------[\s]*<\/div>/gi,
+      /<div[^>]*>[\s]*Begin forwarded message:[\s]*<\/div>/gi,
+      /<div[^>]*>[\s]*---------- Original Message ----------[\s]*<\/div>/gi,
+      /<hr[^>]*style="[^"]*border[^"]*"[^>]*>/gi, // Rimuove solo HR di separazione
+    ];
+
+    lightPatterns.forEach(pattern => {
+      cleaned = cleaned.replace(pattern, '');
+    });
+
+    // Pulisce whitespace in eccesso
+    cleaned = cleaned
+      .replace(/\n\s*\n\s*\n/g, '\n\n') // Max 2 newlines
+      .replace(/>\s+</g, '><')          // Rimuove spazi tra tag
+      .trim();
+
+    return cleaned;
   }
 
   // Helper per estrarre emails da una linea di testo
