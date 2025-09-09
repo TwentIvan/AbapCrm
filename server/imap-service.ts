@@ -12,6 +12,7 @@ interface ImapConfig {
   port: number;
   tls: boolean;
   folder: string;
+  userId: string; // ID dell'utente che ha configurato questo account email
 }
 
 export class ImapEmailService {
@@ -176,7 +177,7 @@ export class ImapEmailService {
       const toAddr = getFirstAddress(parsed.to);
 
       const messageId = parsed.messageId || `imap-${Date.now()}-${seqno}`;
-      const userId = '811b4ad2-6882-4a7d-afcd-57dfb7f0af51'; // TODO: Get from context
+      const userId = this.config.userId; // Usa l'ID dell'utente che ha configurato questo account
 
       // Check if message already exists to avoid duplicates
       const existingMessage = await storage.getMessageByMessageId(messageId, userId);
