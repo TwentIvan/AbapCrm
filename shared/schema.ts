@@ -267,10 +267,22 @@ export const messageLinks = pgTable("message_links", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Domini supportati dalle organizzazioni (per identificazione automatica email)
+export const organizationDomains = pgTable("organization_domains", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  domain: text("domain").notNull(), // es. "lutech.it", "c.lutech.it"
+  isActive: boolean("is_active").default(true).notNull(),
+  notes: text("notes"), // Note opzionali sul dominio
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Configurazioni email IMAP salvate per ogni utente
 export const emailConfigs = pgTable("email_configs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id), // Associazione opzionale all'organizzazione
   email: text("email").notNull(),
   password: text("password").notNull(),
   host: text("host").notNull().default("imap.gmail.com"),
@@ -278,6 +290,9 @@ export const emailConfigs = pgTable("email_configs", {
   tls: boolean("tls").notNull().default(true),
   folders: text("folders").array().notNull().default([]), // Array di cartelle da monitorare
   isActive: boolean("is_active").notNull().default(true),
+  // NUOVI CAMPI per gestione forwarding intelligente
+  isForwarder: boolean("is_forwarder").default(false).notNull(), // Se questo account inoltra tipicamente email
+  customSignature: text("custom_signature"), // Firma personalizzata di questo account (per rimozione più precisa)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -895,6 +910,7 @@ export const commentsRelations = relations(comments, ({ one }) => ({
 
 export const emailConfigsRelations = relations(emailConfigs, ({ one }) => ({
   user: one(users, { fields: [emailConfigs.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [emailConfigs.organizationId], references: [organizations.id] }),
 }));
 
 export const timeNormalizationConfigsRelations = relations(timeNormalizationConfigs, ({ one }) => ({
@@ -1088,6 +1104,12 @@ export const insertMessageLinkSchema = createInsertSchema(messageLinks).omit({
   organizationId: true, // Auto-filled from user session
 });
 
+export const insertOrganizationDomainSchema = createInsertSchema(organizationDomains).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertEmailConfigSchema = createInsertSchema(emailConfigs).omit({
   id: true,
   createdAt: true,
@@ -1161,6 +1183,8 @@ export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type MessageLink = typeof messageLinks.$inferSelect;
 export type InsertMessageLink = z.infer<typeof insertMessageLinkSchema>;
+export type OrganizationDomain = typeof organizationDomains.$inferSelect;
+export type InsertOrganizationDomain = z.infer<typeof insertOrganizationDomainSchema>;
 export type EmailConfig = typeof emailConfigs.$inferSelect;
 export type InsertEmailConfig = z.infer<typeof insertEmailConfigSchema>;
 export type TimeNormalizationConfig = typeof timeNormalizationConfigs.$inferSelect;
@@ -1418,4 +1442,15 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
   salesOrders: many(salesOrders),
   sapSystems: many(sapSystems),
   vpnConnections: many(vpnConnections),
+  organizationDomains: many(organizationDomains),
+  emailConfigs: many(emailConfigs),
 }));
+
+// Relations for organization domains
+export const organizationDomainsRelations = relations(organizationDomains, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [organizationDomains.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
