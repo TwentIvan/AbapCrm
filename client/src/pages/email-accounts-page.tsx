@@ -18,10 +18,11 @@ import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { LayoutControlBox } from "@/components/ui/layout-control-box";
 import { TableConfiguration } from "@/components/ui/table-configuration";
-import { Mail, Server, MoreHorizontal, Grid3X3, List, Edit, Trash2, History, Shield, CheckCircle, XCircle, Plus } from "lucide-react";
+import { Mail, Server, MoreHorizontal, Grid3X3, List, Edit, Trash2, History, Shield, CheckCircle, XCircle, Plus, Send } from "lucide-react";
 import { EmailConfig } from "@shared/schema";
 import AuditHistory from "@/components/ui/audit-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmailSendDialog } from "@/components/email-send-dialog";
 
 const statusColors = {
   active: "bg-green-100 text-green-800",
@@ -50,6 +51,7 @@ export default function EmailAccountsPage() {
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [showSendDialog, setShowSendDialog] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -364,10 +366,16 @@ export default function EmailAccountsPage() {
                   Gestisci gli account email per la ricezione e l'elaborazione dei messaggi
                 </p>
               </div>
-              <Button onClick={handleAdd} data-testid="button-add-email-account">
-                <Plus className="mr-2 h-4 w-4" />
-                Aggiungi Account
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setShowSendDialog(true)} data-testid="button-send-email" variant="outline">
+                  <Send className="mr-2 h-4 w-4" />
+                  Invia Email
+                </Button>
+                <Button onClick={handleAdd} data-testid="button-add-email-account">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Aggiungi Account
+                </Button>
+              </div>
             </div>
             
             {/* Layout Manager */}
@@ -496,6 +504,12 @@ export default function EmailAccountsPage() {
         onOpenChange={setShowConfigDialog}
         onSave={saveLayoutAs}
         onCancel={() => setShowConfigDialog(false)}
+      />
+
+      {/* Email Send Dialog */}
+      <EmailSendDialog
+        open={showSendDialog}
+        onOpenChange={setShowSendDialog}
       />
     </div>
   );

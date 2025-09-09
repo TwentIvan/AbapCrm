@@ -24,6 +24,7 @@ import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
 import { AuditService } from "./audit-service";
 import { MessageLogService } from "./message-log-service";
+import { gmailService } from "./gmail-service";
 
 // Helper function to extract organizationId from request header
 function getOrganizationId(req: any): string {
@@ -1994,6 +1995,85 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Email sync error:", error);
       res.status(500).json({ error: "Failed to sync emails" });
+    }
+  });
+
+  // Gmail sending service initialization
+  app.post("/api/email/initialize-gmail", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const initialized = await gmailService.initialize(req.user!.id);
+      if (initialized) {
+        res.json({ message: "Gmail service initialized successfully" });
+      } else {
+        res.status(400).json({ error: "No active Gmail account found for sending" });
+      }
+    } catch (error) {
+      console.error("Gmail initialization error:", error);
+      res.status(500).json({ error: "Failed to initialize Gmail service" });
+    }
+  });
+
+  // Get available email senders
+  app.get("/api/email/senders", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const senders = await gmailService.getAvailableSenders(req.user!.id);
+      res.json(senders);
+    } catch (error) {
+      console.error("Get senders error:", error);
+      res.status(500).json({ error: "Failed to get available senders" });
+    }
+  });
+
+  // Send email via Gmail
+  app.post("/api/email/send", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { from, to, subject, text, html, replyTo, attachments } = req.body;
+      
+      // Validate required fields
+      if (!to || !subject) {
+        return res.status(400).json({ error: "Missing required fields: to, subject" });
+      }
+
+      // Validate sender if specified
+      if (from) {
+        const isValidSender = await gmailService.isValidSender(req.user!.id, from);
+        if (!isValidSender) {
+          return res.status(400).json({ error: "Invalid sender email address" });
+        }
+      }
+
+      // Initialize Gmail service if not already done
+      const initialized = await gmailService.initialize(req.user!.id);
+      if (!initialized) {
+        return res.status(400).json({ error: "No active Gmail account found for sending" });
+      }
+
+      // Send email
+      const sent = await gmailService.sendEmail({
+        from,
+        to: Array.isArray(to) ? to : [to],
+        subject,
+        text,
+        html,
+        replyTo,
+        attachments
+      });
+
+      if (sent) {
+        res.json({ message: "Email sent successfully" });
+      } else {
+        res.status(500).json({ error: "Failed to send email" });
+      }
+
+    } catch (error) {
+      console.error("Send email error:", error);
+      res.status(500).json({ error: "Failed to send email" });
     }
   });
 
