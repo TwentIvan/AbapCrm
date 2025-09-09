@@ -436,6 +436,7 @@ export class EmailForwardCleaner {
     cleanedHtml = cleanedHtml.replace(/^\s+/gm, '').replace(/\n\s*\n\s*\n/g, '\n\n').trim();
     
     console.log(`[EMAIL-CLEANER] Headers removed, final HTML: ${cleanedHtml.length} chars`);
+    console.log(`[EMAIL-CLEANER] FINAL HTML PREVIEW (first 500 chars):\n${cleanedHtml.substring(0, 500)}`);
     return cleanedHtml;
   }
 
