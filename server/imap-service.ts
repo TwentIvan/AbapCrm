@@ -208,7 +208,7 @@ export class ImapEmailService {
         toName: toAddr?.name || null,
         subject: cleanedEmail.originalSubject || null,
         body: cleanedEmail.originalBody || null,
-        htmlBody: cleanedEmail.originalHtmlBody || null,
+        htmlBody: cleanedEmail.originalHtmlBody || cleanedEmail.preservedHtmlFormatting || null,
         originalToEmails: cleanedEmail.originalToEmails || [],
         originalCcEmails: cleanedEmail.originalCcEmails || [],
         originalBccEmails: cleanedEmail.originalBccEmails || [],
