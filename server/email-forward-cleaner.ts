@@ -16,7 +16,13 @@ interface ForwardedEmailData {
 
 export class EmailForwardCleaner {
   
-  static cleanForwardedEmail(subject: string, textBody: string, htmlBody: string | null): ForwardedEmailData {
+  static cleanForwardedEmail(
+    subject: string, 
+    textBody: string, 
+    htmlBody: string | null,
+    forceCleanForwarded?: boolean,  // From database isForwarder flag
+    customSignature?: string | null // From database customSignature field
+  ): ForwardedEmailData {
     const result: ForwardedEmailData = {
       originalSubject: subject,
       originalBody: textBody,
@@ -37,7 +43,10 @@ export class EmailForwardCleaner {
     // Rileva se è un inoltro dal body
     const isBodyForwarded = this.isForwardedBody(textBody);
 
-    if (isSubjectForwarded || isBodyForwarded) {
+    // Usa il flag dal database se fornito, altrimenti usa la detection automatica
+    const shouldCleanForwarded = forceCleanForwarded || isSubjectForwarded || isBodyForwarded;
+
+    if (shouldCleanForwarded) {
       result.isForwarded = true;
       result.originalSubject = this.cleanForwardedSubject(subject);
       result.originalBody = this.cleanForwardedBody(textBody);
@@ -64,7 +73,62 @@ export class EmailForwardCleaner {
       }
     }
 
+    // Rimuove la firma personalizzata se configurata nel database
+    if (customSignature && customSignature.trim()) {
+      result.originalBody = this.removeCustomSignature(result.originalBody, customSignature);
+      if (result.originalHtmlBody) {
+        result.originalHtmlBody = this.removeCustomSignature(result.originalHtmlBody, customSignature);
+      }
+    }
+
     return result;
+  }
+
+  /**
+   * Rimuove una firma personalizzata configurata nel database dal contenuto email
+   */
+  private static removeCustomSignature(content: string, signature: string): string {
+    if (!content || !signature) return content;
+    
+    // Normalizza la firma per la ricerca (rimuove spazi extra e newline)
+    const normalizedSignature = signature.trim().replace(/\s+/g, ' ');
+    
+    // Prova diversi pattern per trovare e rimuovere la firma
+    const signaturePatterns = [
+      // Firma esatta
+      new RegExp(this.escapeRegExp(signature), 'gi'),
+      // Firma normalizzata (spazi flessibili)
+      new RegExp(this.escapeRegExp(normalizedSignature).replace(/\s+/g, '\\s+'), 'gi'),
+      // Firma in HTML (con tag HTML)
+      new RegExp(`<[^>]*>${this.escapeRegExp(signature)}<[^>]*>`, 'gi'),
+      // Firma preceduta da separatori comuni
+      new RegExp(`(?:--|—|\\n\\n|<br\\s*/?><br\\s*/?>)\\s*${this.escapeRegExp(signature)}`, 'gi'),
+      // Firma alla fine del messaggio
+      new RegExp(`\\n\\s*${this.escapeRegExp(signature)}\\s*$`, 'gi')
+    ];
+    
+    let cleanedContent = content;
+    
+    // Applica tutti i pattern di rimozione
+    signaturePatterns.forEach(pattern => {
+      cleanedContent = cleanedContent.replace(pattern, '');
+    });
+    
+    // Pulisce spazi e newline in eccesso
+    cleanedContent = cleanedContent
+      .replace(/\n{3,}/g, '\n\n')  // Max 2 newlines consecutive
+      .replace(/\s+$/g, '')        // Rimuove whitespace finale
+      .trim();
+    
+    console.log(`[EMAIL-CLEANER] Custom signature removal: ${content.length} -> ${cleanedContent.length} chars`);
+    return cleanedContent;
+  }
+
+  /**
+   * Escape special regex characters in a string
+   */
+  private static escapeRegExp(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private static isForwardedSubject(subject: string): boolean {
