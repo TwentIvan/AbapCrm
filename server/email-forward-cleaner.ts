@@ -511,28 +511,31 @@ export class EmailForwardCleaner {
     try {
       if (!htmlBody || htmlBody.trim().length < 50) return null;
 
-      // Step 1: Prima trova e taglia al punto di inoltro (logica originale)
-      let cutPoint = this.findForwardCutPoint(htmlBody);
-      let processed = htmlBody;
+      // NUOVO APPROCCIO: Divide a metà e mantiene solo la prima metà
+      // Le email inoltrate hanno il contenuto originale all'inizio e l'inoltro dopo
+      const halfWayPoint = Math.floor(htmlBody.length / 2);
+      let processed = htmlBody.substring(0, halfWayPoint);
       
-      if (cutPoint > 0) {
-        // Taglia l'HTML al punto trovato (elimina la sezione di inoltro)
-        processed = htmlBody.substring(0, cutPoint);
+      // Chiude i tag HTML che potrebbero essere stati tagliati
+      processed = this.closeOpenHtmlTags(processed);
+      
+      console.log(`[EMAIL-CLEANER] BRUTALE: Cut at halfway point (${halfWayPoint}), remaining: ${processed.length} chars`);
+      
+      // Se la prima metà è ancora molto lunga, tagliamo di più
+      if (processed.length > 50000) {
+        const quarterPoint = Math.floor(htmlBody.length / 4);
+        processed = htmlBody.substring(0, quarterPoint);
         processed = this.closeOpenHtmlTags(processed);
-        console.log(`[EMAIL-CLEANER] Cut at position ${cutPoint}, remaining: ${processed.length} chars`);
-      } else {
-        // Se non trova un punto di taglio chiaro, pulisce solo gli header
-        processed = this.removeForwardingHeaders(htmlBody);
-        console.log(`[EMAIL-CLEANER] Removed headers only, remaining: ${processed.length} chars`);
+        console.log(`[EMAIL-CLEANER] BRUTALE: Cut at quarter point (${quarterPoint}), remaining: ${processed.length} chars`);
       }
       
       // Verifica finale: se troppo corto usa il testo
-      if (processed.trim().length < 100) {
-        console.log('[EMAIL-CLEANER] After cutting too short, using text body');
+      if (processed.trim().length < 200) {
+        console.log('[EMAIL-CLEANER] After brutal cutting too short, using text body');
         return null;
       }
 
-      console.log(`[EMAIL-CLEANER] Preserved HTML formatting: ${processed.length} characters`);
+      console.log(`[EMAIL-CLEANER] Preserved HTML formatting (brutal): ${processed.length} characters`);
       return processed;
 
     } catch (error) {
