@@ -506,36 +506,25 @@ export class EmailForwardCleaner {
     return null;
   }
 
-  // Preserva formattazione HTML originale completa ma rimuove le sezioni di inoltro
+  // Preserva formattazione HTML originale completa ma "implode" i thread invece di rimuoverli
   private static preserveHtmlFormatting(htmlBody: string): string | null {
     try {
       if (!htmlBody || htmlBody.trim().length < 50) return null;
 
-      // Approccio più intelligente: trova il punto di taglio ottimale
-      let cutPoint = this.findForwardCutPoint(htmlBody);
-      let preserved = htmlBody;
+      // Nuovo approccio: "implode" i thread di inoltro invece di rimuoverli
+      let processed = this.implodeForwardedThreads(htmlBody);
       
-      if (cutPoint > 0) {
-        // Taglia l'HTML al punto trovato
-        preserved = htmlBody.substring(0, cutPoint);
-        
-        // Chiude correttamente i tag aperti
-        preserved = this.closeOpenHtmlTags(preserved);
-        console.log(`[EMAIL-CLEANER] Cut HTML at position ${cutPoint}, remaining: ${preserved.length} chars`);
-      } else {
-        // Se non trova un punto di taglio, applica pulizia leggera
-        preserved = this.lightCleanForwardedHtml(htmlBody);
-        console.log(`[EMAIL-CLEANER] Applied light cleaning, remaining: ${preserved.length} chars`);
-      }
+      console.log(`[EMAIL-CLEANER] Imploded threads, remaining: ${processed.length} characters`);
       
-      // Verifica finale: se rimane solo signature, restituisce null
-      if (this.isOnlySignatureHtml(preserved)) {
-        console.log('[EMAIL-CLEANER] After processing contains only signature, using text body');
+      // Verifica meno aggressiva: mantiene l'HTML a meno che non sia veramente vuoto
+      if (processed.trim().length < 100) {
+        console.log('[EMAIL-CLEANER] After processing too short, using text body');
         return null;
       }
 
-      console.log(`[EMAIL-CLEANER] Preserved HTML formatting: ${preserved.length} characters`);
-      return preserved.length > 100 ? preserved : null;
+      // Rimuove la verifica signature troppo aggressiva
+      console.log(`[EMAIL-CLEANER] Preserved HTML formatting: ${processed.length} characters`);
+      return processed;
 
     } catch (error) {
       console.log('[EMAIL-CLEANER] Error preserving HTML formatting:', error);
@@ -587,30 +576,73 @@ export class EmailForwardCleaner {
     return earliestPosition;
   }
 
-  // Pulizia leggera che rimuove solo elementi specifici senza tagliare tutto
-  private static lightCleanForwardedHtml(htmlBody: string): string {
-    let cleaned = htmlBody;
+  // "Implode" i thread di inoltro: li compatta invece di rimuoverli completamente  
+  private static implodeForwardedThreads(htmlBody: string): string {
+    let processed = htmlBody;
     
-    // Rimuove solo elementi specifici di forwarding
-    const lightPatterns = [
+    // Step 1: Rimuove solo header specifici di forwarding ma mantiene il contenuto
+    const headerPatterns = [
       /<div[^>]*>[\s]*---------- Forwarded message ---------[\s]*<\/div>/gi,
       /<div[^>]*>[\s]*---------- Messaggio inoltrato ----------[\s]*<\/div>/gi,
       /<div[^>]*>[\s]*Begin forwarded message:[\s]*<\/div>/gi,
       /<div[^>]*>[\s]*---------- Original Message ----------[\s]*<\/div>/gi,
-      /<hr[^>]*style="[^"]*border[^"]*"[^>]*>/gi, // Rimuove solo HR di separazione
     ];
 
-    lightPatterns.forEach(pattern => {
-      cleaned = cleaned.replace(pattern, '');
+    headerPatterns.forEach(pattern => {
+      processed = processed.replace(pattern, '');
     });
 
-    // Pulisce whitespace in eccesso
-    cleaned = cleaned
+    // Step 2: "Implode" le sezioni di thread lunghi trasformandole in summary compatti
+    processed = this.compactEmailHeaders(processed);
+    processed = this.compactLongQuotes(processed);
+    
+    // Step 3: Pulizia leggera
+    processed = processed
       .replace(/\n\s*\n\s*\n/g, '\n\n') // Max 2 newlines
       .replace(/>\s+</g, '><')          // Rimuove spazi tra tag
       .trim();
 
-    return cleaned;
+    return processed;
+  }
+
+  // Compatta gli header email lunghi in versioni più brevi
+  private static compactEmailHeaders(htmlBody: string): string {
+    let processed = htmlBody;
+    
+    // Pattern per header email completi
+    const emailHeaderPattern = /<div[^>]*>\s*From:\s*([^<]+)<\/div>\s*<div[^>]*>\s*Date:\s*([^<]+)<\/div>\s*<div[^>]*>\s*Subject:\s*([^<]+)<\/div>\s*<div[^>]*>\s*To:\s*([^<]+)<\/div>/gi;
+    
+    processed = processed.replace(emailHeaderPattern, (match, from, date, subject, to) => {
+      // Compatta in una singola linea stile "thread collapsed"
+      const fromShort = from.trim().split('<')[0].trim(); // Solo il nome, non l'email
+      const subjectShort = subject.trim().length > 30 ? subject.trim().substring(0, 30) + '...' : subject.trim();
+      return `<div style="background:#f5f5f5;padding:8px;margin:10px 0;border-left:3px solid #ccc;font-size:0.9em;color:#666;">
+        <strong>📧 ${fromShort}</strong> - ${subjectShort} <em style="float:right;">[thread compatto]</em>
+      </div>`;
+    });
+
+    return processed;
+  }
+
+  // Compatta le citazioni lunghe in versioni collassate
+  private static compactLongQuotes(htmlBody: string): string {
+    let processed = htmlBody;
+    
+    // Pattern per blockquote lunghi
+    const longQuotePattern = /<blockquote[^>]*>([\s\S]{200,}?)<\/blockquote>/gi;
+    
+    processed = processed.replace(longQuotePattern, (match, content) => {
+      // Estrae le prime parole del contenuto quotato
+      const textContent = content.replace(/<[^>]+>/g, ' ').trim();
+      const preview = textContent.substring(0, 80) + (textContent.length > 80 ? '...' : '');
+      
+      return `<div style="background:#f9f9f9;border:1px dashed #ccc;padding:8px;margin:8px 0;font-style:italic;color:#777;">
+        <span style="font-size:0.9em;">💬 "${preview}" </span>
+        <em style="font-size:0.8em;">[citazione compressa]</em>
+      </div>`;
+    });
+
+    return processed;
   }
 
   // Helper per estrarre emails da una linea di testo
