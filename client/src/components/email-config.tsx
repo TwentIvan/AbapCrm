@@ -9,37 +9,37 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Settings, CheckCircle, AlertCircle, Unplug } from "lucide-react";
+import { Mail, Settings, CheckCircle, AlertCircle, Trash2, Plus, Edit, Power, Eye, EyeOff } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import type { EmailConfig, InsertEmailConfig } from "@shared/schema";
 
 const emailConfigSchema = z.object({
   email: z.string().email("Inserisci un indirizzo email valido"),
-  password: z.string().min(8, "La password deve essere di almeno 8 caratteri"),
-  folder: z.string().optional(),
+  password: z.string().min(1, "La password è obbligatoria"),
+  host: z.string().default("imap.gmail.com"),
+  port: z.number().min(1).max(65535).default(993),
+  tls: z.boolean().default(true),
+  folders: z.array(z.string()).min(1, "Seleziona almeno una cartella").default(["INBOX"]),
 });
 
 type EmailConfigForm = z.infer<typeof emailConfigSchema>;
 
-interface EmailStatus {
-  connected: boolean;
-  status: string;
-}
-
 export default function EmailConfig() {
-  const [showConfig, setShowConfig] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
+  const [editingConfig, setEditingConfig] = useState<EmailConfig | null>(null);
+  const [configToDelete, setConfigToDelete] = useState<EmailConfig | null>(null);
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const { data: emailStatus } = useQuery<EmailStatus | null>({
-    queryKey: ["/api/email/status"],
-    enabled: !!user, // Only query when user is authenticated
-    refetchInterval: user ? 5000 : false, // Only poll when authenticated
-    retry: false,
-    refetchOnWindowFocus: false,
+  // Query per ottenere tutte le configurazioni email
+  const { data: emailConfigs = [], isLoading } = useQuery<EmailConfig[]>({
+    queryKey: ["/api/email/configs"],
+    enabled: !!user,
   });
 
   const form = useForm<EmailConfigForm>({
@@ -47,228 +47,425 @@ export default function EmailConfig() {
     defaultValues: {
       email: "",
       password: "",
-      folder: "INBOX",
+      host: "imap.gmail.com",
+      port: 993,
+      tls: true,
+      folders: ["INBOX"],
     },
   });
 
-  const configureMutation = useMutation({
-    mutationFn: (data: EmailConfigForm) => 
-      apiRequest("POST", "/api/email/configure", data),
+  // Mutation per creare nuova configurazione
+  const createMutation = useMutation({
+    mutationFn: (data: EmailConfigForm) =>
+      apiRequest("POST", "/api/email/configs", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email/configs"] });
       toast({
-        title: "Configurazione completata",
-        description: "Il servizio email è stato configurato e sta monitorando la cartella.",
+        title: "Configurazione creata",
+        description: "La configurazione email è stata salvata con successo.",
       });
-      setShowConfig(false);
+      setShowDialog(false);
       form.reset();
     },
     onError: (error: Error) => {
       toast({
-        title: "Errore di configurazione",
-        description: error.message || "Errore durante la configurazione del servizio email.",
+        title: "Errore",
+        description: error.message || "Errore durante la creazione della configurazione.",
         variant: "destructive",
       });
     },
   });
 
-  const disconnectMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/email/disconnect"),
+  // Mutation per aggiornare configurazione
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<EmailConfigForm> }) =>
+      apiRequest("PUT", `/api/email/configs/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email/configs"] });
       toast({
-        title: "Disconnesso",
-        description: "Il servizio email è stato disconnesso.",
+        title: "Configurazione aggiornata",
+        description: "La configurazione email è stata modificata con successo.",
+      });
+      setShowDialog(false);
+      setEditingConfig(null);
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'aggiornamento della configurazione.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation per eliminare configurazione
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiRequest("DELETE", `/api/email/configs/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email/configs"] });
+      toast({
+        title: "Configurazione eliminata",
+        description: "La configurazione email è stata rimossa.",
+      });
+      setConfigToDelete(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'eliminazione della configurazione.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation per attivare/disattivare configurazione
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      apiRequest("PUT", `/api/email/configs/${id}`, { isActive }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email/configs"] });
+      toast({
+        title: isActive ? "Configurazione attivata" : "Configurazione disattivata",
+        description: `La configurazione email è stata ${isActive ? 'attivata' : 'disattivata'}.`,
       });
     },
   });
 
   const onSubmit = (data: EmailConfigForm) => {
-    configureMutation.mutate(data);
+    if (editingConfig) {
+      updateMutation.mutate({ id: editingConfig.id, data });
+    } else {
+      createMutation.mutate(data);
+    }
   };
 
-  const isConnected = (emailStatus as EmailStatus)?.connected || false;
+  const handleEdit = (config: EmailConfig) => {
+    setEditingConfig(config);
+    form.reset({
+      email: config.email,
+      password: config.password,
+      host: config.host,
+      port: config.port,
+      tls: config.tls,
+      folders: config.folders,
+    });
+    setShowDialog(true);
+  };
+
+  const handleAdd = () => {
+    setEditingConfig(null);
+    form.reset();
+    setShowDialog(true);
+  };
+
+  const togglePasswordVisibility = (configId: string) => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [configId]: !prev[configId]
+    }));
+  };
+
+  const handleToggleActive = (config: EmailConfig) => {
+    toggleActiveMutation.mutate({ id: config.id, isActive: !config.isActive });
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <div className="text-muted-foreground">Caricamento configurazioni email...</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Configurazione Email IMAP
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              <CardTitle>Configurazioni Email IMAP</CardTitle>
+            </div>
+            <Button 
+              onClick={handleAdd}
+              data-testid="button-add-email-config"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Aggiungi Configurazione
+            </Button>
           </div>
-          {isConnected ? (
-            <Badge variant="secondary" className="bg-green-500 text-white">
-              <CheckCircle className="h-3 w-3 mr-1" />
-              Connesso
-            </Badge>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {emailConfigs.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Nessuna configurazione email trovata</p>
+              <p className="text-sm">Aggiungi la tua prima configurazione per iniziare a monitorare le email.</p>
+            </div>
           ) : (
-            <Badge variant="secondary" className="bg-gray-500 text-white">
-              <AlertCircle className="h-3 w-3 mr-1" />
-              Non configurato
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {!isConnected && !showConfig && (
-          <div className="text-center space-y-4">
-            <div className="flex justify-center">
-              <Mail className="h-16 w-16 text-muted-foreground opacity-50" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Configura Gmail per ricevere automaticamente le email inoltrate nel tuo CRM.
-              </p>
-              <Button onClick={() => setShowConfig(true)} data-testid="button-configure-email">
-                <Settings className="h-4 w-4 mr-2" />
-                Configura Gmail
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {!isConnected && showConfig && (
-          <div className="space-y-4">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Importante:</strong> Per Gmail devi usare una "App Password" invece della password normale.
-                <br />
-                <a 
-                  href="https://support.google.com/mail/answer/185833" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
+            <div className="space-y-3">
+              {emailConfigs.map((config) => (
+                <div
+                  key={config.id}
+                  className={`p-4 border rounded-lg ${
+                    config.isActive ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+                  }`}
                 >
-                  Guida per creare App Password Gmail →
-                </a>
-              </AlertDescription>
-            </Alert>
-
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" data-testid="form-email-config">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Indirizzo Email Gmail</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="tuo.email@gmail.com" 
-                          {...field}
-                          data-testid="input-email"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>App Password Gmail</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="password" 
-                          placeholder="xxxx xxxx xxxx xxxx" 
-                          {...field}
-                          data-testid="input-password"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="folder"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cartella da Monitorare</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-folder">
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleziona cartella" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="INBOX">INBOX (Posta in arrivo)</SelectItem>
-                          <SelectItem value="[Gmail]/All Mail">Tutti i messaggi</SelectItem>
-                          <SelectItem value="CRM">CRM (etichetta personalizzata)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex items-center justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowConfig(false)}
-                    data-testid="button-cancel"
-                  >
-                    Annulla
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={configureMutation.isPending}
-                    data-testid="button-save-config"
-                  >
-                    {configureMutation.isPending ? "Connessione..." : "Connetti"}
-                  </Button>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="font-medium">{config.email}</div>
+                        <Badge 
+                          variant={config.isActive ? "default" : "secondary"}
+                          className={config.isActive ? "bg-green-500" : ""}
+                        >
+                          {config.isActive ? (
+                            <>
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Attiva
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              Inattiva
+                            </>
+                          )}
+                        </Badge>
+                      </div>
+                      
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <div>Host: {config.host}:{config.port} {config.tls ? "(TLS)" : "(Non sicuro)"}</div>
+                        <div>Cartelle: {config.folders.join(", ")}</div>
+                        <div className="flex items-center gap-2">
+                          Password: 
+                          {showPasswords[config.id] ? (
+                            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                              {config.password}
+                            </span>
+                          ) : (
+                            <span className="font-mono text-xs">••••••••</span>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => togglePasswordVisibility(config.id)}
+                            data-testid={`button-toggle-password-${config.id}`}
+                            className="h-6 px-2"
+                          >
+                            {showPasswords[config.id] ? (
+                              <EyeOff className="h-3 w-3" />
+                            ) : (
+                              <Eye className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleActive(config)}
+                        data-testid={`button-toggle-active-${config.id}`}
+                        disabled={toggleActiveMutation.isPending}
+                      >
+                        <Power className="h-4 w-4" />
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(config)}
+                        data-testid={`button-edit-${config.id}`}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setConfigToDelete(config)}
+                        data-testid={`button-delete-${config.id}`}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </form>
-            </Form>
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {isConnected && (
-          <div className="space-y-4">
-            <div className="text-center space-y-2">
-              <CheckCircle className="h-12 w-12 mx-auto text-green-500" />
-              <div>
-                <p className="font-medium text-green-700">Gmail configurato con successo!</p>
-                <p className="text-sm text-muted-foreground">
-                  Il sistema sta monitorando la tua cartella email ogni 2 minuti.
-                </p>
+      {/* Dialog per aggiunta/modifica configurazione */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingConfig ? "Modifica Configurazione Email" : "Aggiungi Configurazione Email"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="email"
+                        placeholder="nome@gmail.com"
+                        data-testid="input-email"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="password"
+                        placeholder="Password o App Password"
+                        data-testid="input-password"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="host"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Host IMAP</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="imap.gmail.com"
+                        data-testid="input-host"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="port"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Porta</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="number"
+                        placeholder="993"
+                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                        data-testid="input-port"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="folders"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cartelle da monitorare</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value.join(", ")}
+                        onChange={(e) => field.onChange(e.target.value.split(",").map(f => f.trim()).filter(Boolean))}
+                        placeholder="INBOX, Sent, Drafts"
+                        data-testid="input-folders"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowDialog(false)}
+                  data-testid="button-cancel"
+                >
+                  Annulla
+                </Button>
+                <Button
+                  type="submit"
+                  data-testid="button-save"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                >
+                  {createMutation.isPending || updateMutation.isPending
+                    ? "Salvataggio..."
+                    : editingConfig
+                    ? "Aggiorna"
+                    : "Salva"}
+                </Button>
               </div>
-            </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
-            <Alert>
-              <Mail className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Come usare:</strong>
-                <br />
-                1. Crea un'etichetta "CRM" in Gmail (opzionale)
-                <br />
-                2. Inoltra o sposta le email che vuoi processare nella cartella monitorata
-                <br />
-                3. Il sistema le analizzerà automaticamente con l'AI ogni 2 minuti
-              </AlertDescription>
-            </Alert>
-
-            <div className="text-center">
-              <Button
-                variant="outline"
-                onClick={() => disconnectMutation.mutate()}
-                disabled={disconnectMutation.isPending}
-                data-testid="button-disconnect"
-              >
-                <Unplug className="h-4 w-4 mr-2" />
-                {disconnectMutation.isPending ? "Disconnessione..." : "Disconnetti"}
-              </Button>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {/* Dialog di conferma eliminazione */}
+      <AlertDialog open={!!configToDelete} onOpenChange={() => setConfigToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Elimina Configurazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare la configurazione email per {configToDelete?.email}?
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => configToDelete && deleteMutation.mutate(configToDelete.id)}
+              data-testid="button-confirm-delete"
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Eliminazione..." : "Elimina"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
