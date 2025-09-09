@@ -477,26 +477,46 @@ export default function EmailConfig() {
               <FormField
                 control={form.control}
                 name="customSignature"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Firma Personalizzata (HTML supportato)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        placeholder="<div>La mia firma<br><strong>Nome Cognome</strong><br>email@esempio.com</div>"
-                        className="min-h-[120px] font-mono text-sm"
-                        data-testid="textarea-custom-signature"
-                        spellCheck={false}
-                      />
-                    </FormControl>
-                    <div className="text-sm text-muted-foreground">
-                      <strong>Supporta HTML completo</strong>: incolla direttamente la tua firma HTML. 
-                      Usa tag come &lt;div&gt;, &lt;br&gt;, &lt;strong&gt;, &lt;span&gt;, ecc. 
-                      Questa firma verrà automaticamente rimossa dalle email.
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  return (
+                    <FormItem>
+                      <FormLabel>Firma Personalizzata</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <div
+                            contentEditable
+                            suppressContentEditableWarning={true}
+                            className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 overflow-auto"
+                            data-testid="editor-custom-signature"
+                            onInput={(e) => {
+                              const target = e.target as HTMLDivElement;
+                              field.onChange(target.innerHTML);
+                            }}
+                            onBlur={() => {
+                              const target = document.querySelector('[data-testid="editor-custom-signature"]') as HTMLDivElement;
+                              field.onChange(target.innerHTML);
+                            }}
+                            dangerouslySetInnerHTML={{ __html: field.value || '' }}
+                            style={{ 
+                              minHeight: '120px',
+                              lineHeight: '1.5'
+                            }}
+                          />
+                          {(!field.value || field.value === '') && (
+                            <div className="absolute top-2 left-3 text-muted-foreground text-sm pointer-events-none">
+                              Incolla qui la tua firma dall'email - mantiene formattazione, link e immagini
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
+                      <div className="text-sm text-muted-foreground">
+                        <strong>Editor ricco</strong>: copia e incolla direttamente dalla tua email. 
+                        Mantiene automaticamente grassetti, link, immagini e colori.
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <div className="flex justify-end space-x-2 pt-4">
