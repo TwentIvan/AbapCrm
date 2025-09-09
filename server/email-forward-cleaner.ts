@@ -544,9 +544,14 @@ export class EmailForwardCleaner {
     // Prima aggiungiamo debug per capire come è strutturato l'HTML
     console.log(`[EMAIL-CLEANER] DEBUG: Looking for cut point in HTML (${htmlBody.length} chars)`);
     
-    // DEBUG: Mostra un campione dell'HTML per capire la struttura reale
-    const sample = htmlBody.length > 2000 ? htmlBody.substring(0, 2000) + '...' : htmlBody;
-    console.log('[EMAIL-CLEANER] DEBUG HTML SAMPLE:', sample);
+    // DEBUG: Mostra più campioni dell'HTML per trovare il contenuto del messaggio
+    const beginning = htmlBody.substring(0, 1000);
+    const middle = htmlBody.substring(Math.floor(htmlBody.length/2), Math.floor(htmlBody.length/2) + 1000);
+    const end = htmlBody.substring(htmlBody.length - 1000);
+    
+    console.log('[EMAIL-CLEANER] DEBUG HTML BEGINNING:', beginning);
+    console.log('[EMAIL-CLEANER] DEBUG HTML MIDDLE:', middle);
+    console.log('[EMAIL-CLEANER] DEBUG HTML END:', end);
     
     // Lista di pattern migliorati basati su strutture HTML reali
     const forwardMarkers = [
