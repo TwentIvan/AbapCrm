@@ -479,17 +479,20 @@ export default function EmailConfig() {
                 name="customSignature"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Firma Personalizzata</FormLabel>
+                    <FormLabel>Firma Personalizzata (HTML supportato)</FormLabel>
                     <FormControl>
                       <Textarea
                         {...field}
-                        placeholder="Inserisci la tua firma personalizzata da rimuovere dalle email..."
-                        className="min-h-[100px]"
+                        placeholder="<div>La mia firma<br><strong>Nome Cognome</strong><br>email@esempio.com</div>"
+                        className="min-h-[120px] font-mono text-sm"
                         data-testid="textarea-custom-signature"
+                        spellCheck={false}
                       />
                     </FormControl>
                     <div className="text-sm text-muted-foreground">
-                      Se configurata, questa firma verrà automaticamente rimossa dalle email in arrivo per mantenere pulito il contenuto.
+                      <strong>Supporta HTML completo</strong>: incolla direttamente la tua firma HTML. 
+                      Usa tag come &lt;div&gt;, &lt;br&gt;, &lt;strong&gt;, &lt;span&gt;, ecc. 
+                      Questa firma verrà automaticamente rimossa dalle email.
                     </div>
                     <FormMessage />
                   </FormItem>
