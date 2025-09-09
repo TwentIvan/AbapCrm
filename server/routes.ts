@@ -1408,11 +1408,21 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     res.sendStatus(204);
   });
 
-  // Messages
+  // Messages with pagination
   app.get("/api/messages", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const messages = await storage.getMessages(req.user!.id);
-    res.json(messages);
+    
+    // Aggiungi paginazione per prevenire crash con troppi dati
+    const limit = parseInt(req.query.limit as string) || 50; // Default 50 messaggi
+    const offset = parseInt(req.query.offset as string) || 0;
+    
+    try {
+      const messages = await storage.getMessages(req.user!.id, limit, offset);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
   });
 
   // Download attachment endpoint

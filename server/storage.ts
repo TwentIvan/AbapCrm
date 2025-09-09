@@ -1744,13 +1744,15 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
-  // Messages
-  async getMessages(userId: string): Promise<Message[]> {
+  // Messages with pagination
+  async getMessages(userId: string, limit: number = 50, offset: number = 0): Promise<Message[]> {
     return await db
       .select()
       .from(messages)
       .where(eq(messages.userId, userId))
-      .orderBy(desc(messages.receivedAt));
+      .orderBy(desc(messages.receivedAt))
+      .limit(limit)
+      .offset(offset);
   }
 
   async getMessage(id: string, userId: string): Promise<Message | undefined> {
