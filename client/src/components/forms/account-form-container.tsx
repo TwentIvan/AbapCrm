@@ -37,7 +37,7 @@ export default function AccountFormContainer({
   const { routes, navigation, currentRoute } = useFormRouting("/account", params.id);
   
   // For full-page mode, use current user data
-  const { data: fullPageUser } = useQuery({
+  const { data: fullPageUser } = useQuery<User>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentRoute.isFullPage,
@@ -117,14 +117,14 @@ export default function AccountFormContainer({
         <TabsContent value="messages" className="space-y-4">
           <MessageHistory 
             tableName="users"
-            recordId={currentUser?.id}
+            recordId={currentUser?.id || ""}
           />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
           <AuditHistory 
             tableName="users"
-            recordId={currentUser?.id}
+            recordId={currentUser?.id || ""}
           />
         </TabsContent>
       </Tabs>
