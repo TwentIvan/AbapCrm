@@ -12,17 +12,30 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Settings, CheckCircle, AlertCircle, Trash2, Plus, Edit, Power, Eye, EyeOff } from "lucide-react";
+import { Mail, Settings, CheckCircle, AlertCircle, Trash2, Plus, Edit, Power, Eye, EyeOff, Forward } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import type { EmailConfig, InsertEmailConfig } from "@shared/schema";
 
 const emailConfigSchema = z.object({
   email: z.string().email("Inserisci un indirizzo email valido"),
-  password: z.string().min(1, "La password è obbligatoria"),
+  password: z.string().min(1, "La password è obbligatoria").or(z.literal("")),
   host: z.string().default("imap.gmail.com"),
   port: z.number().min(1).max(65535).default(993),
   tls: z.boolean().default(true),
   folders: z.array(z.string()).min(1, "Seleziona almeno una cartella").default(["INBOX"]),
+  isForwarder: z.boolean().default(false),
+  customSignature: z.string().optional(),
+}).refine((data) => {
+  // Se non è inoltrante, password è obbligatoria
+  if (!data.isForwarder && !data.password) {
+    return false;
+  }
+  return true;
+}, {
+  message: "La password è obbligatoria per account non inoltranti",
+  path: ["password"],
 });
 
 type EmailConfigForm = z.infer<typeof emailConfigSchema>;
@@ -52,6 +65,8 @@ export default function EmailConfig() {
       port: 993,
       tls: true,
       folders: ["INBOX"],
+      isForwarder: false,
+      customSignature: "",
     },
   });
 
@@ -125,11 +140,11 @@ export default function EmailConfig() {
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       apiRequest("PUT", `/api/email/configs/${id}`, { isActive }),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/email/configs"] });
       toast({
-        title: isActive ? "Configurazione attivata" : "Configurazione disattivata",
-        description: `La configurazione email è stata ${isActive ? 'attivata' : 'disattivata'}.`,
+        title: variables.isActive ? "Configurazione attivata" : "Configurazione disattivata",
+        description: `La configurazione email è stata ${variables.isActive ? 'attivata' : 'disattivata'}.`,
       });
     },
   });
@@ -151,6 +166,8 @@ export default function EmailConfig() {
       port: config.port,
       tls: config.tls,
       folders: config.folders,
+      isForwarder: config.isForwarder || false,
+      customSignature: config.customSignature || "",
     });
     setShowDialog(true);
   };
@@ -341,76 +358,139 @@ export default function EmailConfig() {
 
               <FormField
                 control={form.control}
-                name="password"
+                name="isForwarder"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base font-medium flex items-center">
+                        <Forward className="w-4 h-4 mr-2" />
+                        Account Inoltrante
+                      </FormLabel>
+                      <div className="text-sm text-muted-foreground">
+                        Questo account riceve email inoltrate da altri sistemi (nessuna configurazione IMAP necessaria)
+                      </div>
+                    </div>
                     <FormControl>
-                      <Input
-                        {...field}
-                        type="password"
-                        placeholder="Password o App Password"
-                        data-testid="input-password"
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-forwarder"
                       />
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
+              />
+
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => {
+                  const isForwarder = form.watch("isForwarder");
+                  return (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="password"
+                          placeholder="Password o App Password"
+                          data-testid="input-password"
+                          disabled={isForwarder}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
                 control={form.control}
                 name="host"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Host IMAP</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="imap.gmail.com"
-                        data-testid="input-host"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const isForwarder = form.watch("isForwarder");
+                  return (
+                    <FormItem>
+                      <FormLabel>Host IMAP</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="imap.gmail.com"
+                          data-testid="input-host"
+                          disabled={isForwarder}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
                 control={form.control}
                 name="port"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Porta</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="number"
-                        placeholder="993"
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
-                        data-testid="input-port"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const isForwarder = form.watch("isForwarder");
+                  return (
+                    <FormItem>
+                      <FormLabel>Porta</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          placeholder="993"
+                          onChange={(e) => field.onChange(parseInt(e.target.value))}
+                          data-testid="input-port"
+                          disabled={isForwarder}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
                 control={form.control}
                 name="folders"
+                render={({ field }) => {
+                  const isForwarder = form.watch("isForwarder");
+                  return (
+                    <FormItem>
+                      <FormLabel>Cartelle da monitorare</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value.join(", ")}
+                          onChange={(e) => field.onChange(e.target.value.split(",").map(f => f.trim()).filter(Boolean))}
+                          placeholder="INBOX, Sent, Drafts"
+                          data-testid="input-folders"
+                          disabled={isForwarder}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+
+              <FormField
+                control={form.control}
+                name="customSignature"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cartelle da monitorare</FormLabel>
+                    <FormLabel>Firma Personalizzata</FormLabel>
                     <FormControl>
-                      <Input
+                      <Textarea
                         {...field}
-                        value={field.value.join(", ")}
-                        onChange={(e) => field.onChange(e.target.value.split(",").map(f => f.trim()).filter(Boolean))}
-                        placeholder="INBOX, Sent, Drafts"
-                        data-testid="input-folders"
+                        placeholder="Inserisci la tua firma personalizzata da rimuovere dalle email..."
+                        className="min-h-[100px]"
+                        data-testid="textarea-custom-signature"
                       />
                     </FormControl>
+                    <div className="text-sm text-muted-foreground">
+                      Se configurata, questa firma verrà automaticamente rimossa dalle email in arrivo per mantenere pulito il contenuto.
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
