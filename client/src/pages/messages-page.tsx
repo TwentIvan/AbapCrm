@@ -538,91 +538,42 @@ export default function MessagesPage() {
                           Allegati ({selectedMessage.attachments.length})
                         </h4>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
                         {selectedMessage.attachments.map((filename, index) => {
                           const fileInfo = getFileType(filename);
                           return (
                             <div 
                               key={index}
-                              className="border rounded-lg p-3 hover:bg-muted/50 transition-colors"
+                              className="flex items-center justify-between p-2 border rounded-lg hover:bg-muted/50 transition-colors"
                             >
-                              {fileInfo.isImage ? (
-                                // Anteprima per immagini
-                                <div className="space-y-3">
-                                  <div className="aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center">
-                                    <img
-                                      src={`/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`}
-                                      alt={filename}
-                                      className="max-w-full max-h-full object-contain"
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.style.display = 'none';
-                                        const parent = target.parentElement;
-                                        if (parent) {
-                                          parent.innerHTML = `<div class="text-muted-foreground text-sm">❌ Anteprima non disponibile</div>`;
-                                        }
-                                      }}
-                                    />
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                      <span className="text-lg">{fileInfo.icon}</span>
-                                      <div className="min-w-0 flex-1">
-                                        <div className="text-xs text-muted-foreground">{fileInfo.type}</div>
-                                        <div 
-                                          className="text-sm truncate font-medium"
-                                          title={filename}
-                                        >
-                                          {filename}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        const link = document.createElement('a');
-                                        link.href = `/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`;
-                                        link.download = filename;
-                                        link.click();
-                                      }}
-                                      data-testid={`download-attachment-${index}`}
-                                    >
-                                      <FileText className="h-3 w-3 mr-1" />
-                                      Scarica
-                                    </Button>
-                                  </div>
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div className="text-center flex-shrink-0">
+                                  <div className="text-lg">{fileInfo.icon}</div>
                                 </div>
-                              ) : (
-                                // Layout normale per altri file
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className="text-center flex-shrink-0">
-                                      <div className="text-2xl">{fileInfo.icon}</div>
-                                      <div className="text-xs text-muted-foreground mt-1">{fileInfo.type}</div>
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <div 
-                                        className="text-sm font-medium truncate"
-                                        title={filename}
-                                      >
-                                        {filename}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <Button
-                                    size="sm" 
-                                    variant="outline"
-                                    onClick={() => {
-                                      window.open(`/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`, '_blank');
-                                    }}
-                                    data-testid={`download-attachment-${index}`}
+                                <div className="min-w-0 flex-1">
+                                  <div 
+                                    className="text-sm font-medium truncate"
+                                    title={filename}
                                   >
-                                    <FileText className="h-3 w-3 mr-1" />
-                                    Scarica
-                                  </Button>
+                                    {filename}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">{fileInfo.type}</div>
                                 </div>
-                              )}
+                              </div>
+                              <Button
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => {
+                                  const link = document.createElement('a');
+                                  link.href = `/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`;
+                                  link.download = filename;
+                                  link.click();
+                                }}
+                                data-testid={`download-attachment-${index}`}
+                              >
+                                <FileText className="h-3 w-3 mr-1" />
+                                Scarica
+                              </Button>
                             </div>
                           );
                         })}
@@ -630,97 +581,23 @@ export default function MessagesPage() {
                     </div>
                   </>
                 )}
-
-                {/* AI Suggestions */}
-                {showSuggestions && analyzeMutation.data && (
-                  <>
-                    <Separator />
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Bot className="h-5 w-5 text-blue-600" />
-                        <h4 className="font-medium">Suggerimenti AI</h4>
-                      </div>
-                      
-                      {(!analyzeMutation.data?.suggestions || analyzeMutation.data.suggestions.length === 0) ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p>Nessun suggerimento trovato</p>
-                          <p className="text-sm">L'AI non ha trovato collegamenti rilevanti</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {analyzeMutation.data?.suggestions?.map((suggestion: AISuggestion, index: number) => (
-                            <Card key={index} className="p-4">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Badge variant="outline">
-                                      {suggestion.type === 'project' ? 'Progetto' : 
-                                       suggestion.type === 'task' ? 'Task' : 'Partner'}
-                                    </Badge>
-                                    <span className="font-medium">{suggestion.name}</span>
-                                    <span className={`text-sm font-medium ${getConfidenceColor(suggestion.confidence || 0)}`}>
-                                      {Math.round((suggestion.confidence || 0) * 100)}%
-                                    </span>
-                                  </div>
-                                  <p className="text-sm text-muted-foreground mb-3">
-                                    {suggestion.reason}
-                                  </p>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleApplySuggestion(suggestion)}
-                                  disabled={applySuggestionMutation.isPending}
-                                  data-testid={`apply-suggestion-${index}`}
-                                >
-                                  <Plus className="h-4 w-4 mr-1" />
-                                  Applica
-                                </Button>
-                              </div>
-                            </Card>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {/* Attachments */}
-                {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (
-                  <>
-                    <Separator />
-                    <div className="space-y-2">
-                      <h4 className="font-medium">Allegati:</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedMessage.attachments.map((attachment, index) => (
-                          <Badge key={index} variant="outline">
-                            <FileText className="h-3 w-3 mr-1" />
-                            {attachment}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
             )}
           </CardContent>
-            </Card>
-          </div>
-        </main>
+        </Card>
       </div>
+    </main>
+  </div>
 
-      {/* Create Message Dialog */}
-      <Dialog open={showNewMessageDialog} onOpenChange={setShowNewMessageDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Crea Nuovo Messaggio</DialogTitle>
-          </DialogHeader>
-          <MessageForm 
-            onSuccess={() => setShowNewMessageDialog(false)} 
-          />
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
+  {/* Create Message Dialog */}
+  <Dialog open={showNewMessageDialog} onOpenChange={setShowNewMessageDialog}>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Nuovo Messaggio</DialogTitle>
+      </DialogHeader>
+      <MessageForm onSuccess={() => setShowNewMessageDialog(false)} />
+    </DialogContent>
+  </Dialog>
+</div>
+);
 }

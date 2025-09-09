@@ -40,6 +40,7 @@ interface MessageLink {
     to: string;
     messageId: string;
     body: string;
+    htmlBody?: string;
     receivedAt: string;
     user: {
       id: string;
@@ -318,8 +319,17 @@ export function MessageHistory({ tableName, recordId, title = "Message History",
                       <Separator className="my-3" />
                       <div className="space-y-2">
                         <div className="text-xs font-medium text-muted-foreground">Message Content</div>
-                        <div className="bg-muted p-3 rounded text-sm max-h-48 overflow-y-auto whitespace-pre-wrap">
-                          {link.message.body}
+                        <div className="bg-muted p-3 rounded text-sm max-h-48 overflow-y-auto">
+                          {link.message.htmlBody ? (
+                            <div 
+                              className="prose prose-sm max-w-none"
+                              dangerouslySetInnerHTML={{ __html: link.message.htmlBody }}
+                            />
+                          ) : (
+                            <div className="whitespace-pre-wrap">
+                              {link.message.body}
+                            </div>
+                          )}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           To: {link.message.to}
