@@ -16,6 +16,7 @@ const getDefaultNavigation = (t: any) => [
   { id: "4", name: t("nav.salesOrders"), href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
   { id: "5", name: t("nav.rateAgreements"), href: "/rate-agreements", icon: DollarSign, testId: "nav-rate-agreements" },
   { id: "6", name: t("nav.humanResources"), href: "/human-resources", icon: Users, testId: "nav-human-resources" },
+  { id: "7", name: t("nav.emailAccounts"), href: "/email-accounts", icon: Mail, testId: "nav-email-accounts" },
 ];
 
 // Systems group

@@ -50,7 +50,8 @@ const translations: Record<Language, Translations> = {
       organizations: "Organizzazioni",
       humanResources: "Risorse Umane",
       rateAgreements: "Accordi Tariffe",
-      salesOrders: "Ordini Vendita"
+      salesOrders: "Ordini Vendita",
+      emailAccounts: "Account Email"
     },
     // Header
     header: {
@@ -103,7 +104,8 @@ const translations: Record<Language, Translations> = {
       organizations: "Organizations",
       humanResources: "Human Resources",
       rateAgreements: "Rate Agreements",
-      salesOrders: "Sales Orders"
+      salesOrders: "Sales Orders",
+      emailAccounts: "Email Accounts"
     },
     // Header
     header: {
