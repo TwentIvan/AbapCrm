@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
@@ -22,7 +23,8 @@ import {
   Link,
   Plus,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Trash2
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Message, Project, Task, Partner } from "@shared/schema";
@@ -136,6 +138,51 @@ export default function MessagesPage() {
     }
   });
 
+  const deleteMessageMutation = useMutation({
+    mutationFn: (messageId: string) => 
+      apiRequest("DELETE", `/api/messages/${messageId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      setSelectedMessage(null);
+      toast({
+        title: "Messaggio eliminato",
+        description: "Il messaggio è stato eliminato con successo.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'eliminazione del messaggio.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const clearAllMessagesMutation = useMutation({
+    mutationFn: async () => {
+      // Delete all messages for the current user
+      const deletePromises = messages.map(message => 
+        apiRequest("DELETE", `/api/messages/${message.id}`)
+      );
+      await Promise.all(deletePromises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      setSelectedMessage(null);
+      toast({
+        title: "Tutti i messaggi eliminati",
+        description: "Tutti i messaggi sono stati eliminati. Usa 'Sincronizza' per ricaricarli.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'eliminazione dei messaggi.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSelectMessage = (message: Message) => {
     setSelectedMessage(message);
     setShowSuggestions(false);
@@ -239,20 +286,55 @@ export default function MessagesPage() {
         />
         
         <div className="px-6 py-2 border-b">
-          <div className="flex items-center space-x-2">
-            <Badge variant="secondary" className="text-sm">
-              {unreadCount} non letti
-            </Badge>
-            <Button 
-              onClick={() => syncMutation.mutate()}
-              disabled={syncMutation.isPending}
-              size="sm"
-              variant="outline"
-              data-testid="button-sync-emails"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-              Sincronizza
-            </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Badge variant="secondary" className="text-sm">
+                {unreadCount} non letti
+              </Badge>
+              <Button 
+                onClick={() => syncMutation.mutate()}
+                disabled={syncMutation.isPending}
+                size="sm"
+                variant="outline"
+                data-testid="button-sync-emails"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                Sincronizza
+              </Button>
+            </div>
+            {messages.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    size="sm"
+                    variant="destructive"
+                    data-testid="button-clear-all-messages"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Elimina tutti
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Eliminare tutti i messaggi?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Questa azione eliminerà tutti i {messages.length} messaggi email. 
+                      Potrai ricaricarli usando il bottone "Sincronizza" per vedere la nuova formattazione HTML.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => clearAllMessagesMutation.mutate()}
+                      disabled={clearAllMessagesMutation.isPending}
+                      className="bg-destructive hover:bg-destructive/90"
+                    >
+                      {clearAllMessagesMutation.isPending ? "Eliminando..." : "Elimina tutti"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
         <main className="p-6 space-y-6">
@@ -356,6 +438,37 @@ export default function MessagesPage() {
                     <Bot className="h-4 w-4 mr-2" />
                     {analyzeMutation.isPending ? 'Analizzando...' : 'Analizza AI'}
                   </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        data-testid="delete-message-button"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Elimina
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Eliminare questo messaggio?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Questa azione eliminerà il messaggio "{selectedMessage.subject}" definitivamente.
+                          Potrai ricaricarlo usando il bottone "Sincronizza".
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annulla</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteMessageMutation.mutate(selectedMessage.id)}
+                          disabled={deleteMessageMutation.isPending}
+                          className="bg-destructive hover:bg-destructive/90"
+                        >
+                          {deleteMessageMutation.isPending ? "Eliminando..." : "Elimina"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               )}
             </CardTitle>
