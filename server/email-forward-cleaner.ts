@@ -395,6 +395,50 @@ export class EmailForwardCleaner {
     return indicatorMatches >= 4 && lines.length < 8;
   }
 
+  // Rimuove le intestazioni del messaggio inoltrato dall'HTML
+  private static removeEmailHeaders(html: string): string {
+    console.log('[EMAIL-CLEANER] Removing email headers from HTML...');
+    
+    // Pattern per rimuovere le intestazioni HTML di Outlook
+    const headerPatterns = [
+      // Rimuove sezioni con From/To/Subject/Date in formato HTML
+      /<div[^>]*>\s*<b>\s*From:\s*<\/b>[^<]*<[^>]*>[^<]*<\/[^>]*>[\s\S]*?<\/div>/gi,
+      /<div[^>]*>\s*<b>\s*To:\s*<\/b>[^<]*<[^>]*>[^<]*<\/[^>]*>[\s\S]*?<\/div>/gi,
+      /<div[^>]*>\s*<b>\s*Subject:\s*<\/b>[^<]*<\/div>/gi,
+      /<div[^>]*>\s*<b>\s*Date:\s*<\/b>[^<]*<\/div>/gi,
+      
+      // Pattern più generici per headers in div/p/span
+      /<(?:div|p|span)[^>]*>\s*(?:From|To|Subject|Date|Sent|Da|A|Oggetto|Data):\s*[^<]*<\/(?:div|p|span)>/gi,
+      
+      // Rimuove tabelle con headers email
+      /<table[^>]*>[\s\S]*?(?:From|To|Subject|Date|Da|A|Oggetto|Data)[\s\S]*?<\/table>/gi,
+      
+      // Rimuove HR separators
+      /<hr[^>]*>/gi,
+      
+      // Rimuove div con stili border-top (separatori Outlook)
+      /<div[^>]*style="[^"]*border-top[^"]*"[^>]*>[\s\S]*?<\/div>/gi
+    ];
+    
+    let cleanedHtml = html;
+    
+    // Applica tutti i pattern di rimozione
+    headerPatterns.forEach((pattern, index) => {
+      const before = cleanedHtml.length;
+      cleanedHtml = cleanedHtml.replace(pattern, '');
+      const after = cleanedHtml.length;
+      if (before !== after) {
+        console.log(`[EMAIL-CLEANER] Pattern ${index + 1} removed ${before - after} chars`);
+      }
+    });
+    
+    // Pulisci spazi vuoti e righe vuote in eccesso
+    cleanedHtml = cleanedHtml.replace(/^\s+/gm, '').replace(/\n\s*\n\s*\n/g, '\n\n').trim();
+    
+    console.log(`[EMAIL-CLEANER] Headers removed, final HTML: ${cleanedHtml.length} chars`);
+    return cleanedHtml;
+  }
+
   // Estrae tutti i destinatari originali dalle email inoltrate
   private static extractOriginalRecipients(textBody: string): { to: string[], cc: string[], bcc: string[] } {
     const result: { to: string[], cc: string[], bcc: string[] } = { to: [], cc: [], bcc: [] };
@@ -527,7 +571,9 @@ export class EmailForwardCleaner {
         
         // Verifica che il risultato abbia contenuto utile
         if (cleanedHtml.length > 50) {
-          return cleanedHtml;
+          // Seconda fase: rimuovi le intestazioni del messaggio inoltrato
+          const finalHtml = this.removeEmailHeaders(cleanedHtml);
+          return finalHtml;
         } else {
           console.log(`[EMAIL-CLEANER] ✗ Cut HTML too short, falling back to text body`);
         }
