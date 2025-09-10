@@ -562,7 +562,31 @@ export class EmailForwardCleaner {
       }
     }
 
-    console.log(`[EMAIL-CLEANER] Bounded HTML split not confident enough (${splitResult.confidence}), using pattern-based fallback`);
+    console.log(`[EMAIL-CLEANER] Bounded HTML split not confident enough (${splitResult.confidence}), trying HTML→text fallback`);
+    
+    // HTML→text fallback: converte HTML in testo e usa l'algoritmo text-based
+    const htmlAsText = htmlBody.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (htmlAsText.length > 200) { // Solo se c'è abbastanza contenuto testuale
+      const textSplitResult = this.splitTextByHeaderClusters(htmlAsText);
+      
+      if ((textSplitResult.confidence === 'high' || textSplitResult.confidence === 'medium') && 
+          textSplitResult.mainText) {
+        
+        console.log(`[EMAIL-CLEANER] HTML→text fallback successful (${textSplitResult.confidence}, ${textSplitResult.method}): ${textSplitResult.mainText.length} chars main body`);
+        
+        // Estrai la porzione HTML corrispondente al testo identificato
+        const mainTextLength = textSplitResult.mainText.length;
+        const approximateHtmlLength = Math.min(mainTextLength * 3, htmlBody.length * 0.7); // Stima approssimativa
+        const fallbackHtml = htmlBody.substring(0, approximateHtmlLength);
+        const cleanedFallbackHtml = this.closeOpenHtmlTags(fallbackHtml);
+        
+        if (!this.isOnlySignatureHtml(cleanedFallbackHtml)) {
+          return cleanedFallbackHtml;
+        }
+      }
+    }
+    
+    console.log(`[EMAIL-CLEANER] HTML→text fallback also failed, using pattern-based fallback`);
     let cleanHtml = originalHtml;
 
     // Pattern HTML per sezioni di inoltro
