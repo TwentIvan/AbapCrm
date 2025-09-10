@@ -671,64 +671,59 @@ export default function MessagesPage() {
               </div>
             ) : (
               <div className="flex flex-col h-full">
-                {/* Header con dati strutturati */}
-                <div className="flex-shrink-0 p-6 pb-0 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-semibold">
-                        {selectedMessage.subject || 'Nessun oggetto'}
-                      </h3>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <User className="h-4 w-4" />
-                          <span>{selectedMessage.fromName || selectedMessage.fromEmail}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            {format(new Date(selectedMessage.receivedAt), 'dd MMMM yyyy, HH:mm')}
-                          </span>
+                {/* Header con dati strutturati per AI */}
+                <div className="flex-shrink-0 p-6 pb-4">
+                  <div className="border-2 border-primary/20 bg-primary/5 rounded-lg p-4 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <h4 className="text-sm font-semibold text-primary flex items-center gap-2">
+                        <Bot className="h-4 w-4" />
+                        Dati Strutturati per AI
+                      </h4>
+                      <Badge 
+                        variant="secondary"
+                        className={`${getStatusColor(selectedMessage.status)} text-white`}
+                      >
+                        {selectedMessage.status}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Collegamenti Attuali</span>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {(() => {
+                            const linkedObject = getLinkedObjectName(selectedMessage);
+                            if (linkedObject) {
+                              return (
+                                <Badge variant="outline" className="text-sm">
+                                  <Link className="h-3 w-3 mr-1" />
+                                  {linkedObject.type}: {linkedObject.name}
+                                </Badge>
+                              );
+                            }
+                            return (
+                              <Badge variant="outline" className="text-sm bg-amber-50 text-amber-700 border-amber-200">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                Nessun collegamento
+                              </Badge>
+                            );
+                          })()}
+                          {selectedMessage.confidenceScore && (
+                            <Badge variant="secondary" className="text-sm">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Confidenza: {Math.round((selectedMessage.confidenceScore ? Number(selectedMessage.confidenceScore) : 0) * 100)}%
+                            </Badge>
+                          )}
                         </div>
                       </div>
-                    </div>
-                    <Badge 
-                      variant="secondary"
-                      className={`${getStatusColor(selectedMessage.status)} text-white`}
-                    >
-                      {selectedMessage.status}
-                    </Badge>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-muted-foreground">Da:</span>
-                      <p>{selectedMessage.fromEmail}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-muted-foreground">A:</span>
-                      <p>{selectedMessage.toEmail}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <span className="font-medium text-muted-foreground">Collegamenti attuali:</span>
-                    <div className="flex flex-wrap gap-2">
-                      {(() => {
-                        const linkedObject = getLinkedObjectName(selectedMessage);
-                        if (linkedObject) {
-                          return (
-                            <Badge variant="outline">
-                              <Link className="h-3 w-3 mr-1" />
-                              {linkedObject.type}: {linkedObject.name}
-                            </Badge>
-                          );
-                        }
-                        return <span className="text-sm text-muted-foreground">Nessun collegamento</span>;
-                      })()}
-                      {selectedMessage.confidenceScore && (
-                        <Badge variant="secondary">
-                          Confidenza: {Math.round((selectedMessage.confidenceScore ? Number(selectedMessage.confidenceScore) : 0) * 100)}%
-                        </Badge>
+                      {selectedMessage.matchingReason && (
+                        <div>
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Motivo Collegamento</span>
+                          <p className="text-sm text-muted-foreground italic mt-1">
+                            {selectedMessage.matchingReason}
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>
