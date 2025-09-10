@@ -629,6 +629,16 @@ export default function MessagesPage() {
                       <div className="space-y-2">
                         {/* Destinatari TO - con fallback su toEmail */}
                         {(() => {
+                          // Debug: vediamo cosa arriva dal backend
+                          console.log('FRONTEND DEBUG:', {
+                            subject: selectedMessage.subject,
+                            originalToEmails: selectedMessage.originalToEmails,
+                            originalToEmailsLength: selectedMessage.originalToEmails?.length,
+                            originalCcEmails: selectedMessage.originalCcEmails,
+                            originalCcEmailsLength: selectedMessage.originalCcEmails?.length,
+                            toEmail: selectedMessage.toEmail
+                          });
+                          
                           const toEmails = (selectedMessage.originalToEmails && selectedMessage.originalToEmails.length > 0) 
                             ? selectedMessage.originalToEmails 
                             : [selectedMessage.toEmail];
