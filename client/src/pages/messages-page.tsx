@@ -607,59 +607,6 @@ export default function MessagesPage() {
             <Panel defaultSize={60} minSize={40} maxSize={75}>
               {/* Message Detail */}
               <Card className="h-full flex flex-col">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Eye className="h-5 w-5" />
-                Dettaglio Messaggio
-              </div>
-              {selectedMessage && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAnalyze}
-                    disabled={analyzeMutation.isPending}
-                    data-testid="analyze-button"
-                  >
-                    <Bot className="h-4 w-4 mr-2" />
-                    {analyzeMutation.isPending ? 'Analizzando...' : 'Analizza AI'}
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        data-testid="delete-message-button"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Elimina
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Eliminare questo messaggio?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Questa azione eliminerà il messaggio "{selectedMessage.subject}" definitivamente.
-                          Potrai ricaricarlo usando il bottone "Sincronizza".
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annulla</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => deleteMessageMutation.mutate(selectedMessage.id)}
-                          disabled={deleteMessageMutation.isPending}
-                          className="bg-destructive hover:bg-destructive/90"
-                        >
-                          {deleteMessageMutation.isPending ? "Eliminando..." : "Elimina"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              )}
-            </CardTitle>
-          </CardHeader>
           <CardContent className="flex flex-col h-full p-0">
             {!selectedMessage ? (
               <div className="flex items-center justify-center h-96 text-center text-muted-foreground">
@@ -671,59 +618,38 @@ export default function MessagesPage() {
               </div>
             ) : (
               <div className="flex flex-col h-full">
-                {/* Header con dati strutturati per AI */}
+                {/* Header dati strutturati */}
                 <div className="flex-shrink-0 p-6 pb-4">
-                  <div className="border-2 border-primary/20 bg-primary/5 rounded-lg p-4 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <h4 className="text-sm font-semibold text-primary flex items-center gap-2">
-                        <Bot className="h-4 w-4" />
-                        Dati Strutturati per AI
-                      </h4>
-                      <Badge 
-                        variant="secondary"
-                        className={`${getStatusColor(selectedMessage.status)} text-white`}
-                      >
-                        {selectedMessage.status}
-                      </Badge>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Collegamenti Attuali</span>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {(() => {
-                            const linkedObject = getLinkedObjectName(selectedMessage);
-                            if (linkedObject) {
-                              return (
-                                <Badge variant="outline" className="text-sm">
-                                  <Link className="h-3 w-3 mr-1" />
-                                  {linkedObject.type}: {linkedObject.name}
-                                </Badge>
-                              );
-                            }
-                            return (
-                              <Badge variant="outline" className="text-sm bg-amber-50 text-amber-700 border-amber-200">
-                                <AlertCircle className="h-3 w-3 mr-1" />
-                                Nessun collegamento
-                              </Badge>
-                            );
-                          })()}
-                          {selectedMessage.confidenceScore && (
-                            <Badge variant="secondary" className="text-sm">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Confidenza: {Math.round((selectedMessage.confidenceScore ? Number(selectedMessage.confidenceScore) : 0) * 100)}%
+                  <div className="border-2 border-primary rounded-lg bg-primary p-4">
+                    <div className="flex flex-wrap gap-2">
+                      {(() => {
+                        const linkedObject = getLinkedObjectName(selectedMessage);
+                        if (linkedObject) {
+                          return (
+                            <Badge variant="secondary" className="text-sm bg-white/90 text-primary-foreground border-white/20">
+                              <Link className="h-3 w-3 mr-1" />
+                              {linkedObject.type}: {linkedObject.name}
                             </Badge>
-                          )}
-                        </div>
-                      </div>
-
+                          );
+                        }
+                        return (
+                          <Badge variant="secondary" className="text-sm bg-white/90 text-primary-foreground border-white/20">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            Nessun collegamento
+                          </Badge>
+                        );
+                      })()}
+                      {selectedMessage.confidenceScore && (
+                        <Badge variant="secondary" className="text-sm bg-white/90 text-primary-foreground border-white/20">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Confidenza: {Math.round((selectedMessage.confidenceScore ? Number(selectedMessage.confidenceScore) : 0) * 100)}%
+                        </Badge>
+                      )}
                       {selectedMessage.matchingReason && (
-                        <div>
-                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Motivo Collegamento</span>
-                          <p className="text-sm text-muted-foreground italic mt-1">
-                            {selectedMessage.matchingReason}
-                          </p>
-                        </div>
+                        <Badge variant="secondary" className="text-sm bg-white/90 text-primary-foreground border-white/20">
+                          <Brain className="h-3 w-3 mr-1" />
+                          {selectedMessage.matchingReason}
+                        </Badge>
                       )}
                     </div>
                   </div>
