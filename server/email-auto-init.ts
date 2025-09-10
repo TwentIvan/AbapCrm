@@ -16,7 +16,8 @@ export async function autoInitializeEmailServices() {
         try {
           const activeConfig = await storage.getActiveEmailConfig(user.id);
           
-          if (activeConfig) {
+          // Solo configurazioni con password e non-forwarder possono avere servizi IMAP
+          if (activeConfig && activeConfig.password && activeConfig.password.trim() !== '' && !activeConfig.isForwarder) {
             console.log(`[EMAIL-INIT] Restoring email service for user: ${activeConfig.email}`);
             
             // Usa la prima cartella dall'array, o "INBOX" come default
@@ -41,6 +42,10 @@ export async function autoInitializeEmailServices() {
               console.error(`[EMAIL-INIT] ✗ Failed to restore email service for ${activeConfig.email}:`, error);
               // Continue with other users even if one fails
             }
+          } else if (activeConfig && activeConfig.isForwarder) {
+            console.log(`[EMAIL-INIT] Skipping forwarder account: ${activeConfig.email}`);
+          } else if (activeConfig && (!activeConfig.password || activeConfig.password.trim() === '')) {
+            console.log(`[EMAIL-INIT] Skipping account without password: ${activeConfig.email}`);
           }
         } catch (error) {
           console.error(`[EMAIL-INIT] ✗ Failed to get email config for user ${user.id}:`, error);
