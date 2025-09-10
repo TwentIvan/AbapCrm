@@ -1479,20 +1479,6 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       }
 
       res.send(attachmentData.data);
-        
-        res.setHeader('Content-Type', 'image/svg+xml');
-        res.send(svgContent);
-      } else {
-        // Per altri file, restituisce info JSON
-        res.json({ 
-          message: "Download disponibile", 
-          filename,
-          messageId,
-          mimeType,
-          available: true,
-          size: "File simulato"
-        });
-      }
       
     } catch (error) {
       console.error('Attachment download error:', error);
