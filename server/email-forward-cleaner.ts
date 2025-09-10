@@ -280,6 +280,38 @@ export class EmailForwardCleaner {
   private static isForwardedBody(body: string): boolean {
     if (!body) return false;
 
+    // Pre-filter: NON trattare come forwarded email brevi (< 800 chars) 
+    // a meno che non ci siano marker espliciti di forwarding
+    if (body.length < 800) {
+      const explicitForwardMarkers = [
+        /---------- Forwarded message ---------/i,
+        /---------- Messaggio inoltrato ----------/i,
+        /Begin forwarded message:/i,
+        /---------- Original Message ----------/i,
+        /---------- Messaggio originale ----------/i,
+        /====== Forwarded Message ======/i,
+        /-{5,}.*Original.*Message.*-{5,}/i,
+        /_{5,}.*Forwarded.*_{5,}/i,
+        /_{20,}/,  // Outlook underscore separator
+        /^(Il giorno|In data|On .* wrote:|Le .* a écrit|Am .* schrieb)/i
+      ];
+      
+      // Per email brevi, richiede marker espliciti
+      const hasExplicitMarkers = explicitForwardMarkers.some(pattern => pattern.test(body));
+      
+      if (!hasExplicitMarkers) {
+        // Ultima verifica: conta header anchored nelle prime 10 righe
+        const lines = body.split('\n').slice(0, 10);
+        const headerRegex = /^[>\s\u00A0]*?(Da|From|Inviato|Sent|A|To|Cc|Oggetto|Subject|Data|Date)\s*:\s*/i;
+        const headerCount = lines.filter(line => headerRegex.test(line)).length;
+        
+        if (headerCount < 3) {
+          console.log(`[EMAIL-CLEANER] Pre-filter: skipping short email (${body.length} chars, ${headerCount} headers) - no explicit markers`);
+          return false;
+        }
+      }
+    }
+
     const forwardPatterns = [
       /---------- Forwarded message ---------/i,
       /---------- Messaggio inoltrato ----------/i,
@@ -1242,7 +1274,9 @@ export class EmailForwardCleaner {
     console.log(`[EMAIL-CLEANER] Starting bounded split analysis for text (${textBody.length} chars)`);
     
     const lines = textBody.split('\n');
-    const headerKeywords = ['Da:', 'From:', 'Inviato:', 'Sent:', 'A:', 'To:', 'Cc:', 'Oggetto:', 'Subject:', 'Data:', 'Date:'];
+    
+    // Regex più tollerante per identificare header - include spazi e caratteri di quotazione
+    const headerRegex = /^[>\s\u00A0]*?(Da|From|Inviato|Sent|A|To|Cc|Oggetto|Subject|Data|Date)\s*:\s*/i;
     const quotedMarkers = [
       /^[-_]{5,}.*(Original|Forwarded|Messaggio|Message).*/i,
       /^(Il giorno|In data|On .* wrote:|Le .* a écrit|Am .* schrieb)/i,
@@ -1253,33 +1287,31 @@ export class EmailForwardCleaner {
 
     let firstHeaderClusterStart = -1;
     let firstHeaderClusterEnd = -1;
-    let consecutiveHeaders = 0;
-    let headerInWindow = false;
+    let headerCount = 0;
 
-    // Step 1: Trova il primo cluster di header (almeno 3 header in 8 righe)
-    for (let i = 0; i < Math.min(lines.length, 60); i++) { // Solo nelle prime 60 righe
+    // Step 1: Trova header cluster con rolling window di 6 righe (≥2 header)
+    for (let i = 0; i < Math.min(lines.length, 60); i++) { // Prime 60 righe
       const line = lines[i].trim();
       
       if (line.length === 0) continue;
 
-      const isHeader = headerKeywords.some(keyword => line.startsWith(keyword));
+      const isHeader = headerRegex.test(line);
       const isQuotedMarker = quotedMarkers.some(pattern => pattern.test(line));
       
       if (isHeader || isQuotedMarker) {
         if (firstHeaderClusterStart === -1) {
           firstHeaderClusterStart = i;
-          headerInWindow = true;
         }
-        consecutiveHeaders++;
+        headerCount++;
         
-        // Cluster identificato se abbiamo almeno 3 header in una finestra di 8 righe
-        if (consecutiveHeaders >= 3 && headerInWindow && i - firstHeaderClusterStart < 8) {
+        // Controlla se abbiamo almeno 2 header in una finestra rolling di 6 righe
+        if (headerCount >= 2 && i - firstHeaderClusterStart <= 6) {
           // Trova la fine del cluster
-          for (let j = i + 1; j < Math.min(lines.length, i + 10); j++) {
+          for (let j = i + 1; j < Math.min(lines.length, i + 8); j++) {
             const nextLine = lines[j].trim();
             if (nextLine.length === 0) continue;
             
-            const stillHeader = headerKeywords.some(keyword => nextLine.startsWith(keyword));
+            const stillHeader = headerRegex.test(nextLine);
             const stillMarker = quotedMarkers.some(pattern => pattern.test(nextLine));
             
             if (!stillHeader && !stillMarker && nextLine.length > 5) {
@@ -1291,16 +1323,15 @@ export class EmailForwardCleaner {
           break;
         }
       } else if (line.length > 10) {
-        // Reset se troviamo contenuto significativo e non abbiamo ancora un cluster valido
-        if (consecutiveHeaders < 3) {
+        // Reset rolling window se troppo lontano dal primo header
+        if (firstHeaderClusterStart !== -1 && i - firstHeaderClusterStart > 6) {
           firstHeaderClusterStart = -1;
-          consecutiveHeaders = 0;
-          headerInWindow = false;
+          headerCount = 0;
         }
       }
     }
 
-    console.log(`[EMAIL-CLEANER] Header cluster analysis: start=${firstHeaderClusterStart}, end=${firstHeaderClusterEnd}, headers=${consecutiveHeaders}`);
+    console.log(`[EMAIL-CLEANER] Header cluster analysis: start=${firstHeaderClusterStart}, end=${firstHeaderClusterEnd}, headers=${headerCount}`);
 
     // Step 2: Analizza il contenuto prima del cluster (top-posted reply detection)
     let topPreludeText = '';
@@ -1326,8 +1357,9 @@ export class EmailForwardCleaner {
       topPreludeText = preludeLines.join('\n').trim();
       
       // Se c'è contenuto significativo prima del cluster, potrebbe essere un top-posted reply
+      // Soglie abbassate come suggerito dall'architect
       if (meaningfulLines > 0 && 
-          topPreludeText.length > 40 && 
+          topPreludeText.length > 100 && 
           quotedLines < meaningfulLines && 
           signatureLines < meaningfulLines) {
         
@@ -1353,7 +1385,7 @@ export class EmailForwardCleaner {
         if (line.length === 0) continue;
 
         // Controlla se è un nuovo cluster header o marker
-        const isNewHeader = headerKeywords.some(keyword => line.startsWith(keyword));
+        const isNewHeader = headerRegex.test(line);
         const isNewMarker = quotedMarkers.some(pattern => pattern.test(line));
         const isQuoteStart = line.startsWith('>') || line.startsWith('|');
 
@@ -1362,7 +1394,7 @@ export class EmailForwardCleaner {
           let boundaryConfidence = 0;
           for (let j = i; j < Math.min(lines.length, i + 3); j++) {
             const checkLine = lines[j].trim();
-            if (headerKeywords.some(keyword => checkLine.startsWith(keyword)) ||
+            if (headerRegex.test(checkLine) ||
                 quotedMarkers.some(pattern => pattern.test(checkLine)) ||
                 checkLine.startsWith('>')) {
               boundaryConfidence++;
@@ -1380,13 +1412,14 @@ export class EmailForwardCleaner {
       const mainText = lines.slice(firstHeaderClusterEnd, extractEndIndex).join('\n').trim();
       const remainderText = nextBoundaryIndex > 0 ? lines.slice(nextBoundaryIndex).join('\n').trim() : null;
 
-      // Guard: verifica che l'estratto non sia troppo grande rispetto all'originale
+      // Guard abbassato: accetta main se >100 chars o >20 words e non solo signature
       const originalLength = textBody.length;
       const mainLength = mainText.length;
+      const wordCount = mainText.split(/\s+/).length;
       
-      if (mainText.length > 20 && 
+      if ((mainText.length > 100 || wordCount > 20) && 
           !this.isOnlySignature(mainText) && 
-          (mainLength <= originalLength * 0.65 || nextBoundaryIndex === -1)) {
+          (mainLength <= originalLength * 0.85 || nextBoundaryIndex === -1)) {
         
         console.log(`[EMAIL-CLEANER] Extracted after cluster with boundary: ${mainText.length} chars main, ${remainderText?.length || 0} chars remainder`);
         
@@ -1422,12 +1455,16 @@ export class EmailForwardCleaner {
   } {
     console.log(`[EMAIL-CLEANER] Starting bounded split analysis for HTML (${htmlBody.length} chars)`);
     
-    // Pattern per identificare container di header
+    // Pattern più restrittivi per identificare VERI container di header
     const headerContainerPatterns = [
+      // Known Outlook/Gmail containers
       /<div[^>]*id[\s]*=[\s]*["']?divRplyFwdMsg["']?[^>]*>[\s\S]*?<\/div>/i,
+      /<blockquote[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*?<\/blockquote>/i,
       /<div[^>]*class="[^"]*OutlookMessageHeader[^"]*"[^>]*>[\s\S]*?<\/div>/i,
-      /<table[^>]*>[\s\S]*?(?:Da|From|Inviato|Sent|A|To|Oggetto|Subject)[\s\S]*?<\/table>/i,
-      /<div[^>]*>[\s\S]*?<b>\s*(?:Da|From|Inviato|Sent):\s*<\/b>[\s\S]*?<b>\s*(?:A|To|Oggetto|Subject):\s*<\/b>[\s\S]*?<\/div>/i
+      // Tables/blocks with ≥3 bold header labels
+      /<(?:table|div)[^>]*>[\s\S]*?<b>\s*(?:Da|From|Inviato|Sent):\s*<\/b>[\s\S]*?<b>\s*(?:A|To):\s*<\/b>[\s\S]*?<b>\s*(?:Oggetto|Subject):\s*<\/b>[\s\S]*?<\/(?:table|div)>/i,
+      // HR followed by ≥2 header labels
+      /<hr[^>]*>[\s\S]*?(?:Da|From|Inviato|Sent)[^<]*[\s\S]*?(?:A|To|Oggetto|Subject)/i
     ];
 
     const boundaryPatterns = [
@@ -1437,22 +1474,34 @@ export class EmailForwardCleaner {
       /<div[^>]*class="[^"]*quote[^"]*"[^>]*>/i
     ];
 
-    let firstContainerMatch: RegExpMatchArray | null = null;
-    let firstContainerPattern: RegExp | null = null;
+    const explicitForwardMarkers = [
+      /---------- Forwarded message ---------/i,
+      /---------- Messaggio inoltrato ----------/i,
+      /Begin forwarded message:/i,
+      /---------- Original Message ----------/i,
+      /====== Forwarded Message ======/i
+    ];
 
-    // Trova il primo container di header
+    let firstContainerMatch: RegExpMatchArray | null = null;
+
+    // Trova il primo container di header reale
     for (const pattern of headerContainerPatterns) {
       const match = htmlBody.match(pattern);
       if (match && match.index !== undefined) {
+        // Rifiuta container all'indice 0 a meno che non ci siano marker espliciti
+        if (match.index === 0 && !explicitForwardMarkers.some(marker => marker.test(htmlBody))) {
+          console.log(`[EMAIL-CLEANER] Rejecting container at index 0 - likely false positive wrapper`);
+          continue;
+        }
+        
         if (!firstContainerMatch || match.index < firstContainerMatch.index!) {
           firstContainerMatch = match;
-          firstContainerPattern = pattern;
         }
       }
     }
 
     if (!firstContainerMatch || firstContainerMatch.index === undefined) {
-      console.log(`[EMAIL-CLEANER] No header container found in HTML`);
+      console.log(`[EMAIL-CLEANER] No valid header container found in HTML`);
       return {
         mainHtml: null,
         remainderHtml: null,
@@ -1466,7 +1515,7 @@ export class EmailForwardCleaner {
 
     console.log(`[EMAIL-CLEANER] Found header container at ${containerStart}-${containerEnd}`);
 
-    // Step 1: Controlla contenuto prima del container (top-posted)
+    // Step 1: Preferisci contenuto prima del container (top-posted reply)
     const preludeHtml = htmlBody.substring(0, containerStart).trim();
     if (preludeHtml.length > 100) {
       const textContent = preludeHtml.replace(/<[^>]+>/g, ' ').trim();
@@ -1515,13 +1564,11 @@ export class EmailForwardCleaner {
     const mainHtml = htmlBody.substring(containerEnd, extractEndIndex).trim();
     const remainderHtml = nextBoundaryIndex > 0 ? htmlBody.substring(nextBoundaryIndex).trim() : null;
 
-    // Guard: verifica qualità dell'estratto
+    // Guard abbassato: accetta main se >100 chars e non solo signature
     const mainTextContent = mainHtml.replace(/<[^>]+>/g, ' ').trim();
-    const originalTextContent = htmlBody.replace(/<[^>]+>/g, ' ').trim();
     
-    if (mainTextContent.length > 40 && 
-        !this.isOnlySignatureHtml(mainHtml) &&
-        mainHtml.length <= htmlBody.length * 0.65) {
+    if (mainTextContent.length > 100 && 
+        !this.isOnlySignatureHtml(mainHtml)) {
       
       console.log(`[EMAIL-CLEANER] Extracted HTML after container: ${mainHtml.length} chars main, ${remainderHtml?.length || 0} chars remainder`);
       
@@ -1532,7 +1579,7 @@ export class EmailForwardCleaner {
         method: 'after-container'
       };
     } else {
-      console.log(`[EMAIL-CLEANER] HTML after-container extraction rejected: poor quality or too large`);
+      console.log(`[EMAIL-CLEANER] HTML after-container extraction rejected: main too short (${mainTextContent.length} chars) or signature-only`);
     }
 
     console.log(`[EMAIL-CLEANER] No reliable HTML split found`);
