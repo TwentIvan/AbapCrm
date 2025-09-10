@@ -26,6 +26,7 @@ import { AuditService } from "./audit-service";
 import { MessageLogService } from "./message-log-service";
 import { gmailService } from "./gmail-service";
 import { AttachmentsService } from "./attachments-service";
+import { EmailForwardCleaner } from './email-forward-cleaner';
 
 // Helper function to extract organizationId from request header
 function getOrganizationId(req: any): string {
@@ -1498,6 +1499,26 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     const message = await storage.getMessage(req.params.id, req.user!.id);
     if (!message) return res.sendStatus(404);
     res.json(message);
+  });
+
+  app.get("/api/messages/:id/rendered", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const message = await storage.getMessage(req.params.id, req.user!.id);
+      if (!message) return res.sendStatus(404);
+
+      // Utilizza EmailForwardCleaner per dividere il contenuto
+      const renderedContent = EmailForwardCleaner.splitEmailContent(
+        message.subject ?? "",
+        message.body ?? "",
+        message.htmlBody
+      );
+
+      res.json(renderedContent);
+    } catch (error) {
+      console.error("Message rendering error:", error);
+      res.status(500).json({ error: "Failed to render message content" });
+    }
   });
 
   app.post("/api/messages", async (req, res) => {

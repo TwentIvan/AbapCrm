@@ -84,6 +84,135 @@ export class EmailForwardCleaner {
     return result;
   }
 
+  // Divide il contenuto dell'email in body principale e resto del thread
+  static splitEmailContent(
+    subject: string,
+    body: string,
+    htmlBody?: string | null
+  ): {
+    bodyText: string;
+    bodyHtml: string | null;
+    remainderText: string | null;
+    remainderHtml: string | null;
+    headerSummary: string | null;
+    isForwarded: boolean;
+  } {
+    // Prima pulisci l'email per ottenere le parti separate
+    const cleaned = this.cleanForwardedEmail(subject, body, htmlBody || null);
+    
+    if (!cleaned.isForwarded) {
+      // Se non è inoltrata, non c'è separazione da fare
+      // FIX: Usa htmlBody originale invece di preservedHtmlFormatting che è null
+      return {
+        bodyText: cleaned.originalBody,
+        bodyHtml: htmlBody ? this.sanitizeHtml(htmlBody) : null,
+        remainderText: null,
+        remainderHtml: null,
+        headerSummary: null,
+        isForwarded: false
+      };
+    }
+
+    // Per email inoltrate, calcola il remainder
+    const remainder = this.extractRemainder(body, cleaned.originalBody, htmlBody, cleaned.originalHtmlBody);
+    const headerSummary = this.extractHeaderSummary(body);
+
+    // FIX: Usa originalHtmlBody invece di preservedHtmlFormatting
+    const cleanedHtmlBody = cleaned.originalHtmlBody || cleaned.preservedHtmlFormatting;
+
+    return {
+      bodyText: cleaned.originalBody,
+      bodyHtml: cleanedHtmlBody ? this.sanitizeHtml(cleanedHtmlBody) : null,
+      remainderText: remainder.text,
+      remainderHtml: remainder.html ? this.sanitizeHtml(remainder.html) : null,
+      headerSummary,
+      isForwarded: true
+    };
+  }
+
+  // Estrae la parte rimanente del thread (quello che non è body principale)
+  private static extractRemainder(
+    originalBody: string,
+    cleanedBody: string,
+    originalHtml?: string | null,
+    cleanedHtml?: string | null
+  ): { text: string | null; html: string | null } {
+    let remainderText: string | null = null;
+    let remainderHtml: string | null = null;
+
+    // Trova la parte del testo originale che non è stata inclusa nel body pulito
+    if (originalBody.length > cleanedBody.length * 1.2) {
+      // Se l'originale è significativamente più lungo, cerca la parte mancante
+      const bodyIndex = originalBody.indexOf(cleanedBody.substring(0, 100));
+      // FIX: Controlla che indexOf abbia trovato la stringa prima di usarla
+      if (bodyIndex >= 0) {
+        if (bodyIndex > 100) {
+          // C'è contenuto significativo prima del body
+          remainderText = originalBody.substring(0, bodyIndex).trim();
+        } else {
+          // Cerca contenuto dopo il body
+          const afterIndex = bodyIndex + cleanedBody.length;
+          if (afterIndex < originalBody.length - 50) {
+            remainderText = originalBody.substring(afterIndex).trim();
+          }
+        }
+      }
+    }
+
+    // Stessa logica per HTML se disponibile
+    if (originalHtml && cleanedHtml && originalHtml.length > cleanedHtml.length * 1.2) {
+      const htmlBodyIndex = originalHtml.indexOf(cleanedHtml.substring(0, 200));
+      // FIX: Controlla che indexOf abbia trovato la stringa prima di usarla
+      if (htmlBodyIndex >= 0) {
+        if (htmlBodyIndex > 200) {
+          remainderHtml = originalHtml.substring(0, htmlBodyIndex).trim();
+        } else {
+          const afterIndex = htmlBodyIndex + cleanedHtml.length;
+          if (afterIndex < originalHtml.length - 100) {
+            remainderHtml = originalHtml.substring(afterIndex).trim();
+          }
+        }
+      }
+    }
+
+    return { text: remainderText, html: remainderHtml };
+  }
+
+  // Estrae un riassunto degli header del thread quotato
+  private static extractHeaderSummary(body: string): string | null {
+    const lines = body.split('\n').slice(0, 20); // Primi 20 righe
+    const headerInfo: { [key: string]: string } = {};
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      // Cerca pattern di header
+      if (trimmed.startsWith('Da:') || trimmed.startsWith('From:')) {
+        headerInfo.from = trimmed.split(':', 2)[1]?.trim() || '';
+      } else if (trimmed.startsWith('Inviato:') || trimmed.startsWith('Sent:')) {
+        headerInfo.date = trimmed.split(':', 2)[1]?.trim() || '';
+      } else if (trimmed.startsWith('A:') || trimmed.startsWith('To:')) {
+        headerInfo.to = trimmed.split(':', 2)[1]?.trim() || '';
+      } else if (trimmed.startsWith('Oggetto:') || trimmed.startsWith('Subject:')) {
+        headerInfo.subject = trimmed.split(':', 2)[1]?.trim() || '';
+      }
+    }
+
+    // Costruisce un riassunto conciso
+    if (headerInfo.from && headerInfo.subject) {
+      const fromShort = headerInfo.from.includes('<') 
+        ? headerInfo.from.split('<')[0].trim() 
+        : headerInfo.from.split('@')[0];
+      const subjectShort = headerInfo.subject.length > 50 
+        ? headerInfo.subject.substring(0, 50) + '...' 
+        : headerInfo.subject;
+      
+      return `${fromShort}: ${subjectShort}`;
+    }
+
+    return null;
+  }
+
   /**
    * Rimuove una firma personalizzata configurata nel database dal contenuto email
    */
@@ -1024,5 +1153,47 @@ export class EmailForwardCleaner {
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
     const matches = line.match(emailRegex);
     return matches || [];
+  }
+
+  /**
+   * Sanitizza l'HTML per prevenire attacchi XSS
+   * Implementa una sanitizzazione di base rimuovendo tag e attributi pericolosi
+   */
+  private static sanitizeHtml(html: string): string {
+    if (!html) return html;
+
+    // Lista di tag pericolosi da rimuovere completamente
+    const dangerousTags = ['script', 'iframe', 'embed', 'object', 'applet', 'form', 'input', 'button', 'textarea', 'select', 'option', 'link', 'meta', 'style'];
+    
+    // Lista di attributi pericolosi da rimuovere
+    const dangerousAttributes = ['onload', 'onerror', 'onclick', 'onmouseover', 'onmouseout', 'onfocus', 'onblur', 'onchange', 'onsubmit', 'onreset', 'onkeydown', 'onkeyup', 'onkeypress', 'javascript:'];
+
+    let sanitized = html;
+
+    // Rimuove tag pericolosi (apertura e chiusura)
+    dangerousTags.forEach(tag => {
+      const openTagRegex = new RegExp(`<${tag}[^>]*>`, 'gi');
+      const closeTagRegex = new RegExp(`</${tag}>`, 'gi');
+      const selfClosingRegex = new RegExp(`<${tag}[^>]*/>`, 'gi');
+      
+      sanitized = sanitized.replace(openTagRegex, '');
+      sanitized = sanitized.replace(closeTagRegex, '');
+      sanitized = sanitized.replace(selfClosingRegex, '');
+    });
+
+    // Rimuove attributi pericolosi
+    dangerousAttributes.forEach(attr => {
+      const attrRegex = new RegExp(`\\s+${attr}=["']?[^"'\\s>]*["']?`, 'gi');
+      sanitized = sanitized.replace(attrRegex, '');
+    });
+
+    // Rimuove javascript: URLs
+    sanitized = sanitized.replace(/javascript:[^"'>\\s]*/gi, '');
+    
+    // Rimuove data: URLs tranne immagini sicure
+    sanitized = sanitized.replace(/data:(?!image\/(png|jpg|jpeg|gif|webp|svg))[^"'>\\s]*/gi, '');
+
+    console.log(`[EMAIL-CLEANER] HTML sanitized: ${html.length} -> ${sanitized.length} chars`);
+    return sanitized;
   }
 }
