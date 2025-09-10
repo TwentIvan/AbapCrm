@@ -626,94 +626,84 @@ export default function MessagesPage() {
                   {/* Destinatari */}
                   <div className="border rounded-lg p-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
                     <div className="space-y-3">
-                      {/* Destinatari TO */}
-                      {(selectedMessage.originalToEmails && selectedMessage.originalToEmails.length > 0) && (
-                        <div>
-                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">Destinatari</span>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedMessage.originalToEmails.map((email, index) => {
-                              const isCurrentUser = email === user?.email;
-                              return (
-                                <Badge 
-                                  key={index} 
-                                  variant="outline" 
-                                  className={`text-sm ${
-                                    isCurrentUser 
-                                      ? 'bg-green-50 text-green-700 border-green-200' 
-                                      : 'bg-blue-50 text-blue-700 border-blue-200'
-                                  }`}
-                                >
-                                  <User className="h-3 w-3 mr-1" />
-                                  {isCurrentUser ? 'Tu' : email}
-                                </Badge>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Destinatari CC */}
-                      {(selectedMessage.originalCcEmails && selectedMessage.originalCcEmails.length > 0) && (
-                        <div>
-                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">In Copia</span>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedMessage.originalCcEmails.map((email, index) => {
-                              const isCurrentUser = email === user?.email;
-                              return (
-                                <Badge 
-                                  key={index} 
-                                  variant="outline" 
-                                  className={`text-sm ${
-                                    isCurrentUser 
-                                      ? 'bg-green-50 text-green-700 border-green-200' 
-                                      : 'bg-amber-50 text-amber-700 border-amber-200'
-                                  }`}
-                                >
-                                  <User className="h-3 w-3 mr-1" />
-                                  {isCurrentUser ? 'Tu' : email}
-                                </Badge>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {/* Destinatari TO */}
+                        {(selectedMessage.originalToEmails && selectedMessage.originalToEmails.length > 0) && 
+                          selectedMessage.originalToEmails.map((email, index) => {
+                            const isCurrentUser = email === user?.email;
+                            return (
+                              <Badge 
+                                key={`to-${index}`} 
+                                variant="outline" 
+                                className={`text-sm ${
+                                  isCurrentUser 
+                                    ? 'bg-green-50 text-green-700 border-green-200' 
+                                    : 'bg-blue-50 text-blue-700 border-blue-200'
+                                }`}
+                              >
+                                <User className="h-3 w-3 mr-1" />
+                                {isCurrentUser ? `Tu (${email})` : email}
+                              </Badge>
+                            );
+                          })
+                        }
+                        
+                        {/* Destinatari CC */}
+                        {(selectedMessage.originalCcEmails && selectedMessage.originalCcEmails.length > 0) && 
+                          selectedMessage.originalCcEmails.map((email, index) => {
+                            const isCurrentUser = email === user?.email;
+                            return (
+                              <Badge 
+                                key={`cc-${index}`} 
+                                variant="outline" 
+                                className={`text-sm ${
+                                  isCurrentUser 
+                                    ? 'bg-green-50 text-green-700 border-green-200' 
+                                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                                }`}
+                              >
+                                <User className="h-3 w-3 mr-1" />
+                                {isCurrentUser ? `Tu (${email})` : email}
+                              </Badge>
+                            );
+                          })
+                        }
+                      </div>
                     </div>
                   </div>
 
-                  {/* Collegamenti AI */}
-                  <div className="border rounded-lg p-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                    <div className="flex flex-wrap gap-2">
-                      {(() => {
-                        const linkedObject = getLinkedObjectName(selectedMessage);
-                        if (linkedObject) {
-                          return (
+                  {/* Collegamenti AI - solo se esistono */}
+                  {(() => {
+                    const linkedObject = getLinkedObjectName(selectedMessage);
+                    const hasLinks = linkedObject || selectedMessage.confidenceScore || selectedMessage.matchingReason;
+                    
+                    if (!hasLinks) return null;
+                    
+                    return (
+                      <div className="border rounded-lg p-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                        <div className="flex flex-wrap gap-2">
+                          {linkedObject && (
                             <Badge variant="outline" className="text-sm">
                               <Link className="h-3 w-3 mr-1" />
                               {linkedObject.type}: {linkedObject.name}
                             </Badge>
-                          );
-                        }
-                        return (
-                          <Badge variant="outline" className="text-sm">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            Nessun collegamento
-                          </Badge>
-                        );
-                      })()}
-                      {selectedMessage.confidenceScore && (
-                        <Badge variant="outline" className="text-sm">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Confidenza: {Math.round((selectedMessage.confidenceScore ? Number(selectedMessage.confidenceScore) : 0) * 100)}%
-                        </Badge>
-                      )}
-                      {selectedMessage.matchingReason && (
-                        <Badge variant="outline" className="text-sm">
-                          <Brain className="h-3 w-3 mr-1" />
-                          {selectedMessage.matchingReason}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+                          )}
+                          {selectedMessage.confidenceScore && (
+                            <Badge variant="outline" className="text-sm">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Confidenza: {Math.round((selectedMessage.confidenceScore ? Number(selectedMessage.confidenceScore) : 0) * 100)}%
+                            </Badge>
+                          )}
+                          {selectedMessage.matchingReason && (
+                            <Badge variant="outline" className="text-sm">
+                              <Brain className="h-3 w-3 mr-1" />
+                              {selectedMessage.matchingReason}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Message Body - occupa tutto lo spazio rimanente */}
