@@ -735,19 +735,21 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Message Body - occupa tutto lo spazio rimanente */}
-                <div className="flex-1 min-h-0 border-t overflow-hidden">
-                  <div className="h-full p-6 overflow-y-auto">
-                    {selectedMessage.htmlBody ? (
-                      <div 
-                        className="prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: selectedMessage.htmlBody }}
-                      />
-                    ) : (
-                      <div className="whitespace-pre-wrap text-sm">
-                        {selectedMessage.body || 'Nessun contenuto'}
-                      </div>
-                    )}
-                  </div>
+                <div className="flex-1 min-h-0 border-t">
+                  <ScrollArea className="h-full">
+                    <div className="p-6">
+                      {selectedMessage.htmlBody ? (
+                        <div 
+                          className="prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: selectedMessage.htmlBody }}
+                        />
+                      ) : (
+                        <div className="whitespace-pre-wrap text-sm">
+                          {selectedMessage.body || 'Nessun contenuto'}
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
                 </div>
 
                 {/* Attachments Section */}
