@@ -660,7 +660,7 @@ export default function MessagesPage() {
               )}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col h-full p-0">
             {!selectedMessage ? (
               <div className="flex items-center justify-center h-96 text-center text-muted-foreground">
                 <div>
@@ -670,9 +670,9 @@ export default function MessagesPage() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-6">
-                {/* Message Header */}
-                <div className="space-y-4">
+              <>
+                {/* Header con dati strutturati */}
+                <div className="p-6 pb-0 space-y-4">
                   <div className="flex items-start justify-between">
                     <div className="space-y-2">
                       <h3 className="text-lg font-semibold">
@@ -699,9 +699,6 @@ export default function MessagesPage() {
                     </Badge>
                   </div>
 
-                  <Separator />
-
-                  {/* Email Details */}
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium text-muted-foreground">Da:</span>
@@ -713,70 +710,6 @@ export default function MessagesPage() {
                     </div>
                   </div>
 
-                  {/* Destinatari Originali Estratti */}
-                  {((selectedMessage.originalToEmails && selectedMessage.originalToEmails.length > 0) || 
-                    (selectedMessage.originalCcEmails && selectedMessage.originalCcEmails.length > 0) || 
-                    (selectedMessage.originalBccEmails && selectedMessage.originalBccEmails.length > 0)) && (
-                    <>
-                      <Separator />
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          <h4 className="font-medium">Destinatari Originali</h4>
-                          <Badge variant="outline" className="text-xs">
-                            Estratti dall'email inoltrata
-                          </Badge>
-                        </div>
-                        
-                        {selectedMessage.originalToEmails && selectedMessage.originalToEmails.length > 0 && (
-                          <div className="space-y-2">
-                            <span className="text-sm font-medium text-muted-foreground">
-                              TO ({selectedMessage.originalToEmails.length}):
-                            </span>
-                            <div className="flex flex-wrap gap-1">
-                              {selectedMessage.originalToEmails.map((email, index) => (
-                                <Badge key={index} variant="secondary" className="text-xs">
-                                  {email}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {selectedMessage.originalCcEmails && selectedMessage.originalCcEmails.length > 0 && (
-                          <div className="space-y-2">
-                            <span className="text-sm font-medium text-muted-foreground">
-                              CC ({selectedMessage.originalCcEmails.length}):
-                            </span>
-                            <div className="flex flex-wrap gap-1">
-                              {selectedMessage.originalCcEmails.map((email, index) => (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                  {email}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {selectedMessage.originalBccEmails && selectedMessage.originalBccEmails.length > 0 && (
-                          <div className="space-y-2">
-                            <span className="text-sm font-medium text-muted-foreground">
-                              BCC ({selectedMessage.originalBccEmails.length}):
-                            </span>
-                            <div className="flex flex-wrap gap-1">
-                              {selectedMessage.originalBccEmails.map((email, index) => (
-                                <Badge key={index} variant="destructive" className="text-xs">
-                                  {email}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Current Associations */}
                   <div className="space-y-2">
                     <span className="font-medium text-muted-foreground">Collegamenti attuali:</span>
                     <div className="flex flex-wrap gap-2">
@@ -798,40 +731,29 @@ export default function MessagesPage() {
                         </Badge>
                       )}
                     </div>
-                    {selectedMessage.matchingReason && (
-                      <p className="text-sm text-muted-foreground italic">
-                        Motivo: {selectedMessage.matchingReason}
-                      </p>
+                  </div>
+                </div>
+
+                {/* Message Body - occupa tutto lo spazio rimanente */}
+                <div className="flex-1 min-h-0 border-t">
+                  <div className="h-full p-6 overflow-auto">
+                    {selectedMessage.htmlBody ? (
+                      <div 
+                        className="prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ __html: selectedMessage.htmlBody }}
+                      />
+                    ) : (
+                      <div className="whitespace-pre-wrap text-sm">
+                        {selectedMessage.body || 'Nessun contenuto'}
+                      </div>
                     )}
                   </div>
                 </div>
 
-                <Separator />
-
-                {/* Message Body */}
-                <div className="space-y-4">
-                  <h4 className="font-medium">Contenuto:</h4>
-                  <ScrollArea className="h-64 w-full border rounded-md">
-                    <div className="p-4">
-                      {selectedMessage.htmlBody ? (
-                        <div 
-                          className="prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ __html: selectedMessage.htmlBody }}
-                        />
-                      ) : (
-                        <div className="whitespace-pre-wrap text-sm">
-                          {selectedMessage.body || 'Nessun contenuto'}
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
-
                 {/* Attachments Section */}
                 {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (
-                  <>
-                    <Separator />
-                    <div className="space-y-4">
+                  <div className="border-t bg-muted/30">
+                    <div className="p-6 space-y-4">
                       <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4" />
                         <h4 className="font-medium">
@@ -879,9 +801,9 @@ export default function MessagesPage() {
                         })}
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </CardContent>
         </Card>
