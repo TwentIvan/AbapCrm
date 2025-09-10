@@ -88,6 +88,11 @@ export class ImapEmailService {
   }
 
   private checkForExistingEmails() {
+    if (!this.isConnected) {
+      console.warn('[IMAP] Cannot check existing emails: not connected');
+      return;
+    }
+    
     // Search for emails from the last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -110,6 +115,11 @@ export class ImapEmailService {
   }
 
   private checkForNewEmails() {
+    if (!this.isConnected) {
+      console.warn('[IMAP] Cannot check new emails: not connected');
+      return;
+    }
+    
     // Search for unread emails
     this.imap.search(['UNSEEN'], (err: Error | null, results: number[]) => {
       if (err) {
@@ -273,6 +283,17 @@ export class ImapEmailService {
       clearInterval(this.pollInterval);
       this.pollInterval = null;
     }
+  }
+
+  public isServiceConnected(): boolean {
+    return this.isConnected;
+  }
+
+  public getConnectionStatus(): { connected: boolean; error?: string } {
+    return {
+      connected: this.isConnected,
+      error: !this.isConnected ? 'Service not connected or credentials invalid' : undefined
+    };
   }
 
   public startPolling(intervalMinutes: number = 2) {

@@ -1987,6 +1987,15 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       return res.status(400).json({ error: "Email service not configured" });
     }
 
+    // Check if service is connected
+    if (!(service as any).isServiceConnected()) {
+      const status = (service as any).getConnectionStatus();
+      return res.status(400).json({ 
+        error: "Email service not connected", 
+        details: status.error 
+      });
+    }
+
     try {
       // Force a sync by checking for both existing and new emails
       (service as any).checkForExistingEmails();
