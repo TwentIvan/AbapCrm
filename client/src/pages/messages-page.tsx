@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +26,11 @@ import {
   Plus,
   Eye,
   RefreshCw,
-  Trash2
+  Trash2,
+  Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Message, Project, Task, Partner } from "@shared/schema";
@@ -48,6 +54,9 @@ export default function MessagesPage() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showNewMessageDialog, setShowNewMessageDialog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<"receivedAt" | "fromEmail" | "subject">("receivedAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -275,6 +284,49 @@ export default function MessagesPage() {
 
   const unreadCount = messages.filter(m => m.status === 'unread').length;
 
+  // Filtro e ordinamento messaggi
+  const filteredAndSortedMessages = messages
+    .filter(message => {
+      if (!searchTerm) return true;
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        (message.fromName || message.fromEmail).toLowerCase().includes(searchLower) ||
+        (message.subject || '').toLowerCase().includes(searchLower) ||
+        (message.body || '').toLowerCase().includes(searchLower)
+      );
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'receivedAt':
+          comparison = new Date(a.receivedAt).getTime() - new Date(b.receivedAt).getTime();
+          break;
+        case 'fromEmail':
+          comparison = (a.fromName || a.fromEmail).localeCompare(b.fromName || b.fromEmail);
+          break;
+        case 'subject':
+          comparison = (a.subject || '').localeCompare(b.subject || '');
+          break;
+      }
+      
+      return sortOrder === 'desc' ? -comparison : comparison;
+    });
+
+  const handleSort = (column: typeof sortBy) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('desc');
+    }
+  };
+
+  const getSortIcon = (column: typeof sortBy) => {
+    if (sortBy !== column) return <ArrowUpDown className="h-4 w-4" />;
+    return sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
+  };
+
   return (
     <div className="flex h-screen">
       <Sidebar />
@@ -342,91 +394,141 @@ export default function MessagesPage() {
             {/* Message List */}
             <Card className="lg:col-span-1">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="h-5 w-5" />
-                  Lista Messaggi
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Mail className="h-5 w-5" />
+                    Lista Messaggi
+                  </CardTitle>
+                </div>
+                {/* Barra di ricerca */}
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cerca messaggi..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                    data-testid="search-messages"
+                  />
+                </div>
               </CardHeader>
               <CardContent className="p-0">
-                {/* Header con colonne */}
-                <div className="grid grid-cols-12 gap-2 p-3 border-b bg-muted/50 text-xs font-medium text-muted-foreground">
-                  <div className="col-span-5">MITTENTE</div>
-                  <div className="col-span-4">DATA</div>
-                  <div className="col-span-3">ORA</div>
-                </div>
-                <ScrollArea className="h-[560px]">
-                  {messages.length === 0 ? (
-                    <div className="p-6 text-center text-muted-foreground">
-                      <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Nessun messaggio ricevuto</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {messages.map((message) => {
-                        const linkedObject = getLinkedObjectName(message);
-                        
-                        return (
-                          <div
-                        key={message.id}
-                        data-testid={`message-item-${message.id}`}
-                        className={`cursor-pointer hover:bg-muted/50 transition-colors border-b ${
-                          selectedMessage?.id === message.id ? 'bg-muted' : ''
-                        } ${message.status === 'unread' ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'}`}
-                        onClick={() => handleSelectMessage(message)}
-                      >
-                        <div className="grid grid-cols-12 gap-2 p-3 items-start">
-                          {/* Colonna Mittente */}
-                          <div className="col-span-5">
-                            <div className="flex items-center gap-2 mb-1">
-                              {getStatusIcon(message.status)}
-                              <span className={`text-sm truncate ${
-                                message.status === 'unread' ? 'font-bold' : 'font-medium'
-                              }`}>
-                                {message.fromName || message.fromEmail}
-                              </span>
-                            </div>
-                            <p className={`text-sm truncate mb-1 ${
-                              message.status === 'unread' ? 'font-bold text-foreground' : 'font-normal text-foreground'
-                            }`}>
-                              {message.subject || 'Nessun oggetto'}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {message.body ? message.body.substring(0, 60) + '...' : 'Nessun contenuto'}
-                            </p>
-                            {linkedObject && (
-                              <div className="mt-1">
-                                <Badge variant="outline" className="text-xs">
-                                  <Link className="h-3 w-3 mr-1" />
-                                  {linkedObject.type}: {linkedObject.name}
-                                </Badge>
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50 w-2/5"
+                          onClick={() => handleSort('fromEmail')}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span>Mittente</span>
+                            {getSortIcon('fromEmail')}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50 w-2/5"
+                          onClick={() => handleSort('subject')}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span>Oggetto</span>
+                            {getSortIcon('subject')}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50 w-1/5"
+                          onClick={() => handleSort('receivedAt')}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span>Data/Ora</span>
+                            {getSortIcon('receivedAt')}
+                          </div>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                  </Table>
+                  <ScrollArea className="h-[500px]">
+                    <Table>
+                      <TableBody>
+                        {filteredAndSortedMessages.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={3} className="h-32 text-center">
+                              <div className="flex flex-col items-center justify-center text-muted-foreground">
+                                <Mail className="h-8 w-8 mb-2 opacity-50" />
+                                <p>{searchTerm ? 'Nessun messaggio trovato' : 'Nessun messaggio ricevuto'}</p>
                               </div>
-                            )}
-                            {message.confidenceScore && (
-                              <div className="mt-1">
-                                <span className={`text-xs font-medium ${getConfidenceColor(message.confidenceScore ? Number(message.confidenceScore) : 0)}`}>
-                                  Confidenza: {Math.round((message.confidenceScore ? Number(message.confidenceScore) : 0) * 100)}%
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Colonna Data */}
-                          <div className="col-span-4 text-xs text-muted-foreground">
-                            {format(new Date(message.receivedAt), 'dd MMM yyyy')}
-                          </div>
-                          
-                          {/* Colonna Ora */}
-                          <div className="col-span-3 text-xs text-muted-foreground">
-                            {format(new Date(message.receivedAt), 'HH:mm')}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredAndSortedMessages.map((message) => {
+                            const linkedObject = getLinkedObjectName(message);
+                            
+                            return (
+                              <TableRow
+                                key={message.id}
+                                data-testid={`message-item-${message.id}`}
+                                className={`cursor-pointer transition-colors ${
+                                  selectedMessage?.id === message.id ? 'bg-muted' : ''
+                                } ${message.status === 'unread' ? 'border-l-4 border-l-blue-500' : ''}`}
+                                onClick={() => handleSelectMessage(message)}
+                              >
+                                {/* Colonna Mittente */}
+                                <TableCell className="w-2/5">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      {getStatusIcon(message.status)}
+                                      <span className={`text-sm truncate ${
+                                        message.status === 'unread' ? 'font-bold' : 'font-medium'
+                                      }`}>
+                                        {message.fromName || message.fromEmail}
+                                      </span>
+                                    </div>
+                                    {linkedObject && (
+                                      <Badge variant="outline" className="text-xs">
+                                        <Link className="h-3 w-3 mr-1" />
+                                        {linkedObject.type}: {linkedObject.name}
+                                      </Badge>
+                                    )}
+                                    {message.confidenceScore && (
+                                      <div className="text-xs font-medium">
+                                        <span className={getConfidenceColor(message.confidenceScore ? Number(message.confidenceScore) : 0)}>
+                                          Confidenza: {Math.round((message.confidenceScore ? Number(message.confidenceScore) : 0) * 100)}%
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                
+                                {/* Colonna Oggetto */}
+                                <TableCell className="w-2/5">
+                                  <div className="space-y-1">
+                                    <p className={`text-sm truncate ${
+                                      message.status === 'unread' ? 'font-bold text-foreground' : 'font-normal text-foreground'
+                                    }`}>
+                                      {message.subject || 'Nessun oggetto'}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {message.body ? message.body.substring(0, 80) + '...' : 'Nessun contenuto'}
+                                    </p>
+                                  </div>
+                                </TableCell>
+                                
+                                {/* Colonna Data/Ora */}
+                                <TableCell className="w-1/5 text-xs text-muted-foreground">
+                                  <div className="space-y-1">
+                                    <div>{format(new Date(message.receivedAt), 'dd MMM yyyy')}</div>
+                                    <div>{format(new Date(message.receivedAt), 'HH:mm')}</div>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
                 </div>
-              )}
-            </ScrollArea>
-          </CardContent>
+              </CardContent>
             </Card>
 
             {/* Message Detail */}
