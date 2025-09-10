@@ -1301,8 +1301,8 @@ export class EmailForwardCleaner {
     const normalizedBody = textBody.replace(/\u00A0/g, ' ');
     const lines = normalizedBody.split('\n');
     
-    // Regex più tollerante per identificare header - include spazi e caratteri di quotazione
-    const headerRegex = /^[>\s\u00A0]*?(Da|From|Inviato|Sent|A|To|Cc|Oggetto|Subject|Data|Date)\s*:\s*/i;
+    // Regex più tollerante per identificare header - include spazi, caratteri di quotazione e varianti
+    const headerRegex = /^[>\s\u00A0]*?(Da|From|Inviato|Sent|A|To|Cc|Oggetto|Subject|Data|Date|Re|Fwd|FW|Object|Destinatario|Recipient)\s*[:\-]\s*/i;
     // Single-line markers - solo per email lunghe >1200 chars o con FW/Fwd nel subject
     const singleLineMarkers = [
       /Il giorno .* ha scritto:/i,
@@ -1337,9 +1337,9 @@ export class EmailForwardCleaner {
       }
     }
 
-    // Step 2: Se non trovato, cerca header cluster con rolling window di 6 righe (≥2 header)
+    // Step 2: Se non trovato, cerca header cluster con rolling window di 8 righe (≥2 header)
     if (firstHeaderClusterStart === -1) {
-      for (let i = 0; i < Math.min(lines.length, 60); i++) { // Prime 60 righe
+      for (let i = 0; i < Math.min(lines.length, 100); i++) { // Prime 100 righe
         const line = lines[i].trim();
         
         if (line.length === 0) continue;
@@ -1353,8 +1353,8 @@ export class EmailForwardCleaner {
           }
           headerCount++;
           
-          // Controlla se abbiamo almeno 2 header in una finestra rolling di 6 righe
-          if (headerCount >= 2 && i - firstHeaderClusterStart <= 6) {
+          // Controlla se abbiamo almeno 2 header in una finestra rolling di 8 righe
+          if (headerCount >= 2 && i - firstHeaderClusterStart <= 8) {
             // Trova la fine del cluster
             for (let j = i + 1; j < Math.min(lines.length, i + 8); j++) {
               const nextLine = lines[j].trim();
@@ -1373,7 +1373,7 @@ export class EmailForwardCleaner {
           }
         } else if (line.length > 10) {
           // Reset rolling window se troppo lontano dal primo header
-          if (firstHeaderClusterStart !== -1 && i - firstHeaderClusterStart > 6) {
+          if (firstHeaderClusterStart !== -1 && i - firstHeaderClusterStart > 8) {
             firstHeaderClusterStart = -1;
             headerCount = 0;
           }
@@ -1407,11 +1407,11 @@ export class EmailForwardCleaner {
       topPreludeText = preludeLines.join('\n').trim();
       
       // Se c'è contenuto significativo prima del cluster, potrebbe essere un top-posted reply
-      // Soglie abbassate come suggerito dall'architect
+      // Soglie drasticamente abbassate per email reali
       if (meaningfulLines > 0 && 
-          topPreludeText.length > 100 && 
-          quotedLines < meaningfulLines && 
-          signatureLines < meaningfulLines) {
+          topPreludeText.length > 50 && 
+          quotedLines < meaningfulLines * 2 && 
+          signatureLines < meaningfulLines * 2) {
         
         const remainderText = lines.slice(firstHeaderClusterStart).join('\n').trim();
         console.log(`[EMAIL-CLEANER] Found top-posted reply: ${topPreludeText.length} chars main, ${remainderText.length} chars remainder`);
@@ -1462,14 +1462,15 @@ export class EmailForwardCleaner {
       const mainText = lines.slice(firstHeaderClusterEnd, extractEndIndex).join('\n').trim();
       const remainderText = nextBoundaryIndex > 0 ? lines.slice(nextBoundaryIndex).join('\n').trim() : null;
 
-      // Guard abbassato: accetta main se >100 chars o >20 words e non solo signature
+      // Guard drasticamente abbassato per email reali: accetta main se >50 chars o >10 words
       const originalLength = textBody.length;
       const mainLength = mainText.length;
       const wordCount = mainText.split(/\s+/).length;
+      const textRatio = mainLength / Math.max(originalLength, 1);
       
-      if ((mainText.length > 100 || wordCount > 20) && 
+      if ((mainText.length > 50 || wordCount > 10) && 
           !this.isOnlySignature(mainText) && 
-          (mainLength <= originalLength * 0.85 || nextBoundaryIndex === -1)) {
+          (textRatio <= 0.70 || nextBoundaryIndex === -1 || mainLength > 300)) {
         
         console.log(`[EMAIL-CLEANER] Extracted after cluster with boundary: ${mainText.length} chars main, ${remainderText?.length || 0} chars remainder`);
         
@@ -1614,14 +1615,14 @@ export class EmailForwardCleaner {
     const mainHtml = htmlBody.substring(containerEnd, extractEndIndex).trim();
     const remainderHtml = nextBoundaryIndex > 0 ? htmlBody.substring(nextBoundaryIndex).trim() : null;
 
-    // Guard con ratio check: accetta postHtml solo se rappresenta ≥85% del contenuto originale
+    // Guard con ratio check abbassato per email reali: accetta postHtml se ≥30% del contenuto originale o >500 chars
     const mainTextContent = mainHtml.replace(/<[^>]+>/g, ' ').trim();
     const originalTextContent = htmlBody.replace(/<[^>]+>/g, ' ').trim();
     const postHtmlRatio = mainTextContent.length / Math.max(originalTextContent.length, 1);
     
-    if (mainTextContent.length > 100 && 
+    if (mainTextContent.length > 50 && 
         !this.isOnlySignatureHtml(mainHtml) &&
-        postHtmlRatio >= 0.85) {
+        (postHtmlRatio >= 0.30 || mainTextContent.length > 500)) {
       
       console.log(`[EMAIL-CLEANER] Extracted HTML after container: ${mainHtml.length} chars main (ratio: ${postHtmlRatio.toFixed(2)}), ${remainderHtml?.length || 0} chars remainder`);
       
@@ -1632,7 +1633,7 @@ export class EmailForwardCleaner {
         method: 'after-container'
       };
     } else {
-      console.log(`[EMAIL-CLEANER] HTML after-container extraction rejected: main too short (${mainTextContent.length} chars), ratio too low (${postHtmlRatio.toFixed(2)}), or signature-only`);
+      console.log(`[EMAIL-CLEANER] HTML after-container extraction rejected: main too short (${mainTextContent.length} chars), ratio too low (${postHtmlRatio.toFixed(2)} < 0.30), or signature-only`);
     }
 
     console.log(`[EMAIL-CLEANER] No reliable HTML split found`);
