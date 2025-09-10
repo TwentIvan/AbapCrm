@@ -332,29 +332,41 @@ export default function MessagesPage() {
     setResizingColumn(column);
     
     const startX = e.clientX;
-    const tableElement = e.currentTarget.closest('table');
+    const tableElement = e.currentTarget.closest('.border');
     if (!tableElement) return;
     
     const tableRect = tableElement.getBoundingClientRect();
     const tableWidth = tableRect.width;
     
+    // Salviamo le larghezze iniziali
+    const startWidths = { ...columnWidths };
+    
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX;
+      const currentX = moveEvent.clientX;
+      const deltaX = currentX - startX;
       const deltaPercent = (deltaX / tableWidth) * 100;
       
       setColumnWidths(prev => {
         const newWidths = { ...prev };
         
         if (column === 'fromEmail') {
-          const newFromEmailWidth = Math.max(15, Math.min(60, prev.fromEmail + deltaPercent));
-          const newSubjectWidth = Math.max(15, Math.min(60, prev.subject - deltaPercent));
+          // Ridimensiona fromEmail e aggiusta subject di conseguenza
+          const newFromEmailWidth = Math.max(20, Math.min(70, startWidths.fromEmail + deltaPercent));
+          const adjustment = newFromEmailWidth - startWidths.fromEmail;
+          const newSubjectWidth = Math.max(15, Math.min(70, startWidths.subject - adjustment));
+          
           newWidths.fromEmail = newFromEmailWidth;
           newWidths.subject = newSubjectWidth;
+          // receivedAt rimane invariato
         } else if (column === 'subject') {
-          const newSubjectWidth = Math.max(15, Math.min(60, prev.subject + deltaPercent));
-          const newReceivedAtWidth = Math.max(15, Math.min(40, prev.receivedAt - deltaPercent));
+          // Ridimensiona subject e aggiusta receivedAt di conseguenza
+          const newSubjectWidth = Math.max(20, Math.min(70, startWidths.subject + deltaPercent));
+          const adjustment = newSubjectWidth - startWidths.subject;
+          const newReceivedAtWidth = Math.max(10, Math.min(40, startWidths.receivedAt - adjustment));
+          
           newWidths.subject = newSubjectWidth;
           newWidths.receivedAt = newReceivedAtWidth;
+          // fromEmail rimane invariato
         }
         
         return newWidths;
@@ -488,9 +500,9 @@ export default function MessagesPage() {
                           </div>
                           {/* Resize handle */}
                           <div
-                            className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-border hover:bg-primary/50 transition-colors"
+                            className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-transparent hover:bg-primary/30 transition-colors border-r-2 border-transparent hover:border-primary/50"
                             onMouseDown={(e) => handleMouseDown(e, 'fromEmail')}
-                            style={{ cursor: isResizing && resizingColumn === 'fromEmail' ? 'col-resize' : 'col-resize' }}
+                            title="Trascina per ridimensionare"
                           />
                         </TableHead>
                         <TableHead 
@@ -504,9 +516,9 @@ export default function MessagesPage() {
                           </div>
                           {/* Resize handle */}
                           <div
-                            className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-border hover:bg-primary/50 transition-colors"
+                            className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-transparent hover:bg-primary/30 transition-colors border-r-2 border-transparent hover:border-primary/50"
                             onMouseDown={(e) => handleMouseDown(e, 'subject')}
-                            style={{ cursor: isResizing && resizingColumn === 'subject' ? 'col-resize' : 'col-resize' }}
+                            title="Trascina per ridimensionare"
                           />
                         </TableHead>
                         <TableHead 
