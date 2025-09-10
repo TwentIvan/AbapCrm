@@ -264,20 +264,35 @@ export class EmailForwardCleaner {
     const lines = textBody.split('\n');
     const headerKeywords = ['Da:', 'From:', 'Inviato:', 'Sent:', 'A:', 'To:', 'Cc:', 'Oggetto:', 'Subject:', 'Data:', 'Date:'];
     
-    // Trova il cluster di header
+    // Trova il cluster di header usando startsWith per maggiore precisione
     let headerClusterEnd = -1;
     let consecutiveHeaders = 0;
+    let firstHeaderIndex = -1;
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       
-      if (headerKeywords.some(keyword => line.includes(keyword))) {
+      // Verifica se la linea INIZIA con un header (più preciso di contains)
+      const isHeaderLine = headerKeywords.some(keyword => line.startsWith(keyword));
+      
+      if (isHeaderLine) {
+        if (firstHeaderIndex === -1) {
+          firstHeaderIndex = i;
+        }
         consecutiveHeaders++;
+        
         if (consecutiveHeaders >= 3) { // Cluster identificato con almeno 3 header
-          // Trova la fine del cluster
+          // Trova la fine del cluster (prima riga con contenuto vero)
           for (let j = i + 1; j < lines.length; j++) {
             const nextLine = lines[j].trim();
-            if (nextLine.length > 0 && !headerKeywords.some(keyword => nextLine.includes(keyword))) {
+            
+            // Salta righe vuote
+            if (nextLine.length === 0) continue;
+            
+            // Verifica se è ancora un header
+            const isStillHeader = headerKeywords.some(keyword => nextLine.startsWith(keyword));
+            
+            if (!isStillHeader && nextLine.length > 10) {
               headerClusterEnd = j;
               break;
             }
@@ -285,7 +300,10 @@ export class EmailForwardCleaner {
           break;
         }
       } else if (line.length > 0) {
-        consecutiveHeaders = 0; // Reset se troviamo contenuto non-header
+        // Reset se troviamo contenuto non-header ma solo se non abbiamo ancora iniziato
+        if (firstHeaderIndex === -1) {
+          consecutiveHeaders = 0;
+        }
       }
     }
     
@@ -294,12 +312,52 @@ export class EmailForwardCleaner {
       const contentAfterHeaders = lines.slice(headerClusterEnd).join('\n').trim();
       console.log(`[EMAIL-CLEANER] Found content after header cluster at line ${headerClusterEnd}: ${contentAfterHeaders.length} chars`);
       
-      if (contentAfterHeaders.length > 50 && !this.isOnlySignature(contentAfterHeaders)) {
-        return contentAfterHeaders;
+      // Guard: verifica che il contenuto estratto sia sufficientemente lungo rispetto all'originale
+      const originalWords = textBody.split(/\s+/).length;
+      const extractedWords = contentAfterHeaders.split(/\s+/).length;
+      
+      if (contentAfterHeaders.length > 50 && 
+          !this.isOnlySignature(contentAfterHeaders) &&
+          (extractedWords >= originalWords * 0.4 || contentAfterHeaders.length >= textBody.length * 0.3)) {
+        
+        // Rimuove eventuali header residui all'inizio
+        const cleanedContent = this.stripLeadingTextHeaders(contentAfterHeaders);
+        return cleanedContent;
+      } else {
+        console.log(`[EMAIL-CLEANER] Extracted content too short compared to original (${extractedWords}/${originalWords} words), rejecting`);
       }
     }
     
     return null;
+  }
+
+  // Rimuove header residui all'inizio del contenuto testuale
+  private static stripLeadingTextHeaders(content: string): string {
+    const lines = content.split('\n');
+    const headerKeywords = ['Da:', 'From:', 'Inviato:', 'Sent:', 'A:', 'To:', 'Cc:', 'Oggetto:', 'Subject:', 'Data:', 'Date:'];
+    
+    let startIndex = 0;
+    
+    // Rimuove fino a 3 righe di header all'inizio
+    for (let i = 0; i < Math.min(3, lines.length); i++) {
+      const line = lines[i].trim();
+      
+      if (line.length === 0) {
+        startIndex = i + 1; // Salta righe vuote
+      } else if (headerKeywords.some(keyword => line.startsWith(keyword))) {
+        startIndex = i + 1; // Salta header
+      } else {
+        break; // Trovato contenuto vero
+      }
+    }
+    
+    const cleaned = lines.slice(startIndex).join('\n').trim();
+    
+    if (startIndex > 0) {
+      console.log(`[EMAIL-CLEANER] Stripped ${startIndex} leading text header lines`);
+    }
+    
+    return cleaned;
   }
 
   private static cleanForwardedHtmlBody(htmlBody: string): string | null {
@@ -721,40 +779,80 @@ export class EmailForwardCleaner {
   private static extractContentAfterHeaders(htmlBody: string): string | null {
     console.log(`[EMAIL-CLEANER] Looking for content after header clusters in HTML (${htmlBody.length} chars)`);
     
-    // Pattern per identificare i cluster di header di Outlook
+    // Pattern per identificare i cluster di header di Outlook - CERCHIAMO I CONTAINER, NON IL CONTENUTO
     const headerPatterns = [
-      // Outlook divRplyFwdMsg - trova il contenuto dopo gli header
-      /<div[^>]*id[\s]*=[\s]*["']?divRplyFwdMsg["']?[^>]*>([\s\S]*?)<\/div>/i,
-      // Sequenza di header bold consecutivi seguiti da contenuto
-      /<b>\s*(?:Da|From|Inviato|Sent|A|To|Oggetto|Subject):\s*<\/b>[\s\S]*?(<div[^>]*>[\s\S]*?<\/div>)/i,
-      // Tabelle con header seguiti da contenuto
-      /<table[^>]*>[\s\S]*?(?:Da|From|Inviato|Sent|A|To|Oggetto|Subject)[\s\S]*?<\/table>\s*(<div[^>]*>[\s\S]*)/i
+      // Outlook divRplyFwdMsg - trova tutto quello che viene DOPO questo div
+      /<div[^>]*id[\s]*=[\s]*["']?divRplyFwdMsg["']?[^>]*>[\s\S]*?<\/div>/i,
+      // Sequenza di header bold consecutivi - trova quello che viene DOPO
+      /<b>\s*(?:Da|From|Inviato|Sent):\s*<\/b>[\s\S]*?<b>\s*(?:A|To|Oggetto|Subject):\s*<\/b>[\s\S]*?<br[^>]*>/i,
+      // Tabelle con header - trova quello che viene DOPO la tabella
+      /<table[^>]*>[\s\S]*?(?:Da|From|Inviato|Sent|A|To|Oggetto|Subject)[\s\S]*?<\/table>/i
     ];
     
     for (const pattern of headerPatterns) {
       const match = htmlBody.match(pattern);
-      if (match && match[1]) {
-        const content = match[1].trim();
-        console.log(`[EMAIL-CLEANER] Found content after header pattern: ${content.length} chars`);
+      if (match && match.index !== undefined) {
+        // Estrae tutto quello che viene DOPO il match
+        const afterIndex = match.index + match[0].length;
+        const remainder = htmlBody.slice(afterIndex).trim();
         
-        // Verifica che il contenuto non sia solo header
-        if (content.length > 100 && !this.isOnlyHeaders(content)) {
-          return content;
+        console.log(`[EMAIL-CLEANER] Found header container ending at ${afterIndex}, remainder: ${remainder.length} chars`);
+        
+        if (remainder.length > 100) {
+          // Rimuove eventuali header residui all'inizio
+          const cleanedContent = this.stripLeadingHtmlHeaders(remainder);
+          
+          if (cleanedContent.length > 50 && !this.isOnlyHeaders(cleanedContent)) {
+            console.log(`[EMAIL-CLEANER] Extracted content after headers: ${cleanedContent.length} chars`);
+            return cleanedContent;
+          }
         }
       }
     }
     
     // Fallback: cerca contenuto dopo HR separators
-    const hrMatch = htmlBody.match(/<hr[^>]*>\s*([\s\S]*)/i);
-    if (hrMatch && hrMatch[1]) {
-      const content = hrMatch[1].trim();
-      if (content.length > 100) {
-        console.log(`[EMAIL-CLEANER] Found content after HR separator: ${content.length} chars`);
-        return content;
+    const hrMatch = htmlBody.match(/<hr[^>]*>/i);
+    if (hrMatch && hrMatch.index !== undefined) {
+      const afterIndex = hrMatch.index + hrMatch[0].length;
+      const remainder = htmlBody.slice(afterIndex).trim();
+      
+      if (remainder.length > 100) {
+        console.log(`[EMAIL-CLEANER] Found content after HR separator: ${remainder.length} chars`);
+        return this.stripLeadingHtmlHeaders(remainder);
       }
     }
     
     return null;
+  }
+
+  // Rimuove header residui all'inizio del contenuto HTML
+  private static stripLeadingHtmlHeaders(content: string): string {
+    let cleaned = content;
+    
+    // Rimuove eventuali tag <br> iniziali
+    cleaned = cleaned.replace(/^(\s*<br[^>]*>\s*)*/i, '');
+    
+    // Rimuove eventuali header residui all'inizio (solo le prime 5 righe)
+    const headerKeywords = ['Da:', 'From:', 'Inviato:', 'Sent:', 'A:', 'To:', 'Oggetto:', 'Subject:'];
+    const lines = cleaned.split('\n');
+    let startIndex = 0;
+    
+    for (let i = 0; i < Math.min(5, lines.length); i++) {
+      const line = lines[i];
+      if (headerKeywords.some(keyword => line.includes(keyword))) {
+        startIndex = i + 1;
+      } else if (line.trim().length > 20) {
+        // Trovato contenuto vero, fermiamo la pulizia
+        break;
+      }
+    }
+    
+    if (startIndex > 0) {
+      cleaned = lines.slice(startIndex).join('\n').trim();
+      console.log(`[EMAIL-CLEANER] Stripped ${startIndex} leading header lines`);
+    }
+    
+    return cleaned;
   }
   
   // Verifica se il contenuto contiene solo header
