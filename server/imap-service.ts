@@ -3,6 +3,8 @@ import { simpleParser } from "mailparser";
 import { storage } from "./storage";
 import { aiService } from "./ai-service";
 import { EmailForwardCleaner } from "./email-forward-cleaner";
+import { AttachmentsService } from "./attachments-service";
+import crypto from "crypto";
 import type { InsertMessage } from "@shared/schema";
 
 interface ImapConfig {
@@ -172,8 +174,45 @@ export class ImapEmailService {
     try {
       const parsed = await simpleParser(rawEmail);
       
-      // Extract attachments names
-      const attachments = parsed.attachments?.map((att: any) => att.filename || 'unnamed') || [];
+      // Process attachments with deduplication and save content
+      const attachments: string[] = [];
+      const attachmentHashes = new Map<string, string>(); // hash -> filename
+      
+      if (parsed.attachments && parsed.attachments.length > 0) {
+        console.log(`[IMAP] Processing ${parsed.attachments.length} attachments...`);
+        
+        for (const attachment of parsed.attachments) {
+          if (attachment.content && attachment.content.length > 0) {
+            // Calculate hash for deduplication
+            const hash = crypto.createHash('md5').update(attachment.content).digest('hex');
+            
+            // Check if we already have this attachment (by content hash)
+            if (attachmentHashes.has(hash)) {
+              const existingFilename = attachmentHashes.get(hash)!;
+              console.log(`[IMAP] Duplicate attachment detected: ${attachment.filename} -> using ${existingFilename}`);
+              // Use existing filename instead of saving duplicate
+              if (!attachments.includes(existingFilename)) {
+                attachments.push(existingFilename);
+              }
+            } else {
+              // New unique attachment - save it
+              const filename = attachment.filename || `attachment_${Date.now()}`;
+              try {
+                await AttachmentsService.saveAttachment(attachment, messageId);
+                attachments.push(filename);
+                attachmentHashes.set(hash, filename);
+                console.log(`[IMAP] Saved unique attachment: ${filename} (${attachment.content.length} bytes)`);
+              } catch (error) {
+                console.error(`[IMAP] Failed to save attachment ${filename}:`, error);
+              }
+            }
+          } else {
+            console.log(`[IMAP] Skipping attachment ${attachment.filename} - no content`);
+          }
+        }
+        
+        console.log(`[IMAP] Saved ${attachments.length} unique attachments (${parsed.attachments.length} total, ${parsed.attachments.length - attachments.length} duplicates removed)`);
+      }
 
       // Helper to get first email address
       const getFirstAddress = (addressObj: any) => {

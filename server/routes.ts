@@ -1472,20 +1472,13 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         res.setHeader('Content-Type', mimeType);
       }
 
-      // Per ora simula i dati dell'immagine - in futuro leggerà i file reali
-      if (isImage) {
-        // Genera una semplice immagine placeholder SVG per il test
-        const svgContent = `
-          <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
-            <rect width="100%" height="100%" fill="#f0f0f0"/>
-            <text x="50%" y="50%" text-anchor="middle" dy="0.3em" font-family="Arial" font-size="14" fill="#666">
-              📷 ${filename}
-            </text>
-            <text x="50%" y="65%" text-anchor="middle" dy="0.3em" font-family="Arial" font-size="12" fill="#999">
-              Anteprima allegato
-            </text>
-          </svg>
-        `;
+      // Usa AttachmentsService per leggere file reali
+      const attachmentData = await AttachmentsService.getAttachment(messageId, filename);
+      if (!attachmentData) {
+        return res.sendStatus(404);
+      }
+
+      res.send(attachmentData.data);
         
         res.setHeader('Content-Type', 'image/svg+xml');
         res.send(svgContent);
