@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,9 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Brain
+  Brain,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Message, Project, Task, Partner } from "@shared/schema";
@@ -53,6 +55,15 @@ interface AnalysisResult {
   bestMatch?: AISuggestion;
 }
 
+interface RenderedMessageContent {
+  bodyText: string;
+  bodyHtml: string | null;
+  remainderText: string | null;
+  remainderHtml: string | null;
+  headerSummary: string | null;
+  isForwarded: boolean;
+}
+
 export default function MessagesPage() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -60,6 +71,7 @@ export default function MessagesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"receivedAt" | "fromEmail" | "subject">("receivedAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [showThreadContent, setShowThreadContent] = useState(false);
 
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
@@ -73,6 +85,11 @@ export default function MessagesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  // Reset thread content visibility when message changes
+  useEffect(() => {
+    setShowThreadContent(false);
+  }, [selectedMessage?.id]);
 
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
@@ -110,6 +127,17 @@ export default function MessagesPage() {
       if (!res.ok) throw new Error('Failed to fetch partners');
       return res.json();
     },
+  });
+
+  // Query per il contenuto renderizzato del messaggio selezionato
+  const { data: renderedContent } = useQuery<RenderedMessageContent>({
+    queryKey: ["/api/messages", selectedMessage?.id, "rendered"],
+    queryFn: async () => {
+      const res = await fetch(`/api/messages/${selectedMessage!.id}/rendered`, { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch rendered message content');
+      return res.json();
+    },
+    enabled: !!selectedMessage,
   });
 
   const syncMutation = useMutation({
@@ -719,16 +747,74 @@ export default function MessagesPage() {
 
                 {/* Message Body - occupa tutto lo spazio rimanente */}
                 <div className="border-t">
-                  <div className="h-[48rem] p-6 overflow-y-auto">
-                    {selectedMessage.htmlBody ? (
-                      <div 
-                        className="prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: selectedMessage.htmlBody }}
-                      />
+                  <div className="h-[48rem] p-6 overflow-y-auto space-y-4">
+                    {renderedContent ? (
+                      <>
+                        {/* Contenuto principale del messaggio */}
+                        {renderedContent.bodyHtml ? (
+                          <div 
+                            className="prose prose-sm max-w-none"
+                            dangerouslySetInnerHTML={{ __html: renderedContent.bodyHtml }}
+                          />
+                        ) : (
+                          <div className="whitespace-pre-wrap text-sm">
+                            {renderedContent.bodyText || 'Nessun contenuto'}
+                          </div>
+                        )}
+
+                        {/* Contenuto del thread precedente (collassabile) */}
+                        {renderedContent.isForwarded && (renderedContent.remainderText || renderedContent.remainderHtml) && (
+                          <div className="border-t pt-4">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowThreadContent(!showThreadContent)}
+                              className="flex items-center gap-2 mb-2"
+                              data-testid="button-toggle-thread"
+                            >
+                              {showThreadContent ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                              <span className="text-sm text-muted-foreground">
+                                {showThreadContent ? 'Nascondi' : 'Mostra'} thread precedente
+                                {renderedContent.headerSummary && ` (${renderedContent.headerSummary})`}
+                              </span>
+                            </Button>
+
+                            {showThreadContent && (
+                              <div 
+                                className="bg-muted/30 rounded-lg p-4"
+                                data-testid="div-thread-content"
+                              >
+                                {renderedContent.remainderHtml ? (
+                                  <div 
+                                    className="prose prose-sm max-w-none text-muted-foreground"
+                                    dangerouslySetInnerHTML={{ __html: renderedContent.remainderHtml }}
+                                  />
+                                ) : (
+                                  <div className="whitespace-pre-wrap text-sm text-muted-foreground">
+                                    {renderedContent.remainderText}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
                     ) : (
-                      <div className="whitespace-pre-wrap text-sm">
-                        {selectedMessage.body || 'Nessun contenuto'}
-                      </div>
+                      /* Fallback alla visualizzazione originale se il contenuto renderizzato non è disponibile */
+                      selectedMessage.htmlBody ? (
+                        <div 
+                          className="prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: selectedMessage.htmlBody }}
+                        />
+                      ) : (
+                        <div className="whitespace-pre-wrap text-sm">
+                          {selectedMessage.body || 'Nessun contenuto'}
+                        </div>
+                      )
                     )}
                   </div>
                 </div>
