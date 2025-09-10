@@ -25,6 +25,7 @@ import { initializeEmailService, getEmailService } from "./imap-service";
 import { AuditService } from "./audit-service";
 import { MessageLogService } from "./message-log-service";
 import { gmailService } from "./gmail-service";
+import { AttachmentsService } from "./attachments-service";
 
 // Helper function to extract organizationId from request header
 function getOrganizationId(req: any): string {

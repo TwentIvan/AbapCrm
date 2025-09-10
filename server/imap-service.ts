@@ -174,6 +174,9 @@ export class ImapEmailService {
     try {
       const parsed = await simpleParser(rawEmail);
       
+      // Generate messageId first
+      const messageId = parsed.messageId || `imap-${Date.now()}-${seqno}`;
+      
       // Process attachments with deduplication and save content
       const attachments: string[] = [];
       const attachmentHashes = new Map<string, string>(); // hash -> filename
@@ -244,7 +247,6 @@ export class ImapEmailService {
       const fromAddr = getFirstAddress(parsed.from);
       const toAddr = getFirstAddress(parsed.to);
 
-      const messageId = parsed.messageId || `imap-${Date.now()}-${seqno}`;
       const userId = this.config.userId; // Usa l'ID dell'utente che ha configurato questo account
 
       // Check if message already exists to avoid duplicates
