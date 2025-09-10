@@ -191,19 +191,19 @@ export class ImapEmailService {
             
             // Check if we already have this attachment (by content hash)
             if (attachmentHashes.has(hash)) {
-              const existingFilename = attachmentHashes.get(hash)!;
-              console.log(`[IMAP] Duplicate attachment detected: ${attachment.filename} -> using ${existingFilename}`);
+              const existingSavedFilename = attachmentHashes.get(hash)!;
+              console.log(`[IMAP] Duplicate attachment detected: ${attachment.filename} -> using ${existingSavedFilename}`);
               // Use existing filename instead of saving duplicate
-              if (!attachments.includes(existingFilename)) {
-                attachments.push(existingFilename);
+              if (!attachments.includes(existingSavedFilename)) {
+                attachments.push(existingSavedFilename);
               }
             } else {
               // New unique attachment - save it
               const filename = attachment.filename || `attachment_${Date.now()}`;
               try {
-                await AttachmentsService.saveAttachment(attachment, messageId);
-                attachments.push(filename);
-                attachmentHashes.set(hash, filename);
+                const savedFilename = await AttachmentsService.saveAttachment(attachment, messageId);
+                attachments.push(savedFilename);
+                attachmentHashes.set(hash, savedFilename);
                 console.log(`[IMAP] Saved unique attachment: ${filename} (${attachment.content.length} bytes)`);
               } catch (error) {
                 console.error(`[IMAP] Failed to save attachment ${filename}:`, error);

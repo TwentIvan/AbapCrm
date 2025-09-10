@@ -735,13 +735,15 @@ export default function MessagesPage() {
 
                 {/* Attachments Section */}
                 {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (() => {
-                  // Deduplicazione degli allegati - raggruppa per nome file
-                  const uniqueAttachments = selectedMessage.attachments.reduce((acc: { filename: string; count: number }[], filename: string) => {
-                    const existing = acc.find(item => item.filename === filename);
+                  // Deduplicazione degli allegati - raggruppa per nome file originale (senza messageId prefix)
+                  const uniqueAttachments = selectedMessage.attachments.reduce((acc: { originalFilename: string; fullFilename: string; count: number }[], fullFilename: string) => {
+                    // Estrai il filename originale rimuovendo il prefisso messageId_
+                    const originalFilename = fullFilename.replace(/^[^_]+_/, '');
+                    const existing = acc.find(item => item.originalFilename === originalFilename);
                     if (existing) {
                       existing.count++;
                     } else {
-                      acc.push({ filename, count: 1 });
+                      acc.push({ originalFilename, fullFilename, count: 1 });
                     }
                     return acc;
                   }, []);
@@ -757,8 +759,9 @@ export default function MessagesPage() {
                         </div>
                         <div className="space-y-2">
                           {uniqueAttachments.map((attachmentInfo, index) => {
-                            const fileInfo = getFileType(attachmentInfo.filename);
-                            const filename = attachmentInfo.filename;
+                            const fileInfo = getFileType(attachmentInfo.originalFilename);
+                            const displayFilename = attachmentInfo.originalFilename;
+                            const fullFilename = attachmentInfo.fullFilename;
                             
                             return (
                               <div 
@@ -771,8 +774,8 @@ export default function MessagesPage() {
                                     {fileInfo.isImage ? (
                                       <div className="w-12 h-12 border rounded overflow-hidden bg-gray-100">
                                         <img 
-                                          src={`/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`}
-                                          alt={filename}
+                                          src={`/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(fullFilename)}`}
+                                          alt={displayFilename}
                                           className="w-full h-full object-cover"
                                           onError={(e) => {
                                             // Fallback all'icona se l'immagine non si carica
@@ -789,9 +792,9 @@ export default function MessagesPage() {
                                   <div className="min-w-0 flex-1">
                                     <div 
                                       className="text-sm font-medium truncate"
-                                      title={filename}
+                                      title={displayFilename}
                                     >
-                                      {filename}
+                                      {displayFilename}
                                       {attachmentInfo.count > 1 && (
                                         <Badge variant="secondary" className="ml-2 text-xs">
                                           ×{attachmentInfo.count}
@@ -806,8 +809,8 @@ export default function MessagesPage() {
                                   variant="outline"
                                   onClick={() => {
                                     const link = document.createElement('a');
-                                    link.href = `/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`;
-                                    link.download = filename;
+                                    link.href = `/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(fullFilename)}`;
+                                    link.download = displayFilename;
                                     link.click();
                                   }}
                                   data-testid={`download-attachment-${index}`}
