@@ -636,7 +636,7 @@ export default function MessagesPage() {
                           return (
                             <div className="flex flex-wrap gap-2">
                               {toEmails.map((email, index) => {
-                                const isCurrentUser = email === user?.email;
+                                const isCurrentUser = email?.toLowerCase() === user?.email?.toLowerCase();
                                 return (
                                   <Badge 
                                     key={`to-${index}`} 
@@ -660,7 +660,7 @@ export default function MessagesPage() {
                         {(selectedMessage.originalCcEmails && selectedMessage.originalCcEmails.length > 0) && (
                           <div className="flex flex-wrap gap-2">
                             {selectedMessage.originalCcEmails.map((email, index) => {
-                              const isCurrentUser = email === user?.email;
+                              const isCurrentUser = email?.toLowerCase() === user?.email?.toLowerCase();
                               return (
                                 <Badge 
                                   key={`cc-${index}`} 
