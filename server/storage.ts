@@ -1767,15 +1767,17 @@ export class DatabaseStorage implements IStorage {
       .offset(offset);
     
     // Debug: vediamo come Drizzle deserializza gli array
-    if (result.length > 0) {
-      console.log('DEBUG: First message arrays:', {
-        subject: result[0].subject,
-        originalToEmails: result[0].originalToEmails,
-        originalToEmailsType: typeof result[0].originalToEmails,
-        originalCcEmails: result[0].originalCcEmails,
-        originalCcEmailsType: typeof result[0].originalCcEmails
-      });
-    }
+    result.forEach((msg, index) => {
+      if (msg.subject?.includes('GIVA') || (msg.originalToEmails && msg.originalToEmails.length > 0) || (msg.originalCcEmails && msg.originalCcEmails.length > 0)) {
+        console.log(`DEBUG: Message ${index} arrays:`, {
+          subject: msg.subject,
+          originalToEmails: msg.originalToEmails,
+          originalToEmailsLength: msg.originalToEmails?.length,
+          originalCcEmails: msg.originalCcEmails,
+          originalCcEmailsLength: msg.originalCcEmails?.length
+        });
+      }
+    });
     
     return result;
   }
