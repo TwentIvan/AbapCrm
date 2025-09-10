@@ -348,7 +348,13 @@ export default function MessagesPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <ScrollArea className="h-[600px]">
+                {/* Header con colonne */}
+                <div className="grid grid-cols-12 gap-2 p-3 border-b bg-muted/50 text-xs font-medium text-muted-foreground">
+                  <div className="col-span-5">MITTENTE</div>
+                  <div className="col-span-4">DATA</div>
+                  <div className="col-span-3">ORA</div>
+                </div>
+                <ScrollArea className="h-[560px]">
                   {messages.length === 0 ? (
                     <div className="p-6 text-center text-muted-foreground">
                       <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -363,31 +369,32 @@ export default function MessagesPage() {
                           <div
                         key={message.id}
                         data-testid={`message-item-${message.id}`}
-                        className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors ${
+                        className={`cursor-pointer hover:bg-muted/50 transition-colors border-b ${
                           selectedMessage?.id === message.id ? 'bg-muted' : ''
-                        } ${message.status === 'unread' ? 'border-l-4 border-l-blue-500' : ''}`}
+                        } ${message.status === 'unread' ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'}`}
                         onClick={() => handleSelectMessage(message)}
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
+                        <div className="grid grid-cols-12 gap-2 p-3 items-start">
+                          {/* Colonna Mittente */}
+                          <div className="col-span-5">
                             <div className="flex items-center gap-2 mb-1">
                               {getStatusIcon(message.status)}
-                              <span className="text-sm font-medium truncate">
+                              <span className={`text-sm truncate ${
+                                message.status === 'unread' ? 'font-bold' : 'font-medium'
+                              }`}>
                                 {message.fromName || message.fromEmail}
                               </span>
                             </div>
-                            <p className="text-sm font-semibold text-foreground truncate mb-1">
+                            <p className={`text-sm truncate mb-1 ${
+                              message.status === 'unread' ? 'font-bold text-foreground' : 'font-normal text-foreground'
+                            }`}>
                               {message.subject || 'Nessun oggetto'}
                             </p>
-                            <p className="text-xs text-muted-foreground truncate mb-2">
-                              {message.body ? message.body.substring(0, 80) + '...' : 'Nessun contenuto'}
+                            <p className="text-xs text-muted-foreground truncate">
+                              {message.body ? message.body.substring(0, 60) + '...' : 'Nessun contenuto'}
                             </p>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              {format(new Date(message.receivedAt), 'dd MMM HH:mm')}
-                            </div>
                             {linkedObject && (
-                              <div className="mt-2">
+                              <div className="mt-1">
                                 <Badge variant="outline" className="text-xs">
                                   <Link className="h-3 w-3 mr-1" />
                                   {linkedObject.type}: {linkedObject.name}
@@ -402,12 +409,16 @@ export default function MessagesPage() {
                               </div>
                             )}
                           </div>
-                          <Badge 
-                            variant="secondary" 
-                            className={`${getStatusColor(message.status)} text-white text-xs`}
-                          >
-                            {message.status}
-                          </Badge>
+                          
+                          {/* Colonna Data */}
+                          <div className="col-span-4 text-xs text-muted-foreground">
+                            {format(new Date(message.receivedAt), 'dd MMM yyyy')}
+                          </div>
+                          
+                          {/* Colonna Ora */}
+                          <div className="col-span-3 text-xs text-muted-foreground">
+                            {format(new Date(message.receivedAt), 'HH:mm')}
+                          </div>
                         </div>
                       </div>
                     );
