@@ -326,21 +326,32 @@ export class EmailForwardCleaner {
   private static cleanForwardedBody(body: string): string {
     if (!body) return body;
 
-    let cleanBody = body;
     const originalBody = body;
 
-    // Prima prova a estrarre il contenuto dopo i cluster di header
-    const extractedContent = this.extractContentAfterHeadersText(body);
-    if (extractedContent && extractedContent.length > 50) {
-      console.log(`[EMAIL-CLEANER] Using content after headers: ${extractedContent.length} chars`);
-      return extractedContent;
+    // Usa il nuovo algoritmo bounded per separare main body dal remainder
+    const splitResult = this.splitTextByHeaderClusters(body);
+    
+    if (splitResult.confidence === 'high' && splitResult.mainText) {
+      console.log(`[EMAIL-CLEANER] Using bounded split (${splitResult.method}): ${splitResult.mainText.length} chars main body`);
+      return splitResult.mainText;
+    }
+    
+    if (splitResult.confidence === 'medium' && splitResult.mainText && splitResult.mainText.length > 50) {
+      console.log(`[EMAIL-CLEANER] Using medium confidence split (${splitResult.method}): ${splitResult.mainText.length} chars main body`);
+      return splitResult.mainText;
     }
 
+    console.log(`[EMAIL-CLEANER] Bounded split not confident enough (${splitResult.confidence}), using classic fallback`);
+    
     // Fallback: prova a estrarre il contenuto originale con il metodo classico
     const classicExtracted = this.extractOriginalBody(body);
     if (classicExtracted && classicExtracted !== body && classicExtracted.length > 20) {
+      console.log(`[EMAIL-CLEANER] Using classic extraction: ${classicExtracted.length} chars`);
       return classicExtracted;
     }
+
+    console.log(`[EMAIL-CLEANER] Using traditional pattern-based cleaning as final fallback`);
+    let cleanBody = originalBody;
 
     // Pattern per identificare l'inizio della sezione di inoltro
     const forwardSeparators = [
@@ -492,14 +503,35 @@ export class EmailForwardCleaner {
   private static cleanForwardedHtmlBody(htmlBody: string): string | null {
     if (!htmlBody) return htmlBody;
 
-    let cleanHtml = htmlBody;
     const originalHtml = htmlBody;
 
     // Se l'HTML contiene solo una signature/firma, restituisce null per usare il text body
-    if (this.isOnlySignatureHtml(cleanHtml)) {
+    if (this.isOnlySignatureHtml(htmlBody)) {
       console.log('[EMAIL-CLEANER] HTML contains only signature, preferring text body');
       return null;
     }
+
+    // Usa il nuovo algoritmo bounded per separare main HTML dal remainder
+    const splitResult = this.splitHtmlByHeaderContainers(htmlBody);
+    
+    if (splitResult.confidence === 'high' && splitResult.mainHtml) {
+      const cleanedHtml = this.closeOpenHtmlTags(splitResult.mainHtml.trim());
+      if (!this.isOnlySignatureHtml(cleanedHtml)) {
+        console.log(`[EMAIL-CLEANER] Using bounded HTML split (${splitResult.method}): ${cleanedHtml.length} chars main body`);
+        return cleanedHtml;
+      }
+    }
+    
+    if (splitResult.confidence === 'medium' && splitResult.mainHtml) {
+      const cleanedHtml = this.closeOpenHtmlTags(splitResult.mainHtml.trim());
+      if (cleanedHtml.length > 100 && !this.isOnlySignatureHtml(cleanedHtml)) {
+        console.log(`[EMAIL-CLEANER] Using medium confidence HTML split (${splitResult.method}): ${cleanedHtml.length} chars main body`);
+        return cleanedHtml;
+      }
+    }
+
+    console.log(`[EMAIL-CLEANER] Bounded HTML split not confident enough (${splitResult.confidence}), using pattern-based fallback`);
+    let cleanHtml = originalHtml;
 
     // Pattern HTML per sezioni di inoltro
     const htmlForwardPatterns = [
@@ -1195,5 +1227,338 @@ export class EmailForwardCleaner {
 
     console.log(`[EMAIL-CLEANER] HTML sanitized: ${html.length} -> ${sanitized.length} chars`);
     return sanitized;
+  }
+
+  /**
+   * Nuovo algoritmo bounded per dividere il testo in main body e remainder
+   * Gestisce sia i top-posted replies che i forwarded messages
+   */
+  private static splitTextByHeaderClusters(textBody: string): {
+    mainText: string | null;
+    remainderText: string | null;
+    confidence: 'high' | 'medium' | 'low';
+    method: 'top-prelude' | 'after-cluster' | 'no-split';
+  } {
+    console.log(`[EMAIL-CLEANER] Starting bounded split analysis for text (${textBody.length} chars)`);
+    
+    const lines = textBody.split('\n');
+    const headerKeywords = ['Da:', 'From:', 'Inviato:', 'Sent:', 'A:', 'To:', 'Cc:', 'Oggetto:', 'Subject:', 'Data:', 'Date:'];
+    const quotedMarkers = [
+      /^[-_]{5,}.*(Original|Forwarded|Messaggio|Message).*/i,
+      /^(Il giorno|In data|On .* wrote:|Le .* a écrit|Am .* schrieb)/i,
+      /^>{1,}/,  // Quoted text markers
+      /^---------- Forwarded message ----------/i,
+      /^---------- Messaggio inoltrato ----------/i
+    ];
+
+    let firstHeaderClusterStart = -1;
+    let firstHeaderClusterEnd = -1;
+    let consecutiveHeaders = 0;
+    let headerInWindow = false;
+
+    // Step 1: Trova il primo cluster di header (almeno 3 header in 8 righe)
+    for (let i = 0; i < Math.min(lines.length, 60); i++) { // Solo nelle prime 60 righe
+      const line = lines[i].trim();
+      
+      if (line.length === 0) continue;
+
+      const isHeader = headerKeywords.some(keyword => line.startsWith(keyword));
+      const isQuotedMarker = quotedMarkers.some(pattern => pattern.test(line));
+      
+      if (isHeader || isQuotedMarker) {
+        if (firstHeaderClusterStart === -1) {
+          firstHeaderClusterStart = i;
+          headerInWindow = true;
+        }
+        consecutiveHeaders++;
+        
+        // Cluster identificato se abbiamo almeno 3 header in una finestra di 8 righe
+        if (consecutiveHeaders >= 3 && headerInWindow && i - firstHeaderClusterStart < 8) {
+          // Trova la fine del cluster
+          for (let j = i + 1; j < Math.min(lines.length, i + 10); j++) {
+            const nextLine = lines[j].trim();
+            if (nextLine.length === 0) continue;
+            
+            const stillHeader = headerKeywords.some(keyword => nextLine.startsWith(keyword));
+            const stillMarker = quotedMarkers.some(pattern => pattern.test(nextLine));
+            
+            if (!stillHeader && !stillMarker && nextLine.length > 5) {
+              firstHeaderClusterEnd = j;
+              break;
+            }
+          }
+          if (firstHeaderClusterEnd === -1) firstHeaderClusterEnd = i + 1;
+          break;
+        }
+      } else if (line.length > 10) {
+        // Reset se troviamo contenuto significativo e non abbiamo ancora un cluster valido
+        if (consecutiveHeaders < 3) {
+          firstHeaderClusterStart = -1;
+          consecutiveHeaders = 0;
+          headerInWindow = false;
+        }
+      }
+    }
+
+    console.log(`[EMAIL-CLEANER] Header cluster analysis: start=${firstHeaderClusterStart}, end=${firstHeaderClusterEnd}, headers=${consecutiveHeaders}`);
+
+    // Step 2: Analizza il contenuto prima del cluster (top-posted reply detection)
+    let topPreludeText = '';
+    if (firstHeaderClusterStart > 0) {
+      const preludeLines = lines.slice(0, firstHeaderClusterStart);
+      let meaningfulLines = 0;
+      let signatureLines = 0;
+      let quotedLines = 0;
+
+      for (const line of preludeLines) {
+        const trimmed = line.trim();
+        if (trimmed.length === 0) continue;
+        
+        if (trimmed.startsWith('>')) {
+          quotedLines++;
+        } else if (this.isSignatureLine(trimmed)) {
+          signatureLines++;
+        } else if (trimmed.length > 10) {
+          meaningfulLines++;
+        }
+      }
+      
+      topPreludeText = preludeLines.join('\n').trim();
+      
+      // Se c'è contenuto significativo prima del cluster, potrebbe essere un top-posted reply
+      if (meaningfulLines > 0 && 
+          topPreludeText.length > 40 && 
+          quotedLines < meaningfulLines && 
+          signatureLines < meaningfulLines) {
+        
+        const remainderText = lines.slice(firstHeaderClusterStart).join('\n').trim();
+        console.log(`[EMAIL-CLEANER] Found top-posted reply: ${topPreludeText.length} chars main, ${remainderText.length} chars remainder`);
+        
+        return {
+          mainText: topPreludeText,
+          remainderText: remainderText,
+          confidence: 'high',
+          method: 'top-prelude'
+        };
+      }
+    }
+
+    // Step 3: Estrazione dopo il cluster con boundary detection
+    if (firstHeaderClusterEnd > 0 && firstHeaderClusterEnd < lines.length - 1) {
+      // Trova il prossimo boundary (header cluster, marker, o inizio citazione)
+      let nextBoundaryIndex = -1;
+      
+      for (let i = firstHeaderClusterEnd + 5; i < lines.length; i++) { // Skip almeno 5 righe per evitare false positive
+        const line = lines[i].trim();
+        if (line.length === 0) continue;
+
+        // Controlla se è un nuovo cluster header o marker
+        const isNewHeader = headerKeywords.some(keyword => line.startsWith(keyword));
+        const isNewMarker = quotedMarkers.some(pattern => pattern.test(line));
+        const isQuoteStart = line.startsWith('>') || line.startsWith('|');
+
+        if (isNewHeader || isNewMarker || isQuoteStart) {
+          // Verifica che sia veramente un nuovo boundary controllando le righe successive
+          let boundaryConfidence = 0;
+          for (let j = i; j < Math.min(lines.length, i + 3); j++) {
+            const checkLine = lines[j].trim();
+            if (headerKeywords.some(keyword => checkLine.startsWith(keyword)) ||
+                quotedMarkers.some(pattern => pattern.test(checkLine)) ||
+                checkLine.startsWith('>')) {
+              boundaryConfidence++;
+            }
+          }
+          
+          if (boundaryConfidence >= 2) {
+            nextBoundaryIndex = i;
+            break;
+          }
+        }
+      }
+
+      const extractEndIndex = nextBoundaryIndex > 0 ? nextBoundaryIndex : lines.length;
+      const mainText = lines.slice(firstHeaderClusterEnd, extractEndIndex).join('\n').trim();
+      const remainderText = nextBoundaryIndex > 0 ? lines.slice(nextBoundaryIndex).join('\n').trim() : null;
+
+      // Guard: verifica che l'estratto non sia troppo grande rispetto all'originale
+      const originalLength = textBody.length;
+      const mainLength = mainText.length;
+      
+      if (mainText.length > 20 && 
+          !this.isOnlySignature(mainText) && 
+          (mainLength <= originalLength * 0.65 || nextBoundaryIndex === -1)) {
+        
+        console.log(`[EMAIL-CLEANER] Extracted after cluster with boundary: ${mainText.length} chars main, ${remainderText?.length || 0} chars remainder`);
+        
+        return {
+          mainText: mainText,
+          remainderText: remainderText,
+          confidence: nextBoundaryIndex > 0 ? 'high' : 'medium',
+          method: 'after-cluster'
+        };
+      } else {
+        console.log(`[EMAIL-CLEANER] After-cluster extraction rejected: too large (${mainLength}/${originalLength}) or poor quality`);
+      }
+    }
+
+    // Step 4: Fallback - nessuna separazione affidabile
+    console.log(`[EMAIL-CLEANER] No reliable split found, returning no-split`);
+    return {
+      mainText: null,
+      remainderText: null,
+      confidence: 'low',
+      method: 'no-split'
+    };
+  }
+
+  /**
+   * Algoritmo bounded per dividere l'HTML in main body e remainder
+   */
+  private static splitHtmlByHeaderContainers(htmlBody: string): {
+    mainHtml: string | null;
+    remainderHtml: string | null;
+    confidence: 'high' | 'medium' | 'low';
+    method: 'top-prelude' | 'after-container' | 'no-split';
+  } {
+    console.log(`[EMAIL-CLEANER] Starting bounded split analysis for HTML (${htmlBody.length} chars)`);
+    
+    // Pattern per identificare container di header
+    const headerContainerPatterns = [
+      /<div[^>]*id[\s]*=[\s]*["']?divRplyFwdMsg["']?[^>]*>[\s\S]*?<\/div>/i,
+      /<div[^>]*class="[^"]*OutlookMessageHeader[^"]*"[^>]*>[\s\S]*?<\/div>/i,
+      /<table[^>]*>[\s\S]*?(?:Da|From|Inviato|Sent|A|To|Oggetto|Subject)[\s\S]*?<\/table>/i,
+      /<div[^>]*>[\s\S]*?<b>\s*(?:Da|From|Inviato|Sent):\s*<\/b>[\s\S]*?<b>\s*(?:A|To|Oggetto|Subject):\s*<\/b>[\s\S]*?<\/div>/i
+    ];
+
+    const boundaryPatterns = [
+      /<hr[^>]*>/i,
+      /<blockquote[^>]*>/i,
+      /<div[^>]*style="[^"]*border-left[^"]*"[^>]*>/i, // Citazioni
+      /<div[^>]*class="[^"]*quote[^"]*"[^>]*>/i
+    ];
+
+    let firstContainerMatch: RegExpMatchArray | null = null;
+    let firstContainerPattern: RegExp | null = null;
+
+    // Trova il primo container di header
+    for (const pattern of headerContainerPatterns) {
+      const match = htmlBody.match(pattern);
+      if (match && match.index !== undefined) {
+        if (!firstContainerMatch || match.index < firstContainerMatch.index!) {
+          firstContainerMatch = match;
+          firstContainerPattern = pattern;
+        }
+      }
+    }
+
+    if (!firstContainerMatch || firstContainerMatch.index === undefined) {
+      console.log(`[EMAIL-CLEANER] No header container found in HTML`);
+      return {
+        mainHtml: null,
+        remainderHtml: null,
+        confidence: 'low',
+        method: 'no-split'
+      };
+    }
+
+    const containerStart = firstContainerMatch.index;
+    const containerEnd = containerStart + firstContainerMatch[0].length;
+
+    console.log(`[EMAIL-CLEANER] Found header container at ${containerStart}-${containerEnd}`);
+
+    // Step 1: Controlla contenuto prima del container (top-posted)
+    const preludeHtml = htmlBody.substring(0, containerStart).trim();
+    if (preludeHtml.length > 100) {
+      const textContent = preludeHtml.replace(/<[^>]+>/g, ' ').trim();
+      
+      if (textContent.length > 40 && 
+          !this.isOnlySignatureHtml(preludeHtml) &&
+          !preludeHtml.includes('<blockquote')) {
+        
+        const remainderHtml = htmlBody.substring(containerStart).trim();
+        console.log(`[EMAIL-CLEANER] Found HTML top-posted content: ${preludeHtml.length} chars main, ${remainderHtml.length} chars remainder`);
+        
+        return {
+          mainHtml: preludeHtml,
+          remainderHtml: remainderHtml,
+          confidence: 'high',
+          method: 'top-prelude'
+        };
+      }
+    }
+
+    // Step 2: Estrazione dopo il container con boundary detection
+    let nextBoundaryIndex = -1;
+    
+    for (const pattern of boundaryPatterns) {
+      const match = htmlBody.substring(containerEnd + 50).match(pattern); // Skip almeno 50 char dopo il container
+      if (match && match.index !== undefined) {
+        const actualIndex = containerEnd + 50 + match.index;
+        if (nextBoundaryIndex === -1 || actualIndex < nextBoundaryIndex) {
+          nextBoundaryIndex = actualIndex;
+        }
+      }
+    }
+
+    // Cerca anche ulteriori header container come boundary
+    for (const pattern of headerContainerPatterns) {
+      const match = htmlBody.substring(containerEnd + 100).match(pattern);
+      if (match && match.index !== undefined) {
+        const actualIndex = containerEnd + 100 + match.index;
+        if (nextBoundaryIndex === -1 || actualIndex < nextBoundaryIndex) {
+          nextBoundaryIndex = actualIndex;
+        }
+      }
+    }
+
+    const extractEndIndex = nextBoundaryIndex > 0 ? nextBoundaryIndex : htmlBody.length;
+    const mainHtml = htmlBody.substring(containerEnd, extractEndIndex).trim();
+    const remainderHtml = nextBoundaryIndex > 0 ? htmlBody.substring(nextBoundaryIndex).trim() : null;
+
+    // Guard: verifica qualità dell'estratto
+    const mainTextContent = mainHtml.replace(/<[^>]+>/g, ' ').trim();
+    const originalTextContent = htmlBody.replace(/<[^>]+>/g, ' ').trim();
+    
+    if (mainTextContent.length > 40 && 
+        !this.isOnlySignatureHtml(mainHtml) &&
+        mainHtml.length <= htmlBody.length * 0.65) {
+      
+      console.log(`[EMAIL-CLEANER] Extracted HTML after container: ${mainHtml.length} chars main, ${remainderHtml?.length || 0} chars remainder`);
+      
+      return {
+        mainHtml: mainHtml,
+        remainderHtml: remainderHtml,
+        confidence: nextBoundaryIndex > 0 ? 'high' : 'medium',
+        method: 'after-container'
+      };
+    } else {
+      console.log(`[EMAIL-CLEANER] HTML after-container extraction rejected: poor quality or too large`);
+    }
+
+    console.log(`[EMAIL-CLEANER] No reliable HTML split found`);
+    return {
+      mainHtml: null,
+      remainderHtml: null,
+      confidence: 'low',
+      method: 'no-split'
+    };
+  }
+
+  /**
+   * Helper per identificare righe di firma
+   */
+  private static isSignatureLine(line: string): boolean {
+    const signaturePatterns = [
+      /^--$/,
+      /^[-_]{2,}$/,
+      /^(Best regards?|Kind regards?|Sincerely|Cordially|Thanks?)/i,
+      /^(Cordiali saluti|Distinti saluti|Grazie|Saluti)/i,
+      /^(Mit freundlichen Grüßen|Freundliche Grüße|Danke)/i,
+      /^(Cordialement|Bien à vous|Merci)/i,
+      /^\+?\d{1,4}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}$/, // Phone numbers
+      /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/ // Email addresses
+    ];
+    
+    return signaturePatterns.some(pattern => pattern.test(line.trim()));
   }
 }
