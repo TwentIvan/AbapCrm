@@ -641,15 +641,14 @@ export class EmailForwardCleaner {
       const cutPoint = this.findForwardCutPoint(htmlBody);
       
       if (cutPoint > 0) {
-        // Taglia l'HTML al punto trovato, preservando tutto DOPO la firma (contenuto inoltrato)
-        const cleanedHtml = htmlBody.substring(cutPoint).trim();
+        // Taglia l'HTML al punto trovato, preservando tutto PRIMA del contenuto inoltrato (thread originale)
+        const cleanedHtml = htmlBody.substring(0, cutPoint).trim();
         console.log(`[EMAIL-CLEANER] ✓ Cut HTML at position ${cutPoint}, result: ${cleanedHtml.length} chars`);
         
         // Verifica che il risultato abbia contenuto utile
         if (cleanedHtml.length > 50) {
-          // Seconda fase: rimuovi le intestazioni del messaggio inoltrato
-          const finalHtml = this.removeEmailHeaders(cleanedHtml);
-          return finalHtml;
+          // Il contenuto preservato non dovrebbe avere intestazioni di inoltro, ma puliamo eventuali residui
+          return cleanedHtml;
         } else {
           console.log(`[EMAIL-CLEANER] ✗ Cut HTML too short, falling back to text body`);
         }
@@ -671,7 +670,8 @@ export class EmailForwardCleaner {
   private static findForwardCutPoint(htmlBody: string): number {
     console.log(`[EMAIL-CLEANER] DEBUG: Looking for cut point in HTML (${htmlBody.length} chars)`);
     
-    // APPROCCIO OUTLOOK: Cerca la fine della firma e mantieni tutto il resto
+    // APPROCCIO OUTLOOK: Cerca la fine della firma per identificare dove inizia il contenuto inoltrato
+    // Preserviamo tutto quello che viene PRIMA di questo punto (thread originale)
     // La firma di Outlook ha id="Signature" o class="signature"
     const signatureEndPatterns = [
       // Fine div con id="Signature"
@@ -692,7 +692,7 @@ export class EmailForwardCleaner {
       if (match && match.index !== undefined) {
         const cutPoint = match.index + match[0].length;
         console.log(`[EMAIL-CLEANER] ✓ Found signature end at position ${cutPoint}`);
-        return cutPoint; // Mantieni tutto DOPO la firma
+        return cutPoint; // Qui inizia il contenuto inoltrato da rimuovere
       }
     }
     
