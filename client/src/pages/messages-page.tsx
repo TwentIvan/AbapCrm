@@ -777,7 +777,7 @@ export default function MessagesPage() {
                                           onError={(e) => {
                                             // Fallback all'icona se l'immagine non si carica
                                             e.currentTarget.style.display = 'none';
-                                            e.currentTarget.nextElementSibling!.style.display = 'block';
+                                            (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = 'block';
                                           }}
                                         />
                                         <div className="text-lg hidden">{fileInfo.icon}</div>
