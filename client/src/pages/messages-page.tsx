@@ -621,33 +621,33 @@ export default function MessagesPage() {
               <div className="flex flex-col h-full">
                 {/* Header dati strutturati */}
                 <div className="flex-shrink-0 p-6 pb-4">
-                  <div className="border-2 border-primary/20 rounded-lg bg-primary/5 p-4">
+                  <div className="border-2 border-primary/20 rounded-lg bg-primary p-4">
                     <div className="flex flex-wrap gap-2">
                       {(() => {
                         const linkedObject = getLinkedObjectName(selectedMessage);
                         if (linkedObject) {
                           return (
-                            <Badge variant="outline" className="text-sm">
+                            <Badge variant="secondary" className="text-sm bg-white/90 text-primary-foreground border-white/20">
                               <Link className="h-3 w-3 mr-1" />
                               {linkedObject.type}: {linkedObject.name}
                             </Badge>
                           );
                         }
                         return (
-                          <Badge variant="outline" className="text-sm">
+                          <Badge variant="secondary" className="text-sm bg-white/90 text-primary-foreground border-white/20">
                             <AlertCircle className="h-3 w-3 mr-1" />
                             Nessun collegamento
                           </Badge>
                         );
                       })()}
                       {selectedMessage.confidenceScore && (
-                        <Badge variant="outline" className="text-sm">
+                        <Badge variant="secondary" className="text-sm bg-white/90 text-primary-foreground border-white/20">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Confidenza: {Math.round((selectedMessage.confidenceScore ? Number(selectedMessage.confidenceScore) : 0) * 100)}%
                         </Badge>
                       )}
                       {selectedMessage.matchingReason && (
-                        <Badge variant="outline" className="text-sm">
+                        <Badge variant="secondary" className="text-sm bg-white/90 text-primary-foreground border-white/20">
                           <Brain className="h-3 w-3 mr-1" />
                           {selectedMessage.matchingReason}
                         </Badge>
