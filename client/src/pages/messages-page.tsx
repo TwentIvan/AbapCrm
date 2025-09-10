@@ -621,7 +621,7 @@ export default function MessagesPage() {
               <div className="flex flex-col h-full">
                 {/* Header dati strutturati */}
                 <div className="flex-shrink-0 p-6 pb-4">
-                  <div className="border-2 border-primary/20 rounded-lg bg-primary/20 p-4">
+                  <div className="border-2 rounded-lg p-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
                     <div className="flex flex-wrap gap-2">
                       {(() => {
                         const linkedObject = getLinkedObjectName(selectedMessage);
