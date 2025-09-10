@@ -734,58 +734,95 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Attachments Section */}
-                {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (
-                  <div className="flex-shrink-0 border-t bg-muted/30">
-                    <div className="p-6 space-y-4">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        <h4 className="font-medium">
-                          Allegati ({selectedMessage.attachments.length})
-                        </h4>
-                      </div>
-                      <div className="space-y-2">
-                        {selectedMessage.attachments.map((filename, index) => {
-                          const fileInfo = getFileType(filename);
-                          return (
-                            <div 
-                              key={index}
-                              className="flex items-center justify-between p-2 border rounded-lg hover:bg-muted/50 transition-colors"
-                            >
-                              <div className="flex items-center gap-3 min-w-0 flex-1">
-                                <div className="text-center flex-shrink-0">
-                                  <div className="text-lg">{fileInfo.icon}</div>
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div 
-                                    className="text-sm font-medium truncate"
-                                    title={filename}
-                                  >
-                                    {filename}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">{fileInfo.type}</div>
-                                </div>
-                              </div>
-                              <Button
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => {
-                                  const link = document.createElement('a');
-                                  link.href = `/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`;
-                                  link.download = filename;
-                                  link.click();
-                                }}
-                                data-testid={`download-attachment-${index}`}
+                {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (() => {
+                  // Deduplicazione degli allegati - raggruppa per nome file
+                  const uniqueAttachments = selectedMessage.attachments.reduce((acc: { filename: string; count: number }[], filename: string) => {
+                    const existing = acc.find(item => item.filename === filename);
+                    if (existing) {
+                      existing.count++;
+                    } else {
+                      acc.push({ filename, count: 1 });
+                    }
+                    return acc;
+                  }, []);
+
+                  return (
+                    <div className="flex-shrink-0 border-t bg-muted/30">
+                      <div className="p-6 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          <h4 className="font-medium">
+                            Allegati ({uniqueAttachments.length} unici, {selectedMessage.attachments.length} totali)
+                          </h4>
+                        </div>
+                        <div className="space-y-2">
+                          {uniqueAttachments.map((attachmentInfo, index) => {
+                            const fileInfo = getFileType(attachmentInfo.filename);
+                            const filename = attachmentInfo.filename;
+                            
+                            return (
+                              <div 
+                                key={index}
+                                className="flex items-center justify-between p-2 border rounded-lg hover:bg-muted/50 transition-colors"
                               >
-                                <FileText className="h-3 w-3 mr-1" />
-                                Scarica
-                              </Button>
-                            </div>
-                          );
-                        })}
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                  {/* Anteprima immagine o icona file */}
+                                  <div className="text-center flex-shrink-0">
+                                    {fileInfo.isImage ? (
+                                      <div className="w-12 h-12 border rounded overflow-hidden bg-gray-100">
+                                        <img 
+                                          src={`/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`}
+                                          alt={filename}
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            // Fallback all'icona se l'immagine non si carica
+                                            e.currentTarget.style.display = 'none';
+                                            e.currentTarget.nextElementSibling!.style.display = 'block';
+                                          }}
+                                        />
+                                        <div className="text-lg hidden">{fileInfo.icon}</div>
+                                      </div>
+                                    ) : (
+                                      <div className="text-lg">{fileInfo.icon}</div>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div 
+                                      className="text-sm font-medium truncate"
+                                      title={filename}
+                                    >
+                                      {filename}
+                                      {attachmentInfo.count > 1 && (
+                                        <Badge variant="secondary" className="ml-2 text-xs">
+                                          ×{attachmentInfo.count}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">{fileInfo.type}</div>
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = `/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(filename)}`;
+                                    link.download = filename;
+                                    link.click();
+                                  }}
+                                  data-testid={`download-attachment-${index}`}
+                                >
+                                  <FileText className="h-3 w-3 mr-1" />
+                                  Scarica
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             )}
           </CardContent>
