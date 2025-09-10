@@ -653,7 +653,15 @@ export class EmailForwardCleaner {
           console.log(`[EMAIL-CLEANER] ✗ Cut HTML too short, falling back to text body`);
         }
       } else {
-        console.log(`[EMAIL-CLEANER] ✗ No cut point found, falling back to text body`);
+        console.log(`[EMAIL-CLEANER] ✗ No cut point found, trying header removal fallback`);
+        // Fallback: rimuovi solo le intestazioni ma mantieni tutto il resto
+        const fallbackHtml = this.removeEmailHeaders(htmlBody);
+        if (fallbackHtml && fallbackHtml.length > 100) {
+          console.log(`[EMAIL-CLEANER] ✓ Using header removal fallback: ${fallbackHtml.length} chars`);
+          return fallbackHtml;
+        } else {
+          console.log(`[EMAIL-CLEANER] ✗ Header removal fallback too short, falling back to text body`);
+        }
       }
       
       // Se non riesce a tagliare l'HTML in modo efficace, usa il text body
@@ -702,9 +710,15 @@ export class EmailForwardCleaner {
       /<div[^>]*id[\s]*=[\s]*["']?divRplyFwdMsg["']?[^>]*>/i,
       /<div[^>]*class[\s]*=[\s]*["']?[^"']*BodyFragment[^"']*["']?[^>]*>/i,
       
-      // Headers HTML bold di Outlook
+      // Headers HTML bold di Outlook (inglese e italiano)
       /<b>\s*From:\s*<\/b>/i,
       /<b>\s*Da:\s*<\/b>/i,
+      /<b>\s*Sent:\s*<\/b>/i,
+      /<b>\s*Inviato:\s*<\/b>/i,
+      /<b>\s*To:\s*<\/b>/i,
+      /<b>\s*A:\s*<\/b>/i,
+      /<b>\s*Subject:\s*<\/b>/i,
+      /<b>\s*Oggetto:\s*<\/b>/i,
       
       // Headers di forwarded message tradizionali
       /[-]{8,}\s*Forwarded message\s*[-]{8,}/gi,
