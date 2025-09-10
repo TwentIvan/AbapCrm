@@ -200,10 +200,17 @@ export class EmailForwardCleaner {
     let cleanBody = body;
     const originalBody = body;
 
-    // Prima prova a estrarre il contenuto originale
-    const extractedContent = this.extractOriginalBody(body);
-    if (extractedContent && extractedContent !== body && extractedContent.length > 20) {
+    // Prima prova a estrarre il contenuto dopo i cluster di header
+    const extractedContent = this.extractContentAfterHeadersText(body);
+    if (extractedContent && extractedContent.length > 50) {
+      console.log(`[EMAIL-CLEANER] Using content after headers: ${extractedContent.length} chars`);
       return extractedContent;
+    }
+
+    // Fallback: prova a estrarre il contenuto originale con il metodo classico
+    const classicExtracted = this.extractOriginalBody(body);
+    if (classicExtracted && classicExtracted !== body && classicExtracted.length > 20) {
+      return classicExtracted;
     }
 
     // Pattern per identificare l'inizio della sezione di inoltro
@@ -248,6 +255,51 @@ export class EmailForwardCleaner {
     }
 
     return cleanBody;
+  }
+
+  // Estrae il contenuto che segue i cluster di header nel testo
+  private static extractContentAfterHeadersText(textBody: string): string | null {
+    console.log(`[EMAIL-CLEANER] Looking for content after header clusters in text (${textBody.length} chars)`);
+    
+    const lines = textBody.split('\n');
+    const headerKeywords = ['Da:', 'From:', 'Inviato:', 'Sent:', 'A:', 'To:', 'Cc:', 'Oggetto:', 'Subject:', 'Data:', 'Date:'];
+    
+    // Trova il cluster di header
+    let headerClusterEnd = -1;
+    let consecutiveHeaders = 0;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      if (headerKeywords.some(keyword => line.includes(keyword))) {
+        consecutiveHeaders++;
+        if (consecutiveHeaders >= 3) { // Cluster identificato con almeno 3 header
+          // Trova la fine del cluster
+          for (let j = i + 1; j < lines.length; j++) {
+            const nextLine = lines[j].trim();
+            if (nextLine.length > 0 && !headerKeywords.some(keyword => nextLine.includes(keyword))) {
+              headerClusterEnd = j;
+              break;
+            }
+          }
+          break;
+        }
+      } else if (line.length > 0) {
+        consecutiveHeaders = 0; // Reset se troviamo contenuto non-header
+      }
+    }
+    
+    if (headerClusterEnd > 0 && headerClusterEnd < lines.length - 1) {
+      // Estrae il contenuto dopo il cluster
+      const contentAfterHeaders = lines.slice(headerClusterEnd).join('\n').trim();
+      console.log(`[EMAIL-CLEANER] Found content after header cluster at line ${headerClusterEnd}: ${contentAfterHeaders.length} chars`);
+      
+      if (contentAfterHeaders.length > 50 && !this.isOnlySignature(contentAfterHeaders)) {
+        return contentAfterHeaders;
+      }
+    }
+    
+    return null;
   }
 
   private static cleanForwardedHtmlBody(htmlBody: string): string | null {
@@ -632,28 +684,19 @@ export class EmailForwardCleaner {
     return null;
   }
 
-  // Per le email inoltrate, cerca di tagliare solo la parte di inoltro
+  // Per le email inoltrate, estrae il contenuto DOPO i cluster di header
   private static preserveHtmlFormatting(htmlBody: string): string | null {
     try {
-      console.log(`[EMAIL-CLEANER] Attempting to cut forwarded content from HTML (${htmlBody.length} chars)`);
+      console.log(`[EMAIL-CLEANER] Attempting to extract forwarded content from HTML (${htmlBody.length} chars)`);
       
-      // Trova il punto dove inizia la sezione di inoltro
-      const cutPoint = this.findForwardCutPoint(htmlBody);
+      // Nuovo approccio: trova il contenuto dopo i cluster di header
+      const extractedContent = this.extractContentAfterHeaders(htmlBody);
       
-      if (cutPoint > 0) {
-        // Taglia l'HTML al punto trovato, preservando tutto PRIMA del contenuto inoltrato (thread originale)
-        const cleanedHtml = htmlBody.substring(0, cutPoint).trim();
-        console.log(`[EMAIL-CLEANER] ✓ Cut HTML at position ${cutPoint}, result: ${cleanedHtml.length} chars`);
-        
-        // Verifica che il risultato abbia contenuto utile
-        if (cleanedHtml.length > 50) {
-          // Il contenuto preservato non dovrebbe avere intestazioni di inoltro, ma puliamo eventuali residui
-          return cleanedHtml;
-        } else {
-          console.log(`[EMAIL-CLEANER] ✗ Cut HTML too short, falling back to text body`);
-        }
+      if (extractedContent && extractedContent.length > 100) {
+        console.log(`[EMAIL-CLEANER] ✓ Extracted content after headers: ${extractedContent.length} chars`);
+        return extractedContent;
       } else {
-        console.log(`[EMAIL-CLEANER] ✗ No cut point found, trying header removal fallback`);
+        console.log(`[EMAIL-CLEANER] ✗ No content found after headers, trying header removal fallback`);
         // Fallback: rimuovi solo le intestazioni ma mantieni tutto il resto
         const fallbackHtml = this.removeEmailHeaders(htmlBody);
         if (fallbackHtml && fallbackHtml.length > 100) {
@@ -664,7 +707,7 @@ export class EmailForwardCleaner {
         }
       }
       
-      // Se non riesce a tagliare l'HTML in modo efficace, usa il text body
+      // Se non riesce a estrarre contenuto utile, usa il text body
       return null;
 
     } catch (error) {
@@ -674,7 +717,64 @@ export class EmailForwardCleaner {
     return null;
   }
 
-  // Trova il punto ottimale dove tagliare l'HTML per rimuovere la sezione di inoltro
+  // Estrae il contenuto che segue i cluster di header nelle email inoltrate
+  private static extractContentAfterHeaders(htmlBody: string): string | null {
+    console.log(`[EMAIL-CLEANER] Looking for content after header clusters in HTML (${htmlBody.length} chars)`);
+    
+    // Pattern per identificare i cluster di header di Outlook
+    const headerPatterns = [
+      // Outlook divRplyFwdMsg - trova il contenuto dopo gli header
+      /<div[^>]*id[\s]*=[\s]*["']?divRplyFwdMsg["']?[^>]*>([\s\S]*?)<\/div>/i,
+      // Sequenza di header bold consecutivi seguiti da contenuto
+      /<b>\s*(?:Da|From|Inviato|Sent|A|To|Oggetto|Subject):\s*<\/b>[\s\S]*?(<div[^>]*>[\s\S]*?<\/div>)/i,
+      // Tabelle con header seguiti da contenuto
+      /<table[^>]*>[\s\S]*?(?:Da|From|Inviato|Sent|A|To|Oggetto|Subject)[\s\S]*?<\/table>\s*(<div[^>]*>[\s\S]*)/i
+    ];
+    
+    for (const pattern of headerPatterns) {
+      const match = htmlBody.match(pattern);
+      if (match && match[1]) {
+        const content = match[1].trim();
+        console.log(`[EMAIL-CLEANER] Found content after header pattern: ${content.length} chars`);
+        
+        // Verifica che il contenuto non sia solo header
+        if (content.length > 100 && !this.isOnlyHeaders(content)) {
+          return content;
+        }
+      }
+    }
+    
+    // Fallback: cerca contenuto dopo HR separators
+    const hrMatch = htmlBody.match(/<hr[^>]*>\s*([\s\S]*)/i);
+    if (hrMatch && hrMatch[1]) {
+      const content = hrMatch[1].trim();
+      if (content.length > 100) {
+        console.log(`[EMAIL-CLEANER] Found content after HR separator: ${content.length} chars`);
+        return content;
+      }
+    }
+    
+    return null;
+  }
+  
+  // Verifica se il contenuto contiene solo header
+  private static isOnlyHeaders(content: string): boolean {
+    const headerKeywords = ['Da:', 'From:', 'Inviato:', 'Sent:', 'A:', 'To:', 'Oggetto:', 'Subject:', 'Data:', 'Date:'];
+    const lines = content.split(/\n/).filter(line => line.trim().length > 0);
+    
+    if (lines.length < 3) return true; // Troppo corto
+    
+    let headerCount = 0;
+    for (const line of lines.slice(0, 10)) { // Controlla le prime 10 righe
+      if (headerKeywords.some(keyword => line.includes(keyword))) {
+        headerCount++;
+      }
+    }
+    
+    return headerCount > lines.length * 0.5; // Se più del 50% sono header
+  }
+
+  // Trova il punto ottimale dove tagliare l'HTML per rimuovere la sezione di inoltro (METODO DEPRECATED)
   private static findForwardCutPoint(htmlBody: string): number {
     console.log(`[EMAIL-CLEANER] DEBUG: Looking for cut point in HTML (${htmlBody.length} chars)`);
     
