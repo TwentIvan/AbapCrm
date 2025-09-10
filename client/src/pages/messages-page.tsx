@@ -58,6 +58,16 @@ export default function MessagesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"receivedAt" | "fromEmail" | "subject">("receivedAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Column widths state for resizable columns
+  const [columnWidths, setColumnWidths] = useState({
+    fromEmail: 40, // percentuale
+    subject: 40,
+    receivedAt: 20
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizingColumn, setResizingColumn] = useState<string | null>(null);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -314,6 +324,54 @@ export default function MessagesPage() {
       return sortOrder === 'desc' ? -comparison : comparison;
     });
 
+  // Column resize handlers
+  const handleMouseDown = (e: React.MouseEvent, column: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    setResizingColumn(column);
+    
+    const startX = e.clientX;
+    const tableElement = e.currentTarget.closest('table');
+    if (!tableElement) return;
+    
+    const tableRect = tableElement.getBoundingClientRect();
+    const tableWidth = tableRect.width;
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaPercent = (deltaX / tableWidth) * 100;
+      
+      setColumnWidths(prev => {
+        const newWidths = { ...prev };
+        
+        if (column === 'fromEmail') {
+          const newFromEmailWidth = Math.max(15, Math.min(60, prev.fromEmail + deltaPercent));
+          const newSubjectWidth = Math.max(15, Math.min(60, prev.subject - deltaPercent));
+          newWidths.fromEmail = newFromEmailWidth;
+          newWidths.subject = newSubjectWidth;
+        } else if (column === 'subject') {
+          const newSubjectWidth = Math.max(15, Math.min(60, prev.subject + deltaPercent));
+          const newReceivedAtWidth = Math.max(15, Math.min(40, prev.receivedAt - deltaPercent));
+          newWidths.subject = newSubjectWidth;
+          newWidths.receivedAt = newReceivedAtWidth;
+        }
+        
+        return newWidths;
+      });
+    };
+    
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      setResizingColumn(null);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   const handleSort = (column: typeof sortBy) => {
     if (sortBy === column) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -420,25 +478,40 @@ export default function MessagesPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 w-2/5"
+                          className="cursor-pointer hover:bg-muted/50 relative"
+                          style={{ width: `${columnWidths.fromEmail}%` }}
                           onClick={() => handleSort('fromEmail')}
                         >
                           <div className="flex items-center space-x-2">
                             <span>Mittente</span>
                             {getSortIcon('fromEmail')}
                           </div>
+                          {/* Resize handle */}
+                          <div
+                            className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-border hover:bg-primary/50 transition-colors"
+                            onMouseDown={(e) => handleMouseDown(e, 'fromEmail')}
+                            style={{ cursor: isResizing && resizingColumn === 'fromEmail' ? 'col-resize' : 'col-resize' }}
+                          />
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 w-2/5"
+                          className="cursor-pointer hover:bg-muted/50 relative"
+                          style={{ width: `${columnWidths.subject}%` }}
                           onClick={() => handleSort('subject')}
                         >
                           <div className="flex items-center space-x-2">
                             <span>Oggetto</span>
                             {getSortIcon('subject')}
                           </div>
+                          {/* Resize handle */}
+                          <div
+                            className="absolute right-0 top-0 w-1 h-full cursor-col-resize bg-border hover:bg-primary/50 transition-colors"
+                            onMouseDown={(e) => handleMouseDown(e, 'subject')}
+                            style={{ cursor: isResizing && resizingColumn === 'subject' ? 'col-resize' : 'col-resize' }}
+                          />
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 w-1/5"
+                          className="cursor-pointer hover:bg-muted/50"
+                          style={{ width: `${columnWidths.receivedAt}%` }}
                           onClick={() => handleSort('receivedAt')}
                         >
                           <div className="flex items-center space-x-2">
@@ -475,7 +548,7 @@ export default function MessagesPage() {
                                 onClick={() => handleSelectMessage(message)}
                               >
                                 {/* Colonna Mittente */}
-                                <TableCell className="w-2/5">
+                                <TableCell style={{ width: `${columnWidths.fromEmail}%` }}>
                                   <div className="space-y-1">
                                     <div className="flex items-center gap-2">
                                       {getStatusIcon(message.status)}
@@ -502,7 +575,7 @@ export default function MessagesPage() {
                                 </TableCell>
                                 
                                 {/* Colonna Oggetto */}
-                                <TableCell className="w-2/5">
+                                <TableCell style={{ width: `${columnWidths.subject}%` }}>
                                   <div className="space-y-1">
                                     <p className={`text-sm truncate ${
                                       message.status === 'unread' ? 'font-bold text-foreground' : 'font-normal text-foreground'
@@ -516,7 +589,7 @@ export default function MessagesPage() {
                                 </TableCell>
                                 
                                 {/* Colonna Data/Ora */}
-                                <TableCell className="w-1/5 text-xs text-muted-foreground">
+                                <TableCell className="text-xs text-muted-foreground" style={{ width: `${columnWidths.receivedAt}%` }}>
                                   <div className="space-y-1">
                                     <div>{format(new Date(message.receivedAt), 'dd MMM yyyy')}</div>
                                     <div>{format(new Date(message.receivedAt), 'HH:mm')}</div>
