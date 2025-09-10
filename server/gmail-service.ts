@@ -76,7 +76,7 @@ export class GmailService {
   }
 
   /**
-   * Invia email tramite Gmail con possibilità di specificare il mittente
+   * Invia email tramite Gmail usando Reply-To per evitare problemi DMARC
    */
   async sendEmail(options: GmailSendOptions): Promise<boolean> {
     if (!this.transporter || !this.senderConfig) {
@@ -85,25 +85,24 @@ export class GmailService {
     }
 
     try {
+      // DMARC-friendly approach: sempre Gmail come From, account desiderato come Reply-To
       const mailOptions = {
-        from: options.from || this.senderConfig.email, // Usa il from specificato o account principale
+        from: this.senderConfig.email, // Sempre account Gmail autenticato per evitare DMARC
         to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
         subject: options.subject,
         text: options.text,
         html: options.html,
-        replyTo: options.replyTo || options.from,
+        replyTo: options.from || options.replyTo || this.senderConfig.email, // L'indirizzo desiderato come Reply-To
         attachments: options.attachments,
-        // Header per Gmail "Send as"
-        headers: options.from && options.from !== this.senderConfig.email ? {
-          'X-Google-Send-As': options.from
-        } : undefined
+        // Nessun header X-Google-Send-As per evitare confusione DMARC
       };
 
       const result = await this.transporter.sendMail(mailOptions);
       
-      console.log('[GMAIL-SERVICE] Email sent successfully:', {
+      console.log('[GMAIL-SERVICE] Email sent successfully (DMARC-friendly):', {
         messageId: result.messageId,
         from: mailOptions.from,
+        replyTo: mailOptions.replyTo,
         to: mailOptions.to,
         subject: mailOptions.subject
       });
