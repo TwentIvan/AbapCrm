@@ -1905,6 +1905,39 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         return res.status(404).json({ error: "Email configuration not found" });
       }
       
+      // Se questa configurazione è attiva e ha password, riavvia il servizio email
+      if (updatedConfig.isActive && updatedConfig.password && updatedConfig.password.trim() !== '' && !updatedConfig.isForwarder) {
+        console.log(`[EMAIL] Restarting service for updated config: ${updatedConfig.email}`);
+        
+        // Disconnetti il servizio esistente
+        const existingService = getEmailService();
+        if (existingService) {
+          existingService.disconnect();
+        }
+        
+        // Riavvia con le nuove credenziali
+        const firstFolder = updatedConfig.folders && updatedConfig.folders.length > 0 
+          ? updatedConfig.folders[0] 
+          : "INBOX";
+        
+        const imapConfig = {
+          user: updatedConfig.email,
+          password: updatedConfig.password,
+          host: updatedConfig.host,
+          port: updatedConfig.port,
+          tls: updatedConfig.tls,
+          folder: firstFolder,
+          userId: req.user!.id
+        };
+        
+        try {
+          initializeEmailService(imapConfig);
+          console.log(`[EMAIL] ✓ Service restarted for ${updatedConfig.email}`);
+        } catch (error) {
+          console.error(`[EMAIL] ✗ Failed to restart service for ${updatedConfig.email}:`, error);
+        }
+      }
+      
       res.json(updatedConfig);
     } catch (error) {
       console.error("Update email config error:", error);
