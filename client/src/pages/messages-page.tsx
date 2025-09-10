@@ -38,6 +38,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Message, Project, Task, Partner } from "@shared/schema";
 import { format } from "date-fns";
 import MessageForm from "@/components/forms/message-form";
+import { useAuth } from "@/hooks/use-auth";
 
 interface AISuggestion {
   type: 'project' | 'task' | 'partner';
@@ -71,6 +72,7 @@ export default function MessagesPage() {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
