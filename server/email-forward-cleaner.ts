@@ -1273,13 +1273,23 @@ export class EmailForwardCleaner {
   } {
     console.log(`[EMAIL-CLEANER] Starting bounded split analysis for text (${textBody.length} chars)`);
     
-    const lines = textBody.split('\n');
+    // Normalizza il testo: sostituisce NBSP con spazi, rimuove quote leader per header detection
+    const normalizedBody = textBody.replace(/\u00A0/g, ' ');
+    const lines = normalizedBody.split('\n');
     
     // Regex più tollerante per identificare header - include spazi e caratteri di quotazione
     const headerRegex = /^[>\s\u00A0]*?(Da|From|Inviato|Sent|A|To|Cc|Oggetto|Subject|Data|Date)\s*:\s*/i;
+    // Single-line markers - solo per email lunghe >1200 chars o con FW/Fwd nel subject
+    const singleLineMarkers = [
+      /Il giorno .* ha scritto:/i,
+      /On .* wrote:/i,
+      /Le .* a écrit:/i,
+      /Am .* schrieb:/i,
+      /In data .* ha scritto:/i
+    ];
+    
     const quotedMarkers = [
       /^[-_]{5,}.*(Original|Forwarded|Messaggio|Message).*/i,
-      /^(Il giorno|In data|On .* wrote:|Le .* a écrit|Am .* schrieb)/i,
       /^>{1,}/,  // Quoted text markers
       /^---------- Forwarded message ----------/i,
       /^---------- Messaggio inoltrato ----------/i
@@ -1289,44 +1299,60 @@ export class EmailForwardCleaner {
     let firstHeaderClusterEnd = -1;
     let headerCount = 0;
 
-    // Step 1: Trova header cluster con rolling window di 6 righe (≥2 header)
-    for (let i = 0; i < Math.min(lines.length, 60); i++) { // Prime 60 righe
-      const line = lines[i].trim();
-      
-      if (line.length === 0) continue;
-
-      const isHeader = headerRegex.test(line);
-      const isQuotedMarker = quotedMarkers.some(pattern => pattern.test(line));
-      
-      if (isHeader || isQuotedMarker) {
-        if (firstHeaderClusterStart === -1) {
+    // Step 1: Prima cerca single-line markers per email lunghe
+    if (textBody.length >= 1200) {
+      for (let i = 0; i < Math.min(lines.length, 40); i++) {
+        const line = lines[i].trim();
+        if (singleLineMarkers.some(marker => marker.test(line))) {
+          console.log(`[EMAIL-CLEANER] Found single-line marker at line ${i}: "${line.substring(0, 50)}..."`);
           firstHeaderClusterStart = i;
-        }
-        headerCount++;
-        
-        // Controlla se abbiamo almeno 2 header in una finestra rolling di 6 righe
-        if (headerCount >= 2 && i - firstHeaderClusterStart <= 6) {
-          // Trova la fine del cluster
-          for (let j = i + 1; j < Math.min(lines.length, i + 8); j++) {
-            const nextLine = lines[j].trim();
-            if (nextLine.length === 0) continue;
-            
-            const stillHeader = headerRegex.test(nextLine);
-            const stillMarker = quotedMarkers.some(pattern => pattern.test(nextLine));
-            
-            if (!stillHeader && !stillMarker && nextLine.length > 5) {
-              firstHeaderClusterEnd = j;
-              break;
-            }
-          }
-          if (firstHeaderClusterEnd === -1) firstHeaderClusterEnd = i + 1;
+          firstHeaderClusterEnd = i + 1;
+          headerCount = 1;
           break;
         }
-      } else if (line.length > 10) {
-        // Reset rolling window se troppo lontano dal primo header
-        if (firstHeaderClusterStart !== -1 && i - firstHeaderClusterStart > 6) {
-          firstHeaderClusterStart = -1;
-          headerCount = 0;
+      }
+    }
+
+    // Step 2: Se non trovato, cerca header cluster con rolling window di 6 righe (≥2 header)
+    if (firstHeaderClusterStart === -1) {
+      for (let i = 0; i < Math.min(lines.length, 60); i++) { // Prime 60 righe
+        const line = lines[i].trim();
+        
+        if (line.length === 0) continue;
+
+        const isHeader = headerRegex.test(line);
+        const isQuotedMarker = quotedMarkers.some(pattern => pattern.test(line));
+        
+        if (isHeader || isQuotedMarker) {
+          if (firstHeaderClusterStart === -1) {
+            firstHeaderClusterStart = i;
+          }
+          headerCount++;
+          
+          // Controlla se abbiamo almeno 2 header in una finestra rolling di 6 righe
+          if (headerCount >= 2 && i - firstHeaderClusterStart <= 6) {
+            // Trova la fine del cluster
+            for (let j = i + 1; j < Math.min(lines.length, i + 8); j++) {
+              const nextLine = lines[j].trim();
+              if (nextLine.length === 0) continue;
+              
+              const stillHeader = headerRegex.test(nextLine);
+              const stillMarker = quotedMarkers.some(pattern => pattern.test(nextLine));
+              
+              if (!stillHeader && !stillMarker && nextLine.length > 5) {
+                firstHeaderClusterEnd = j;
+                break;
+              }
+            }
+            if (firstHeaderClusterEnd === -1) firstHeaderClusterEnd = i + 1;
+            break;
+          }
+        } else if (line.length > 10) {
+          // Reset rolling window se troppo lontano dal primo header
+          if (firstHeaderClusterStart !== -1 && i - firstHeaderClusterStart > 6) {
+            firstHeaderClusterStart = -1;
+            headerCount = 0;
+          }
         }
       }
     }
