@@ -735,8 +735,8 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Message Body - occupa tutto lo spazio rimanente */}
-                <div className="flex-1 min-h-0 border-t">
-                  <div className="h-full p-6 overflow-auto">
+                <div className="flex-1 min-h-0 border-t overflow-hidden">
+                  <div className="h-full p-6 overflow-y-auto">
                     {selectedMessage.htmlBody ? (
                       <div 
                         className="prose prose-sm max-w-none"
