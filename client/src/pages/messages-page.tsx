@@ -670,9 +670,9 @@ export default function MessagesPage() {
                 </div>
               </div>
             ) : (
-              <>
+              <div className="flex flex-col h-full">
                 {/* Header con dati strutturati */}
-                <div className="p-6 pb-0 space-y-4">
+                <div className="flex-shrink-0 p-6 pb-0 space-y-4">
                   <div className="flex items-start justify-between">
                     <div className="space-y-2">
                       <h3 className="text-lg font-semibold">
@@ -736,7 +736,7 @@ export default function MessagesPage() {
 
                 {/* Message Body - occupa tutto lo spazio rimanente */}
                 <div className="flex-1 min-h-0 border-t">
-                  <ScrollArea className="h-full">
+                  <ScrollArea className="h-full w-full">
                     <div className="p-6">
                       {selectedMessage.htmlBody ? (
                         <div 
@@ -754,7 +754,7 @@ export default function MessagesPage() {
 
                 {/* Attachments Section */}
                 {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (
-                  <div className="border-t bg-muted/30">
+                  <div className="flex-shrink-0 border-t bg-muted/30">
                     <div className="p-6 space-y-4">
                       <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4" />
@@ -805,7 +805,7 @@ export default function MessagesPage() {
                     </div>
                   </div>
                 )}
-              </>
+              </div>
             )}
           </CardContent>
         </Card>
