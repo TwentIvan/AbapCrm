@@ -325,63 +325,46 @@ export default function MessagesPage() {
     });
 
   // Column resize handlers
-  const handleMouseDown = (e: React.MouseEvent, column: string) => {
+  const handleColumnResize = (e: React.MouseEvent, columnIndex: number) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsResizing(true);
-    setResizingColumn(column);
     
     const startX = e.clientX;
-    const tableElement = e.currentTarget.closest('.border');
-    if (!tableElement) return;
+    const startWidths = [...Object.values(columnWidths)]; // [40, 40, 20]
     
-    const tableRect = tableElement.getBoundingClientRect();
-    const tableWidth = tableRect.width;
-    
-    // Salviamo le larghezze iniziali
-    const startWidths = { ...columnWidths };
-    
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const currentX = moveEvent.clientX;
-      const deltaX = currentX - startX;
-      const deltaPercent = (deltaX / tableWidth) * 100;
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const containerWidth = 800; // Approssimativamente
+      const deltaPercent = (deltaX / containerWidth) * 100;
       
-      setColumnWidths(prev => {
-        const newWidths = { ...prev };
-        
-        if (column === 'fromEmail') {
-          // Ridimensiona fromEmail e aggiusta subject di conseguenza
-          const newFromEmailWidth = Math.max(20, Math.min(70, startWidths.fromEmail + deltaPercent));
-          const adjustment = newFromEmailWidth - startWidths.fromEmail;
-          const newSubjectWidth = Math.max(15, Math.min(70, startWidths.subject - adjustment));
-          
-          newWidths.fromEmail = newFromEmailWidth;
-          newWidths.subject = newSubjectWidth;
-          // receivedAt rimane invariato
-        } else if (column === 'subject') {
-          // Ridimensiona subject e aggiusta receivedAt di conseguenza
-          const newSubjectWidth = Math.max(20, Math.min(70, startWidths.subject + deltaPercent));
-          const adjustment = newSubjectWidth - startWidths.subject;
-          const newReceivedAtWidth = Math.max(10, Math.min(40, startWidths.receivedAt - adjustment));
-          
-          newWidths.subject = newSubjectWidth;
-          newWidths.receivedAt = newReceivedAtWidth;
-          // fromEmail rimane invariato
-        }
-        
-        return newWidths;
+      const newWidths = [...startWidths];
+      
+      if (columnIndex === 0) { // fromEmail
+        newWidths[0] = Math.max(20, Math.min(70, startWidths[0] + deltaPercent));
+        newWidths[1] = Math.max(20, Math.min(70, startWidths[1] - deltaPercent));
+      } else if (columnIndex === 1) { // subject
+        newWidths[1] = Math.max(20, Math.min(70, startWidths[1] + deltaPercent));
+        newWidths[2] = Math.max(10, Math.min(40, startWidths[2] - deltaPercent));
+      }
+      
+      setColumnWidths({
+        fromEmail: newWidths[0],
+        subject: newWidths[1],
+        receivedAt: newWidths[2]
       });
     };
     
-    const handleMouseUp = () => {
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
       setIsResizing(false);
       setResizingColumn(null);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
     };
     
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    setIsResizing(true);
+    setResizingColumn(columnIndex === 0 ? 'fromEmail' : 'subject');
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   };
 
   const handleSort = (column: typeof sortBy) => {
@@ -500,8 +483,8 @@ export default function MessagesPage() {
                           </div>
                           {/* Resize handle */}
                           <div
-                            className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-transparent hover:bg-primary/30 transition-colors border-r-2 border-transparent hover:border-primary/50"
-                            onMouseDown={(e) => handleMouseDown(e, 'fromEmail')}
+                            className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-border hover:bg-primary transition-colors z-10"
+                            onMouseDown={(e) => handleColumnResize(e, 0)}
                             title="Trascina per ridimensionare"
                           />
                         </TableHead>
@@ -516,8 +499,8 @@ export default function MessagesPage() {
                           </div>
                           {/* Resize handle */}
                           <div
-                            className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-transparent hover:bg-primary/30 transition-colors border-r-2 border-transparent hover:border-primary/50"
-                            onMouseDown={(e) => handleMouseDown(e, 'subject')}
+                            className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-border hover:bg-primary transition-colors z-10"
+                            onMouseDown={(e) => handleColumnResize(e, 1)}
                             title="Trascina per ridimensionare"
                           />
                         </TableHead>
