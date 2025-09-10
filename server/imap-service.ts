@@ -183,6 +183,25 @@ export class ImapEmailService {
         return addressObj;
       };
 
+      // Helper to get all email addresses from header field
+      const getAllAddresses = (addressObj: any): string[] => {
+        if (!addressObj) return [];
+        
+        let addresses = [];
+        if (Array.isArray(addressObj)) {
+          addresses = addressObj;
+        } else if (addressObj.value && Array.isArray(addressObj.value)) {
+          addresses = addressObj.value;
+        } else {
+          addresses = [addressObj];
+        }
+        
+        return addresses
+          .filter((addr: any) => addr && addr.address)
+          .map((addr: any) => addr.address)
+          .filter((email: any) => email && email.trim() !== '');
+      };
+
       const fromAddr = getFirstAddress(parsed.from);
       const toAddr = getFirstAddress(parsed.to);
 
@@ -219,9 +238,17 @@ export class ImapEmailService {
         subject: cleanedEmail.originalSubject || null,
         body: cleanedEmail.originalBody || null,
         htmlBody: cleanedEmail.originalHtmlBody || cleanedEmail.preservedHtmlFormatting || null,
-        originalToEmails: cleanedEmail.originalToEmails || [],
-        originalCcEmails: cleanedEmail.originalCcEmails || [],
-        originalBccEmails: cleanedEmail.originalBccEmails || [],
+        // Per email inoltrate usa i destinatari estratti dal contenuto,
+        // per email non inoltrate usa gli header originali della mail
+        originalToEmails: cleanedEmail.isForwarded 
+          ? (cleanedEmail.originalToEmails || [])
+          : getAllAddresses(parsed.to),
+        originalCcEmails: cleanedEmail.isForwarded 
+          ? (cleanedEmail.originalCcEmails || [])
+          : getAllAddresses(parsed.cc),
+        originalBccEmails: cleanedEmail.isForwarded 
+          ? (cleanedEmail.originalBccEmails || [])
+          : getAllAddresses(parsed.bcc),
         attachments: attachments,
         receivedAt: parsed.date || new Date(),
         userId,
