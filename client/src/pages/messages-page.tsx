@@ -620,8 +620,66 @@ export default function MessagesPage() {
             ) : (
               <div className="flex flex-col h-full">
                 {/* Header dati strutturati */}
-                <div className="flex-shrink-0 p-6 pb-4">
-                  <div className="border-2 rounded-lg p-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                <div className="flex-shrink-0 p-6 pb-4 space-y-4">
+                  {/* Destinatari */}
+                  <div className="border rounded-lg p-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                    <div className="space-y-3">
+                      {/* Destinatari TO */}
+                      {(selectedMessage.originalToEmails && selectedMessage.originalToEmails.length > 0) && (
+                        <div>
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">Destinatari</span>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedMessage.originalToEmails.map((email, index) => {
+                              const isCurrentUser = email === user?.email;
+                              return (
+                                <Badge 
+                                  key={index} 
+                                  variant="outline" 
+                                  className={`text-sm ${
+                                    isCurrentUser 
+                                      ? 'bg-green-50 text-green-700 border-green-200' 
+                                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                                  }`}
+                                >
+                                  <User className="h-3 w-3 mr-1" />
+                                  {isCurrentUser ? 'Tu' : email}
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Destinatari CC */}
+                      {(selectedMessage.originalCcEmails && selectedMessage.originalCcEmails.length > 0) && (
+                        <div>
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">In Copia</span>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedMessage.originalCcEmails.map((email, index) => {
+                              const isCurrentUser = email === user?.email;
+                              return (
+                                <Badge 
+                                  key={index} 
+                                  variant="outline" 
+                                  className={`text-sm ${
+                                    isCurrentUser 
+                                      ? 'bg-green-50 text-green-700 border-green-200' 
+                                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                                  }`}
+                                >
+                                  <User className="h-3 w-3 mr-1" />
+                                  {isCurrentUser ? 'Tu' : email}
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Collegamenti AI */}
+                  <div className="border rounded-lg p-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
                     <div className="flex flex-wrap gap-2">
                       {(() => {
                         const linkedObject = getLinkedObjectName(selectedMessage);
