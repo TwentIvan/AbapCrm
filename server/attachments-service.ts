@@ -34,7 +34,20 @@ export class AttachmentsService {
   static async getAttachment(messageId: string, filename: string): Promise<{ data: Buffer, originalName: string } | null> {
     await this.initialize();
     
-    const uniqueFilename = `${messageId}_${filename}`;
+    // Se il filename include già un messageId (contiene < e >), usalo direttamente
+    let uniqueFilename;
+    let originalName;
+    
+    if (filename.includes('<') && filename.includes('>')) {
+      // Il filename è già completo con messageId originale
+      uniqueFilename = filename;
+      originalName = filename.replace(/^[^_]+_/, ''); // Rimuove il prefixo messageId_
+    } else {
+      // Il filename è solo il nome, aggiungi il messageId
+      uniqueFilename = `${messageId}_${filename}`;
+      originalName = filename;
+    }
+    
     const filePath = path.join(this.attachmentsDir, uniqueFilename);
     
     try {
@@ -44,7 +57,6 @@ export class AttachmentsService {
       }
       
       const data = fs.readFileSync(filePath);
-      const originalName = filename.replace(/^[^_]+_/, ''); // Rimuove il prefixo messageId_
       
       return { data, originalName };
     } catch (error) {
