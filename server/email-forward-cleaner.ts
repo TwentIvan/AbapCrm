@@ -1590,13 +1590,16 @@ export class EmailForwardCleaner {
     const mainHtml = htmlBody.substring(containerEnd, extractEndIndex).trim();
     const remainderHtml = nextBoundaryIndex > 0 ? htmlBody.substring(nextBoundaryIndex).trim() : null;
 
-    // Guard abbassato: accetta main se >100 chars e non solo signature
+    // Guard con ratio check: accetta postHtml solo se rappresenta ≥85% del contenuto originale
     const mainTextContent = mainHtml.replace(/<[^>]+>/g, ' ').trim();
+    const originalTextContent = htmlBody.replace(/<[^>]+>/g, ' ').trim();
+    const postHtmlRatio = mainTextContent.length / Math.max(originalTextContent.length, 1);
     
     if (mainTextContent.length > 100 && 
-        !this.isOnlySignatureHtml(mainHtml)) {
+        !this.isOnlySignatureHtml(mainHtml) &&
+        postHtmlRatio >= 0.85) {
       
-      console.log(`[EMAIL-CLEANER] Extracted HTML after container: ${mainHtml.length} chars main, ${remainderHtml?.length || 0} chars remainder`);
+      console.log(`[EMAIL-CLEANER] Extracted HTML after container: ${mainHtml.length} chars main (ratio: ${postHtmlRatio.toFixed(2)}), ${remainderHtml?.length || 0} chars remainder`);
       
       return {
         mainHtml: mainHtml,
@@ -1605,7 +1608,7 @@ export class EmailForwardCleaner {
         method: 'after-container'
       };
     } else {
-      console.log(`[EMAIL-CLEANER] HTML after-container extraction rejected: main too short (${mainTextContent.length} chars) or signature-only`);
+      console.log(`[EMAIL-CLEANER] HTML after-container extraction rejected: main too short (${mainTextContent.length} chars), ratio too low (${postHtmlRatio.toFixed(2)}), or signature-only`);
     }
 
     console.log(`[EMAIL-CLEANER] No reliable HTML split found`);
