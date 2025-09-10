@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -389,10 +390,11 @@ export default function MessagesPage() {
             )}
           </div>
         </div>
-        <main className="p-6 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Message List */}
-            <Card className="lg:col-span-1">
+        <main className="p-6">
+          <PanelGroup direction="horizontal" className="h-[calc(100vh-120px)]">
+            <Panel defaultSize={40} minSize={25} maxSize={60}>
+              {/* Message List */}
+              <Card className="h-full flex flex-col">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
@@ -529,10 +531,14 @@ export default function MessagesPage() {
                   </ScrollArea>
                 </div>
               </CardContent>
-            </Card>
+              </Card>
+            </Panel>
 
-            {/* Message Detail */}
-            <Card className="lg:col-span-2">
+            <PanelResizeHandle className="w-2 bg-border hover:bg-muted transition-colors" />
+
+            <Panel defaultSize={60} minSize={40} maxSize={75}>
+              {/* Message Detail */}
+              <Card className="h-full flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -811,8 +817,9 @@ export default function MessagesPage() {
             )}
           </CardContent>
         </Card>
-      </div>
-    </main>
+            </Panel>
+          </PanelGroup>
+        </main>
   </div>
 
   {/* Create Message Dialog */}
