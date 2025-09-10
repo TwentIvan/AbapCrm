@@ -467,7 +467,7 @@ export default function MessagesPage() {
                   />
                 </div>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-0 flex flex-col flex-1 min-h-0">
                 <div className="border rounded-md">
                   <Table>
                     <TableHeader>
@@ -517,7 +517,7 @@ export default function MessagesPage() {
                       </TableRow>
                     </TableHeader>
                   </Table>
-                  <ScrollArea className="h-[500px]">
+                  <ScrollArea className="flex-1 min-h-0">
                     <Table>
                       <TableBody>
                         {filteredAndSortedMessages.length === 0 ? (
