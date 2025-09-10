@@ -1758,13 +1758,26 @@ export class DatabaseStorage implements IStorage {
 
   // Messages with pagination
   async getMessages(userId: string, limit: number = 50, offset: number = 0): Promise<Message[]> {
-    return await db
+    const result = await db
       .select()
       .from(messages)
       .where(eq(messages.userId, userId))
       .orderBy(desc(messages.receivedAt))
       .limit(limit)
       .offset(offset);
+    
+    // Debug: vediamo come Drizzle deserializza gli array
+    if (result.length > 0) {
+      console.log('DEBUG: First message arrays:', {
+        subject: result[0].subject,
+        originalToEmails: result[0].originalToEmails,
+        originalToEmailsType: typeof result[0].originalToEmails,
+        originalCcEmails: result[0].originalCcEmails,
+        originalCcEmailsType: typeof result[0].originalCcEmails
+      });
+    }
+    
+    return result;
   }
 
   async getMessage(id: string, userId: string): Promise<Message | undefined> {
