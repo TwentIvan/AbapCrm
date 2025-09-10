@@ -736,7 +736,7 @@ export default function MessagesPage() {
 
                 {/* Message Body - occupa tutto lo spazio rimanente */}
                 <div className="border-t">
-                  <div className="h-96 p-6 overflow-y-auto border bg-gray-50">
+                  <div className="h-[48rem] p-6 overflow-y-auto border bg-gray-50">
                     {selectedMessage.htmlBody ? (
                       <div 
                         className="prose prose-sm max-w-none"
