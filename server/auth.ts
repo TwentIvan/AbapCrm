@@ -47,8 +47,14 @@ export async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
+  // SESSION_SECRET dev fallback to prevent boot crashes
+  const SESSION_SECRET = process.env.SESSION_SECRET || (process.env.NODE_ENV !== 'production' ? 'dev_only_secret' : undefined);
+  if (!SESSION_SECRET) {
+    throw new Error('SESSION_SECRET is required in production');
+  }
+  
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET!,
+    secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
@@ -101,14 +107,15 @@ export function setupAuth(app: Express) {
     }),
   );
 
-  // Google OAuth Strategy
-  passport.use(
-    new GoogleStrategy(
-      {
-        clientID: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        callbackURL: process.env.GOOGLE_CALLBACK_URL || "/api/auth/google/callback",
-      },
+  // Google OAuth Strategy - only if envs are present
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    passport.use(
+      new GoogleStrategy(
+        {
+          clientID: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          callbackURL: process.env.GOOGLE_CALLBACK_URL || "/api/auth/google/callback",
+        },
       async (accessToken, refreshToken, profile, done) => {
         try {
           // Check if user already exists with this Google ID
@@ -144,7 +151,10 @@ export function setupAuth(app: Express) {
         }
       }
     )
-  );
+    );
+  } else {
+    console.warn('[AUTH] Google OAuth disabled: environment variables not set');
+  }
 
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: string, done) => {
