@@ -22,7 +22,7 @@ export class ThreadingService {
    * Extract threading information from email headers
    */
   static extractThreadingInfo(headers: EmailHeaders): ThreadingInfo {
-    const messageId = headers.messageId || null;
+    const messageId = this.normalizeMsgId(headers.messageId);
     const inReplyTo = this.parseReplyTo(headers.inReplyTo);
     const references = this.parseReferences(headers.references);
     
@@ -41,6 +41,17 @@ export class ThreadingService {
       inReplyTo,
       references
     };
+  }
+
+  /**
+   * Normalize Message-ID by removing angle brackets and trimming
+   */
+  private static normalizeMsgId(messageId?: string): string | null {
+    if (!messageId) return null;
+    
+    // Remove angle brackets if present and trim
+    const match = messageId.match(/^<(.+)>$/);
+    return match ? match[1].trim() : messageId.trim();
   }
   
   /**
