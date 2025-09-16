@@ -25,14 +25,22 @@ const registerSchema = z.object({
   lastName: z.string().min(1, "Cognome richiesto"),
 });
 
+const resetSchema = z.object({
+  email: z.string().email("Inserisci un'email valida"),
+});
+
 type LoginForm = z.infer<typeof loginSchema>;
 type RegisterForm = z.infer<typeof registerSchema>;
+type ResetForm = z.infer<typeof resetSchema>;
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, loginMutation, registerMutation, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("login");
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetPending, setResetPending] = useState(false);
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURN
   const loginForm = useForm<LoginForm>({
@@ -50,6 +58,13 @@ export default function AuthPage() {
       password: "",
       firstName: "",
       lastName: "",
+    },
+  });
+
+  const resetForm = useForm<ResetForm>({
+    resolver: zodResolver(resetSchema),
+    defaultValues: {
+      email: "",
     },
   });
 
@@ -83,6 +98,33 @@ export default function AuthPage() {
         }
       },
     });
+  };
+
+  const onReset = async (data: ResetForm) => {
+    setResetError("");
+    setResetSuccess(false);
+    setResetPending(true);
+    
+    try {
+      const response = await fetch("/api/password-reset/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      
+      // SECURITY FIX: Always show success for 2xx and 4xx responses to prevent email enumeration
+      // Only show error for network issues (5xx) to avoid leaking email existence information
+      if (response.ok || response.status < 500) {
+        setResetSuccess(true);
+        resetForm.reset();
+      } else {
+        setResetError("Errore di connessione. Riprova più tardi.");
+      }
+    } catch (error) {
+      setResetError("Errore di connessione. Riprova più tardi.");
+    } finally {
+      setResetPending(false);
+    }
   };
 
   return (
@@ -142,12 +184,15 @@ export default function AuthPage() {
                   </div>
                   <div>
                     <CardTitle className="text-2xl">
-                      {activeTab === "login" ? "Accedi" : "Registrati"}
+                      {activeTab === "login" ? "Accedi" : 
+                       activeTab === "register" ? "Registrati" : "Reset Password"}
                     </CardTitle>
                     <CardDescription className="text-gray-500 dark:text-gray-400">
                       {activeTab === "login" 
                         ? "Accedi al tuo account" 
-                        : "Crea il tuo account freelancer"}
+                        : activeTab === "register"
+                        ? "Crea il tuo account freelancer"
+                        : "Inserisci la tua email per ricevere il link di reset"}
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -165,13 +210,18 @@ export default function AuthPage() {
                   <Tabs value={activeTab} onValueChange={(value) => {
                     setActiveTab(value);
                     setRegistrationSuccess(false);
+                    setResetSuccess(false);
+                    setResetError("");
                   }} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 h-11">
+                    <TabsList className="grid w-full grid-cols-3 h-11">
                       <TabsTrigger value="login" data-testid="tab-login" className="font-medium">
                         Accedi
                       </TabsTrigger>
                       <TabsTrigger value="register" data-testid="tab-register" className="font-medium">
                         Registrati
+                      </TabsTrigger>
+                      <TabsTrigger value="reset" data-testid="tab-reset" className="font-medium">
+                        Reset
                       </TabsTrigger>
                     </TabsList>
                     
@@ -398,6 +448,81 @@ export default function AuthPage() {
                         Registrati con Google
                       </Button>
                       */}
+                    </TabsContent>
+                    
+                    <TabsContent value="reset" className="space-y-4">
+                      {resetSuccess && (
+                        <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <AlertDescription className="text-green-700 dark:text-green-300">
+                            Se l'email esiste nel sistema, riceverai un link per il reset della password.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      {resetError && (
+                        <Alert className="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
+                          <AlertCircle className="h-4 w-4 text-red-600" />
+                          <AlertDescription className="text-red-700 dark:text-red-300">
+                            {resetError}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      <Form {...resetForm}>
+                        <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-4" autoComplete="on">
+                          <FormField
+                            control={resetForm.control}
+                            name="email"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700 dark:text-gray-300">
+                                  <span className="flex items-center gap-2">
+                                    <Mail className="h-4 w-4" />
+                                    Email
+                                  </span>
+                                </FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    {...field} 
+                                    type="email"
+                                    name="email"
+                                    id="resetEmail"
+                                    autoComplete="email"
+                                    data-testid="input-reset-email"
+                                    placeholder="La tua email" 
+                                    className="h-11"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <Button 
+                            type="submit" 
+                            className="w-full h-11 font-medium"
+                            data-testid="button-reset"
+                            disabled={resetPending}
+                          >
+                            {resetPending ? "Invio in corso..." : "Invia Link Reset"}
+                          </Button>
+                        </form>
+                      </Form>
+                      
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Ricordi la password?{" "}
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab("login")}
+                            className="text-blue-600 hover:text-blue-500 dark:text-blue-400 font-medium"
+                            data-testid="link-back-to-login"
+                          >
+                            Torna al login
+                          </button>
+                        </p>
+                      </div>
                     </TabsContent>
                   </Tabs>
                 </CardContent>
