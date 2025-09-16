@@ -49,6 +49,12 @@ export class EmailForwardCleaner {
     if (shouldCleanForwarded) {
       result.isForwarded = true;
       result.originalSubject = this.cleanForwardedSubject(subject);
+      
+      // Check text analysis result to coordinate with HTML processing
+      const textSplitResult = htmlBody ? this.splitTextByHeaderClusters(textBody, htmlBody) : { method: 'no-split', confidence: 'low' };
+      const skipHtmlProcessing = textSplitResult.method === 'html-fallback' && 
+                                (textSplitResult.confidence === 'medium' || textSplitResult.confidence === 'high');
+      
       result.originalBody = this.cleanForwardedBody(textBody, htmlBody);
       
       // Extract original sender from forwarded content
@@ -68,7 +74,12 @@ export class EmailForwardCleaner {
       result.fullThreadContent = this.extractFullThread(textBody);
       
       if (htmlBody) {
-        result.originalHtmlBody = this.cleanForwardedHtmlBody(htmlBody);
+        if (skipHtmlProcessing) {
+          console.log(`[EMAIL-CLEANER] Skipping HTML processing - text analysis succeeded with ${textSplitResult.method} (${textSplitResult.confidence})`);
+          result.originalHtmlBody = null; // Avoid HTML overriding successful text analysis
+        } else {
+          result.originalHtmlBody = this.cleanForwardedHtmlBody(htmlBody);
+        }
         result.preservedHtmlFormatting = this.preserveHtmlFormatting(htmlBody);
       }
     }
