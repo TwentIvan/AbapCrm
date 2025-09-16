@@ -1712,43 +1712,151 @@ export class EmailForwardCleaner {
   } {
     console.log(`[EMAIL-CLEANER] Trying HTML fallback split for failed text analysis`);
     
-    // Pattern HTML per identificare separatori di forwarding/reply
+    // Se il textBody è molto breve (< 700 chars), è probabilmente solo firma, cerca direttamente nell'HTML
+    if (textBody.length < 700) {
+      console.log(`[EMAIL-CLEANER] Short text body (${textBody.length} chars), analyzing HTML directly`);
+      return this.tryDirectHtmlAnalysis(htmlBody, textBody);
+    }
+    
+    // Pattern HTML per identificare separatori di forwarding/reply (italiano-specifici)
     const htmlHeaderPatterns = [
-      // HTML encoded headers (comune in Outlook/Gmail)
-      /(?:Da|From):\s*[^<\n]*<[^>]*@[^>]*>/i,
-      /(?:Oggetto|Subject):\s*[^<\n]*[<\n]/i,
-      /(?:Data|Date|Sent|Inviato):\s*[^<\n]*\d{4}/i,
+      // Pattern specifici italiani più aggressivi
+      /\b(?:Da|From|De):\s*[^<\n]*[@]/i,
+      /\b(?:Oggetto|Subject|Asunto):\s*[^<\n]{10,}/i,
+      /\b(?:Data|Date|Sent|Inviato|Enviado):\s*[^<\n]*\d{2,4}/i,
+      /\b(?:A|To|Para):\s*[^<\n]*[@]/i,
       
-      // Common separators
-      /----+\s*(?:Original|Forwarded|Message|Messaggio)/i,
-      /=====+\s*(?:Original|Forwarded|Message|Messaggio)/i,
+      // Pattern di blocco forwarded/reply italiani  
+      /(?:Messaggio\s+(?:originale|inoltrato)|Original\s+Message|Forwarded\s+Message)/i,
+      /(?:-----\s*Messaggio\s+originale|=====\s*Original\s+Message)/i,
       
-      // Quote markers
-      /^>\s*(?:Da|From|Subject|Oggetto):/mi
+      // Pattern di quote/reply italiani
+      /(?:Il\s+\d{1,2}\/\d{1,2}\/\d{4}.*?ha\s+scritto)/i,
+      /(?:On\s+\d{1,2}\/\d{1,2}\/\d{4}.*?wrote)/i,
+      
+      // Pattern di separatori enterprise italiani
+      /(?:________________________________)/,
+      /(?:Da:\s*[\w\s]+<.*@.*>)/i,
     ];
     
-    // Cerca il primo pattern di header HTML
+    // Cerca il primo pattern di header HTML nel textBody
     for (const pattern of htmlHeaderPatterns) {
       const match = textBody.match(pattern);
-      if (match && match.index !== undefined && match.index > 50) {
+      if (match && match.index !== undefined && match.index > 30) {
         const splitPoint = match.index;
         const mainText = textBody.substring(0, splitPoint).trim();
         const remainderText = textBody.substring(splitPoint).trim();
         
         // Verifica che la divisione abbia senso
-        if (mainText.length > 30 && remainderText.length > 30) {
-          console.log(`[EMAIL-CLEANER] HTML fallback successful: ${mainText.length} chars main, ${remainderText.length} chars remainder`);
+        if (mainText.length > 20 && remainderText.length > 20) {
+          console.log(`[EMAIL-CLEANER] HTML fallback successful via text pattern: ${mainText.length} chars main, ${remainderText.length} chars remainder`);
           return {
             mainText,
             remainderText,
             confidence: 'medium',
-            method: 'after-cluster'
+            method: 'html-fallback'
           };
         }
       }
     }
     
     console.log(`[EMAIL-CLEANER] HTML fallback also failed`);
+    return {
+      mainText: null,
+      remainderText: null,
+      confidence: 'low',
+      method: 'no-split'
+    };
+  }
+
+  /**
+   * Analizza direttamente l'HTML quando il textBody è troppo breve (solo firma)
+   * Specifico per email enterprise italiane con contenuto nascosto nell'HTML
+   */
+  private static tryDirectHtmlAnalysis(htmlBody: string, textBody: string): {
+    mainText: string | null;
+    remainderText: string | null;
+    confidence: 'high' | 'medium' | 'low';
+    method: 'top-prelude' | 'after-cluster' | 'html-fallback' | 'no-split';
+  } {
+    console.log(`[EMAIL-CLEANER] Analyzing HTML directly for enterprise email structure`);
+    
+    // Converte HTML in testo pulito per l'analisi
+    const htmlAsText = htmlBody
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<\/div>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&quot;/gi, '"')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    console.log(`[EMAIL-CLEANER] HTML converted to text: ${htmlAsText.length} chars`);
+
+    // Pattern estremamente specifici per email enterprise italiane
+    const enterprisePatterns = [
+      // Pattern Outlook/Exchange italiani
+      /(?:Da:\s*[\w\s]+(?:<[^>]*@[^>]*>|\s*\[[^@\]]*@[^\]]*\]))/i,
+      /(?:Inviato:\s*(?:lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica|\w+\s+\d{1,2}))/i,
+      /(?:A:\s*[\w\s]+(?:<[^>]*@[^>]*>|\s*\[[^@\]]*@[^\]]*\]))/i,
+      /(?:Oggetto:\s*[\w\s]{5,})/i,
+      
+      // Pattern Gmail/enterprise italiani
+      /(?:Il\s+\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2},?\s*[\w\s]+<[^>]*@[^>]*>\s*ha\s+scritto:)/i,
+      /(?:Il\s+giorno\s+[\w\s,]+\d{4}\s+[\w\s]+<[^>]*@[^>]*>\s*ha\s+scritto:)/i,
+      
+      // Separatori enterprise comuni
+      /(?:__{10,})/,
+      /(?:---+\s*(?:Messaggio\s+originale|Original\s+Message))/i,
+      /(?:=====+\s*(?:Forwarded\s+Message|Messaggio\s+inoltrato))/i,
+      
+      // Pattern di thread collapse
+      /(?:Da\s*:\s*[^<\n]*<[^>]*@[^>]*>\s*Inviato\s*:\s*[^<\n]*\s*A\s*:\s*[^<\n]*\s*Oggetto\s*:)/i,
+    ];
+
+    // Cerca il primo pattern enterprise nel testo HTML convertito
+    let bestMatch = null;
+    let bestScore = 0;
+
+    for (const pattern of enterprisePatterns) {
+      const match = htmlAsText.match(pattern);
+      if (match && match.index !== undefined) {
+        const index = match.index;
+        const beforeContent = htmlAsText.substring(0, index).trim();
+        const afterContent = htmlAsText.substring(index).trim();
+        
+        // Score basato su qualità del contenuto prima del match
+        const score = beforeContent.length > 50 ? 
+          (beforeContent.length / htmlAsText.length) * 100 : 0;
+        
+        if (score > bestScore && score > 5 && beforeContent.length > 30) {
+          bestMatch = { index, beforeContent, afterContent, score };
+          bestScore = score;
+        }
+      }
+    }
+
+    if (bestMatch) {
+      console.log(`[EMAIL-CLEANER] Found enterprise pattern with score ${bestMatch.score.toFixed(1)}%: ${bestMatch.beforeContent.length} chars main`);
+      
+      // Usa il textBody originale come main (che è la firma) e il content HTML come remainder
+      // Questo è corretto per email dove il "nuovo" contenuto è nella firma e il "vecchio" è nell'HTML
+      const confidence = bestMatch.score > 15 ? 'medium' : 'low';
+      
+      return {
+        mainText: textBody, // La firma è il nuovo contenuto
+        remainderText: bestMatch.beforeContent.length > bestMatch.afterContent.length ? 
+          bestMatch.beforeContent : bestMatch.afterContent,
+        confidence: confidence,
+        method: 'html-fallback'
+      };
+    }
+
+    console.log(`[EMAIL-CLEANER] No enterprise patterns found in HTML`);
     return {
       mainText: null,
       remainderText: null,
