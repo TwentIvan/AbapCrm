@@ -1895,29 +1895,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async findOrCreateCustomFeedbackReason(userId: string, organizationId: string, reasonText: string): Promise<CustomFeedbackReason> {
-    // Try to find existing reason first
-    const [existing] = await db
-      .select()
-      .from(customFeedbackReasons)
-      .where(and(
-        eq(customFeedbackReasons.userId, userId),
-        eq(customFeedbackReasons.organizationId, organizationId),
-        eq(customFeedbackReasons.reason, reasonText)
-      ))
-      .limit(1);
-
-    if (existing) {
-      // Increment usage count if found
-      return await this.incrementCustomFeedbackReasonUsage(existing.id) || existing;
-    }
-
-    // Create new reason if not found
-    return await this.createCustomFeedbackReason({
-      userId,
-      organizationId,
-      reason: reasonText,
-      usageCount: 1
-    });
+    // Use atomic UPSERT with ON CONFLICT to handle race conditions
+    const [result] = await db
+      .insert(customFeedbackReasons)
+      .values({
+        userId,
+        organizationId,
+        reason: reasonText,
+        usageCount: 1,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .onConflictDoUpdate({
+        target: [customFeedbackReasons.organizationId, customFeedbackReasons.userId, customFeedbackReasons.reason],
+        set: {
+          usageCount: sql`${customFeedbackReasons.usageCount} + 1`,
+          updatedAt: new Date()
+        }
+      })
+      .returning();
+    
+    return result;
   }
 
   async incrementCustomFeedbackReasonUsage(id: string): Promise<CustomFeedbackReason | undefined> {

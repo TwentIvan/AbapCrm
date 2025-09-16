@@ -80,6 +80,7 @@ export default function MessagesPage() {
   const [showRawContent, setShowRawContent] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState<string | null>(null);
   const [showFeedbackPanel, setShowFeedbackPanel] = useState(false);
+  const [customFeedbackReason, setCustomFeedbackReason] = useState("");
 
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
@@ -237,6 +238,7 @@ export default function MessagesPage() {
       });
       setShowFeedbackPanel(false);
       setFeedbackCategory(null);
+      setCustomFeedbackReason("");
     },
     onError: (error: Error) => {
       toast({
@@ -936,15 +938,34 @@ export default function MessagesPage() {
                             </Button>
                           ))}
                         </div>
+                        
+                        {/* Campo di input per motivo personalizzato quando si seleziona "Altro" */}
+                        {feedbackCategory === 'other' && (
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium mb-2">
+                              Descrivi il problema che hai notato:
+                            </label>
+                            <input
+                              type="text"
+                              value={customFeedbackReason}
+                              onChange={(e) => setCustomFeedbackReason(e.target.value)}
+                              placeholder="es. Thread duplicati, sequenza temporale confusa, ecc..."
+                              className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                              data-testid="input-custom-feedback-reason"
+                            />
+                          </div>
+                        )}
+                        
                         <div className="flex gap-2">
                           <Button
                             onClick={() => feedbackMutation.mutate({ 
                               messageId: selectedMessage!.id, 
                               isCorrect: false,
-                              category: feedbackCategory || 'unspecified'
+                              category: feedbackCategory || 'unspecified',
+                              comment: feedbackCategory === 'other' ? customFeedbackReason : undefined
                             })}
                             size="sm"
-                            disabled={feedbackMutation.isPending || !feedbackCategory}
+                            disabled={feedbackMutation.isPending || !feedbackCategory || (feedbackCategory === 'other' && !customFeedbackReason.trim())}
                             data-testid="button-send-feedback"
                           >
                             Invia feedback
@@ -955,6 +976,7 @@ export default function MessagesPage() {
                             onClick={() => {
                               setShowFeedbackPanel(false);
                               setFeedbackCategory(null);
+                              setCustomFeedbackReason("");
                             }}
                             data-testid="button-cancel-feedback"
                           >

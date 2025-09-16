@@ -1681,6 +1681,13 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const message = await storage.getMessage(messageId, userId);
       if (!message) return res.sendStatus(404);
       
+      // Server-side validation: require non-empty comment when category is 'other'
+      if (req.body.category === 'other' && (!req.body.comment || !req.body.comment.trim())) {
+        return res.status(400).json({ 
+          error: "Comment is required when feedback category is 'other'" 
+        });
+      }
+      
       // Parse and validate feedback data
       const feedbackData = insertEmailFeedbackSchema.parse({
         messageId,
@@ -1698,6 +1705,26 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       
       // Save feedback to database
       const savedFeedback = await storage.createEmailFeedback(feedbackData);
+      
+      // If category is 'other' and there's a comment, save it as a custom feedback reason for future use
+      if (savedFeedback.category === 'other' && savedFeedback.comment && savedFeedback.comment.trim()) {
+        try {
+          const customReason = await storage.findOrCreateCustomFeedbackReason(
+            userId,
+            organizationId, 
+            savedFeedback.comment.trim()
+          );
+          console.log('[CUSTOM-FEEDBACK-REASON] Saved/updated custom reason:', {
+            reasonId: customReason.id,
+            reason: customReason.reason,
+            usageCount: customReason.usageCount,
+            userId
+          });
+        } catch (error) {
+          console.error('[CUSTOM-FEEDBACK-REASON] Failed to save custom reason:', error);
+          // Non-critical error, continue with feedback submission
+        }
+      }
       
       console.log('[FEEDBACK-SYSTEM] User feedback saved to database:', {
         feedbackId: savedFeedback.id,
