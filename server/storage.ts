@@ -3,7 +3,7 @@ import {
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
-  emailVerificationTokens, organizationDomains,
+  emailVerificationTokens, organizationDomains, emailFeedbacks,
   type User, type InsertUser,
   type Organization, type InsertOrganization,
   type UserOrganization, type InsertUserOrganization,
@@ -37,7 +37,8 @@ import {
   type DiscoveredVpnSoftware, type InsertDiscoveredVpnSoftware,
   type DiscoveredVpnConfiguration, type InsertDiscoveredVpnConfiguration,
   type EmailVerificationToken, type InsertEmailVerificationToken,
-  type OrganizationDomain, type InsertOrganizationDomain
+  type OrganizationDomain, type InsertOrganizationDomain,
+  type EmailFeedback, type InsertEmailFeedback
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull } from "drizzle-orm";
@@ -177,6 +178,11 @@ export interface IStorage {
   deleteMessage(id: string, userId: string): Promise<boolean>;
   getUnreadMessages(userId: string): Promise<Message[]>;
   markMessageAsRead(id: string, userId: string): Promise<Message | undefined>;
+
+  // Email Feedbacks
+  createEmailFeedback(feedback: InsertEmailFeedback): Promise<EmailFeedback>;
+  getEmailFeedbacks(userId: string, organizationId: string): Promise<EmailFeedback[]>;
+  getFeedbacksByMessage(messageId: string): Promise<EmailFeedback[]>;
 
   // Comments
   getComments(userId: string): Promise<Comment[]>;
@@ -1825,6 +1831,34 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(messages.id, id), eq(messages.userId, userId)))
       .returning();
     return updated || undefined;
+  }
+
+  // Email Feedbacks
+  async createEmailFeedback(feedback: InsertEmailFeedback): Promise<EmailFeedback> {
+    const [created] = await db
+      .insert(emailFeedbacks)
+      .values(feedback)
+      .returning();
+    return created;
+  }
+
+  async getEmailFeedbacks(userId: string, organizationId: string): Promise<EmailFeedback[]> {
+    return await db
+      .select()
+      .from(emailFeedbacks)
+      .where(and(
+        eq(emailFeedbacks.userId, userId),
+        eq(emailFeedbacks.organizationId, organizationId)
+      ))
+      .orderBy(desc(emailFeedbacks.createdAt));
+  }
+
+  async getFeedbacksByMessage(messageId: string): Promise<EmailFeedback[]> {
+    return await db
+      .select()
+      .from(emailFeedbacks)
+      .where(eq(emailFeedbacks.messageId, messageId))
+      .orderBy(desc(emailFeedbacks.createdAt));
   }
 
   // Comments

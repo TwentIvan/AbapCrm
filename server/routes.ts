@@ -18,7 +18,7 @@ import {
   insertVpnSoftwareSchema, insertVpnSystemsSchema, vpnConnections,
   insertDiscoveredVpnSoftwareSchema, insertDiscoveredVpnConfigurationSchema,
   insertOrganizationSchema, insertUserOrganizationSchema, insertOrganizationInvitationSchema,
-  insertOrganizationDomainSchema
+  insertOrganizationDomainSchema, insertEmailFeedbackSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -1673,38 +1673,44 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/messages/:id/feedback", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const { isCorrect, category, comment, timestamp } = req.body;
       const messageId = req.params.id;
       const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
       
       // Validate message exists
       const message = await storage.getMessage(messageId, userId);
       if (!message) return res.sendStatus(404);
       
-      // Log feedback for analysis - in future this could be saved to database
-      const feedbackData = {
+      // Parse and validate feedback data
+      const feedbackData = insertEmailFeedbackSchema.parse({
         messageId,
         userId,
-        isCorrect,
-        category,
-        comment,
-        timestamp: timestamp || new Date().toISOString(),
+        organizationId,
+        isCorrect: req.body.isCorrect,
+        category: req.body.category || null,
+        comment: req.body.comment || null,
         messageSubject: message.subject,
         fromEmail: message.fromEmail,
         messageLength: message.body?.length || 0,
         hasHtml: !!message.htmlBody,
         htmlLength: message.htmlBody?.length || 0
-      };
+      });
       
-      console.log('[FEEDBACK-SYSTEM] User feedback received:', JSON.stringify(feedbackData, null, 2));
+      // Save feedback to database
+      const savedFeedback = await storage.createEmailFeedback(feedbackData);
       
-      // In future we could save this to a dedicated feedback table
-      // For now, just log it for collection and analysis
+      console.log('[FEEDBACK-SYSTEM] User feedback saved to database:', {
+        feedbackId: savedFeedback.id,
+        messageId,
+        isCorrect: savedFeedback.isCorrect,
+        category: savedFeedback.category,
+        userId
+      });
       
       res.json({ 
         success: true, 
-        message: "Feedback ricevuto con successo",
-        feedbackId: `${messageId}-${Date.now()}` // Temporary ID for response
+        message: "Feedback salvato con successo",
+        feedbackId: savedFeedback.id
       });
     } catch (error) {
       console.error("Feedback submission error:", error);

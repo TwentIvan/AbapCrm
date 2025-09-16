@@ -1374,6 +1374,42 @@ export const insertEmailVerificationTokenSchema = createInsertSchema(emailVerifi
 // Audit Log System - Universal change tracking for all entities
 export const auditActionEnum = pgEnum("audit_action", ["CREATE", "UPDATE", "DELETE"]);
 
+// Email Feedback System
+export const feedbackCategoryEnum = pgEnum("feedback_category", [
+  "missing-content", 
+  "wrong-order", 
+  "mixed-threads", 
+  "extra-content", 
+  "signature-issues",
+  "thread-not-collapsed",
+  "thread-badly-collapsed", 
+  "other"
+]);
+
+export const emailFeedbacks = pgTable("email_feedbacks", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Core feedback data
+  messageId: uuid("message_id").references(() => messages.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  
+  // Feedback content
+  isCorrect: boolean("is_correct").notNull(),
+  category: feedbackCategoryEnum("category"), // null for positive feedback
+  comment: text("comment"), // Optional user comment
+  
+  // Message metadata for analysis
+  messageSubject: text("message_subject"),
+  fromEmail: text("from_email"),
+  messageLength: integer("message_length"), // Length of body text
+  hasHtml: boolean("has_html"),
+  htmlLength: integer("html_length"), // Length of HTML content
+  
+  // Tracking
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   
@@ -1398,6 +1434,10 @@ export const auditLogs = pgTable("audit_logs", {
   // Metadata
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export type EmailFeedback = typeof emailFeedbacks.$inferSelect;
+export type InsertEmailFeedback = typeof emailFeedbacks.$inferInsert;
+export const insertEmailFeedbackSchema = createInsertSchema(emailFeedbacks).omit({ id: true, createdAt: true });
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
@@ -1427,6 +1467,22 @@ export const messageLinksRelations = relations(messageLinks, ({ one }) => ({
   }),
   organization: one(organizations, {
     fields: [messageLinks.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
+// Relations for email feedbacks
+export const emailFeedbacksRelations = relations(emailFeedbacks, ({ one }) => ({
+  message: one(messages, {
+    fields: [emailFeedbacks.messageId],
+    references: [messages.id],
+  }),
+  user: one(users, {
+    fields: [emailFeedbacks.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [emailFeedbacks.organizationId],
     references: [organizations.id],
   }),
 }));
