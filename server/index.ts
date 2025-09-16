@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { autoInitializeEmailServices } from "./email-auto-init";
-import { testDatabaseConnection } from "./db";
+import { testDatabaseConnection, checkDatabaseHealth, closeDatabasePool } from "./db";
 
 // Add global error handlers to prevent server crashes
 process.on('uncaughtException', (error) => {
@@ -105,7 +105,7 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
+  const httpServer = server.listen({
     port,
     host: "0.0.0.0",
     reusePort: true,
@@ -122,5 +122,56 @@ app.use((req, res, next) => {
     setTimeout(async () => {
       await autoInitializeEmailServices();
     }, 2000); // Wait 2 seconds for server to fully start
+    
+    // Start periodic database health checks every 5 minutes
+    const healthCheckInterval = setInterval(async () => {
+      try {
+        const health = await checkDatabaseHealth();
+        if (!health.healthy) {
+          console.warn('[SERVER] Database health check failed, attempting recovery...');
+          await testDatabaseConnection();
+        }
+      } catch (error) {
+        console.error('[SERVER] Health check error:', error);
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    // Store the interval so we can clear it on shutdown
+    (global as any).healthCheckInterval = healthCheckInterval;
   });
+
+  // Graceful shutdown handling
+  const gracefulShutdown = async (signal: string) => {
+    console.log(`[SERVER] Received ${signal}, starting graceful shutdown...`);
+    
+    // Clear health check interval
+    if ((global as any).healthCheckInterval) {
+      clearInterval((global as any).healthCheckInterval);
+    }
+    
+    // Close HTTP server
+    httpServer.close(async (err) => {
+      if (err) {
+        console.error('[SERVER] Error closing HTTP server:', err);
+      } else {
+        console.log('[SERVER] HTTP server closed');
+      }
+      
+      // Close database pool
+      await closeDatabasePool();
+      
+      console.log('[SERVER] Graceful shutdown complete');
+      process.exit(0);
+    });
+    
+    // Force exit after 30 seconds if graceful shutdown hangs
+    setTimeout(() => {
+      console.error('[SERVER] Graceful shutdown timeout, forcing exit');
+      process.exit(1);
+    }, 30000);
+  };
+
+  // Handle shutdown signals
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 })();
