@@ -34,7 +34,12 @@ import {
   ArrowDown,
   Brain,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ThumbsUp,
+  ThumbsDown,
+  AlertTriangle,
+  RotateCcw,
+  MessageSquare
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Message, Project, Task, Partner } from "@shared/schema";
@@ -72,6 +77,9 @@ export default function MessagesPage() {
   const [sortBy, setSortBy] = useState<"receivedAt" | "fromEmail" | "subject">("receivedAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showThreadContent, setShowThreadContent] = useState(false);
+  const [showRawContent, setShowRawContent] = useState(false);
+  const [feedbackCategory, setFeedbackCategory] = useState<string | null>(null);
+  const [showFeedbackPanel, setShowFeedbackPanel] = useState(false);
 
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
@@ -204,6 +212,36 @@ export default function MessagesPage() {
       toast({
         title: "Errore",
         description: error.message || "Errore durante l'eliminazione del messaggio.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const feedbackMutation = useMutation({
+    mutationFn: ({ messageId, isCorrect, category, comment }: { 
+      messageId: string; 
+      isCorrect: boolean; 
+      category?: string; 
+      comment?: string; 
+    }) => 
+      apiRequest("POST", `/api/messages/${messageId}/feedback`, {
+        isCorrect,
+        category,
+        comment,
+        timestamp: new Date().toISOString()
+      }),
+    onSuccess: () => {
+      toast({
+        title: "Feedback inviato",
+        description: "Grazie per il feedback! Ci aiuterà a migliorare l'algoritmo.",
+      });
+      setShowFeedbackPanel(false);
+      setFeedbackCategory(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'invio del feedback.",
         variant: "destructive",
       });
     },
@@ -815,6 +853,135 @@ export default function MessagesPage() {
                           {selectedMessage.body || 'Nessun contenuto'}
                         </div>
                       )
+                    )}
+                  </div>
+                </div>
+
+                {/* Pannello Feedback */}
+                <div className="border-t bg-muted/10">
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4" />
+                        <h4 className="font-medium text-sm">Feedback sulla pulizia email</h4>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowRawContent(!showRawContent)}
+                          className="flex items-center gap-2"
+                          data-testid="button-toggle-raw"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          {showRawContent ? 'Nascondi' : 'Mostra'} versione raw
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-muted-foreground">La pulizia è corretta?</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => feedbackMutation.mutate({ 
+                          messageId: selectedMessage!.id, 
+                          isCorrect: true 
+                        })}
+                        className="flex items-center gap-2"
+                        data-testid="button-feedback-correct"
+                        disabled={feedbackMutation.isPending}
+                      >
+                        <ThumbsUp className="h-3 w-3" />
+                        Corretto
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowFeedbackPanel(!showFeedbackPanel)}
+                        className="flex items-center gap-2"
+                        data-testid="button-feedback-incorrect"
+                        disabled={feedbackMutation.isPending}
+                      >
+                        <ThumbsDown className="h-3 w-3" />
+                        Sbagliato
+                      </Button>
+                    </div>
+
+                    {/* Pannello dettagli feedback per errori */}
+                    {showFeedbackPanel && (
+                      <div className="mt-4 p-4 border rounded-lg bg-background">
+                        <h5 className="font-medium mb-3">Che tipo di errore hai notato?</h5>
+                        <div className="grid grid-cols-2 gap-2 mb-4">
+                          {[
+                            { id: 'missing-content', label: 'Contenuto mancante', icon: AlertTriangle },
+                            { id: 'wrong-order', label: 'Ordine sbagliato', icon: ArrowUpDown },
+                            { id: 'mixed-threads', label: 'Thread mixati', icon: MessageSquare },
+                            { id: 'extra-content', label: 'Contenuto extra', icon: Plus },
+                            { id: 'signature-issues', label: 'Problemi firma', icon: User },
+                            { id: 'other', label: 'Altro', icon: AlertCircle }
+                          ].map(({ id, label, icon: Icon }) => (
+                            <Button
+                              key={id}
+                              variant={feedbackCategory === id ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setFeedbackCategory(id)}
+                              className="flex items-center gap-2 justify-start"
+                              data-testid={`button-category-${id}`}
+                            >
+                              <Icon className="h-3 w-3" />
+                              {label}
+                            </Button>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => feedbackMutation.mutate({ 
+                              messageId: selectedMessage!.id, 
+                              isCorrect: false,
+                              category: feedbackCategory || 'unspecified'
+                            })}
+                            size="sm"
+                            disabled={feedbackMutation.isPending || !feedbackCategory}
+                            data-testid="button-send-feedback"
+                          >
+                            Invia feedback
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setShowFeedbackPanel(false);
+                              setFeedbackCategory(null);
+                            }}
+                            data-testid="button-cancel-feedback"
+                          >
+                            Annulla
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Mostra contenuto raw se richiesto */}
+                    {showRawContent && (
+                      <div className="mt-4 p-4 border rounded-lg bg-muted/50">
+                        <h5 className="font-medium mb-3 flex items-center gap-2">
+                          <RotateCcw className="h-4 w-4" />
+                          Contenuto originale (raw)
+                        </h5>
+                        <div className="bg-background p-3 rounded border">
+                          {selectedMessage!.htmlBody ? (
+                            <div 
+                              className="prose prose-sm max-w-none text-xs"
+                              dangerouslySetInnerHTML={{ __html: selectedMessage!.htmlBody }}
+                            />
+                          ) : (
+                            <pre className="whitespace-pre-wrap text-xs text-muted-foreground">
+                              {selectedMessage!.body || 'Nessun contenuto raw disponibile'}
+                            </pre>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>

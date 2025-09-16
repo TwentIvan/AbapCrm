@@ -1669,6 +1669,49 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Feedback on email cleaning
+  app.post("/api/messages/:id/feedback", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { isCorrect, category, comment, timestamp } = req.body;
+      const messageId = req.params.id;
+      const userId = req.user!.id;
+      
+      // Validate message exists
+      const message = await storage.getMessage(messageId, userId);
+      if (!message) return res.sendStatus(404);
+      
+      // Log feedback for analysis - in future this could be saved to database
+      const feedbackData = {
+        messageId,
+        userId,
+        isCorrect,
+        category,
+        comment,
+        timestamp: timestamp || new Date().toISOString(),
+        messageSubject: message.subject,
+        fromEmail: message.fromEmail,
+        messageLength: message.body?.length || 0,
+        hasHtml: !!message.htmlBody,
+        htmlLength: message.htmlBody?.length || 0
+      };
+      
+      console.log('[FEEDBACK-SYSTEM] User feedback received:', JSON.stringify(feedbackData, null, 2));
+      
+      // In future we could save this to a dedicated feedback table
+      // For now, just log it for collection and analysis
+      
+      res.json({ 
+        success: true, 
+        message: "Feedback ricevuto con successo",
+        feedbackId: `${messageId}-${Date.now()}` // Temporary ID for response
+      });
+    } catch (error) {
+      console.error("Feedback submission error:", error);
+      res.status(500).json({ error: "Failed to submit feedback" });
+    }
+  });
+
   // Message Links
   app.get("/api/messages/linked/:tableName/:recordId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
