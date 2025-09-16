@@ -49,7 +49,7 @@ export class EmailForwardCleaner {
     if (shouldCleanForwarded) {
       result.isForwarded = true;
       result.originalSubject = this.cleanForwardedSubject(subject);
-      result.originalBody = this.cleanForwardedBody(textBody);
+      result.originalBody = this.cleanForwardedBody(textBody, htmlBody);
       
       // Extract original sender from forwarded content
       const originalSender = this.extractOriginalSender(textBody);
@@ -355,13 +355,13 @@ export class EmailForwardCleaner {
     return cleanSubject.trim();
   }
 
-  private static cleanForwardedBody(body: string): string {
+  private static cleanForwardedBody(body: string, htmlBody?: string | null): string {
     if (!body) return body;
 
     const originalBody = body;
 
-    // Usa il nuovo algoritmo bounded per separare main body dal remainder
-    const splitResult = this.splitTextByHeaderClusters(body);
+    // Usa il nuovo algoritmo bounded per separare main body dal remainder  
+    const splitResult = this.splitTextByHeaderClusters(body, htmlBody);
     
     if (splitResult.confidence === 'high' && splitResult.mainText) {
       console.log(`[EMAIL-CLEANER] Using bounded split (${splitResult.method}): ${splitResult.mainText.length} chars main body`);
@@ -1289,11 +1289,11 @@ export class EmailForwardCleaner {
    * Nuovo algoritmo bounded per dividere il testo in main body e remainder
    * Gestisce sia i top-posted replies che i forwarded messages
    */
-  private static splitTextByHeaderClusters(textBody: string): {
+  private static splitTextByHeaderClusters(textBody: string, htmlBody?: string | null): {
     mainText: string | null;
     remainderText: string | null;
     confidence: 'high' | 'medium' | 'low';
-    method: 'top-prelude' | 'after-cluster' | 'no-split';
+    method: 'top-prelude' | 'after-cluster' | 'html-fallback' | 'no-split';
   } {
     console.log(`[EMAIL-CLEANER] Starting bounded split analysis for text (${textBody.length} chars)`);
     
@@ -1301,45 +1301,53 @@ export class EmailForwardCleaner {
     const normalizedBody = textBody.replace(/\u00A0/g, ' ');
     const lines = normalizedBody.split('\n');
     
-    // Regex più tollerante per identificare header - include spazi, caratteri di quotazione e varianti
-    const headerRegex = /^[>\s\u00A0]*?(Da|From|Inviato|Sent|A|To|Cc|Oggetto|Subject|Data|Date|Re|Fwd|FW|Object|Destinatario|Recipient)\s*[:\-]\s*/i;
-    // Single-line markers - solo per email lunghe >1200 chars o con FW/Fwd nel subject
+    // Regex molto più tollerante per identificare header - gestisce HTML, spazi extra, punteggiatura varia
+    const headerRegex = /^[>\s\u00A0]*?(Da|From|Inviato|Sent|A|To|Cc|Oggetto|Subject|Data|Date|Fwd|FW|Destinatario|Recipient|Reply-To|Message-ID|Return-Path|Received|MIME-Version)\s*[:\-=>\u2192\u003E]\s*/i;
+    
+    // Single-line markers - RIMOSSA limitazione 1200 chars per gestire email brevi problematiche
     const singleLineMarkers = [
       /Il giorno .* ha scritto:/i,
       /On .* wrote:/i,
       /Le .* a écrit:/i,
       /Am .* schrieb:/i,
-      /In data .* ha scritto:/i
+      /In data .* ha scritto:/i,
+      // Aggiunti pattern più comuni per email italiane/inglesi
+      /\d{1,2}\/\d{1,2}\/\d{2,4}.*wrote:/i,
+      /\d{1,2}-\d{1,2}-\d{2,4}.*ha scritto:/i,
+      /.* ha scritto il \d{1,2}\/\d{1,2}\/\d{2,4}/i
     ];
     
     const quotedMarkers = [
       /^[-_]{5,}.*(Original|Forwarded|Messaggio|Message).*/i,
       /^>{1,}/,  // Quoted text markers
       /^---------- Forwarded message ----------/i,
-      /^---------- Messaggio inoltrato ----------/i
+      /^---------- Messaggio inoltrato ----------/i,
+      // Aggiunti pattern per email con formattazione HTML/Outlook
+      /^[\s]*From:.*<.*@.*>/i,
+      /^[\s]*Da:.*<.*@.*>/i,
+      /^\s*=====.*Message.*=====/i,
+      /^\s*&gt;/  // HTML encoded quotes
     ];
 
     let firstHeaderClusterStart = -1;
     let firstHeaderClusterEnd = -1;
     let headerCount = 0;
 
-    // Step 1: Prima cerca single-line markers per email lunghe
-    if (textBody.length >= 1200) {
-      for (let i = 0; i < Math.min(lines.length, 40); i++) {
-        const line = lines[i].trim();
-        if (singleLineMarkers.some(marker => marker.test(line))) {
-          console.log(`[EMAIL-CLEANER] Found single-line marker at line ${i}: "${line.substring(0, 50)}..."`);
-          firstHeaderClusterStart = i;
-          firstHeaderClusterEnd = i + 1;
-          headerCount = 1;
-          break;
-        }
+    // Step 1: Cerca single-line markers per TUTTE le email (rimossa limitazione 1200 chars)
+    for (let i = 0; i < Math.min(lines.length, 50); i++) { // Ampliata ricerca a 50 righe
+      const line = lines[i].trim();
+      if (singleLineMarkers.some(marker => marker.test(line))) {
+        console.log(`[EMAIL-CLEANER] Found single-line marker at line ${i}: "${line.substring(0, 50)}..."`);
+        firstHeaderClusterStart = i;
+        firstHeaderClusterEnd = i + 1;
+        headerCount = 1;
+        break;
       }
     }
 
-    // Step 2: Se non trovato, cerca header cluster con rolling window di 8 righe (≥2 header)
+    // Step 2: Se non trovato, cerca header cluster con rolling window MIGLIORATO
     if (firstHeaderClusterStart === -1) {
-      for (let i = 0; i < Math.min(lines.length, 100); i++) { // Prime 100 righe
+      for (let i = 0; i < Math.min(lines.length, 120); i++) { // Ampliata ricerca a 120 righe
         const line = lines[i].trim();
         
         if (line.length === 0) continue;
@@ -1353,10 +1361,14 @@ export class EmailForwardCleaner {
           }
           headerCount++;
           
-          // Controlla se abbiamo almeno 2 header in una finestra rolling di 8 righe
-          if (headerCount >= 2 && i - firstHeaderClusterStart <= 8) {
-            // Trova la fine del cluster
-            for (let j = i + 1; j < Math.min(lines.length, i + 8); j++) {
+          // RILASSATA: Accetta 1 header se molto specifico, 2 header in finestra più ampia (15 righe)
+          const windowSize = 15; // Aumentato da 8 a 15
+          const isStrongHeader = /^[>\s\u00A0]*?(From|Da|Subject|Oggetto|Date|Data)\s*[:\-]/i.test(line);
+          
+          if ((headerCount >= 1 && isStrongHeader) || 
+              (headerCount >= 2 && i - firstHeaderClusterStart <= windowSize)) {
+            // Trova la fine del cluster con ricerca più estesa
+            for (let j = i + 1; j < Math.min(lines.length, i + windowSize); j++) {
               const nextLine = lines[j].trim();
               if (nextLine.length === 0) continue;
               
@@ -1372,8 +1384,9 @@ export class EmailForwardCleaner {
             break;
           }
         } else if (line.length > 10) {
-          // Reset rolling window se troppo lontano dal primo header
-          if (firstHeaderClusterStart !== -1 && i - firstHeaderClusterStart > 8) {
+          // Reset rolling window se troppo lontano dal primo header (aumentato limite)
+          const windowSize = 15; // Definito qui per scope
+          if (firstHeaderClusterStart !== -1 && i - firstHeaderClusterStart > windowSize) {
             firstHeaderClusterStart = -1;
             headerCount = 0;
           }
@@ -1485,8 +1498,96 @@ export class EmailForwardCleaner {
       }
     }
 
-    // Step 4: Fallback - nessuna separazione affidabile
+    // Step 4: HTML FALLBACK COMPLETO - Prova in tutti i casi dove htmlBody è presente
+    if (htmlBody) {
+      let shouldTryHtmlFallback = false;
+      let reason = '';
+      
+      if (firstHeaderClusterStart === -1) {
+        shouldTryHtmlFallback = true;
+        reason = 'text analysis failed completely';
+      } else {
+        // Se l'analisi testo ha trovato header, prova HTML fallback comunque prima del no-split finale
+        shouldTryHtmlFallback = true;
+        reason = 'low confidence text split - trying HTML rescue';
+      }
+      
+      if (shouldTryHtmlFallback) {
+        console.log(`[EMAIL-CLEANER] Trying HTML fallback: ${reason}`);
+        const htmlFallback = this.tryHtmlFallbackSplit(textBody, htmlBody);
+        
+        if (htmlFallback.confidence === 'medium' && htmlFallback.mainText) {
+          console.log(`[EMAIL-CLEANER] ✓ HTML fallback successful: ${htmlFallback.mainText.length} chars (${reason})`);
+          return {
+            mainText: htmlFallback.mainText,
+            remainderText: htmlFallback.remainderText,
+            confidence: 'medium',
+            method: 'html-fallback'
+          };
+        } else {
+          console.log(`[EMAIL-CLEANER] ✗ HTML fallback also failed (${reason})`);
+        }
+      }
+    }
+
+    // Step 5: Fallback finale - nessuna separazione affidabile
     console.log(`[EMAIL-CLEANER] No reliable split found, returning no-split`);
+    return {
+      mainText: null,
+      remainderText: null,
+      confidence: 'low',
+      method: 'no-split'
+    };
+  }
+
+  /**
+   * Fallback HTML quando l'analisi del testo fallisce completamente
+   */
+  private static tryHtmlFallbackSplit(textBody: string, htmlBody: string): {
+    mainText: string | null;
+    remainderText: string | null;
+    confidence: 'high' | 'medium' | 'low';
+    method: 'top-prelude' | 'after-cluster' | 'html-fallback' | 'no-split';
+  } {
+    console.log(`[EMAIL-CLEANER] Trying HTML fallback split for failed text analysis`);
+    
+    // Pattern HTML per identificare separatori di forwarding/reply
+    const htmlHeaderPatterns = [
+      // HTML encoded headers (comune in Outlook/Gmail)
+      /(?:Da|From):\s*[^<\n]*<[^>]*@[^>]*>/i,
+      /(?:Oggetto|Subject):\s*[^<\n]*[<\n]/i,
+      /(?:Data|Date|Sent|Inviato):\s*[^<\n]*\d{4}/i,
+      
+      // Common separators
+      /----+\s*(?:Original|Forwarded|Message|Messaggio)/i,
+      /=====+\s*(?:Original|Forwarded|Message|Messaggio)/i,
+      
+      // Quote markers
+      /^>\s*(?:Da|From|Subject|Oggetto):/mi
+    ];
+    
+    // Cerca il primo pattern di header HTML
+    for (const pattern of htmlHeaderPatterns) {
+      const match = textBody.match(pattern);
+      if (match && match.index !== undefined && match.index > 50) {
+        const splitPoint = match.index;
+        const mainText = textBody.substring(0, splitPoint).trim();
+        const remainderText = textBody.substring(splitPoint).trim();
+        
+        // Verifica che la divisione abbia senso
+        if (mainText.length > 30 && remainderText.length > 30) {
+          console.log(`[EMAIL-CLEANER] HTML fallback successful: ${mainText.length} chars main, ${remainderText.length} chars remainder`);
+          return {
+            mainText,
+            remainderText,
+            confidence: 'medium',
+            method: 'after-cluster'
+          };
+        }
+      }
+    }
+    
+    console.log(`[EMAIL-CLEANER] HTML fallback also failed`);
     return {
       mainText: null,
       remainderText: null,
