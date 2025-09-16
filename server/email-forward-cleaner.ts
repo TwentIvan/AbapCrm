@@ -1843,14 +1843,17 @@ export class EmailForwardCleaner {
     if (bestMatch) {
       console.log(`[EMAIL-CLEANER] Found enterprise pattern with score ${bestMatch.score.toFixed(1)}%: ${bestMatch.beforeContent.length} chars main`);
       
-      // Usa il textBody originale come main (che è la firma) e il content HTML come remainder
-      // Questo è corretto per email dove il "nuovo" contenuto è nella firma e il "vecchio" è nell'HTML
+      // Restituisce il contenuto HTML estratto come main content (questo è il vero contenuto dell'email)
+      // Il textBody (firma) diventa remainder
       const confidence = bestMatch.score > 15 ? 'medium' : 'low';
+      const mainContent = bestMatch.beforeContent.length > bestMatch.afterContent.length ? 
+        bestMatch.beforeContent : bestMatch.afterContent;
+      
+      console.log(`[EMAIL-CLEANER] Using HTML content as main: ${mainContent.length} chars, signature as remainder: ${textBody.length} chars`);
       
       return {
-        mainText: textBody, // La firma è il nuovo contenuto
-        remainderText: bestMatch.beforeContent.length > bestMatch.afterContent.length ? 
-          bestMatch.beforeContent : bestMatch.afterContent,
+        mainText: mainContent, // Il contenuto HTML è il main
+        remainderText: textBody, // La firma diventa remainder
         confidence: confidence,
         method: 'html-fallback'
       };
