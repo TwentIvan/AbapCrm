@@ -3,7 +3,7 @@ import {
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
-  emailVerificationTokens, organizationDomains, emailFeedbacks,
+  emailVerificationTokens, organizationDomains, emailFeedbacks, customFeedbackReasons,
   type User, type InsertUser,
   type Organization, type InsertOrganization,
   type UserOrganization, type InsertUserOrganization,
@@ -38,7 +38,8 @@ import {
   type DiscoveredVpnConfiguration, type InsertDiscoveredVpnConfiguration,
   type EmailVerificationToken, type InsertEmailVerificationToken,
   type OrganizationDomain, type InsertOrganizationDomain,
-  type EmailFeedback, type InsertEmailFeedback
+  type EmailFeedback, type InsertEmailFeedback,
+  type CustomFeedbackReason, type InsertCustomFeedbackReason
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull } from "drizzle-orm";
@@ -183,6 +184,12 @@ export interface IStorage {
   createEmailFeedback(feedback: InsertEmailFeedback): Promise<EmailFeedback>;
   getEmailFeedbacks(userId: string, organizationId: string): Promise<EmailFeedback[]>;
   getFeedbacksByMessage(messageId: string): Promise<EmailFeedback[]>;
+
+  // Custom Feedback Reasons
+  createCustomFeedbackReason(reason: InsertCustomFeedbackReason): Promise<CustomFeedbackReason>;
+  getCustomFeedbackReasons(userId: string, organizationId: string): Promise<CustomFeedbackReason[]>;
+  findOrCreateCustomFeedbackReason(userId: string, organizationId: string, reasonText: string): Promise<CustomFeedbackReason>;
+  incrementCustomFeedbackReasonUsage(id: string): Promise<CustomFeedbackReason | undefined>;
 
   // Comments
   getComments(userId: string): Promise<Comment[]>;
@@ -1865,6 +1872,64 @@ export class DatabaseStorage implements IStorage {
       .from(emailFeedbacks)
       .where(eq(emailFeedbacks.messageId, messageId))
       .orderBy(desc(emailFeedbacks.createdAt));
+  }
+
+  // Custom Feedback Reasons
+  async createCustomFeedbackReason(reason: InsertCustomFeedbackReason): Promise<CustomFeedbackReason> {
+    const [created] = await db
+      .insert(customFeedbackReasons)
+      .values(reason)
+      .returning();
+    return created;
+  }
+
+  async getCustomFeedbackReasons(userId: string, organizationId: string): Promise<CustomFeedbackReason[]> {
+    return await db
+      .select()
+      .from(customFeedbackReasons)
+      .where(and(
+        eq(customFeedbackReasons.userId, userId),
+        eq(customFeedbackReasons.organizationId, organizationId)
+      ))
+      .orderBy(desc(customFeedbackReasons.usageCount), desc(customFeedbackReasons.createdAt));
+  }
+
+  async findOrCreateCustomFeedbackReason(userId: string, organizationId: string, reasonText: string): Promise<CustomFeedbackReason> {
+    // Try to find existing reason first
+    const [existing] = await db
+      .select()
+      .from(customFeedbackReasons)
+      .where(and(
+        eq(customFeedbackReasons.userId, userId),
+        eq(customFeedbackReasons.organizationId, organizationId),
+        eq(customFeedbackReasons.reason, reasonText)
+      ))
+      .limit(1);
+
+    if (existing) {
+      // Increment usage count if found
+      return await this.incrementCustomFeedbackReasonUsage(existing.id) || existing;
+    }
+
+    // Create new reason if not found
+    return await this.createCustomFeedbackReason({
+      userId,
+      organizationId,
+      reason: reasonText,
+      usageCount: 1
+    });
+  }
+
+  async incrementCustomFeedbackReasonUsage(id: string): Promise<CustomFeedbackReason | undefined> {
+    const [updated] = await db
+      .update(customFeedbackReasons)
+      .set({ 
+        usageCount: sql`${customFeedbackReasons.usageCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(customFeedbackReasons.id, id))
+      .returning();
+    return updated || undefined;
   }
 
   // Comments
