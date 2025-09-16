@@ -137,45 +137,184 @@ export class EmailForwardCleaner {
     originalHtml?: string | null,
     cleanedHtml?: string | null
   ): { text: string | null; html: string | null } {
+    console.log(`[EMAIL-CLEANER] Starting remainder extraction: original=${originalBody.length}, cleaned=${cleanedBody.length}`);
+    
     let remainderText: string | null = null;
     let remainderHtml: string | null = null;
 
+    // Thresholds più intelligenti - considera il rapporto tra le lunghezze
+    const lengthRatio = originalBody.length / Math.max(cleanedBody.length, 1);
+    const minDifference = Math.max(100, cleanedBody.length * 0.3); // Almeno 30% o 100 chars
+    
+    console.log(`[EMAIL-CLEANER] Length analysis: ratio=${lengthRatio.toFixed(2)}, minDiff=${minDifference}`);
+    
     // Trova la parte del testo originale che non è stata inclusa nel body pulito
-    if (originalBody.length > cleanedBody.length * 1.2) {
-      // Se l'originale è significativamente più lungo, cerca la parte mancante
-      const bodyIndex = originalBody.indexOf(cleanedBody.substring(0, 100));
-      // FIX: Controlla che indexOf abbia trovato la stringa prima di usarla
-      if (bodyIndex >= 0) {
-        if (bodyIndex > 100) {
+    if (originalBody.length > cleanedBody.length + minDifference && lengthRatio > 1.1) {
+      // Strategia 1: Cerca usando multiple substring sizes per robustezza
+      let bodyIndex = -1;
+      const searchSizes = [200, 150, 100, 75, 50];
+      
+      for (const size of searchSizes) {
+        if (cleanedBody.length >= size) {
+          const searchString = cleanedBody.substring(0, size);
+          bodyIndex = originalBody.indexOf(searchString);
+          if (bodyIndex >= 0) {
+            console.log(`[EMAIL-CLEANER] Found match with search size ${size} at index ${bodyIndex}`);
+            break;
+          }
+        }
+      }
+      
+      // Strategia 2: Se indexOf fallisce, prova con la parte finale del cleanedBody
+      if (bodyIndex < 0 && cleanedBody.length >= 100) {
+        const endSearch = cleanedBody.substring(cleanedBody.length - 100);
+        const endIndex = originalBody.indexOf(endSearch);
+        if (endIndex >= 0) {
+          bodyIndex = endIndex - (cleanedBody.length - 100);
+          console.log(`[EMAIL-CLEANER] Found match using end-search at calculated index ${bodyIndex}`);
+        }
+      }
+      
+      // Strategia 3: Se ancora fallisce, usa pattern-based fallback per thread headers
+      if (bodyIndex < 0) {
+        console.log(`[EMAIL-CLEANER] Exact match failed, trying pattern-based remainder detection`);
+        remainderText = this.extractRemainderByPatterns(originalBody, cleanedBody);
+      } else {
+        // Usa l'indice trovato per estrarre remainder
+        const contentThreshold = Math.max(50, cleanedBody.length * 0.1);
+        
+        if (bodyIndex > contentThreshold) {
           // C'è contenuto significativo prima del body
           remainderText = originalBody.substring(0, bodyIndex).trim();
+          console.log(`[EMAIL-CLEANER] Extracted remainder BEFORE body: ${remainderText.length} chars`);
         } else {
           // Cerca contenuto dopo il body
           const afterIndex = bodyIndex + cleanedBody.length;
-          if (afterIndex < originalBody.length - 50) {
+          const remainingContent = originalBody.length - afterIndex;
+          
+          if (remainingContent > contentThreshold) {
             remainderText = originalBody.substring(afterIndex).trim();
+            console.log(`[EMAIL-CLEANER] Extracted remainder AFTER body: ${remainderText.length} chars`);
           }
         }
       }
+    } else {
+      console.log(`[EMAIL-CLEANER] No remainder extraction needed: insufficient length difference`);
     }
 
-    // Stessa logica per HTML se disponibile
-    if (originalHtml && cleanedHtml && originalHtml.length > cleanedHtml.length * 1.2) {
-      const htmlBodyIndex = originalHtml.indexOf(cleanedHtml.substring(0, 200));
-      // FIX: Controlla che indexOf abbia trovato la stringa prima di usarla
-      if (htmlBodyIndex >= 0) {
-        if (htmlBodyIndex > 200) {
-          remainderHtml = originalHtml.substring(0, htmlBodyIndex).trim();
+    // Stessa logica migliorata per HTML se disponibile
+    if (originalHtml && cleanedHtml) {
+      const htmlLengthRatio = originalHtml.length / Math.max(cleanedHtml.length, 1);
+      const htmlMinDifference = Math.max(200, cleanedHtml.length * 0.3);
+      
+      if (originalHtml.length > cleanedHtml.length + htmlMinDifference && htmlLengthRatio > 1.1) {
+        console.log(`[EMAIL-CLEANER] Attempting HTML remainder extraction: ratio=${htmlLengthRatio.toFixed(2)}`);
+        
+        // Multiple search strategies per HTML
+        let htmlBodyIndex = -1;
+        const htmlSearchSizes = [300, 250, 200, 150, 100];
+        
+        for (const size of htmlSearchSizes) {
+          if (cleanedHtml.length >= size) {
+            const searchString = cleanedHtml.substring(0, size);
+            htmlBodyIndex = originalHtml.indexOf(searchString);
+            if (htmlBodyIndex >= 0) {
+              console.log(`[EMAIL-CLEANER] Found HTML match with search size ${size}`);
+              break;
+            }
+          }
+        }
+        
+        if (htmlBodyIndex >= 0) {
+          const htmlContentThreshold = Math.max(100, cleanedHtml.length * 0.1);
+          
+          if (htmlBodyIndex > htmlContentThreshold) {
+            remainderHtml = originalHtml.substring(0, htmlBodyIndex).trim();
+            console.log(`[EMAIL-CLEANER] Extracted HTML remainder BEFORE: ${remainderHtml.length} chars`);
+          } else {
+            const afterIndex = htmlBodyIndex + cleanedHtml.length;
+            const remainingHtmlContent = originalHtml.length - afterIndex;
+            
+            if (remainingHtmlContent > htmlContentThreshold) {
+              remainderHtml = originalHtml.substring(afterIndex).trim();
+              console.log(`[EMAIL-CLEANER] Extracted HTML remainder AFTER: ${remainderHtml.length} chars`);
+            }
+          }
         } else {
-          const afterIndex = htmlBodyIndex + cleanedHtml.length;
-          if (afterIndex < originalHtml.length - 100) {
-            remainderHtml = originalHtml.substring(afterIndex).trim();
-          }
+          console.log(`[EMAIL-CLEANER] HTML exact match failed, remainder extraction skipped`);
         }
       }
     }
 
+    console.log(`[EMAIL-CLEANER] Remainder extraction complete: text=${remainderText?.length || 0}, html=${remainderHtml?.length || 0}`);
     return { text: remainderText, html: remainderHtml };
+  }
+
+  /**
+   * Fallback pattern-based remainder extraction quando indexOf fallisce
+   */
+  private static extractRemainderByPatterns(
+    originalBody: string,
+    cleanedBody: string
+  ): string | null {
+    console.log(`[EMAIL-CLEANER] Attempting pattern-based remainder extraction`);
+
+    const lines = originalBody.split('\n');
+
+    const forwardPatterns = [
+      /^[-_]{5,}.*(Original|Forwarded|Messaggio|Message).*/i,
+      /^---------- Forwarded message ----------/i,
+      /^---------- Messaggio inoltrato ----------/i,
+      /Il giorno .* ha scritto:/i,
+      /On .* wrote:/i,
+      /Le .* a écrit:/i,
+      /Am .* schrieb:/i,
+      /In data .* ha scritto:/i,
+      /\d{1,2}\/\d{1,2}\/\d{2,4}.*wrote:/i,
+      /\d{1,2}-\d{1,2}-\d{2,4}.*ha scritto:/i,
+      /.* ha scritto il \d{1,2}\/\d{1,2}\/\d{2,4}/i,
+      /^[>\s]*?(Da|From|Inviato|Sent|A|To|Cc|Oggetto|Subject|Data|Date)\s*[:\-=]\s*/i
+    ];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (forwardPatterns.some(p => p.test(line))) {
+        const textUpToHere = lines.slice(0, i).join('\n');
+        const remainderFromHere = lines.slice(i).join('\n').trim();
+        if (remainderFromHere.length > 100 &&
+            (textUpToHere.length < cleanedBody.length * 1.5 ||
+             textUpToHere.includes(cleanedBody.substring(0, Math.min(50, cleanedBody.length))))) {
+          console.log(`[EMAIL-CLEANER] Pattern-based match found at line ${i}: [pattern detected]`);
+          console.log(`[EMAIL-CLEANER] Remainder extracted: ${remainderFromHere.length} chars`);
+          return remainderFromHere;
+        }
+      }
+    }
+
+    const cleanedWords = new Set(cleanedBody.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+    let bestSplitIndex = -1;
+    let lowestOverlap = 1;
+
+    for (let i = Math.max(0, cleanedBody.length - 200); i < originalBody.length - 200; i += 100) {
+      const chunk = originalBody.substring(i, i + 500).toLowerCase();
+      const chunkWords = chunk.split(/\s+/).filter(w => w.length > 3);
+      const overlap = chunkWords.filter(w => cleanedWords.has(w)).length / Math.max(chunkWords.length, 1);
+      if (overlap < lowestOverlap && overlap < 0.3) {
+        lowestOverlap = overlap;
+        bestSplitIndex = i;
+      }
+    }
+
+    if (bestSplitIndex > 0) {
+      const heuristicRemainder = originalBody.substring(bestSplitIndex).trim();
+      if (heuristicRemainder.length > 150) {
+        console.log(`[EMAIL-CLEANER] Heuristic split found at index ${bestSplitIndex}, overlap=${lowestOverlap.toFixed(2)}`);
+        return heuristicRemainder;
+      }
+    }
+
+    console.log(`[EMAIL-CLEANER] Pattern-based remainder extraction failed`);
+    return null;
   }
 
   // Estrae un riassunto degli header del thread quotato
@@ -1337,7 +1476,7 @@ export class EmailForwardCleaner {
     for (let i = 0; i < Math.min(lines.length, 50); i++) { // Ampliata ricerca a 50 righe
       const line = lines[i].trim();
       if (singleLineMarkers.some(marker => marker.test(line))) {
-        console.log(`[EMAIL-CLEANER] Found single-line marker at line ${i}: "${line.substring(0, 50)}..."`);
+        console.log(`[EMAIL-CLEANER] Found single-line marker at line ${i}: "[pattern detected]"`);
         firstHeaderClusterStart = i;
         firstHeaderClusterEnd = i + 1;
         headerCount = 1;
