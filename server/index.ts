@@ -2,10 +2,12 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { autoInitializeEmailServices } from "./email-auto-init";
+import { testDatabaseConnection } from "./db";
 
 // Add global error handlers to prevent server crashes
 process.on('uncaughtException', (error) => {
   console.error('[PROCESS] Uncaught Exception:', error);
+  
   // Don't exit the process for email-related errors
   if (error.message?.includes('Timed out while authenticating') || 
       error.message?.includes('IMAP') ||
@@ -13,6 +15,28 @@ process.on('uncaughtException', (error) => {
     console.error('[PROCESS] Email service error caught, server continuing...');
     return;
   }
+  
+  // Don't exit the process for database connection errors - handle gracefully
+  if (error.message?.includes('terminating connection due to administrator command') ||
+      error.message?.includes('Connection terminated') ||
+      error.message?.includes('FATAL') ||
+      (error as any).code === '57P01' || // Connection termination error code
+      (error as any).code === '08003' || // Connection does not exist
+      (error as any).code === '08006') { // Connection failure
+    console.error('[PROCESS] Database connection error caught, attempting recovery...');
+    // Attempt to reconnect after a short delay
+    setTimeout(async () => {
+      console.log('[PROCESS] Testing database connection recovery...');
+      const connected = await testDatabaseConnection();
+      if (connected) {
+        console.log('[PROCESS] Database connection recovered successfully');
+      } else {
+        console.error('[PROCESS] Database connection recovery failed');
+      }
+    }, 5000);
+    return;
+  }
+  
   console.error('[PROCESS] Critical error, exiting...');
   process.exit(1);
 });
@@ -85,8 +109,14 @@ app.use((req, res, next) => {
     port,
     host: "0.0.0.0",
     reusePort: true,
-  }, () => {
+  }, async () => {
     log(`serving on port ${port}`);
+    
+    // Test database connection on startup
+    const dbConnected = await testDatabaseConnection();
+    if (!dbConnected) {
+      console.warn('[SERVER] Database connection failed during startup, but server will continue running');
+    }
     
     // Auto-initialize email services after server starts
     setTimeout(async () => {
