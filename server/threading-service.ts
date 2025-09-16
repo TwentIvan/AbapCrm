@@ -110,8 +110,32 @@ export class ThreadingService {
     references: string[], 
     subject?: string
   ): string {
-    // Use the oldest reference as base, or inReplyTo, or current messageId
-    let baseId = references.length > 0 ? references[0] : (inReplyTo || messageId);
+    // Detect References ordering using inReplyTo as anchor and pick correct root
+    let baseId: string | null = null;
+    
+    if (references.length > 0) {
+      if (inReplyTo && references.includes(inReplyTo)) {
+        // Use inReplyTo as anchor to detect ordering
+        if (references[0] === inReplyTo) {
+          // Newest-first ordering (Outlook style) → root is last
+          baseId = references[references.length - 1];
+        } else if (references[references.length - 1] === inReplyTo) {
+          // Oldest-first ordering (traditional) → root is first
+          baseId = references[0];
+        } else {
+          // inReplyTo is somewhere in middle → use last reference as root (newest-first fallback)
+          baseId = references[references.length - 1];
+        }
+      } else {
+        // No reliable anchor → assume newest-first (covers common Outlook clients)
+        baseId = references[references.length - 1];
+      }
+    }
+    
+    // Fallback chain: references → inReplyTo → messageId
+    if (!baseId) {
+      baseId = inReplyTo || messageId;
+    }
     
     // If no threading headers, use normalized subject
     if (!baseId && subject) {

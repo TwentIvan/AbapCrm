@@ -50,6 +50,7 @@ import { pool } from "./db";
 import { sql } from "drizzle-orm";
 import scrypt from "scrypt-js";
 import { AuditService } from "./audit-service";
+import { ThreadingService } from "./threading-service";
 
 const PostgresSessionStore = connectPg(session);
 const MemorySessionStore = MemoryStore(session);
@@ -180,6 +181,7 @@ export interface IStorage {
   deleteMessage(id: string, userId: string): Promise<boolean>;
   getUnreadMessages(userId: string): Promise<Message[]>;
   markMessageAsRead(id: string, userId: string): Promise<Message | undefined>;
+  backfillThreadIds(userId: string): Promise<{updated: number, errors: number, total: number}>;
 
   // Email Feedbacks
   createEmailFeedback(feedback: InsertEmailFeedback): Promise<EmailFeedback>;
@@ -1890,6 +1892,62 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(messages.id, id), eq(messages.userId, userId)))
       .returning();
     return updated || undefined;
+  }
+
+  async backfillThreadIds(userId: string): Promise<{updated: number, errors: number, total: number}> {
+    console.log('[BACKFILL] Starting thread ID backfill for user:', userId);
+    
+    // Get all messages for the user
+    const allMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.userId, userId))
+      .orderBy(asc(messages.receivedAt));
+
+    console.log(`[BACKFILL] Found ${allMessages.length} messages to process`);
+
+    let updated = 0;
+    let errors = 0;
+    const total = allMessages.length;
+
+    for (const message of allMessages) {
+      try {
+        // Extract threading headers from message metadata or direct fields
+        const headers = {
+          messageId: message.messageId || undefined,
+          inReplyTo: message.inReplyTo || undefined,
+          references: message.references ? message.references : [],
+          subject: message.subject || undefined
+        };
+
+        // Use ThreadingService to calculate new thread ID with normalized logic
+        const threadingInfo = ThreadingService.extractThreadingInfo(headers);
+        const newThreadId = threadingInfo.threadId;
+
+        // Only update if thread ID changed
+        if (message.threadId !== newThreadId) {
+          await db
+            .update(messages)
+            .set({ 
+              threadId: newThreadId,
+              inReplyTo: threadingInfo.inReplyTo,
+              references: threadingInfo.references,
+              updatedAt: new Date() 
+            })
+            .where(eq(messages.id, message.id));
+
+          updated++;
+          console.log(`[BACKFILL] Updated message ${message.id}: ${message.threadId} -> ${newThreadId}`);
+        }
+      } catch (error) {
+        errors++;
+        console.error(`[BACKFILL] Error processing message ${message.id}:`, error);
+      }
+    }
+
+    const result = { updated, errors, total };
+    console.log('[BACKFILL] Completed:', result);
+    return result;
   }
 
   // Email Feedbacks

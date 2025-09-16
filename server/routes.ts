@@ -1445,6 +1445,23 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // TEMPORARY: Backfill thread IDs with normalized Message-ID logic
+  app.post("/api/messages/backfill-thread-ids", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      console.log('[BACKFILL] Starting thread ID backfill for user:', req.user!.id);
+      
+      const result = await storage.backfillThreadIds(req.user!.id);
+      
+      console.log('[BACKFILL] Completed:', result);
+      res.json(result);
+    } catch (error) {
+      console.error('[BACKFILL] Error during thread ID backfill:', error);
+      res.status(500).json({ error: 'Failed to backfill thread IDs' });
+    }
+  });
+
   // Download attachment endpoint
   app.get("/api/messages/:messageId/attachments/:filename", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
