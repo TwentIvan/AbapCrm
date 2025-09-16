@@ -919,6 +919,8 @@ export default function MessagesPage() {
                             { id: 'mixed-threads', label: 'Thread mixati', icon: MessageSquare },
                             { id: 'extra-content', label: 'Contenuto extra', icon: Plus },
                             { id: 'signature-issues', label: 'Problemi firma', icon: User },
+                            { id: 'thread-not-collapsed', label: 'Thread non imploso', icon: ChevronDown },
+                            { id: 'thread-badly-collapsed', label: 'Thread non imploso correttamente', icon: ChevronUp },
                             { id: 'other', label: 'Altro', icon: AlertCircle }
                           ].map(({ id, label, icon: Icon }) => (
                             <Button
