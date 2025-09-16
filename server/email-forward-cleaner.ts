@@ -117,8 +117,8 @@ export class EmailForwardCleaner {
     const remainder = this.extractRemainder(body, cleaned.originalBody, htmlBody, cleaned.originalHtmlBody);
     const headerSummary = this.extractHeaderSummary(body);
 
-    // FIX: Usa originalHtmlBody invece di preservedHtmlFormatting
-    const cleanedHtmlBody = cleaned.originalHtmlBody || cleaned.preservedHtmlFormatting;
+    // FIX: Usa originalHtmlBody invece di preservedHtmlFormatting - evita fallback che sovrascrive text analysis
+    const cleanedHtmlBody = cleaned.originalHtmlBody;
 
     return {
       bodyText: cleaned.originalBody,
