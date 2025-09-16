@@ -43,6 +43,213 @@ function getOptionalOrganizationId(req: any): string | null {
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
+  // Health check endpoint for debugging
+  app.get('/api/__health', (req, res) => {
+    res.json({ 
+      ok: true, 
+      env: (app as any).get('env'), 
+      NODE_ENV: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  // Debug endpoint for authentication (DEV ONLY) - NEW PATH to avoid conflicts
+  if (process.env.NODE_ENV !== 'production') {
+    app.get('/api/debug/auth-probe/:username', async (req, res) => {
+      console.log('[AUTH-PROBE] routes.ts handler executing');
+      try {
+        const { username } = req.params;
+        const password = String(req.query.password || '');
+        const probe = ['true','1','yes','on'].includes(String(req.query.probe || '').toLowerCase());
+        
+        let user = await storage.getUserByEmail(username);
+        if (!user && !username.includes('@')) user = await storage.getUserByUsername(username);
+        if (!user) return res.status(404).json({ found: false });
+        
+        const stored = user.password || '';
+        const [hash = '', salt = ''] = stored.split('.');
+        const isSaltHex = /^[0-9a-f]+$/i.test(salt) && salt.length % 2 === 0;
+        let match = false, error;
+        
+        // Import comparePasswords dynamically to avoid circular imports
+        const { comparePasswords } = await import('./auth');
+        try { 
+          match = await comparePasswords(password, stored); 
+        } catch (e: any) { 
+          error = e.message || String(e); 
+        }
+
+        const result: any = { 
+          found: true, 
+          user: { id: user.id, username: user.username, email: user.email }, 
+          hashInfo: { hashLen: hash.length, saltLen: salt.length, isSaltHex }, 
+          match, 
+          error,
+          probeRequested: probe,
+          probeResults: []
+        };
+
+        // Probe legacy algorithms if requested
+        if (probe && password) {
+          try {
+            const crypto = await import('crypto');
+            const util = await import('util');
+            const pbkdf2 = util.promisify(crypto.pbkdf2);
+            
+            const hashBuf = Buffer.from(hash, 'hex');
+            const saltBuf = Buffer.from(salt, 'hex');
+            const saltStr = salt;
+            const keyLen = hashBuf.length;
+            
+            const probeResults: any[] = [];
+
+          // Test PBKDF2-SHA512 with various iterations
+          for (const iterations of [10000, 50000, 100000]) {
+            try {
+              // Try with hex-decoded salt
+              const derived1 = await pbkdf2(password, saltBuf, iterations, keyLen, 'sha512');
+              if (hashBuf.length === derived1.length && crypto.timingSafeEqual(hashBuf, derived1)) {
+                probeResults.push({ algorithm: 'PBKDF2-SHA512', iterations, saltEncoding: 'hex', match: true });
+              }
+              
+              // Try with string salt
+              const derived2 = await pbkdf2(password, saltStr, iterations, keyLen, 'sha512');
+              if (hashBuf.length === derived2.length && crypto.timingSafeEqual(hashBuf, derived2)) {
+                probeResults.push({ algorithm: 'PBKDF2-SHA512', iterations, saltEncoding: 'string', match: true });
+              }
+            } catch (e) {
+              // Continue with next iteration
+            }
+          }
+
+          // Test SHA-512 variations
+          try {
+            // SHA-512(salt + password)
+            const sha1 = crypto.createHash('sha512').update(saltBuf).update(password, 'utf8').digest();
+            if (crypto.timingSafeEqual(hashBuf, sha1)) {
+              probeResults.push({ algorithm: 'SHA-512', method: 'salt+password', saltEncoding: 'hex', match: true });
+            }
+
+            // SHA-512(password + salt)
+            const sha2 = crypto.createHash('sha512').update(password, 'utf8').update(saltBuf).digest();
+            if (crypto.timingSafeEqual(hashBuf, sha2)) {
+              probeResults.push({ algorithm: 'SHA-512', method: 'password+salt', saltEncoding: 'hex', match: true });
+            }
+
+            // SHA-512(salt + password) with string salt
+            const sha3 = crypto.createHash('sha512').update(saltStr, 'utf8').update(password, 'utf8').digest();
+            if (crypto.timingSafeEqual(hashBuf, sha3)) {
+              probeResults.push({ algorithm: 'SHA-512', method: 'salt+password', saltEncoding: 'string', match: true });
+            }
+
+            // SHA-512(password + salt) with string salt
+            const sha4 = crypto.createHash('sha512').update(password, 'utf8').update(saltStr, 'utf8').digest();
+            if (crypto.timingSafeEqual(hashBuf, sha4)) {
+              probeResults.push({ algorithm: 'SHA-512', method: 'password+salt', saltEncoding: 'string', match: true });
+            }
+          } catch (e) {
+            // Continue
+          }
+
+          // Test MD5 variations (some legacy systems use double MD5)
+          try {
+            // MD5(MD5(password) + salt)
+            const md5_1 = crypto.createHash('md5').update(password, 'utf8').digest('hex');
+            const md5_2 = crypto.createHash('md5').update(md5_1 + saltStr).digest('hex');
+            if (md5_2.toLowerCase() === hash.toLowerCase()) {
+              probeResults.push({ algorithm: 'MD5', method: 'MD5(MD5(password)+salt)', match: true });
+            }
+
+            // MD5(salt + MD5(password))
+            const md5_3 = crypto.createHash('md5').update(saltStr + md5_1).digest('hex');
+            if (md5_3.toLowerCase() === hash.toLowerCase()) {
+              probeResults.push({ algorithm: 'MD5', method: 'MD5(salt+MD5(password))', match: true });
+            }
+          } catch (e) {
+            // Continue
+          }
+
+          // Test SHA-1 variations
+          try {
+            // SHA-1(password + salt)
+            const sha1_1 = crypto.createHash('sha1').update(password + saltStr).digest('hex');
+            if (sha1_1.toLowerCase() === hash.toLowerCase()) {
+              probeResults.push({ algorithm: 'SHA-1', method: 'SHA1(password+salt)', match: true });
+            }
+
+            // SHA-1(salt + password)
+            const sha1_2 = crypto.createHash('sha1').update(saltStr + password).digest('hex');
+            if (sha1_2.toLowerCase() === hash.toLowerCase()) {
+              probeResults.push({ algorithm: 'SHA-1', method: 'SHA1(salt+password)', match: true });
+            }
+          } catch (e) {
+            // Continue
+          }
+
+          // Test lower iterations PBKDF2 (some legacy systems use very low)
+          try {
+            for (const iterations of [1, 100, 1000, 5000]) {
+              const derived = await pbkdf2(password, saltBuf, iterations, keyLen, 'sha512');
+              if (hashBuf.length === derived.length && crypto.timingSafeEqual(hashBuf, derived)) {
+                probeResults.push({ algorithm: 'PBKDF2-SHA512-low', iterations, match: true });
+              }
+            }
+          } catch (e) {
+            // Continue
+          }
+
+          // Test different password case variations
+          try {
+            const passwordLower = password.toLowerCase();
+            const passwordUpper = password.toUpperCase();
+            
+            for (const pwd of [passwordLower, passwordUpper]) {
+              // PBKDF2 with case variations
+              const derived = await pbkdf2(pwd, saltBuf, 10000, keyLen, 'sha512');
+              if (hashBuf.length === derived.length && crypto.timingSafeEqual(hashBuf, derived)) {
+                probeResults.push({ algorithm: 'PBKDF2-SHA512', passwordCase: pwd === passwordLower ? 'lower' : 'upper', match: true });
+              }
+              
+              // SHA-512 with case variations
+              const sha = crypto.createHash('sha512').update(pwd, 'utf8').update(saltBuf).digest();
+              if (crypto.timingSafeEqual(hashBuf, sha)) {
+                probeResults.push({ algorithm: 'SHA-512', passwordCase: pwd === passwordLower ? 'lower' : 'upper', method: 'password+salt', match: true });
+              }
+            }
+          } catch (e) {
+            // Continue
+          }
+
+          // Test HMAC-SHA512 variations (final attempt before reset flow)
+          try {
+            // HMAC-SHA512 with hex salt as key
+            const hmac1 = crypto.createHmac('sha512', saltBuf).update(password, 'utf8').digest();
+            if (crypto.timingSafeEqual(hashBuf, hmac1)) {
+              probeResults.push({ algorithm: 'HMAC-SHA512', saltEncoding: 'hex', match: true });
+            }
+
+            // HMAC-SHA512 with string salt as key
+            const hmac2 = crypto.createHmac('sha512', saltStr).update(password, 'utf8').digest();
+            if (crypto.timingSafeEqual(hashBuf, hmac2)) {
+              probeResults.push({ algorithm: 'HMAC-SHA512', saltEncoding: 'string', match: true });
+            }
+          } catch (e) {
+            // Continue
+          }
+
+          result.probeResults = probeResults;
+          } catch (probeError: any) {
+            result.probeError = probeError.message || String(probeError);
+          }
+        }
+        
+        res.json(result);
+      } catch (e: any) { 
+        res.status(500).json({ error: e.message }); 
+      }
+    });
+  }
+
   // Users
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

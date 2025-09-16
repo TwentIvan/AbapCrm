@@ -23,14 +23,27 @@ async function hashPassword(password: string) {
   return `${buf.toString("hex")}.${salt}`;
 }
 
-async function comparePasswords(supplied: string, stored: string) {
+function isHex(s: string): boolean {
+  return /^[0-9a-f]{2,}$/i.test(s) && s.length % 2 === 0;
+}
+
+export async function comparePasswords(supplied: string, stored: string) {
   const [hashed, salt] = stored.split(".");
   const hashedBuf = Buffer.from(hashed, "hex");
   
   // Compatibilità retroattiva: determina se è hash legacy (64 bytes) o nuovo (32 bytes)
   const keyLength = hashedBuf.length;
-  const suppliedBuf = (await scryptAsync(supplied, salt, keyLength)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  
+  // Try hex-decoded salt first (legacy format), then string salt (new format)
+  const saltBuf = isHex(salt) ? Buffer.from(salt, "hex") : Buffer.from(salt, 'utf8');
+  let derived = (await scryptAsync(supplied, saltBuf, keyLength)) as Buffer;
+  
+  if (!timingSafeEqual(hashedBuf, derived) && isHex(salt)) {
+    // Fallback: try string salt if hex salt failed
+    derived = (await scryptAsync(supplied, salt, keyLength)) as Buffer;
+  }
+  
+  return timingSafeEqual(hashedBuf, derived);
 }
 
 export function setupAuth(app: Express) {
@@ -51,13 +64,38 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Local Strategy - using email as username
+  // Local Strategy - supporting both email and username
   passport.use(
-    new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
-      const user = await storage.getUserByEmail(email);
-      if (!user || !user.password || !(await comparePasswords(password, user.password))) {
+    new LocalStrategy({ usernameField: 'email' }, async (emailOrUsername, password, done) => {
+      console.log(`[AUTH] Login attempt for: ${emailOrUsername}`);
+      console.log(`[AUTH] System debug active`);
+      
+      // First try to find user by email
+      let user = await storage.getUserByEmail(emailOrUsername);
+      
+      // If not found and it doesn't look like an email, try by username
+      if (!user && !emailOrUsername.includes('@')) {
+        console.log(`[AUTH] Email lookup failed, trying username lookup`);
+        user = await storage.getUserByUsername(emailOrUsername);
+      }
+      
+      if (!user) {
+        console.log(`[AUTH] User not found`);
+        return done(null, false);
+      }
+      
+      if (!user.password) {
+        console.log(`[AUTH] User has no password`);
+        return done(null, false);
+      }
+      
+      const passwordMatch = await comparePasswords(password, user.password);
+      console.log(`[AUTH] Password match: ${passwordMatch}`);
+      
+      if (!passwordMatch) {
         return done(null, false);
       } else {
+        console.log(`[AUTH] Login successful for user: ${user.username}`);
         return done(null, user);
       }
     }),
@@ -410,4 +448,5 @@ export function setupAuth(app: Express) {
       </html>
     `);
   });
+
 }

@@ -14,7 +14,7 @@ import { SiGoogle } from "react-icons/si";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const loginSchema = z.object({
-  email: z.string().email("Inserisci un'email valida"),
+  email: z.string().min(1, "Username o email richiesti"),
   password: z.string().min(1, "Password richiesta"),
 });
 
@@ -183,16 +183,16 @@ export default function AuthPage() {
                             name="email"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-gray-700 dark:text-gray-300">Email</FormLabel>
+                                <FormLabel className="text-gray-700 dark:text-gray-300">Username o Email</FormLabel>
                                 <FormControl>
                                   <Input 
                                     {...field} 
-                                    type="email"
+                                    type="text"
                                     name="email"
                                     id="loginEmail"
-                                    autoComplete="email"
+                                    autoComplete="username"
                                     data-testid="input-email"
-                                    placeholder="La tua email" 
+                                    placeholder="Username o email" 
                                     className="h-11"
                                   />
                                 </FormControl>

@@ -19,6 +19,9 @@ export const users = pgTable("users", {
   provider: authProviderEnum("provider").default("local").notNull(),
   externalId: text("external_id"), // Provider's user ID
   isEmailVerified: boolean("is_email_verified").default(false).notNull(),
+  // Password reset fields
+  resetToken: text("reset_token"), // Token for password reset
+  resetTokenExpiry: timestamp("reset_token_expiry"), // Token expiration
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
