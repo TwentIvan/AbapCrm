@@ -1435,9 +1435,24 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Custom Feedback Reasons - to store user-defined reasons for "other" category
+export const customFeedbackReasons = pgTable("custom_feedback_reasons", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  reason: text("reason").notNull(), // The custom reason text
+  usageCount: integer("usage_count").default(1).notNull(), // How many times it's been used
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export type EmailFeedback = typeof emailFeedbacks.$inferSelect;
 export type InsertEmailFeedback = typeof emailFeedbacks.$inferInsert;
 export const insertEmailFeedbackSchema = createInsertSchema(emailFeedbacks).omit({ id: true, createdAt: true });
+
+export type CustomFeedbackReason = typeof customFeedbackReasons.$inferSelect;
+export type InsertCustomFeedbackReason = typeof customFeedbackReasons.$inferInsert;
+export const insertCustomFeedbackReasonSchema = createInsertSchema(customFeedbackReasons).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
