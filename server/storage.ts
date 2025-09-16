@@ -172,6 +172,7 @@ export interface IStorage {
 
   // Messages
   getMessages(userId: string): Promise<Message[]>;
+  getMessageThreads(userId: string, limit?: number, offset?: number): Promise<any[]>;
   getMessage(id: string, userId: string): Promise<Message | undefined>;
   getMessageByMessageId(messageId: string, userId: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
@@ -1781,6 +1782,51 @@ export class DatabaseStorage implements IStorage {
     
     
     return result;
+  }
+
+  // Get messages grouped by thread
+  async getMessageThreads(userId: string, limit: number = 50, offset: number = 0): Promise<any[]> {
+    // First, get all unique thread IDs with their latest message timestamp
+    const threadsWithLatest = await db
+      .select({
+        threadId: messages.threadId,
+        latestReceivedAt: sql`MAX(${messages.receivedAt})`.as('latestReceivedAt'),
+        messageCount: sql`COUNT(*)`.as('messageCount'),
+        unreadCount: sql`COUNT(CASE WHEN ${messages.status} = 'unread' THEN 1 END)`.as('unreadCount')
+      })
+      .from(messages)
+      .where(and(
+        eq(messages.userId, userId),
+        isNotNull(messages.threadId)
+      ))
+      .groupBy(messages.threadId)
+      .orderBy(desc(sql`MAX(${messages.receivedAt})`))
+      .limit(limit)
+      .offset(offset);
+
+    // For each thread, get all messages in that thread
+    const threads = [];
+    for (const threadInfo of threadsWithLatest) {
+      const threadMessages = await db
+        .select()
+        .from(messages)
+        .where(and(
+          eq(messages.userId, userId),
+          eq(messages.threadId, threadInfo.threadId!),
+          isNotNull(messages.threadId)
+        ))
+        .orderBy(asc(messages.receivedAt)); // Chronological order within thread
+
+      threads.push({
+        threadId: threadInfo.threadId,
+        messageCount: Number(threadInfo.messageCount),
+        unreadCount: Number(threadInfo.unreadCount),
+        latestReceivedAt: threadInfo.latestReceivedAt,
+        messages: threadMessages
+      });
+    }
+
+    return threads;
   }
 
   async getMessage(id: string, userId: string): Promise<Message | undefined> {

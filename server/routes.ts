@@ -1429,6 +1429,22 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Message threads grouped by conversation
+  app.get("/api/message-threads", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+    
+    try {
+      const threads = await storage.getMessageThreads(req.user!.id, limit, offset);
+      res.json(threads);
+    } catch (error) {
+      console.error("Error fetching message threads:", error);
+      res.status(500).json({ error: "Failed to fetch message threads" });
+    }
+  });
+
   // Download attachment endpoint
   app.get("/api/messages/:messageId/attachments/:filename", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { aiService } from "./ai-service";
 import { EmailForwardCleaner } from "./email-forward-cleaner";
 import { AttachmentsService } from "./attachments-service";
+import { ThreadingService } from "./threading-service";
 import crypto from "crypto";
 import type { InsertMessage } from "@shared/schema";
 
@@ -267,6 +268,16 @@ export class ImapEmailService {
         console.log(`[IMAP] Cleaned forwarded email from: ${fromAddr?.address} - Original subject: "${cleanedEmail.originalSubject}"`);
       }
 
+      // Extract threading information from email headers
+      const threadingInfo = ThreadingService.extractThreadingInfo({
+        messageId: messageId,
+        inReplyTo: parsed.inReplyTo,
+        references: parsed.references,
+        subject: parsed.subject
+      });
+
+      console.log(`[IMAP] Threading info extracted for ${messageId}: thread=${threadingInfo.threadId}`);
+
       const messageData: InsertMessage = {
         messageId,
         type: 'email',
@@ -292,6 +303,10 @@ export class ImapEmailService {
           : getAllAddresses(parsed.bcc),
         attachments: attachments,
         receivedAt: parsed.date || new Date(),
+        // Threading information
+        threadId: threadingInfo.threadId,
+        inReplyTo: threadingInfo.inReplyTo,
+        references: threadingInfo.references,
         userId,
         projectId: null,
         taskId: null,

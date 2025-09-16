@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,6 +82,8 @@ export default function MessagesPage() {
   const [showFeedbackPanel, setShowFeedbackPanel] = useState(false);
   const [customFeedbackReason, setCustomFeedbackReason] = useState("");
   const [selectedCustomReasonId, setSelectedCustomReasonId] = useState<string | null>(null);
+  const [showThreadView, setShowThreadView] = useState(false);
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
 
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
@@ -110,6 +112,20 @@ export default function MessagesPage() {
     },
     refetchInterval: 30000, // Refresh every 30 seconds
     refetchIntervalInBackground: true, // Continue refreshing in background
+    enabled: !showThreadView, // Only fetch when not in thread view
+  });
+
+  // Thread view data
+  const { data: threads = [] } = useQuery<any[]>({
+    queryKey: ["/api/message-threads"],
+    queryFn: async () => {
+      const res = await fetch("/api/message-threads", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch message threads');
+      return res.json();
+    },
+    refetchInterval: 30000, 
+    refetchIntervalInBackground: true,
+    enabled: showThreadView, // Only fetch when in thread view
   });
 
   const { data: projects = [] } = useQuery<Project[]>({
@@ -370,7 +386,19 @@ export default function MessagesPage() {
     return null;
   };
 
-  const unreadCount = messages.filter(m => m.status === 'unread').length;
+  const unreadCount = showThreadView 
+    ? threads.reduce((sum, thread) => sum + thread.unreadCount, 0)
+    : messages.filter(m => m.status === 'unread').length;
+
+  const toggleThread = (threadId: string) => {
+    const newExpanded = new Set(expandedThreads);
+    if (expandedThreads.has(threadId)) {
+      newExpanded.delete(threadId);
+    } else {
+      newExpanded.add(threadId);
+    }
+    setExpandedThreads(newExpanded);
+  };
 
   // Filtro e ordinamento messaggi
   const filteredAndSortedMessages = messages
@@ -474,6 +502,15 @@ export default function MessagesPage() {
               <Badge variant="secondary" className="text-sm">
                 {unreadCount} non letti
               </Badge>
+              <Button 
+                onClick={() => setShowThreadView(!showThreadView)}
+                size="sm"
+                variant={showThreadView ? "default" : "outline"}
+                data-testid="button-toggle-thread-view"
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                {showThreadView ? 'Vista normale' : 'Vista thread'}
+              </Button>
               <Button 
                 onClick={() => syncMutation.mutate()}
                 disabled={syncMutation.isPending}
@@ -597,17 +634,125 @@ export default function MessagesPage() {
                   <ScrollArea className="flex-1 min-h-0">
                     <Table>
                       <TableBody>
-                        {filteredAndSortedMessages.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={3} className="h-32 text-center">
-                              <div className="flex flex-col items-center justify-center text-muted-foreground">
-                                <Mail className="h-8 w-8 mb-2 opacity-50" />
-                                <p>{searchTerm ? 'Nessun messaggio trovato' : 'Nessun messaggio ricevuto'}</p>
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                        {showThreadView ? (
+                          // Thread View
+                          threads.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={3} className="h-32 text-center">
+                                <div className="flex flex-col items-center justify-center text-muted-foreground">
+                                  <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
+                                  <p>Nessun thread trovato</p>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            threads.map((thread) => (
+                              <React.Fragment key={thread.threadId}>
+                                {/* Thread Header Row */}
+                                <TableRow
+                                  className="cursor-pointer bg-muted/30 hover:bg-muted/50 border-2 border-primary/20"
+                                  onClick={() => toggleThread(thread.threadId)}
+                                  data-testid={`thread-${thread.threadId}`}
+                                >
+                                  <TableCell colSpan={3} className="py-4">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                        {expandedThreads.has(thread.threadId) ? (
+                                          <ChevronDown className="h-4 w-4" />
+                                        ) : (
+                                          <ChevronUp className="h-4 w-4" />
+                                        )}
+                                        <MessageSquare className="h-5 w-5 text-primary" />
+                                        <div>
+                                          <div className="font-semibold">
+                                            Thread: {thread.messages[0]?.subject || 'Nessun oggetto'}
+                                          </div>
+                                          <div className="text-sm text-muted-foreground">
+                                            {thread.messageCount} messaggi, {thread.unreadCount} non letti
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {format(new Date(thread.latestReceivedAt), 'dd MMM yyyy HH:mm')}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+
+                                {/* Thread Messages (when expanded) */}
+                                {expandedThreads.has(thread.threadId) && thread.messages.map((message: Message, index: number) => {
+                                  const linkedObject = getLinkedObjectName(message);
+                                  
+                                  return (
+                                    <TableRow
+                                      key={message.id}
+                                      data-testid={`message-item-${message.id}`}
+                                      className={`cursor-pointer transition-colors border-l-4 border-l-primary/30 ml-8 ${
+                                        selectedMessage?.id === message.id ? 'bg-muted' : ''
+                                      } ${message.status === 'unread' ? 'border-l-blue-500' : ''}`}
+                                      onClick={() => handleSelectMessage(message)}
+                                    >
+                                      {/* Same message content as normal view but indented */}
+                                      <TableCell style={{ width: `${columnWidths.fromEmail}%` }}>
+                                        <div className="space-y-1 pl-4">
+                                          <div className="flex items-center gap-2">
+                                            {getStatusIcon(message.status)}
+                                            <span className={`text-sm truncate ${
+                                              message.status === 'unread' ? 'font-bold' : 'font-medium'
+                                            }`}>
+                                              {message.fromName || message.fromEmail}
+                                            </span>
+                                            <Badge variant="secondary" className="text-xs">
+                                              #{index + 1}
+                                            </Badge>
+                                          </div>
+                                          {linkedObject && (
+                                            <Badge variant="outline" className="text-xs">
+                                              <Link className="h-3 w-3 mr-1" />
+                                              {linkedObject.type}: {linkedObject.name}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                      
+                                      <TableCell style={{ width: `${columnWidths.subject}%` }}>
+                                        <div className="space-y-1 pl-4">
+                                          <p className={`text-sm truncate ${
+                                            message.status === 'unread' ? 'font-bold text-foreground' : 'font-normal text-foreground'
+                                          }`}>
+                                            {message.subject || 'Nessun oggetto'}
+                                          </p>
+                                          <p className="text-xs text-muted-foreground truncate">
+                                            {message.body ? message.body.substring(0, 60) + '...' : 'Nessun contenuto'}
+                                          </p>
+                                        </div>
+                                      </TableCell>
+                                      
+                                      <TableCell className="text-xs text-muted-foreground" style={{ width: `${columnWidths.receivedAt}%` }}>
+                                        <div className="space-y-1 pl-4">
+                                          <div>{format(new Date(message.receivedAt), 'dd MMM yyyy')}</div>
+                                          <div>{format(new Date(message.receivedAt), 'HH:mm')}</div>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </React.Fragment>
+                            ))
+                          )
                         ) : (
-                          filteredAndSortedMessages.map((message) => {
+                          // Normal Message View
+                          filteredAndSortedMessages.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={3} className="h-32 text-center">
+                                <div className="flex flex-col items-center justify-center text-muted-foreground">
+                                  <Mail className="h-8 w-8 mb-2 opacity-50" />
+                                  <p>{searchTerm ? 'Nessun messaggio trovato' : 'Nessun messaggio ricevuto'}</p>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredAndSortedMessages.map((message) => {
                             const linkedObject = getLinkedObjectName(message);
                             
                             return (
@@ -670,7 +815,7 @@ export default function MessagesPage() {
                               </TableRow>
                             );
                           })
-                        )}
+                        ))}
                       </TableBody>
                     </Table>
                   </ScrollArea>

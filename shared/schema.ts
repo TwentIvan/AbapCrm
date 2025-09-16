@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, decimal, pgEnum, boolean, uuid, time, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, decimal, pgEnum, boolean, uuid, time, jsonb, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -223,6 +223,10 @@ export const messages = pgTable("messages", {
   htmlBody: text("html_body"),
   attachments: text("attachments").array(), // Array di nomi/paths allegati
   receivedAt: timestamp("received_at").notNull(),
+  // Email Threading Support
+  threadId: text("thread_id"), // ID univoco per raggruppare email correlate in thread
+  inReplyTo: text("in_reply_to"), // Message-ID dell'email a cui si risponde
+  references: text("references").array(), // Array di Message-IDs della catena di conversazione
   // Destinatari originali estratti dalle email inoltrate
   originalToEmails: text("original_to_emails").array().default([]), 
   originalCcEmails: text("original_cc_emails").array().default([]), 
@@ -236,7 +240,9 @@ export const messages = pgTable("messages", {
   isManuallyVerified: boolean("is_manually_verified").default(false), // Se l'utente ha confermato il match AI
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  threadIdIdx: index("messages_thread_id_idx").on(table.threadId),
+}));
 
 // Commenti collegati a progetti o task (generati da messaggi o inseriti manualmente)
 export const comments = pgTable("comments", {
@@ -1092,6 +1098,7 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   updatedAt: true,
 }).extend({
   attachments: z.array(z.string()).optional(),
+  references: z.array(z.string()).optional(),
 });
 
 export const insertCommentSchema = createInsertSchema(comments).omit({
