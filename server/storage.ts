@@ -345,6 +345,11 @@ export interface IStorage {
   // Email Configurations Extended
   getEmailConfigsByOrganization(organizationId: string): Promise<EmailConfig[]>;
 
+  // Password Reset Methods
+  setResetToken(userId: string, token: string, expiry: Date): Promise<void>;
+  getUserByResetToken(token: string): Promise<User | undefined>;
+  clearResetToken(userId: string): Promise<void>;
+
   sessionStore: session.Store;
 }
 
@@ -429,7 +434,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
+    const [user] = await db.select().from(users).where(sql`LOWER(${users.email}) = LOWER(${email.trim()})`);
     return user || undefined;
   }
 
@@ -498,6 +503,39 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return updatedUser || undefined;
+  }
+
+  // Password Reset Methods Implementation
+  async setResetToken(userId: string, token: string, expiry: Date): Promise<void> {
+    await db.update(users)
+      .set({ 
+        resetToken: token, 
+        resetTokenExpiry: expiry 
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    // Hash the provided token to compare with stored hashed token
+    const crypto = await import('crypto');
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    
+    const [user] = await db.select().from(users).where(
+      and(
+        eq(users.resetToken, hashedToken),
+        sql`reset_token_expiry > NOW()`
+      )
+    );
+    return user || undefined;
+  }
+
+  async clearResetToken(userId: string): Promise<void> {
+    await db.update(users)
+      .set({ 
+        resetToken: null, 
+        resetTokenExpiry: null 
+      })
+      .where(eq(users.id, userId));
   }
 
   // Organizations
