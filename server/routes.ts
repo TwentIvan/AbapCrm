@@ -1696,6 +1696,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         isCorrect: req.body.isCorrect,
         category: req.body.category || null,
         comment: req.body.comment || null,
+        customReasonId: req.body.customReasonId || null,
         messageSubject: message.subject,
         fromEmail: message.fromEmail,
         messageLength: message.body?.length || 0,
@@ -1706,9 +1707,17 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       // Save feedback to database
       const savedFeedback = await storage.createEmailFeedback(feedbackData);
       
-      // If category is 'other' and there's a comment, save it as a custom feedback reason for future use
-      if (savedFeedback.category === 'other' && savedFeedback.comment && savedFeedback.comment.trim()) {
-        try {
+      // Handle custom feedback reasons
+      try {
+        if (savedFeedback.customReasonId) {
+          // If customReasonId is provided, increment the usage count for that existing reason
+          await storage.incrementCustomFeedbackReasonUsage(savedFeedback.customReasonId);
+          console.log('[CUSTOM-FEEDBACK-REASON] Incremented usage for existing reason:', {
+            reasonId: savedFeedback.customReasonId,
+            userId
+          });
+        } else if (savedFeedback.category === 'other' && savedFeedback.comment && savedFeedback.comment.trim()) {
+          // If category is 'other' and there's a comment, save it as a new custom feedback reason
           const customReason = await storage.findOrCreateCustomFeedbackReason(
             userId,
             organizationId, 
@@ -1720,10 +1729,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             usageCount: customReason.usageCount,
             userId
           });
-        } catch (error) {
-          console.error('[CUSTOM-FEEDBACK-REASON] Failed to save custom reason:', error);
-          // Non-critical error, continue with feedback submission
         }
+      } catch (error) {
+        console.error('[CUSTOM-FEEDBACK-REASON] Failed to process custom reason:', error);
+        // Non-critical error, continue with feedback submission
       }
       
       console.log('[FEEDBACK-SYSTEM] User feedback saved to database:', {
@@ -1742,6 +1751,21 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Feedback submission error:", error);
       res.status(500).json({ error: "Failed to submit feedback" });
+    }
+  });
+
+  // Custom Feedback Reasons - get user's saved custom reasons
+  app.get("/api/feedback/custom-reasons", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      
+      const customReasons = await storage.getCustomFeedbackReasons(userId, organizationId);
+      res.json(customReasons);
+    } catch (error) {
+      console.error("Failed to get custom feedback reasons:", error);
+      res.status(500).json({ error: "Failed to get custom reasons" });
     }
   });
 

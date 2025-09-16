@@ -81,6 +81,7 @@ export default function MessagesPage() {
   const [feedbackCategory, setFeedbackCategory] = useState<string | null>(null);
   const [showFeedbackPanel, setShowFeedbackPanel] = useState(false);
   const [customFeedbackReason, setCustomFeedbackReason] = useState("");
+  const [selectedCustomReasonId, setSelectedCustomReasonId] = useState<string | null>(null);
 
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
@@ -138,14 +139,14 @@ export default function MessagesPage() {
     },
   });
 
+  // Query per i motivi di feedback personalizzati
+  const { data: customFeedbackReasons = [] } = useQuery<{ id: string; reason: string; usageCount: number }[]>({
+    queryKey: ["/api/feedback/custom-reasons"],
+  });
+
   // Query per il contenuto renderizzato del messaggio selezionato
   const { data: renderedContent } = useQuery<RenderedMessageContent>({
     queryKey: ["/api/messages", selectedMessage?.id, "rendered"],
-    queryFn: async () => {
-      const res = await fetch(`/api/messages/${selectedMessage!.id}/rendered`, { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch rendered message content');
-      return res.json();
-    },
     enabled: !!selectedMessage,
   });
 
@@ -219,16 +220,18 @@ export default function MessagesPage() {
   });
 
   const feedbackMutation = useMutation({
-    mutationFn: ({ messageId, isCorrect, category, comment }: { 
+    mutationFn: ({ messageId, isCorrect, category, comment, customReasonId }: { 
       messageId: string; 
       isCorrect: boolean; 
       category?: string; 
-      comment?: string; 
+      comment?: string;
+      customReasonId?: string;
     }) => 
       apiRequest("POST", `/api/messages/${messageId}/feedback`, {
         isCorrect,
         category,
         comment,
+        customReasonId,
         timestamp: new Date().toISOString()
       }),
     onSuccess: () => {
@@ -239,6 +242,9 @@ export default function MessagesPage() {
       setShowFeedbackPanel(false);
       setFeedbackCategory(null);
       setCustomFeedbackReason("");
+      setSelectedCustomReasonId(null);
+      // Invalidate custom reasons cache to refresh the list with any new reason
+      queryClient.invalidateQueries({ queryKey: ["/api/feedback/custom-reasons"] });
     },
     onError: (error: Error) => {
       toast({
@@ -915,6 +921,7 @@ export default function MessagesPage() {
                       <div className="mt-4 p-4 border rounded-lg bg-background">
                         <h5 className="font-medium mb-3">Che tipo di errore hai notato?</h5>
                         <div className="grid grid-cols-2 gap-2 mb-4">
+                          {/* Motivi predefiniti */}
                           {[
                             { id: 'missing-content', label: 'Contenuto mancante', icon: AlertTriangle },
                             { id: 'wrong-order', label: 'Ordine sbagliato', icon: ArrowUpDown },
@@ -922,8 +929,7 @@ export default function MessagesPage() {
                             { id: 'extra-content', label: 'Contenuto extra', icon: Plus },
                             { id: 'signature-issues', label: 'Problemi firma', icon: User },
                             { id: 'thread-not-collapsed', label: 'Thread non imploso', icon: ChevronDown },
-                            { id: 'thread-badly-collapsed', label: 'Thread non imploso correttamente', icon: ChevronUp },
-                            { id: 'other', label: 'Altro', icon: AlertCircle }
+                            { id: 'thread-badly-collapsed', label: 'Thread non imploso correttamente', icon: ChevronUp }
                           ].map(({ id, label, icon: Icon }) => (
                             <Button
                               key={id}
@@ -937,6 +943,36 @@ export default function MessagesPage() {
                               {label}
                             </Button>
                           ))}
+                          
+                          {/* Motivi personalizzati salvati */}
+                          {customFeedbackReasons.map((reason) => (
+                            <Button
+                              key={`custom-${reason.id}`}
+                              variant={feedbackCategory === `custom-${reason.id}` ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setFeedbackCategory(`custom-${reason.id}`)}
+                              className="flex items-center gap-2 justify-start"
+                              data-testid={`button-custom-reason-${reason.id}`}
+                              title={`Usato ${reason.usageCount} volta/e`}
+                            >
+                              <AlertCircle className="h-3 w-3" />
+                              <span className="truncate">{reason.reason}</span>
+                              <span className="ml-auto text-xs text-muted-foreground">({reason.usageCount})</span>
+                            </Button>
+                          ))}
+                          
+                          {/* Pulsante "Altro" per nuovi motivi personalizzati */}
+                          <Button
+                            key="other"
+                            variant={feedbackCategory === 'other' ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setFeedbackCategory('other')}
+                            className="flex items-center gap-2 justify-start"
+                            data-testid="button-category-other"
+                          >
+                            <AlertCircle className="h-3 w-3" />
+                            Altro
+                          </Button>
                         </div>
                         
                         {/* Campo di input per motivo personalizzato quando si seleziona "Altro" */}
@@ -958,12 +994,34 @@ export default function MessagesPage() {
                         
                         <div className="flex gap-2">
                           <Button
-                            onClick={() => feedbackMutation.mutate({ 
-                              messageId: selectedMessage!.id, 
-                              isCorrect: false,
-                              category: feedbackCategory || 'unspecified',
-                              comment: feedbackCategory === 'other' ? customFeedbackReason : undefined
-                            })}
+                            onClick={() => {
+                              let category = feedbackCategory || 'unspecified';
+                              let comment = undefined;
+                              let customReasonId = undefined;
+                              
+                              if (feedbackCategory === 'other') {
+                                // Nuovo motivo personalizzato
+                                category = 'other';
+                                comment = customFeedbackReason;
+                              } else if (feedbackCategory?.startsWith('custom-')) {
+                                // Motivo personalizzato esistente selezionato
+                                const reasonId = feedbackCategory.replace('custom-', '');
+                                const selectedReason = customFeedbackReasons.find(r => r.id === reasonId);
+                                if (selectedReason) {
+                                  category = 'other';
+                                  comment = selectedReason.reason;
+                                  customReasonId = selectedReason.id;
+                                }
+                              }
+                              
+                              feedbackMutation.mutate({ 
+                                messageId: selectedMessage!.id, 
+                                isCorrect: false,
+                                category,
+                                comment,
+                                customReasonId
+                              });
+                            }}
                             size="sm"
                             disabled={feedbackMutation.isPending || !feedbackCategory || (feedbackCategory === 'other' && !customFeedbackReason.trim())}
                             data-testid="button-send-feedback"

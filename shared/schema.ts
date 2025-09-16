@@ -1398,6 +1398,7 @@ export const emailFeedbacks = pgTable("email_feedbacks", {
   isCorrect: boolean("is_correct").notNull(),
   category: feedbackCategoryEnum("category"), // null for positive feedback
   comment: text("comment"), // Optional user comment
+  customReasonId: uuid("custom_reason_id").references(() => customFeedbackReasons.id), // Link to existing custom reason
   
   // Message metadata for analysis
   messageSubject: text("message_subject"),
