@@ -1810,6 +1810,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteMessage(id: string, userId: string): Promise<boolean> {
+    // Prima cancella tutti i feedback associati al messaggio per evitare constraint violation
+    await db
+      .delete(emailFeedbacks)
+      .where(and(eq(emailFeedbacks.messageId, id), eq(emailFeedbacks.userId, userId)));
+    
+    // Poi cancella il messaggio
     const result = await db
       .delete(messages)
       .where(and(eq(messages.id, id), eq(messages.userId, userId)));
