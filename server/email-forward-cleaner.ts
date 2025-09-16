@@ -1582,7 +1582,9 @@ export class EmailForwardCleaner {
       // Trova il prossimo boundary (header cluster, marker, o inizio citazione)
       let nextBoundaryIndex = -1;
       
-      for (let i = firstHeaderClusterEnd + 5; i < lines.length; i++) { // Skip almeno 5 righe per evitare false positive
+      // OTTIMIZZAZIONE: Smart skip basato su analisi contenuto invece di fixed 5 righe
+      const smartSkip = Math.min(8, Math.max(2, Math.floor((lines.length - firstHeaderClusterEnd) * 0.1)));
+      for (let i = firstHeaderClusterEnd + smartSkip; i < lines.length; i++) {
         const line = lines[i].trim();
         if (line.length === 0) continue;
 
@@ -1603,8 +1605,15 @@ export class EmailForwardCleaner {
             }
           }
           
-          if (boundaryConfidence >= 2) {
+          // OTTIMIZZAZIONE: Smart boundary confidence con weighted scoring
+          const headerWeight = isNewHeader ? 2 : 0;
+          const markerWeight = isNewMarker ? 1.5 : 0;
+          const quoteWeight = isQuoteStart ? 1 : 0;
+          const totalWeight = headerWeight + markerWeight + quoteWeight + Math.max(0, boundaryConfidence - 1) * 0.5;
+          
+          if (totalWeight >= 2.5 || (boundaryConfidence >= 2 && totalWeight >= 1.5)) {
             nextBoundaryIndex = i;
+            console.log(`[EMAIL-CLEANER] Found boundary at line ${i}, weight=${totalWeight.toFixed(1)}, confidence=${boundaryConfidence}`);
             break;
           }
         }
@@ -1614,17 +1623,31 @@ export class EmailForwardCleaner {
       const mainText = lines.slice(firstHeaderClusterEnd, extractEndIndex).join('\n').trim();
       const remainderText = nextBoundaryIndex > 0 ? lines.slice(nextBoundaryIndex).join('\n').trim() : null;
 
-      // Guard drasticamente abbassato per email reali: accetta main se >50 chars o >10 words
+      // OTTIMIZZAZIONE: Intelligent guard con multiple quality metrics
       const originalLength = textBody.length;
       const mainLength = mainText.length;
-      const wordCount = mainText.split(/\s+/).length;
+      const wordCount = mainText.split(/\s+/).filter(w => w.length > 2).length; // Solo parole significative
       const textRatio = mainLength / Math.max(originalLength, 1);
+      const sentenceCount = mainText.split(/[.!?]+/).filter(s => s.trim().length > 10).length;
+      const avgWordsPerSentence = sentenceCount > 0 ? wordCount / sentenceCount : 0;
       
-      if ((mainText.length > 50 || wordCount > 10) && 
+      // Quality scoring: contenuto più ricco = confidence più alta
+      const qualityScore = 
+        (mainLength > 50 ? 1 : 0) +
+        (wordCount > 10 ? 1 : 0) +
+        (sentenceCount > 1 ? 1 : 0) +
+        (avgWordsPerSentence > 4 ? 1 : 0) +
+        (nextBoundaryIndex > 0 ? 1 : 0);
+      
+      const hasGoodBoundary = nextBoundaryIndex > 0;
+      const reasonableRatio = textRatio <= 0.75;
+      const substantialContent = mainLength > 100 || (wordCount > 15 && sentenceCount > 1);
+      
+      if (qualityScore >= 3 && 
           !this.isOnlySignature(mainText) && 
-          (textRatio <= 0.70 || nextBoundaryIndex === -1 || mainLength > 300)) {
+          (reasonableRatio || hasGoodBoundary || substantialContent)) {
         
-        console.log(`[EMAIL-CLEANER] Extracted after cluster with boundary: ${mainText.length} chars main, ${remainderText?.length || 0} chars remainder`);
+        console.log(`[EMAIL-CLEANER] Extracted after cluster: ${mainText.length} chars main, ${remainderText?.length || 0} chars remainder (quality=${qualityScore}, ratio=${textRatio.toFixed(2)})`);
         
         return {
           mainText: mainText,
@@ -1633,7 +1656,7 @@ export class EmailForwardCleaner {
           method: 'after-cluster'
         };
       } else {
-        console.log(`[EMAIL-CLEANER] After-cluster extraction rejected: too large (${mainLength}/${originalLength}) or poor quality`);
+        console.log(`[EMAIL-CLEANER] After-cluster extraction rejected: quality=${qualityScore}, ratio=${textRatio.toFixed(2)}, words=${wordCount}, sentences=${sentenceCount}`);
       }
     }
 
