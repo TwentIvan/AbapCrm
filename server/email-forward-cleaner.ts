@@ -95,9 +95,17 @@ export class EmailForwardCleaner {
             console.log(`[EMAIL-CLEANER] Reverted to original HTML due to low confidence/size delta: ${originalLength} -> ${cleanedLength} chars (ratio: ${lengthRatio.toFixed(2)})`);
           }
         } else {
-          // No explicit markers - preserve original HTML
-          result.originalHtmlBody = this.sanitizeHtml(htmlBody);
-          console.log(`[EMAIL-CLEANER] No explicit forward markers found - preserving original HTML (${htmlBody.length} chars)`);
+          // No explicit markers - try reply splitting before preserving everything
+          console.log(`[EMAIL-CLEANER] No explicit forward markers found - attempting reply split before preserving`);
+          const replySplit = this.splitReplyContent(textBody, htmlBody);
+          
+          if (replySplit.found) {
+            result.originalHtmlBody = replySplit.bodyHtml;
+            console.log(`[EMAIL-CLEANER] Reply split successful in forward path: ${replySplit.bodyHtml?.length || 0} chars body, ${replySplit.remainderHtml?.length || 0} chars remainder`);
+          } else {
+            result.originalHtmlBody = this.sanitizeHtml(htmlBody);
+            console.log(`[EMAIL-CLEANER] No valid reply split - preserving original HTML (${htmlBody.length} chars)`);
+          }
         }
         
         result.preservedHtmlFormatting = this.preserveHtmlFormatting(htmlBody);
