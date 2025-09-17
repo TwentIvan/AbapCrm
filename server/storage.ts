@@ -3,7 +3,7 @@ import {
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
-  emailVerificationTokens, organizationDomains, emailFeedbacks, customFeedbackReasons,
+  emailVerificationTokens, organizationDomains, emailFeedbacks, customFeedbackReasons, emailTrainingSelections,
   type User, type InsertUser,
   type Organization, type InsertOrganization,
   type UserOrganization, type InsertUserOrganization,
@@ -39,7 +39,8 @@ import {
   type EmailVerificationToken, type InsertEmailVerificationToken,
   type OrganizationDomain, type InsertOrganizationDomain,
   type EmailFeedback, type InsertEmailFeedback,
-  type CustomFeedbackReason, type InsertCustomFeedbackReason
+  type CustomFeedbackReason, type InsertCustomFeedbackReason,
+  type EmailTrainingSelection, type InsertEmailTrainingSelection
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull } from "drizzle-orm";
@@ -333,6 +334,12 @@ export interface IStorage {
   createMessageLink(link: InsertMessageLink): Promise<MessageLink>;
   updateMessageLink(id: string, updates: Partial<InsertMessageLink>, userId: string): Promise<MessageLink | undefined>;
   deleteMessageLink(id: string, userId: string): Promise<boolean>;
+
+  // Email Training Selections
+  getEmailTrainingSelection(messageId: string, userId: string): Promise<EmailTrainingSelection | undefined>;
+  createEmailTrainingSelection(selection: InsertEmailTrainingSelection): Promise<EmailTrainingSelection>;
+  updateEmailTrainingSelection(messageId: string, userId: string, selection: Partial<InsertEmailTrainingSelection>): Promise<EmailTrainingSelection | undefined>;
+  deleteEmailTrainingSelection(messageId: string, userId: string): Promise<boolean>;
 
   // Organization Domains
   getOrganizationDomains(organizationId: string): Promise<OrganizationDomain[]>;
@@ -3079,6 +3086,48 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(messageLinks)
       .where(eq(messageLinks.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Email Training Selections Implementation
+  async getEmailTrainingSelection(messageId: string, userId: string): Promise<EmailTrainingSelection | undefined> {
+    const [selection] = await db
+      .select()
+      .from(emailTrainingSelections)
+      .where(and(eq(emailTrainingSelections.messageId, messageId), eq(emailTrainingSelections.userId, userId)));
+    return selection || undefined;
+  }
+
+  async createEmailTrainingSelection(selection: InsertEmailTrainingSelection): Promise<EmailTrainingSelection> {
+    const [newSelection] = await db
+      .insert(emailTrainingSelections)
+      .values(selection)
+      .onConflictDoUpdate({
+        target: [emailTrainingSelections.messageId, emailTrainingSelections.userId],
+        set: {
+          bodySelections: selection.bodySelections,
+          headerSelections: selection.headerSelections,
+          threadSelections: selection.threadSelections,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return newSelection;
+  }
+
+  async updateEmailTrainingSelection(messageId: string, userId: string, selection: Partial<InsertEmailTrainingSelection>): Promise<EmailTrainingSelection | undefined> {
+    const [updated] = await db
+      .update(emailTrainingSelections)
+      .set({ ...selection, updatedAt: new Date() })
+      .where(and(eq(emailTrainingSelections.messageId, messageId), eq(emailTrainingSelections.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteEmailTrainingSelection(messageId: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(emailTrainingSelections)
+      .where(and(eq(emailTrainingSelections.messageId, messageId), eq(emailTrainingSelections.userId, userId)));
     return (result.rowCount || 0) > 0;
   }
 

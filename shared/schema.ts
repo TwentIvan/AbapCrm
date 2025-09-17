@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, decimal, pgEnum, boolean, uuid, time, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, decimal, pgEnum, boolean, uuid, time, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -804,6 +804,24 @@ export const interventionDocuments = pgTable("intervention_documents", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Email training selections - Manual selections for algorithm training
+export const emailTrainingSelections = pgTable("email_training_selections", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  messageId: uuid("message_id").references(() => messages.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  // Body text selections to keep
+  bodySelections: text("body_selections").array().default([]).notNull(),
+  // Header text selections to eliminate  
+  headerSelections: text("header_selections").array().default([]).notNull(),
+  // Thread selections with source message tracking for training
+  threadSelections: jsonb("thread_selections").default([]).notNull(), // Array of {text: string, sourceMessageId: string}
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  // Unique constraint: one selection set per user-message combination
+  uniqueMessageUser: uniqueIndex("email_training_selections_msg_user_uniq").on(table.messageId, table.userId),
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),
@@ -1469,6 +1487,10 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
 
+export type EmailTrainingSelection = typeof emailTrainingSelections.$inferSelect;
+export type InsertEmailTrainingSelection = typeof emailTrainingSelections.$inferInsert;
+export const insertEmailTrainingSelectionSchema = createInsertSchema(emailTrainingSelections).omit({ id: true, createdAt: true, updatedAt: true });
+
 // Relations for audit logs
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   user: one(users, {
@@ -1535,6 +1557,18 @@ export const organizationDomainsRelations = relations(organizationDomains, ({ on
   organization: one(organizations, {
     fields: [organizationDomains.organizationId],
     references: [organizations.id],
+  }),
+}));
+
+// Relations for email training selections
+export const emailTrainingSelectionsRelations = relations(emailTrainingSelections, ({ one }) => ({
+  message: one(messages, {
+    fields: [emailTrainingSelections.messageId],
+    references: [messages.id],
+  }),
+  user: one(users, {
+    fields: [emailTrainingSelections.userId],
+    references: [users.id],
   }),
 }));
 
