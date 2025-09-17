@@ -712,64 +712,157 @@ export default function MessagesPage() {
                                   </TableCell>
                                 </TableRow>
 
-                                {/* Thread Messages (when expanded) */}
-                                {expandedThreads.has(thread.threadId) && thread.messages.map((message: Message, index: number) => {
-                                  const linkedObject = getLinkedObjectName(message);
+                                {/* Thread Messages (when expanded) - with current/history separation */}
+                                {expandedThreads.has(thread.threadId) && (() => {
+                                  // Sort messages by receivedAt (oldest first)
+                                  const sortedMessages = [...thread.messages].sort(
+                                    (a, b) => new Date(a.receivedAt).getTime() - new Date(b.receivedAt).getTime()
+                                  );
+                                  
+                                  // Find selected message in this thread
+                                  const currentMessage = sortedMessages.find(msg => msg.id === selectedMessage?.id);
+                                  const otherMessages = sortedMessages.filter(msg => msg.id !== selectedMessage?.id);
                                   
                                   return (
-                                    <TableRow
-                                      key={message.id}
-                                      data-testid={`message-item-${message.id}`}
-                                      className={`cursor-pointer transition-colors border-l-4 border-l-primary/30 ml-8 ${
-                                        selectedMessage?.id === message.id ? 'bg-muted' : ''
-                                      } ${message.status === 'unread' ? 'border-l-blue-500' : ''}`}
-                                      onClick={() => handleSelectMessage(message)}
-                                    >
-                                      {/* Same message content as normal view but indented */}
-                                      <TableCell style={{ width: `${columnWidths.fromEmail}%` }}>
-                                        <div className="space-y-1 pl-4">
-                                          <div className="flex items-center gap-2">
-                                            {getStatusIcon(message.status)}
-                                            <span className={`text-sm truncate ${
-                                              message.status === 'unread' ? 'font-bold' : 'font-medium'
-                                            }`}>
-                                              {message.fromName || message.fromEmail}
-                                            </span>
-                                            <Badge variant="secondary" className="text-xs">
-                                              #{index + 1}
-                                            </Badge>
-                                          </div>
-                                          {linkedObject && (
-                                            <Badge variant="outline" className="text-xs">
-                                              <Link className="h-3 w-3 mr-1" />
-                                              {linkedObject.type}: {linkedObject.name}
-                                            </Badge>
+                                    <>
+                                      {/* Current Message (if selected and in this thread) */}
+                                      {currentMessage && (
+                                        <>
+                                          <TableRow
+                                            key={`current-${currentMessage.id}`}
+                                            data-testid={`row-current-${currentMessage.id}`}
+                                            className="cursor-pointer transition-colors border-l-4 border-l-primary ml-8 bg-accent/30 ring-2 ring-primary/20"
+                                            onClick={() => handleSelectMessage(currentMessage)}
+                                          >
+                                            {/* Current message content with special styling */}
+                                            <TableCell style={{ width: `${columnWidths.fromEmail}%` }}>
+                                              <div className="space-y-1 pl-4">
+                                                <div className="flex items-center gap-2">
+                                                  <Mail className="h-3 w-3 text-primary" />
+                                                  <Badge variant="default" className="text-xs bg-primary text-primary-foreground">
+                                                    CORRENTE
+                                                  </Badge>
+                                                  {getStatusIcon(currentMessage.status)}
+                                                  <span className="text-sm font-bold text-primary">
+                                                    {currentMessage.fromName || currentMessage.fromEmail}
+                                                  </span>
+                                                </div>
+                                                {(() => {
+                                                  const linkedObject = getLinkedObjectName(currentMessage);
+                                                  return linkedObject && (
+                                                    <Badge variant="outline" className="text-xs">
+                                                      <Link className="h-3 w-3 mr-1" />
+                                                      {linkedObject.type}: {linkedObject.name}
+                                                    </Badge>
+                                                  );
+                                                })()}
+                                              </div>
+                                            </TableCell>
+                                            
+                                            <TableCell style={{ width: `${columnWidths.subject}%` }}>
+                                              <div className="space-y-1 pl-4">
+                                                <p className="text-sm font-bold text-primary truncate">
+                                                  {currentMessage.subject || 'Nessun oggetto'}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground truncate">
+                                                  {currentMessage.body ? currentMessage.body.substring(0, 60) + '...' : 'Nessun contenuto'}
+                                                </p>
+                                              </div>
+                                            </TableCell>
+                                            
+                                            <TableCell className="text-xs text-muted-foreground" style={{ width: `${columnWidths.receivedAt}%` }}>
+                                              <div className="space-y-1 pl-4">
+                                                <div className="font-medium">{format(new Date(currentMessage.receivedAt), 'dd MMM yyyy')}</div>
+                                                <div className="font-medium">{format(new Date(currentMessage.receivedAt), 'HH:mm')}</div>
+                                              </div>
+                                            </TableCell>
+                                          </TableRow>
+                                          
+                                          {/* Separator if there are other messages */}
+                                          {otherMessages.length > 0 && (
+                                            <TableRow data-testid="separator-thread-history">
+                                              <TableCell colSpan={3} className="py-2 ml-8">
+                                                <div className="flex items-center gap-2 pl-8">
+                                                  <Separator className="flex-1" />
+                                                  <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                                                    <MessageSquare className="h-3 w-3" />
+                                                    <span>Altri messaggi del thread ({otherMessages.length})</span>
+                                                  </div>
+                                                  <Separator className="flex-1" />
+                                                </div>
+                                              </TableCell>
+                                            </TableRow>
                                           )}
-                                        </div>
-                                      </TableCell>
+                                        </>
+                                      )}
                                       
-                                      <TableCell style={{ width: `${columnWidths.subject}%` }}>
-                                        <div className="space-y-1 pl-4">
-                                          <p className={`text-sm truncate ${
-                                            message.status === 'unread' ? 'font-bold text-foreground' : 'font-normal text-foreground'
-                                          }`}>
-                                            {message.subject || 'Nessun oggetto'}
-                                          </p>
-                                          <p className="text-xs text-muted-foreground truncate">
-                                            {message.body ? message.body.substring(0, 60) + '...' : 'Nessun contenuto'}
-                                          </p>
-                                        </div>
-                                      </TableCell>
-                                      
-                                      <TableCell className="text-xs text-muted-foreground" style={{ width: `${columnWidths.receivedAt}%` }}>
-                                        <div className="space-y-1 pl-4">
-                                          <div>{format(new Date(message.receivedAt), 'dd MMM yyyy')}</div>
-                                          <div>{format(new Date(message.receivedAt), 'HH:mm')}</div>
-                                        </div>
-                                      </TableCell>
-                                    </TableRow>
+                                      {/* Other Messages (History) */}
+                                      {otherMessages.map((message: Message, index: number) => {
+                                        const linkedObject = getLinkedObjectName(message);
+                                        
+                                        return (
+                                          <TableRow
+                                            key={`history-${message.id}`}
+                                            data-testid={`row-thread-history-${message.id}`}
+                                            className={`cursor-pointer transition-colors border-l-4 border-l-muted ml-8 hover:bg-muted/30 ${
+                                              message.status === 'unread' ? 'border-l-blue-500' : 'border-l-muted'
+                                            }`}
+                                            onClick={() => handleSelectMessage(message)}
+                                          >
+                                            {/* History message content - more compact styling */}
+                                            <TableCell style={{ width: `${columnWidths.fromEmail}%` }}>
+                                              <div className="space-y-1 pl-4">
+                                                <div className="flex items-center gap-2">
+                                                  {getStatusIcon(message.status)}
+                                                  <span className={`text-sm truncate text-muted-foreground ${
+                                                    message.status === 'unread' ? 'font-medium' : 'font-normal'
+                                                  }`}>
+                                                    {message.fromName || message.fromEmail}
+                                                  </span>
+                                                  <Badge variant="secondary" className="text-xs opacity-70">
+                                                    #{(() => {
+                                                      // Calculate position in all thread messages
+                                                      const allSorted = [...thread.messages].sort(
+                                                        (a, b) => new Date(a.receivedAt).getTime() - new Date(b.receivedAt).getTime()
+                                                      );
+                                                      return allSorted.findIndex(m => m.id === message.id) + 1;
+                                                    })()}
+                                                  </Badge>
+                                                </div>
+                                                {linkedObject && (
+                                                  <Badge variant="outline" className="text-xs opacity-70">
+                                                    <Link className="h-3 w-3 mr-1" />
+                                                    {linkedObject.type}: {linkedObject.name}
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                            </TableCell>
+                                            
+                                            <TableCell style={{ width: `${columnWidths.subject}%` }}>
+                                              <div className="space-y-1 pl-4">
+                                                <p className={`text-sm truncate text-muted-foreground ${
+                                                  message.status === 'unread' ? 'font-medium' : 'font-normal'
+                                                }`}>
+                                                  {message.subject || 'Nessun oggetto'}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground/70 truncate">
+                                                  {message.body ? message.body.substring(0, 60) + '...' : 'Nessun contenuto'}
+                                                </p>
+                                              </div>
+                                            </TableCell>
+                                            
+                                            <TableCell className="text-xs text-muted-foreground" style={{ width: `${columnWidths.receivedAt}%` }}>
+                                              <div className="space-y-1 pl-4">
+                                                <div className="opacity-70">{format(new Date(message.receivedAt), 'dd MMM yyyy')}</div>
+                                                <div className="opacity-70">{format(new Date(message.receivedAt), 'HH:mm')}</div>
+                                              </div>
+                                            </TableCell>
+                                          </TableRow>
+                                        );
+                                      })}
+                                    </>
                                   );
-                                })}
+                                })()}
                               </React.Fragment>
                             ))
                           )
