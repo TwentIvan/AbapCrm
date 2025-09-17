@@ -148,11 +148,13 @@ export class EmailForwardCleaner {
       customSignature
     );
     
-    // Apply training-based improvements
-    if (trainingData.commonBodyPatterns.length > 0) {
-      result.originalBody = this.enhanceBodyExtractionWithTraining(
+    // Apply advanced training-based improvements
+    if (trainingData.commonBodyPatterns.length > 0 || trainingData.commonHeaders.length > 0 || trainingData.threadMarkers.length > 0) {
+      result.originalBody = await this.applyAdvancedTrainingPatterns(
         result.originalBody, 
-        trainingData.commonBodyPatterns
+        textBody,
+        userId,
+        trainingData
       );
     }
     
@@ -160,30 +162,170 @@ export class EmailForwardCleaner {
   }
 
   /**
-   * Enhance body extraction using training patterns
+   * Apply advanced training patterns based on user's selections
    */
-  private static enhanceBodyExtractionWithTraining(
-    body: string, 
-    trainingPatterns: string[]
-  ): string {
-    // Use training patterns to improve body extraction
-    // This is a simplified implementation - in practice, would use more sophisticated ML
-    let enhancedBody = body;
+  private static async applyAdvancedTrainingPatterns(
+    cleanedBody: string,
+    originalBody: string, 
+    userId: string,
+    trainingData: { commonHeaders: string[], commonBodyPatterns: string[], threadMarkers: string[] }
+  ): Promise<string> {
+    try {
+      // Get detailed training selections for advanced pattern matching
+      const rawSelections = await storage.getEmailTrainingSelections(userId);
+      const trainingSelections = Array.isArray(rawSelections) ? rawSelections : [];
+      
+      let enhancedBody = cleanedBody;
+      
+      // 1. Apply header elimination patterns based on headerSelections
+      for (const selection of trainingSelections) {
+        const headerSelections = Array.isArray(selection?.headerSelections) ? selection.headerSelections : [];
+        for (const headerPattern of headerSelections) {
+          if (headerPattern && headerPattern.length > 10) {
+            // Extract key phrases from header patterns (From:, Date:, Subject:)
+            const lines = headerPattern.split('\n');
+            for (const line of lines) {
+              const trimmedLine = line.trim();
+              if (trimmedLine.length > 5) {
+                // Try to find similar patterns in current email
+                const similarity = this.calculateSimilarity(enhancedBody, trimmedLine);
+                if (similarity > 0.6) {
+                  // Remove similar header patterns
+                  enhancedBody = this.removePattern(enhancedBody, trimmedLine, 0.6);
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // 2. Apply signature header elimination based on signatureHeaderSelections
+      for (const selection of trainingSelections) {
+        const signatureHeaderSelections = Array.isArray(selection?.signatureHeaderSelections) ? selection.signatureHeaderSelections : [];
+        for (const signaturePattern of signatureHeaderSelections) {
+          if (signaturePattern && signaturePattern.length > 5) {
+            // Remove signature closings, contact info, legal text
+            const similarity = this.calculateSimilarity(enhancedBody, signaturePattern);
+            if (similarity > 0.5) {
+              enhancedBody = this.removePattern(enhancedBody, signaturePattern, 0.5);
+            }
+          }
+        }
+      }
+      
+      // 3. Apply thread/forward marker removal based on threadSelections and mailThreadSelections
+      for (const selection of trainingSelections) {
+        // Process threadSelections
+        if (Array.isArray(selection.threadSelections)) {
+          for (const threadObj of selection.threadSelections) {
+            if (threadObj && typeof threadObj === 'object' && threadObj.text) {
+              const threadText = threadObj.text.trim();
+              if (threadText.length > 5) {
+                const similarity = this.calculateSimilarity(enhancedBody, threadText);
+                if (similarity > 0.7) {
+                  enhancedBody = this.removePattern(enhancedBody, threadText, 0.7);
+                }
+              }
+            }
+          }
+        }
+        
+        // Process mailThreadSelections
+        if (Array.isArray(selection.mailThreadSelections)) {
+          for (const mailThreadObj of selection.mailThreadSelections) {
+            if (mailThreadObj && typeof mailThreadObj === 'object' && mailThreadObj.text) {
+              const mailThreadText = mailThreadObj.text.trim();
+              if (mailThreadText.length > 5) {
+                const similarity = this.calculateSimilarity(enhancedBody, mailThreadText);
+                if (similarity > 0.7) {
+                  enhancedBody = this.removePattern(enhancedBody, mailThreadText, 0.7);
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // 4. Preserve important content based on bodySelections and signatureBodySelections
+      // (This ensures we don't accidentally remove content the user wants to keep)
+      for (const selection of trainingSelections) {
+        const bodySelections = Array.isArray(selection?.bodySelections) ? selection.bodySelections : [];
+        const signatureBodySelections = Array.isArray(selection?.signatureBodySelections) ? selection.signatureBodySelections : [];
+        
+        const importantContent = [...bodySelections, ...signatureBodySelections];
+        for (const importantPattern of importantContent) {
+          if (importantPattern && importantPattern.length > 10) {
+            // If we accidentally removed important content, try to preserve it
+            if (!enhancedBody.includes(importantPattern.substring(0, 50))) {
+              const originalIncludesPattern = originalBody.includes(importantPattern.substring(0, 50));
+              if (originalIncludesPattern) {
+                // Find the important content in original and preserve it
+                const importantSection = this.extractImportantSection(originalBody, importantPattern);
+                if (importantSection && !enhancedBody.includes(importantSection)) {
+                  enhancedBody = enhancedBody + '\n\n' + importantSection;
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      return enhancedBody.trim();
+      
+    } catch (error) {
+      console.error('[EMAIL-CLEANER] Advanced training pattern application failed:', error);
+      return cleanedBody;
+    }
+  }
+  
+  /**
+   * Calculate similarity between two text strings (simple implementation)
+   */
+  private static calculateSimilarity(text1: string, text2: string): number {
+    if (!text1 || !text2) return 0;
     
-    // Remove patterns that training data suggests should be eliminated
-    trainingPatterns.forEach(p => {
-      const candidate = (p || '').trim();
-      if (!candidate) return;
-      const shouldRemove = candidate.includes('------') || /original message/i.test(candidate);
-      if (!shouldRemove) return;
-      const escaped = this.escapeRegExp(candidate).slice(0, 1000);
-      try {
-        const re = new RegExp(escaped, 'gi');
-        enhancedBody = enhancedBody.replace(re, '');
-      } catch (_) { /* ignore invalid */ }
+    const str1 = text1.toLowerCase().replace(/\s+/g, ' ').trim();
+    const str2 = text2.toLowerCase().replace(/\s+/g, ' ').trim();
+    
+    if (str1.includes(str2) || str2.includes(str1)) return 1;
+    
+    // Word-based similarity
+    const words1 = new Set(str1.split(' ').filter(w => w.length > 2));
+    const words2 = new Set(str2.split(' ').filter(w => w.length > 2));
+    
+    if (words1.size === 0 || words2.size === 0) return 0;
+    
+    const intersection = new Set(Array.from(words1).filter(w => words2.has(w)));
+    return intersection.size / Math.max(words1.size, words2.size);
+  }
+  
+  /**
+   * Remove pattern from text if similarity exceeds threshold
+   */
+  private static removePattern(text: string, pattern: string, threshold: number): string {
+    const lines = text.split('\n');
+    const filteredLines = lines.filter(line => {
+      const similarity = this.calculateSimilarity(line, pattern);
+      return similarity <= threshold;
     });
     
-    return enhancedBody.trim();
+    return filteredLines.join('\n');
+  }
+  
+  /**
+   * Extract important section around a pattern
+   */
+  private static extractImportantSection(originalText: string, pattern: string): string | null {
+    const lines = originalText.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (this.calculateSimilarity(lines[i], pattern) > 0.6) {
+        // Extract a few lines around the important pattern
+        const start = Math.max(0, i - 1);
+        const end = Math.min(lines.length, i + 2);
+        return lines.slice(start, end).join('\n').trim();
+      }
+    }
+    return null;
   }
   
   static cleanForwardedEmail(
