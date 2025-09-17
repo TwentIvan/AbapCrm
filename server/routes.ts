@@ -1748,11 +1748,13 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       if (!message) return res.sendStatus(404);
 
       // Utilizza EmailForwardCleaner per dividere il contenuto
+      console.log(`[RENDER-ROUTE] Processing message ${req.params.id}: text=${(message.body || '').length} chars, html=${(message.htmlBody || '').length} chars`);
       const renderedContent = EmailForwardCleaner.splitEmailContent(
         message.subject ?? "",
         message.body ?? "",
         message.htmlBody
       );
+      console.log(`[RENDER-ROUTE] Split result: bodyText=${renderedContent.bodyText.length} chars, bodyHtml=${renderedContent.bodyHtml?.length || 0} chars, remainderHtml=${renderedContent.remainderHtml?.length || 0} chars, isForwarded=${renderedContent.isForwarded}`);
 
       res.json(renderedContent);
     } catch (error) {

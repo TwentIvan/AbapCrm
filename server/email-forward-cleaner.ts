@@ -563,6 +563,7 @@ export class EmailForwardCleaner {
       
       // Check per split HTML (se disponibile)
       let htmlSplitValid = false;
+      console.log(`[EMAIL-CLEANER] HTML split debug: htmlBody=${!!htmlBody}, remainderHtml=${!!remainderHtml}, htmlSplit=${htmlSplit}, remainderLength=${remainderHtml?.length || 0}`);
       if (htmlBody && remainderHtml) {
         const originalHtmlLength = htmlBody.length;
         const newBodyHtmlLength = bodyHtml?.length || 0;
