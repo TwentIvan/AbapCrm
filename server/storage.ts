@@ -3067,9 +3067,37 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMessageLink(link: InsertMessageLink): Promise<MessageLink> {
+    let organizationId: string;
+    
+    // Resolve organizationId from linked entity
+    if (link.linkedTableName === 'projects' && link.linkedRecordId) {
+      const project = await db.query.projects.findFirst({ 
+        where: eq(projects.id, link.linkedRecordId), 
+        columns: { organizationId: true } 
+      });
+      if (!project) throw new Error("Project not found");
+      organizationId = project.organizationId;
+    } else if (link.linkedTableName === 'tasks' && link.linkedRecordId) {
+      const task = await db.query.tasks.findFirst({ 
+        where: eq(tasks.id, link.linkedRecordId), 
+        columns: { organizationId: true } 
+      });
+      if (!task) throw new Error("Task not found");
+      organizationId = task.organizationId;
+    } else if (link.linkedTableName === 'partners' && link.linkedRecordId) {
+      const partner = await db.query.partners.findFirst({ 
+        where: eq(partners.id, link.linkedRecordId), 
+        columns: { organizationId: true } 
+      });
+      if (!partner) throw new Error("Partner not found");
+      organizationId = partner.organizationId;
+    } else {
+      throw new Error("Cannot resolve organizationId for message link - unsupported linked table or missing linked record");
+    }
+    
     const [newLink] = await db
       .insert(messageLinks)
-      .values(link)
+      .values({ ...link, organizationId })
       .returning();
     return newLink;
   }
@@ -3109,6 +3137,9 @@ export class DatabaseStorage implements IStorage {
           bodySelections: selection.bodySelections,
           headerSelections: selection.headerSelections,
           threadSelections: selection.threadSelections,
+          signatureBodySelections: selection.signatureBodySelections,
+          signatureHeaderSelections: selection.signatureHeaderSelections,
+          mailThreadSelections: selection.mailThreadSelections,
           updatedAt: new Date(),
         },
       })
