@@ -1173,17 +1173,48 @@ export default function MessagesPage() {
                             Cancella selezioni
                           </Button>
                           <Button
-                            onClick={() => {
+                            onClick={async () => {
                               if (selectedMessage) {
                                 const messageSelections = selections[selectedMessage.id];
                                 if (messageSelections) {
                                   const totalSelections = messageSelections.body.length + messageSelections.header.length + messageSelections.thread.length + messageSelections.signatureBody.length + messageSelections.signatureHeader.length + messageSelections.mailThread.length;
                                   if (totalSelections > 0) {
-                                    // TODO: Salvare nel database
-                                    toast({ 
-                                      title: "Selezioni salvate", 
-                                      description: `${totalSelections} selezioni salvate per migliorare l'algoritmo` 
-                                    });
+                                    try {
+                                      // Salvare nel database tramite API
+                                      await apiRequest("POST", "/api/email-training-selections", {
+                                        messageId: selectedMessage.id,
+                                        bodySelections: messageSelections.body,
+                                        headerSelections: messageSelections.header,
+                                        threadSelections: messageSelections.thread,
+                                        signatureBodySelections: messageSelections.signatureBody,
+                                        signatureHeaderSelections: messageSelections.signatureHeader,
+                                        mailThreadSelections: messageSelections.mailThread
+                                      });
+                                      
+                                      toast({ 
+                                        title: "Selezioni salvate", 
+                                        description: `${totalSelections} selezioni salvate per migliorare l'algoritmo` 
+                                      });
+                                      
+                                      // Clear selections after successful save
+                                      setSelections(prev => ({
+                                        ...prev,
+                                        [selectedMessage.id]: { 
+                                          body: [], 
+                                          header: [], 
+                                          thread: [],
+                                          signatureBody: [],
+                                          signatureHeader: [],
+                                          mailThread: []
+                                        }
+                                      }));
+                                    } catch (error) {
+                                      console.error('Error saving selections:', error);
+                                      toast({ 
+                                        title: "Errore salvataggio", 
+                                        description: "Non è stato possibile salvare le selezioni" 
+                                      });
+                                    }
                                   } else {
                                     toast({ 
                                       title: "Nessuna selezione", 
