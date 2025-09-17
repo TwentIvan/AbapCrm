@@ -114,3 +114,52 @@
   background-color: rgba(59, 130, 246, 0.2) !important;
   border-color: rgba(59, 130, 246, 0.3) !important;
 }
+
+/* Training Mode Selection Visual Feedback */
+.training-selection-area {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.training-selection-area.select-text.cursor-pointer:hover {
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 4px;
+}
+
+/* Selection mode specific hover effects */
+.training-selection-area[data-selection-mode="body"]:hover {
+  background: rgba(34, 197, 94, 0.1) !important;
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.2);
+}
+
+.training-selection-area[data-selection-mode="header"]:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.2);
+}
+
+.training-selection-area[data-selection-mode="thread"]:hover {
+  background: rgba(234, 179, 8, 0.1) !important;
+  box-shadow: inset 0 0 0 1px rgba(234, 179, 8, 0.2);
+}
+
+/* Selection highlight effects */
+.training-selection-area ::selection {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.training-selection-area[data-selection-mode="body"] ::selection {
+  background: rgba(34, 197, 94, 0.3);
+}
+
+.training-selection-area[data-selection-mode="header"] ::selection {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.training-selection-area[data-selection-mode="thread"] ::selection {
+  background: rgba(234, 179, 8, 0.3);
+}
+
+/* Training mode cursor indicator */
+.training-selection-area.cursor-pointer {
+  cursor: crosshair !important;
+}

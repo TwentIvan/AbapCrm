@@ -85,6 +85,17 @@ export default function MessagesPage() {
   const [selectedCustomReasonId, setSelectedCustomReasonId] = useState<string | null>(null);
   const [showThreadView, setShowThreadView] = useState(false);
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  
+  // Training mode states
+  const [isTrainingMode, setIsTrainingMode] = useState(false);
+  const [selectionMode, setSelectionMode] = useState<'body' | 'header' | 'thread'>('body');
+  const [selections, setSelections] = useState<{
+    [messageId: string]: {
+      body: string[];
+      header: string[];
+      thread: { text: string; sourceMessageId: string }[];
+    }
+  }>({});
 
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
@@ -509,6 +520,68 @@ export default function MessagesPage() {
     return sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
   };
 
+  const handleTextSelection = (event: React.MouseEvent) => {
+    if (!isTrainingMode || !selectedMessage) return;
+    
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+    
+    const selectedText = selection.toString().trim();
+    if (!selectedText) return;
+    
+    // Ensure selection is within email content
+    const target = event.currentTarget as HTMLElement;
+    if (!target.contains(selection.anchorNode) || !target.contains(selection.focusNode)) {
+      return;
+    }
+    
+    const messageId = selectedMessage.id;
+    
+    // Add to current selection mode for this message
+    setSelections(prev => {
+      const messageSelections = prev[messageId] || { body: [], header: [], thread: [] };
+      
+      // Check for duplicates based on selection mode
+      let isDuplicate = false;
+      if (selectionMode === 'thread') {
+        isDuplicate = messageSelections.thread.some(item => item.text === selectedText);
+      } else {
+        isDuplicate = (messageSelections[selectionMode] as string[]).includes(selectedText);
+      }
+      
+      if (isDuplicate) {
+        toast({
+          title: "Testo già selezionato",
+          description: "Questo testo è già stato classificato",
+          duration: 2000
+        });
+        return prev;
+      }
+      
+      // Add selection based on mode
+      let updatedSelections = { ...messageSelections };
+      if (selectionMode === 'thread') {
+        updatedSelections.thread = [...messageSelections.thread, { text: selectedText, sourceMessageId: messageId }];
+      } else {
+        updatedSelections[selectionMode] = [...(messageSelections[selectionMode] as string[]), selectedText];
+      }
+      
+      return {
+        ...prev,
+        [messageId]: updatedSelections
+      };
+    });
+    
+    // Clear the selection
+    selection.removeAllRanges();
+    
+    toast({
+      title: `Testo classificato come ${selectionMode}`,
+      description: `"${selectedText.length > 50 ? selectedText.substring(0, 50) + '...' : selectedText}"`,
+      duration: 2000
+    });
+  };
+
   return (
     <div className="flex h-screen">
       <Sidebar />
@@ -875,7 +948,13 @@ export default function MessagesPage() {
                 {/* Header dati strutturati */}
                 <div className="flex-shrink-0 p-6 pb-4 space-y-4">
                   {/* Destinatari */}
-                  <div className="border rounded-lg p-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                  <div 
+                    className={`border rounded-lg p-4 ${isTrainingMode ? 'training-selection-area' : ''} ${isTrainingMode && selectionMode === 'header' ? 'select-text cursor-pointer' : ''}`}
+                    style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}
+                    data-selection-mode={isTrainingMode ? selectionMode : undefined}
+                    onMouseUp={isTrainingMode && selectionMode === 'header' ? handleTextSelection : undefined}
+                    data-testid="email-header-recipients"
+                  >
                     <div className="space-y-3">
                       <div className="space-y-2">
                         {/* Destinatari TO - con fallback su toEmail */}
@@ -942,7 +1021,13 @@ export default function MessagesPage() {
                     if (!hasLinks) return null;
                     
                     return (
-                      <div className="border rounded-lg p-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                      <div 
+                        className={`border rounded-lg p-4 ${isTrainingMode ? 'training-selection-area' : ''} ${isTrainingMode && selectionMode === 'header' ? 'select-text cursor-pointer' : ''}`}
+                        style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}
+                        data-selection-mode={isTrainingMode ? selectionMode : undefined}
+                        onMouseUp={isTrainingMode && selectionMode === 'header' ? handleTextSelection : undefined}
+                        data-testid="email-header-ai-links"
+                      >
                         <div className="flex flex-wrap gap-2">
                           {linkedObject && (
                             <Badge variant="outline" className="text-sm">
@@ -968,6 +1053,267 @@ export default function MessagesPage() {
                   })()}
                 </div>
 
+                {/* Training Mode Controls */}
+                {selectedMessage && (
+                  <div className="border-t border-b bg-muted/30 p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Button
+                          onClick={() => setIsTrainingMode(!isTrainingMode)}
+                          variant={isTrainingMode ? "default" : "outline"}
+                          size="sm"
+                          data-testid="button-training-mode"
+                        >
+                          <Brain className="h-4 w-4 mr-2" />
+                          {isTrainingMode ? 'Esci da training' : 'Modalità training'}
+                        </Button>
+                        
+                        {isTrainingMode && (
+                          <>
+                            <div className="h-4 border-l border-border" />
+                            <div className="text-sm text-muted-foreground">Seleziona parti da:</div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => setSelectionMode('body')}
+                                variant={selectionMode === 'body' ? "default" : "outline"}
+                                size="sm"
+                                className={selectionMode === 'body' ? "bg-green-600 hover:bg-green-700" : ""}
+                                data-testid="button-select-body"
+                              >
+                                Mantenere (Body)
+                              </Button>
+                              <Button
+                                onClick={() => setSelectionMode('header')}
+                                variant={selectionMode === 'header' ? "default" : "outline"}
+                                size="sm"
+                                className={selectionMode === 'header' ? "bg-red-600 hover:bg-red-700" : ""}
+                                data-testid="button-select-header"
+                              >
+                                Eliminare (Header)
+                              </Button>
+                              <Button
+                                onClick={() => setSelectionMode('thread')}
+                                variant={selectionMode === 'thread' ? "default" : "outline"}
+                                size="sm"
+                                className={selectionMode === 'thread' ? "bg-yellow-600 hover:bg-yellow-700" : ""}
+                                data-testid="button-select-thread"
+                              >
+                                Compattare (Thread)
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      
+                      {isTrainingMode && (
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => {
+                              if (selectedMessage) {
+                                setSelections(prev => ({
+                                  ...prev,
+                                  [selectedMessage.id]: { body: [], header: [], thread: [] }
+                                }));
+                              }
+                            }}
+                            variant="outline"
+                            size="sm"
+                            data-testid="button-clear-selections"
+                          >
+                            Cancella selezioni
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              if (selectedMessage) {
+                                const messageSelections = selections[selectedMessage.id];
+                                if (messageSelections) {
+                                  const totalSelections = messageSelections.body.length + messageSelections.header.length + messageSelections.thread.length;
+                                  if (totalSelections > 0) {
+                                    // TODO: Salvare nel database
+                                    toast({ 
+                                      title: "Selezioni salvate", 
+                                      description: `${totalSelections} selezioni salvate per migliorare l'algoritmo` 
+                                    });
+                                  } else {
+                                    toast({ 
+                                      title: "Nessuna selezione", 
+                                      description: "Seleziona del testo prima di salvare" 
+                                    });
+                                  }
+                                }
+                              }
+                            }}
+                            variant="default"
+                            size="sm"
+                            data-testid="button-save-selections"
+                          >
+                            Salva selezioni
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {isTrainingMode && (
+                      <>
+                        <div className="mt-3 text-xs text-muted-foreground">
+                          💡 Seleziona il testo nell'email per classificarlo. Verde = contenuto da mantenere, Rosso = header da rimuovere, Giallo = thread da compattare.
+                        </div>
+                        
+                        {/* Current selections panel */}
+                        {selectedMessage && selections[selectedMessage.id] && (
+                          (() => {
+                            const messageSelections = selections[selectedMessage.id];
+                            return (messageSelections.body.length > 0 || messageSelections.header.length > 0 || messageSelections.thread.length > 0);
+                          })()
+                        ) && (
+                          <div className="mt-4 p-3 bg-background rounded-lg border" data-testid="panel-current-selections">
+                            <div className="text-sm font-medium mb-3">Selezioni correnti:</div>
+                            <div className="space-y-3">
+                              {selectedMessage && selections[selectedMessage.id]?.body.length > 0 && (
+                                <div data-testid="section-body-selections">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="text-xs font-medium text-green-600">Da mantenere (Body) - {selections[selectedMessage.id].body.length} items:</div>
+                                    <Button
+                                      onClick={() => setSelections(prev => ({
+                                        ...prev,
+                                        [selectedMessage.id]: {
+                                          ...prev[selectedMessage.id],
+                                          body: []
+                                        }
+                                      }))}
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs text-green-600 border-green-200 hover:bg-green-50"
+                                      data-testid="button-clear-body-selections"
+                                    >
+                                      Clear Body
+                                    </Button>
+                                  </div>
+                                  <div className="space-y-1">
+                                    {selections[selectedMessage.id].body.map((text, index) => (
+                                      <div key={index} className="text-xs bg-green-50 border border-green-200 rounded px-2 py-1 flex justify-between items-start" data-testid={`item-body-selection-${index}`}>
+                                        <span className="truncate">{text.length > 80 ? text.substring(0, 80) + '...' : text}</span>
+                                        <Button
+                                          onClick={() => setSelections(prev => ({
+                                            ...prev,
+                                            [selectedMessage.id]: {
+                                              ...prev[selectedMessage.id],
+                                              body: prev[selectedMessage.id].body.filter((_, i) => i !== index)
+                                            }
+                                          }))}
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-auto p-1 ml-2 text-green-600 hover:text-green-800"
+                                          data-testid={`button-remove-body-selection-${index}`}
+                                        >
+                                          ×
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {selectedMessage && selections[selectedMessage.id]?.header.length > 0 && (
+                                <div data-testid="section-header-selections">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="text-xs font-medium text-red-600">Da eliminare (Header) - {selections[selectedMessage.id].header.length} items:</div>
+                                    <Button
+                                      onClick={() => setSelections(prev => ({
+                                        ...prev,
+                                        [selectedMessage.id]: {
+                                          ...prev[selectedMessage.id],
+                                          header: []
+                                        }
+                                      }))}
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                                      data-testid="button-clear-header-selections"
+                                    >
+                                      Clear Header
+                                    </Button>
+                                  </div>
+                                  <div className="space-y-1">
+                                    {selections[selectedMessage.id].header.map((text, index) => (
+                                      <div key={index} className="text-xs bg-red-50 border border-red-200 rounded px-2 py-1 flex justify-between items-start" data-testid={`item-header-selection-${index}`}>
+                                        <span className="truncate">{text.length > 80 ? text.substring(0, 80) + '...' : text}</span>
+                                        <Button
+                                          onClick={() => setSelections(prev => ({
+                                            ...prev,
+                                            [selectedMessage.id]: {
+                                              ...prev[selectedMessage.id],
+                                              header: prev[selectedMessage.id].header.filter((_, i) => i !== index)
+                                            }
+                                          }))}
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-auto p-1 ml-2 text-red-600 hover:text-red-800"
+                                          data-testid={`button-remove-header-selection-${index}`}
+                                        >
+                                          ×
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {selectedMessage && selections[selectedMessage.id]?.thread.length > 0 && (
+                                <div data-testid="section-thread-selections">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="text-xs font-medium text-yellow-600">Da compattare (Thread) - {selections[selectedMessage.id].thread.length} items:</div>
+                                    <Button
+                                      onClick={() => setSelections(prev => ({
+                                        ...prev,
+                                        [selectedMessage.id]: {
+                                          ...prev[selectedMessage.id],
+                                          thread: []
+                                        }
+                                      }))}
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs text-yellow-600 border-yellow-200 hover:bg-yellow-50"
+                                      data-testid="button-clear-thread-selections"
+                                    >
+                                      Clear Thread
+                                    </Button>
+                                  </div>
+                                  <div className="space-y-1">
+                                    {selections[selectedMessage.id].thread.map((item, index) => (
+                                      <div key={index} className="text-xs bg-yellow-50 border border-yellow-200 rounded px-2 py-1 flex justify-between items-start" data-testid={`item-thread-selection-${index}`}>
+                                        <div className="truncate">
+                                          <span className="truncate">{item.text.length > 70 ? item.text.substring(0, 70) + '...' : item.text}</span>
+                                          <div className="text-xs text-yellow-700 mt-1 font-mono">Source: {item.sourceMessageId.substring(0, 8)}...</div>
+                                        </div>
+                                        <Button
+                                          onClick={() => setSelections(prev => ({
+                                            ...prev,
+                                            [selectedMessage.id]: {
+                                              ...prev[selectedMessage.id],
+                                              thread: prev[selectedMessage.id].thread.filter((_, i) => i !== index)
+                                            }
+                                          }))}
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-auto p-1 ml-2 text-yellow-600 hover:text-yellow-800"
+                                          data-testid={`button-remove-thread-selection-${index}`}
+                                        >
+                                          ×
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
                 {/* Message Body - occupa tutto lo spazio rimanente */}
                 <div className="border-t">
                   <div className="h-[48rem] p-6 overflow-y-auto space-y-4">
@@ -976,11 +1322,19 @@ export default function MessagesPage() {
                         {/* Contenuto principale del messaggio */}
                         {renderedContent.bodyHtml ? (
                           <div 
-                            className="prose prose-sm max-w-none"
+                            className={`prose prose-sm max-w-none ${isTrainingMode ? 'training-selection-area select-text cursor-pointer' : ''}`}
                             dangerouslySetInnerHTML={{ __html: renderedContent.bodyHtml }}
+                            data-selection-mode={isTrainingMode ? selectionMode : undefined}
+                            onMouseUp={isTrainingMode && selectionMode === 'body' ? handleTextSelection : undefined}
+                            data-testid="email-content-main"
                           />
                         ) : (
-                          <div className="whitespace-pre-wrap text-sm">
+                          <div 
+                            className={`whitespace-pre-wrap text-sm ${isTrainingMode ? 'training-selection-area select-text cursor-pointer' : ''}`}
+                            data-selection-mode={isTrainingMode ? selectionMode : undefined}
+                            onMouseUp={isTrainingMode && selectionMode === 'body' ? handleTextSelection : undefined}
+                            data-testid="email-content-main"
+                          >
                             {renderedContent.bodyText || 'Nessun contenuto'}
                           </div>
                         )}
@@ -1013,11 +1367,19 @@ export default function MessagesPage() {
                               >
                                 {renderedContent.remainderHtml ? (
                                   <div 
-                                    className="prose prose-sm max-w-none text-muted-foreground"
+                                    className={`prose prose-sm max-w-none text-muted-foreground ${isTrainingMode ? 'training-selection-area select-text cursor-pointer' : ''}`}
                                     dangerouslySetInnerHTML={{ __html: renderedContent.remainderHtml }}
+                                    data-selection-mode={isTrainingMode ? selectionMode : undefined}
+                                    onMouseUp={isTrainingMode && selectionMode === 'thread' ? handleTextSelection : undefined}
+                                    data-testid="email-content-thread"
                                   />
                                 ) : (
-                                  <div className="whitespace-pre-wrap text-sm text-muted-foreground">
+                                  <div 
+                                    className={`whitespace-pre-wrap text-sm text-muted-foreground ${isTrainingMode ? 'training-selection-area select-text cursor-pointer' : ''}`}
+                                    data-selection-mode={isTrainingMode ? selectionMode : undefined}
+                                    onMouseUp={isTrainingMode && selectionMode === 'thread' ? handleTextSelection : undefined}
+                                    data-testid="email-content-thread"
+                                  >
                                     {renderedContent.remainderText}
                                   </div>
                                 )}
