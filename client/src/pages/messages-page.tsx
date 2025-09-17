@@ -623,6 +623,7 @@ export default function MessagesPage() {
                           className="cursor-pointer hover:bg-muted/50 relative"
                           style={{ width: `${columnWidths.fromEmail}%` }}
                           onClick={() => handleSort('fromEmail')}
+                          data-testid="header-sort-sender"
                         >
                           <div className="flex items-center space-x-2">
                             <span>Mittente</span>
@@ -639,6 +640,7 @@ export default function MessagesPage() {
                           className="cursor-pointer hover:bg-muted/50 relative"
                           style={{ width: `${columnWidths.subject}%` }}
                           onClick={() => handleSort('subject')}
+                          data-testid="header-sort-subject"
                         >
                           <div className="flex items-center space-x-2">
                             <span>Oggetto</span>
@@ -655,6 +657,7 @@ export default function MessagesPage() {
                           className="cursor-pointer hover:bg-muted/50"
                           style={{ width: `${columnWidths.receivedAt}%` }}
                           onClick={() => handleSort('receivedAt')}
+                          data-testid="header-sort-date"
                         >
                           <div className="flex items-center space-x-2">
                             <span>Data/Ora</span>
