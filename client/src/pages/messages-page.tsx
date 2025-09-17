@@ -88,12 +88,15 @@ export default function MessagesPage() {
   
   // Training mode states
   const [isTrainingMode, setIsTrainingMode] = useState(false);
-  const [selectionMode, setSelectionMode] = useState<'body' | 'header' | 'thread'>('body');
+  const [selectionMode, setSelectionMode] = useState<'body' | 'header' | 'thread' | 'signatureBody' | 'signatureHeader' | 'mailThread'>('body');
   const [selections, setSelections] = useState<{
     [messageId: string]: {
       body: string[];
       header: string[];
       thread: { text: string; sourceMessageId: string }[];
+      signatureBody: string[];
+      signatureHeader: string[];
+      mailThread: { text: string; sourceMessageId: string }[];
     }
   }>({});
 
@@ -539,14 +542,23 @@ export default function MessagesPage() {
     
     // Add to current selection mode for this message
     setSelections(prev => {
-      const messageSelections = prev[messageId] || { body: [], header: [], thread: [] };
+      const messageSelections = prev[messageId] || { 
+        body: [], 
+        header: [], 
+        thread: [],
+        signatureBody: [],
+        signatureHeader: [],
+        mailThread: []
+      };
       
       // Check for duplicates based on selection mode
       let isDuplicate = false;
-      if (selectionMode === 'thread') {
-        isDuplicate = messageSelections.thread.some(item => item.text === selectedText);
+      if (selectionMode === 'thread' || selectionMode === 'mailThread') {
+        const threadSelections = selectionMode === 'thread' ? messageSelections.thread : messageSelections.mailThread;
+        isDuplicate = threadSelections.some(item => item.text === selectedText);
       } else {
-        isDuplicate = (messageSelections[selectionMode] as string[]).includes(selectedText);
+        const stringSelections = messageSelections[selectionMode] as string[];
+        isDuplicate = stringSelections.includes(selectedText);
       }
       
       if (isDuplicate) {
@@ -562,8 +574,11 @@ export default function MessagesPage() {
       let updatedSelections = { ...messageSelections };
       if (selectionMode === 'thread') {
         updatedSelections.thread = [...messageSelections.thread, { text: selectedText, sourceMessageId: messageId }];
+      } else if (selectionMode === 'mailThread') {
+        updatedSelections.mailThread = [...messageSelections.mailThread, { text: selectedText, sourceMessageId: messageId }];
       } else {
-        updatedSelections[selectionMode] = [...(messageSelections[selectionMode] as string[]), selectedText];
+        const currentSelections = messageSelections[selectionMode] as string[];
+        updatedSelections[selectionMode] = [...currentSelections, selectedText];
       }
       
       return {
@@ -1100,6 +1115,33 @@ export default function MessagesPage() {
                               >
                                 Compattare (Thread)
                               </Button>
+                              <Button
+                                onClick={() => setSelectionMode('signatureBody')}
+                                variant={selectionMode === 'signatureBody' ? "default" : "outline"}
+                                size="sm"
+                                className={selectionMode === 'signatureBody' ? "bg-blue-600 hover:bg-blue-700" : ""}
+                                data-testid="button-select-signature-body"
+                              >
+                                Conservare (Firma Body)
+                              </Button>
+                              <Button
+                                onClick={() => setSelectionMode('signatureHeader')}
+                                variant={selectionMode === 'signatureHeader' ? "default" : "outline"}
+                                size="sm"
+                                className={selectionMode === 'signatureHeader' ? "bg-purple-600 hover:bg-purple-700" : ""}
+                                data-testid="button-select-signature-header"
+                              >
+                                Eliminare (Firma Header)
+                              </Button>
+                              <Button
+                                onClick={() => setSelectionMode('mailThread')}
+                                variant={selectionMode === 'mailThread' ? "default" : "outline"}
+                                size="sm"
+                                className={selectionMode === 'mailThread' ? "bg-orange-600 hover:bg-orange-700" : ""}
+                                data-testid="button-select-mail-thread"
+                              >
+                                Compattare (Mail Thread)
+                              </Button>
                             </div>
                           </>
                         )}
@@ -1112,7 +1154,14 @@ export default function MessagesPage() {
                               if (selectedMessage) {
                                 setSelections(prev => ({
                                   ...prev,
-                                  [selectedMessage.id]: { body: [], header: [], thread: [] }
+                                  [selectedMessage.id]: { 
+                                    body: [], 
+                                    header: [], 
+                                    thread: [],
+                                    signatureBody: [],
+                                    signatureHeader: [],
+                                    mailThread: []
+                                  }
                                 }));
                               }
                             }}
@@ -1127,7 +1176,7 @@ export default function MessagesPage() {
                               if (selectedMessage) {
                                 const messageSelections = selections[selectedMessage.id];
                                 if (messageSelections) {
-                                  const totalSelections = messageSelections.body.length + messageSelections.header.length + messageSelections.thread.length;
+                                  const totalSelections = messageSelections.body.length + messageSelections.header.length + messageSelections.thread.length + messageSelections.signatureBody.length + messageSelections.signatureHeader.length + messageSelections.mailThread.length;
                                   if (totalSelections > 0) {
                                     // TODO: Salvare nel database
                                     toast({ 
