@@ -28,7 +28,18 @@ function isHex(s: string): boolean {
 }
 
 export async function comparePasswords(supplied: string, stored: string) {
+  // Validate inputs
+  if (!supplied || !stored || typeof stored !== 'string' || !stored.includes('.')) {
+    console.error('[AUTH] Invalid password data - supplied:', !!supplied, 'stored:', !!stored, 'format:', stored?.includes?.('.'));
+    return false;
+  }
+  
   const [hashed, salt] = stored.split(".");
+  if (!hashed || !salt) {
+    console.error('[AUTH] Invalid stored password format - missing hash or salt');
+    return false;
+  }
+  
   const hashedBuf = Buffer.from(hashed, "hex");
   
   // Compatibilità retroattiva: determina se è hash legacy (64 bytes) o nuovo (32 bytes)
