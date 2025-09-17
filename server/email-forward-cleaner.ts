@@ -174,11 +174,10 @@ export class EmailForwardCleaner {
     // SAFETY FALLBACK: Se l'HTML pulito è null o molto corto, usa l'HTML originale
     let cleanedHtmlBody = cleaned.originalHtmlBody;
     
-    if (htmlBody && (!cleanedHtmlBody || cleanedHtmlBody.length < htmlBody.length * 0.4)) {
-      // L'HTML è stato rimosso o ridotto drasticamente - usa l'originale
-      cleanedHtmlBody = this.sanitizeHtml(htmlBody);
-      console.log(`[EMAIL-CLEANER] Using original HTML as fallback: cleaned was ${cleanedHtmlBody?.length || 0} chars vs original ${htmlBody.length} chars`);
-    }
+    // DISABILITO il fallback distruttivo che annulla gli split intenzionali
+    // Il fallback precedente ripristinava l'HTML originale quando il body era <40% 
+    // Ma questo distrugge gli split riusciti di thread (es. 1.6MB -> 9KB body è intenzionale!)
+    console.log(`[EMAIL-CLEANER] Skipping destructive fallback - using cleaned HTML: ${cleanedHtmlBody?.length || 0} chars (original: ${htmlBody?.length || 0} chars)`);
 
     return {
       bodyText: cleaned.originalBody,
