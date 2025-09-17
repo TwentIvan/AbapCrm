@@ -103,6 +103,31 @@ export async function testDatabaseConnection(): Promise<boolean> {
   }
 }
 
+// Startup migrations - Safe additive SQL changes
+export async function runStartupMigrations(): Promise<boolean> {
+  try {
+    console.log('[DB] Running startup migrations...');
+    const client = await pool.connect();
+    
+    // Add new email training selection columns if they don't exist
+    const migrationSQL = `
+      ALTER TABLE email_training_selections
+        ADD COLUMN IF NOT EXISTS signature_body_selections text[] NOT NULL DEFAULT '{}',
+        ADD COLUMN IF NOT EXISTS signature_header_selections text[] NOT NULL DEFAULT '{}',
+        ADD COLUMN IF NOT EXISTS mail_thread_selections jsonb NOT NULL DEFAULT '[]'::jsonb;
+    `;
+    
+    await client.query(migrationSQL);
+    console.log('[DB] ✓ Email training selection columns added successfully');
+    
+    client.release();
+    return true;
+  } catch (error) {
+    console.error('[DB] Startup migration failed:', error);
+    return false;
+  }
+}
+
 // Health check function for periodic monitoring
 export async function checkDatabaseHealth(): Promise<{ healthy: boolean; totalConnections: number; idleConnections: number }> {
   try {

@@ -815,6 +815,12 @@ export const emailTrainingSelections = pgTable("email_training_selections", {
   headerSelections: text("header_selections").array().default([]).notNull(),
   // Thread selections with source message tracking for training
   threadSelections: jsonb("thread_selections").default([]).notNull(), // Array of {text: string, sourceMessageId: string}
+  // Signature body selections to keep (content to preserve)
+  signatureBodySelections: text("signature_body_selections").array().default([]).notNull(),
+  // Signature header selections (different from forwarding headers)
+  signatureHeaderSelections: text("signature_header_selections").array().default([]).notNull(),
+  // Mail thread selections (more specific than general thread)
+  mailThreadSelections: jsonb("mail_thread_selections").default([]).notNull(), // Array of {text: string, sourceMessageId: string}
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({

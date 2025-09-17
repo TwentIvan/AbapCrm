@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { autoInitializeEmailServices } from "./email-auto-init";
-import { testDatabaseConnection, checkDatabaseHealth, closeDatabasePool } from "./db";
+import { testDatabaseConnection, checkDatabaseHealth, closeDatabasePool, runStartupMigrations } from "./db";
 
 // Add global error handlers to prevent server crashes
 process.on('uncaughtException', (error) => {
@@ -116,6 +116,11 @@ app.use((req, res, next) => {
     const dbConnected = await testDatabaseConnection();
     if (!dbConnected) {
       console.warn('[SERVER] Database connection failed during startup, but server will continue running');
+    }
+    
+    // Run startup migrations if database is connected
+    if (dbConnected) {
+      await runStartupMigrations();
     }
     
     // Auto-initialize email services after server starts
