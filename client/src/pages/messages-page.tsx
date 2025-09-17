@@ -106,11 +106,6 @@ export default function MessagesPage() {
 
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
-    queryFn: async () => {
-      const res = await fetch("/api/messages", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch messages');
-      return res.json();
-    },
     refetchInterval: 30000, // Refresh every 30 seconds
     refetchIntervalInBackground: true, // Continue refreshing in background
     enabled: !showThreadView, // Only fetch when not in thread view
@@ -119,11 +114,6 @@ export default function MessagesPage() {
   // Thread view data
   const { data: threads = [] } = useQuery<any[]>({
     queryKey: ["/api/message-threads"],
-    queryFn: async () => {
-      const res = await fetch("/api/message-threads", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch message threads');
-      return res.json();
-    },
     refetchInterval: 30000, 
     refetchIntervalInBackground: true,
     enabled: showThreadView, // Only fetch when in thread view
@@ -715,125 +705,38 @@ export default function MessagesPage() {
                                   </TableCell>
                                 </TableRow>
 
-                                {/* Thread Messages (when expanded) - with current/history separation */}
-                                {expandedThreads.has(thread.threadId) && (() => {
-                                  // Sort messages by receivedAt (oldest first)
-                                  const sortedMessages = [...thread.messages].sort(
-                                    (a, b) => new Date(a.receivedAt).getTime() - new Date(b.receivedAt).getTime()
-                                  );
-                                  
-                                  // Find selected message in this thread
-                                  const currentMessage = sortedMessages.find(msg => msg.id === selectedMessage?.id);
-                                  const otherMessages = sortedMessages.filter(msg => msg.id !== selectedMessage?.id);
-                                  
-                                  return (
-                                    <>
-                                      {/* Current Message (if selected and in this thread) */}
-                                      {currentMessage && (
-                                        <>
-                                          <TableRow
-                                            key={`current-${currentMessage.id}`}
-                                            data-testid={`row-current-${currentMessage.id}`}
-                                            className="cursor-pointer transition-colors border-l-4 border-l-primary ml-8 bg-accent/30 ring-2 ring-primary/20"
-                                            onClick={() => handleSelectMessage(currentMessage)}
-                                          >
-                                            {/* Current message content with special styling */}
-                                            <TableCell style={{ width: `${columnWidths.fromEmail}%` }}>
-                                              <div className="space-y-1 pl-4">
-                                                <div className="flex items-center gap-2">
-                                                  <Mail className="h-3 w-3 text-primary" />
-                                                  <Badge variant="default" className="text-xs bg-primary text-primary-foreground">
-                                                    CORRENTE
-                                                  </Badge>
-                                                  {getStatusIcon(currentMessage.status)}
-                                                  <span className="text-sm font-bold text-primary">
-                                                    {currentMessage.fromName || currentMessage.fromEmail}
-                                                  </span>
-                                                </div>
-                                                {(() => {
-                                                  const linkedObject = getLinkedObjectName(currentMessage);
-                                                  return linkedObject && (
-                                                    <Badge variant="outline" className="text-xs">
-                                                      <Link className="h-3 w-3 mr-1" />
-                                                      {linkedObject.type}: {linkedObject.name}
-                                                    </Badge>
-                                                  );
-                                                })()}
-                                              </div>
-                                            </TableCell>
-                                            
-                                            <TableCell style={{ width: `${columnWidths.subject}%` }}>
-                                              <div className="space-y-1 pl-4">
-                                                <p className="text-sm font-bold text-primary truncate">
-                                                  {currentMessage.subject || 'Nessun oggetto'}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground truncate">
-                                                  {currentMessage.body ? currentMessage.body.substring(0, 60) + '...' : 'Nessun contenuto'}
-                                                </p>
-                                              </div>
-                                            </TableCell>
-                                            
-                                            <TableCell className="text-xs text-muted-foreground" style={{ width: `${columnWidths.receivedAt}%` }}>
-                                              <div className="space-y-1 pl-4">
-                                                <div className="font-medium">{format(new Date(currentMessage.receivedAt), 'dd MMM yyyy')}</div>
-                                                <div className="font-medium">{format(new Date(currentMessage.receivedAt), 'HH:mm')}</div>
-                                              </div>
-                                            </TableCell>
-                                          </TableRow>
-                                          
-                                          {/* Separator if there are other messages */}
-                                          {otherMessages.length > 0 && (
-                                            <TableRow data-testid="separator-thread-history">
-                                              <TableCell colSpan={3} className="py-2 ml-8">
-                                                <div className="flex items-center gap-2 pl-8">
-                                                  <Separator className="flex-1" />
-                                                  <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                                                    <MessageSquare className="h-3 w-3" />
-                                                    <span>Altri messaggi del thread ({otherMessages.length})</span>
-                                                  </div>
-                                                  <Separator className="flex-1" />
-                                                </div>
-                                              </TableCell>
-                                            </TableRow>
-                                          )}
-                                        </>
-                                      )}
-                                      
-                                      {/* Other Messages (History) */}
-                                      {otherMessages.map((message: Message, index: number) => {
+                                {/* Thread Messages (when expanded) - Simple list without current/history separation */}
+                                {expandedThreads.has(thread.threadId) && (
+                                  <>
+                                    {[...thread.messages]
+                                      .sort((a, b) => new Date(a.receivedAt).getTime() - new Date(b.receivedAt).getTime())
+                                      .map((message, index) => {
                                         const linkedObject = getLinkedObjectName(message);
                                         
                                         return (
                                           <TableRow
-                                            key={`history-${message.id}`}
-                                            data-testid={`row-thread-history-${message.id}`}
-                                            className={`cursor-pointer transition-colors border-l-4 border-l-muted ml-8 hover:bg-muted/30 ${
-                                              message.status === 'unread' ? 'border-l-blue-500' : 'border-l-muted'
-                                            }`}
+                                            key={message.id}
+                                            data-testid={`message-item-${message.id}`}
+                                            className={`cursor-pointer transition-colors border-l-4 border-l-primary/30 ml-8 ${
+                                              selectedMessage?.id === message.id ? 'bg-muted' : ''
+                                            } ${message.status === 'unread' ? 'border-l-blue-500' : ''}`}
                                             onClick={() => handleSelectMessage(message)}
                                           >
-                                            {/* History message content - more compact styling */}
                                             <TableCell style={{ width: `${columnWidths.fromEmail}%` }}>
                                               <div className="space-y-1 pl-4">
                                                 <div className="flex items-center gap-2">
                                                   {getStatusIcon(message.status)}
-                                                  <span className={`text-sm truncate text-muted-foreground ${
-                                                    message.status === 'unread' ? 'font-medium' : 'font-normal'
+                                                  <span className={`text-sm truncate ${
+                                                    message.status === 'unread' ? 'font-bold' : 'font-medium'
                                                   }`}>
                                                     {message.fromName || message.fromEmail}
                                                   </span>
-                                                  <Badge variant="secondary" className="text-xs opacity-70">
-                                                    #{(() => {
-                                                      // Calculate position in all thread messages
-                                                      const allSorted = [...thread.messages].sort(
-                                                        (a, b) => new Date(a.receivedAt).getTime() - new Date(b.receivedAt).getTime()
-                                                      );
-                                                      return allSorted.findIndex(m => m.id === message.id) + 1;
-                                                    })()}
+                                                  <Badge variant="secondary" className="text-xs">
+                                                    #{index + 1}
                                                   </Badge>
                                                 </div>
                                                 {linkedObject && (
-                                                  <Badge variant="outline" className="text-xs opacity-70">
+                                                  <Badge variant="outline" className="text-xs">
                                                     <Link className="h-3 w-3 mr-1" />
                                                     {linkedObject.type}: {linkedObject.name}
                                                   </Badge>
@@ -843,12 +746,12 @@ export default function MessagesPage() {
                                             
                                             <TableCell style={{ width: `${columnWidths.subject}%` }}>
                                               <div className="space-y-1 pl-4">
-                                                <p className={`text-sm truncate text-muted-foreground ${
-                                                  message.status === 'unread' ? 'font-medium' : 'font-normal'
+                                                <p className={`text-sm truncate ${
+                                                  message.status === 'unread' ? 'font-bold text-foreground' : 'font-normal text-foreground'
                                                 }`}>
                                                   {message.subject || 'Nessun oggetto'}
                                                 </p>
-                                                <p className="text-xs text-muted-foreground/70 truncate">
+                                                <p className="text-xs text-muted-foreground truncate">
                                                   {message.body ? message.body.substring(0, 60) + '...' : 'Nessun contenuto'}
                                                 </p>
                                               </div>
@@ -856,16 +759,15 @@ export default function MessagesPage() {
                                             
                                             <TableCell className="text-xs text-muted-foreground" style={{ width: `${columnWidths.receivedAt}%` }}>
                                               <div className="space-y-1 pl-4">
-                                                <div className="opacity-70">{format(new Date(message.receivedAt), 'dd MMM yyyy')}</div>
-                                                <div className="opacity-70">{format(new Date(message.receivedAt), 'HH:mm')}</div>
+                                                <div>{format(new Date(message.receivedAt), 'dd MMM yyyy')}</div>
+                                                <div>{format(new Date(message.receivedAt), 'HH:mm')}</div>
                                               </div>
                                             </TableCell>
                                           </TableRow>
                                         );
                                       })}
-                                    </>
-                                  );
-                                })()}
+                                  </>
+                                )}
                               </React.Fragment>
                             ))
                           )
@@ -965,150 +867,6 @@ export default function MessagesPage() {
                   <Mail className="h-16 w-16 mx-auto mb-4 opacity-50" />
                   <p className="text-lg font-medium">Seleziona un messaggio</p>
                   <p className="text-sm">Clicca su un messaggio per visualizzare i dettagli</p>
-                </div>
-              </div>
-            ) : threadData ? (
-              /* Thread View with separated current email and history */
-              <div className="flex flex-col h-full" data-testid="div-thread-viewer">
-                {/* Current Email Card */}
-                <div className="flex-shrink-0 border-b">
-                  <div className="p-4 bg-accent/20">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Mail className="h-4 w-4 text-primary" />
-                      <h3 className="font-medium text-sm" data-testid="text-current-email">Email corrente</h3>
-                      <Badge variant="outline" className="text-xs">
-                        {threadData.totalCount} messaggi nel thread
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  {/* Current message content in a prominent card */}
-                  <Card className="mx-4 mb-4 ring-2 ring-primary/20 border-primary/30" data-testid="card-current-message">
-                    <CardContent className="p-4">
-                      {/* Current message header */}
-                      <div className="space-y-3 mb-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm" data-testid="text-current-subject">
-                              {threadData.currentMessage.subject || '(Nessun oggetto)'}
-                            </h4>
-                            <p className="text-sm text-muted-foreground mt-1" data-testid="text-current-sender">
-                              Da: {threadData.currentMessage.fromName || threadData.currentMessage.fromEmail}
-                            </p>
-                            <p className="text-xs text-muted-foreground" data-testid="text-current-date">
-                              {format(new Date(threadData.currentMessage.receivedAt), 'dd MMM yyyy HH:mm')}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${getStatusColor(threadData.currentMessage.status)}`} />
-                            {getStatusIcon(threadData.currentMessage.status)}
-                          </div>
-                        </div>
-                        
-                        {/* Current message recipients */}
-                        <div className="border rounded-lg p-3 bg-muted/30">
-                          <div className="space-y-2">
-                            {(() => {
-                              const toEmails = (threadData.currentMessage.originalToEmails && threadData.currentMessage.originalToEmails.length > 0) 
-                                ? threadData.currentMessage.originalToEmails 
-                                : [threadData.currentMessage.toEmail];
-                              
-                              return (
-                                <div className="flex flex-wrap gap-1">
-                                  {toEmails.map((email, index) => {
-                                    const isCurrentUser = email?.toLowerCase() === user?.email?.toLowerCase();
-                                    return (
-                                      <Badge 
-                                        key={`current-to-${index}`} 
-                                        variant="outline" 
-                                        className={`text-xs ${
-                                          isCurrentUser 
-                                            ? 'bg-green-50 text-green-700 border-green-200' 
-                                            : 'bg-blue-50 text-blue-700 border-blue-200'
-                                        }`}
-                                      >
-                                        <User className="h-2 w-2 mr-1" />
-                                        {isCurrentUser ? `Tu (${email})` : email}
-                                      </Badge>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Current message body (truncated preview) */}
-                      <div className="border-t pt-3">
-                        <div className="max-h-40 overflow-y-auto text-sm" data-testid="div-current-content">
-                          {threadData.currentMessage.htmlBody ? (
-                            <div 
-                              className="prose prose-sm max-w-none"
-                              dangerouslySetInnerHTML={{ __html: threadData.currentMessage.htmlBody }}
-                            />
-                          ) : (
-                            <div className="whitespace-pre-wrap">
-                              {threadData.currentMessage.body || 'Nessun contenuto'}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-                
-                {/* Thread History Section */}
-                <div className="flex-1 min-h-0">
-                  <div className="p-4 border-b bg-muted/10">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                      <h3 className="font-medium text-sm text-muted-foreground" data-testid="text-thread-history">Altri messaggi del thread</h3>
-                      <Badge variant="secondary" className="text-xs">
-                        {threadData.historyMessages.length} messaggi
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  <ScrollArea className="h-full p-4" data-testid="list-thread-history">
-                    <div className="space-y-3">
-                      {threadData.historyMessages.map((message: Message, index: number) => (
-                        <Card 
-                          key={`history-${message.id}`} 
-                          className="cursor-pointer hover:bg-accent/50 transition-colors border-muted" 
-                          onClick={() => handleSelectMessage(message)}
-                          data-testid={`row-history-${message.id}`}
-                        >
-                          <CardContent className="p-3">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(message.status)}`} />
-                                  <h5 className="font-medium text-xs truncate">
-                                    {message.subject || '(Nessun oggetto)'}
-                                  </h5>
-                                </div>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  Da: {message.fromName || message.fromEmail}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {format(new Date(message.receivedAt), 'dd MMM yyyy HH:mm')}
-                                </p>
-                                {/* Preview of message content */}
-                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                  {message.body ? message.body.substring(0, 100) + '...' : 'Nessun contenuto'}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                {getStatusIcon(message.status)}
-                                <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </ScrollArea>
                 </div>
               </div>
             ) : (
