@@ -132,8 +132,23 @@ export class EmailForwardCleaner {
     const cleaned = this.cleanForwardedEmail(subject, body, htmlBody || null);
     
     if (!cleaned.isForwarded) {
-      // Se non è inoltrata, non c'è separazione da fare
-      // FIX: Usa htmlBody originale invece di preservedHtmlFormatting che è null
+      // Anche se non è marcata come inoltrata, potrebbe essere una reply con contenuto quotato
+      // Tenta di dividere il contenuto usando pattern di reply comuni
+      const replySplit = this.splitReplyContent(body, htmlBody);
+      
+      if (replySplit.found) {
+        console.log(`[EMAIL-CLEANER] REPLY remainder: ${replySplit.remainderHtml?.length || replySplit.remainderText?.length || 0} chars`);
+        return {
+          bodyText: replySplit.bodyText,
+          bodyHtml: replySplit.bodyHtml,
+          remainderText: replySplit.remainderText,
+          remainderHtml: replySplit.remainderHtml,
+          headerSummary: null,
+          isForwarded: false
+        };
+      }
+      
+      // Se non è stata trovata nessuna divisione, usa il contenuto originale
       return {
         bodyText: cleaned.originalBody,
         bodyHtml: htmlBody ? this.sanitizeHtml(htmlBody) : null,
@@ -451,6 +466,124 @@ export class EmailForwardCleaner {
     ];
 
     return forwardPrefixes.some(prefix => prefix.test(subject));
+  }
+
+  private static splitReplyContent(
+    body: string,
+    htmlBody?: string | null
+  ): {
+    found: boolean;
+    bodyText: string;
+    bodyHtml: string | null;
+    remainderText: string | null;
+    remainderHtml: string | null;
+  } {
+    console.log(`[EMAIL-CLEANER] Attempting reply split for text (${body.length} chars)`);
+    
+    // Pattern di reply comuni nel testo (espansi)
+    const textReplyPatterns = [
+      /^On .+ wrote:$/im,
+      /^Il .+ ha scritto:$/im,
+      /^Le .+ a écrit:$/im, // Francese
+      /^Am .+ schrieb:$/im, // Tedesco
+      /^(From|Da|De): .+\n(Sent|Inviato|Envoyé):/im,
+      /^[-_—–]{3,}.*Original Message.*[-_—–]*$/im,
+      /^[-_—–]{5,}$/im, // Linee di trattini
+      /^> .+/im, // Quote standard
+      /^\s*From:\s*.*\nDate:\s*/im // Header cluster common
+    ];
+    
+    // Cerca nel testo
+    let textSplitPoint = -1;
+    for (const pattern of textReplyPatterns) {
+      const match = body.match(pattern);
+      if (match && match.index !== undefined) {
+        textSplitPoint = match.index;
+        console.log(`[EMAIL-CLEANER] Found text reply pattern at ${textSplitPoint}`);
+        break;
+      }
+    }
+    
+    // Se c'è HTML, cerca pattern HTML
+    let htmlSplitPoint = -1;
+    if (htmlBody) {
+      const htmlReplyPatterns = [
+        /<blockquote[^>]*>/i,
+        /<div[^>]*class="[^"]*gmail_quote[^"]*"/i,
+        /<hr[^>]*class="[^"]*gmail_extra[^"]*"/i,
+        /<div[^>]*class="[^"]*yahoo_quoted[^"]*"/i,
+        /<table[^>]*border[^>]*>/i, // Outlook table quotes
+        /<div[^>]*style="[^"]*border-left[^"]*"/i, // CSS quote borders
+        /<!-- original message -->/i,
+        /<div[^>]*id="[^"]*divRplyFwdMsg[^"]*"/i // Outlook web
+      ];
+      
+      for (const pattern of htmlReplyPatterns) {
+        const match = htmlBody.match(pattern);
+        if (match && match.index !== undefined) {
+          htmlSplitPoint = match.index;
+          console.log(`[EMAIL-CLEANER] Found HTML reply pattern at ${htmlSplitPoint}`);
+          break;
+        }
+      }
+    }
+    
+    // Determina se c'è una divisione valida
+    const useSplit = textSplitPoint > 0 || htmlSplitPoint > 0;
+    
+    if (useSplit) {
+      const textSplit = textSplitPoint > 0 ? textSplitPoint : body.length;
+      const htmlSplit = htmlSplitPoint > 0 ? htmlSplitPoint : (htmlBody?.length || 0);
+      
+      const bodyText = body.substring(0, textSplit).trim();
+      const remainderText = textSplitPoint > 0 ? body.substring(textSplit).trim() : null;
+      
+      const bodyHtml = htmlBody && htmlSplit > 0 ? 
+        this.sanitizeHtml(htmlBody.substring(0, htmlSplit)) : 
+        (htmlBody ? this.sanitizeHtml(htmlBody) : null);
+      const remainderHtml = htmlBody && htmlSplit > 0 ? 
+        this.sanitizeHtml(htmlBody.substring(htmlSplit)) : null;
+      
+      // Controlla se la divisione è sensata (text O HTML)
+      const originalTextLength = body.length;
+      const newBodyLength = bodyText.length;
+      const remainderTextLength = remainderText?.length || 0;
+      const textRatio = originalTextLength / Math.max(newBodyLength, 1);
+      
+      // Check per split text
+      const textSplitValid = textRatio > 1.05 && remainderTextLength > 120;
+      
+      // Check per split HTML (se disponibile)
+      let htmlSplitValid = false;
+      if (htmlBody && remainderHtml) {
+        const originalHtmlLength = htmlBody.length;
+        const newBodyHtmlLength = bodyHtml?.length || 0;
+        const remainderHtmlLength = remainderHtml.length;
+        const htmlRatio = originalHtmlLength / Math.max(newBodyHtmlLength, 1);
+        htmlSplitValid = htmlRatio > 1.05 && remainderHtmlLength > 200;
+      }
+      
+      if (textSplitValid || htmlSplitValid) {
+        const totalRemainderLength = remainderTextLength + (remainderHtml?.length || 0);
+        console.log(`[EMAIL-CLEANER] Reply split successful: ${newBodyLength} body, ${totalRemainderLength} remainder (text:${remainderTextLength}, html:${remainderHtml?.length || 0})`);
+        return {
+          found: true,
+          bodyText,
+          bodyHtml,
+          remainderText,
+          remainderHtml
+        };
+      }
+    }
+    
+    console.log(`[EMAIL-CLEANER] No valid reply split found`);
+    return {
+      found: false,
+      bodyText: body,
+      bodyHtml: htmlBody ? this.sanitizeHtml(htmlBody) : null,
+      remainderText: null,
+      remainderHtml: null
+    };
   }
 
   private static hasExplicitForwardMarkers(subject: string, textBody: string, htmlBody: string): boolean {
