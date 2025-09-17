@@ -59,6 +59,29 @@ export class EmailForwardCleaner {
           }
         });
         
+        // Analyze signature body selections (content to preserve)
+        const signatureBodySelections = Array.isArray(selection?.signatureBodySelections) ? selection.signatureBodySelections : [];
+        signatureBodySelections.forEach((signature: string) => {
+          if (signature.length > 20) {
+            // Extract signature patterns from body selections
+            commonBodyPatterns.add(`signature-body:${signature.substring(0, 80)}`);
+          }
+        });
+        
+        // Analyze signature header selections (content to eliminate)
+        const signatureHeaderSelections = Array.isArray(selection?.signatureHeaderSelections) ? selection.signatureHeaderSelections : [];
+        signatureHeaderSelections.forEach((sigHeader: string) => {
+          if (sigHeader.includes('Best regards') || sigHeader.includes('Cordiali saluti')) {
+            commonHeaders.add('signature-closing');
+          }
+          if (sigHeader.includes('@') && sigHeader.includes('Tel:') || sigHeader.includes('Phone:')) {
+            commonHeaders.add('signature-contact');
+          }
+          if (sigHeader.includes('Confidentiality') || sigHeader.includes('Confidenzialità')) {
+            commonHeaders.add('signature-legal');
+          }
+        });
+        
         // Analyze thread selections for common thread markers
         if (Array.isArray(selection.threadSelections)) {
           (selection.threadSelections as any[]).forEach((thread: any) => {
@@ -67,6 +90,21 @@ export class EmailForwardCleaner {
             }
             if (thread.text && thread.text.includes('Original Message')) {
               threadMarkers.add('forward-marker');
+            }
+          });
+        }
+        
+        // Analyze mail thread selections for specific thread patterns
+        if (Array.isArray(selection.mailThreadSelections)) {
+          (selection.mailThreadSelections as any[]).forEach((mailThread: any) => {
+            if (mailThread.text && mailThread.text.includes('Inoltrato da:')) {
+              threadMarkers.add('italian-forward-marker');
+            }
+            if (mailThread.text && mailThread.text.includes('-----')) {
+              threadMarkers.add('separator-marker');
+            }
+            if (mailThread.text && mailThread.text.includes('Da:') && mailThread.text.includes('Oggetto:')) {
+              threadMarkers.add('email-header-block');
             }
           });
         }

@@ -2509,6 +2509,45 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Training Data Analysis API
+  app.get("/api/training-data-analysis", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const analysisResult = await EmailForwardCleaner.analyzeTrainingData(req.user!.id);
+      
+      // Get additional statistics
+      const trainingSelections = await storage.getEmailTrainingSelections(req.user!.id);
+      
+      const stats = {
+        totalSelections: trainingSelections.length,
+        selectionsByType: {
+          body: trainingSelections.reduce((sum, sel) => sum + (sel.bodySelections?.length || 0), 0),
+          header: trainingSelections.reduce((sum, sel) => sum + (sel.headerSelections?.length || 0), 0),
+          thread: trainingSelections.reduce((sum, sel) => sum + (Array.isArray(sel.threadSelections) ? sel.threadSelections.length : 0), 0),
+          signatureBody: trainingSelections.reduce((sum, sel) => sum + (sel.signatureBodySelections?.length || 0), 0),
+          signatureHeader: trainingSelections.reduce((sum, sel) => sum + (sel.signatureHeaderSelections?.length || 0), 0),
+          mailThread: trainingSelections.reduce((sum, sel) => sum + (Array.isArray(sel.mailThreadSelections) ? sel.mailThreadSelections.length : 0), 0)
+        },
+        lastTrainingDate: trainingSelections.length > 0 
+          ? (() => {
+              const validDates = trainingSelections
+                .map(s => new Date(s.updatedAt))
+                .filter(date => !isNaN(date.getTime()));
+              return validDates.length > 0 
+                ? new Date(Math.max(...validDates.map(d => d.getTime())))
+                : null;
+            })()
+          : null,
+        patterns: analysisResult
+      };
+      
+      res.json(stats);
+    } catch (error) {
+      console.error("Training data analysis error:", error);
+      res.status(500).json({ error: "Failed to analyze training data" });
+    }
+  });
+
   // Organization Domains Management
   app.get("/api/organization-domains", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

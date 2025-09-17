@@ -44,6 +44,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { BarChart3, TrendingUp, Database } from "lucide-react";
 import type { Message, Project, Task, Partner } from "@shared/schema";
 import { format } from "date-fns";
 import MessageForm from "@/components/forms/message-form";
@@ -90,6 +91,7 @@ export default function MessagesPage() {
   // Training mode states
   const [isTrainingMode, setIsTrainingMode] = useState(false);
   const [selectionMode, setSelectionMode] = useState<'body' | 'header' | 'thread' | 'signatureBody' | 'signatureHeader' | 'mailThread'>('body');
+  const [showTrainingStats, setShowTrainingStats] = useState(false);
   const [selections, setSelections] = useState<{
     [messageId: string]: {
       body: string[];
