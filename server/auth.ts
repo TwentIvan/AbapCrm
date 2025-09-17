@@ -73,35 +73,28 @@ export function setupAuth(app: Express) {
   // Local Strategy - supporting both email and username
   passport.use(
     new LocalStrategy({ usernameField: 'email' }, async (emailOrUsername, password, done) => {
-      console.log(`[AUTH] Login attempt for: ${emailOrUsername}`);
-      console.log(`[AUTH] System debug active`);
       
       // First try to find user by email
       let user = await storage.getUserByEmail(emailOrUsername);
       
       // If not found and it doesn't look like an email, try by username
       if (!user && !emailOrUsername.includes('@')) {
-        console.log(`[AUTH] Email lookup failed, trying username lookup`);
         user = await storage.getUserByUsername(emailOrUsername);
       }
       
       if (!user) {
-        console.log(`[AUTH] User not found`);
         return done(null, false);
       }
       
       if (!user.password) {
-        console.log(`[AUTH] User has no password`);
         return done(null, false);
       }
       
       const passwordMatch = await comparePasswords(password, user.password);
-      console.log(`[AUTH] Password match: ${passwordMatch}`);
       
       if (!passwordMatch) {
         return done(null, false);
       } else {
-        console.log(`[AUTH] Login successful for user: ${user.username}`);
         return done(null, user);
       }
     }),
@@ -197,7 +190,7 @@ export function setupAuth(app: Express) {
       );
 
       if (!emailSent) {
-        console.error('[AUTH] Failed to send verification email to', user.email);
+        console.error('[AUTH] Failed to send verification email (email sending disabled).');
         // Don't fail registration if email sending fails
       }
 
@@ -228,7 +221,6 @@ export function setupAuth(app: Express) {
       
       // Always return success for security (don't reveal if email exists)
       if (!user) {
-        console.log('[AUTH] Password reset requested for non-existent email:', email);
         return res.json({ message: "Se l'email esiste nel sistema, riceverai un link per il reset della password." });
       }
 
@@ -257,17 +249,17 @@ export function setupAuth(app: Express) {
         if (emailService && typeof emailService.sendResetEmail === 'function') {
           emailSent = await emailService.sendResetEmail(user.email, userName, resetToken);
         } else {
-          console.log('[AUTH] Reset link generated for', user.email, '(token masked for security)');
+          console.log('[AUTH] Reset link generated (token masked for security)');
           emailSent = true; // Fallback: link generated but not logged
         }
       } catch (emailError) {
         console.error('[AUTH] Failed to send reset email:', emailError);
-        console.log('[AUTH] Reset link generated for', user.email, '(token masked for security)');
+        console.log('[AUTH] Reset link generated (token masked for security)');
         emailSent = true; // Fallback: link generated but not logged
       }
 
       if (!emailSent) {
-        console.error('[AUTH] Email service unavailable. Reset link generated for', user.email, '(token masked for security)');
+        console.error('[AUTH] Email service unavailable. Reset link generated (token masked for security)');
       }
 
       res.json({ message: "Se l'email esiste nel sistema, riceverai un link per il reset della password." });
@@ -305,7 +297,7 @@ export function setupAuth(app: Express) {
       await storage.updateUser(user.id, { password: hashedPassword });
       await storage.clearResetToken(user.id);
       
-      console.log('[AUTH] Password successfully reset for user:', user.email);
+      console.log('[AUTH] Password reset completed successfully');
       res.json({ message: "Password reset successfully. You can now log in with your new password." });
       
     } catch (error) {
@@ -375,20 +367,6 @@ export function setupAuth(app: Express) {
     }
     
     res.json(req.user);
-  });
-
-  // Manual preload endpoint for testing
-  app.post("/api/preload", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    
-    try {
-      console.log(`[MANUAL-PRELOAD] Starting for user ${req.user.id}`);
-      await storage.preloadUserData(req.user.id);
-      res.json({ success: true, message: "Preload completed" });
-    } catch (error) {
-      console.error('[MANUAL-PRELOAD] Failed:', error);
-      res.status(500).json({ success: false, error: error.message });
-    }
   });
 
   // User update endpoint

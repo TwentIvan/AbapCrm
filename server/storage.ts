@@ -1820,7 +1820,6 @@ export class DatabaseStorage implements IStorage {
       .limit(limit)
       .offset(offset);
     
-    
     return result;
   }
 
