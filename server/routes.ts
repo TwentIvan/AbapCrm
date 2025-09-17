@@ -18,7 +18,7 @@ import {
   insertVpnSoftwareSchema, insertVpnSystemsSchema, vpnConnections,
   insertDiscoveredVpnSoftwareSchema, insertDiscoveredVpnConfigurationSchema,
   insertOrganizationSchema, insertUserOrganizationSchema, insertOrganizationInvitationSchema,
-  insertOrganizationDomainSchema, insertEmailFeedbackSchema
+  insertOrganizationDomainSchema, insertEmailFeedbackSchema, insertEmailTrainingSelectionSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -2459,6 +2459,53 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Send email error:", error);
       res.status(500).json({ error: "Failed to send email" });
+    }
+  });
+
+  // Email Training Selections Management
+  app.post("/api/email-training-selections", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const validatedData = insertEmailTrainingSelectionSchema.parse({
+        ...req.body,
+        userId: req.user!.id
+      });
+      
+      const savedSelection = await storage.createEmailTrainingSelection(validatedData);
+      res.json(savedSelection);
+    } catch (error) {
+      console.error("Create email training selection error:", error);
+      res.status(500).json({ error: "Failed to save email training selection" });
+    }
+  });
+
+  app.get("/api/email-training-selections/:messageId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { messageId } = req.params;
+      const selection = await storage.getEmailTrainingSelection(messageId, req.user!.id);
+      if (!selection) {
+        return res.status(404).json({ error: "Email training selection not found" });
+      }
+      res.json(selection);
+    } catch (error) {
+      console.error("Get email training selection error:", error);
+      res.status(500).json({ error: "Failed to get email training selection" });
+    }
+  });
+
+  app.delete("/api/email-training-selections/:messageId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { messageId } = req.params;
+      const success = await storage.deleteEmailTrainingSelection(messageId, req.user!.id);
+      if (!success) {
+        return res.status(404).json({ error: "Email training selection not found" });
+      }
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Delete email training selection error:", error);
+      res.status(500).json({ error: "Failed to delete email training selection" });
     }
   });
 
