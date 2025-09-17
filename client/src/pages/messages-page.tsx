@@ -39,7 +39,8 @@ import {
   ThumbsDown,
   AlertTriangle,
   RotateCcw,
-  MessageSquare
+  MessageSquare,
+  ChevronRight
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Message, Project, Task, Partner } from "@shared/schema";
@@ -385,6 +386,38 @@ export default function MessagesPage() {
     }
     return null;
   };
+
+  // Derive thread data for current message
+  const getCurrentThreadData = () => {
+    if (!selectedMessage || !showThreadView || !threads.length) {
+      return null;
+    }
+    
+    // Find the thread containing the selected message
+    const currentThread = threads.find(thread => 
+      thread.messages.some((msg: Message) => msg.id === selectedMessage.id)
+    );
+    
+    if (!currentThread || currentThread.messages.length <= 1) {
+      return null;
+    }
+    
+    // Sort messages by date (oldest first)
+    const sortedMessages = [...currentThread.messages].sort(
+      (a, b) => new Date(a.receivedAt).getTime() - new Date(b.receivedAt).getTime()
+    );
+    
+    // Split into current (selected) and history (rest)
+    const historyMessages = sortedMessages.filter(msg => msg.id !== selectedMessage.id);
+    
+    return {
+      currentMessage: selectedMessage,
+      historyMessages,
+      totalCount: sortedMessages.length
+    };
+  };
+  
+  const threadData = getCurrentThreadData();
 
   const unreadCount = showThreadView 
     ? threads.reduce((sum, thread) => sum + thread.unreadCount, 0)
@@ -838,7 +871,152 @@ export default function MessagesPage() {
                   <p className="text-sm">Clicca su un messaggio per visualizzare i dettagli</p>
                 </div>
               </div>
+            ) : threadData ? (
+              /* Thread View with separated current email and history */
+              <div className="flex flex-col h-full" data-testid="div-thread-viewer">
+                {/* Current Email Card */}
+                <div className="flex-shrink-0 border-b">
+                  <div className="p-4 bg-accent/20">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Mail className="h-4 w-4 text-primary" />
+                      <h3 className="font-medium text-sm" data-testid="text-current-email">Email corrente</h3>
+                      <Badge variant="outline" className="text-xs">
+                        {threadData.totalCount} messaggi nel thread
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  {/* Current message content in a prominent card */}
+                  <Card className="mx-4 mb-4 ring-2 ring-primary/20 border-primary/30" data-testid="card-current-message">
+                    <CardContent className="p-4">
+                      {/* Current message header */}
+                      <div className="space-y-3 mb-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm" data-testid="text-current-subject">
+                              {threadData.currentMessage.subject || '(Nessun oggetto)'}
+                            </h4>
+                            <p className="text-sm text-muted-foreground mt-1" data-testid="text-current-sender">
+                              Da: {threadData.currentMessage.fromName || threadData.currentMessage.fromEmail}
+                            </p>
+                            <p className="text-xs text-muted-foreground" data-testid="text-current-date">
+                              {format(new Date(threadData.currentMessage.receivedAt), 'dd MMM yyyy HH:mm')}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${getStatusColor(threadData.currentMessage.status)}`} />
+                            {getStatusIcon(threadData.currentMessage.status)}
+                          </div>
+                        </div>
+                        
+                        {/* Current message recipients */}
+                        <div className="border rounded-lg p-3 bg-muted/30">
+                          <div className="space-y-2">
+                            {(() => {
+                              const toEmails = (threadData.currentMessage.originalToEmails && threadData.currentMessage.originalToEmails.length > 0) 
+                                ? threadData.currentMessage.originalToEmails 
+                                : [threadData.currentMessage.toEmail];
+                              
+                              return (
+                                <div className="flex flex-wrap gap-1">
+                                  {toEmails.map((email, index) => {
+                                    const isCurrentUser = email?.toLowerCase() === user?.email?.toLowerCase();
+                                    return (
+                                      <Badge 
+                                        key={`current-to-${index}`} 
+                                        variant="outline" 
+                                        className={`text-xs ${
+                                          isCurrentUser 
+                                            ? 'bg-green-50 text-green-700 border-green-200' 
+                                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                                        }`}
+                                      >
+                                        <User className="h-2 w-2 mr-1" />
+                                        {isCurrentUser ? `Tu (${email})` : email}
+                                      </Badge>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Current message body (truncated preview) */}
+                      <div className="border-t pt-3">
+                        <div className="max-h-40 overflow-y-auto text-sm" data-testid="div-current-content">
+                          {threadData.currentMessage.htmlBody ? (
+                            <div 
+                              className="prose prose-sm max-w-none"
+                              dangerouslySetInnerHTML={{ __html: threadData.currentMessage.htmlBody }}
+                            />
+                          ) : (
+                            <div className="whitespace-pre-wrap">
+                              {threadData.currentMessage.body || 'Nessun contenuto'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                {/* Thread History Section */}
+                <div className="flex-1 min-h-0">
+                  <div className="p-4 border-b bg-muted/10">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="font-medium text-sm text-muted-foreground" data-testid="text-thread-history">Altri messaggi del thread</h3>
+                      <Badge variant="secondary" className="text-xs">
+                        {threadData.historyMessages.length} messaggi
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <ScrollArea className="h-full p-4" data-testid="list-thread-history">
+                    <div className="space-y-3">
+                      {threadData.historyMessages.map((message: Message, index: number) => (
+                        <Card 
+                          key={`history-${message.id}`} 
+                          className="cursor-pointer hover:bg-accent/50 transition-colors border-muted" 
+                          onClick={() => handleSelectMessage(message)}
+                          data-testid={`row-history-${message.id}`}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(message.status)}`} />
+                                  <h5 className="font-medium text-xs truncate">
+                                    {message.subject || '(Nessun oggetto)'}
+                                  </h5>
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  Da: {message.fromName || message.fromEmail}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {format(new Date(message.receivedAt), 'dd MMM yyyy HH:mm')}
+                                </p>
+                                {/* Preview of message content */}
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                  {message.body ? message.body.substring(0, 100) + '...' : 'Nessun contenuto'}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {getStatusIcon(message.status)}
+                                <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </div>
             ) : (
+              /* Normal single message view */
               <div className="flex flex-col h-full">
                 {/* Header dati strutturati */}
                 <div className="flex-shrink-0 p-6 pb-4 space-y-4">
