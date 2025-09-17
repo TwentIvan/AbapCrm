@@ -74,12 +74,8 @@ export class EmailForwardCleaner {
       result.fullThreadContent = this.extractFullThread(textBody);
       
       if (htmlBody) {
-        if (skipHtmlProcessing) {
-          console.log(`[EMAIL-CLEANER] Skipping HTML processing - text analysis succeeded with ${textSplitResult.method} (${textSplitResult.confidence})`);
-          result.originalHtmlBody = null; // Avoid HTML overriding successful text analysis
-        } else {
-          result.originalHtmlBody = this.cleanForwardedHtmlBody(htmlBody);
-        }
+        // Always process and preserve HTML content to avoid missing-content issues
+        result.originalHtmlBody = this.cleanForwardedHtmlBody(htmlBody);
         result.preservedHtmlFormatting = this.preserveHtmlFormatting(htmlBody);
       }
     }
