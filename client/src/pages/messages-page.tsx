@@ -986,7 +986,7 @@ export default function MessagesPage() {
                         )}
 
                         {/* Contenuto del thread precedente (collassabile) */}
-                        {renderedContent.isForwarded && (renderedContent.remainderText || renderedContent.remainderHtml) && (
+                        {(renderedContent.remainderText || renderedContent.remainderHtml) && (
                           <div className="border-t pt-4">
                             <Button
                               variant="ghost"
