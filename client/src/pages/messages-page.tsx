@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import DOMPurify from 'dompurify';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1366,88 +1367,61 @@ export default function MessagesPage() {
                 {/* Message Body - occupa tutto lo spazio rimanente */}
                 <div className="border-t">
                   <div className="h-[48rem] p-6 overflow-y-auto space-y-4">
-                    {renderedContent ? (
-                      <>
-                        {/* Contenuto principale del messaggio */}
-                        {renderedContent.bodyHtml ? (
+                    {isTrainingMode ? (
+                      <div className="space-y-4">
+                        <div className="text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded p-3 mb-4">
+                          🎯 <strong>Modalità Training</strong> - Stai visualizzando l'HTML originale completo del messaggio. Seleziona il testo per addestrare l'algoritmo.
+                        </div>
+                        {selectedMessage?.htmlBody ? (
                           <div 
-                            className={`prose prose-sm max-w-none ${isTrainingMode ? 'training-selection-area select-text cursor-pointer' : ''}`}
-                            dangerouslySetInnerHTML={{ __html: renderedContent.bodyHtml }}
-                            data-selection-mode={isTrainingMode ? selectionMode : undefined}
-                            onMouseUp={isTrainingMode && selectionMode === 'body' ? handleTextSelection : undefined}
-                            data-testid="email-content-main"
+                            className="prose prose-sm max-w-none training-selection-area select-text cursor-pointer border border-dashed border-blue-300 rounded p-4" 
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedMessage.htmlBody, { 
+                              ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody'], 
+                              ALLOWED_ATTR: ['class', 'style', 'src', 'alt', 'width', 'height'],
+                              FORBID_TAGS: ['a', 'form', 'input', 'button', 'script', 'style'],
+                              FORBID_ATTR: ['onclick', 'onload', 'onerror', 'href', 'action']
+                            }) }} 
+                            data-selection-mode={selectionMode} 
+                            onMouseUp={handleTextSelection} 
+                            onClick={(e) => e.preventDefault()} 
+                            data-testid="email-content-training" 
                           />
                         ) : (
-                          <div 
-                            className={`whitespace-pre-wrap text-sm ${isTrainingMode ? 'training-selection-area select-text cursor-pointer' : ''}`}
-                            data-selection-mode={isTrainingMode ? selectionMode : undefined}
-                            onMouseUp={isTrainingMode && selectionMode === 'body' ? handleTextSelection : undefined}
-                            data-testid="email-content-main"
-                          >
-                            {renderedContent.bodyText || 'Nessun contenuto'}
-                          </div>
+                          <div className="whitespace-pre-wrap text-sm training-selection-area select-text cursor-pointer border border-dashed border-blue-300 rounded p-4" data-selection-mode={selectionMode} onMouseUp={handleTextSelection} data-testid="email-content-training">{selectedMessage?.body || 'Nessun contenuto'}</div>
                         )}
-
-                        {/* Contenuto del thread precedente (collassabile) */}
-                        {(renderedContent.remainderText || renderedContent.remainderHtml) && (
-                          <div className="border-t pt-4">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setShowThreadContent(!showThreadContent)}
-                              className="flex items-center gap-2 mb-2"
-                              data-testid="button-toggle-thread"
-                            >
-                              {showThreadContent ? (
-                                <ChevronUp className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
-                              <span className="text-sm text-muted-foreground">
-                                {showThreadContent ? 'Nascondi' : 'Mostra'} thread precedente
-                                {renderedContent.headerSummary && ` (${renderedContent.headerSummary})`}
-                              </span>
-                            </Button>
-
-                            {showThreadContent && (
-                              <div 
-                                className="bg-muted/30 rounded-lg p-4"
-                                data-testid="div-thread-content"
-                              >
-                                {renderedContent.remainderHtml ? (
-                                  <div 
-                                    className={`prose prose-sm max-w-none text-muted-foreground ${isTrainingMode ? 'training-selection-area select-text cursor-pointer' : ''}`}
-                                    dangerouslySetInnerHTML={{ __html: renderedContent.remainderHtml }}
-                                    data-selection-mode={isTrainingMode ? selectionMode : undefined}
-                                    onMouseUp={isTrainingMode && selectionMode === 'thread' ? handleTextSelection : undefined}
-                                    data-testid="email-content-thread"
-                                  />
-                                ) : (
-                                  <div 
-                                    className={`whitespace-pre-wrap text-sm text-muted-foreground ${isTrainingMode ? 'training-selection-area select-text cursor-pointer' : ''}`}
-                                    data-selection-mode={isTrainingMode ? selectionMode : undefined}
-                                    onMouseUp={isTrainingMode && selectionMode === 'thread' ? handleTextSelection : undefined}
-                                    data-testid="email-content-thread"
-                                  >
-                                    {renderedContent.remainderText}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </>
+                      </div>
                     ) : (
-                      /* Fallback alla visualizzazione originale se il contenuto renderizzato non è disponibile */
-                      selectedMessage.htmlBody ? (
-                        <div 
-                          className="prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ __html: selectedMessage.htmlBody }}
-                        />
+                      renderedContent ? (
+                        <>
+                          {renderedContent.bodyHtml ? (
+                            <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderedContent.bodyHtml }} data-testid="email-content-main" />
+                          ) : (
+                            <div className="whitespace-pre-wrap text-sm" data-testid="email-content-main">{renderedContent.bodyText || 'Nessun contenuto'}</div>
+                          )}
+                          {(renderedContent.remainderText || renderedContent.remainderHtml) && (
+                            <div className="border-t pt-4">
+                              <Button variant="ghost" size="sm" onClick={() => setShowThreadContent(!showThreadContent)} className="flex items-center gap-2 mb-2" data-testid="button-toggle-thread">
+                                {showThreadContent ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                {showThreadContent ? 'Nascondi thread precedente' : 'Mostra thread precedente'}
+                              </Button>
+                              {showThreadContent && (
+                                <div className="bg-muted/30 rounded-lg p-4" data-testid="div-thread-content">
+                                  {renderedContent.remainderHtml ? (
+                                    <div className="prose prose-sm max-w-none text-muted-foreground" dangerouslySetInnerHTML={{ __html: renderedContent.remainderHtml }} data-testid="email-content-thread" />
+                                  ) : (
+                                    <div className="whitespace-pre-wrap text-sm text-muted-foreground" data-testid="email-content-thread">{renderedContent.remainderText}</div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
                       ) : (
-                        <div className="whitespace-pre-wrap text-sm">
-                          {selectedMessage.body || 'Nessun contenuto'}
-                        </div>
+                        selectedMessage?.htmlBody ? (
+                          <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: selectedMessage.htmlBody }} />
+                        ) : (
+                          <div className="whitespace-pre-wrap text-sm">{selectedMessage?.body || 'Nessun contenuto'}</div>
+                        )
                       )
                     )}
                   </div>
