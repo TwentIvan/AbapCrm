@@ -74,8 +74,32 @@ export class EmailForwardCleaner {
       result.fullThreadContent = this.extractFullThread(textBody);
       
       if (htmlBody) {
-        // Always process and preserve HTML content to avoid missing-content issues
-        result.originalHtmlBody = this.cleanForwardedHtmlBody(htmlBody);
+        // Only clean HTML if we have explicit forward markers to avoid false positives
+        const hasExplicitMarkers = this.hasExplicitForwardMarkers(subject, textBody, htmlBody);
+        
+        if (hasExplicitMarkers || forceCleanForwarded) {
+          const cleanedHtml = this.cleanForwardedHtmlBody(htmlBody);
+          
+          // Safety fallback: revert to original if cleaning removed too much content
+          const originalLength = htmlBody.length;
+          const cleanedLength = cleanedHtml ? cleanedHtml.length : 0;
+          const lengthRatio = cleanedLength / Math.max(originalLength, 1);
+          
+          if (cleanedLength > 0 && lengthRatio >= 0.6) {
+            // Cleaning preserved sufficient content
+            result.originalHtmlBody = cleanedHtml;
+            console.log(`[EMAIL-CLEANER] HTML cleaning successful: ${originalLength} -> ${cleanedLength} chars`);
+          } else {
+            // Cleaning removed too much - revert to sanitized original
+            result.originalHtmlBody = this.sanitizeHtml(htmlBody);
+            console.log(`[EMAIL-CLEANER] Reverted to original HTML due to low confidence/size delta: ${originalLength} -> ${cleanedLength} chars (ratio: ${lengthRatio.toFixed(2)})`);
+          }
+        } else {
+          // No explicit markers - preserve original HTML
+          result.originalHtmlBody = this.sanitizeHtml(htmlBody);
+          console.log(`[EMAIL-CLEANER] No explicit forward markers found - preserving original HTML (${htmlBody.length} chars)`);
+        }
+        
         result.preservedHtmlFormatting = this.preserveHtmlFormatting(htmlBody);
       }
     }
@@ -124,8 +148,14 @@ export class EmailForwardCleaner {
     const remainder = this.extractRemainder(body, cleaned.originalBody, htmlBody, cleaned.originalHtmlBody);
     const headerSummary = this.extractHeaderSummary(body);
 
-    // FIX: Usa originalHtmlBody invece di preservedHtmlFormatting - evita fallback che sovrascrive text analysis
-    const cleanedHtmlBody = cleaned.originalHtmlBody;
+    // SAFETY FALLBACK: Se l'HTML pulito è null o molto corto, usa l'HTML originale
+    let cleanedHtmlBody = cleaned.originalHtmlBody;
+    
+    if (htmlBody && (!cleanedHtmlBody || cleanedHtmlBody.length < htmlBody.length * 0.4)) {
+      // L'HTML è stato rimosso o ridotto drasticamente - usa l'originale
+      cleanedHtmlBody = this.sanitizeHtml(htmlBody);
+      console.log(`[EMAIL-CLEANER] Using original HTML as fallback: cleaned was ${cleanedHtmlBody?.length || 0} chars vs original ${htmlBody.length} chars`);
+    }
 
     return {
       bodyText: cleaned.originalBody,
@@ -421,6 +451,38 @@ export class EmailForwardCleaner {
     ];
 
     return forwardPrefixes.some(prefix => prefix.test(subject));
+  }
+
+  private static hasExplicitForwardMarkers(subject: string, textBody: string, htmlBody: string): boolean {
+    // Check for explicit forward markers in subject
+    const subjectForwarded = this.isForwardedSubject(subject);
+    
+    // Check for explicit forward markers in text body
+    const explicitTextMarkers = [
+      /---------- Forwarded message ---------/i,
+      /---------- Messaggio inoltrato ----------/i,
+      /Begin forwarded message:/i,
+      /From:.*To:.*Subject:/i,
+      /====== Forwarded Message ======/i,
+      /Da:.*A:.*Oggetto:/i,
+      /_{5,}.*Forwarded.*_{5,}/i,
+      /^[\s]*From:\s*.*[\s]*Sent:\s*.*[\s]*To:/i
+    ];
+    
+    const textHasMarkers = explicitTextMarkers.some(pattern => pattern.test(textBody));
+    
+    // Check for explicit forward markers in HTML
+    const explicitHtmlMarkers = [
+      /<div[^>]*>---------- Forwarded message ---------/i,
+      /<div[^>]*>---------- Messaggio inoltrato ----------/i,
+      /<div[^>]*>Begin forwarded message:/i,
+      /<div[^>]*class="[^"]*forward[^"]*"/i,
+      /<blockquote.*class="[^"]*gmail_quote[^"]*"/i
+    ];
+    
+    const htmlHasMarkers = explicitHtmlMarkers.some(pattern => pattern.test(htmlBody));
+    
+    return subjectForwarded || textHasMarkers || htmlHasMarkers;
   }
 
   private static isForwardedBody(body: string): boolean {
