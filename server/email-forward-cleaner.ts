@@ -96,15 +96,15 @@ export class EmailForwardCleaner {
           }
         } else {
           // No explicit markers - try reply splitting before preserving everything
-          console.log(`[EMAIL-CLEANER] No explicit forward markers found - attempting reply split before preserving`);
+          console.log(`[EMAIL-CLEANER] 🔧 FORWARD-PATH: No explicit markers found - attempting reply split before preserving (${htmlBody.length} chars)`);
           const replySplit = this.splitReplyContent(textBody, htmlBody);
           
           if (replySplit.found) {
             result.originalHtmlBody = replySplit.bodyHtml;
-            console.log(`[EMAIL-CLEANER] Reply split successful in forward path: ${replySplit.bodyHtml?.length || 0} chars body, ${replySplit.remainderHtml?.length || 0} chars remainder`);
+            console.log(`[EMAIL-CLEANER] ✅ FORWARD-PATH: Reply split successful! ${replySplit.bodyHtml?.length || 0} chars body, ${replySplit.remainderHtml?.length || 0} chars remainder`);
           } else {
             result.originalHtmlBody = this.sanitizeHtml(htmlBody);
-            console.log(`[EMAIL-CLEANER] No valid reply split - preserving original HTML (${htmlBody.length} chars)`);
+            console.log(`[EMAIL-CLEANER] ❌ FORWARD-PATH: Reply split failed - preserving original HTML (${htmlBody.length} chars)`);
           }
         }
         
@@ -568,7 +568,14 @@ export class EmailForwardCleaner {
         const newBodyHtmlLength = bodyHtml?.length || 0;
         const remainderHtmlLength = remainderHtml.length;
         const htmlRatio = originalHtmlLength / Math.max(newBodyHtmlLength, 1);
-        htmlSplitValid = htmlRatio > 1.05 && remainderHtmlLength > 200;
+        
+        // Rilassa le soglie se il testo è molto corto (tipico di thread HTML)
+        const isShortText = body.length < 2000;
+        const htmlThreshold = isShortText ? 500 : 200; // Soglia più alta per text corti
+        const ratioThreshold = isShortText ? 1.02 : 1.05; // Ratio più basso per text corti
+        
+        htmlSplitValid = htmlRatio > ratioThreshold && remainderHtmlLength > htmlThreshold;
+        console.log(`[EMAIL-CLEANER] HTML split check: ratio=${htmlRatio.toFixed(2)}, remainder=${remainderHtmlLength}, threshold=${htmlThreshold}, valid=${htmlSplitValid} (shortText=${isShortText})`);
       }
       
       if (textSplitValid || htmlSplitValid) {
