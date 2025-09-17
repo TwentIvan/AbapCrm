@@ -1,4 +1,5 @@
 // Sistema per pulire le email inoltrate rimuovendo i metadati di inoltro
+import { storage } from './storage';
 
 interface ForwardedEmailData {
   originalSubject: string;
@@ -15,6 +16,137 @@ interface ForwardedEmailData {
 }
 
 export class EmailForwardCleaner {
+
+  /**
+   * Analyzes user training data to improve pattern recognition
+   */
+  static async analyzeTrainingData(userId: string): Promise<{
+    commonHeaders: string[];
+    commonBodyPatterns: string[];
+    threadMarkers: string[];
+  }> {
+    try {
+      // Get all training selections for this user
+      const rawSelections = await storage.getEmailTrainingSelections(userId);
+      const trainingSelections = Array.isArray(rawSelections) ? rawSelections : [];
+      
+      const commonHeaders = new Set<string>();
+      const commonBodyPatterns = new Set<string>();
+      const threadMarkers = new Set<string>();
+      
+      for (const selection of trainingSelections) {
+        // Analyze header selections to identify common patterns
+        const headerSelections = Array.isArray(selection?.headerSelections) ? selection.headerSelections : [];
+        headerSelections.forEach((header: string) => {
+          // Extract patterns from headers that users want to eliminate
+          if (header.includes('From:') || header.includes('Da:')) {
+            commonHeaders.add('header-from');
+          }
+          if (header.includes('Date:') || header.includes('Data:')) {
+            commonHeaders.add('header-date');
+          }
+          if (header.includes('Subject:') || header.includes('Oggetto:')) {
+            commonHeaders.add('header-subject');
+          }
+        });
+        
+        // Analyze body selections to identify patterns to keep
+        const bodySelections = Array.isArray(selection?.bodySelections) ? selection.bodySelections : [];
+        bodySelections.forEach((body: string) => {
+          if (body.length > 50) {
+            // Extract meaningful patterns from body selections
+            commonBodyPatterns.add(body.substring(0, 100));
+          }
+        });
+        
+        // Analyze thread selections for common thread markers
+        if (Array.isArray(selection.threadSelections)) {
+          (selection.threadSelections as any[]).forEach((thread: any) => {
+            if (thread.text && thread.text.includes('wrote:')) {
+              threadMarkers.add('reply-marker');
+            }
+            if (thread.text && thread.text.includes('Original Message')) {
+              threadMarkers.add('forward-marker');
+            }
+          });
+        }
+      }
+      
+      return {
+        commonHeaders: Array.from(commonHeaders),
+        commonBodyPatterns: Array.from(commonBodyPatterns),
+        threadMarkers: Array.from(threadMarkers)
+      };
+    } catch (error) {
+      console.error('[EMAIL-CLEANER] Training data analysis failed:', error);
+      return {
+        commonHeaders: [],
+        commonBodyPatterns: [],
+        threadMarkers: []
+      };
+    }
+  }
+
+  /**
+   * Enhanced cleaning with training data integration
+   */
+  static async cleanForwardedEmailWithTraining(
+    subject: string,
+    textBody: string,
+    htmlBody: string | null,
+    userId: string,
+    forceCleanForwarded?: boolean,
+    customSignature?: string | null
+  ): Promise<ForwardedEmailData> {
+    // Get training data for this user
+    const trainingData = await this.analyzeTrainingData(userId);
+    
+    // Use training data to enhance pattern recognition
+    const result = this.cleanForwardedEmail(
+      subject, 
+      textBody, 
+      htmlBody, 
+      forceCleanForwarded, 
+      customSignature
+    );
+    
+    // Apply training-based improvements
+    if (trainingData.commonBodyPatterns.length > 0) {
+      result.originalBody = this.enhanceBodyExtractionWithTraining(
+        result.originalBody, 
+        trainingData.commonBodyPatterns
+      );
+    }
+    
+    return result;
+  }
+
+  /**
+   * Enhance body extraction using training patterns
+   */
+  private static enhanceBodyExtractionWithTraining(
+    body: string, 
+    trainingPatterns: string[]
+  ): string {
+    // Use training patterns to improve body extraction
+    // This is a simplified implementation - in practice, would use more sophisticated ML
+    let enhancedBody = body;
+    
+    // Remove patterns that training data suggests should be eliminated
+    trainingPatterns.forEach(p => {
+      const candidate = (p || '').trim();
+      if (!candidate) return;
+      const shouldRemove = candidate.includes('------') || /original message/i.test(candidate);
+      if (!shouldRemove) return;
+      const escaped = this.escapeRegExp(candidate).slice(0, 1000);
+      try {
+        const re = new RegExp(escaped, 'gi');
+        enhancedBody = enhancedBody.replace(re, '');
+      } catch (_) { /* ignore invalid */ }
+    });
+    
+    return enhancedBody.trim();
+  }
   
   static cleanForwardedEmail(
     subject: string, 

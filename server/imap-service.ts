@@ -257,11 +257,12 @@ export class ImapEmailService {
         return;
       }
 
-      // Clean forwarded email content
-      const cleanedEmail = EmailForwardCleaner.cleanForwardedEmail(
+      // Clean forwarded email content using training data
+      const cleanedEmail = await EmailForwardCleaner.cleanForwardedEmailWithTraining(
         parsed.subject || '',
         parsed.text || '',
-        parsed.html || null
+        parsed.html || null,
+        userId
       );
 
       if (cleanedEmail.isForwarded) {

@@ -337,6 +337,7 @@ export interface IStorage {
 
   // Email Training Selections
   getEmailTrainingSelection(messageId: string, userId: string): Promise<EmailTrainingSelection | undefined>;
+  getEmailTrainingSelections(userId: string): Promise<EmailTrainingSelection[]>;
   createEmailTrainingSelection(selection: InsertEmailTrainingSelection): Promise<EmailTrainingSelection>;
   updateEmailTrainingSelection(messageId: string, userId: string, selection: Partial<InsertEmailTrainingSelection>): Promise<EmailTrainingSelection | undefined>;
   deleteEmailTrainingSelection(messageId: string, userId: string): Promise<boolean>;
@@ -3129,6 +3130,14 @@ export class DatabaseStorage implements IStorage {
       .delete(emailTrainingSelections)
       .where(and(eq(emailTrainingSelections.messageId, messageId), eq(emailTrainingSelections.userId, userId)));
     return (result.rowCount || 0) > 0;
+  }
+
+  async getEmailTrainingSelections(userId: string): Promise<EmailTrainingSelection[]> {
+    const selections = await db
+      .select()
+      .from(emailTrainingSelections)
+      .where(eq(emailTrainingSelections.userId, userId));
+    return selections;
   }
 
   // Organization Domains Implementation
