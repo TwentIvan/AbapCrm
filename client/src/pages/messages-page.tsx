@@ -1389,6 +1389,96 @@ export default function MessagesPage() {
                                   </div>
                                 </div>
                               )}
+                              
+                              {selectedMessage && selections[selectedMessage.id]?.signatureBody.length > 0 && (
+                                <div data-testid="section-signature-body-selections">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="text-xs font-medium text-blue-600">Da conservare (Firma Body) - {selections[selectedMessage.id].signatureBody.length} items:</div>
+                                    <Button
+                                      onClick={() => setSelections(prev => ({
+                                        ...prev,
+                                        [selectedMessage.id]: {
+                                          ...prev[selectedMessage.id],
+                                          signatureBody: []
+                                        }
+                                      }))}
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
+                                      data-testid="button-clear-signature-body-selections"
+                                    >
+                                      Clear Firma Body
+                                    </Button>
+                                  </div>
+                                  <div className="space-y-1">
+                                    {selections[selectedMessage.id].signatureBody.map((text, index) => (
+                                      <div key={index} className="text-xs bg-blue-50 border border-blue-200 rounded px-2 py-1 flex justify-between items-start" data-testid={`item-signature-body-selection-${index}`}>
+                                        <span className="truncate">{text.length > 80 ? text.substring(0, 80) + '...' : text}</span>
+                                        <Button
+                                          onClick={() => setSelections(prev => ({
+                                            ...prev,
+                                            [selectedMessage.id]: {
+                                              ...prev[selectedMessage.id],
+                                              signatureBody: prev[selectedMessage.id].signatureBody.filter((_, i) => i !== index)
+                                            }
+                                          }))}
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-auto p-1 ml-2 text-blue-600 hover:text-blue-800"
+                                          data-testid={`button-remove-signature-body-selection-${index}`}
+                                        >
+                                          ×
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {selectedMessage && selections[selectedMessage.id]?.signatureHeader.length > 0 && (
+                                <div data-testid="section-signature-header-selections">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="text-xs font-medium text-purple-600">Da eliminare (Firma Header) - {selections[selectedMessage.id].signatureHeader.length} items:</div>
+                                    <Button
+                                      onClick={() => setSelections(prev => ({
+                                        ...prev,
+                                        [selectedMessage.id]: {
+                                          ...prev[selectedMessage.id],
+                                          signatureHeader: []
+                                        }
+                                      }))}
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs text-purple-600 border-purple-200 hover:bg-purple-50"
+                                      data-testid="button-clear-signature-header-selections"
+                                    >
+                                      Clear Firma Header
+                                    </Button>
+                                  </div>
+                                  <div className="space-y-1">
+                                    {selections[selectedMessage.id].signatureHeader.map((text, index) => (
+                                      <div key={index} className="text-xs bg-purple-50 border border-purple-200 rounded px-2 py-1 flex justify-between items-start" data-testid={`item-signature-header-selection-${index}`}>
+                                        <span className="truncate">{text.length > 80 ? text.substring(0, 80) + '...' : text}</span>
+                                        <Button
+                                          onClick={() => setSelections(prev => ({
+                                            ...prev,
+                                            [selectedMessage.id]: {
+                                              ...prev[selectedMessage.id],
+                                              signatureHeader: prev[selectedMessage.id].signatureHeader.filter((_, i) => i !== index)
+                                            }
+                                          }))}
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-auto p-1 ml-2 text-purple-600 hover:text-purple-800"
+                                          data-testid={`button-remove-signature-header-selection-${index}`}
+                                        >
+                                          ×
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
@@ -1405,23 +1495,26 @@ export default function MessagesPage() {
                         <div className="text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded p-3 mb-4">
                           🎯 <strong>Modalità Training</strong> - Stai visualizzando l'HTML originale completo del messaggio. Seleziona il testo per addestrare l'algoritmo.
                         </div>
-                        {selectedMessage?.htmlBody ? (
-                          <div 
-                            className="prose prose-sm max-w-none training-selection-area select-text cursor-pointer border border-dashed border-blue-300 rounded p-4" 
-                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedMessage.htmlBody, { 
-                              ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody'], 
-                              ALLOWED_ATTR: ['class', 'style', 'src', 'alt', 'width', 'height'],
-                              FORBID_TAGS: ['a', 'form', 'input', 'button', 'script', 'style'],
-                              FORBID_ATTR: ['onclick', 'onload', 'onerror', 'href', 'action']
-                            }) }} 
-                            data-selection-mode={selectionMode} 
-                            onMouseUp={handleTextSelection} 
-                            onClick={(e) => e.preventDefault()} 
-                            data-testid="email-content-training" 
-                          />
-                        ) : (
-                          <div className="whitespace-pre-wrap text-sm training-selection-area select-text cursor-pointer border border-dashed border-blue-300 rounded p-4" data-selection-mode={selectionMode} onMouseUp={handleTextSelection} data-testid="email-content-training">{selectedMessage?.body || 'Nessun contenuto'}</div>
-                        )}
+                        <div 
+                          className="training-selection-area select-text cursor-pointer border border-dashed border-blue-300 rounded" 
+                          data-selection-mode={selectionMode} 
+                          onMouseUp={handleTextSelection} 
+                          data-testid="email-content-training"
+                        >
+                          {selectedMessage?.htmlBody ? (
+                            <div 
+                              className="prose prose-sm max-w-none p-4" 
+                              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedMessage.htmlBody, { 
+                                ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody'], 
+                                ALLOWED_ATTR: ['class', 'style', 'src', 'alt', 'width', 'height'],
+                                FORBID_TAGS: ['a', 'form', 'input', 'button', 'script', 'style'],
+                                FORBID_ATTR: ['onclick', 'onload', 'onerror', 'href', 'action']
+                              }) }} 
+                            />
+                          ) : (
+                            <div className="whitespace-pre-wrap text-sm p-4">{selectedMessage?.body || 'Nessun contenuto'}</div>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       renderedContent ? (
