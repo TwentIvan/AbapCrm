@@ -257,8 +257,8 @@ export function setupAuth(app: Express) {
       let emailSent = false;
       try {
         // Check if sendResetEmail method exists
-        if (emailService && typeof emailService.sendResetEmail === 'function') {
-          emailSent = await emailService.sendResetEmail(user.email, userName, resetToken);
+        if (emailService && typeof (emailService as any).sendResetEmail === 'function') {
+          emailSent = await (emailService as any).sendResetEmail(user.email, userName, resetToken);
         } else {
           console.log('[AUTH] Reset link generated (token masked for security)');
           emailSent = true; // Fallback: link generated but not logged
@@ -319,11 +319,11 @@ export function setupAuth(app: Express) {
 
   app.post("/api/login", passport.authenticate("local"), async (req, res) => {
     // Preload all user data for instant performance
-    console.log(`[LOGIN] User ${req.user.id} logged in, starting data preload...`);
+    console.log(`[LOGIN] User ${req.user!.id} logged in, starting data preload...`);
     
     // Don't wait for preload to complete - send login response immediately  
     // Preload happens in background for better UX
-    storage.preloadUserData(req.user.id).catch(error => {
+    storage.preloadUserData(req.user!.id).catch(error => {
       console.error('[LOGIN] Preload failed:', error);
     });
     

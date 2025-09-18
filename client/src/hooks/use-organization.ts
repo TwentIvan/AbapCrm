@@ -21,7 +21,7 @@ export function useOrganization() {
     queryFn: getQueryFn({ on401: "returnNull" }),
     staleTime: 0, // No cache - always fresh
     refetchOnMount: true, // Always refetch 
-    refetchOnWindowFocus: true, // Refetch on focus to catch session changes
+    refetchOnWindowFocus: false, // Disabled to prevent navigation issues during text selection
     retry: 1,
   });
 
