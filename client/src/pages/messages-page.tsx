@@ -1435,7 +1435,25 @@ export default function MessagesPage() {
                                 </div>
                               )}
                               
-                              {selectedMessage && selections[selectedMessage.id]?.signatureHeader.length > 0 && (
+                              {(() => {
+                                const hasMessage = !!selectedMessage;
+                                const messageId = selectedMessage?.id;
+                                const messageSelections = messageId ? selections[messageId] : null;
+                                const signatureHeaderArray = messageSelections?.signatureHeader;
+                                const headerCount = signatureHeaderArray?.length || 0;
+                                
+                                console.log('🟣 FIRMA HEADER DEBUG:', {
+                                  hasMessage,
+                                  messageId,
+                                  messageSelections,
+                                  signatureHeaderArray,
+                                  headerCount,
+                                  allSelections: selections,
+                                  shouldShow: headerCount > 0
+                                });
+                                
+                                return headerCount > 0;
+                              })() && (
                                 <div data-testid="section-signature-header-selections">
                                   <div className="flex items-center justify-between mb-2">
                                     <div className="text-xs font-medium text-purple-600">Da eliminare (Firma Header) - {selections[selectedMessage.id].signatureHeader.length} items:</div>
