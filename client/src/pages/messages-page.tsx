@@ -527,12 +527,14 @@ export default function MessagesPage() {
   };
 
   const handleTextSelection = (event: React.MouseEvent) => {
+    console.log('[TRAINING-SELECT] Text selection triggered, isTrainingMode:', isTrainingMode, 'selectedMessage:', !!selectedMessage);
     if (!isTrainingMode || !selectedMessage) return;
     
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) return;
     
     const selectedText = selection.toString().trim();
+    console.log('[TRAINING-SELECT] Selected text:', selectedText.substring(0, 100), 'length:', selectedText.length);
     if (!selectedText) return;
     
     // Ensure selection is within email content
@@ -1176,10 +1178,14 @@ export default function MessagesPage() {
                           </Button>
                           <Button
                             onClick={async () => {
+                              console.log('[TRAINING-SAVE] Save button clicked!');
                               if (selectedMessage) {
+                                console.log('[TRAINING-SAVE] Selected message:', selectedMessage.id);
                                 const messageSelections = selections[selectedMessage.id];
+                                console.log('[TRAINING-SAVE] Message selections:', messageSelections);
                                 if (messageSelections) {
                                   const totalSelections = messageSelections.body.length + messageSelections.header.length + messageSelections.thread.length + messageSelections.signatureBody.length + messageSelections.signatureHeader.length + messageSelections.mailThread.length;
+                                  console.log('[TRAINING-SAVE] Total selections:', totalSelections);
                                   if (totalSelections > 0) {
                                     try {
                                       // Salvare nel database tramite API
