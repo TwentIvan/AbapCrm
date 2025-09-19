@@ -527,40 +527,16 @@ export default function MessagesPage() {
   };
 
   const handleTextSelection = (event: React.MouseEvent) => {
-    console.log('🔥 handleTextSelection CHIAMATA!', {
-      isTrainingMode,
-      selectedMessage: selectedMessage?.id || 'null',
-      selectionMode,
-      hasWindow: !!window,
-      hasSelection: !!window.getSelection()
-    });
     if (!isTrainingMode || !selectedMessage) return;
     
     const selection = window.getSelection();
-    console.log('🔍 SELECTION CHECK:', {
-      hasSelection: !!selection,
-      isCollapsed: selection?.isCollapsed,
-      selectionText: selection?.toString()
-    });
     if (!selection || selection.isCollapsed) return;
     
     const selectedText = selection.toString().trim();
-    console.log('📝 SELECTED TEXT:', {
-      selectedText,
-      length: selectedText.length,
-      isEmpty: !selectedText
-    });
     if (!selectedText) return;
     
     // Ensure selection is within email content
     const target = event.currentTarget as HTMLElement;
-    console.log('🎯 TARGET CHECK:', {
-      hasTarget: !!target,
-      hasAnchorNode: !!selection.anchorNode,
-      hasFocusNode: !!selection.focusNode,
-      containsAnchor: selection.anchorNode ? target.contains(selection.anchorNode) : false,
-      containsFocus: selection.focusNode ? target.contains(selection.focusNode) : false
-    });
     if (!target.contains(selection.anchorNode) || !target.contains(selection.focusNode)) {
       return;
     }
@@ -568,9 +544,7 @@ export default function MessagesPage() {
     const messageId = selectedMessage.id;
     
     // Add to current selection mode for this message
-    console.log('⚙️ UPDATING SELECTIONS...', { messageId, selectionMode, selectedText: selectedText.substring(0, 50) + '...' });
     setSelections(prev => {
-      console.log('📊 PREV SELECTIONS:', prev);
       const messageSelections = prev[messageId] || { 
         body: [], 
         header: [], 
@@ -579,27 +553,18 @@ export default function MessagesPage() {
         signatureHeader: [],
         mailThread: []
       };
-      console.log('📋 MESSAGE SELECTIONS BEFORE:', messageSelections);
       
       // Check for duplicates based on selection mode
       let isDuplicate = false;
       if (selectionMode === 'thread' || selectionMode === 'mailThread') {
         const threadSelections = selectionMode === 'thread' ? messageSelections.thread : messageSelections.mailThread;
         isDuplicate = threadSelections.some(item => item.text === selectedText);
-        console.log('🔍 THREAD DUPLICATE CHECK:', { threadSelections, isDuplicate });
       } else {
         const stringSelections = messageSelections[selectionMode] as string[];
         isDuplicate = stringSelections.includes(selectedText);
-        console.log('🔍 STRING DUPLICATE CHECK:', { 
-          selectionMode, 
-          stringSelections, 
-          selectedText: selectedText.substring(0, 50) + '...', 
-          isDuplicate 
-        });
       }
       
       if (isDuplicate) {
-        console.log('❌ DUPLICATE DETECTED - RETURNING EARLY');
         toast({
           title: "Testo già selezionato",
           description: "Questo testo è già stato classificato",
@@ -607,7 +572,6 @@ export default function MessagesPage() {
         });
         return prev;
       }
-      console.log('✅ NO DUPLICATE - PROCEEDING TO ADD SELECTION');
       
       // Add selection based on mode
       let updatedSelections = { ...messageSelections };
@@ -620,13 +584,10 @@ export default function MessagesPage() {
         updatedSelections[selectionMode] = [...currentSelections, selectedText];
       }
       
-      const finalResult = {
+      return {
         ...prev,
         [messageId]: updatedSelections
       };
-      console.log('✅ FINAL SELECTIONS RESULT:', finalResult);
-      console.log('🎯 SPECIFICALLY FOR SIGNATURE HEADER:', finalResult[messageId]?.signatureHeader);
-      return finalResult;
     });
     
     // Clear the selection
@@ -1285,14 +1246,6 @@ export default function MessagesPage() {
                         {selectedMessage && selections[selectedMessage.id] && (
                           (() => {
                             const messageSelections = selections[selectedMessage.id];
-                            console.log('🔍 PANEL VISIBILITY CHECK:', {
-                              body: messageSelections.body.length,
-                              header: messageSelections.header.length,
-                              thread: messageSelections.thread.length,
-                              signatureBody: messageSelections.signatureBody.length,
-                              signatureHeader: messageSelections.signatureHeader.length,
-                              shouldShow: (messageSelections.body.length > 0 || messageSelections.header.length > 0 || messageSelections.thread.length > 0 || messageSelections.signatureBody.length > 0 || messageSelections.signatureHeader.length > 0)
-                            });
                             return (messageSelections.body.length > 0 || messageSelections.header.length > 0 || messageSelections.thread.length > 0 || messageSelections.signatureBody.length > 0 || messageSelections.signatureHeader.length > 0);
                           })()
                         ) && (
@@ -1489,15 +1442,6 @@ export default function MessagesPage() {
                                 const signatureHeaderArray = messageSelections?.signatureHeader;
                                 const headerCount = signatureHeaderArray?.length || 0;
                                 
-                                console.log('🟣 FIRMA HEADER DEBUG:', {
-                                  hasMessage,
-                                  messageId,
-                                  messageSelections,
-                                  signatureHeaderArray,
-                                  headerCount,
-                                  allSelections: selections,
-                                  shouldShow: headerCount > 0
-                                });
                                 
                                 return headerCount > 0;
                               })() && (
