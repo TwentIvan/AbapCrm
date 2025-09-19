@@ -568,7 +568,9 @@ export default function MessagesPage() {
     const messageId = selectedMessage.id;
     
     // Add to current selection mode for this message
+    console.log('⚙️ UPDATING SELECTIONS...', { messageId, selectionMode, selectedText: selectedText.substring(0, 50) + '...' });
     setSelections(prev => {
+      console.log('📊 PREV SELECTIONS:', prev);
       const messageSelections = prev[messageId] || { 
         body: [], 
         header: [], 
@@ -577,6 +579,7 @@ export default function MessagesPage() {
         signatureHeader: [],
         mailThread: []
       };
+      console.log('📋 MESSAGE SELECTIONS BEFORE:', messageSelections);
       
       // Check for duplicates based on selection mode
       let isDuplicate = false;
@@ -608,10 +611,13 @@ export default function MessagesPage() {
         updatedSelections[selectionMode] = [...currentSelections, selectedText];
       }
       
-      return {
+      const finalResult = {
         ...prev,
         [messageId]: updatedSelections
       };
+      console.log('✅ FINAL SELECTIONS RESULT:', finalResult);
+      console.log('🎯 SPECIFICALLY FOR SIGNATURE HEADER:', finalResult[messageId]?.signatureHeader);
+      return finalResult;
     });
     
     // Clear the selection
