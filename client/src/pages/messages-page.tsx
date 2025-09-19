@@ -1285,7 +1285,15 @@ export default function MessagesPage() {
                         {selectedMessage && selections[selectedMessage.id] && (
                           (() => {
                             const messageSelections = selections[selectedMessage.id];
-                            return (messageSelections.body.length > 0 || messageSelections.header.length > 0 || messageSelections.thread.length > 0);
+                            console.log('🔍 PANEL VISIBILITY CHECK:', {
+                              body: messageSelections.body.length,
+                              header: messageSelections.header.length,
+                              thread: messageSelections.thread.length,
+                              signatureBody: messageSelections.signatureBody.length,
+                              signatureHeader: messageSelections.signatureHeader.length,
+                              shouldShow: (messageSelections.body.length > 0 || messageSelections.header.length > 0 || messageSelections.thread.length > 0 || messageSelections.signatureBody.length > 0 || messageSelections.signatureHeader.length > 0)
+                            });
+                            return (messageSelections.body.length > 0 || messageSelections.header.length > 0 || messageSelections.thread.length > 0 || messageSelections.signatureBody.length > 0 || messageSelections.signatureHeader.length > 0);
                           })()
                         ) && (
                           <div className="mt-4 p-3 bg-background rounded-lg border" data-testid="panel-current-selections">
