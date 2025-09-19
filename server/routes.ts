@@ -1747,13 +1747,37 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const message = await storage.getMessage(req.params.id, req.user!.id);
       if (!message) return res.sendStatus(404);
 
-      // Utilizza EmailForwardCleaner per dividere il contenuto
+      // Utilizza EmailForwardCleaner per dividere il contenuto con training data
       console.log(`[RENDER-ROUTE] Processing message ${req.params.id}: text=${(message.body || '').length} chars, html=${(message.htmlBody || '').length} chars`);
-      const renderedContent = EmailForwardCleaner.splitEmailContent(
-        message.subject ?? "",
-        message.body ?? "",
-        message.htmlBody
-      );
+      
+      let renderedContent;
+      try {
+        // Prova con training data
+        if (typeof EmailForwardCleaner.splitEmailContentWithTraining === 'function') {
+          console.log(`[RENDER-ROUTE] Using training-aware email cleaning`);
+          renderedContent = await EmailForwardCleaner.splitEmailContentWithTraining(
+            message.subject ?? "",
+            message.body ?? "",
+            message.htmlBody || null,
+            req.user!.id
+          );
+        } else {
+          console.error(`[RENDER-ROUTE] splitEmailContentWithTraining is not a function! Falling back to legacy`);
+          renderedContent = EmailForwardCleaner.splitEmailContent(
+            message.subject ?? "",
+            message.body ?? "",
+            message.htmlBody
+          );
+        }
+      } catch (trainingError) {
+        console.error(`[RENDER-ROUTE] Training-aware cleaning failed:`, trainingError);
+        console.log(`[RENDER-ROUTE] Falling back to legacy email cleaning`);
+        renderedContent = EmailForwardCleaner.splitEmailContent(
+          message.subject ?? "",
+          message.body ?? "",
+          message.htmlBody
+        );
+      }
       console.log(`[RENDER-ROUTE] Split result: bodyText=${renderedContent.bodyText.length} chars, bodyHtml=${renderedContent.bodyHtml?.length || 0} chars, remainderHtml=${renderedContent.remainderHtml?.length || 0} chars, isForwarded=${renderedContent.isForwarded}`);
 
       res.json(renderedContent);

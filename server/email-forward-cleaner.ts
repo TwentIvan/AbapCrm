@@ -38,11 +38,22 @@ export class EmailForwardCleaner {
         // Analyze header selections to identify common patterns
         const headerSelections = Array.isArray(selection?.headerSelections) ? selection.headerSelections : [];
         headerSelections.forEach((header: string) => {
-          // Extract patterns from headers that users want to eliminate
+          // Training data showed specific forward/reply patterns
+          if (header.includes('Da:') && header.includes('Inviato:') && header.includes('Oggetto:')) {
+            commonHeaders.add('italian-email-header-block');
+          }
+          if (header.includes('Da:') && header.includes('@lutech.it')) {
+            commonHeaders.add('lutech-internal-header');
+          }
+          if (header.includes('c.crespiatico@virgilio.it')) {
+            commonHeaders.add('external-email-header');
+          }
+          
+          // Generic patterns
           if (header.includes('From:') || header.includes('Da:')) {
             commonHeaders.add('header-from');
           }
-          if (header.includes('Date:') || header.includes('Data:')) {
+          if (header.includes('Date:') || header.includes('Data:') || header.includes('Inviato:')) {
             commonHeaders.add('header-date');
           }
           if (header.includes('Subject:') || header.includes('Oggetto:')) {
@@ -71,6 +82,23 @@ export class EmailForwardCleaner {
         // Analyze signature header selections (content to eliminate)
         const signatureHeaderSelections = Array.isArray(selection?.signatureHeaderSelections) ? selection.signatureHeaderSelections : [];
         signatureHeaderSelections.forEach((sigHeader: string) => {
+          // Training data showed common CSS patterns to eliminate
+          if (sigHeader.includes('P {margin-top:0;margin-bottom:0;}')) {
+            commonHeaders.add('css-inline-paragraph');
+          }
+          if (sigHeader.includes('margin-top:0') || sigHeader.includes('margin-bottom:0')) {
+            commonHeaders.add('css-inline-margins');
+          }
+          
+          // Common signature patterns from training data
+          if (sigHeader.includes('Ivan Lo Torto') && sigHeader.includes('Technical analyst')) {
+            commonHeaders.add('duplicate-signature-ivan');
+          }
+          if (sigHeader.includes('WWW.LUTECH.GROUP') && sigHeader.includes('Lutech SpA')) {
+            commonHeaders.add('lutech-signature-duplicate');
+          }
+          
+          // Generic signature patterns
           if (sigHeader.includes('Best regards') || sigHeader.includes('Cordiali saluti')) {
             commonHeaders.add('signature-closing');
           }
@@ -126,6 +154,52 @@ export class EmailForwardCleaner {
   }
 
   /**
+   * Apply training patterns specifically to HTML content
+   */
+  private static async applyAdvancedTrainingPatternsHtml(
+    cleanedHtml: string,
+    originalHtml: string,
+    userId: string,
+    trainingData: { commonHeaders: string[], commonBodyPatterns: string[], threadMarkers: string[] }
+  ): Promise<string> {
+    try {
+      let enhancedHtml = cleanedHtml;
+      
+      // Apply specific training patterns to HTML
+      for (const headerPattern of trainingData.commonHeaders) {
+        switch (headerPattern) {
+          case 'css-inline-paragraph':
+            // Remove CSS inline paragraph styles identified in training
+            enhancedHtml = enhancedHtml.replace(/P\s*\{\s*margin-top:\s*0\s*;\s*margin-bottom:\s*0\s*;\s*\}/gi, '');
+            break;
+          case 'css-inline-margins':
+            // Remove margin styles
+            enhancedHtml = enhancedHtml.replace(/margin-top:\s*0\s*;?/gi, '');
+            enhancedHtml = enhancedHtml.replace(/margin-bottom:\s*0\s*;?/gi, '');
+            break;
+          case 'lutech-signature-duplicate':
+          case 'duplicate-signature-ivan':
+            // Remove duplicate Lutech signatures (keep only first occurrence)
+            const lutechSigPattern = /WWW\.LUTECH\.GROUP[\s\S]*?Lutech SpA[\s\S]*?REA-MI\s+1666842/gi;
+            const matches = enhancedHtml.match(lutechSigPattern);
+            if (matches && matches.length > 1) {
+              // Keep first, remove others
+              for (let i = 1; i < matches.length; i++) {
+                enhancedHtml = enhancedHtml.replace(matches[i], '');
+              }
+            }
+            break;
+        }
+      }
+      
+      return enhancedHtml;
+    } catch (error) {
+      console.error('[EMAIL-CLEANER] HTML training patterns failed:', error);
+      return cleanedHtml;
+    }
+  }
+
+  /**
    * Enhanced cleaning with training data integration
    */
   static async cleanForwardedEmailWithTraining(
@@ -156,6 +230,16 @@ export class EmailForwardCleaner {
         userId,
         trainingData
       );
+      
+      // Also apply to HTML body
+      if (result.originalHtmlBody) {
+        result.originalHtmlBody = await this.applyAdvancedTrainingPatternsHtml(
+          result.originalHtmlBody,
+          htmlBody || '',
+          userId,
+          trainingData
+        );
+      }
     }
     
     return result;
@@ -177,7 +261,38 @@ export class EmailForwardCleaner {
       
       let enhancedBody = cleanedBody;
       
-      // 1. Apply header elimination patterns based on headerSelections
+      // 0. Apply specific training patterns first
+      for (const headerPattern of trainingData.commonHeaders) {
+        switch (headerPattern) {
+          case 'italian-email-header-block':
+            // Remove Italian email header blocks: "Da: X, Inviato: Y, Oggetto: Z"
+            enhancedBody = enhancedBody.replace(/Da:\s+[^\n]+\nInviato:\s+[^\n]+\nA:\s+[^\n]+\nOggetto:\s+[^\n]+/gi, '');
+            break;
+          case 'lutech-internal-header':
+            // Remove Lutech internal header patterns
+            enhancedBody = enhancedBody.replace(/Da:\s+[^@]+@lutech\.it[^\n]*/gi, '');
+            break;
+          case 'css-inline-paragraph':
+            // Remove CSS inline from text (might appear in plain text)
+            enhancedBody = enhancedBody.replace(/P\s*\{\s*margin-top:\s*0\s*;\s*margin-bottom:\s*0\s*;\s*\}/gi, '');
+            break;
+        }
+      }
+      
+      // Apply thread markers
+      for (const threadPattern of trainingData.threadMarkers) {
+        switch (threadPattern) {
+          case 'email-header-block':
+            // Remove email header blocks from mail threads
+            enhancedBody = enhancedBody.replace(/Da:\s+[^\n]+\s+Oggetto:\s+[^\n]+/gi, '');
+            break;
+          case 'italian-forward-marker':
+            enhancedBody = enhancedBody.replace(/Inoltrato da:[^\n]*/gi, '');
+            break;
+        }
+      }
+      
+      // 1. Apply header elimination patterns based on headerSelections (existing logic)
       for (const selection of trainingSelections) {
         const headerSelections = Array.isArray(selection?.headerSelections) ? selection.headerSelections : [];
         for (const headerPattern of headerSelections) {
@@ -435,7 +550,30 @@ export class EmailForwardCleaner {
     return result;
   }
 
-  // Divide il contenuto dell'email in body principale e resto del thread
+  // Divide il contenuto dell'email in body principale e resto del thread con training data
+  static async splitEmailContentWithTraining(
+    subject: string,
+    body: string,
+    htmlBody: string | null,
+    userId: string
+  ): Promise<{
+    bodyText: string;
+    bodyHtml: string | null;
+    remainderText: string | null;
+    remainderHtml: string | null;
+    headerSummary: string | null;
+    isForwarded: boolean;
+  }> {
+    console.log(`[EMAIL-CLEANER] Using training-aware email cleaning for user ${userId}`);
+    
+    // Prima pulisci l'email per ottenere le parti separate usando training data
+    const cleaned = await this.cleanForwardedEmailWithTraining(subject, body, htmlBody || null, userId);
+    
+    // Trasforma ForwardedEmailData nella struttura richiesta dalla route
+    return this.splitEmailContentFromCleaned(subject, body, htmlBody, cleaned);
+  }
+
+  // Divide il contenuto dell'email in body principale e resto del thread (versione senza training per retrocompatibilità)
   static splitEmailContent(
     subject: string,
     body: string,
@@ -450,6 +588,24 @@ export class EmailForwardCleaner {
   } {
     // Prima pulisci l'email per ottenere le parti separate
     const cleaned = this.cleanForwardedEmail(subject, body, htmlBody || null);
+    
+    return this.splitEmailContentFromCleaned(subject, body, htmlBody, cleaned);
+  }
+
+  // Logica comune per dividere il contenuto da email pulita
+  private static splitEmailContentFromCleaned(
+    subject: string,
+    body: string,
+    htmlBody: string | null | undefined,
+    cleaned: ForwardedEmailData
+  ): {
+    bodyText: string;
+    bodyHtml: string | null;
+    remainderText: string | null;
+    remainderHtml: string | null;
+    headerSummary: string | null;
+    isForwarded: boolean;
+  } {
     
     if (!cleaned.isForwarded) {
       // Anche se non è marcata come inoltrata, potrebbe essere una reply con contenuto quotato
