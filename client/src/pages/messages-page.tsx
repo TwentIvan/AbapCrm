@@ -1541,7 +1541,11 @@ export default function MessagesPage() {
                           )}
                           {(renderedContent.remainderText || renderedContent.remainderHtml) && (
                             <div className="border-t pt-4">
-                              <Button variant="ghost" size="sm" onClick={() => setShowThreadContent(!showThreadContent)} className="flex items-center gap-2 mb-2" data-testid="button-toggle-thread">
+                              <Button variant="ghost" size="sm" onClick={() => {
+                                console.log('[THREAD-TOGGLE] Button clicked! Current state:', showThreadContent);
+                                setShowThreadContent(!showThreadContent);
+                                console.log('[THREAD-TOGGLE] New state will be:', !showThreadContent);
+                              }} className="flex items-center gap-2 mb-2" data-testid="button-toggle-thread">
                                 {showThreadContent ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                 {showThreadContent ? 'Nascondi thread precedente' : 'Mostra thread precedente'}
                               </Button>
