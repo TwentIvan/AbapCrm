@@ -1268,243 +1268,74 @@ export default function MessagesPage() {
                         ) && (
                           <div className="mt-4 p-3 bg-background rounded-lg border" data-testid="panel-current-selections">
                             <div className="text-sm font-medium mb-3">Selezioni correnti:</div>
+                            {/* ✅ MODULAR: Unified grouped rendering replaces all duplicated sections */}
                             <div className="space-y-3">
-                              {selectedMessage && selections[selectedMessage.id]?.body.length > 0 && (
-                                <div data-testid="section-body-selections">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <div className="text-xs font-medium text-green-600">Da mantenere (Body) - {selections[selectedMessage.id].body.length} items:</div>
-                                    <Button
-                                      onClick={() => setSelections(prev => ({
-                                        ...prev,
-                                        [selectedMessage.id]: {
-                                          ...prev[selectedMessage.id],
-                                          body: []
-                                        }
-                                      }))}
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-6 px-2 text-xs text-green-600 border-green-200 hover:bg-green-50"
-                                      data-testid="button-clear-body-selections"
-                                    >
-                                      Clear Body
-                                    </Button>
-                                  </div>
-                                  <div className="space-y-1">
-                                    {selections[selectedMessage.id].body.map((text, index) => (
-                                      <div key={index} className="text-xs bg-green-50 border border-green-200 rounded px-2 py-1 flex justify-between items-start" data-testid={`item-body-selection-${index}`}>
-                                        <span className="truncate">{text.length > 80 ? text.substring(0, 80) + '...' : text}</span>
-                                        <Button
-                                          onClick={() => setSelections(prev => ({
-                                            ...prev,
-                                            [selectedMessage.id]: {
-                                              ...prev[selectedMessage.id],
-                                              body: prev[selectedMessage.id].body.filter((_, i) => i !== index)
-                                            }
-                                          }))}
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-auto p-1 ml-2 text-green-600 hover:text-green-800"
-                                          data-testid={`button-remove-body-selection-${index}`}
-                                        >
-                                          ×
-                                        </Button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {selectedMessage && selections[selectedMessage.id]?.header.length > 0 && (
-                                <div data-testid="section-header-selections">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <div className="text-xs font-medium text-red-600">Da eliminare (Header) - {selections[selectedMessage.id].header.length} items:</div>
-                                    <Button
-                                      onClick={() => setSelections(prev => ({
-                                        ...prev,
-                                        [selectedMessage.id]: {
-                                          ...prev[selectedMessage.id],
-                                          header: []
-                                        }
-                                      }))}
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-6 px-2 text-xs text-red-600 border-red-200 hover:bg-red-50"
-                                      data-testid="button-clear-header-selections"
-                                    >
-                                      Clear Header
-                                    </Button>
-                                  </div>
-                                  <div className="space-y-1">
-                                    {selections[selectedMessage.id].header.map((text, index) => (
-                                      <div key={index} className="text-xs bg-red-50 border border-red-200 rounded px-2 py-1 flex justify-between items-start" data-testid={`item-header-selection-${index}`}>
-                                        <span className="truncate">{text.length > 80 ? text.substring(0, 80) + '...' : text}</span>
-                                        <Button
-                                          onClick={() => setSelections(prev => ({
-                                            ...prev,
-                                            [selectedMessage.id]: {
-                                              ...prev[selectedMessage.id],
-                                              header: prev[selectedMessage.id].header.filter((_, i) => i !== index)
-                                            }
-                                          }))}
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-auto p-1 ml-2 text-red-600 hover:text-red-800"
-                                          data-testid={`button-remove-header-selection-${index}`}
-                                        >
-                                          ×
-                                        </Button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {selectedMessage && selections[selectedMessage.id]?.thread.length > 0 && (
-                                <div data-testid="section-thread-selections">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <div className="text-xs font-medium text-yellow-600">Da compattare (Thread) - {selections[selectedMessage.id].thread.length} items:</div>
-                                    <Button
-                                      onClick={() => setSelections(prev => ({
-                                        ...prev,
-                                        [selectedMessage.id]: {
-                                          ...prev[selectedMessage.id],
-                                          thread: []
-                                        }
-                                      }))}
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-6 px-2 text-xs text-yellow-600 border-yellow-200 hover:bg-yellow-50"
-                                      data-testid="button-clear-thread-selections"
-                                    >
-                                      Clear Thread
-                                    </Button>
-                                  </div>
-                                  <div className="space-y-1">
-                                    {selections[selectedMessage.id].thread.map((item, index) => (
-                                      <div key={index} className="text-xs bg-yellow-50 border border-yellow-200 rounded px-2 py-1 flex justify-between items-start" data-testid={`item-thread-selection-${index}`}>
-                                        <div className="truncate">
-                                          <span className="truncate">{item.text.length > 70 ? item.text.substring(0, 70) + '...' : item.text}</span>
-                                          <div className="text-xs text-yellow-700 mt-1 font-mono">Source: {item.sourceMessageId.substring(0, 8)}...</div>
+                              {(() => {
+                                const messageSelections = selectedMessage ? selections[selectedMessage.id] || [] : [];
+                                const groupedSelections = groupSelectionsByType(messageSelections);
+                                
+                                return Object.entries(groupedSelections).map(([selectionType, typeSelections]) => {
+                                  const config = selectionTypeConfig[selectionType as keyof typeof selectionTypeConfig];
+                                  if (!config) return null;
+                                  
+                                  return (
+                                    <div key={selectionType} data-testid={`section-${selectionType}-selections`}>
+                                      <div className="flex items-center justify-between mb-2">
+                                        <div className={`text-xs font-medium ${config.textColor}`}>
+                                          {config.label} - {typeSelections.length} items:
                                         </div>
                                         <Button
                                           onClick={() => setSelections(prev => ({
                                             ...prev,
-                                            [selectedMessage.id]: {
-                                              ...prev[selectedMessage.id],
-                                              thread: prev[selectedMessage.id].thread.filter((_, i) => i !== index)
-                                            }
+                                            [selectedMessage!.id]: prev[selectedMessage!.id]?.filter(s => s.selectionType !== selectionType) || []
                                           }))}
-                                          variant="ghost"
+                                          variant="outline"
                                           size="sm"
-                                          className="h-auto p-1 ml-2 text-yellow-600 hover:text-yellow-800"
-                                          data-testid={`button-remove-thread-selection-${index}`}
+                                          className={`h-6 px-2 text-xs ${config.textColor} ${config.borderColor} hover:${config.bgColor}`}
+                                          data-testid={`button-clear-${selectionType}-selections`}
                                         >
-                                          ×
+                                          Clear {config.label.split(' ')[0]}
                                         </Button>
                                       </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {selectedMessage && selections[selectedMessage.id]?.signatureBody.length > 0 && (
-                                <div data-testid="section-signature-body-selections">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <div className="text-xs font-medium text-blue-600">Da conservare (Firma Body) - {selections[selectedMessage.id].signatureBody.length} items:</div>
-                                    <Button
-                                      onClick={() => setSelections(prev => ({
-                                        ...prev,
-                                        [selectedMessage.id]: {
-                                          ...prev[selectedMessage.id],
-                                          signatureBody: []
-                                        }
-                                      }))}
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-6 px-2 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
-                                      data-testid="button-clear-signature-body-selections"
-                                    >
-                                      Clear Firma Body
-                                    </Button>
-                                  </div>
-                                  <div className="space-y-1">
-                                    {selections[selectedMessage.id].signatureBody.map((text, index) => (
-                                      <div key={index} className="text-xs bg-blue-50 border border-blue-200 rounded px-2 py-1 flex justify-between items-start" data-testid={`item-signature-body-selection-${index}`}>
-                                        <span className="truncate">{text.length > 80 ? text.substring(0, 80) + '...' : text}</span>
-                                        <Button
-                                          onClick={() => setSelections(prev => ({
-                                            ...prev,
-                                            [selectedMessage.id]: {
-                                              ...prev[selectedMessage.id],
-                                              signatureBody: prev[selectedMessage.id].signatureBody.filter((_, i) => i !== index)
-                                            }
-                                          }))}
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-auto p-1 ml-2 text-blue-600 hover:text-blue-800"
-                                          data-testid={`button-remove-signature-body-selection-${index}`}
-                                        >
-                                          ×
-                                        </Button>
+                                      <div className="space-y-1">
+                                        {typeSelections.map((selection, index) => (
+                                          <div 
+                                            key={index} 
+                                            className={`text-xs ${config.bgColor} ${config.borderColor} border rounded px-2 py-1 flex justify-between items-start`}
+                                            data-testid={`item-${selectionType}-selection-${index}`}
+                                          >
+                                            <div className="truncate min-w-0 flex-1">
+                                              <span className="truncate">
+                                                {selection.selectedText.length > 80 ? selection.selectedText.substring(0, 80) + '...' : selection.selectedText}
+                                              </span>
+                                              {selection.sourceMessageId && (
+                                                <div className={`text-xs ${config.textColor} mt-1 font-mono opacity-70`}>
+                                                  Source: {selection.sourceMessageId.substring(0, 8)}...
+                                                </div>
+                                              )}
+                                            </div>
+                                            <Button
+                                              onClick={() => setSelections(prev => ({
+                                                ...prev,
+                                                [selectedMessage!.id]: prev[selectedMessage!.id]?.filter((_, i) => {
+                                                  const sameTypeSelections = prev[selectedMessage!.id]?.filter(s => s.selectionType === selectionType) || [];
+                                                  return !(sameTypeSelections[index] === selection);
+                                                }) || []
+                                              }))}
+                                              variant="ghost"
+                                              size="sm"
+                                              className={`h-auto p-1 ml-2 ${config.textColor} hover:opacity-80 flex-shrink-0`}
+                                              data-testid={`button-remove-${selectionType}-selection-${index}`}
+                                            >
+                                              ×
+                                            </Button>
+                                          </div>
+                                        ))}
                                       </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {(() => {
-                                const hasMessage = !!selectedMessage;
-                                const messageId = selectedMessage?.id;
-                                const messageSelections = messageId ? selections[messageId] : null;
-                                const signatureHeaderArray = messageSelections?.signatureHeader;
-                                const headerCount = signatureHeaderArray?.length || 0;
-                                
-                                
-                                return headerCount > 0;
-                              })() && (
-                                <div data-testid="section-signature-header-selections">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <div className="text-xs font-medium text-purple-600">Da eliminare (Firma Header) - {selections[selectedMessage.id].signatureHeader.length} items:</div>
-                                    <Button
-                                      onClick={() => setSelections(prev => ({
-                                        ...prev,
-                                        [selectedMessage.id]: {
-                                          ...prev[selectedMessage.id],
-                                          signatureHeader: []
-                                        }
-                                      }))}
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-6 px-2 text-xs text-purple-600 border-purple-200 hover:bg-purple-50"
-                                      data-testid="button-clear-signature-header-selections"
-                                    >
-                                      Clear Firma Header
-                                    </Button>
-                                  </div>
-                                  <div className="space-y-1">
-                                    {selections[selectedMessage.id].signatureHeader.map((text, index) => (
-                                      <div key={index} className="text-xs bg-purple-50 border border-purple-200 rounded px-2 py-1 flex justify-between items-start" data-testid={`item-signature-header-selection-${index}`}>
-                                        <span className="truncate">{text.length > 80 ? text.substring(0, 80) + '...' : text}</span>
-                                        <Button
-                                          onClick={() => setSelections(prev => ({
-                                            ...prev,
-                                            [selectedMessage.id]: {
-                                              ...prev[selectedMessage.id],
-                                              signatureHeader: prev[selectedMessage.id].signatureHeader.filter((_, i) => i !== index)
-                                            }
-                                          }))}
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-auto p-1 ml-2 text-purple-600 hover:text-purple-800"
-                                          data-testid={`button-remove-signature-header-selection-${index}`}
-                                        >
-                                          ×
-                                        </Button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+                                    </div>
+                                  );
+                                });
+                              })()}
                             </div>
                           </div>
                         )}
