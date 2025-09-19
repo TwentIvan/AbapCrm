@@ -578,7 +578,9 @@ export default function MessagesPage() {
       // Add selection based on mode
       let updatedSelections = { ...messageSelections };
       if (selectionMode === 'thread') {
+        console.log('[THREAD-DEBUG] Adding thread selection! Current thread selections:', messageSelections.thread.length);
         updatedSelections.thread = [...messageSelections.thread, { text: selectedText, sourceMessageId: messageId }];
+        console.log('[THREAD-DEBUG] New thread selections count:', updatedSelections.thread.length);
       } else if (selectionMode === 'mailThread') {
         updatedSelections.mailThread = [...messageSelections.mailThread, { text: selectedText, sourceMessageId: messageId }];
       } else {
@@ -1112,7 +1114,11 @@ export default function MessagesPage() {
                                 Eliminare (Header)
                               </Button>
                               <Button
-                                onClick={() => setSelectionMode('thread')}
+                                onClick={() => {
+                                  console.log('[THREAD-MODE] Switching to thread mode! Current mode:', selectionMode);
+                                  setSelectionMode('thread');
+                                  console.log('[THREAD-MODE] Selection mode now set to: thread');
+                                }}
                                 variant={selectionMode === 'thread' ? "default" : "outline"}
                                 size="sm"
                                 className={selectionMode === 'thread' ? "bg-yellow-600 hover:bg-yellow-700" : ""}
