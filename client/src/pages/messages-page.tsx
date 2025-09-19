@@ -537,13 +537,30 @@ export default function MessagesPage() {
     if (!isTrainingMode || !selectedMessage) return;
     
     const selection = window.getSelection();
+    console.log('🔍 SELECTION CHECK:', {
+      hasSelection: !!selection,
+      isCollapsed: selection?.isCollapsed,
+      selectionText: selection?.toString()
+    });
     if (!selection || selection.isCollapsed) return;
     
     const selectedText = selection.toString().trim();
+    console.log('📝 SELECTED TEXT:', {
+      selectedText,
+      length: selectedText.length,
+      isEmpty: !selectedText
+    });
     if (!selectedText) return;
     
     // Ensure selection is within email content
     const target = event.currentTarget as HTMLElement;
+    console.log('🎯 TARGET CHECK:', {
+      hasTarget: !!target,
+      hasAnchorNode: !!selection.anchorNode,
+      hasFocusNode: !!selection.focusNode,
+      containsAnchor: selection.anchorNode ? target.contains(selection.anchorNode) : false,
+      containsFocus: selection.focusNode ? target.contains(selection.focusNode) : false
+    });
     if (!target.contains(selection.anchorNode) || !target.contains(selection.focusNode)) {
       return;
     }
