@@ -1915,6 +1915,11 @@ export class DatabaseStorage implements IStorage {
       .delete(emailFeedbacks)
       .where(and(eq(emailFeedbacks.messageId, id), eq(emailFeedbacks.userId, userId)));
     
+    // Cancella anche tutti i dati di training associati al messaggio
+    await db
+      .delete(emailTrainingSelections)
+      .where(and(eq(emailTrainingSelections.messageId, id), eq(emailTrainingSelections.userId, userId)));
+    
     // Poi cancella il messaggio
     const result = await db
       .delete(messages)
