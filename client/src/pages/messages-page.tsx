@@ -527,6 +527,13 @@ export default function MessagesPage() {
   };
 
   const handleTextSelection = (event: React.MouseEvent) => {
+    console.log('🔥 handleTextSelection CHIAMATA!', {
+      isTrainingMode,
+      selectedMessage: selectedMessage?.id || 'null',
+      selectionMode,
+      hasWindow: !!window,
+      hasSelection: !!window.getSelection()
+    });
     if (!isTrainingMode || !selectedMessage) return;
     
     const selection = window.getSelection();
