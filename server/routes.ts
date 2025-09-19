@@ -2503,15 +2503,13 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // ✅ MODULAR: Now returns array of individual selections
   app.get("/api/email-training-selections/:messageId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const { messageId } = req.params;
-      const selection = await storage.getEmailTrainingSelection(messageId, req.user!.id);
-      if (!selection) {
-        return res.status(404).json({ error: "Email training selection not found" });
-      }
-      res.json(selection);
+      const selections = await storage.getEmailTrainingSelection(messageId, req.user!.id);
+      res.json(selections); // Always return array (empty if no selections)
     } catch (error) {
       console.error("Get email training selection error:", error);
       res.status(500).json({ error: "Failed to get email training selection" });
@@ -2542,15 +2540,16 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       // Get additional statistics
       const trainingSelections = await storage.getEmailTrainingSelections(req.user!.id);
       
+      // ✅ MODULAR: Count individual selections by type
       const stats = {
         totalSelections: trainingSelections.length,
         selectionsByType: {
-          body: trainingSelections.reduce((sum, sel) => sum + (sel.bodySelections?.length || 0), 0),
-          header: trainingSelections.reduce((sum, sel) => sum + (sel.headerSelections?.length || 0), 0),
-          thread: trainingSelections.reduce((sum, sel) => sum + (Array.isArray(sel.threadSelections) ? sel.threadSelections.length : 0), 0),
-          signatureBody: trainingSelections.reduce((sum, sel) => sum + (sel.signatureBodySelections?.length || 0), 0),
-          signatureHeader: trainingSelections.reduce((sum, sel) => sum + (sel.signatureHeaderSelections?.length || 0), 0),
-          mailThread: trainingSelections.reduce((sum, sel) => sum + (Array.isArray(sel.mailThreadSelections) ? sel.mailThreadSelections.length : 0), 0)
+          body: trainingSelections.filter(sel => sel.selectionType === "body").length,
+          header: trainingSelections.filter(sel => sel.selectionType === "header").length,
+          thread: trainingSelections.filter(sel => sel.selectionType === "thread").length,
+          signatureBody: trainingSelections.filter(sel => sel.selectionType === "signatureBody").length,
+          signatureHeader: trainingSelections.filter(sel => sel.selectionType === "signatureHeader").length,
+          mailThread: trainingSelections.filter(sel => sel.selectionType === "mailThread").length
         },
         lastTrainingDate: trainingSelections.length > 0 
           ? (() => {

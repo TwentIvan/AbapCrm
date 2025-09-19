@@ -336,11 +336,12 @@ export interface IStorage {
   deleteMessageLink(id: string, userId: string): Promise<boolean>;
 
   // Email Training Selections
-  getEmailTrainingSelection(messageId: string, userId: string): Promise<EmailTrainingSelection | undefined>;
+  // ✅ MODULAR: Now returns array of individual selections  
+  getEmailTrainingSelection(messageId: string, userId: string): Promise<EmailTrainingSelection[]>;
   getEmailTrainingSelections(userId: string): Promise<EmailTrainingSelection[]>;
   createEmailTrainingSelection(selection: InsertEmailTrainingSelection): Promise<EmailTrainingSelection>;
-  updateEmailTrainingSelection(messageId: string, userId: string, selection: Partial<InsertEmailTrainingSelection>): Promise<EmailTrainingSelection | undefined>;
   deleteEmailTrainingSelection(messageId: string, userId: string): Promise<boolean>;
+  deleteEmailTrainingSelectionById(selectionId: string): Promise<boolean>;
 
   // Organization Domains
   getOrganizationDomains(organizationId: string): Promise<OrganizationDomain[]>;
@@ -3124,47 +3125,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Email Training Selections Implementation
-  async getEmailTrainingSelection(messageId: string, userId: string): Promise<EmailTrainingSelection | undefined> {
-    const [selection] = await db
+  // ✅ MODULAR: Get all selections for a message (returns array)
+  async getEmailTrainingSelection(messageId: string, userId: string): Promise<EmailTrainingSelection[]> {
+    const selections = await db
       .select()
       .from(emailTrainingSelections)
       .where(and(eq(emailTrainingSelections.messageId, messageId), eq(emailTrainingSelections.userId, userId)));
-    return selection || undefined;
+    return selections;
   }
 
+  // ✅ MODULAR: Create individual selection record
   async createEmailTrainingSelection(selection: InsertEmailTrainingSelection): Promise<EmailTrainingSelection> {
     const [newSelection] = await db
       .insert(emailTrainingSelections)
-      .values(selection)
-      .onConflictDoUpdate({
-        target: [emailTrainingSelections.messageId, emailTrainingSelections.userId],
-        set: {
-          bodySelections: selection.bodySelections,
-          headerSelections: selection.headerSelections,
-          threadSelections: selection.threadSelections,
-          signatureBodySelections: selection.signatureBodySelections,
-          signatureHeaderSelections: selection.signatureHeaderSelections,
-          mailThreadSelections: selection.mailThreadSelections,
-          updatedAt: new Date(),
-        },
+      .values({
+        messageId: selection.messageId,
+        userId: selection.userId,
+        selectionType: selection.selectionType,
+        selectedText: selection.selectedText,
+        sourceMessageId: selection.sourceMessageId || null,
       })
       .returning();
     return newSelection;
   }
 
-  async updateEmailTrainingSelection(messageId: string, userId: string, selection: Partial<InsertEmailTrainingSelection>): Promise<EmailTrainingSelection | undefined> {
-    const [updated] = await db
-      .update(emailTrainingSelections)
-      .set({ ...selection, updatedAt: new Date() })
-      .where(and(eq(emailTrainingSelections.messageId, messageId), eq(emailTrainingSelections.userId, userId)))
-      .returning();
-    return updated || undefined;
-  }
 
+  // ✅ MODULAR: Delete all selections for a message
   async deleteEmailTrainingSelection(messageId: string, userId: string): Promise<boolean> {
     const result = await db
       .delete(emailTrainingSelections)
       .where(and(eq(emailTrainingSelections.messageId, messageId), eq(emailTrainingSelections.userId, userId)));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // ✅ MODULAR: Delete single selection by ID
+  async deleteEmailTrainingSelectionById(selectionId: string): Promise<boolean> {
+    const result = await db
+      .delete(emailTrainingSelections)
+      .where(eq(emailTrainingSelections.id, selectionId));
     return (result.rowCount || 0) > 0;
   }
 
