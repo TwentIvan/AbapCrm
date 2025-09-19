@@ -72,6 +72,34 @@ interface RenderedMessageContent {
   isForwarded: boolean;
 }
 
+// ✅ MODULAR: Unified selection record type
+interface SelectionRecord {
+  selectionType: 'body' | 'header' | 'thread' | 'signatureBody' | 'signatureHeader' | 'mailThread';
+  selectedText: string;
+  sourceMessageId?: string;
+}
+
+// ✅ MODULAR: Type metadata for consistent display
+const selectionTypeConfig = {
+  body: { label: 'Da mantenere (Body)', color: 'green', bgColor: 'bg-green-50', borderColor: 'border-green-200', textColor: 'text-green-600' },
+  header: { label: 'Da eliminare (Header)', color: 'red', bgColor: 'bg-red-50', borderColor: 'border-red-200', textColor: 'text-red-600' },
+  thread: { label: 'Da compattare (Thread)', color: 'yellow', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200', textColor: 'text-yellow-600' },
+  signatureBody: { label: 'Da conservare (Firma Body)', color: 'blue', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', textColor: 'text-blue-600' },
+  signatureHeader: { label: 'Da eliminare (Firma Header)', color: 'purple', bgColor: 'bg-purple-50', borderColor: 'border-purple-200', textColor: 'text-purple-600' },
+  mailThread: { label: 'Da compattare (Mail Thread)', color: 'orange', bgColor: 'bg-orange-50', borderColor: 'border-orange-200', textColor: 'text-orange-600' }
+} as const;
+
+// ✅ MODULAR: Helper to group selections by type
+const groupSelectionsByType = (selections: SelectionRecord[]) => {
+  return selections.reduce((groups, selection) => {
+    if (!groups[selection.selectionType]) {
+      groups[selection.selectionType] = [];
+    }
+    groups[selection.selectionType].push(selection);
+    return groups;
+  }, {} as Record<string, SelectionRecord[]>);
+};
+
 export default function MessagesPage() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -92,15 +120,9 @@ export default function MessagesPage() {
   const [isTrainingMode, setIsTrainingMode] = useState(false);
   const [selectionMode, setSelectionMode] = useState<'body' | 'header' | 'thread' | 'signatureBody' | 'signatureHeader' | 'mailThread'>('body');
   const [showTrainingStats, setShowTrainingStats] = useState(false);
+  // ✅ MODULAR: Simple array of selection records per message
   const [selections, setSelections] = useState<{
-    [messageId: string]: {
-      body: string[];
-      header: string[];
-      thread: { text: string; sourceMessageId: string }[];
-      signatureBody: string[];
-      signatureHeader: string[];
-      mailThread: { text: string; sourceMessageId: string }[];
-    }
+    [messageId: string]: SelectionRecord[];
   }>({});
 
   // Column widths state for resizable columns
@@ -546,26 +568,24 @@ export default function MessagesPage() {
     
     const messageId = selectedMessage.id;
     
-    // Add to current selection mode for this message
+    // ✅ MODULAR: Create unified selection record  
+    const newSelection: SelectionRecord = {
+      selectionType: selectionMode,
+      selectedText: selectedText.trim(),
+      sourceMessageId: (selectionMode === 'thread' || selectionMode === 'mailThread') ? messageId : undefined
+    };
+    
+    // ✅ MODULAR: Unified duplicate check with stable key
+    const selectionKey = `${selectionMode}:${selectedText.trim()}:${messageId || ''}`;
+    console.log('[TRAINING-SELECT] Creating selection:', newSelection, 'key:', selectionKey);
+    
     setSelections(prev => {
-      const messageSelections = prev[messageId] || { 
-        body: [], 
-        header: [], 
-        thread: [],
-        signatureBody: [],
-        signatureHeader: [],
-        mailThread: []
-      };
+      const messageSelections = prev[messageId] || [];
       
-      // Check for duplicates based on selection mode
-      let isDuplicate = false;
-      if (selectionMode === 'thread' || selectionMode === 'mailThread') {
-        const threadSelections = selectionMode === 'thread' ? messageSelections.thread : messageSelections.mailThread;
-        isDuplicate = threadSelections.some(item => item.text === selectedText);
-      } else {
-        const stringSelections = messageSelections[selectionMode] as string[];
-        isDuplicate = stringSelections.includes(selectedText);
-      }
+      // Check duplicates with unified logic
+      const isDuplicate = messageSelections.some(s => 
+        `${s.selectionType}:${s.selectedText}:${s.sourceMessageId || ''}` === selectionKey
+      );
       
       if (isDuplicate) {
         toast({
@@ -576,22 +596,12 @@ export default function MessagesPage() {
         return prev;
       }
       
-      // Add selection based on mode
-      let updatedSelections = { ...messageSelections };
-      if (selectionMode === 'thread') {
-        console.log('[THREAD-DEBUG] Adding thread selection! Current thread selections:', messageSelections.thread.length);
-        updatedSelections.thread = [...messageSelections.thread, { text: selectedText, sourceMessageId: messageId }];
-        console.log('[THREAD-DEBUG] New thread selections count:', updatedSelections.thread.length);
-      } else if (selectionMode === 'mailThread') {
-        updatedSelections.mailThread = [...messageSelections.mailThread, { text: selectedText, sourceMessageId: messageId }];
-      } else {
-        const currentSelections = messageSelections[selectionMode] as string[];
-        updatedSelections[selectionMode] = [...currentSelections, selectedText];
-      }
+      console.log('[TRAINING-SELECT] Adding to selections, current count:', messageSelections.length);
       
+      // ✅ MODULAR: Simple unified addition
       return {
         ...prev,
-        [messageId]: updatedSelections
+        [messageId]: [...messageSelections, newSelection]
       };
     });
     
@@ -1164,16 +1174,10 @@ export default function MessagesPage() {
                           <Button
                             onClick={() => {
                               if (selectedMessage) {
+                                // ✅ MODULAR: Simple array clear
                                 setSelections(prev => ({
                                   ...prev,
-                                  [selectedMessage.id]: { 
-                                    body: [], 
-                                    header: [], 
-                                    thread: [],
-                                    signatureBody: [],
-                                    signatureHeader: [],
-                                    mailThread: []
-                                  }
+                                  [selectedMessage.id]: []
                                 }));
                               }
                             }}
@@ -1190,52 +1194,52 @@ export default function MessagesPage() {
                                 console.log('[TRAINING-SAVE] Selected message:', selectedMessage.id);
                                 const messageSelections = selections[selectedMessage.id];
                                 console.log('[TRAINING-SAVE] Message selections:', messageSelections);
-                                if (messageSelections) {
-                                  const totalSelections = messageSelections.body.length + messageSelections.header.length + messageSelections.thread.length + messageSelections.signatureBody.length + messageSelections.signatureHeader.length + messageSelections.mailThread.length;
-                                  console.log('[TRAINING-SAVE] Total selections:', totalSelections);
-                                  if (totalSelections > 0) {
-                                    try {
-                                      // Salvare nel database tramite API
-                                      await apiRequest("POST", "/api/email-training-selections", {
-                                        messageId: selectedMessage.id,
-                                        bodySelections: messageSelections.body,
-                                        headerSelections: messageSelections.header,
-                                        threadSelections: messageSelections.thread,
-                                        signatureBodySelections: messageSelections.signatureBody,
-                                        signatureHeaderSelections: messageSelections.signatureHeader,
-                                        mailThreadSelections: messageSelections.mailThread
-                                      });
-                                      
+                                
+                                if (messageSelections && messageSelections.length > 0) {
+                                  try {
+                                    console.log('[TRAINING-SAVE] Saving', messageSelections.length, 'individual selections');
+                                    
+                                    // ✅ MODULAR: Save individual selections to modular API
+                                    const results = await Promise.allSettled(
+                                      messageSelections.map(selection => 
+                                        apiRequest("POST", "/api/email-training-selections", {
+                                          messageId: selectedMessage.id,
+                                          selectionType: selection.selectionType,
+                                          selectedText: selection.selectedText,
+                                          sourceMessageId: selection.sourceMessageId
+                                        })
+                                      )
+                                    );
+                                    
+                                    const successful = results.filter(r => r.status === 'fulfilled').length;
+                                    const failed = results.length - successful;
+                                    
+                                    if (successful > 0) {
                                       toast({ 
                                         title: "Selezioni salvate", 
-                                        description: `${totalSelections} selezioni salvate per migliorare l'algoritmo` 
+                                        description: `${successful} selezioni salvate${failed > 0 ? ` (${failed} fallite)` : ''}`
                                       });
                                       
-                                      // Clear selections after successful save
+                                      // ✅ MODULAR: Simple clear
                                       setSelections(prev => ({
                                         ...prev,
-                                        [selectedMessage.id]: { 
-                                          body: [], 
-                                          header: [], 
-                                          thread: [],
-                                          signatureBody: [],
-                                          signatureHeader: [],
-                                          mailThread: []
-                                        }
+                                        [selectedMessage.id]: []
                                       }));
-                                    } catch (error) {
-                                      console.error('Error saving selections:', error);
-                                      toast({ 
-                                        title: "Errore salvataggio", 
-                                        description: "Non è stato possibile salvare le selezioni" 
-                                      });
+                                    } else {
+                                      throw new Error('All selections failed to save');
                                     }
-                                  } else {
+                                  } catch (error) {
+                                    console.error('Error saving selections:', error);
                                     toast({ 
-                                      title: "Nessuna selezione", 
-                                      description: "Seleziona del testo prima di salvare" 
+                                      title: "Errore salvataggio", 
+                                      description: "Non è stato possibile salvare le selezioni" 
                                     });
                                   }
+                                } else {
+                                  toast({ 
+                                    title: "Nessuna selezione", 
+                                    description: "Seleziona del testo prima di salvare" 
+                                  });
                                 }
                               }
                             }}
