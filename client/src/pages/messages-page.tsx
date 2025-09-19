@@ -586,12 +586,20 @@ export default function MessagesPage() {
       if (selectionMode === 'thread' || selectionMode === 'mailThread') {
         const threadSelections = selectionMode === 'thread' ? messageSelections.thread : messageSelections.mailThread;
         isDuplicate = threadSelections.some(item => item.text === selectedText);
+        console.log('🔍 THREAD DUPLICATE CHECK:', { threadSelections, isDuplicate });
       } else {
         const stringSelections = messageSelections[selectionMode] as string[];
         isDuplicate = stringSelections.includes(selectedText);
+        console.log('🔍 STRING DUPLICATE CHECK:', { 
+          selectionMode, 
+          stringSelections, 
+          selectedText: selectedText.substring(0, 50) + '...', 
+          isDuplicate 
+        });
       }
       
       if (isDuplicate) {
+        console.log('❌ DUPLICATE DETECTED - RETURNING EARLY');
         toast({
           title: "Testo già selezionato",
           description: "Questo testo è già stato classificato",
@@ -599,6 +607,7 @@ export default function MessagesPage() {
         });
         return prev;
       }
+      console.log('✅ NO DUPLICATE - PROCEEDING TO ADD SELECTION');
       
       // Add selection based on mode
       let updatedSelections = { ...messageSelections };
