@@ -805,28 +805,22 @@ export const interventionDocuments = pgTable("intervention_documents", {
 });
 
 // Email training selections - Manual selections for algorithm training
+// ✅ MODULAR DESIGN: All selection types follow the same pattern
+export const selectionTypeEnum = pgEnum("selection_type", [
+  "body", "header", "thread", "signatureBody", "signatureHeader", "mailThread"
+]);
+
 export const emailTrainingSelections = pgTable("email_training_selections", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   messageId: uuid("message_id").references(() => messages.id).notNull(),
   userId: uuid("user_id").references(() => users.id).notNull(),
-  // Body text selections to keep
-  bodySelections: text("body_selections").array().default([]).notNull(),
-  // Header text selections to eliminate  
-  headerSelections: text("header_selections").array().default([]).notNull(),
-  // Thread selections with source message tracking for training
-  threadSelections: jsonb("thread_selections").default([]).notNull(), // Array of {text: string, sourceMessageId: string}
-  // Signature body selections to keep (content to preserve)
-  signatureBodySelections: text("signature_body_selections").array().default([]).notNull(),
-  // Signature header selections (different from forwarding headers)
-  signatureHeaderSelections: text("signature_header_selections").array().default([]).notNull(),
-  // Mail thread selections (more specific than general thread)
-  mailThreadSelections: jsonb("mail_thread_selections").default([]).notNull(), // Array of {text: string, sourceMessageId: string}
+  // ✅ UNIFIED: All selection types use the same structure
+  selectionType: selectionTypeEnum("selection_type").notNull(),
+  selectedText: text("selected_text").notNull(),
+  sourceMessageId: uuid("source_message_id"), // Optional: for thread types that need source tracking
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => ({
-  // Unique constraint: one selection set per user-message combination
-  uniqueMessageUser: uniqueIndex("email_training_selections_msg_user_uniq").on(table.messageId, table.userId),
-}));
+});
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({

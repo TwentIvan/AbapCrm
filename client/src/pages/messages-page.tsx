@@ -535,6 +535,7 @@ export default function MessagesPage() {
     
     const selectedText = selection.toString().trim();
     console.log('[TRAINING-SELECT] Selected text:', selectedText.substring(0, 100), 'length:', selectedText.length);
+    console.log('[TRAINING-SELECT] Current selectionMode:', selectionMode);
     if (!selectedText) return;
     
     // Ensure selection is within email content
