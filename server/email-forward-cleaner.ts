@@ -491,7 +491,8 @@ export class EmailForwardCleaner {
           const isConflicted = signatureConflicts.has(signaturePattern);
           const similarity = this.calculateSimilarity(enhancedBody, signaturePattern);
           
-          if (similarity > 0.5) {
+          console.log(`[EMAIL-CLEANER] SignatureHeader similarity: ${similarity.toFixed(3)} for pattern: "${signaturePattern.substring(0, 50)}"`);
+          if (similarity > 0.01) {
             if (!isConflicted) {
               // No conflict - safe to remove
               enhancedBody = this.removePattern(enhancedBody, signaturePattern, 0.5);
