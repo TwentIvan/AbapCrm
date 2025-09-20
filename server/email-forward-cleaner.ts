@@ -374,6 +374,13 @@ export class EmailForwardCleaner {
     // Get training data for this user
     const trainingData = await this.analyzeTrainingData(userId);
     
+    // 🔍 DETAILED LOGGING: Training data summary
+    console.log(`[EMAIL-CLEANER] === REPROCESS START ===`);
+    console.log(`[EMAIL-CLEANER] exactSelections toRemove: ${trainingData.exactSelections.toRemove.length}`);
+    console.log(`[EMAIL-CLEANER] exactSelections toPreserve: ${trainingData.exactSelections.toPreserve.length}`);
+    console.log(`[EMAIL-CLEANER] forceCleanForwarded input: ${forceCleanForwarded}`);
+    console.log(`[EMAIL-CLEANER] textBody length: ${textBody.length}, htmlBody length: ${htmlBody?.length || 0}`);
+    
     // Check if we should override forceCleanForwarded based on training data
     let shouldForceCleanForwarded = forceCleanForwarded;
     
@@ -441,6 +448,13 @@ export class EmailForwardCleaner {
         );
       }
     }
+    
+    // 🔍 DETAILED LOGGING: Final result summary
+    console.log(`[EMAIL-CLEANER] === REPROCESS END ===`);
+    console.log(`[EMAIL-CLEANER] shouldForceCleanForwarded final: ${shouldForceCleanForwarded}`);
+    console.log(`[EMAIL-CLEANER] result.originalBody length: ${result.originalBody?.length || 0}`);
+    console.log(`[EMAIL-CLEANER] result.originalHtmlBody length: ${result.originalHtmlBody?.length || 0}`);
+    console.log(`[EMAIL-CLEANER] original htmlBody length: ${htmlBody?.length || 0}`);
     
     return result;
   }
