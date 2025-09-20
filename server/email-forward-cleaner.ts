@@ -1342,6 +1342,16 @@ export class EmailForwardCleaner {
       if (textSplitValid || htmlSplitValid) {
         const totalRemainderLength = remainderTextLength + (remainderHtml?.length || 0);
         console.log(`[EMAIL-CLEANER] Reply split successful: ${newBodyLength} body, ${totalRemainderLength} remainder (text:${remainderTextLength}, html:${remainderHtml?.length || 0})`);
+        
+        // 🔍 DEBUG: Check if the "cleaned" bodyHtml still contains signatures BEFORE return
+        if (bodyHtml && bodyHtml.includes('Ivan Lo Torto')) {
+          console.log(`[EMAIL-CLEANER] ⚠️  WARNING: "Cleaned" bodyHtml still contains signature! Length: ${bodyHtml.length}`);
+          console.log(`[EMAIL-CLEANER] ⚠️  First 200 chars of "cleaned" content:`, bodyHtml.substring(0, 200));
+          console.log(`[EMAIL-CLEANER] ⚠️  Last 200 chars of "cleaned" content:`, bodyHtml.substring(bodyHtml.length - 200));
+        } else {
+          console.log(`[EMAIL-CLEANER] ✅ Signatures properly removed from bodyHtml`);
+        }
+        
         return {
           found: true,
           bodyText,

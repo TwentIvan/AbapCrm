@@ -1450,6 +1450,8 @@ export default function MessagesPage() {
                               willRenderHtml: !!renderedContent.bodyHtml,
                               _cacheBreaker: (renderedContent as any)._cacheBreaker
                             });
+                            console.log('[CONTENT-DEBUG] First 500 chars of CLEANED content:', renderedContent.bodyHtml?.substring(0, 500));
+                            console.log('[CONTENT-DEBUG] Last 500 chars of CLEANED content:', renderedContent.bodyHtml?.substring(-500));
                             return null;
                           })()}
                           {renderedContent.bodyHtml ? (
