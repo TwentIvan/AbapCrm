@@ -254,32 +254,53 @@ export class EmailForwardCleaner {
     let cleanedHtml = htmlContent;
     let totalRemoved = 0;
     
-    // 🛡️ PRESERVE: Mark content that should NOT be removed
+    // 🛡️ PRESERVE: Mark content that should NOT be removed (using direct search)
     const preserveMarkers: Array<{ marker: string; originalText: string; }> = [];
     
     for (const preserve of exactSelections.toPreserve) {
       const marker = `__PRESERVE_${Math.random().toString(36).substr(2, 9)}__`;
-      const normalizedSelection = this.normalizeTextForMatching(preserve.selectedText);
       
-      // Try to find and temporarily replace the content to preserve
-      const regex = this.createFlexibleHtmlRegex(normalizedSelection);
-      if (cleanedHtml.match(regex)) {
+      // Try direct text match first
+      if (cleanedHtml.includes(preserve.selectedText)) {
         preserveMarkers.push({ marker, originalText: preserve.selectedText });
-        cleanedHtml = cleanedHtml.replace(regex, marker);
+        cleanedHtml = cleanedHtml.replace(preserve.selectedText, marker);
         console.log(`[EMAIL-CLEANER] Preserved ${preserve.selectionType}: "${preserve.selectedText.substring(0, 50)}..."`);
       }
     }
     
-    // 🗑️ REMOVE: Apply exact removal selections 
+    // 🗑️ REMOVE: Apply exact removal selections with DIRECT string search (no regex)
     for (const removal of exactSelections.toRemove) {
       const originalLength = cleanedHtml.length;
-      const normalizedSelection = this.normalizeTextForMatching(removal.selectedText);
       
-      // Create flexible regex that matches the HTML despite formatting differences
-      const regex = this.createFlexibleHtmlRegex(normalizedSelection);
+      // Try multiple approaches to find and remove the text
+      let found = false;
       
-      if (cleanedHtml.match(regex)) {
-        cleanedHtml = cleanedHtml.replace(regex, '');
+      // Approach 1: Direct text match
+      if (cleanedHtml.includes(removal.selectedText)) {
+        cleanedHtml = cleanedHtml.replace(removal.selectedText, '');
+        found = true;
+      }
+      // Approach 2: Normalized text match (remove HTML tags and extra spaces)
+      else {
+        const normalizedSelection = this.normalizeTextForMatching(removal.selectedText);
+        const normalizedHtml = this.normalizeTextForMatching(cleanedHtml);
+        
+        if (normalizedHtml.includes(normalizedSelection) && normalizedSelection.length > 10) {
+          // Find approximate position in original HTML and remove a section around it
+          const pos = normalizedHtml.indexOf(normalizedSelection);
+          if (pos >= 0) {
+            // Find corresponding position in original HTML (rough estimate)
+            const startPos = Math.max(0, pos - 100);
+            const endPos = Math.min(cleanedHtml.length, pos + normalizedSelection.length + 100);
+            
+            // Remove the section (this is rough but safer than complex regex)
+            cleanedHtml = cleanedHtml.substring(0, startPos) + cleanedHtml.substring(endPos);
+            found = true;
+          }
+        }
+      }
+      
+      if (found) {
         const removedChars = originalLength - cleanedHtml.length;
         totalRemoved += removedChars;
         console.log(`[EMAIL-CLEANER] Removed ${removal.selectionType}: ${removedChars} chars - "${removal.selectedText.substring(0, 50)}..."`);
