@@ -194,6 +194,18 @@ export default function MessagesPage() {
   const { data: renderedContent } = useQuery<RenderedMessageContent>({
     queryKey: ["/api/messages", selectedMessage?.id, "rendered"],
     enabled: !!selectedMessage,
+    onSuccess: (data) => {
+      // 🔍 DEBUG: Log what we actually receive from backend
+      console.log(`[FRONTEND-DEBUG] Rendered content received for ${selectedMessage?.id}:`, {
+        bodyHtmlLength: data.bodyHtml?.length || 0,
+        bodyTextLength: data.bodyText?.length || 0,
+        remainderHtmlLength: data.remainderHtml?.length || 0,
+        remainderTextLength: data.remainderText?.length || 0,
+        isForwarded: data.isForwarded,
+        _lastProcessed: (data as any)._lastProcessed,
+        _cacheBreaker: (data as any)._cacheBreaker
+      });
+    }
   });
 
   const syncMutation = useMutation({
