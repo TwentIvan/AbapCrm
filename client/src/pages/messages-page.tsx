@@ -1262,8 +1262,9 @@ export default function MessagesPage() {
                         {/* Current selections panel */}
                         {selectedMessage && selections[selectedMessage.id] && (
                           (() => {
-                            const messageSelections = selections[selectedMessage.id];
-                            return (messageSelections.body.length > 0 || messageSelections.header.length > 0 || messageSelections.thread.length > 0 || messageSelections.signatureBody.length > 0 || messageSelections.signatureHeader.length > 0);
+                            // ✅ MODULAR: Check if array has any selections instead of checking old structure
+                            const messageSelections = selections[selectedMessage.id] || [];
+                            return messageSelections.length > 0;
                           })()
                         ) && (
                           <div className="mt-4 p-3 bg-background rounded-lg border" data-testid="panel-current-selections">
