@@ -77,6 +77,11 @@ export class EmailForwardCleaner {
     commonHeaders: string[];
     commonBodyPatterns: string[];
     threadMarkers: string[];
+    // 🔧 NEW: Exact user selections for precise removal
+    exactSelections: {
+      toRemove: { selectionType: string; selectedText: string; }[];
+      toPreserve: { selectionType: string; selectedText: string; }[];
+    };
   }> {
     try {
       // Get all training selections for this user
@@ -87,6 +92,10 @@ export class EmailForwardCleaner {
       const commonBodyPatterns = new Set<string>();
       const threadMarkers = new Set<string>();
       
+      // 🔧 NEW: Separate exact selections by remove/preserve intent
+      const exactToRemove: { selectionType: string; selectedText: string; }[] = [];
+      const exactToPreserve: { selectionType: string; selectedText: string; }[] = [];
+      
       // ✅ MODULAR: Group selections by type
       const selectionsByType = new Map<string, string[]>();
       for (const selection of trainingSelections) {
@@ -94,6 +103,15 @@ export class EmailForwardCleaner {
           selectionsByType.set(selection.selectionType, []);
         }
         selectionsByType.get(selection.selectionType)!.push(selection.selectedText);
+        
+        // 🔧 NEW: Categorize by removal intent
+        if (selection.selectionType === 'body' || selection.selectionType === 'signatureBody') {
+          // These should be PRESERVED (not removed)
+          exactToPreserve.push({ selectionType: selection.selectionType, selectedText: selection.selectedText });
+        } else {
+          // header, signatureHeader, thread, mailThread should be REMOVED
+          exactToRemove.push({ selectionType: selection.selectionType, selectedText: selection.selectedText });
+        }
       }
       
       // Process header selections
@@ -196,19 +214,115 @@ export class EmailForwardCleaner {
           }
         });
       
+      console.log(`[EMAIL-CLEANER] Training data analysis: ${exactToRemove.length} selections to remove, ${exactToPreserve.length} to preserve`);
+      
       return {
         commonHeaders: Array.from(commonHeaders),
         commonBodyPatterns: Array.from(commonBodyPatterns),
-        threadMarkers: Array.from(threadMarkers)
+        threadMarkers: Array.from(threadMarkers),
+        // 🔧 NEW: Return exact user selections for precise HTML removal
+        exactSelections: {
+          toRemove: exactToRemove,
+          toPreserve: exactToPreserve
+        }
       };
     } catch (error) {
       console.error('[EMAIL-CLEANER] Training data analysis failed:', error);
       return {
         commonHeaders: [],
         commonBodyPatterns: [],
-        threadMarkers: []
+        threadMarkers: [],
+        exactSelections: {
+          toRemove: [],
+          toPreserve: []
+        }
       };
     }
+  }
+
+  /**
+   * 🔧 NEW: Apply exact user selections to HTML for precise removal
+   * This is the core fix - removes exactly what the user selected instead of generic patterns
+   */
+  private static async applyExactSelectionsToHtml(
+    htmlContent: string,
+    exactSelections: {
+      toRemove: { selectionType: string; selectedText: string; }[];
+      toPreserve: { selectionType: string; selectedText: string; }[];
+    }
+  ): Promise<string> {
+    let cleanedHtml = htmlContent;
+    let totalRemoved = 0;
+    
+    // 🛡️ PRESERVE: Mark content that should NOT be removed
+    const preserveMarkers: Array<{ marker: string; originalText: string; }> = [];
+    
+    for (const preserve of exactSelections.toPreserve) {
+      const marker = `__PRESERVE_${Math.random().toString(36).substr(2, 9)}__`;
+      const normalizedSelection = this.normalizeTextForMatching(preserve.selectedText);
+      
+      // Try to find and temporarily replace the content to preserve
+      const regex = this.createFlexibleHtmlRegex(normalizedSelection);
+      if (cleanedHtml.match(regex)) {
+        preserveMarkers.push({ marker, originalText: preserve.selectedText });
+        cleanedHtml = cleanedHtml.replace(regex, marker);
+        console.log(`[EMAIL-CLEANER] Preserved ${preserve.selectionType}: "${preserve.selectedText.substring(0, 50)}..."`);
+      }
+    }
+    
+    // 🗑️ REMOVE: Apply exact removal selections 
+    for (const removal of exactSelections.toRemove) {
+      const originalLength = cleanedHtml.length;
+      const normalizedSelection = this.normalizeTextForMatching(removal.selectedText);
+      
+      // Create flexible regex that matches the HTML despite formatting differences
+      const regex = this.createFlexibleHtmlRegex(normalizedSelection);
+      
+      if (cleanedHtml.match(regex)) {
+        cleanedHtml = cleanedHtml.replace(regex, '');
+        const removedChars = originalLength - cleanedHtml.length;
+        totalRemoved += removedChars;
+        console.log(`[EMAIL-CLEANER] Removed ${removal.selectionType}: ${removedChars} chars - "${removal.selectedText.substring(0, 50)}..."`);
+      } else {
+        console.log(`[EMAIL-CLEANER] No match for ${removal.selectionType}: "${removal.selectedText.substring(0, 50)}..."`);
+      }
+    }
+    
+    // 🔄 RESTORE: Put back preserved content
+    for (const preserve of preserveMarkers) {
+      cleanedHtml = cleanedHtml.replace(preserve.marker, preserve.originalText);
+    }
+    
+    console.log(`[EMAIL-CLEANER] ✅ Exact selections applied: ${totalRemoved} chars removed total`);
+    return cleanedHtml;
+  }
+
+  /**
+   * Create flexible regex that matches HTML content despite formatting differences
+   */
+  private static createFlexibleHtmlRegex(normalizedText: string): RegExp {
+    // Escape special regex characters
+    const escaped = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
+    // Allow optional whitespace, tags, and entities between words
+    const flexible = escaped
+      .replace(/\s+/g, '\\s*(?:<[^>]*>)?\\s*') // Allow tags between words
+      .replace(/\\&/g, '(?:&[^;]+;)?&?') // Handle HTML entities
+      .replace(/\\\\/g, '\\\\?'); // Handle escaped backslashes
+    
+    return new RegExp(flexible, 'gi');
+  }
+
+  /**
+   * Normalize text for more flexible matching
+   */
+  private static normalizeTextForMatching(text: string): string {
+    return text
+      .replace(/&nbsp;/g, ' ')           // Convert &nbsp; to spaces
+      .replace(/&[a-zA-Z0-9]+;/g, ' ')   // Convert other HTML entities to spaces  
+      .replace(/<[^>]*>/g, ' ')          // Remove HTML tags
+      .replace(/\s+/g, ' ')              // Normalize whitespace
+      .trim();
   }
 
   /**
@@ -303,6 +417,15 @@ export class EmailForwardCleaner {
       customSignature,
       trainingData
     );
+    
+    // 🔧 NEW: Apply exact user selections to HTML for precise removal
+    if (htmlBody && trainingData.exactSelections.toRemove.length > 0) {
+      console.log(`[EMAIL-CLEANER] Applying ${trainingData.exactSelections.toRemove.length} exact selections for precise HTML cleaning`);
+      result.originalHtmlBody = await this.applyExactSelectionsToHtml(
+        result.originalHtmlBody || htmlBody,
+        trainingData.exactSelections
+      );
+    }
     
     // Apply advanced training-based improvements
     console.log(`[EMAIL-CLEANER] Training data check: commonBodyPatterns=${trainingData.commonBodyPatterns.length}, commonHeaders=${trainingData.commonHeaders.length}, threadMarkers=${trainingData.threadMarkers.length}`);
