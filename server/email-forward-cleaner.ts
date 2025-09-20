@@ -285,18 +285,31 @@ export class EmailForwardCleaner {
         const normalizedSelection = this.normalizeTextForMatching(removal.selectedText);
         const normalizedHtml = this.normalizeTextForMatching(cleanedHtml);
         
+        // 🔍 DETAILED LOGGING: Analyze normalization
+        console.log(`[EMAIL-CLEANER] 🔍 NORM-DEBUG for ${removal.selectionType}:`);
+        console.log(`[EMAIL-CLEANER] 🔍 Original selection: "${removal.selectedText.substring(0, 100)}..."`);
+        console.log(`[EMAIL-CLEANER] 🔍 Normalized selection: "${normalizedSelection.substring(0, 100)}..."`);
+        console.log(`[EMAIL-CLEANER] 🔍 Normalized selection length: ${normalizedSelection.length}`);
+        console.log(`[EMAIL-CLEANER] 🔍 HTML includes check: ${normalizedHtml.includes(normalizedSelection)}`);
+        
         if (normalizedHtml.includes(normalizedSelection) && normalizedSelection.length > 10) {
           // Find approximate position in original HTML and remove a section around it
           const pos = normalizedHtml.indexOf(normalizedSelection);
+          console.log(`[EMAIL-CLEANER] 🔍 Match found at position: ${pos}`);
+          
           if (pos >= 0) {
             // Find corresponding position in original HTML (rough estimate)
             const startPos = Math.max(0, pos - 100);
             const endPos = Math.min(cleanedHtml.length, pos + normalizedSelection.length + 100);
             
+            console.log(`[EMAIL-CLEANER] 🔍 Removing HTML section: ${startPos}-${endPos} (length: ${endPos - startPos})`);
+            
             // Remove the section (this is rough but safer than complex regex)
             cleanedHtml = cleanedHtml.substring(0, startPos) + cleanedHtml.substring(endPos);
             found = true;
           }
+        } else {
+          console.log(`[EMAIL-CLEANER] 🔍 Normalized match failed: includes=${normalizedHtml.includes(normalizedSelection)}, length=${normalizedSelection.length}`);
         }
       }
       
