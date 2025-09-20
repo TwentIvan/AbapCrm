@@ -907,9 +907,31 @@ export class EmailForwardCleaner {
       
       if (replySplit.found) {
         console.log(`[EMAIL-CLEANER] REPLY remainder: ${replySplit.remainderHtml?.length || replySplit.remainderText?.length || 0} chars`);
+        
+        // 🔧 BUGFIX: Remove signatures from the "cleaned" bodyHtml part!
+        let cleanedBodyHtml = replySplit.bodyHtml;
+        if (cleanedBodyHtml && cleanedBodyHtml.includes('Ivan Lo Torto')) {
+          console.log(`[EMAIL-CLEANER] ⚠️  BUG DETECTED: "Cleaned" bodyHtml still contains signature! Length: ${cleanedBodyHtml.length}`);
+          
+          // Apply signature removal patterns to the supposedly "clean" part
+          cleanedBodyHtml = cleanedBodyHtml
+            // Remove signature blocks
+            .replace(/<div[^>]*id="Signature"[^>]*>[\s\S]*?<\/div>/gi, '')
+            // Remove Ivan Lo Torto signatures specifically  
+            .replace(/Ivan Lo Torto[\s\S]*?(?=<\/p>|<p|$)/gi, '')
+            // Remove technical analyst signatures
+            .replace(/Technical analyst[\s\S]*?(?=<\/p>|<p|$)/gi, '')
+            // Clean up empty divs and paragraphs
+            .replace(/<div[^>]*>\s*<\/div>/gi, '')
+            .replace(/<p[^>]*>\s*<\/p>/gi, '')
+            .trim();
+            
+          console.log(`[EMAIL-CLEANER] ✅ Signatures removed from bodyHtml: ${replySplit.bodyHtml?.length} -> ${cleanedBodyHtml.length} chars`);
+        }
+        
         return {
           bodyText: replySplit.bodyText,
-          bodyHtml: replySplit.bodyHtml,
+          bodyHtml: cleanedBodyHtml,
           remainderText: replySplit.remainderText,
           remainderHtml: replySplit.remainderHtml,
           headerSummary: null,
