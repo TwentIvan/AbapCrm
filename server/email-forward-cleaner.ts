@@ -16,6 +16,59 @@ interface ForwardedEmailData {
 }
 
 export class EmailForwardCleaner {
+  /**
+   * Central mapping from training label tokens to concrete regex patterns
+   * This ensures consistency between pre-filter gate and cleaning functions
+   */
+  private static readonly TRAINING_PATTERN_MAP = {
+    threadMarkers: {
+      'reply-marker': /wrote:/i,
+      'forward-marker': /Original Message/i,
+      'italian-forward-marker': /Inoltrato da:/i,
+      'separator-marker': /^[-\s]{3,}$/m,
+      'email-header-block': /Da:\s+.*\n.*Oggetto:/i
+    },
+    commonHeaders: {
+      'italian-email-header-block': /Da:\s+[^\n]+\nInviato:\s+[^\n]+\nA:\s+[^\n]+\nOggetto:\s+[^\n]+/gi,
+      'lutech-internal-header': /Da:\s+[^@]+@lutech\.it[^\n]*/gi,
+      'css-inline-paragraph': /P\s*\{\s*margin-top:\s*0\s*;\s*margin-bottom:\s*0\s*;\s*\}/gi,
+      'lutech-signature-duplicate': /Lutech S\.p\.A\./gi,
+      'duplicate-signature-ivan': /Ivan Lotorto[^\n]*/gi
+    }
+  } as const;
+
+  /**
+   * Check if training patterns match email content using concrete regex
+   */
+  private static checkTrainingPatternsMatch(
+    emailContent: string, 
+    trainingData: { commonHeaders: string[], commonBodyPatterns: string[], threadMarkers: string[] }
+  ): boolean {
+    // Check thread markers with concrete regex
+    for (const marker of trainingData.threadMarkers) {
+      const regex = this.TRAINING_PATTERN_MAP.threadMarkers[marker as keyof typeof this.TRAINING_PATTERN_MAP.threadMarkers];
+      if (regex && regex.test(emailContent)) {
+        return true;
+      }
+    }
+    
+    // Check common headers with concrete regex  
+    for (const header of trainingData.commonHeaders) {
+      const regex = this.TRAINING_PATTERN_MAP.commonHeaders[header as keyof typeof this.TRAINING_PATTERN_MAP.commonHeaders];
+      if (regex && regex.test(emailContent)) {
+        return true;
+      }
+    }
+    
+    // Check body patterns (these are actual content, not tokens)
+    for (const pattern of trainingData.commonBodyPatterns) {
+      if (pattern.length > 10 && emailContent.toLowerCase().includes(pattern.toLowerCase().substring(0, 50))) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
 
   /**
    * Analyzes user training data to improve pattern recognition
@@ -184,13 +237,18 @@ export class EmailForwardCleaner {
             break;
           case 'lutech-signature-duplicate':
           case 'duplicate-signature-ivan':
-            // Remove duplicate Lutech signatures (keep only first occurrence)
-            const lutechSigPattern = /WWW\.LUTECH\.GROUP[\s\S]*?Lutech SpA[\s\S]*?REA-MI\s+1666842/gi;
-            const matches = enhancedHtml.match(lutechSigPattern);
-            if (matches && matches.length > 1) {
-              // Keep first, remove others
-              for (let i = 1; i < matches.length; i++) {
-                enhancedHtml = enhancedHtml.replace(matches[i], '');
+            // ✅ UNIFIED SIGNATURE REMOVAL: Use same mapping as text function
+            const regex = this.TRAINING_PATTERN_MAP.commonHeaders[headerPattern as keyof typeof this.TRAINING_PATTERN_MAP.commonHeaders];
+            if (regex) {
+              const matches = enhancedHtml.match(regex);
+              if (matches && matches.length > 1) {
+                console.log(`[EMAIL-CLEANER] HTML: Removing duplicate signature patterns: ${matches.length - 1} duplicates`);
+                // Keep first occurrence, remove others - same logic as text function
+                let count = 0;
+                enhancedHtml = enhancedHtml.replace(regex, (match) => {
+                  count++;
+                  return count === 1 ? match : '';
+                });
               }
             }
             break;
@@ -227,12 +285,8 @@ export class EmailForwardCleaner {
          trainingData.commonHeaders.length > 0 || 
          trainingData.commonBodyPatterns.length > 0)) {
       
-      // Check if any training patterns match this email
-      const hasTrainingPatterns = (
-        trainingData.threadMarkers.some(marker => textBody.includes(marker)) ||
-        trainingData.commonHeaders.some(header => textBody.includes(header)) ||
-        trainingData.commonBodyPatterns.some(pattern => textBody.includes(pattern))
-      );
+      // Check if any training patterns match this email using concrete regex
+      const hasTrainingPatterns = this.checkTrainingPatternsMatch(textBody, trainingData);
       
       if (hasTrainingPatterns) {
         shouldForceCleanForwarded = true;
@@ -246,7 +300,8 @@ export class EmailForwardCleaner {
       textBody, 
       htmlBody, 
       shouldForceCleanForwarded, 
-      customSignature
+      customSignature,
+      trainingData
     );
     
     // Apply advanced training-based improvements
@@ -633,7 +688,8 @@ export class EmailForwardCleaner {
     textBody: string, 
     htmlBody: string | null,
     forceCleanForwarded?: boolean,  // From database isForwarder flag
-    customSignature?: string | null // From database customSignature field
+    customSignature?: string | null, // From database customSignature field
+    trainingData?: { commonHeaders: string[], commonBodyPatterns: string[], threadMarkers: string[] } // User training patterns
   ): ForwardedEmailData {
     const result: ForwardedEmailData = {
       originalSubject: subject,
@@ -652,8 +708,8 @@ export class EmailForwardCleaner {
     // Rileva se è un inoltro dal subject
     const isSubjectForwarded = this.isForwardedSubject(subject);
     
-    // Rileva se è un inoltro dal body
-    const isBodyForwarded = this.isForwardedBody(textBody);
+    // Rileva se è un inoltro dal body (enhanced with training data if available)
+    const isBodyForwarded = this.isForwardedBody(textBody, trainingData);
 
     // Usa il flag dal database se fornito, altrimenti usa la detection automatica
     const shouldCleanForwarded = forceCleanForwarded || isSubjectForwarded || isBodyForwarded;
@@ -1286,7 +1342,10 @@ export class EmailForwardCleaner {
     return subjectForwarded || textHasMarkers || htmlHasMarkers;
   }
 
-  private static isForwardedBody(body: string): boolean {
+  private static isForwardedBody(
+    body: string, 
+    trainingData?: { commonHeaders: string[], commonBodyPatterns: string[], threadMarkers: string[] }
+  ): boolean {
     if (!body) return false;
 
     // Pre-filter: NON trattare come forwarded email brevi (< 800 chars) 
@@ -1338,7 +1397,23 @@ export class EmailForwardCleaner {
       /_{5,}.*Forwarded.*_{5,}/i
     ];
 
-    return forwardPatterns.some(pattern => pattern.test(body));
+    // Check standard forward patterns
+    const hasStandardPatterns = forwardPatterns.some(pattern => pattern.test(body));
+    
+    // ✅ TRAINING INTEGRATION: Check learned thread markers from user training
+    let hasTrainingPatterns = false;
+    if (trainingData && trainingData.threadMarkers.length > 0) {
+      for (const marker of trainingData.threadMarkers) {
+        const regex = this.TRAINING_PATTERN_MAP.threadMarkers[marker as keyof typeof this.TRAINING_PATTERN_MAP.threadMarkers];
+        if (regex && regex.test(body)) {
+          console.log(`[EMAIL-CLEANER] Training-enhanced forward detection: found '${marker}' pattern`);
+          hasTrainingPatterns = true;
+          break;
+        }
+      }
+    }
+    
+    return hasStandardPatterns || hasTrainingPatterns;
   }
 
   private static cleanForwardedSubject(subject: string): string {
