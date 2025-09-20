@@ -2035,6 +2035,84 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // ✅ LIGHT DELETION: Re-process email with improved training algorithm
+  app.post("/api/messages/:id/reprocess", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const messageId = req.params.id;
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+
+      // Get the original message
+      const message = await storage.getMessage(messageId, userId);
+      if (!message) return res.sendStatus(404);
+
+      // Store original content for comparison
+      const originalSubject = message.subject || '';
+      const originalBody = message.body || '';
+      const originalHtmlBody = message.htmlBody;
+
+      // Re-apply cleaning algorithm with current training data
+      const cleanedResult = await EmailForwardCleaner.cleanForwardedEmailWithTraining(
+        originalSubject,
+        originalBody,
+        originalHtmlBody,
+        userId,
+        true, // forceCleanForwarded - ensure we re-process it
+        null   // no custom signature for now
+      );
+
+      // Check if content actually changed
+      const subjectChanged = cleanedResult.originalSubject !== originalSubject;
+      const bodyChanged = cleanedResult.originalBody !== originalBody;
+      const htmlChanged = cleanedResult.originalHtmlBody !== originalHtmlBody;
+      const hasChanges = subjectChanged || bodyChanged || htmlChanged;
+
+      if (hasChanges) {
+        // Update the message with cleaned content (originalX contains the CLEANED content)
+        await storage.updateMessage(messageId, {
+          subject: cleanedResult.originalSubject,
+          body: cleanedResult.originalBody,
+          htmlBody: cleanedResult.originalHtmlBody,
+          status: 'processed' // Mark as re-processed
+        }, userId);
+      }
+
+      // Get the updated message to return
+      const updatedMessage = await storage.getMessage(messageId, userId);
+
+      console.log('[EMAIL-REPROCESS] Email re-processed with training data:', {
+        messageId,
+        userId,
+        organizationId,
+        originalLength: originalBody.length,
+        newLength: cleanedResult.originalBody.length,
+        hasChanges,
+        subjectChanged,
+        bodyChanged,
+        htmlChanged
+      });
+
+      res.json({
+        success: true,
+        changed: hasChanges,
+        message: hasChanges 
+          ? "Email re-processata con successo con i dati di training aggiornati"
+          : "Email già ottimizzata - nessuna modifica necessaria",
+        updatedMessage,
+        changes: {
+          subject: subjectChanged,
+          body: bodyChanged,
+          html: htmlChanged
+        }
+      });
+
+    } catch (error) {
+      console.error('Email reprocess error:', error);
+      res.status(500).json({ error: 'Errore durante il re-processing della email' });
+    }
+  });
+
   // Message Links
   app.get("/api/messages/linked/:tableName/:recordId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
