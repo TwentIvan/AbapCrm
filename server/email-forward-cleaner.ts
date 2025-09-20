@@ -33,7 +33,7 @@ export class EmailForwardCleaner {
       'lutech-internal-header': /Da:\s+[^@]+@lutech\.it[^\n]*/gi,
       'css-inline-paragraph': /P\s*\{\s*margin-top:\s*0\s*;\s*margin-bottom:\s*0\s*;\s*\}/gi,
       'lutech-signature-duplicate': /Lutech S\.p\.A\./gi,
-      'duplicate-signature-ivan': /Ivan Lotorto[^\n]*/gi
+      'duplicate-signature-ivan': /Ivan\s+(Lo\s*)?Torto[^\n]*/gi
     }
   } as const;
 
