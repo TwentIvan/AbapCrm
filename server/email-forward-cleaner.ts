@@ -298,19 +298,18 @@ export class EmailForwardCleaner {
   }
 
   /**
-   * Create flexible regex that matches HTML content despite formatting differences
+   * 🔧 SIMPLIFIED: Create simple search patterns to avoid regex complexity
    */
   private static createFlexibleHtmlRegex(normalizedText: string): RegExp {
-    // Escape special regex characters
-    const escaped = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // For short selections, use exact matching
+    if (normalizedText.length < 100) {
+      const escaped = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(escaped, 'gi');
+    }
     
-    // Allow optional whitespace, tags, and entities between words
-    const flexible = escaped
-      .replace(/\s+/g, '\\s*(?:<[^>]*>)?\\s*') // Allow tags between words
-      .replace(/\\&/g, '(?:&[^;]+;)?&?') // Handle HTML entities
-      .replace(/\\\\/g, '\\\\?'); // Handle escaped backslashes
-    
-    return new RegExp(flexible, 'gi');
+    // For longer selections, use the first 50 chars as a simpler pattern
+    const shortPattern = normalizedText.substring(0, 50).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(shortPattern, 'gi');
   }
 
   /**
