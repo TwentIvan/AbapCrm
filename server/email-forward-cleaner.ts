@@ -319,6 +319,61 @@ export class EmailForwardCleaner {
         }
       }
       
+      // ✅ TRAINING PATTERNS: Apply commonBodyPatterns for content removal/modification
+      for (const bodyPattern of trainingData.commonBodyPatterns) {
+        if (bodyPattern.startsWith('signature-body:')) {
+          // This is a signature body pattern (content to preserve) - extract the actual pattern
+          const signatureContent = bodyPattern.substring('signature-body:'.length);
+          
+          // For signature body, ensure it appears only once (remove duplicates)
+          try {
+            // Escape special regex characters
+            const escapedPattern = signatureContent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escapedPattern, 'gi');
+            const matches = enhancedBody.match(regex);
+            if (matches && matches.length > 1) {
+              console.log(`[EMAIL-CLEANER] Removing duplicate signature body patterns: ${matches.length - 1} duplicates`);
+              // Keep first occurrence, remove others
+              let count = 0;
+              enhancedBody = enhancedBody.replace(regex, (match) => {
+                count++;
+                return count === 1 ? match : '';
+              });
+            }
+          } catch (e) {
+            console.log(`[EMAIL-CLEANER] Regex error for signature pattern, using simple replace`);
+            // Fallback to simple string operations
+            const parts = enhancedBody.split(signatureContent);
+            if (parts.length > 2) {
+              enhancedBody = parts[0] + signatureContent + parts.slice(1).join('');
+            }
+          }
+        } else {
+          // This is a regular body pattern - use for similarity matching and gentle cleaning
+          if (bodyPattern.length > 20) {
+            // Check if this body pattern appears in current content
+            if (enhancedBody.toLowerCase().includes(bodyPattern.toLowerCase().substring(0, 50))) {
+              console.log(`[EMAIL-CLEANER] Found learned body pattern, applying contextual cleaning`);
+              
+              // For body patterns, apply gentle cleaning:
+              // 1. Remove excess whitespace around the pattern
+              // 2. Remove duplicate occurrences  
+              // 3. Clean formatting artifacts
+              const cleanPattern = bodyPattern.substring(0, 100).trim();
+              if (cleanPattern.length > 10) {
+                // Remove multiple consecutive occurrences of similar content
+                const words = cleanPattern.split(/\s+/).slice(0, 5);
+                if (words.length >= 3) {
+                  const keyPhrase = words.join('\\s+');
+                  const duplicatePattern = new RegExp(`(${keyPhrase}[^\\n]*\\n?)\\s*\\1+`, 'gi');
+                  enhancedBody = enhancedBody.replace(duplicatePattern, '$1');
+                }
+              }
+            }
+          }
+        }
+      }
+      
       // ✅ MODULAR: Group training selections by type for advanced pattern application
       const selectionsByType = new Map<string, string[]>();
       for (const selection of trainingSelections) {
