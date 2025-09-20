@@ -1403,6 +1403,16 @@ export default function MessagesPage() {
                 {/* Message Body - occupa tutto lo spazio rimanente */}
                 <div className="border-t">
                   <div className="h-[48rem] p-6 overflow-y-auto space-y-4">
+                    {/* 🔍 DEBUG: Log rendering decision */}
+                    {(() => {
+                      console.log(`[RENDER-DEBUG] Rendering decision:`, {
+                        isTrainingMode,
+                        hasRenderedContent: !!renderedContent,
+                        renderedContentBodyHtmlLength: renderedContent?.bodyHtml?.length || 0,
+                        selectedMessageHtmlBodyLength: selectedMessage?.htmlBody?.length || 0
+                      });
+                      return null;
+                    })()}
                     {isTrainingMode ? (
                       <div className="space-y-4">
                         <div className="text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded p-3 mb-4">
@@ -1432,6 +1442,16 @@ export default function MessagesPage() {
                     ) : (
                       renderedContent ? (
                         <>
+                          {/* 🔍 DEBUG: Log what we're about to render */}
+                          {(() => {
+                            console.log(`[RENDER-DEBUG] About to render CLEANED content:`, {
+                              bodyHtmlLength: renderedContent.bodyHtml?.length || 0,
+                              bodyTextLength: renderedContent.bodyText?.length || 0,
+                              willRenderHtml: !!renderedContent.bodyHtml,
+                              _cacheBreaker: (renderedContent as any)._cacheBreaker
+                            });
+                            return null;
+                          })()}
                           {renderedContent.bodyHtml ? (
                             <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderedContent.bodyHtml }} data-testid="email-content-main" />
                           ) : (
