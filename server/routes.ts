@@ -2566,18 +2566,46 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   // Email Training Selections Management
   app.post("/api/email-training-selections", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    try {
-      const validatedData = insertEmailTrainingSelectionSchema.parse({
-        ...req.body,
-        userId: req.user!.id
+      console.log('[TRAINING-SAVE] POST received:', {
+        authenticated: !!req.user,
+        userId: req.user?.id || 'none',
+        bodyKeys: Object.keys(req.body || {}),
+        timestamp: new Date().toISOString()
       });
       
-      const savedSelection = await storage.createEmailTrainingSelection(validatedData);
-      res.json(savedSelection);
-    } catch (error) {
-      console.error("Create email training selection error:", error);
-      res.status(500).json({ error: "Failed to save email training selection" });
+      if (!req.isAuthenticated()) {
+        console.log('[TRAINING-SAVE] REJECTED: Not authenticated');
+        return res.sendStatus(401);
+      }
+    
+      try {
+        console.log('[TRAINING-SAVE] Validating payload:', req.body);
+        const validatedData = insertEmailTrainingSelectionSchema.parse({
+          ...req.body,
+          userId: req.user!.id
+        });
+        
+        console.log('[TRAINING-SAVE] Payload validated. Attempting database save...');
+        const savedSelection = await storage.createEmailTrainingSelection(validatedData);
+        
+        console.log('[TRAINING-SAVE] SUCCESS - Selection saved:', {
+          id: savedSelection.id,
+          messageId: savedSelection.messageId,
+          selectionType: savedSelection.selectionType
+        });
+        
+        res.json(savedSelection);
+      } catch (error) {
+        console.error("[TRAINING-SAVE] CRITICAL FAILURE:", {
+          error: error instanceof Error ? error.message : error,
+          stack: error instanceof Error ? error.stack : undefined,
+          code: (error as any)?.code,
+          detail: (error as any)?.detail,
+          constraint: (error as any)?.constraint,
+          userId: req.user?.id,
+          body: req.body
+        });
+        res.status(500).json({ error: "Failed to save email training selection" });
     }
   });
 
