@@ -305,13 +305,16 @@ export class EmailForwardCleaner {
     );
     
     // Apply advanced training-based improvements
+    console.log(`[EMAIL-CLEANER] Training data check: commonBodyPatterns=${trainingData.commonBodyPatterns.length}, commonHeaders=${trainingData.commonHeaders.length}, threadMarkers=${trainingData.threadMarkers.length}`);
     if (trainingData.commonBodyPatterns.length > 0 || trainingData.commonHeaders.length > 0 || trainingData.threadMarkers.length > 0) {
+      console.log(`[EMAIL-CLEANER] Applying advanced training patterns to text content...`);
       result.originalBody = await this.applyAdvancedTrainingPatternsText(
         result.originalBody, 
         textBody,
         userId,
         trainingData
       );
+      console.log(`[EMAIL-CLEANER] Advanced training patterns applied to text content`);
       
       // Also apply to HTML body
       if (result.originalHtmlBody) {
