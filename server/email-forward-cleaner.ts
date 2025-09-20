@@ -1417,6 +1417,14 @@ export class EmailForwardCleaner {
         const headerCount = lines.filter(line => headerRegex.test(line)).length;
         
         if (headerCount < 3) {
+          // ✅ FINAL CHECK: Always verify training data before skipping
+          if (trainingData && (trainingData.threadMarkers.length > 0 || trainingData.commonHeaders.length > 0 || trainingData.commonBodyPatterns.length > 0)) {
+            const hasTrainingPatterns = this.checkTrainingPatternsMatch(body, trainingData);
+            if (hasTrainingPatterns) {
+              console.log(`[EMAIL-CLEANER] Pre-filter final override: found training patterns despite low header count (${body.length} chars, ${headerCount} headers) - processing anyway`);
+              return true; // Force processing based on training data
+            }
+          }
           console.log(`[EMAIL-CLEANER] Pre-filter: skipping short email (${body.length} chars, ${headerCount} headers) - no explicit markers and no training patterns`);
           return false;
         }
