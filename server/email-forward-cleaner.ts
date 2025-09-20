@@ -34,10 +34,18 @@ export class EmailForwardCleaner {
       const commonBodyPatterns = new Set<string>();
       const threadMarkers = new Set<string>();
       
+      // ✅ MODULAR: Group selections by type
+      const selectionsByType = new Map<string, string[]>();
       for (const selection of trainingSelections) {
-        // Analyze header selections to identify common patterns
-        const headerSelections = Array.isArray(selection?.headerSelections) ? selection.headerSelections : [];
-        headerSelections.forEach((header: string) => {
+        if (!selectionsByType.has(selection.selectionType)) {
+          selectionsByType.set(selection.selectionType, []);
+        }
+        selectionsByType.get(selection.selectionType)!.push(selection.selectedText);
+      }
+      
+      // Process header selections
+      const headerSelections = selectionsByType.get('header') || [];
+      headerSelections.forEach((header: string) => {
           // Training data showed specific forward/reply patterns
           if (header.includes('Da:') && header.includes('Inviato:') && header.includes('Oggetto:')) {
             commonHeaders.add('italian-email-header-block');
@@ -61,8 +69,8 @@ export class EmailForwardCleaner {
           }
         });
         
-        // Analyze body selections to identify patterns to keep
-        const bodySelections = Array.isArray(selection?.bodySelections) ? selection.bodySelections : [];
+        // Process body selections
+        const bodySelections = selectionsByType.get('body') || [];
         bodySelections.forEach((body: string) => {
           if (body.length > 50) {
             // Extract meaningful patterns from body selections
@@ -70,8 +78,8 @@ export class EmailForwardCleaner {
           }
         });
         
-        // Analyze signature body selections (content to preserve)
-        const signatureBodySelections = Array.isArray(selection?.signatureBodySelections) ? selection.signatureBodySelections : [];
+        // Process signature body selections (content to preserve)
+        const signatureBodySelections = selectionsByType.get('signatureBody') || [];
         signatureBodySelections.forEach((signature: string) => {
           if (signature.length > 20) {
             // Extract signature patterns from body selections
@@ -79,8 +87,8 @@ export class EmailForwardCleaner {
           }
         });
         
-        // Analyze signature header selections (content to eliminate)
-        const signatureHeaderSelections = Array.isArray(selection?.signatureHeaderSelections) ? selection.signatureHeaderSelections : [];
+        // Process signature header selections (content to eliminate)
+        const signatureHeaderSelections = selectionsByType.get('signatureHeader') || [];
         signatureHeaderSelections.forEach((sigHeader: string) => {
           // Training data showed common CSS patterns to eliminate
           if (sigHeader.includes('P {margin-top:0;margin-bottom:0;}')) {
@@ -110,33 +118,30 @@ export class EmailForwardCleaner {
           }
         });
         
-        // Analyze thread selections for common thread markers
-        if (Array.isArray(selection.threadSelections)) {
-          (selection.threadSelections as any[]).forEach((thread: any) => {
-            if (thread.text && thread.text.includes('wrote:')) {
-              threadMarkers.add('reply-marker');
-            }
-            if (thread.text && thread.text.includes('Original Message')) {
-              threadMarkers.add('forward-marker');
-            }
-          });
-        }
+        // Process thread selections
+        const threadSelections = selectionsByType.get('thread') || [];
+        threadSelections.forEach((threadText: string) => {
+          if (threadText.includes('wrote:')) {
+            threadMarkers.add('reply-marker');
+          }
+          if (threadText.includes('Original Message')) {
+            threadMarkers.add('forward-marker');
+          }
+        });
         
-        // Analyze mail thread selections for specific thread patterns
-        if (Array.isArray(selection.mailThreadSelections)) {
-          (selection.mailThreadSelections as any[]).forEach((mailThread: any) => {
-            if (mailThread.text && mailThread.text.includes('Inoltrato da:')) {
-              threadMarkers.add('italian-forward-marker');
-            }
-            if (mailThread.text && mailThread.text.includes('-----')) {
-              threadMarkers.add('separator-marker');
-            }
-            if (mailThread.text && mailThread.text.includes('Da:') && mailThread.text.includes('Oggetto:')) {
-              threadMarkers.add('email-header-block');
-            }
-          });
-        }
-      }
+        // Process mail thread selections
+        const mailThreadSelections = selectionsByType.get('mailThread') || [];
+        mailThreadSelections.forEach((mailThreadText: string) => {
+          if (mailThreadText.includes('Inoltrato da:')) {
+            threadMarkers.add('italian-forward-marker');
+          }
+          if (mailThreadText.includes('-----')) {
+            threadMarkers.add('separator-marker');
+          }
+          if (mailThreadText.includes('Da:') && mailThreadText.includes('Oggetto:')) {
+            threadMarkers.add('email-header-block');
+          }
+        });
       
       return {
         commonHeaders: Array.from(commonHeaders),
@@ -292,93 +297,85 @@ export class EmailForwardCleaner {
         }
       }
       
-      // 1. Apply header elimination patterns based on headerSelections (existing logic)
+      // ✅ MODULAR: Group training selections by type for advanced pattern application
+      const selectionsByType = new Map<string, string[]>();
       for (const selection of trainingSelections) {
-        const headerSelections = Array.isArray(selection?.headerSelections) ? selection.headerSelections : [];
-        for (const headerPattern of headerSelections) {
-          if (headerPattern && headerPattern.length > 10) {
-            // Extract key phrases from header patterns (From:, Date:, Subject:)
-            const lines = headerPattern.split('\n');
-            for (const line of lines) {
-              const trimmedLine = line.trim();
-              if (trimmedLine.length > 5) {
-                // Try to find similar patterns in current email
-                const similarity = this.calculateSimilarity(enhancedBody, trimmedLine);
-                if (similarity > 0.6) {
-                  // Remove similar header patterns
-                  enhancedBody = this.removePattern(enhancedBody, trimmedLine, 0.6);
-                }
+        if (!selectionsByType.has(selection.selectionType)) {
+          selectionsByType.set(selection.selectionType, []);
+        }
+        selectionsByType.get(selection.selectionType)!.push(selection.selectedText);
+      }
+      
+      // 1. Apply header elimination patterns
+      const headerSelections = selectionsByType.get('header') || [];
+      for (const headerPattern of headerSelections) {
+        if (headerPattern && headerPattern.length > 10) {
+          // Extract key phrases from header patterns (From:, Date:, Subject:)
+          const lines = headerPattern.split('\n');
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (trimmedLine.length > 5) {
+              // Try to find similar patterns in current email
+              const similarity = this.calculateSimilarity(enhancedBody, trimmedLine);
+              if (similarity > 0.6) {
+                // Remove similar header patterns
+                enhancedBody = this.removePattern(enhancedBody, trimmedLine, 0.6);
               }
             }
           }
         }
       }
       
-      // 2. Apply signature header elimination based on signatureHeaderSelections
-      for (const selection of trainingSelections) {
-        const signatureHeaderSelections = Array.isArray(selection?.signatureHeaderSelections) ? selection.signatureHeaderSelections : [];
-        for (const signaturePattern of signatureHeaderSelections) {
-          if (signaturePattern && signaturePattern.length > 5) {
-            // Remove signature closings, contact info, legal text
-            const similarity = this.calculateSimilarity(enhancedBody, signaturePattern);
-            if (similarity > 0.5) {
-              enhancedBody = this.removePattern(enhancedBody, signaturePattern, 0.5);
-            }
+      // 2. Apply signature header elimination
+      const signatureHeaderSelections = selectionsByType.get('signatureHeader') || [];
+      for (const signaturePattern of signatureHeaderSelections) {
+        if (signaturePattern && signaturePattern.length > 5) {
+          // Remove signature closings, contact info, legal text
+          const similarity = this.calculateSimilarity(enhancedBody, signaturePattern);
+          if (similarity > 0.5) {
+            enhancedBody = this.removePattern(enhancedBody, signaturePattern, 0.5);
           }
         }
       }
       
-      // 3. Apply thread/forward marker removal based on threadSelections and mailThreadSelections
-      for (const selection of trainingSelections) {
-        // Process threadSelections
-        if (Array.isArray(selection.threadSelections)) {
-          for (const threadObj of selection.threadSelections) {
-            if (threadObj && typeof threadObj === 'object' && threadObj.text) {
-              const threadText = threadObj.text.trim();
-              if (threadText.length > 5) {
-                const similarity = this.calculateSimilarity(enhancedBody, threadText);
-                if (similarity > 0.7) {
-                  enhancedBody = this.removePattern(enhancedBody, threadText, 0.7);
-                }
-              }
-            }
-          }
-        }
-        
-        // Process mailThreadSelections
-        if (Array.isArray(selection.mailThreadSelections)) {
-          for (const mailThreadObj of selection.mailThreadSelections) {
-            if (mailThreadObj && typeof mailThreadObj === 'object' && mailThreadObj.text) {
-              const mailThreadText = mailThreadObj.text.trim();
-              if (mailThreadText.length > 5) {
-                const similarity = this.calculateSimilarity(enhancedBody, mailThreadText);
-                if (similarity > 0.7) {
-                  enhancedBody = this.removePattern(enhancedBody, mailThreadText, 0.7);
-                }
-              }
-            }
+      // 3. Apply thread/forward marker removal
+      const threadSelections = selectionsByType.get('thread') || [];
+      for (const threadText of threadSelections) {
+        if (threadText && threadText.length > 5) {
+          const similarity = this.calculateSimilarity(enhancedBody, threadText);
+          if (similarity > 0.7) {
+            enhancedBody = this.removePattern(enhancedBody, threadText, 0.7);
           }
         }
       }
       
-      // 4. Preserve important content based on bodySelections and signatureBodySelections
+      // Process mailThread selections
+      const mailThreadSelections = selectionsByType.get('mailThread') || [];
+      for (const mailThreadText of mailThreadSelections) {
+        if (mailThreadText && mailThreadText.length > 5) {
+          const similarity = this.calculateSimilarity(enhancedBody, mailThreadText);
+          if (similarity > 0.7) {
+            enhancedBody = this.removePattern(enhancedBody, mailThreadText, 0.7);
+          }
+        }
+      }
+      
+      // 4. Preserve important content based on body and signature body selections
       // (This ensures we don't accidentally remove content the user wants to keep)
-      for (const selection of trainingSelections) {
-        const bodySelections = Array.isArray(selection?.bodySelections) ? selection.bodySelections : [];
-        const signatureBodySelections = Array.isArray(selection?.signatureBodySelections) ? selection.signatureBodySelections : [];
-        
-        const importantContent = [...bodySelections, ...signatureBodySelections];
-        for (const importantPattern of importantContent) {
-          if (importantPattern && importantPattern.length > 10) {
-            // If we accidentally removed important content, try to preserve it
-            if (!enhancedBody.includes(importantPattern.substring(0, 50))) {
-              const originalIncludesPattern = originalBody.includes(importantPattern.substring(0, 50));
-              if (originalIncludesPattern) {
-                // Find the important content in original and preserve it
-                const importantSection = this.extractImportantSection(originalBody, importantPattern);
-                if (importantSection && !enhancedBody.includes(importantSection)) {
-                  enhancedBody = enhancedBody + '\n\n' + importantSection;
-                }
+      const bodySelections = selectionsByType.get('body') || [];
+      const signatureBodySelections = selectionsByType.get('signatureBody') || [];
+      
+      const importantContent = [...bodySelections, ...signatureBodySelections];
+      for (const importantPattern of importantContent) {
+        if (importantPattern && importantPattern.length > 10) {
+          // If we accidentally removed important content, try to preserve it
+          if (!enhancedBody.includes(importantPattern.substring(0, 50))) {
+            const originalIncludesPattern = originalBody.includes(importantPattern.substring(0, 50));
+            if (originalIncludesPattern) {
+              // Find the important content in original and preserve it
+              const importantSection = this.extractImportantSection(originalBody, importantPattern);
+              if (importantSection && !enhancedBody.includes(importantSection)) {
+                enhancedBody = enhancedBody + '\n\n' + importantSection;
               }
             }
           }
