@@ -532,12 +532,29 @@ export class EmailForwardCleaner {
         }
       }
       
-      // 4. Preserve important content based on body and signature body selections
-      // (This ensures we don't accidentally remove content the user wants to keep)
+      // 4. Apply body pattern removal (training data shows what should be removed)
       const bodySelections = selectionsByType.get('body') || [];
-      // ✅ REUSE existing signatureBodySelections declared at line 331
+      console.log(`[EMAIL-CLEANER] Processing ${bodySelections.length} body training patterns for removal...`);
       
-      const importantContent = [...bodySelections, ...signatureBodySelections];
+      for (const bodyPattern of bodySelections) {
+        if (bodyPattern && bodyPattern.length > 10) {
+          const similarity = this.calculateSimilarity(enhancedBody, bodyPattern);
+          console.log(`[EMAIL-CLEANER] Body pattern similarity: ${similarity.toFixed(3)} (threshold: 0.4)`);
+          
+          if (similarity > 0.4) {
+            const beforeLength = enhancedBody.length;
+            enhancedBody = this.removePattern(enhancedBody, bodyPattern, 0.4);
+            const afterLength = enhancedBody.length;
+            console.log(`[EMAIL-CLEANER] Removed body pattern: ${beforeLength} -> ${afterLength} chars (removed ${beforeLength - afterLength} chars)`);
+          }
+        }
+      }
+      
+      // 5. Preserve important content based on signature body selections (if any marked as important)
+      // (This ensures we don't accidentally remove content the user wants to keep)
+      // ✅ REUSE existing signatureBodySelections declared earlier - signatureBody selections are content to preserve
+      
+      const importantContent = [...signatureBodySelections]; // Only preserve signatureBody, not regular body
       for (const importantPattern of importantContent) {
         if (importantPattern && importantPattern.length > 10) {
           // If we accidentally removed important content, try to preserve it
