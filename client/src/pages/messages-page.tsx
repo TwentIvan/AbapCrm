@@ -194,19 +194,22 @@ export default function MessagesPage() {
   const { data: renderedContent } = useQuery<RenderedMessageContent>({
     queryKey: ["/api/messages", selectedMessage?.id, "rendered"],
     enabled: !!selectedMessage,
-    onSuccess: (data) => {
-      // 🔍 DEBUG: Log what we actually receive from backend
+  });
+
+  // 🔍 DEBUG: Log what we actually receive from backend
+  useEffect(() => {
+    if (renderedContent) {
       console.log(`[FRONTEND-DEBUG] Rendered content received for ${selectedMessage?.id}:`, {
-        bodyHtmlLength: data.bodyHtml?.length || 0,
-        bodyTextLength: data.bodyText?.length || 0,
-        remainderHtmlLength: data.remainderHtml?.length || 0,
-        remainderTextLength: data.remainderText?.length || 0,
-        isForwarded: data.isForwarded,
-        _lastProcessed: (data as any)._lastProcessed,
-        _cacheBreaker: (data as any)._cacheBreaker
+        bodyHtmlLength: renderedContent.bodyHtml?.length || 0,
+        bodyTextLength: renderedContent.bodyText?.length || 0,
+        remainderHtmlLength: renderedContent.remainderHtml?.length || 0,
+        remainderTextLength: renderedContent.remainderText?.length || 0,
+        isForwarded: renderedContent.isForwarded,
+        _lastProcessed: (renderedContent as any)._lastProcessed,
+        _cacheBreaker: (renderedContent as any)._cacheBreaker
       });
     }
-  });
+  }, [renderedContent, selectedMessage?.id]);
 
   const syncMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/email/sync"),
