@@ -377,6 +377,12 @@ export class EmailForwardCleaner {
     // Check if we should override forceCleanForwarded based on training data
     let shouldForceCleanForwarded = forceCleanForwarded;
     
+    // 🔧 GATE BYPASS: If we have exact user selections, always force cleaning
+    if (!shouldForceCleanForwarded && trainingData.exactSelections.toRemove.length > 0) {
+      shouldForceCleanForwarded = true;
+      console.log(`[EMAIL-CLEANER] Gate bypassed: forcing clean based on ${trainingData.exactSelections.toRemove.length} exact user selections`);
+    }
+    
     // If training data suggests this should be processed (has learned patterns), don't let pre-filter skip
     if (!shouldForceCleanForwarded && 
         (trainingData.threadMarkers.length > 0 || 
@@ -389,6 +395,8 @@ export class EmailForwardCleaner {
       if (hasTrainingPatterns) {
         shouldForceCleanForwarded = true;
         console.log(`[EMAIL-CLEANER] Training data override: forcing clean based on learned patterns`);
+      } else {
+        console.log(`[EMAIL-CLEANER] Gate failed: no training patterns match this email content`);
       }
     }
     
