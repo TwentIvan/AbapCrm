@@ -218,12 +218,34 @@ export class EmailForwardCleaner {
     // Get training data for this user
     const trainingData = await this.analyzeTrainingData(userId);
     
+    // Check if we should override forceCleanForwarded based on training data
+    let shouldForceCleanForwarded = forceCleanForwarded;
+    
+    // If training data suggests this should be processed (has learned patterns), don't let pre-filter skip
+    if (!shouldForceCleanForwarded && 
+        (trainingData.threadMarkers.length > 0 || 
+         trainingData.commonHeaders.length > 0 || 
+         trainingData.commonBodyPatterns.length > 0)) {
+      
+      // Check if any training patterns match this email
+      const hasTrainingPatterns = (
+        trainingData.threadMarkers.some(marker => textBody.includes(marker)) ||
+        trainingData.commonHeaders.some(header => textBody.includes(header)) ||
+        trainingData.commonBodyPatterns.some(pattern => textBody.includes(pattern))
+      );
+      
+      if (hasTrainingPatterns) {
+        shouldForceCleanForwarded = true;
+        console.log(`[EMAIL-CLEANER] Training data override: forcing clean based on learned patterns`);
+      }
+    }
+    
     // Use training data to enhance pattern recognition
     const result = this.cleanForwardedEmail(
       subject, 
       textBody, 
       htmlBody, 
-      forceCleanForwarded, 
+      shouldForceCleanForwarded, 
       customSignature
     );
     
