@@ -656,8 +656,42 @@ export class EmailForwardCleaner {
   
   /**
    * Remove pattern from text if similarity exceeds threshold
+   * ✅ FIXED: Handle multi-line patterns from training data
    */
   private static removePattern(text: string, pattern: string, threshold: number): string {
+    // Handle multi-line patterns properly
+    if (pattern.length > 100) {
+      // Large pattern - try substring matching with fuzzy logic
+      const patternLines = pattern.split('\n').filter(line => line.trim().length > 5);
+      const textLines = text.split('\n');
+      
+      // Find consecutive matching lines
+      let bestMatch = { start: -1, end: -1, score: 0 };
+      
+      for (let i = 0; i <= textLines.length - patternLines.length; i++) {
+        const textSegment = textLines.slice(i, i + patternLines.length).join('\n');
+        const similarity = this.calculateSimilarity(textSegment, pattern);
+        
+        if (similarity > threshold && similarity > bestMatch.score) {
+          bestMatch = { start: i, end: i + patternLines.length, score: similarity };
+        }
+      }
+      
+      // Remove the best matching segment
+      if (bestMatch.start >= 0) {
+        console.log(`[EMAIL-CLEANER] Removing training pattern: lines ${bestMatch.start}-${bestMatch.end}, similarity ${bestMatch.score.toFixed(3)}`);
+        const filteredLines = [...textLines.slice(0, bestMatch.start), ...textLines.slice(bestMatch.end)];
+        return filteredLines.join('\n');
+      }
+      
+      // Fallback: try direct substring removal for exact matches
+      if (text.includes(pattern.substring(0, 100))) {
+        console.log(`[EMAIL-CLEANER] Removing exact substring match from training pattern`);
+        return text.replace(pattern, '');
+      }
+    }
+    
+    // Original logic for single-line patterns
     const lines = text.split('\n');
     const filteredLines = lines.filter(line => {
       const similarity = this.calculateSimilarity(line, pattern);
