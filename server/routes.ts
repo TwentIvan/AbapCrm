@@ -1744,13 +1744,11 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.get("/api/messages/:id/rendered", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
-    // 🚨 AGGRESSIVE FIX: Disable ALL Express caching mechanisms
+    // 🎯 TARGETED FIX: Disable caching only for this endpoint
     res.set({
       'Cache-Control': 'no-store, no-cache, must-revalidate, private',
       'Pragma': 'no-cache',
-      'Expires': '0',
-      'Last-Modified': new Date().toUTCString(), // Force different timestamp every time
-      'ETag': Date.now().toString() // Force different ETag every time
+      'Expires': '0'
     });
     
     try {
@@ -1790,7 +1788,14 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       }
       console.log(`[RENDER-ROUTE] Split result: bodyText=${renderedContent.bodyText.length} chars, bodyHtml=${renderedContent.bodyHtml?.length || 0} chars, remainderHtml=${renderedContent.remainderHtml?.length || 0} chars, isForwarded=${renderedContent.isForwarded}`);
 
-      res.json(renderedContent);
+      // 🚀 FORCE FRESH CONTENT: Add timestamp to bypass ALL caching
+      const responseWithTimestamp = {
+        ...renderedContent,
+        _lastProcessed: new Date().toISOString(), // Force unique content every time
+        _cacheBreaker: Date.now() // Additional cache breaker
+      };
+      
+      res.json(responseWithTimestamp);
     } catch (error) {
       console.error("Message rendering error:", error);
       res.status(500).json({ error: "Failed to render message content" });
