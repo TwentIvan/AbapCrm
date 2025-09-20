@@ -275,42 +275,47 @@ export class EmailForwardCleaner {
       // Try multiple approaches to find and remove the text
       let found = false;
       
-      // Approach 1: Direct text match
-      if (cleanedHtml.includes(removal.selectedText)) {
-        cleanedHtml = cleanedHtml.replace(removal.selectedText, '');
-        found = true;
-      }
-      // Approach 2: Normalized text match (remove HTML tags and extra spaces)
-      else {
-        const normalizedSelection = this.normalizeTextForMatching(removal.selectedText);
-        const normalizedHtml = this.normalizeTextForMatching(cleanedHtml);
+      // 🔧 NEW: Flexible HTML matching with encoding awareness
+      const matcher = this.createFlexibleHtmlMatcher(removal.selectedText);
+      
+      console.log(`[EMAIL-CLEANER] 🔍 FLEX-DEBUG for ${removal.selectionType}:`);
+      console.log(`[EMAIL-CLEANER] 🔍 Original selection: "${removal.selectedText.substring(0, 100)}..."`);
+      console.log(`[EMAIL-CLEANER] 🔍 Testing ${matcher.patterns.length} patterns...`);
+      
+      // Try each pattern in order of preference
+      for (let i = 0; i < matcher.patterns.length && !found; i++) {
+        const pattern = matcher.patterns[i];
+        console.log(`[EMAIL-CLEANER] 🔍 Pattern ${i + 1}: "${pattern.substring(0, 50)}..." (${pattern.length} chars)`);
         
-        // 🔍 DETAILED LOGGING: Analyze normalization
-        console.log(`[EMAIL-CLEANER] 🔍 NORM-DEBUG for ${removal.selectionType}:`);
-        console.log(`[EMAIL-CLEANER] 🔍 Original selection: "${removal.selectedText.substring(0, 100)}..."`);
-        console.log(`[EMAIL-CLEANER] 🔍 Normalized selection: "${normalizedSelection.substring(0, 100)}..."`);
-        console.log(`[EMAIL-CLEANER] 🔍 Normalized selection length: ${normalizedSelection.length}`);
-        console.log(`[EMAIL-CLEANER] 🔍 HTML includes check: ${normalizedHtml.includes(normalizedSelection)}`);
-        
-        if (normalizedHtml.includes(normalizedSelection) && normalizedSelection.length > 10) {
-          // Find approximate position in original HTML and remove a section around it
-          const pos = normalizedHtml.indexOf(normalizedSelection);
-          console.log(`[EMAIL-CLEANER] 🔍 Match found at position: ${pos}`);
-          
-          if (pos >= 0) {
-            // Find corresponding position in original HTML (rough estimate)
-            const startPos = Math.max(0, pos - 100);
-            const endPos = Math.min(cleanedHtml.length, pos + normalizedSelection.length + 100);
-            
-            console.log(`[EMAIL-CLEANER] 🔍 Removing HTML section: ${startPos}-${endPos} (length: ${endPos - startPos})`);
-            
-            // Remove the section (this is rough but safer than complex regex)
-            cleanedHtml = cleanedHtml.substring(0, startPos) + cleanedHtml.substring(endPos);
-            found = true;
-          }
-        } else {
-          console.log(`[EMAIL-CLEANER] 🔍 Normalized match failed: includes=${normalizedHtml.includes(normalizedSelection)}, length=${normalizedSelection.length}`);
+        // Approach 1: Direct exact match
+        if (cleanedHtml.includes(pattern)) {
+          console.log(`[EMAIL-CLEANER] ✅ Direct match found with pattern ${i + 1}`);
+          cleanedHtml = cleanedHtml.replace(pattern, '');
+          found = true;
         }
+        // Approach 2: Normalized match for core content
+        else if (i === matcher.patterns.length - 1 && pattern.length >= matcher.minLength) {
+          const normalizedHtml = this.normalizeTextForMatching(cleanedHtml);
+          
+          if (normalizedHtml.includes(pattern)) {
+            console.log(`[EMAIL-CLEANER] ✅ Normalized match found with core pattern`);
+            
+            // Find approximate position and remove section
+            const pos = normalizedHtml.indexOf(pattern);
+            if (pos >= 0) {
+              const startPos = Math.max(0, pos - 50);
+              const endPos = Math.min(cleanedHtml.length, pos + pattern.length + 50);
+              
+              console.log(`[EMAIL-CLEANER] 🔍 Removing HTML section: ${startPos}-${endPos} (length: ${endPos - startPos})`);
+              cleanedHtml = cleanedHtml.substring(0, startPos) + cleanedHtml.substring(endPos);
+              found = true;
+            }
+          }
+        }
+      }
+      
+      if (!found) {
+        console.log(`[EMAIL-CLEANER] ❌ No match found for any pattern`);
       }
       
       if (found) {
@@ -356,6 +361,47 @@ export class EmailForwardCleaner {
       .replace(/<[^>]*>/g, ' ')          // Remove HTML tags
       .replace(/\s+/g, ' ')              // Normalize whitespace
       .trim();
+  }
+
+  // 🔧 NEW: Flexible HTML matching that handles encoding differences
+  private static createFlexibleHtmlMatcher(originalSelection: string): {
+    patterns: string[];
+    minLength: number;
+  } {
+    const patterns: string[] = [];
+    
+    // Pattern 1: Exact original selection
+    patterns.push(originalSelection);
+    
+    // Pattern 2: HTML-decoded version (convert entities to actual chars)
+    const decoded = originalSelection
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ');
+    patterns.push(decoded);
+    
+    // Pattern 3: HTML-encoded version (convert chars to entities)
+    const encoded = originalSelection
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+    patterns.push(encoded);
+    
+    // Pattern 4: Core content without formatting (for approximate match)
+    const coreContent = this.normalizeTextForMatching(originalSelection);
+    if (coreContent.length > 20) {
+      patterns.push(coreContent);
+    }
+    
+    return {
+      patterns: [...new Set(patterns)], // Remove duplicates
+      minLength: Math.max(10, originalSelection.length * 0.5) // Minimum viable length
+    };
   }
 
   /**
