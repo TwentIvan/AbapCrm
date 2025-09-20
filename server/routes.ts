@@ -1744,11 +1744,13 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.get("/api/messages/:id/rendered", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
-    // ✅ FIX: Disable HTTP caching so reprocessed email content is always fresh
+    // 🚨 AGGRESSIVE FIX: Disable ALL Express caching mechanisms
     res.set({
-      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
       'Pragma': 'no-cache',
-      'Expires': '0'
+      'Expires': '0',
+      'Last-Modified': new Date().toUTCString(), // Force different timestamp every time
+      'ETag': Date.now().toString() // Force different ETag every time
     });
     
     try {
