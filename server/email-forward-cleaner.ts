@@ -638,24 +638,43 @@ export class EmailForwardCleaner {
   }
   
   /**
-   * Calculate similarity between two text strings (simple implementation)
+   * Calculate similarity between two text strings (enhanced for signature matching)
    */
   private static calculateSimilarity(text1: string, text2: string): number {
     if (!text1 || !text2) return 0;
     
-    const str1 = text1.toLowerCase().replace(/\s+/g, ' ').trim();
-    const str2 = text2.toLowerCase().replace(/\s+/g, ' ').trim();
+    // ✅ ENHANCED NORMALIZATION: More aggressive cleaning for signature matching
+    const normalize = (str: string) => str
+      .toLowerCase()
+      .replace(/\s+/g, ' ')           // Multiple whitespace → single space  
+      .replace(/\s*@\s*/g, '@')       // Fix email spacing: "ivan.lotorto @c.lutech.it" → "ivan.lotorto@c.lutech.it"
+      .replace(/\s*\.\s*/g, '.')      // Fix domain spacing
+      .replace(/[^\w@.-]/g, ' ')      // Keep only alphanumeric, email chars, and dots
+      .replace(/\s+/g, ' ')           // Clean up again
+      .trim();
     
-    if (str1.includes(str2) || str2.includes(str1)) return 1;
+    const str1 = normalize(text1);
+    const str2 = normalize(text2);
     
-    // Word-based similarity
+    console.log(`[EMAIL-CLEANER] Similarity debug: "${str1.substring(0, 60)}" vs "${str2.substring(0, 60)}"`);
+    
+    // Direct inclusion check
+    if (str1.includes(str2) || str2.includes(str1)) {
+      console.log(`[EMAIL-CLEANER] Direct match found: similarity = 1.0`);
+      return 1;
+    }
+    
+    // Word-based similarity with improved threshold
     const words1 = new Set(str1.split(' ').filter(w => w.length > 2));
     const words2 = new Set(str2.split(' ').filter(w => w.length > 2));
     
     if (words1.size === 0 || words2.size === 0) return 0;
     
     const intersection = new Set(Array.from(words1).filter(w => words2.has(w)));
-    return intersection.size / Math.max(words1.size, words2.size);
+    const similarity = intersection.size / Math.max(words1.size, words2.size);
+    
+    console.log(`[EMAIL-CLEANER] Word-based similarity: ${similarity.toFixed(3)} (${intersection.size} common words out of ${Math.max(words1.size, words2.size)})`);
+    return similarity;
   }
   
   /**
