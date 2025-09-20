@@ -1743,6 +1743,14 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.get("/api/messages/:id/rendered", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    // ✅ FIX: Disable HTTP caching so reprocessed email content is always fresh
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
     try {
       const message = await storage.getMessage(req.params.id, req.user!.id);
       if (!message) return res.sendStatus(404);
