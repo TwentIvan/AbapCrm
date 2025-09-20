@@ -575,17 +575,26 @@ export default function MessagesPage() {
       sourceMessageId: (selectionMode === 'thread' || selectionMode === 'mailThread') ? messageId : undefined
     };
     
-    // ✅ MODULAR: Unified duplicate check with stable key
-    const selectionKey = `${selectionMode}:${selectedText.trim()}:${messageId || ''}`;
-    console.log('[TRAINING-SELECT] Creating selection:', newSelection, 'key:', selectionKey);
+    console.log('[TRAINING-SELECT] Creating selection:', newSelection);
     
     setSelections(prev => {
       const messageSelections = prev[messageId] || [];
       
-      // Check duplicates with unified logic
-      const isDuplicate = messageSelections.some(s => 
-        `${s.selectionType}:${s.selectedText}:${s.sourceMessageId || ''}` === selectionKey
-      );
+      // ✅ MODULAR: Fixed duplicate check - compare selectionType + selectedText, plus sourceMessageId only for thread types
+      const text = selectedText.trim();
+      const isDuplicate = messageSelections.some(s => {
+        if (s.selectionType !== selectionMode || s.selectedText !== text) {
+          return false;
+        }
+        
+        // For thread types, also compare sourceMessageId
+        if (selectionMode === 'thread' || selectionMode === 'mailThread') {
+          return s.sourceMessageId === messageId;
+        }
+        
+        // For non-thread types, just match type + text within same message
+        return true;
+      });
       
       if (isDuplicate) {
         toast({
