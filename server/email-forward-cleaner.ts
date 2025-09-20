@@ -326,14 +326,51 @@ export class EmailForwardCleaner {
         }
       }
       
-      // 2. Apply signature header elimination
+      // 2. Apply signature header elimination with contextual conflict resolution
       const signatureHeaderSelections = selectionsByType.get('signatureHeader') || [];
+      const signatureBodySelections = selectionsByType.get('signatureBody') || [];
+      
+      // ✅ CONFLICT RESOLUTION: Identify signatures that appear in both categories
+      const signatureConflicts = new Set<string>();
+      for (const headerSig of signatureHeaderSelections) {
+        for (const bodySig of signatureBodySelections) {
+          // Check if signatures are substantially similar (>70% similarity)
+          const similarity = this.calculateSimilarity(headerSig, bodySig);
+          if (similarity > 0.7) {
+            signatureConflicts.add(headerSig);
+            signatureConflicts.add(bodySig);
+            console.log('[EMAIL-CLEANER] Signature conflict detected:', {
+              headerLength: headerSig.length,
+              bodyLength: bodySig.length, 
+              similarity,
+              // ✅ PRIVACY: No content preview - use content hash instead
+              contentHash: headerSig.substring(0, 20).replace(/[a-zA-Z0-9]/g, 'X') + '...'
+            });
+          }
+        }
+      }
+      
       for (const signaturePattern of signatureHeaderSelections) {
         if (signaturePattern && signaturePattern.length > 5) {
-          // Remove signature closings, contact info, legal text
+          // ✅ CONTEXTUAL LOGIC: Only remove if not in conflict, or if clearly in HTML context
+          const isConflicted = signatureConflicts.has(signaturePattern);
           const similarity = this.calculateSimilarity(enhancedBody, signaturePattern);
+          
           if (similarity > 0.5) {
-            enhancedBody = this.removePattern(enhancedBody, signaturePattern, 0.5);
+            if (!isConflicted) {
+              // No conflict - safe to remove
+              enhancedBody = this.removePattern(enhancedBody, signaturePattern, 0.5);
+            } else {
+              // Conflict detected - apply contextual logic
+              const isInHtmlContext = this.isSignatureInHtmlContext(enhancedBody, signaturePattern);
+              if (isInHtmlContext) {
+                // Signature appears in HTML/header context - safe to remove
+                enhancedBody = this.removePattern(enhancedBody, signaturePattern, 0.5);
+                console.log('[EMAIL-CLEANER] Removed conflicted signature from HTML context');
+              } else {
+                console.log('[EMAIL-CLEANER] Preserved conflicted signature - appears in message body context');
+              }
+            }
           }
         }
       }
@@ -363,7 +400,7 @@ export class EmailForwardCleaner {
       // 4. Preserve important content based on body and signature body selections
       // (This ensures we don't accidentally remove content the user wants to keep)
       const bodySelections = selectionsByType.get('body') || [];
-      const signatureBodySelections = selectionsByType.get('signatureBody') || [];
+      // ✅ REUSE existing signatureBodySelections declared at line 331
       
       const importantContent = [...bodySelections, ...signatureBodySelections];
       for (const importantPattern of importantContent) {
@@ -387,6 +424,80 @@ export class EmailForwardCleaner {
     } catch (error) {
       console.error('[EMAIL-CLEANER] Advanced training pattern application failed:', error);
       return cleanedBody;
+    }
+  }
+
+  /**
+   * ✅ CONFLICT RESOLUTION: Determines if a signature appears in HTML/header context vs message body context
+   */
+  private static isSignatureInHtmlContext(content: string, signaturePattern: string): boolean {
+    try {
+      // Find where the signature appears in the content
+      const signatureIndex = content.toLowerCase().indexOf(signaturePattern.toLowerCase().substring(0, 100));
+      if (signatureIndex === -1) return false;
+
+      // Extract context around the signature (500 chars before and after)
+      const contextStart = Math.max(0, signatureIndex - 500);
+      const contextEnd = Math.min(content.length, signatureIndex + signaturePattern.length + 500);
+      const context = content.substring(contextStart, contextEnd);
+      
+      // HTML context indicators - signature is in HTML header/metadata
+      const htmlContextIndicators = [
+        'P {margin-top:0;margin-bottom:0;}',  // CSS inline styles
+        '<p style=',                          // HTML paragraph styling
+        '<div style=',                        // HTML div styling  
+        'margin-top:0',                       // CSS margin properties
+        'margin-bottom:0',                    // CSS margin properties
+        '<table',                             // HTML table structures
+        'font-family:',                       // Font styling
+        'text-align:',                        // Text alignment
+      ];
+      
+      // Message body context indicators - signature is in actual message content
+      const bodyContextIndicators = [
+        'Cordiali saluti',                    // Italian greeting
+        'Best regards',                       // English greeting  
+        'Kind regards',                       // English greeting
+        'Grazie',                             // Italian thanks
+        'Thank you',                          // English thanks
+        '\n\n',                               // Natural paragraph breaks
+        'Ciao',                               // Casual greeting
+      ];
+      
+      let htmlScore = 0;
+      let bodyScore = 0;
+      
+      // Score HTML context indicators
+      for (const indicator of htmlContextIndicators) {
+        if (context.toLowerCase().includes(indicator.toLowerCase())) {
+          htmlScore += 1;
+        }
+      }
+      
+      // Score body context indicators
+      for (const indicator of bodyContextIndicators) {
+        if (context.toLowerCase().includes(indicator.toLowerCase())) {
+          bodyScore += 1;
+        }
+      }
+      
+      // Log the decision process
+      console.log('[EMAIL-CLEANER] Context analysis:', {
+        htmlScore,
+        bodyScore,
+        // ✅ PRIVACY: No content preview - use anonymized pattern instead  
+        contextLength: context.length,
+        patternLocation: signatureIndex,
+        decision: htmlScore > bodyScore ? 'HTML context' : 'Body context'
+      });
+      
+      // If HTML score is higher, it's likely in HTML/header context
+      return htmlScore > bodyScore;
+      
+    } catch (error) {
+      console.error('[EMAIL-CLEANER] Context analysis failed:', error);
+      // Default to false (preserve signature) on error
+      return false;
     }
   }
   
