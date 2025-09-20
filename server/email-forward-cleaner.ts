@@ -446,14 +446,11 @@ export class EmailForwardCleaner {
     userId: string,
     trainingData: { commonHeaders: string[], commonBodyPatterns: string[], threadMarkers: string[] }
   ): Promise<string> {
-    try {
-      // Get detailed training selections for advanced pattern matching
-      const rawSelections = await storage.getEmailTrainingSelections(userId);
-      const trainingSelections = Array.isArray(rawSelections) ? rawSelections : [];
-      
-      let enhancedBody = cleanedBody;
-      
-      // 0. Apply specific training patterns first
+    // 🚫 TEMPORARILY DISABLED: This function uses complex regex that causes stack overflow
+    // Return original text for now until we implement a non-regex solution
+    console.log('[EMAIL-CLEANER] TEXT advanced patterns DISABLED (stack overflow prevention)');
+    return cleanedBody;
+  }
       for (const headerPattern of trainingData.commonHeaders) {
         switch (headerPattern) {
           case 'italian-email-header-block':
