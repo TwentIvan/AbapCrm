@@ -1180,7 +1180,7 @@ export class EmailForwardCleaner {
     // Cerca nel testo
     let textSplitPoint = -1;
     for (const pattern of textReplyPatterns) {
-      const match = body.DISABLED_match(pattern);
+      const match = body.match(pattern);
       if (match && match.index !== undefined) {
         textSplitPoint = match.index;
         console.log(`[EMAIL-CLEANER] Found text reply pattern at ${textSplitPoint}`);
@@ -1203,7 +1203,7 @@ export class EmailForwardCleaner {
       ];
       
       for (const pattern of htmlReplyPatterns) {
-        const match = htmlBody.DISABLED_match(pattern);
+        const match = htmlBody.match(pattern);
         if (match && match.index !== undefined) {
           htmlSplitPoint = match.index;
           console.log(`[EMAIL-CLEANER] Found HTML reply pattern at ${htmlSplitPoint}`);
@@ -1492,7 +1492,7 @@ export class EmailForwardCleaner {
 
     // Rimuove la sezione di inoltro
     forwardSeparators.forEach(separator => {
-      const match = cleanBody.DISABLED_match(separator);
+      const match = cleanBody.match(separator);
       if (match) {
         cleanBody = cleanBody.substring(0, match.index || 0);
       }
@@ -1689,7 +1689,7 @@ export class EmailForwardCleaner {
 
     // Rimuove le sezioni HTML di inoltro
     htmlForwardPatterns.forEach(pattern => {
-      const match = cleanHtml.DISABLED_match(pattern);
+      const match = cleanHtml.match(pattern);
       if (match) {
         cleanHtml = cleanHtml.substring(0, match.index || 0);
       }
@@ -1765,7 +1765,7 @@ export class EmailForwardCleaner {
     ];
 
     for (const pattern of senderPatterns) {
-      const match = body.DISABLED_match(pattern);
+      const match = body.match(pattern);
       if (match) {
         if (match[2]) {
           // Pattern con nome e email
@@ -1802,7 +1802,7 @@ export class EmailForwardCleaner {
     ];
 
     for (const pattern of contentPatterns) {
-      const match = body.DISABLED_match(pattern);
+      const match = body.match(pattern);
       if (match && match[1] && match[1].trim().length > 10) {
         return match[1].trim();
       }
@@ -2010,7 +2010,7 @@ export class EmailForwardCleaner {
       
       // Trova il punto dove inizia il thread completo
       for (const pattern of threadPatterns) {
-        const match = textBody.DISABLED_match(pattern);
+        const match = textBody.match(pattern);
         if (match && match.index !== undefined) {
           // Estrae tutto dal punto del thread in poi
           const threadStart = match.index;
@@ -2090,7 +2090,7 @@ export class EmailForwardCleaner {
     ];
     
     for (const pattern of headerPatterns) {
-      const match = htmlBody.DISABLED_match(pattern);
+      const match = htmlBody.match(pattern);
       if (match && match.index !== undefined) {
         // Estrae tutto quello che viene DOPO il match
         const afterIndex = match.index + match[0].length;
@@ -2111,7 +2111,7 @@ export class EmailForwardCleaner {
     }
     
     // Fallback: cerca contenuto dopo HR separators
-    const hrMatch = htmlBody.DISABLED_match(/<hr[^>]*>/i);
+    const hrMatch = htmlBody.match(/<hr[^>]*>/i);
     if (hrMatch && hrMatch.index !== undefined) {
       const afterIndex = hrMatch.index + hrMatch[0].length;
       const remainder = htmlBody.slice(afterIndex).trim();
@@ -2194,7 +2194,7 @@ export class EmailForwardCleaner {
     
     // Prima prova con i pattern di fine firma (approccio Outlook)
     for (const pattern of signatureEndPatterns) {
-      const match = htmlBody.DISABLED_match(pattern);
+      const match = htmlBody.match(pattern);
       if (match && match.index !== undefined) {
         const cutPoint = match.index + match[0].length;
         console.log(`[EMAIL-CLEANER] ✓ Found signature end at position ${cutPoint}`);
@@ -2235,7 +2235,7 @@ export class EmailForwardCleaner {
     
     for (let i = 0; i < forwardMarkers.length; i++) {
       const pattern = forwardMarkers[i];
-      const match = htmlBody.DISABLED_match(pattern);
+      const match = htmlBody.match(pattern);
       if (match && match.index !== undefined) {
         console.log(`[EMAIL-CLEANER] DEBUG: Found marker "${pattern}" at position ${match.index}`);
         if (earliestPosition === -1 || match.index < earliestPosition) {
@@ -2322,7 +2322,7 @@ export class EmailForwardCleaner {
   // Helper per estrarre emails da una linea di testo
   private static extractEmailsFromLine(line: string): string[] {
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-    const matches = line.DISABLED_match(emailRegex);
+    const matches = line.match(emailRegex);
     return matches || [];
   }
 
@@ -2686,7 +2686,7 @@ export class EmailForwardCleaner {
     
     // Cerca il primo pattern di header HTML nel textBody
     for (const pattern of htmlHeaderPatterns) {
-      const match = textBody.DISABLED_match(pattern);
+      const match = textBody.match(pattern);
       if (match && match.index !== undefined && match.index > 30) {
         const splitPoint = match.index;
         const mainText = textBody.substring(0, splitPoint).trim();
@@ -2768,7 +2768,7 @@ export class EmailForwardCleaner {
     let bestScore = 0;
 
     for (const pattern of enterprisePatterns) {
-      const match = htmlAsText.DISABLED_match(pattern);
+      const match = htmlAsText.match(pattern);
       if (match && match.index !== undefined) {
         const index = match.index;
         const beforeContent = htmlAsText.substring(0, index).trim();
@@ -2855,7 +2855,7 @@ export class EmailForwardCleaner {
 
     // Trova il primo container di header reale
     for (const pattern of headerContainerPatterns) {
-      const match = htmlBody.DISABLED_match(pattern);
+      const match = htmlBody.match(pattern);
       if (match && match.index !== undefined) {
         // Rifiuta container all'indice 0 a meno che non ci siano marker espliciti
         if (match.index === 0 && !explicitForwardMarkers.some(marker => marker.test(htmlBody))) {
@@ -2909,7 +2909,7 @@ export class EmailForwardCleaner {
     let nextBoundaryIndex = -1;
     
     for (const pattern of boundaryPatterns) {
-      const match = htmlBody.substring(containerEnd + 50).DISABLED_match(pattern); // Skip almeno 50 char dopo il container
+      const match = htmlBody.substring(containerEnd + 50).match(pattern); // Skip almeno 50 char dopo il container
       if (match && match.index !== undefined) {
         const actualIndex = containerEnd + 50 + match.index;
         if (nextBoundaryIndex === -1 || actualIndex < nextBoundaryIndex) {
@@ -2920,7 +2920,7 @@ export class EmailForwardCleaner {
 
     // Cerca anche ulteriori header container come boundary
     for (const pattern of headerContainerPatterns) {
-      const match = htmlBody.substring(containerEnd + 100).DISABLED_match(pattern);
+      const match = htmlBody.substring(containerEnd + 100).match(pattern);
       if (match && match.index !== undefined) {
         const actualIndex = containerEnd + 100 + match.index;
         if (nextBoundaryIndex === -1 || actualIndex < nextBoundaryIndex) {
