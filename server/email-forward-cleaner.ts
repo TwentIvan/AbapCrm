@@ -251,7 +251,7 @@ export class EmailForwardCleaner {
     
     // Apply advanced training-based improvements
     if (trainingData.commonBodyPatterns.length > 0 || trainingData.commonHeaders.length > 0 || trainingData.threadMarkers.length > 0) {
-      result.originalBody = await this.applyAdvancedTrainingPatterns(
+      result.originalBody = await this.applyAdvancedTrainingPatternsText(
         result.originalBody, 
         textBody,
         userId,
@@ -273,9 +273,9 @@ export class EmailForwardCleaner {
   }
 
   /**
-   * Apply advanced training patterns based on user's selections
+   * Apply advanced training patterns specifically to text content
    */
-  private static async applyAdvancedTrainingPatterns(
+  private static async applyAdvancedTrainingPatternsText(
     cleanedBody: string,
     originalBody: string, 
     userId: string,
