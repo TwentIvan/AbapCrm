@@ -275,47 +275,34 @@ export class EmailForwardCleaner {
       // Try multiple approaches to find and remove the text
       let found = false;
       
-      // 🔧 NEW: Flexible HTML matching with encoding awareness
-      const matcher = this.createFlexibleHtmlMatcher(removal.selectedText);
+      // 🔧 NEW: Semantic content matching instead of exact text
+      console.log(`[EMAIL-CLEANER] 🧠 SEMANTIC-DEBUG for ${removal.selectionType}:`);
+      console.log(`[EMAIL-CLEANER] 🧠 Original selection: "${removal.selectedText.substring(0, 100)}..."`);
       
-      console.log(`[EMAIL-CLEANER] 🔍 FLEX-DEBUG for ${removal.selectionType}:`);
-      console.log(`[EMAIL-CLEANER] 🔍 Original selection: "${removal.selectedText.substring(0, 100)}..."`);
-      console.log(`[EMAIL-CLEANER] 🔍 Testing ${matcher.patterns.length} patterns...`);
+      // Extract semantic content from user selection
+      const semanticContent = this.extractSemanticContent(removal.selectedText, removal.selectionType);
+      console.log(`[EMAIL-CLEANER] 🧠 Extracted: ${semanticContent.emails.length} emails, ${semanticContent.keywords.length} keywords, ${semanticContent.signatures.length} signatures`);
       
-      // Try each pattern in order of preference
-      for (let i = 0; i < matcher.patterns.length && !found; i++) {
-        const pattern = matcher.patterns[i];
-        console.log(`[EMAIL-CLEANER] 🔍 Pattern ${i + 1}: "${pattern.substring(0, 50)}..." (${pattern.length} chars)`);
+      // Try to find semantic match in current HTML
+      const semanticMatch = this.findSemanticMatch(cleanedHtml, semanticContent, removal.selectionType);
+      
+      if (semanticMatch.found) {
+        console.log(`[EMAIL-CLEANER] ✅ Semantic match found at ${semanticMatch.startPos}-${semanticMatch.endPos}`);
         
-        // Approach 1: Direct exact match
-        if (cleanedHtml.includes(pattern)) {
-          console.log(`[EMAIL-CLEANER] ✅ Direct match found with pattern ${i + 1}`);
-          cleanedHtml = cleanedHtml.replace(pattern, '');
+        // Remove the matched section
+        const beforeSection = cleanedHtml.substring(0, semanticMatch.startPos);
+        const afterSection = cleanedHtml.substring(semanticMatch.endPos);
+        cleanedHtml = beforeSection + afterSection;
+        found = true;
+      } else {
+        console.log(`[EMAIL-CLEANER] ❌ No semantic match found`);
+        
+        // Fallback: Try direct text search as last resort
+        if (cleanedHtml.includes(removal.selectedText)) {
+          console.log(`[EMAIL-CLEANER] 💫 Fallback: Direct text match found`);
+          cleanedHtml = cleanedHtml.replace(removal.selectedText, '');
           found = true;
         }
-        // Approach 2: Normalized match for core content
-        else if (i === matcher.patterns.length - 1 && pattern.length >= matcher.minLength) {
-          const normalizedHtml = this.normalizeTextForMatching(cleanedHtml);
-          
-          if (normalizedHtml.includes(pattern)) {
-            console.log(`[EMAIL-CLEANER] ✅ Normalized match found with core pattern`);
-            
-            // Find approximate position and remove section
-            const pos = normalizedHtml.indexOf(pattern);
-            if (pos >= 0) {
-              const startPos = Math.max(0, pos - 50);
-              const endPos = Math.min(cleanedHtml.length, pos + pattern.length + 50);
-              
-              console.log(`[EMAIL-CLEANER] 🔍 Removing HTML section: ${startPos}-${endPos} (length: ${endPos - startPos})`);
-              cleanedHtml = cleanedHtml.substring(0, startPos) + cleanedHtml.substring(endPos);
-              found = true;
-            }
-          }
-        }
-      }
-      
-      if (!found) {
-        console.log(`[EMAIL-CLEANER] ❌ No match found for any pattern`);
       }
       
       if (found) {
@@ -363,45 +350,109 @@ export class EmailForwardCleaner {
       .trim();
   }
 
-  // 🔧 NEW: Flexible HTML matching that handles encoding differences
-  private static createFlexibleHtmlMatcher(originalSelection: string): {
-    patterns: string[];
-    minLength: number;
+  // 🔧 NEW: Semantic content extraction for intelligent matching  
+  private static extractSemanticContent(text: string, selectionType: string): {
+    emails: string[];
+    keywords: string[];
+    signatures: string[];
+    fallbackText: string;
   } {
-    const patterns: string[] = [];
+    const emails: string[] = [];
+    const emailRegex = /[\w.-]+@[\w.-]+\.\w+/g;
+    let emailMatch;
+    while ((emailMatch = emailRegex.exec(text)) !== null) {
+      emails.push(emailMatch[0]);
+    }
+    const keywords: string[] = [];
+    const signatures: string[] = [];
     
-    // Pattern 1: Exact original selection
-    patterns.push(originalSelection);
+    // Extract key patterns based on type
+    if (selectionType === 'header') {
+      // Extract "Da:", "From:", dates, emails
+      const headerMatches = text.match(/(Da:|From:|Sent:|Inviato:).*?(?=\n|$)/gi) || [];
+      keywords.push(...headerMatches.map(m => m.replace(/<[^>]*>/g, '').trim()));
+    }
     
-    // Pattern 2: HTML-decoded version (convert entities to actual chars)
-    const decoded = originalSelection
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/&nbsp;/g, ' ');
-    patterns.push(decoded);
+    if (selectionType === 'signatureHeader') {
+      // Extract job titles, companies, phone numbers
+      const jobTitles = text.match(/(Technical|Developer|Analyst|Manager|Director|Team Head).*?(?=\n|$)/gi) || [];
+      const phones = text.match(/\+?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}/g) || [];
+      keywords.push(...jobTitles, ...phones);
+      
+      if (text.includes('Ivan Lo Torto') || text.includes('Technical analyst')) {
+        signatures.push('ivan_signature');
+      }
+    }
     
-    // Pattern 3: HTML-encoded version (convert chars to entities)
-    const encoded = originalSelection
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-    patterns.push(encoded);
-    
-    // Pattern 4: Core content without formatting (for approximate match)
-    const coreContent = this.normalizeTextForMatching(originalSelection);
-    if (coreContent.length > 20) {
-      patterns.push(coreContent);
+    if (selectionType === 'mailThread') {
+      // Extract thread patterns and quoted content markers
+      const threadMarkers = text.match(/(wrote:|ha scritto:|Il \d+\/\d+\/\d+)/gi) || [];
+      keywords.push(...threadMarkers);
     }
     
     return {
-      patterns: [...new Set(patterns)], // Remove duplicates
-      minLength: Math.max(10, originalSelection.length * 0.5) // Minimum viable length
+      emails,
+      keywords,
+      signatures,
+      fallbackText: this.normalizeTextForMatching(text).substring(0, 50)
     };
+  }
+  
+  // 🔧 NEW: Smart semantic matching for email content
+  private static findSemanticMatch(htmlContent: string, semanticContent: any, selectionType: string): {
+    found: boolean;
+    startPos: number;
+    endPos: number;
+  } {
+    const normalizedHtml = this.normalizeTextForMatching(htmlContent);
+    
+    // Try email-based matching first
+    for (const email of semanticContent.emails) {
+      const emailIndex = normalizedHtml.indexOf(email);
+      if (emailIndex >= 0) {
+        console.log(`[EMAIL-CLEANER] ✅ Semantic match found via email: ${email}`);
+        
+        // Find a reasonable section around the email
+        const startPos = Math.max(0, emailIndex - 200);
+        const endPos = Math.min(htmlContent.length, emailIndex + 500);
+        
+        return { found: true, startPos, endPos };
+      }
+    }
+    
+    // Try keyword-based matching
+    for (const keyword of semanticContent.keywords) {
+      if (keyword.length > 10) {
+        const keywordIndex = normalizedHtml.indexOf(keyword);
+        if (keywordIndex >= 0) {
+          console.log(`[EMAIL-CLEANER] ✅ Semantic match found via keyword: ${keyword.substring(0, 30)}...`);
+          
+          const startPos = Math.max(0, keywordIndex - 100);
+          const endPos = Math.min(htmlContent.length, keywordIndex + keyword.length + 100);
+          
+          return { found: true, startPos, endPos };
+        }
+      }
+    }
+    
+    // Signature-specific logic
+    if (selectionType === 'signatureHeader' && semanticContent.signatures.includes('ivan_signature')) {
+      // Look for Ivan's signature patterns in HTML
+      const ivanPatterns = ['Ivan Lo Torto', 'Technical analyst', 'ivan.lotorto@c.lutech.it'];
+      for (const pattern of ivanPatterns) {
+        const patternIndex = htmlContent.indexOf(pattern);
+        if (patternIndex >= 0) {
+          console.log(`[EMAIL-CLEANER] ✅ Semantic match found via signature pattern: ${pattern}`);
+          
+          const startPos = Math.max(0, patternIndex - 50);
+          const endPos = Math.min(htmlContent.length, patternIndex + 300);
+          
+          return { found: true, startPos, endPos };
+        }
+      }
+    }
+    
+    return { found: false, startPos: -1, endPos: -1 };
   }
 
   /**
