@@ -265,6 +265,26 @@ export default function MessagesPage() {
     },
   });
 
+  const reprocessMutation = useMutation({
+    mutationFn: (messageId: string) => 
+      apiRequest("POST", `/api/messages/${messageId}/reprocess`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages", selectedMessage?.id, "rendered"] });
+      toast({
+        title: "Email riprocessata",
+        description: "L'email è stata riprocessata usando l'algoritmo migliorato.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore riprocessamento",
+        description: error.message || "Errore durante il riprocessamento dell'email.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const feedbackMutation = useMutation({
     mutationFn: ({ messageId, isCorrect, category, comment, customReasonId }: { 
       messageId: string; 
@@ -1108,6 +1128,17 @@ export default function MessagesPage() {
                         >
                           <Brain className="h-4 w-4 mr-2" />
                           {isTrainingMode ? 'Esci da training' : 'Modalità training'}
+                        </Button>
+
+                        <Button
+                          onClick={() => selectedMessage && reprocessMutation.mutate(selectedMessage.id)}
+                          variant="outline"
+                          size="sm"
+                          disabled={reprocessMutation.isPending || !selectedMessage}
+                          data-testid="button-reprocess-message"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          {reprocessMutation.isPending ? 'Riprocessando...' : 'Riprocessa email'}
                         </Button>
                         
                         {isTrainingMode && (
