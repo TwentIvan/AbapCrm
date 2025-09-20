@@ -497,15 +497,10 @@ export class EmailForwardCleaner {
               // No conflict - safe to remove
               enhancedBody = this.removePattern(enhancedBody, signaturePattern, 0.5);
             } else {
-              // Conflict detected - apply contextual logic
-              const isInHtmlContext = this.isSignatureInHtmlContext(enhancedBody, signaturePattern);
-              if (isInHtmlContext) {
-                // Signature appears in HTML/header context - safe to remove
-                enhancedBody = this.removePattern(enhancedBody, signaturePattern, 0.5);
-                console.log('[EMAIL-CLEANER] Removed conflicted signature from HTML context');
-              } else {
-                console.log('[EMAIL-CLEANER] Preserved conflicted signature - appears in message body context');
-              }
+              // ✅ FIX: When in conflict, prioritize removal since user explicitly trained this as "signatureHeader" (to remove)
+              // The training data shows user intent: this pattern should be removed when it appears in headers/signatures
+              enhancedBody = this.removePattern(enhancedBody, signaturePattern, 0.5);
+              console.log('[EMAIL-CLEANER] Removed conflicted signature - prioritizing training intent (signatureHeader = remove)');
             }
           }
         }
