@@ -275,34 +275,19 @@ export class EmailForwardCleaner {
       // Try multiple approaches to find and remove the text
       let found = false;
       
-      // 🔧 NEW: Semantic content matching instead of exact text
-      console.log(`[EMAIL-CLEANER] 🧠 SEMANTIC-DEBUG for ${removal.selectionType}:`);
-      console.log(`[EMAIL-CLEANER] 🧠 Original selection: "${removal.selectedText.substring(0, 100)}..."`);
+      // 🛑 DISABLED: Semantic matching (too aggressive, corrupting HTML)
+      // Reverting to conservative approach
+      console.log(`[EMAIL-CLEANER] 🔍 CONSERVATIVE-DEBUG for ${removal.selectionType}:`);
+      console.log(`[EMAIL-CLEANER] 🔍 Original selection: "${removal.selectedText.substring(0, 100)}..."`);
       
-      // Extract semantic content from user selection
-      const semanticContent = this.extractSemanticContent(removal.selectedText, removal.selectionType);
-      console.log(`[EMAIL-CLEANER] 🧠 Extracted: ${semanticContent.emails.length} emails, ${semanticContent.keywords.length} keywords, ${semanticContent.signatures.length} signatures`);
-      
-      // Try to find semantic match in current HTML
-      const semanticMatch = this.findSemanticMatch(cleanedHtml, semanticContent, removal.selectionType);
-      
-      if (semanticMatch.found) {
-        console.log(`[EMAIL-CLEANER] ✅ Semantic match found at ${semanticMatch.startPos}-${semanticMatch.endPos}`);
-        
-        // Remove the matched section
-        const beforeSection = cleanedHtml.substring(0, semanticMatch.startPos);
-        const afterSection = cleanedHtml.substring(semanticMatch.endPos);
-        cleanedHtml = beforeSection + afterSection;
+      // Try direct text match only
+      if (cleanedHtml.includes(removal.selectedText)) {
+        console.log(`[EMAIL-CLEANER] ✅ Direct text match found`);
+        cleanedHtml = cleanedHtml.replace(removal.selectedText, '');
         found = true;
       } else {
-        console.log(`[EMAIL-CLEANER] ❌ No semantic match found`);
-        
-        // Fallback: Try direct text search as last resort
-        if (cleanedHtml.includes(removal.selectedText)) {
-          console.log(`[EMAIL-CLEANER] 💫 Fallback: Direct text match found`);
-          cleanedHtml = cleanedHtml.replace(removal.selectedText, '');
-          found = true;
-        }
+        console.log(`[EMAIL-CLEANER] ❌ No direct match found - skipping for safety`);
+        // Do not attempt any aggressive matching that could corrupt HTML
       }
       
       if (found) {
