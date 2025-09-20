@@ -354,46 +354,10 @@ export class EmailForwardCleaner {
     userId: string,
     trainingData: { commonHeaders: string[], commonBodyPatterns: string[], threadMarkers: string[] }
   ): Promise<string> {
-    try {
-      let enhancedHtml = cleanedHtml;
-      
-      // Apply specific training patterns to HTML
-      for (const headerPattern of trainingData.commonHeaders) {
-        switch (headerPattern) {
-          case 'css-inline-paragraph':
-            // Remove CSS inline paragraph styles identified in training
-            enhancedHtml = enhancedHtml.replace(/P\s*\{\s*margin-top:\s*0\s*;\s*margin-bottom:\s*0\s*;\s*\}/gi, '');
-            break;
-          case 'css-inline-margins':
-            // Remove margin styles
-            enhancedHtml = enhancedHtml.replace(/margin-top:\s*0\s*;?/gi, '');
-            enhancedHtml = enhancedHtml.replace(/margin-bottom:\s*0\s*;?/gi, '');
-            break;
-          case 'lutech-signature-duplicate':
-          case 'duplicate-signature-ivan':
-            // ✅ UNIFIED SIGNATURE REMOVAL: Use same mapping as text function
-            const regex = this.TRAINING_PATTERN_MAP.commonHeaders[headerPattern as keyof typeof this.TRAINING_PATTERN_MAP.commonHeaders];
-            if (regex) {
-              const matches = enhancedHtml.match(regex);
-              if (matches && matches.length > 1) {
-                console.log(`[EMAIL-CLEANER] HTML: Removing duplicate signature patterns: ${matches.length - 1} duplicates`);
-                // Keep first occurrence, remove others - same logic as text function
-                let count = 0;
-                enhancedHtml = enhancedHtml.replace(regex, (match) => {
-                  count++;
-                  return count === 1 ? match : '';
-                });
-              }
-            }
-            break;
-        }
-      }
-      
-      return enhancedHtml;
-    } catch (error) {
-      console.error('[EMAIL-CLEANER] HTML training patterns failed:', error);
-      return cleanedHtml;
-    }
+    // 🚫 TEMPORARILY DISABLED: This function uses complex regex that causes stack overflow
+    // Return original HTML for now until we implement a non-regex solution
+    console.log('[EMAIL-CLEANER] HTML advanced patterns DISABLED (stack overflow prevention)');
+    return cleanedHtml;
   }
 
   /**
