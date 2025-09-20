@@ -1368,13 +1368,22 @@ export class EmailForwardCleaner {
       const hasExplicitMarkers = explicitForwardMarkers.some(pattern => pattern.test(body));
       
       if (!hasExplicitMarkers) {
+        // ✅ CRITICAL FIX: Check training data before skipping short emails
+        if (trainingData && (trainingData.threadMarkers.length > 0 || trainingData.commonHeaders.length > 0 || trainingData.commonBodyPatterns.length > 0)) {
+          const hasTrainingPatterns = this.checkTrainingPatternsMatch(body, trainingData);
+          if (hasTrainingPatterns) {
+            console.log(`[EMAIL-CLEANER] Pre-filter override: found training patterns in short email (${body.length} chars) - processing anyway`);
+            return true; // Force processing when training data matches
+          }
+        }
+        
         // Ultima verifica: conta header anchored nelle prime 10 righe
         const lines = body.split('\n').slice(0, 10);
         const headerRegex = /^[>\s\u00A0]*?(Da|From|Inviato|Sent|A|To|Cc|Oggetto|Subject|Data|Date)\s*:\s*/i;
         const headerCount = lines.filter(line => headerRegex.test(line)).length;
         
         if (headerCount < 3) {
-          console.log(`[EMAIL-CLEANER] Pre-filter: skipping short email (${body.length} chars, ${headerCount} headers) - no explicit markers`);
+          console.log(`[EMAIL-CLEANER] Pre-filter: skipping short email (${body.length} chars, ${headerCount} headers) - no explicit markers and no training patterns`);
           return false;
         }
       }
