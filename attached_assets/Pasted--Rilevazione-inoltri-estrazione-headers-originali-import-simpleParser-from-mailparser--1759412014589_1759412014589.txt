@@ -1,0 +1,144 @@
+// Rilevazione inoltri + estrazione headers originali
+import { simpleParser } from 'mailparser';
+
+// pattern multilingua per blocco “forward inline”
+const MARKERS = [
+  /^[-\s>]*forwarded message[-\s>]*$/i,
+  /^[-\s>]*messaggio inoltrato[-\s>]*$/i,
+];
+
+const INLINE_HEADER_LINES = [
+  /^(From|Da)\s*:\s*(.+)$/i,
+  /^(To|A)\s*:\s*(.+)$/i,
+  /^(Cc|Cc)\s*:\s*(.+)$/i,
+  /^(Subject|Oggetto)\s*:\s*(.+)$/i,
+  /^(Sent|Inviato)\s*:\s*(.+)$/i,
+];
+
+export function hasRfc822Attachment(parsed) {
+  return (parsed.attachments || []).some(a => a.contentType?.toLowerCase() === 'message/rfc822');
+}
+
+export function hasResentBlock(headers) {
+  const h = (k) => headers.get(k);
+  return !!(h('resent-from') || h('resent-to') || h('resent-date') || h('resent-message-id'));
+}
+
+export function findInlineForwardBlock(text) {
+  if (!text) return null;
+  const lines = text.split(/\r?\n/);
+
+  // Trova riga marker (---- Forwarded message ----)
+  let start = -1;
+  for (let i = 0; i < Math.min(lines.length, 60); i++) {
+    if (MARKERS.some(rx => rx.test(lines[i].trim()))) { start = i; break; }
+  }
+  if (start === -1) {
+    // fallback: cerca 3-4 righe header-like consecutive
+    for (let i = 0; i < Math.min(lines.length - 3, 100); i++) {
+      const slice = lines.slice(i, i + 10);
+      const hits = slice.filter(l => INLINE_HEADER_LINES.some(rx => rx.test(l))).length;
+      if (hits >= 3) { start = i; break; }
+    }
+  }
+  if (start === -1) return null;
+
+  // Estendi blocco fino a una riga vuota doppia o 10-15 righe
+  let end = Math.min(start + 15, lines.length);
+  for (let j = start + 1; j < Math.min(lines.length, start + 40); j++) {
+    if (lines[j].trim() === '' && lines[j + 1]?.trim() === '') { end = j + 1; break; }
+  }
+
+  return {
+    startIndex: start,
+    endIndex: end,
+    blockText: lines.slice(start, end).join('\n'),
+  };
+}
+
+export function classifyForward(parsed) {
+  // 1) RFC822 allegato
+  if (hasRfc822Attachment(parsed)) return 'forward:rfc822';
+
+  // 2) Resent-*
+  if (hasResentBlock(parsed.headers)) return 'forward:resent';
+
+  // 3) Inline
+  const bodyText = parsed.text || '';
+  const inline = findInlineForwardBlock(bodyText);
+  if (inline) return 'forward:inline';
+
+  // 4) euristica leggera: Delivered-To/Return-Path/To non combaciano
+  const deliveredTo = parsed.headers.get('delivered-to');
+  const toHdr = parsed.to?.text || '';
+  if (deliveredTo && !toHdr.toLowerCase().includes(deliveredTo.toLowerCase())) {
+    return 'possible-forward';
+  }
+
+  return 'original';
+}
+
+export function parseInlineHeaders(blockText) {
+  const out = {};
+  const lines = blockText.split(/\r?\n/);
+  for (const l of lines) {
+    let m;
+    if ((m = /^(From|Da)\s*:\s*(.+)$/i.exec(l))) out.from = m[2].trim();
+    else if ((m = /^(To|A)\s*:\s*(.+)$/i.exec(l))) out.to = m[2].trim();
+    else if ((m = /^(Cc|Cc)\s*:\s*(.+)$/i.exec(l))) out.cc = m[2].trim();
+    else if ((m = /^(Subject|Oggetto)\s*:\s*(.+)$/i.exec(l))) out.subject = m[2].trim();
+    else if ((m = /^(Sent|Inviato)\s*:\s*(.+)$/i.exec(l))) out.date = m[2].trim();
+  }
+  return out;
+}
+
+export function extractOriginalHeaders(parsed, classification) {
+  // preferenza: RFC822 → Resent → Inline → fallback
+  if (classification === 'forward:rfc822') {
+    const att = parsed.attachments.find(a => a.contentType?.toLowerCase() === 'message/rfc822');
+    if (att && att.content) {
+      return parseInnerRfc822(att.content);
+    }
+  }
+
+  if (classification === 'forward:resent') {
+    const h = parsed.headers;
+    return {
+      from: h.get('resent-from') || null,
+      to: h.get('resent-to') || null,
+      cc: h.get('resent-cc') || null,
+      subject: h.get('resent-subject') || null,
+      date: h.get('resent-date') || null,
+      messageId: h.get('resent-message-id') || null,
+    };
+  }
+
+  if (classification === 'forward:inline') {
+    const block = findInlineForwardBlock(parsed.text || '');
+    if (block) return parseInlineHeaders(block.blockText);
+  }
+
+  // fallback: usa gli header del messaggio corrente
+  return {
+    from: parsed.from?.text || null,
+    to: parsed.to?.text || null,
+    cc: parsed.cc?.text || null,
+    subject: parsed.subject || null,
+    date: parsed.date || parsed.headers.get('date') || null,
+    messageId: parsed.messageId || null,
+  };
+}
+
+async function parseInnerRfc822(bufferOrStream) {
+  // mailparser accetta Buffer/Stream
+  const inner = await simpleParser(bufferOrStream);
+  return {
+    from: inner.from?.text || null,
+    to: inner.to?.text || null,
+    cc: inner.cc?.text || null,
+    subject: inner.subject || null,
+    date: inner.date || inner.headers.get('date') || null,
+    messageId: inner.messageId || null,
+    _innerParsed: inner
+  };
+}

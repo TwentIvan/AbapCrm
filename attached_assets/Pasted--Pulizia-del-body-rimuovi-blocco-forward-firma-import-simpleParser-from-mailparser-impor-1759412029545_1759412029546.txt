@@ -1,0 +1,63 @@
+// Pulizia del body: rimuovi blocco forward + firma
+import { simpleParser } from 'mailparser';
+import { findInlineForwardBlock, hasRfc822Attachment } from './forwardDetect.js';
+
+export function cleanBodyFromForwardAndSignature({ parsed, classification, inlineBlock }) {
+  // Se RFC822 allegato → mostra solo il body dell’inner
+  if (classification === 'forward:rfc822') {
+    const att = parsed.attachments.find(a => a.contentType?.toLowerCase() === 'message/rfc822');
+    if (att?.content) {
+      // Estrarre testo inner in modo grezzo
+      // (in forwardDetect.parseInnerRfc822 potresti passare anche il testo già estratto)
+      return extractTextFromRfc822(att.content);
+    }
+  }
+
+  // Se inline → taglia tutto a partire dall’inizio del blocco forward
+  const text = parsed.text || htmlToRoughText(parsed.html || '');
+  let work = text;
+
+  const blk = inlineBlock || findInlineForwardBlock(text);
+  if (classification.startsWith('forward') && blk) {
+    work = text.slice(0, blk.startIndex).trimEnd();
+  }
+
+  // Rimuovi firme
+  work = stripSignature(work);
+  return work.trim();
+}
+
+function htmlToRoughText(html) {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .trim();
+}
+
+function stripSignature(text) {
+  const lines = text.split(/\r?\n/);
+
+  // Delimitatore standard di firma: "-- " su riga singola
+  let idx = lines.findIndex(l => /^--\s?$/.test(l.trim()));
+  if (idx !== -1) return lines.slice(0, idx).join('\n');
+
+  // Heuristica: ultime 12 righe con tanti contatti/link/disclaimer
+  const tail = lines.slice(-12).join('\n');
+  const score =
+    (tail.match(/(privacy|riservatezza|disclaimer|unsubscribe|p\.iva|vat)/gi)?.length || 0) +
+    (tail.match(/\+?\d[\d\-\s]{6,}/g)?.length || 0) + // telefoni
+    (tail.match(/https?:\/\/|www\./gi)?.length || 0) +
+    (tail.match(/@/g)?.length || 0);
+
+  if (score >= 3) {
+    // taglia via ~le ultime 8-12 righe
+    return lines.slice(0, Math.max(0, lines.length - 10)).join('\n');
+  }
+  return text;
+}
+
+async function extractTextFromRfc822(bufOrStream) {
+  const inner = await simpleParser(bufOrStream);
+  return inner.text || htmlToRoughText(inner.html || '');
+}

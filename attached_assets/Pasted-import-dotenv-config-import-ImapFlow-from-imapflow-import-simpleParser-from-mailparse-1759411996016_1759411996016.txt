@@ -1,0 +1,159 @@
+import 'dotenv/config';
+import { ImapFlow } from 'imapflow';
+import { simpleParser } from 'mailparser';
+import fs from 'fs-extra';
+import path from 'path';
+
+import { classifyForward, extractOriginalHeaders, findInlineForwardBlock } from './lib/forwardDetect.js';
+import { cleanBodyFromForwardAndSignature } from './lib/bodyClean.js';
+import { saveJson, saveRaw } from './lib/storage.js';
+
+const POLL_EVERY_MS = 30_000; // 30s: regola a piacere
+const STATE_FILE = './out/state.json';
+
+await fs.ensureDir('./out/json');
+await fs.ensureDir('./out/raw');
+
+const loadState = async () => {
+  try { return JSON.parse(await fs.readFile(STATE_FILE, 'utf8')); }
+  catch { return {}; }
+};
+const saveState = async (s) => fs.writeFile(STATE_FILE, JSON.stringify(s, null, 2));
+
+const state = await loadState();
+
+/** Legge account da ENV con indice crescente: IMAP1_, IMAP2_, ... */
+function loadAccountsFromEnv() {
+  const accs = [];
+  for (let i = 1; i <= 10; i++) {
+    const prefix = `IMAP${i}_`;
+    const host = process.env[`${prefix}HOST`];
+    if (!host) continue;
+    accs.push({
+      id: `acc${i}`,
+      clientOptions: {
+        host,
+        port: Number(process.env[`${prefix}PORT`] || 993),
+        secure: String(process.env[`${prefix}SECURE`] || 'true') === 'true',
+        auth: {
+          user: process.env[`${prefix}USER`],
+          pass: process.env[`${prefix}PASS`],
+        }
+      },
+      folders: (process.env[`${prefix}FOLDERS`] || 'INBOX').split(',').map(s => s.trim())
+    });
+  }
+  return accs;
+}
+
+const accounts = loadAccountsFromEnv();
+if (accounts.length === 0) {
+  console.error('Nessun account IMAP*_* configurato in .env');
+  process.exit(1);
+}
+
+async function processMessage({ accountId, folder, session, seq }) {
+  // Ottieni il raw e i flags minimi
+  const { source, uid, envelope } = await session.download(seq, { uid: true });
+  const raw = await streamToBuffer(source);
+
+  // Parser MIME
+  const parsed = await simpleParser(raw);
+
+  // Classificazione inoltro + determinazione headers “originali”
+  const classification = classifyForward(parsed); // 'forward:rfc822' | 'forward:resent' | 'forward:inline' | 'original' | 'possible-forward'
+  const original = extractOriginalHeaders(parsed, classification);
+
+  // Body pulito (preferisci il testo normale, fallback a html->testo semplice)
+  const bodyText = parsed.text || htmlToRoughText(parsed.html || '');
+  const inlineBlock = findInlineForwardBlock(bodyText); // per taglio preciso quando inline
+  const cleanBody = cleanBodyFromForwardAndSignature({ parsed, classification, inlineBlock });
+
+  // Normalizzazione per la tua app
+  const normalized = {
+    source: {
+      accountId,
+      folder,
+      uid,
+    },
+    classification,
+    original_headers: {
+      from: original.from || parsed.from?.text || null,
+      to: original.to || parsed.to?.text || null,
+      cc: original.cc || parsed.cc?.text || null,
+      subject: original.subject || parsed.subject || null,
+      date: original.date || parsed.date || parsed.headers.get('date') || null,
+      messageId: original.messageId || parsed.messageId || null,
+    },
+    display: {
+      clean_body_text: cleanBody,
+    },
+    transport: {
+      deliveredTo: parsed.headers.get('delivered-to') || null,
+      returnPath: parsed.headers.get('return-path') || null,
+      resentFrom: parsed.headers.get('resent-from') || null,
+    }
+  };
+
+  await saveJson(uid, normalized);
+  await saveRaw(uid, raw);
+
+  console.log(`[${accountId}] ${folder} uid=${uid} -> ${classification} | subj="${normalized.original_headers.subject}" | from="${normalized.original_headers.from}"`);
+}
+
+async function pollAccount(acc) {
+  const client = new ImapFlow(acc.clientOptions);
+  try {
+    await client.connect();
+
+    for (const folder of acc.folders) {
+      const mailbox = await client.getMailboxLock(folder);
+      try {
+        const key = `${acc.id}:${folder}`;
+        const lastSeenUid = state[key]?.lastUid || 0;
+
+        // Cerca messaggi nuovi dal lastSeenUid in poi
+        const searchQuery = { uid: `${lastSeenUid + 1}:*` };
+        for await (let msg of client.fetch(searchQuery, { uid: true, envelope: true, source: true })) {
+          await processMessage({ accountId: acc.id, folder, session: client, seq: msg.uid });
+          state[key] = { lastUid: msg.uid };
+          await saveState(state);
+        }
+
+      } finally {
+        mailbox.release();
+      }
+    }
+
+  } catch (err) {
+    console.error(`[${acc.id}] ERRORE IMAP:`, err?.message || err);
+  } finally {
+    try { await client.logout(); } catch {}
+  }
+}
+
+function htmlToRoughText(html) {
+  // fallback super semplice; puoi sostituire con un parser DOM
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .trim();
+}
+
+async function streamToBuffer(stream) {
+  const chunks = [];
+  for await (const c of stream) chunks.push(c);
+  return Buffer.concat(chunks);
+}
+
+async function mainLoop() {
+  while (true) {
+    for (const acc of accounts) {
+      await pollAccount(acc);
+    }
+    await new Promise(r => setTimeout(r, POLL_EVERY_MS));
+  }
+}
+
+mainLoop().catch(e => console.error(e));
