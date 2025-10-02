@@ -32,7 +32,8 @@ export async function autoInitializeEmailServices() {
               port: activeConfig.port,
               tls: activeConfig.tls,
               folder: firstFolder,
-              userId: user.id // Associa le email all'utente che ha configurato l'account
+              userId: user.id, // Associa le email all'utente che ha configurato l'account
+              organizationId: activeConfig.organizationId! // Associa le email all'organizzazione della configurazione
             };
             
             try {

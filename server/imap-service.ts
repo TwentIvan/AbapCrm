@@ -16,6 +16,7 @@ interface ImapConfig {
   tls: boolean;
   folder: string;
   userId: string; // ID dell'utente che ha configurato questo account email
+  organizationId: string; // ID dell'organizzazione a cui appartiene questa configurazione email
 }
 
 export class ImapEmailService {
@@ -83,7 +84,7 @@ export class ImapEmailService {
         return;
       }
       console.log(`[IMAP] Opened folder: ${this.config.folder}`);
-      // First check for existing emails from the last 30 days
+      // First check for existing emails from the last 90 days
       this.checkForExistingEmails();
       // Then check for new unread emails
       this.checkForNewEmails();
@@ -96,10 +97,10 @@ export class ImapEmailService {
       return;
     }
     
-    // Search for emails from the last 30 days
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const searchDate = thirtyDaysAgo.toISOString().split('T')[0]; // YYYY-MM-DD format
+    // Search for emails from the last 90 days
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const searchDate = ninetyDaysAgo.toISOString().split('T')[0]; // YYYY-MM-DD format
     
     this.imap.search([['SINCE', searchDate]], (err: Error | null, results: number[]) => {
       if (err) {
@@ -108,11 +109,11 @@ export class ImapEmailService {
       }
 
       if (results.length === 0) {
-        console.log('[IMAP] No existing emails found in the last 30 days');
+        console.log('[IMAP] No existing emails found in the last 90 days');
         return;
       }
 
-      console.log(`[IMAP] Found ${results.length} existing emails from the last 30 days`);
+      console.log(`[IMAP] Found ${results.length} existing emails from the last 90 days`);
       this.processEmails(results, false); // Don't mark as seen for existing emails
     });
   }
@@ -279,9 +280,8 @@ export class ImapEmailService {
 
       console.log(`[IMAP] Threading info extracted for ${messageId}: thread=${threadingInfo.threadId}`);
 
-      // 🔧 FIX: Get user's first organization BEFORE creating message
-      const userOrganizations = await storage.getUserOrganizations(userId);
-      const organizationId = userOrganizations.length > 0 ? userOrganizations[0].organizationId : null;
+      // 🔧 FIX: Use organization from email config instead of first user org
+      const organizationId = this.config.organizationId;
       console.log(`[IMAP] Using organizationId: ${organizationId} for user: ${userId}`);
 
       const messageData: InsertMessage = {
