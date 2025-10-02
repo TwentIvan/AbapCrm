@@ -1,0 +1,140 @@
+Ottima idea 👇 Ti lascio una “checklist tecnica” super pragmatica che puoi passare a Claude per far funzionare bene il poller e, soprattutto, distinguere email inoltrate vs originali e ripulire il body.
+
+1) Rilevare in modo affidabile le email inoltrate
+
+Ordine di precisione (usa in cascata):
+
+MIME message/rfc822
+
+Se l’email contiene un allegato con Content-Type: message/rfc822, è quasi certamente un forward “pulito”.
+
+Regola: parsea quel part come nuovo messaggio e ignora il body esterno (che spesso è solo la firma dell’inoltrante).
+
+Header standard “Resent-” (forward manuale “corretto”)
+
+Cerca Resent-From, Resent-To, Resent-Date, Resent-Message-ID. Se presenti in blocco coerente → tratta il messaggio come inoltrato e usa i campi originali per mittente/destinatari.
+
+Forward automatici dei provider
+
+Cerca header non standard ma comuni: X-Original-To, X-Forwarded-To, X-Google-Original-From, Delivered-To (spesso utile per capire l’instradamento), Return-Path.
+
+Confronta From vs catena Received e Envelope-To/Delivered-To: se l’account che riceve non è fra To/Cc, probabile inoltro.
+
+Forward “inline” nel body (quelli più rognosi)
+
+Rileva blocchi “header-like” nel testo. Multilingua:
+
+EN: ----- Forwarded message -----, From:, Sent:, To:, Subject:
+
+IT: ---------- Messaggio inoltrato ----------, Da:, Inviato:, A:, Oggetto:
+
+DE/ES/FR varianti simili.
+
+Se trovi 3–4 righe header-like consecutive (Da/From, Inviato/Sent, A/To, Oggetto/Subject), considera forward inline e parsea mittente/destinatari/oggetto da quel blocco.
+
+2) Come estrarre mittente/destinatari “originali”
+
+Priorità sorgente dati:
+
+Se c’è message/rfc822 → usa From/To/Cc/Subject/Date di quel part.
+
+Altrimenti, se c’è blocco Resent-* coerente → usa quelli.
+
+Altrimenti, se hai individuato un blocco header inline → fai parsing robusto (regex sotto).
+
+Fallback euristico: confronta From con Delivered-To/X-Original-To; se non combacia, stima origine dai primi Received con “for <addr>”.
+
+Decodifica header:
+
+Decodifica RFC 2047/2231 (encoded-words, charset, folding) per non perdere nomi accentati.
+
+Normalizza indirizzi con parsing formale (no regex grezze sui campi “Name <email>”).
+
+3) Pulizia del body (rimuovere forward + firma)
+
+Se c’è message/rfc822: mostra solo il body dell’inner message.
+
+Forward inline: tronca tutto prima del blocco header inline; poi:
+
+Rimuovi signature block: cerca standard delimiter \n-- \n (due trattini + spazio su riga a sé).
+
+Applica un “signature classifier” semplice: ultime ~15 righe con molte linee brevi, link social, numeri di telefono, disclaimer legali, immagini inline → taglia.
+
+Rimuovi “protezioni” tipo risposte citate (> quote) sotto una soglia (se non fanno parte dell’originale).
+
+Liste e notifiche: se presenti header List-Id, List-Unsubscribe, Auto-Submitted → sono mailing list/robot; gestiscile con regole dedicate, non come forward.
+
+4) Regex utili (multilingua, tolleranti)
+
+Usale come ancora per i forward inline (case-insensitive, ^ inizio riga, consenti spazi):
+
+Marcatori sezione:
+
+^[-\s>]*Forwarded message[-\s>]*$
+
+^[-\s>]*Messaggio inoltrato[-\s>]*$
+
+Header inline (cattura gruppi):
+
+^(From|Da)\s*:\s*(.+)$
+
+^(To|A)\s*:\s*(.+)$
+
+^(Cc|Cc)\s*:\s*(.+)$
+
+^(Subject|Oggetto)\s*:\s*(.+)$
+
+^(Sent|Inviato)\s*:\s*(.+)$
+Consiglio: cerca almeno 3 di questi in un blocco di 8–12 righe consecutive prima di “promuoverlo” a forward.
+
+5) Evitare falsi positivi
+
+Thread/Reply vs Forward: controlla In-Reply-To e References; reply non è forward.
+
+Duplicati/idempotenza: usa Message-ID (o hash del raw) per non riprocessare.
+
+ML leggero (opzionale): addestra un classificatore binario “forward vs non-forward” su features:
+
+presenza message/rfc822, Resent-*, pattern inline, distanza tra “header inline” e inizio body, proporzione di righe tipo From:/Da: nelle prime 20 righe, ecc.
+
+Obiettivo: dare priorità a precisione alta; se in dubbio → mostra badge “Possibile inoltro”.
+
+6) Pipeline consigliata (alto livello)
+
+Fetch IMAP con UID e flags (solo unseen/recent/changed).
+
+Parse MIME (librerie robuste: Python email/mailparser, Node mailparser):
+
+Estrai parts, cerca message/rfc822.
+
+Decodifica header con charset e folding.
+
+Classifier inoltro (regole + ML facoltativo).
+
+Estrattori (in ordine di priorità del §2).
+
+Body cleaner (signature/quote/forward markers).
+
+Persisti: salva raw (per audit), json normalizzato (mittente/destinatari originali, soggetto, date, plain/html puliti), metadati (source account/cartella).
+
+UI: mostra “badge” chiaro: Inoltro da <nome-account> + mittente/destinatari originali; bottone “Mostra versione originale” (apre il raw o l’inner message/rfc822).
+
+7) Edge case da gestire
+
+Outlook/Exchange: spesso forward inline con blocco “Da:/Inviato:/A:/Oggetto:”. Attenzione alle localizzazioni.
+
+Gmail: “Messaggio inoltrato” + ability di inoltrare come allegato.
+
+S/MIME/PGP: inner message può essere cifrato/firmato: conserva comunque il part; segnala “non decifrabile”.
+
+Calendari/Inviti: text/calendar/text/vcard; non trattarli come forward.
+
+HTML-only: fai anche un parse del DOM per pattern di forward (linee orizzontali, <blockquote>).
+
+8) Qualità, logging e test
+
+Gold set: costruisci un piccolo dataset etichettato (50–200 email) con casi reali (IT/EN).
+
+Metriche: precision/recall sul “forward detection”; % di pulizia body (manual spot-check).
+
+Logging: per ogni messaggio salva perché è stato classificato come forward (regola/feature) → utile per il tuning.
