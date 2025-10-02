@@ -1418,15 +1418,15 @@ export const emailFeedbacks = pgTable("email_feedbacks", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   
   // Core feedback data
-  messageId: uuid("message_id").references(() => messages.id).notNull(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
-  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  messageId: uuid("message_id").references(() => messages.id, { onDelete: "cascade" }).notNull(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }).notNull(),
   
   // Feedback content
   isCorrect: boolean("is_correct").notNull(),
   category: feedbackCategoryEnum("category"), // null for positive feedback
   comment: text("comment"), // Optional user comment
-  customReasonId: uuid("custom_reason_id").references(() => customFeedbackReasons.id), // Link to existing custom reason
+  customReasonId: uuid("custom_reason_id").references(() => customFeedbackReasons.id, { onDelete: "set null" }), // Link to existing custom reason
   
   // Message metadata for analysis
   messageSubject: text("message_subject"),
