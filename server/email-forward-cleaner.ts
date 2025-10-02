@@ -38,6 +38,105 @@ export class EmailForwardCleaner {
   } as const;
 
   /**
+   * 🔧 PLAN B CASCADE: Extract content from RFC822 attachment (most reliable)
+   * RFC822 attachments contain the original forwarded email as structured data
+   */
+  private static async extractFromRfc822(rfc822Payload: any): Promise<ForwardedEmailData | null> {
+    try {
+      if (!rfc822Payload || !rfc822Payload.content) {
+        return null;
+      }
+
+      // Decode base64 content
+      const rawContent = Buffer.from(rfc822Payload.content, 'base64').toString('utf-8');
+      
+      // Parse RFC822 content using mailparser (same as IMAP)
+      const { simpleParser } = await import('mailparser');
+      const parsed = await simpleParser(rawContent);
+
+      console.log(`[EMAIL-CLEANER] 🔧 RFC822 extraction: subject="${parsed.subject}", from="${parsed.from?.text}"`);
+
+      // Helper to extract addresses from AddressObject
+      const getAddresses = (addressObj: any): string[] => {
+        if (!addressObj) return [];
+        const addrs = Array.isArray(addressObj) ? addressObj : addressObj.value || [addressObj];
+        return addrs.map((addr: any) => addr.address).filter(Boolean);
+      };
+
+      const fromAddr = Array.isArray(parsed.from) ? parsed.from[0] : parsed.from?.value?.[0] || parsed.from;
+
+      return {
+        originalSubject: parsed.subject || '',
+        originalBody: parsed.text || '',
+        originalHtmlBody: parsed.html || null,
+        originalFromEmail: fromAddr?.address || null,
+        originalFromName: fromAddr?.name || null,
+        isForwarded: true,
+        fullThreadContent: null,
+        originalToEmails: getAddresses(parsed.to),
+        originalCcEmails: getAddresses(parsed.cc),
+        originalBccEmails: getAddresses(parsed.bcc),
+        preservedHtmlFormatting: parsed.html || null
+      };
+    } catch (error) {
+      console.error('[EMAIL-CLEANER] RFC822 extraction failed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 🔧 PLAN B CASCADE: Extract content from Resent-* headers
+   * Resent headers indicate the email was resent/forwarded
+   */
+  private static extractFromResent(
+    resentHeaders: any,
+    textBody: string,
+    htmlBody: string | null
+  ): ForwardedEmailData | null {
+    try {
+      if (!resentHeaders || Object.keys(resentHeaders).length === 0) {
+        return null;
+      }
+
+      console.log(`[EMAIL-CLEANER] 🔧 Resent extraction: headers=${Object.keys(resentHeaders).join(', ')}`);
+
+      // Extract from/to from Resent headers
+      const resentFrom = resentHeaders['resent-from'];
+      const resentTo = resentHeaders['resent-to'];
+      const resentSubject = resentHeaders['resent-subject'];
+      const resentDate = resentHeaders['resent-date'];
+
+      // Parse email address from "Name <email@domain.com>" format
+      const parseEmailAddress = (addr: string) => {
+        const match = addr?.match(/<([^>]+)>/);
+        return match ? match[1] : addr;
+      };
+
+      const parseName = (addr: string) => {
+        const match = addr?.match(/^([^<]+)</);
+        return match ? match[1].trim() : null;
+      };
+
+      return {
+        originalSubject: resentSubject || '',
+        originalBody: textBody,
+        originalHtmlBody: htmlBody,
+        originalFromEmail: resentFrom ? parseEmailAddress(resentFrom) : null,
+        originalFromName: resentFrom ? parseName(resentFrom) : null,
+        isForwarded: true,
+        fullThreadContent: null,
+        originalToEmails: resentTo ? [parseEmailAddress(resentTo)] : [],
+        originalCcEmails: [],
+        originalBccEmails: [],
+        preservedHtmlFormatting: htmlBody
+      };
+    } catch (error) {
+      console.error('[EMAIL-CLEANER] Resent extraction failed:', error);
+      return null;
+    }
+  }
+
+  /**
    * Check if training patterns match email content using concrete regex
    */
   private static checkTrainingPatternsMatch(
@@ -511,7 +610,7 @@ export class EmailForwardCleaner {
 
   /**
    * Enhanced cleaning with training data integration
-   * 🔧 FIX: Now accepts optional messageId to apply message-specific training
+   * 🔧 PLAN B: Now supports cascade pipeline with forwardArtifacts
    */
   static async cleanForwardedEmailWithTraining(
     subject: string,
@@ -520,8 +619,38 @@ export class EmailForwardCleaner {
     userId: string,
     forceCleanForwarded?: boolean,
     customSignature?: string | null,
-    messageId?: string
+    messageId?: string,
+    forwardArtifacts?: any // { hasRfc822, hasResent, rfc822Payload, resentHeaders }
   ): Promise<ForwardedEmailData> {
+    console.log(`[EMAIL-CLEANER] 🔧 PLAN B CASCADE: Starting with artifacts=${!!forwardArtifacts}`);
+    
+    // 🔧 PLAN B CASCADE PIPELINE: RFC822 → Resent → Inline → Training → Original
+    
+    // 1. Try RFC822 extraction (most reliable)
+    if (forwardArtifacts?.hasRfc822 && forwardArtifacts.rfc822Payload) {
+      console.log(`[EMAIL-CLEANER] 🔧 CASCADE STEP 1: Trying RFC822 extraction...`);
+      const rfc822Result = await this.extractFromRfc822(forwardArtifacts.rfc822Payload);
+      if (rfc822Result) {
+        console.log(`[EMAIL-CLEANER] ✅ CASCADE: RFC822 extraction successful!`);
+        return rfc822Result;
+      }
+      console.log(`[EMAIL-CLEANER] ❌ CASCADE: RFC822 extraction failed, continuing...`);
+    }
+    
+    // 2. Try Resent-* headers extraction
+    if (forwardArtifacts?.hasResent && forwardArtifacts.resentHeaders) {
+      console.log(`[EMAIL-CLEANER] 🔧 CASCADE STEP 2: Trying Resent headers extraction...`);
+      const resentResult = this.extractFromResent(forwardArtifacts.resentHeaders, textBody, htmlBody);
+      if (resentResult) {
+        console.log(`[EMAIL-CLEANER] ✅ CASCADE: Resent headers extraction successful!`);
+        return resentResult;
+      }
+      console.log(`[EMAIL-CLEANER] ❌ CASCADE: Resent extraction failed, continuing...`);
+    }
+    
+    // 3. Fall back to inline patterns + training (existing logic)
+    console.log(`[EMAIL-CLEANER] 🔧 CASCADE STEP 3-4: Using inline patterns + training...`);
+    
     // Get training data for this user - optionally filtered by message
     const trainingData = await this.analyzeTrainingData(userId, messageId);
     

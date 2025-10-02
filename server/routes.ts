@@ -2046,9 +2046,11 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const originalSubject = message.subject || '';
       const originalBody = message.body || '';
       const originalHtmlBody = message.htmlBody;
+      // 🔧 PLAN B: Get forward artifacts for cascade pipeline
+      const forwardArtifacts = message.forwardArtifacts || null;
 
       // Re-apply cleaning algorithm with current training data
-      // 🔧 FIX: Pass messageId to apply message-specific training selections
+      // 🔧 PLAN B: Now includes forwardArtifacts for cascade pipeline
       const cleanedResult = await EmailForwardCleaner.cleanForwardedEmailWithTraining(
         originalSubject,
         originalBody,
@@ -2056,7 +2058,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         userId,
         true, // forceCleanForwarded - ensure we re-process it
         null,  // no custom signature for now
-        messageId // 🔧 NEW: Pass messageId for message-specific training
+        messageId, // Pass messageId for message-specific training
+        forwardArtifacts // 🔧 PLAN B: Forward artifacts for cascade
       );
 
       // Check if content actually changed
