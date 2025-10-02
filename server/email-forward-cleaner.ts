@@ -254,17 +254,28 @@ export class EmailForwardCleaner {
     let cleanedHtml = htmlContent;
     let totalRemoved = 0;
     
+    // 🔧 FIX A: Normalize HTML encoding for both content and selections
+    const normalizedHtml = this.normalizeHtmlEncoding(htmlContent);
+    console.log(`[EMAIL-CLEANER] 🔧 Applied encoding normalization to HTML (${htmlContent.length} → ${normalizedHtml.length} chars)`);
+    cleanedHtml = normalizedHtml;
+    
     // 🛡️ PRESERVE: Mark content that should NOT be removed (using direct search)
     const preserveMarkers: Array<{ marker: string; originalText: string; }> = [];
     
     for (const preserve of exactSelections.toPreserve) {
       const marker = `__PRESERVE_${Math.random().toString(36).substr(2, 9)}__`;
       
-      // Try direct text match first
-      if (cleanedHtml.includes(preserve.selectedText)) {
-        preserveMarkers.push({ marker, originalText: preserve.selectedText });
-        cleanedHtml = cleanedHtml.replace(preserve.selectedText, marker);
-        console.log(`[EMAIL-CLEANER] Preserved ${preserve.selectionType}: "${preserve.selectedText.substring(0, 50)}..."`);
+      // 🔧 FIX A: Normalize the selection text too
+      const normalizedSelection = this.normalizeHtmlEncoding(preserve.selectedText);
+      
+      // Try direct text match with normalized versions
+      if (cleanedHtml.includes(normalizedSelection)) {
+        // Find and replace using normalized text
+        const startPos = cleanedHtml.indexOf(normalizedSelection);
+        const originalText = cleanedHtml.substring(startPos, startPos + normalizedSelection.length);
+        preserveMarkers.push({ marker, originalText });
+        cleanedHtml = cleanedHtml.replace(originalText, marker);
+        console.log(`[EMAIL-CLEANER] Preserved ${preserve.selectionType}: "${normalizedSelection.substring(0, 50)}..."`);
       }
     }
     
@@ -275,27 +286,28 @@ export class EmailForwardCleaner {
       // Try multiple approaches to find and remove the text
       let found = false;
       
-      // 🛑 DISABLED: Semantic matching (too aggressive, corrupting HTML)
-      // Reverting to conservative approach
-      console.log(`[EMAIL-CLEANER] 🔍 CONSERVATIVE-DEBUG for ${removal.selectionType}:`);
+      console.log(`[EMAIL-CLEANER] 🔍 MATCHING for ${removal.selectionType}:`);
       console.log(`[EMAIL-CLEANER] 🔍 Original selection: "${removal.selectedText.substring(0, 100)}..."`);
       
-      // Try direct text match only
-      if (cleanedHtml.includes(removal.selectedText)) {
-        console.log(`[EMAIL-CLEANER] ✅ Direct text match found`);
-        cleanedHtml = cleanedHtml.replace(removal.selectedText, '');
+      // 🔧 FIX A: Normalize the selection text for matching
+      const normalizedSelection = this.normalizeHtmlEncoding(removal.selectedText);
+      console.log(`[EMAIL-CLEANER] 🔧 Normalized selection: "${normalizedSelection.substring(0, 100)}..."`);
+      
+      // Try direct text match with normalized versions
+      if (cleanedHtml.includes(normalizedSelection)) {
+        console.log(`[EMAIL-CLEANER] ✅ Direct match found with normalized encoding!`);
+        cleanedHtml = cleanedHtml.replace(normalizedSelection, '');
         found = true;
       } else {
-        console.log(`[EMAIL-CLEANER] ❌ No direct match found - skipping for safety`);
-        // Do not attempt any aggressive matching that could corrupt HTML
+        console.log(`[EMAIL-CLEANER] ❌ No match found even after normalization`);
       }
       
       if (found) {
         const removedChars = originalLength - cleanedHtml.length;
         totalRemoved += removedChars;
-        console.log(`[EMAIL-CLEANER] Removed ${removal.selectionType}: ${removedChars} chars - "${removal.selectedText.substring(0, 50)}..."`);
+        console.log(`[EMAIL-CLEANER] Removed ${removal.selectionType}: ${removedChars} chars - "${normalizedSelection.substring(0, 50)}..."`);
       } else {
-        console.log(`[EMAIL-CLEANER] No match for ${removal.selectionType}: "${removal.selectedText.substring(0, 50)}..."`);
+        console.log(`[EMAIL-CLEANER] No match for ${removal.selectionType}: "${normalizedSelection.substring(0, 50)}..."`);
       }
     }
     
@@ -333,6 +345,43 @@ export class EmailForwardCleaner {
       .replace(/<[^>]*>/g, ' ')          // Remove HTML tags
       .replace(/\s+/g, ' ')              // Normalize whitespace
       .trim();
+  }
+
+  /**
+   * 🔧 FIX A: Normalize HTML encoding to handle mismatches between saved selections and current HTML
+   * This resolves issues where saved text has double-encoding (&amp;lt;) vs single (&lt;)
+   */
+  private static normalizeHtmlEncoding(html: string): string {
+    if (!html) return html;
+    
+    // Decode common double-encoded entities to single-encoded
+    let normalized = html
+      // Double-encoded to single-encoded
+      .replace(/&amp;lt;/g, '&lt;')
+      .replace(/&amp;gt;/g, '&gt;')
+      .replace(/&amp;quot;/g, '&quot;')
+      .replace(/&amp;apos;/g, '&apos;')
+      .replace(/&amp;amp;/g, '&amp;')
+      // Normalize numeric entities
+      .replace(/&amp;#(\d+);/g, '&#$1;');
+    
+    // Also try decoding to actual characters for better matching
+    try {
+      normalized = normalized
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        // Decode numeric HTML entities
+        .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+        .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+    } catch (e) {
+      // If decoding fails, return the partially normalized version
+      console.warn('[EMAIL-CLEANER] Warning: partial encoding normalization due to:', e);
+    }
+    
+    return normalized;
   }
 
   // 🔧 NEW: Semantic content extraction for intelligent matching  
