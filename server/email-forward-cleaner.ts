@@ -1096,20 +1096,41 @@ export class EmailForwardCleaner {
       $('div[id="Signature"]').remove();
       $('div[class*="Signature"]').remove();
       
-      // 2. Remove all elements containing "Ivan Lo Torto" text
-      $('*').each((_, el) => {
+      // 2. Find signature by looking for specific text patterns in LEAF nodes only
+      // Start from the deepest elements to avoid removing parent containers
+      let signatureFound = false;
+      $('*').toArray().reverse().forEach((el) => {
+        if (signatureFound) return;
+        
         const $el = $(el);
-        const text = $el.text();
-        if (text.includes('Ivan Lo Torto') || text.includes('Technical analyst')) {
-          // Remove the element and all following siblings (signature continuation)
-          $el.nextAll().remove();
-          $el.remove();
-          return false; // Stop iteration once found
+        const directText = $el.contents().filter((_, node) => node.type === 'text').text().trim();
+        
+        // Only check direct text content, not nested elements
+        if (directText.includes('Ivan Lo Torto') || directText.includes('Technical analyst')) {
+          console.log(`[EMAIL-CLEANER] Found signature marker in element: ${$el.prop('tagName')}`);
+          
+          // Find the signature container (usually a div, p, or table)
+          let $container = $el;
+          while ($container.parent().length > 0 && !['body', 'html'].includes($container.parent().prop('tagName')?.toLowerCase() || '')) {
+            const parent = $container.parent();
+            // Stop if we reach a container with significant content before the signature
+            const parentText = parent.text();
+            if (parentText.length > 500 && !parentText.includes('Ivan Lo Torto')) {
+              break;
+            }
+            $container = parent;
+          }
+          
+          // Remove the signature container and everything after it
+          $container.nextAll().remove();
+          $container.remove();
+          signatureFound = true;
         }
       });
       
-      // 3. Clean up empty elements
-      $('div:empty, p:empty, span:empty').remove();
+      if (signatureFound) {
+        console.log(`[EMAIL-CLEANER] ✓ Signature container removed`);
+      }
       
       const cleaned = $.html();
       console.log(`[EMAIL-CLEANER] 🧹 Structural signature removal: ${html.length} -> ${cleaned.length} chars`);
