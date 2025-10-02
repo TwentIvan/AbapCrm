@@ -124,8 +124,12 @@ export class ImapEmailService {
       return;
     }
     
-    // Search for unread emails
-    this.imap.search(['UNSEEN'], (err: Error | null, results: number[]) => {
+    // 🔧 TEMPORARY: Full fetch for testing Plan B (normally uses UNSEEN)
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const searchDate = ninetyDaysAgo.toISOString().split('T')[0];
+    
+    this.imap.search([['SINCE', searchDate]], (err: Error | null, results: number[]) => {
       if (err) {
         console.error('[IMAP] Search error:', err);
         return;
@@ -137,7 +141,7 @@ export class ImapEmailService {
       }
 
       console.log(`[IMAP] Found ${results.length} new emails`);
-      this.processEmails(results, true); // Mark new emails as seen
+      this.processEmails(results, false); // Don't mark as seen for testing
     });
   }
 
