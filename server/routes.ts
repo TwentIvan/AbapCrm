@@ -1758,34 +1758,14 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       // Utilizza EmailForwardCleaner per dividere il contenuto con training data
       console.log(`[RENDER-ROUTE] Processing message ${req.params.id}: text=${(message.body || '').length} chars, html=${(message.htmlBody || '').length} chars`);
       
-      let renderedContent;
-      try {
-        // Prova con training data
-        if (typeof EmailForwardCleaner.splitEmailContentWithTraining === 'function') {
-          console.log(`[RENDER-ROUTE] Using training-aware email cleaning`);
-          renderedContent = await EmailForwardCleaner.splitEmailContentWithTraining(
-            message.subject ?? "",
-            message.body ?? "",
-            message.htmlBody || null,
-            req.user!.id
-          );
-        } else {
-          console.error(`[RENDER-ROUTE] splitEmailContentWithTraining is not a function! Falling back to legacy`);
-          renderedContent = EmailForwardCleaner.splitEmailContent(
-            message.subject ?? "",
-            message.body ?? "",
-            message.htmlBody
-          );
-        }
-      } catch (trainingError) {
-        console.error(`[RENDER-ROUTE] Training-aware cleaning failed:`, trainingError);
-        console.log(`[RENDER-ROUTE] Falling back to legacy email cleaning`);
-        renderedContent = EmailForwardCleaner.splitEmailContent(
-          message.subject ?? "",
-          message.body ?? "",
-          message.htmlBody
-        );
-      }
+      // 🔧 FIX: Visualizzazione normale USA ALGORITMO BASE (no training)
+      // Training viene applicato SOLO con "Riprocessa"
+      console.log(`[RENDER-ROUTE] Using base email cleaning (no training)`);
+      const renderedContent = EmailForwardCleaner.splitEmailContent(
+        message.subject ?? "",
+        message.body ?? "",
+        message.htmlBody || null
+      );
       console.log(`[RENDER-ROUTE] Split result: bodyText=${renderedContent.bodyText.length} chars, bodyHtml=${renderedContent.bodyHtml?.length || 0} chars, remainderHtml=${renderedContent.remainderHtml?.length || 0} chars, isForwarded=${renderedContent.isForwarded}`);
 
       // 🚀 FORCE FRESH CONTENT: Add timestamp to bypass ALL caching

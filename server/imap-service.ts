@@ -257,12 +257,12 @@ export class ImapEmailService {
         return;
       }
 
-      // Clean forwarded email content using training data
-      const cleanedEmail = await EmailForwardCleaner.cleanForwardedEmailWithTraining(
+      // 🔧 FIX: Nuove email usano ALGORITMO BASE (no training)
+      // Training viene applicato SOLO con "Riprocessa" manuale
+      const cleanedEmail = EmailForwardCleaner.cleanForwardedEmail(
         parsed.subject || '',
         parsed.text || '',
-        parsed.html || null,
-        userId
+        parsed.html || null
       );
 
       if (cleanedEmail.isForwarded) {
