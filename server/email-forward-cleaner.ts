@@ -1091,69 +1091,77 @@ export class EmailForwardCleaner {
     
     try {
       const $ = cheerio.load(html);
+      let signatureRemoved = false;
       
       // 1. Remove all divs with id="Signature" or class containing "Signature"
-      $('div[id="Signature"]').remove();
-      $('div[class*="Signature"]').remove();
+      const signatureDivs = $('div[id="Signature"], div[class*="Signature"]');
+      if (signatureDivs.length > 0) {
+        signatureDivs.each((_, el) => {
+          const $el = $(el);
+          // Also remove everything after the signature div
+          $el.nextAll().remove();
+          $el.remove();
+          signatureRemoved = true;
+        });
+        console.log(`[EMAIL-CLEANER] ✓ Removed ${signatureDivs.length} signature div(s)`);
+      }
       
-      // 2. Find signature by looking for specific text patterns
-      let signatureFound = false;
-      $('*').each((_, el) => {
-        if (signatureFound) return;
-        
-        const $el = $(el);
-        const directText = $el.contents().filter((_, node) => node.type === 'text').text().trim();
-        
-        // Only check direct text content, not nested elements
-        if (directText.includes('Ivan Lo Torto') || directText.includes('Technical analyst')) {
-          console.log(`[EMAIL-CLEANER] Found signature marker in element: ${$el.prop('tagName')}`);
+      // 2. If no signature div found, look for text patterns (using full text, not just direct)
+      if (!signatureRemoved) {
+        $('*').each((_, el) => {
+          if (signatureRemoved) return;
           
-          // Find the NEAREST block-level signature container
-          // CRITICAL: Stop climbing when we reach a node that:
-          // 1. Is body/html (too high)
-          // 2. Contains MORE than just signature (has other content)
-          // 3. Is a reasonable signature block (div, table, p)
+          const $el = $(el);
+          // Use full text content, not just direct text
+          const fullText = $el.text();
           
-          let $container = $el;
-          let climbed = 0;
-          const MAX_CLIMB = 5; // Don't go more than 5 levels up
-          
-          while ($container.parent().length > 0 && climbed < MAX_CLIMB) {
-            const parent = $container.parent();
-            const parentTag = parent.prop('tagName')?.toLowerCase() || '';
+          // Check if this element contains signature markers
+          if (fullText.includes('Ivan Lo Torto') || fullText.includes('Technical analyst')) {
+            console.log(`[EMAIL-CLEANER] Found signature marker in element: ${$el.prop('tagName')}`);
             
-            // Stop at body/html - too high!
-            if (['body', 'html'].includes(parentTag)) {
-              console.log(`[EMAIL-CLEANER] Stopping at ${parentTag} tag`);
-              break;
+            // Find the NEAREST block-level signature container
+            let $container = $el;
+            let climbed = 0;
+            const MAX_CLIMB = 5;
+            
+            while ($container.parent().length > 0 && climbed < MAX_CLIMB) {
+              const parent = $container.parent();
+              const parentTag = parent.prop('tagName')?.toLowerCase() || '';
+              
+              // Stop at body/html - too high!
+              if (['body', 'html'].includes(parentTag)) {
+                console.log(`[EMAIL-CLEANER] Stopping at ${parentTag} tag`);
+                break;
+              }
+              
+              // Check if parent has content BEFORE the signature
+              const parentHtml = parent.html() || '';
+              const containerHtml = $container.prop('outerHTML') || '';
+              const beforeContent = parentHtml.split(containerHtml)[0] || '';
+              const beforeTextLength = beforeContent.replace(/<[^>]*>/g, '').trim().length;
+              
+              // If there's significant content before signature, stop here
+              if (beforeTextLength > 50) {
+                console.log(`[EMAIL-CLEANER] Stopping - found ${beforeTextLength} chars before signature`);
+                break;
+              }
+              
+              $container = parent;
+              climbed++;
             }
             
-            // Check if parent has content BEFORE the signature
-            const parentHtml = parent.html() || '';
-            const containerHtml = $container.prop('outerHTML') || '';
-            const beforeContent = parentHtml.split(containerHtml)[0] || '';
+            console.log(`[EMAIL-CLEANER] Removing signature container: ${$container.prop('tagName')} (climbed ${climbed} levels)`);
             
-            // If there's significant content before signature, stop here
-            if (beforeContent.replace(/<[^>]*>/g, '').trim().length > 50) {
-              console.log(`[EMAIL-CLEANER] Stopping - found ${beforeContent.length} chars before signature`);
-              break;
-            }
-            
-            $container = parent;
-            climbed++;
+            // Remove ONLY the signature container and everything after it
+            $container.nextAll().remove();
+            $container.remove();
+            signatureRemoved = true;
           }
-          
-          console.log(`[EMAIL-CLEANER] Removing signature container: ${$container.prop('tagName')} (climbed ${climbed} levels)`);
-          
-          // Remove ONLY the signature container and everything after it
-          $container.nextAll().remove();
-          $container.remove();
-          signatureFound = true;
-        }
-      });
+        });
+      }
       
-      if (signatureFound) {
-        console.log(`[EMAIL-CLEANER] ✓ Signature container removed`);
+      if (signatureRemoved) {
+        console.log(`[EMAIL-CLEANER] ✓ Signature successfully removed`);
       } else {
         console.log(`[EMAIL-CLEANER] ℹ No signature markers found`);
       }
@@ -1163,7 +1171,7 @@ export class EmailForwardCleaner {
       
       // Safety check: If we removed >80% of content, something went wrong
       const removalRatio = (html.length - cleaned.length) / html.length;
-      if (removalRatio > 0.8) {
+      if (removalRatio > 0.8 && signatureRemoved) {
         console.error(`[EMAIL-CLEANER] ❌ Safety check failed: removed ${(removalRatio * 100).toFixed(1)}% of content - reverting`);
         return html;
       }
