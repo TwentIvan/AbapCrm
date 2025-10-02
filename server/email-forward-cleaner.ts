@@ -1158,6 +1158,28 @@ export class EmailForwardCleaner {
     // Ma questo distrugge gli split riusciti di thread (es. 1.6MB -> 9KB body è intenzionale!)
     console.log(`[EMAIL-CLEANER] Skipping destructive fallback - using cleaned HTML: ${cleanedHtmlBody?.length || 0} chars (original: ${htmlBody?.length || 0} chars)`);
 
+    // 🔧 BUGFIX: Rimuovi firme anche dalle email inoltrate!
+    if (cleanedHtmlBody && cleanedHtmlBody.includes('Ivan Lo Torto')) {
+      console.log(`[EMAIL-CLEANER] ⚠️  BUG DETECTED (FORWARDED): "Cleaned" bodyHtml still contains signature! Length: ${cleanedHtmlBody.length}`);
+      
+      // Apply signature removal patterns to the supposedly "clean" part
+      const beforeLength = cleanedHtmlBody.length;
+      cleanedHtmlBody = cleanedHtmlBody
+        // Remove signature blocks
+        .replace(/<div[^>]*id="Signature"[^>]*>[\s\S]*?<\/div>/gi, '')
+        .replace(/<div[^>]*class="[^"]*elementToProof[^"]*"[^>]*id="Signature"[\s\S]*?<\/div>/gi, '')
+        // Remove Ivan Lo Torto signatures specifically  
+        .replace(/Ivan Lo Torto[\s\S]*?(?=<\/p>|<p|$)/gi, '')
+        // Remove technical analyst signatures
+        .replace(/Technical analyst[\s\S]*?(?=<\/p>|<p|$)/gi, '')
+        // Clean up empty divs and paragraphs
+        .replace(/<div[^>]*>\s*<\/div>/gi, '')
+        .replace(/<p[^>]*>\s*<\/p>/gi, '')
+        .trim();
+        
+      console.log(`[EMAIL-CLEANER] ✅ Signatures removed from forwarded bodyHtml: ${beforeLength} -> ${cleanedHtmlBody.length} chars`);
+    }
+
     return {
       bodyText: cleaned.originalBody,
       bodyHtml: cleanedHtmlBody ? this.sanitizeHtml(cleanedHtmlBody) : null,
