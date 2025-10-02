@@ -35,10 +35,10 @@
   --sidebar-accent-foreground: hsl(220, 15%, 20%);
   --sidebar-border: hsl(220, 15%, 88%);
   --sidebar-ring: hsl(220, 100%, 47%);
-  --font-sans: "Inter", "system-ui", "sans-serif";
-  --font-serif: "Georgia", "serif";
-  --font-mono: "Menlo", "monospace";
-  --radius: 0.5rem;
+  --font-sans: 'Roboto', sans-serif;
+  --font-serif: 'Roboto', sans-serif;
+  --font-mono: 'Roboto', sans-serif;
+  --radius: 1rem;
   --shadow-2xs: 0px 2px 0px 0px hsl(221.2, 83.2%, 53.3%, 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(221.2, 83.2%, 53.3%, 0.00);
   --shadow-sm: 0px 2px 0px 0px hsl(221.2, 83.2%, 53.3%, 0.00), 0px 1px 2px -1px hsl(221.2, 83.2%, 53.3%, 0.00);
