@@ -224,6 +224,8 @@ export const messages = pgTable("messages", {
   subject: text("subject"),
   body: text("body"),
   htmlBody: text("html_body"),
+  // 🔧 PLAN B: Forward detection artifacts for cascade pipeline
+  forwardArtifacts: jsonb("forward_artifacts"), // { rfc822Payload?: {...}, resentHeaders?: {...}, hasRfc822: boolean, hasResent: boolean }
   attachments: text("attachments").array(), // Array di nomi/paths allegati
   receivedAt: timestamp("received_at").notNull(),
   // Email Threading Support

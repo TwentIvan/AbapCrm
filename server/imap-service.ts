@@ -284,6 +284,56 @@ export class ImapEmailService {
       const organizationId = this.config.organizationId;
       console.log(`[IMAP] Using organizationId: ${organizationId} for user: ${userId}`);
 
+      // 🔧 PLAN B: Extract forward detection artifacts for cascade pipeline
+      const forwardArtifacts: any = {
+        hasRfc822: false,
+        hasResent: false,
+        rfc822Payload: null,
+        resentHeaders: null
+      };
+
+      // Check for RFC822 (message/rfc822) attachments
+      if (parsed.attachments && parsed.attachments.length > 0) {
+        for (const attachment of parsed.attachments) {
+          if (attachment.contentType === 'message/rfc822' || 
+              attachment.contentType?.startsWith('message/')) {
+            forwardArtifacts.hasRfc822 = true;
+            forwardArtifacts.rfc822Payload = {
+              filename: attachment.filename,
+              contentType: attachment.contentType,
+              size: attachment.size,
+              // Store raw content as base64 for later parsing
+              content: attachment.content ? attachment.content.toString('base64') : null
+            };
+            console.log(`[IMAP] 🔧 RFC822 attachment detected: ${attachment.filename} (${attachment.size} bytes)`);
+            break; // Use first RFC822 attachment
+          }
+        }
+      }
+
+      // Check for Resent-* headers
+      const headers = parsed.headers as Map<string, any>;
+      if (headers) {
+        const resentHeaders: any = {};
+        let hasAnyResent = false;
+        
+        // Extract common Resent-* headers
+        const resentKeys = ['resent-from', 'resent-to', 'resent-date', 'resent-message-id', 'resent-subject'];
+        for (const key of resentKeys) {
+          const value = headers.get(key);
+          if (value) {
+            hasAnyResent = true;
+            resentHeaders[key] = value;
+          }
+        }
+        
+        if (hasAnyResent) {
+          forwardArtifacts.hasResent = true;
+          forwardArtifacts.resentHeaders = resentHeaders;
+          console.log(`[IMAP] 🔧 Resent-* headers detected:`, Object.keys(resentHeaders));
+        }
+      }
+
       const messageData: InsertMessage = {
         messageId,
         type: 'email',
@@ -309,6 +359,8 @@ export class ImapEmailService {
           : getAllAddresses(parsed.bcc),
         attachments: attachments,
         receivedAt: parsed.date || new Date(),
+        // 🔧 PLAN B: Forward artifacts for cascade detection
+        forwardArtifacts: (forwardArtifacts.hasRfc822 || forwardArtifacts.hasResent) ? forwardArtifacts : null,
         // Threading information
         threadId: threadingInfo.threadId,
         inReplyTo: threadingInfo.inReplyTo,
