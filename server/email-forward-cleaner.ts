@@ -1,5 +1,6 @@
 // Sistema per pulire le email inoltrate rimuovendo i metadati di inoltro
 import { storage } from './storage';
+import * as cheerio from 'cheerio';
 
 interface ForwardedEmailData {
   originalSubject: string;
@@ -1081,6 +1082,45 @@ export class EmailForwardCleaner {
     return this.splitEmailContentFromCleaned(subject, body, htmlBody, cleaned);
   }
 
+  /**
+   * 🔧 STRUCTURAL SIGNATURE REMOVAL using Cheerio
+   * Removes signatures by parsing HTML structure, not regex
+   */
+  private static removeSignaturesStructural(html: string): string {
+    if (!html) return html;
+    
+    try {
+      const $ = cheerio.load(html);
+      
+      // 1. Remove all divs with id="Signature" or class containing "Signature"
+      $('div[id="Signature"]').remove();
+      $('div[class*="Signature"]').remove();
+      
+      // 2. Remove all elements containing "Ivan Lo Torto" text
+      $('*').each((_, el) => {
+        const $el = $(el);
+        const text = $el.text();
+        if (text.includes('Ivan Lo Torto') || text.includes('Technical analyst')) {
+          // Remove the element and all following siblings (signature continuation)
+          $el.nextAll().remove();
+          $el.remove();
+          return false; // Stop iteration once found
+        }
+      });
+      
+      // 3. Clean up empty elements
+      $('div:empty, p:empty, span:empty').remove();
+      
+      const cleaned = $.html();
+      console.log(`[EMAIL-CLEANER] 🧹 Structural signature removal: ${html.length} -> ${cleaned.length} chars`);
+      return cleaned;
+      
+    } catch (err) {
+      console.error('[EMAIL-CLEANER] ❌ Cheerio parsing failed:', err);
+      return html; // Return original on error
+    }
+  }
+
   // Logica comune per dividere il contenuto da email pulita
   private static splitEmailContentFromCleaned(
     subject: string,
@@ -1104,25 +1144,11 @@ export class EmailForwardCleaner {
       if (replySplit.found) {
         console.log(`[EMAIL-CLEANER] REPLY remainder: ${replySplit.remainderHtml?.length || replySplit.remainderText?.length || 0} chars`);
         
-        // 🔧 BUGFIX: Remove signatures from the "cleaned" bodyHtml part!
+        // 🔧 ALWAYS apply structural signature removal for replies
         let cleanedBodyHtml = replySplit.bodyHtml;
-        if (cleanedBodyHtml && cleanedBodyHtml.includes('Ivan Lo Torto')) {
-          console.log(`[EMAIL-CLEANER] ⚠️  BUG DETECTED: "Cleaned" bodyHtml still contains signature! Length: ${cleanedBodyHtml.length}`);
-          
-          // Apply signature removal patterns to the supposedly "clean" part
-          cleanedBodyHtml = cleanedBodyHtml
-            // Remove signature blocks
-            .replace(/<div[^>]*id="Signature"[^>]*>[\s\S]*?<\/div>/gi, '')
-            // Remove Ivan Lo Torto signatures specifically  
-            .replace(/Ivan Lo Torto[\s\S]*?(?=<\/p>|<p|$)/gi, '')
-            // Remove technical analyst signatures
-            .replace(/Technical analyst[\s\S]*?(?=<\/p>|<p|$)/gi, '')
-            // Clean up empty divs and paragraphs
-            .replace(/<div[^>]*>\s*<\/div>/gi, '')
-            .replace(/<p[^>]*>\s*<\/p>/gi, '')
-            .trim();
-            
-          console.log(`[EMAIL-CLEANER] ✅ Signatures removed from bodyHtml: ${replySplit.bodyHtml?.length} -> ${cleanedBodyHtml.length} chars`);
+        if (cleanedBodyHtml) {
+          console.log(`[EMAIL-CLEANER] Applying structural signature removal to reply...`);
+          cleanedBodyHtml = this.removeSignaturesStructural(cleanedBodyHtml);
         }
         
         return {
@@ -1158,26 +1184,10 @@ export class EmailForwardCleaner {
     // Ma questo distrugge gli split riusciti di thread (es. 1.6MB -> 9KB body è intenzionale!)
     console.log(`[EMAIL-CLEANER] Skipping destructive fallback - using cleaned HTML: ${cleanedHtmlBody?.length || 0} chars (original: ${htmlBody?.length || 0} chars)`);
 
-    // 🔧 BUGFIX: Rimuovi firme anche dalle email inoltrate!
-    if (cleanedHtmlBody && cleanedHtmlBody.includes('Ivan Lo Torto')) {
-      console.log(`[EMAIL-CLEANER] ⚠️  BUG DETECTED (FORWARDED): "Cleaned" bodyHtml still contains signature! Length: ${cleanedHtmlBody.length}`);
-      
-      // Apply signature removal patterns to the supposedly "clean" part
-      const beforeLength = cleanedHtmlBody.length;
-      cleanedHtmlBody = cleanedHtmlBody
-        // Remove signature blocks
-        .replace(/<div[^>]*id="Signature"[^>]*>[\s\S]*?<\/div>/gi, '')
-        .replace(/<div[^>]*class="[^"]*elementToProof[^"]*"[^>]*id="Signature"[\s\S]*?<\/div>/gi, '')
-        // Remove Ivan Lo Torto signatures specifically  
-        .replace(/Ivan Lo Torto[\s\S]*?(?=<\/p>|<p|$)/gi, '')
-        // Remove technical analyst signatures
-        .replace(/Technical analyst[\s\S]*?(?=<\/p>|<p|$)/gi, '')
-        // Clean up empty divs and paragraphs
-        .replace(/<div[^>]*>\s*<\/div>/gi, '')
-        .replace(/<p[^>]*>\s*<\/p>/gi, '')
-        .trim();
-        
-      console.log(`[EMAIL-CLEANER] ✅ Signatures removed from forwarded bodyHtml: ${beforeLength} -> ${cleanedHtmlBody.length} chars`);
+    // 🔧 ALWAYS apply structural signature removal for forwarded emails
+    if (cleanedHtmlBody) {
+      console.log(`[EMAIL-CLEANER] Applying structural signature removal to forwarded email...`);
+      cleanedHtmlBody = this.removeSignaturesStructural(cleanedHtmlBody);
     }
 
     return {
