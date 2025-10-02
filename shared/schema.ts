@@ -213,7 +213,7 @@ export const messageTypeEnum = pgEnum("message_type", ["email", "chat", "sms", "
 export const messages = pgTable("messages", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
-  // Note: messages are NOT segregated by organization - shared across all user's orgs
+  organizationId: uuid("organization_id").references(() => organizations.id), // 🔧 FIX: Organization segregation for messages
   messageId: text("message_id"), // ID del messaggio originale (es. Message-ID email)
   type: messageTypeEnum("type").default("email").notNull(),
   status: messageStatusEnum("status").default("unread").notNull(),

@@ -279,6 +279,11 @@ export class ImapEmailService {
 
       console.log(`[IMAP] Threading info extracted for ${messageId}: thread=${threadingInfo.threadId}`);
 
+      // 🔧 FIX: Get user's first organization BEFORE creating message
+      const userOrganizations = await storage.getUserOrganizations(userId);
+      const organizationId = userOrganizations.length > 0 ? userOrganizations[0].organizationId : null;
+      console.log(`[IMAP] Using organizationId: ${organizationId} for user: ${userId}`);
+
       const messageData: InsertMessage = {
         messageId,
         type: 'email',
@@ -309,6 +314,7 @@ export class ImapEmailService {
         inReplyTo: threadingInfo.inReplyTo,
         references: threadingInfo.references,
         userId,
+        organizationId, // 🔧 FIX: Now includes organizationId!
         projectId: null,
         taskId: null,
         partnerId: null,
