@@ -72,8 +72,9 @@ export class EmailForwardCleaner {
 
   /**
    * Analyzes user training data to improve pattern recognition
+   * 🔧 FIX: Now accepts optional messageId to get selections for specific email
    */
-  static async analyzeTrainingData(userId: string): Promise<{
+  static async analyzeTrainingData(userId: string, messageId?: string): Promise<{
     commonHeaders: string[];
     commonBodyPatterns: string[];
     threadMarkers: string[];
@@ -84,9 +85,13 @@ export class EmailForwardCleaner {
     };
   }> {
     try {
-      // Get all training selections for this user
-      const rawSelections = await storage.getEmailTrainingSelections(userId);
+      // Get training selections - either for specific message or all user selections
+      const rawSelections = messageId 
+        ? await storage.getEmailTrainingSelection(messageId, userId)
+        : await storage.getEmailTrainingSelections(userId);
       const trainingSelections = Array.isArray(rawSelections) ? rawSelections : [];
+      
+      console.log(`[EMAIL-CLEANER] Training data loaded: ${trainingSelections.length} selections${messageId ? ` for message ${messageId}` : ' (all messages)'}`);
       
       const commonHeaders = new Set<string>();
       const commonBodyPatterns = new Set<string>();
@@ -506,6 +511,7 @@ export class EmailForwardCleaner {
 
   /**
    * Enhanced cleaning with training data integration
+   * 🔧 FIX: Now accepts optional messageId to apply message-specific training
    */
   static async cleanForwardedEmailWithTraining(
     subject: string,
@@ -513,10 +519,11 @@ export class EmailForwardCleaner {
     htmlBody: string | null,
     userId: string,
     forceCleanForwarded?: boolean,
-    customSignature?: string | null
+    customSignature?: string | null,
+    messageId?: string
   ): Promise<ForwardedEmailData> {
-    // Get training data for this user
-    const trainingData = await this.analyzeTrainingData(userId);
+    // Get training data for this user - optionally filtered by message
+    const trainingData = await this.analyzeTrainingData(userId, messageId);
     
     // 🔍 DETAILED LOGGING: Training data summary
     console.log(`[EMAIL-CLEANER] === REPROCESS START ===`);

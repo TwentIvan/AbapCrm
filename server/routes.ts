@@ -2068,13 +2068,15 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const originalHtmlBody = message.htmlBody;
 
       // Re-apply cleaning algorithm with current training data
+      // 🔧 FIX: Pass messageId to apply message-specific training selections
       const cleanedResult = await EmailForwardCleaner.cleanForwardedEmailWithTraining(
         originalSubject,
         originalBody,
         originalHtmlBody,
         userId,
         true, // forceCleanForwarded - ensure we re-process it
-        null   // no custom signature for now
+        null,  // no custom signature for now
+        messageId // 🔧 NEW: Pass messageId for message-specific training
       );
 
       // Check if content actually changed
