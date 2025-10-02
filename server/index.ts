@@ -16,10 +16,13 @@ process.on('uncaughtException', (error) => {
     return;
   }
   
-  // Don't exit the process for database connection errors - handle gracefully
-  if (error.message?.includes('terminating connection due to administrator command') ||
+  // Don't exit the process for Neon WebSocket/database errors - handle gracefully
+  if (error.message?.includes('Cannot set property message') ||
+      error.message?.includes('ErrorEvent') ||
+      error.message?.includes('terminating connection due to administrator command') ||
       error.message?.includes('Connection terminated') ||
       error.message?.includes('FATAL') ||
+      error.stack?.includes('@neondatabase/serverless') ||
       (error as any).code === '57P01' || // Connection termination error code
       (error as any).code === '08003' || // Connection does not exist
       (error as any).code === '08006') { // Connection failure
