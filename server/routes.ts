@@ -61,7 +61,7 @@ function parseChatContent(content: string, platform: string): {
     // ""
     // "messaggio"
     
-    // Filter out Teams UI noise (menu, buttons, etc)
+    // Filter out Teams UI noise (menu, buttons, etc) but KEEP date separators
     const uiNoisePatterns = [
       /^Ha il menu contestuale$/i,
       /^Chat$/i,
@@ -86,9 +86,11 @@ function parseChatContent(content: string, platform: string): {
       /^Community$/i,
       /^Mostra altro$/i,
       /^\d+\sreazione/i,  // "1 reazione Mi piace"
-      /^[👍❤️😮😆🎉]+$/,  // Solo emoji
-      /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Ieri|Oggi)$/i  // Separatori temporali
+      /^[👍❤️😮😆🎉]+$/   // Solo emoji
     ];
+    
+    // Pattern for date separators (keep these!)
+    const dateSeparatorPattern = /^(\d{1,2}\s+\w+|\w+day|Ieri|Oggi)$/i;
     
     const cleanLines = lines.filter(line => {
       const trimmed = line.trim();
@@ -101,6 +103,19 @@ function parseChatContent(content: string, platform: string): {
     
     while (i < cleanLines.length) {
       const line = cleanLines[i].trim();
+      
+      // Check for date separator (e.g., "24 September", "Monday", "Ieri")
+      if (dateSeparatorPattern.test(line)) {
+        messages.push({
+          id: `date-${messages.length}`,
+          senderId: 'system',
+          senderName: 'System',
+          timestamp: '',
+          text: line
+        });
+        i++;
+        continue;
+      }
       
       // Look for preview line pattern: "Nome da text..."
       const previewMatch = line.match(/^([A-Za-z\s]+?)\s+da\s+.*/);
