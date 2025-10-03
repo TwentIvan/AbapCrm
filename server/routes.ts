@@ -269,8 +269,8 @@ function parseChatContent(content: string, platform: string): {
   }
   
   const participants = Array.from(participantMap.values());
-  // Find first real author (skip date separators)
-  const firstRealMessage = messages.find(msg => msg.senderId !== 'date-separator');
+  // Find first real author (skip date separators - both old 'system' and new 'date-separator')
+  const firstRealMessage = messages.find(msg => msg.senderId !== 'date-separator' && msg.senderId !== 'system');
   const firstAuthor = firstRealMessage ? firstRealMessage.senderName : null;
   const participantNames = participants.map(p => p.name).join(', ');
   const summary = participants.length > 1 
