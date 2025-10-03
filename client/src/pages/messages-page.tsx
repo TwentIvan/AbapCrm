@@ -221,6 +221,7 @@ export default function MessagesPage() {
         remainderHtmlLength: renderedContent.remainderHtml?.length || 0,
         remainderTextLength: renderedContent.remainderText?.length || 0,
         isForwarded: renderedContent.isForwarded,
+        metadata: renderedContent.metadata,
         _lastProcessed: (renderedContent as any)._lastProcessed,
         _cacheBreaker: (renderedContent as any)._cacheBreaker
       });

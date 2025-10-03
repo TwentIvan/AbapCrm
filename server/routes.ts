@@ -1920,6 +1920,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       };
       
       console.log(`[RENDER-ROUTE] 🎯 Simple mode result: bodyHtml=${cleanedHtml?.length || 0} chars (original: ${message.htmlBody?.length || 0})`);
+      console.log(`[RENDER-ROUTE] 🔍 Metadata debug:`, JSON.stringify(message.metadata));
 
       // 🚀 FORCE FRESH CONTENT: Add timestamp to bypass ALL caching
       const responseWithTimestamp = {
