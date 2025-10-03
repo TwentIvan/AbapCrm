@@ -53,9 +53,10 @@ export class EmailForwardCleaner {
       
       let cleanedHtml = $.html();
       
-      // Remove the P {margin-top:0;margin-bottom:0;} string that appears as text in body
-      // This appears right after <body dir="ltr"> in Outlook emails
-      cleanedHtml = cleanedHtml.replace(/<body([^>]*)>\s*P\s*\{\s*margin-top:\s*0\s*;\s*margin-bottom:\s*0\s*;\s*\}\s*/gi, '<body$1>');
+      // Remove the P {margin-top:0;margin-bottom:0;} string wherever it appears
+      // Try multiple patterns to catch it
+      cleanedHtml = cleanedHtml.replace(/P\s*\{\s*margin-top:\s*0\s*;\s*margin-bottom:\s*0\s*;\s*\}/gi, '');
+      cleanedHtml = cleanedHtml.replace(/\n\s*\n\s*\n/g, '\n'); // Clean up multiple newlines left behind
       
       console.log(`[EMAIL-CLEANER] 🎯 Simple strip: ${html.length} -> ${cleanedHtml.length} chars`);
       
