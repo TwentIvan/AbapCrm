@@ -1670,9 +1670,9 @@ export default function MessagesPage() {
                                         </div>
                                         
                                         {/* Messages in group */}
-                                        <div className="space-y-2">
+                                        <div className="space-y-1">
                                           {group.messages?.map((msg, msgIdx) => (
-                                            <div key={msg.id} className="text-sm whitespace-pre-wrap leading-normal bg-gray-50 dark:bg-gray-800 p-2 rounded">
+                                            <div key={msg.id} className="text-sm whitespace-pre-wrap leading-snug bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded">
                                               {msg.text}
                                             </div>
                                           ))}
