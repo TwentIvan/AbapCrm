@@ -1594,7 +1594,7 @@ export default function MessagesPage() {
                               )}
                               
                               {/* Messages - Grouped View */}
-                              <div className="space-y-3">
+                              <div className="space-y-4">
                                 {(() => {
                                   const messages = renderedContent.metadata.messages;
                                   const groups: Array<{
@@ -1610,11 +1610,10 @@ export default function MessagesPage() {
                                   let currentGroup: typeof groups[0] | null = null;
                                   
                                   messages.forEach((msg, idx) => {
-                                    // Extract date from timestamp if it contains date info (e.g., "24 September", "25 September")
+                                    // Check if message text looks like a date separator (e.g., "24 September", "25 September")
                                     const dateMatch = msg.text.match(/^\d{1,2}\s+\w+$/);
                                     const isDateSeparator = dateMatch !== null;
                                     
-                                    // Check if message text looks like a date
                                     if (isDateSeparator) {
                                       currentDate = msg.text;
                                       groups.push({ type: 'date', date: msg.text });
@@ -1622,14 +1621,13 @@ export default function MessagesPage() {
                                       return;
                                     }
                                     
-                                    // Group messages by sender and minute
-                                    const timeMinute = msg.timestamp.split(':')[0]; // Get hour:minute part (HH:MM)
+                                    // Group messages by sender and timestamp (complete HH:MM)
                                     const canGroup = currentGroup && 
                                                     currentGroup.type === 'messages' &&
                                                     currentGroup.senderId === msg.senderId &&
-                                                    currentGroup.timestamp === timeMinute;
+                                                    currentGroup.timestamp === msg.timestamp;
                                     
-                                    if (canGroup && currentGroup.messages) {
+                                    if (canGroup && currentGroup.type === 'messages' && currentGroup.messages) {
                                       // Add to existing group
                                       currentGroup.messages.push({ id: msg.id, text: msg.text });
                                     } else {
@@ -1638,7 +1636,7 @@ export default function MessagesPage() {
                                         type: 'messages',
                                         senderId: msg.senderId,
                                         senderName: msg.senderName,
-                                        timestamp: timeMinute,
+                                        timestamp: msg.timestamp,
                                         messages: [{ id: msg.id, text: msg.text }]
                                       };
                                       groups.push(currentGroup);
@@ -1648,7 +1646,7 @@ export default function MessagesPage() {
                                   return groups.map((group, groupIdx) => {
                                     if (group.type === 'date') {
                                       return (
-                                        <div key={`date-${groupIdx}`} className="flex items-center justify-center py-2">
+                                        <div key={`date-${groupIdx}`} className="flex items-center justify-center py-3">
                                           <div className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-medium">
                                             {group.date}
                                           </div>
@@ -1657,9 +1655,9 @@ export default function MessagesPage() {
                                     }
                                     
                                     return (
-                                      <div key={`group-${groupIdx}`} className="border-l-4 border-blue-500 bg-white dark:bg-gray-900 rounded-r-lg p-4 shadow-sm" data-testid={`chat-group-${groupIdx}`}>
-                                        {/* Simplified header: Name, Time, ID */}
-                                        <div className="flex items-center gap-3 mb-3">
+                                      <div key={`group-${groupIdx}`} className="border-2 border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-900" data-testid={`chat-group-${groupIdx}`}>
+                                        {/* Header: Name, Time, ID */}
+                                        <div className="flex items-center gap-3 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
                                           <span className="font-bold text-base text-blue-600 dark:text-blue-400">{group.senderName}</span>
                                           {group.timestamp && (
                                             <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs font-mono">
@@ -1672,9 +1670,9 @@ export default function MessagesPage() {
                                         </div>
                                         
                                         {/* Messages in group */}
-                                        <div className="space-y-2">
+                                        <div className="space-y-3">
                                           {group.messages?.map((msg, msgIdx) => (
-                                            <div key={msg.id} className="text-sm whitespace-pre-wrap leading-relaxed">
+                                            <div key={msg.id} className="text-sm whitespace-pre-wrap leading-relaxed bg-gray-50 dark:bg-gray-800 p-3 rounded">
                                               {msg.text}
                                             </div>
                                           ))}
