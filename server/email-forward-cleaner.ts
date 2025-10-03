@@ -51,6 +51,12 @@ export class EmailForwardCleaner {
         }
       });
       
+      // Remove leading whitespace-only text nodes from body (including Unicode invisible chars)
+      $('body').contents().filter(function() {
+        // @ts-ignore - Cheerio internal types
+        return this.type === 'text' && !this.data.replace(/[\s\u00a0\ufeff\n\r\t]+/g, '').length;
+      }).remove();
+      
       let cleanedHtml = $.html();
       
       // Remove the P {margin-top:0;margin-bottom:0;} string wherever it appears
