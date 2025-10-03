@@ -1098,8 +1098,8 @@ export class EmailForwardCleaner {
       if (signatureDivs.length > 0) {
         signatureDivs.each((_, el) => {
           const $el = $(el);
-          // Also remove everything after the signature div
-          $el.nextAll().remove();
+          // ONLY remove the signature div itself, NOT what comes after
+          // (the signature should be at the END, so we don't need to remove nextAll)
           $el.remove();
           signatureRemoved = true;
         });
