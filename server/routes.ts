@@ -141,13 +141,16 @@ function parseChatContent(content: string, platform: string): {
           i++;
         }
         
-        // Collect message body until next preview pattern
+        // Collect message body until next preview pattern or date separator
         const messageLines: string[] = [];
         while (i < cleanLines.length) {
           const nextLine = cleanLines[i].trim();
           
           // Stop at next message (preview pattern)
           if (/^[A-Za-z\s]+?\s+da\s+/.test(nextLine)) break;
+          
+          // Stop at date separator
+          if (dateSeparatorPattern.test(nextLine)) break;
           
           // Skip emoji-only lines and reactions
           if (!/^[👍❤️😮😆🎉]+$/.test(nextLine) && !/^\d+\sreazione/i.test(nextLine)) {
