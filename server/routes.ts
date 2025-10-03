@@ -41,6 +41,82 @@ function getOptionalOrganizationId(req: any): string | null {
   return req.headers['x-organization-id'] as string || null;
 }
 
+// Chat content parser - normalizes different platform formats
+function parseChatContent(content: string, platform: string): {
+  from: string | null;
+  fromName: string | null;
+  to: string | null;
+  toName: string | null;
+  message: string;
+  subject: string | null;
+} {
+  const lines = content.trim().split('\n');
+  
+  if (platform === 'teams') {
+    // Teams format detection: "[Name] timestamp\nmessage"
+    // Example: "[John Doe] 10:30 AM\nHello everyone"
+    const teamsPattern = /^\[([^\]]+)\]/;
+    const firstLine = lines[0]?.trim() || '';
+    const match = firstLine.match(teamsPattern);
+    
+    if (match) {
+      const fromName = match[1].trim();
+      // Remove the header line and join the rest as message
+      const message = lines.slice(1).join('\n').trim();
+      return {
+        from: null,
+        fromName,
+        to: null,
+        toName: null,
+        message,
+        subject: `Message from ${fromName}`
+      };
+    }
+  } else if (platform === 'whatsapp') {
+    // WhatsApp format: "timestamp - Name: message"
+    // Example: "10:30 AM - John Doe: Hello"
+    const whatsappPattern = /^[\d:]+\s*[AP]M\s*-\s*([^:]+):\s*(.+)/;
+    const match = content.match(whatsappPattern);
+    
+    if (match) {
+      const fromName = match[1].trim();
+      const message = match[2].trim();
+      return {
+        from: null,
+        fromName,
+        to: null,
+        toName: null,
+        message,
+        subject: `WhatsApp from ${fromName}`
+      };
+    }
+  } else if (platform === 'googlemeet') {
+    // Google Meet chat format: "Name\ntimestamp\nmessage"
+    if (lines.length >= 2) {
+      const fromName = lines[0].trim();
+      const message = lines.slice(2).join('\n').trim() || lines[1].trim();
+      return {
+        from: null,
+        fromName,
+        to: null,
+        toName: null,
+        message,
+        subject: `Meet chat from ${fromName}`
+      };
+    }
+  }
+  
+  // Fallback: treat entire content as message
+  return {
+    from: null,
+    fromName: null,
+    to: null,
+    toName: null,
+    message: content.trim(),
+    subject: 'Chat message'
+  };
+}
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -1784,6 +1860,55 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Message rendering error:", error);
       res.status(500).json({ error: "Failed to render message content" });
+    }
+  });
+
+  // Chat normalization endpoint
+  app.post("/api/messages/chat", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { content, platform, type } = req.body;
+      
+      if (!content || !platform || !type) {
+        return res.status(400).json({ error: "content, platform, and type are required" });
+      }
+
+      // Parse chat content based on platform
+      const parsed = parseChatContent(content, platform);
+      
+      const organizationId = getOrganizationId(req);
+      const messageData = insertMessageSchema.parse({
+        type,
+        status: "unread",
+        fromEmail: parsed.from || "unknown@chat.local",
+        fromName: parsed.fromName || parsed.from || "Sconosciuto",
+        toEmail: parsed.to || req.user!.email || "me@chat.local",
+        toName: parsed.toName || parsed.to || "Me",
+        subject: `${platform.charAt(0).toUpperCase() + platform.slice(1)} - ${parsed.subject || 'Chat'}`,
+        body: parsed.message,
+        htmlBody: "",
+        messageId: `${platform}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        attachments: [],
+        userId: req.user!.id,
+        organizationId,
+        receivedAt: new Date()
+      });
+      
+      const message = await storage.createMessage(messageData);
+      
+      // Run AI analysis in background
+      if (process.env.OPENAI_API_KEY) {
+        aiService.analyzeMessage(message, req.user!.id).then(analysis => {
+          if (analysis.bestMatch) {
+            aiService.updateMessageWithSuggestion(message.id, analysis.bestMatch, req.user!.id);
+          }
+        }).catch(console.error);
+      }
+      
+      res.status(201).json(message);
+    } catch (error) {
+      console.error("Chat normalization error:", error);
+      res.status(400).json({ error: "Failed to normalize chat", details: error instanceof Error ? error.message : String(error) });
     }
   });
 

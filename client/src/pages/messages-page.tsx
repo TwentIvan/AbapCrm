@@ -49,6 +49,7 @@ import { BarChart3, TrendingUp, Database } from "lucide-react";
 import type { Message, Project, Task, Partner } from "@shared/schema";
 import { format } from "date-fns";
 import MessageForm from "@/components/forms/message-form";
+import SimpleChatForm from "@/components/forms/simple-chat-form";
 import { useAuth } from "@/hooks/use-auth";
 
 interface AISuggestion {
@@ -1905,17 +1906,27 @@ export default function MessagesPage() {
 
   {/* Create Message Dialog */}
   <Dialog open={showNewMessageDialog} onOpenChange={setShowNewMessageDialog}>
-    <DialogContent>
+    <DialogContent className="max-w-2xl">
       <DialogHeader>
-        <DialogTitle>Nuovo Messaggio</DialogTitle>
+        <DialogTitle>
+          {filterType === "email" || filterType === "all" ? "Nuovo Messaggio Email" : "Aggiungi Chat"}
+        </DialogTitle>
       </DialogHeader>
-      <MessageForm 
-        key={filterType} 
-        onSuccess={() => setShowNewMessageDialog(false)}
-        defaultValues={{
-          type: filterType === "all" ? "email" : filterType
-        }}
-      />
+      {(filterType === "chat" || filterType === "sms" || filterType === "other") ? (
+        <SimpleChatForm 
+          key={filterType}
+          onSuccess={() => setShowNewMessageDialog(false)}
+          defaultType={filterType}
+        />
+      ) : (
+        <MessageForm 
+          key={filterType} 
+          onSuccess={() => setShowNewMessageDialog(false)}
+          defaultValues={{
+            type: filterType === "all" ? "email" : filterType
+          }}
+        />
+      )}
     </DialogContent>
   </Dialog>
   </>
