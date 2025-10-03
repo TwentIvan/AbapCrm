@@ -93,29 +93,58 @@ function parseChatContent(content: string, platform: string): {
       }
     }
   } else if (platform === 'whatsapp') {
-    // WhatsApp format: "timestamp - Name: message" (one per line)
-    const whatsappPattern = /^([\d:]+\s*[AP]M)\s*-\s*([^:]+):\s*(.+)/;
+    // WhatsApp format: "[date, ]time - Name: message" (supports date prefix, 12h/24h time)
+    // Examples: 
+    // - "03/10/2025, 10:31 - Marco: Hello"
+    // - "10:31 AM - Marco: Hello"
+    // - "22:45 - Marco: Hello" (24h format)
+    const whatsappPattern = /^(?:\d{1,2}\/\d{1,2}\/\d{4},?\s*)?([\d:]+(?:\s*[AP]M)?)\s*[-–]\s*([^:]+):\s*(.+)/;
+    
+    let currentMessage: { timestamp: string; senderName: string; text: string } | null = null;
     
     for (const line of lines) {
       const match = line.match(whatsappPattern);
       if (match) {
-        const timestamp = match[1].trim();
-        const senderName = match[2].trim();
-        const text = match[3].trim();
-        const senderId = senderName.toLowerCase().replace(/\s+/g, '-');
-        
-        if (!participantMap.has(senderId)) {
-          participantMap.set(senderId, { id: senderId, name: senderName });
+        // Save previous message if exists
+        if (currentMessage) {
+          const senderId = currentMessage.senderName.toLowerCase().replace(/\s+/g, '-');
+          if (!participantMap.has(senderId)) {
+            participantMap.set(senderId, { id: senderId, name: currentMessage.senderName });
+          }
+          messages.push({
+            id: `msg-${messages.length}`,
+            senderId,
+            senderName: currentMessage.senderName,
+            timestamp: currentMessage.timestamp,
+            text: currentMessage.text.trim()
+          });
         }
         
-        messages.push({
-          id: `msg-${messages.length}`,
-          senderId,
-          senderName,
-          timestamp,
-          text
-        });
+        // Start new message
+        currentMessage = {
+          timestamp: match[1].trim(),
+          senderName: match[2].trim(),
+          text: match[3].trim()
+        };
+      } else if (currentMessage && line.trim()) {
+        // Multi-line message continuation
+        currentMessage.text += '\n' + line;
       }
+    }
+    
+    // Save last message
+    if (currentMessage) {
+      const senderId = currentMessage.senderName.toLowerCase().replace(/\s+/g, '-');
+      if (!participantMap.has(senderId)) {
+        participantMap.set(senderId, { id: senderId, name: currentMessage.senderName });
+      }
+      messages.push({
+        id: `msg-${messages.length}`,
+        senderId,
+        senderName: currentMessage.senderName,
+        timestamp: currentMessage.timestamp,
+        text: currentMessage.text.trim()
+      });
     }
   } else if (platform === 'googlemeet') {
     // Google Meet format: "Name\ntimestamp\nmessage" (repeating)
