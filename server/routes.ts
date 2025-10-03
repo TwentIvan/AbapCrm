@@ -1953,13 +1953,17 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         `[${msg.timestamp}] ${msg.senderName}: ${msg.text}`
       ).join('\n\n');
       
+      // If parsing failed (no messages extracted), use raw content as fallback
+      const finalBody = formattedBody || parsed.rawSource;
+      
       // Build metadata with structured conversation
       const metadata = {
         platform,
         participants: parsed.participants,
         messages: parsed.messages,
         summary: parsed.summary,
-        rawSource: parsed.rawSource
+        rawSource: parsed.rawSource,
+        parsingFailed: parsed.messages.length === 0
       };
       
       const organizationId = getOrganizationId(req);
@@ -1971,7 +1975,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         toEmail: req.user!.email || "me@chat.local",
         toName: req.user!.username || "Me",
         subject: parsed.summary,
-        body: formattedBody,
+        body: finalBody,
         htmlBody: "",
         metadata,
         messageId: `${platform}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
