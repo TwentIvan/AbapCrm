@@ -51,17 +51,11 @@ export class EmailForwardCleaner {
         }
       });
       
-      // Remove text nodes in body that contain the P {margin-top...} CSS string
-      $('body').contents().each(function() {
-        if (this.type === 'text') {
-          const text = $(this).text();
-          if (text.includes('margin-top:0') && text.includes('margin-bottom:0')) {
-            $(this).remove();
-          }
-        }
-      });
-      
       let cleanedHtml = $.html();
+      
+      // Remove the P {margin-top:0;margin-bottom:0;} string that appears as text in body
+      // This appears right after <body dir="ltr"> in Outlook emails
+      cleanedHtml = cleanedHtml.replace(/<body([^>]*)>\s*P\s*\{\s*margin-top:\s*0\s*;\s*margin-bottom:\s*0\s*;\s*\}\s*/gi, '<body$1>');
       
       console.log(`[EMAIL-CLEANER] 🎯 Simple strip: ${html.length} -> ${cleanedHtml.length} chars`);
       
