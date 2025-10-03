@@ -1213,23 +1213,24 @@ export class EmailForwardCleaner {
   } {
     
     if (!cleaned.isForwarded) {
+      // 🔧 FIX: Apply structural signature removal BEFORE split
+      // This prevents Outlook signatures from being classified as body content
+      let preCleanedHtml = htmlBody;
+      if (preCleanedHtml) {
+        console.log(`[EMAIL-CLEANER] Pre-cleaning signatures before reply split...`);
+        preCleanedHtml = this.removeSignaturesStructural(preCleanedHtml);
+      }
+      
       // Anche se non è marcata come inoltrata, potrebbe essere una reply con contenuto quotato
       // Tenta di dividere il contenuto usando pattern di reply comuni
-      const replySplit = this.splitReplyContent(body, htmlBody);
+      const replySplit = this.splitReplyContent(body, preCleanedHtml);
       
       if (replySplit.found) {
         console.log(`[EMAIL-CLEANER] REPLY remainder: ${replySplit.remainderHtml?.length || replySplit.remainderText?.length || 0} chars`);
         
-        // 🔧 ALWAYS apply structural signature removal for replies
-        let cleanedBodyHtml = replySplit.bodyHtml;
-        if (cleanedBodyHtml) {
-          console.log(`[EMAIL-CLEANER] Applying structural signature removal to reply...`);
-          cleanedBodyHtml = this.removeSignaturesStructural(cleanedBodyHtml);
-        }
-        
         return {
           bodyText: replySplit.bodyText,
-          bodyHtml: cleanedBodyHtml,
+          bodyHtml: replySplit.bodyHtml,
           remainderText: replySplit.remainderText,
           remainderHtml: replySplit.remainderHtml,
           headerSummary: null,
@@ -1260,11 +1261,8 @@ export class EmailForwardCleaner {
     // Ma questo distrugge gli split riusciti di thread (es. 1.6MB -> 9KB body è intenzionale!)
     console.log(`[EMAIL-CLEANER] Skipping destructive fallback - using cleaned HTML: ${cleanedHtmlBody?.length || 0} chars (original: ${htmlBody?.length || 0} chars)`);
 
-    // 🔧 ALWAYS apply structural signature removal for forwarded emails
-    if (cleanedHtmlBody) {
-      console.log(`[EMAIL-CLEANER] Applying structural signature removal to forwarded email...`);
-      cleanedHtmlBody = this.removeSignaturesStructural(cleanedHtmlBody);
-    }
+    // 🔧 FIX: Structural signature removal now happens in extractForwardedContent,
+    // so we don't need to apply it again here to avoid double-processing
 
     return {
       bodyText: cleaned.originalBody,
