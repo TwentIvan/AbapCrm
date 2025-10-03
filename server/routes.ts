@@ -63,25 +63,32 @@ function parseChatContent(content: string, platform: string): {
     
     // Filter out Teams UI noise (menu, buttons, etc)
     const uiNoisePatterns = [
-      /^Ha il menu contestuale$/,
-      /^Chat$/,
-      /^Non letto$/,
-      /^Canali$/,
-      /^Messaggi non letti/,
-      /^Ultimo messaggio/,
-      /^Chat di gruppo/,
-      /^Importante$/,
-      /^Urgente$/,
-      /^Bozza$/,
-      /^Colori spenti$/,
-      /^Riunione/,
-      /^Privata$/,
-      /^Condiviso$/,
-      /^Canale/,
-      /^Team$/,
-      /^Visualizzazione temporanea$/,
-      /^Community$/,
-      /^\d+\sreazione/i  // "1 reazione Mi piace"
+      /^Ha il menu contestuale$/i,
+      /^Chat$/i,
+      /^Non letto$/i,
+      /^Canali$/i,
+      /^Messaggi non letti/i,
+      /^Ultimo messaggio/i,
+      /^Chat di gruppo/i,
+      /^Chat della riunione/i,
+      /^Personale menzionato/i,
+      /^Tutti gli utenti menzionati/i,
+      /^Importante$/i,
+      /^Urgente$/i,
+      /^Bozza$/i,
+      /^Colori spenti$/i,
+      /^Riunione/i,
+      /^Privata$/i,
+      /^Condiviso$/i,
+      /^Canale/i,
+      /^Team$/i,
+      /^Visualizzazione temporanea$/i,
+      /^Community$/i,
+      /^Mostra altro$/i,
+      /^\d+\sreazione/i,  // "1 reazione Mi piace"
+      /^[👍❤️😮😆🎉]+$/,  // Solo emoji
+      /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Ieri|Oggi)$/i,  // Separatori temporali
+      /^immagine$/i  // Placeholder immagini
     ];
     
     const cleanLines = lines.filter(line => {
@@ -95,7 +102,7 @@ function parseChatContent(content: string, platform: string): {
       const line = cleanLines[i].trim();
       
       // Look for preview line pattern: "Nome da text..."
-      const previewMatch = line.match(/^([^da]+)\s+da\s+.*/);
+      const previewMatch = line.match(/^([A-Za-z\s]+?)\s+da\s+.*/);
       if (previewMatch) {
         const senderName = previewMatch[1].trim();
         i++; // Move to name line
@@ -121,8 +128,14 @@ function parseChatContent(content: string, platform: string): {
         const messageLines: string[] = [];
         while (i < cleanLines.length) {
           const nextLine = cleanLines[i].trim();
-          if (/^[^da]+\s+da\s+/.test(nextLine)) break; // Next message starts
-          messageLines.push(cleanLines[i]);
+          
+          // Stop at next message (preview pattern)
+          if (/^[A-Za-z\s]+?\s+da\s+/.test(nextLine)) break;
+          
+          // Skip emoji-only lines and reactions
+          if (!/^[👍❤️😮😆🎉]+$/.test(nextLine) && !/^\d+\sreazione/i.test(nextLine)) {
+            messageLines.push(cleanLines[i]);
+          }
           i++;
         }
         
@@ -138,7 +151,7 @@ function parseChatContent(content: string, platform: string): {
             id: `msg-${messages.length}`,
             senderId,
             senderName,
-            timestamp: timestamp || 'no time',
+            timestamp: timestamp || '',
             text
           });
         }
