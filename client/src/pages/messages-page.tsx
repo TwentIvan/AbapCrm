@@ -194,6 +194,10 @@ export default function MessagesPage() {
   const { data: renderedContent } = useQuery<RenderedMessageContent>({
     queryKey: ["/api/messages", selectedMessage?.id, "rendered"],
     enabled: !!selectedMessage,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 
   // 🔍 DEBUG: Log what we actually receive from backend
