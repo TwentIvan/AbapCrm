@@ -45,7 +45,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { BarChart3, TrendingUp, Database } from "lucide-react";
+import { BarChart3, TrendingUp, Database, ImageIcon } from "lucide-react";
 import type { Message, Project, Task, Partner } from "@shared/schema";
 import { format } from "date-fns";
 import MessageForm from "@/components/forms/message-form";
@@ -1673,7 +1673,14 @@ export default function MessagesPage() {
                                         <div className="space-y-1">
                                           {group.messages?.map((msg, msgIdx) => (
                                             <div key={msg.id} className="text-sm whitespace-pre-wrap leading-snug bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded">
-                                              {msg.text}
+                                              {msg.text === 'immagine' ? (
+                                                <div className="inline-flex items-center gap-1 text-muted-foreground italic">
+                                                  <ImageIcon className="h-4 w-4" />
+                                                  <span className="text-xs">immagine non disponibile</span>
+                                                </div>
+                                              ) : (
+                                                msg.text
+                                              )}
                                             </div>
                                           ))}
                                         </div>
