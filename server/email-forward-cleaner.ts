@@ -43,7 +43,19 @@ export class EmailForwardCleaner {
       $('#divRplyFwdMsg').remove();
       $('div[id="divRplyFwdMsg"]').remove();
       
-      const cleanedHtml = $.html();
+      // Remove Outlook CSS inline paragraph style from head
+      $('head style').each(function() {
+        const styleContent = $(this).html() || '';
+        if (styleContent.includes('margin-top:0') && styleContent.includes('margin-bottom:0')) {
+          $(this).remove();
+        }
+      });
+      
+      let cleanedHtml = $.html();
+      
+      // Also remove the CSS string if it appears as plain text
+      cleanedHtml = cleanedHtml.replace(/\s*P\s*\{\s*margin-top:\s*0\s*;\s*margin-bottom:\s*0\s*;\s*\}\s*/gi, '');
+      
       console.log(`[EMAIL-CLEANER] 🎯 Simple strip: ${html.length} -> ${cleanedHtml.length} chars`);
       
       return cleanedHtml;
