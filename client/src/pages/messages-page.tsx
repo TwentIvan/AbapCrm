@@ -1561,8 +1561,12 @@ export default function MessagesPage() {
                           })()}
                           
                           {/* Parsing failure warning */}
+                          {(() => {
+                            console.log('[PARSE-FAIL-DEBUG] parsingFailed value:', renderedContent.metadata?.parsingFailed, 'type:', typeof renderedContent.metadata?.parsingFailed);
+                            return null;
+                          })()}
                           {renderedContent.metadata?.parsingFailed && (
-                            <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
+                            <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4" data-testid="warning-parsing-failed">
                               <div className="flex items-start gap-3">
                                 <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                                 <div className="flex-1">
