@@ -53,8 +53,8 @@ export class EmailForwardCleaner {
       
       let cleanedHtml = $.html();
       
-      // Also remove the CSS string if it appears as plain text
-      cleanedHtml = cleanedHtml.replace(/\s*P\s*\{\s*margin-top:\s*0\s*;\s*margin-bottom:\s*0\s*;\s*\}\s*/gi, '');
+      // Remove the CSS string if it appears as plain text (with flexible whitespace including newlines)
+      cleanedHtml = cleanedHtml.replace(/[\s\n]*P[\s\n]*\{[\s\n]*margin-top:[\s\n]*0[\s\n]*;[\s\n]*margin-bottom:[\s\n]*0[\s\n]*;[\s\n]*\}[\s\n]*/gi, '');
       
       console.log(`[EMAIL-CLEANER] 🎯 Simple strip: ${html.length} -> ${cleanedHtml.length} chars`);
       
