@@ -68,7 +68,7 @@ export class EmailForwardCleaner {
       }
       // Clean up excessive whitespace/newlines left behind
       cleanedHtml = cleanedHtml.replace(/\n\s*\n\s*\n/g, '\n'); // Multiple newlines
-      cleanedHtml = cleanedHtml.replace(/(<body[^>]*>)\s+/gi, '$1\n'); // Whitespace after body tag
+      cleanedHtml = cleanedHtml.replace(/(<body[^>]*>)\s+/gi, '$1'); // Remove ALL whitespace after body tag
       
       console.log(`[EMAIL-CLEANER] 🎯 Simple strip: ${html.length} -> ${cleanedHtml.length} chars`);
       
