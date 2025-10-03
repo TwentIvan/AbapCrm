@@ -66,7 +66,9 @@ export class EmailForwardCleaner {
           console.log(`[EMAIL-CLEANER] ⚠️  CSS string found but not removed: "${match[0]}"`);
         }
       }
-      cleanedHtml = cleanedHtml.replace(/\n\s*\n\s*\n/g, '\n'); // Clean up multiple newlines left behind
+      // Clean up excessive whitespace/newlines left behind
+      cleanedHtml = cleanedHtml.replace(/\n\s*\n\s*\n/g, '\n'); // Multiple newlines
+      cleanedHtml = cleanedHtml.replace(/(<body[^>]*>)\s+/gi, '$1\n'); // Whitespace after body tag
       
       console.log(`[EMAIL-CLEANER] 🎯 Simple strip: ${html.length} -> ${cleanedHtml.length} chars`);
       
