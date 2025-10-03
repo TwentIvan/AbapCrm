@@ -118,8 +118,8 @@ function parseChatContent(content: string, platform: string): {
       if (dateSeparatorPattern.test(normalizedLine)) {
         messages.push({
           id: `date-${messages.length}`,
-          senderId: 'system',
-          senderName: 'System',
+          senderId: 'date-separator',
+          senderName: '',
           timestamp: '',
           text: normalizedLine
         });
