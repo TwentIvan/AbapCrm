@@ -54,8 +54,18 @@ export class EmailForwardCleaner {
       let cleanedHtml = $.html();
       
       // Remove the P {margin-top:0;margin-bottom:0;} string wherever it appears
-      // Try multiple patterns to catch it
-      cleanedHtml = cleanedHtml.replace(/P\s*\{\s*margin-top:\s*0\s*;\s*margin-bottom:\s*0\s*;\s*\}/gi, '');
+      const beforeLength = cleanedHtml.length;
+      cleanedHtml = cleanedHtml.replace(/P\s*\{\s*margin-top\s*:\s*0\s*;\s*margin-bottom\s*:\s*0\s*;\s*\}/gi, '');
+      const afterLength = cleanedHtml.length;
+      if (beforeLength !== afterLength) {
+        console.log(`[EMAIL-CLEANER] 🧹 Removed CSS string: ${beforeLength} -> ${afterLength} chars`);
+      } else {
+        // Try to find where it appears
+        const match = cleanedHtml.match(/P\s*\{[^}]*margin-top[^}]*\}/i);
+        if (match) {
+          console.log(`[EMAIL-CLEANER] ⚠️  CSS string found but not removed: "${match[0]}"`);
+        }
+      }
       cleanedHtml = cleanedHtml.replace(/\n\s*\n\s*\n/g, '\n'); // Clean up multiple newlines left behind
       
       console.log(`[EMAIL-CLEANER] 🎯 Simple strip: ${html.length} -> ${cleanedHtml.length} chars`);
