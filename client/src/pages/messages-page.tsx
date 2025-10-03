@@ -1566,13 +1566,27 @@ export default function MessagesPage() {
                           {/* Structured chat rendering if metadata exists */}
                           {renderedContent.metadata?.messages && renderedContent.metadata.messages.length > 0 ? (
                             <div className="space-y-4" data-testid="chat-structured-view">
-                              {/* Platform badge */}
-                              {renderedContent.metadata.platform && (
-                                <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
-                                  <MessageSquare className="h-4 w-4" />
-                                  {renderedContent.metadata.platform.charAt(0).toUpperCase() + renderedContent.metadata.platform.slice(1)}
+                              {/* Platform badge and summary */}
+                              <div className="flex items-center justify-between mb-2">
+                                {renderedContent.metadata.platform && (
+                                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
+                                    <MessageSquare className="h-4 w-4" />
+                                    {renderedContent.metadata.platform.charAt(0).toUpperCase() + renderedContent.metadata.platform.slice(1)}
+                                  </div>
+                                )}
+                                {renderedContent.metadata.summary && (
+                                  <span className="text-sm text-muted-foreground">{renderedContent.metadata.summary}</span>
+                                )}
+                              </div>
+                              
+                              {/* Debug info */}
+                              <div className="bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-lg p-3 mb-4">
+                                <div className="text-xs font-mono space-y-1">
+                                  <div><span className="font-bold">Total Messages:</span> {renderedContent.metadata.messages.length}</div>
+                                  <div><span className="font-bold">Participants:</span> {renderedContent.metadata.participants?.length || 0}</div>
+                                  <div><span className="font-bold">Platform:</span> {renderedContent.metadata.platform}</div>
                                 </div>
-                              )}
+                              </div>
                               
                               {/* Participants */}
                               {renderedContent.metadata.participants && renderedContent.metadata.participants.length > 0 && (
@@ -1588,15 +1602,36 @@ export default function MessagesPage() {
                                 </div>
                               )}
                               
-                              {/* Messages */}
-                              <div className="space-y-3">
+                              {/* Messages - Very Structured View */}
+                              <div className="space-y-4">
                                 {renderedContent.metadata.messages.map((msg, idx) => (
-                                  <div key={msg.id} className="border-l-2 border-blue-200 dark:border-blue-800 pl-4 py-2" data-testid={`chat-message-${idx}`}>
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <span className="font-medium text-sm">{msg.senderName}</span>
-                                      <span className="text-xs text-muted-foreground">{msg.timestamp}</span>
+                                  <div key={msg.id} className="border-2 border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-900" data-testid={`chat-message-${idx}`}>
+                                    {/* Header with all metadata */}
+                                    <div className="flex items-start justify-between mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-1">
+                                          <span className="font-bold text-base text-blue-600 dark:text-blue-400">{msg.senderName}</span>
+                                          {msg.timestamp && (
+                                            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs font-mono">
+                                              {msg.timestamp}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                          <span className="font-mono">ID: {msg.id}</span>
+                                          <span>•</span>
+                                          <span className="font-mono">Sender: {msg.senderId}</span>
+                                        </div>
+                                      </div>
+                                      <div className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs font-medium text-gray-600 dark:text-gray-400">
+                                        #{idx + 1}
+                                      </div>
                                     </div>
-                                    <div className="text-sm whitespace-pre-wrap">{msg.text}</div>
+                                    
+                                    {/* Message content */}
+                                    <div className="text-sm whitespace-pre-wrap leading-relaxed bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                                      {msg.text}
+                                    </div>
                                   </div>
                                 ))}
                               </div>

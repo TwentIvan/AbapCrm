@@ -87,8 +87,7 @@ function parseChatContent(content: string, platform: string): {
       /^Mostra altro$/i,
       /^\d+\sreazione/i,  // "1 reazione Mi piace"
       /^[👍❤️😮😆🎉]+$/,  // Solo emoji
-      /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Ieri|Oggi)$/i,  // Separatori temporali
-      /^immagine$/i  // Placeholder immagini
+      /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Ieri|Oggi)$/i  // Separatori temporali
     ];
     
     const cleanLines = lines.filter(line => {
@@ -96,8 +95,10 @@ function parseChatContent(content: string, platform: string): {
       return trimmed && !uiNoisePatterns.some(pattern => pattern.test(trimmed));
     });
     
-    // State machine: preview → name → timestamp → blank → body
+    // State machine: preview → name → timestamp (sticky) → blank → body
     let i = 0;
+    let lastTimestamp = ''; // Sticky timestamp - riusa l'ultimo se manca
+    
     while (i < cleanLines.length) {
       const line = cleanLines[i].trim();
       
@@ -113,11 +114,12 @@ function parseChatContent(content: string, platform: string): {
         }
         
         // Check for timestamp (optional - HH:MM format)
-        let timestamp = '';
+        // If present, update lastTimestamp; if not, use sticky lastTimestamp
         if (i < cleanLines.length && /^\d{1,2}:\d{2}$/.test(cleanLines[i].trim())) {
-          timestamp = cleanLines[i].trim();
+          lastTimestamp = cleanLines[i].trim();
           i++;
         }
+        // If no timestamp, lastTimestamp remains from previous message
         
         // Skip blank lines
         while (i < cleanLines.length && !cleanLines[i].trim()) {
@@ -151,7 +153,7 @@ function parseChatContent(content: string, platform: string): {
             id: `msg-${messages.length}`,
             senderId,
             senderName,
-            timestamp: timestamp || '',
+            timestamp: lastTimestamp || '',
             text
           });
         }
