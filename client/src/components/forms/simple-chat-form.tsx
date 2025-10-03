@@ -62,23 +62,37 @@ export default function SimpleChatForm({ onSuccess, defaultType = "chat" }: Simp
   });
 
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    console.log("🎨 [PASTE] Event triggered!");
+    
     const items = e.clipboardData?.items;
-    if (!items) return;
+    console.log("🎨 [PASTE] ClipboardData items:", items ? items.length : 'none');
+    
+    if (!items) {
+      console.log("🎨 [PASTE] No clipboard items found");
+      return;
+    }
 
     const imageFiles: Array<{ file: File; url: string }> = [];
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
+      console.log(`🎨 [PASTE] Item ${i}: type="${item.type}", kind="${item.kind}"`);
       
       // Check if item is an image
       if (item.type.indexOf('image') !== -1) {
+        console.log(`🎨 [PASTE] Found image! Type: ${item.type}`);
         const file = item.getAsFile();
         if (file) {
           const url = URL.createObjectURL(file);
           imageFiles.push({ file, url });
+          console.log(`🎨 [PASTE] Image added: ${file.name}, size: ${file.size} bytes`);
+        } else {
+          console.log("🎨 [PASTE] getAsFile() returned null");
         }
       }
     }
+
+    console.log(`🎨 [PASTE] Total images captured: ${imageFiles.length}`);
 
     if (imageFiles.length > 0) {
       setPastedImages(prev => [...prev, ...imageFiles]);
