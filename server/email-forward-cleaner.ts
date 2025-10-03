@@ -1093,6 +1093,19 @@ export class EmailForwardCleaner {
       const $ = cheerio.load(html);
       let signatureRemoved = false;
       
+      // 0. Remove email header containers (forwarded email metadata)
+      // These contain "Da:", "Inviato:", "A:", "Cc:", etc.
+      const headerContainers = $('div[id="divRplyFwdMsg"], div[id="appendonsend"], hr[tabindex="-1"]');
+      if (headerContainers.length > 0) {
+        headerContainers.remove();
+        console.log(`[EMAIL-CLEANER] ✓ Removed ${headerContainers.length} email header container(s)`);
+      }
+      
+      // Remove stray CSS text in body (e.g., "P {margin-top:0;margin-bottom:0;}")
+      $('body').contents().filter(function() {
+        return this.type === 'text' && $(this).text().includes('{') && $(this).text().includes('}');
+      }).remove();
+      
       // 1. Remove all divs with id="Signature" or class containing "Signature"
       const signatureDivs = $('div[id="Signature"], div[class*="Signature"]');
       if (signatureDivs.length > 0) {
