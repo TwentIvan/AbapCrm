@@ -90,12 +90,21 @@ function parseChatContent(content: string, platform: string): {
     ];
     
     // Pattern for date separators (keep these!)
-    const dateSeparatorPattern = /^(\d{1,2}\s+\w+|\w+day|Ieri|Oggi)$/i;
+    // Expanded to handle optional weekday prefix and year suffix
+    const dateSeparatorPattern = /^(?:[\p{L}]+[,\s]+)?\d{1,2}\s+[\p{L}]+(?:\s+\d{4})?$/iu;
     
     const cleanLines = lines.filter(line => {
       const trimmed = line.trim();
       return trimmed && !uiNoisePatterns.some(pattern => pattern.test(trimmed));
     });
+    
+    // Helper to normalize line by removing hidden Unicode markers
+    const normalizeLine = (line: string): string => {
+      return line
+        .replace(/[\u200e\u200f\u202a-\u202e]/g, '') // Remove zero-width marks
+        .replace(/\s*[·•]\s*\d{1,2}:\d{2}\s*$/g, '') // Remove trailing bullet+time
+        .trim();
+    };
     
     // State machine: preview → name → timestamp (sticky) → blank → body
     let i = 0;
@@ -103,15 +112,16 @@ function parseChatContent(content: string, platform: string): {
     
     while (i < cleanLines.length) {
       const line = cleanLines[i].trim();
+      const normalizedLine = normalizeLine(line);
       
-      // Check for date separator (e.g., "24 September", "Monday", "Ieri")
-      if (dateSeparatorPattern.test(line)) {
+      // Check for date separator (e.g., "24 September", "Giovedì 25 September", "Monday", "Ieri")
+      if (dateSeparatorPattern.test(normalizedLine)) {
         messages.push({
           id: `date-${messages.length}`,
           senderId: 'system',
           senderName: 'System',
           timestamp: '',
-          text: line
+          text: normalizedLine
         });
         i++;
         continue;
@@ -145,12 +155,13 @@ function parseChatContent(content: string, platform: string): {
         const messageLines: string[] = [];
         while (i < cleanLines.length) {
           const nextLine = cleanLines[i].trim();
+          const normalizedNextLine = normalizeLine(nextLine);
           
           // Stop at next message (preview pattern)
           if (/^[A-Za-z\s]+?\s+da\s+/.test(nextLine)) break;
           
-          // Stop at date separator
-          if (dateSeparatorPattern.test(nextLine)) break;
+          // Stop at date separator (use normalized line)
+          if (dateSeparatorPattern.test(normalizedNextLine)) break;
           
           // Skip emoji-only lines and reactions
           if (!/^[👍❤️😮😆🎉]+$/.test(nextLine) && !/^\d+\sreazione/i.test(nextLine)) {
