@@ -1,0 +1,185 @@
+
+Ha il menu contestuale
+Chat
+
+
+
+
+Non letto
+Canali
+Chat
+
+Ha il menu contestuale
+Messaggi non lettiUltimo messaggioChat di gruppoChat della riunioneChatPersonale menzionatoTutti gli utenti menzionatiImportanteUrgenteBozzaBozzaColori spentiRiunione in corsoRiunione immediata in corsoNon puoi inviare messaggi perché non sei un membro della chat.PrivataCondivisoHa il menu contestualeCanale menzionatoTeam menzionatoPersonale menzionatoNon lettoNon lettoRiunione in corsoNon lettoCanaleTeamHa messaggi aggiunti in altoMostra altroCommunityVisualizzazione temporanea
+
+
+Chat
+
+
+
+
+24 September
+Mattia Galante da buondì, vedo karina ti dico se ho problemi 
+
+Mattia Galante
+11:02
+
+buondì, vedo karina ti dico se ho problemi 
+
+
+👍
+1 reazione Mi piace.
+
+Mattia Galante da sto facendo il puttanaio di dividere le mis...
+
+Mattia Galante
+12:55
+
+sto facendo il puttanaio di dividere le misure per diametro e lunghezza dato che la seconda la vogliono in m e non in cm 
+
+Mattia Galante da non ho capito se in francese va messo solo ...
+Mattia Galante
+
+non ho capito se in francese va messo solo m al posto di cm o anche il valore è da convertire da cm a m 
+
+Mattia Galante da a questi piace pagare evidentemente  Mi rot...
+Mattia Galante
+
+a questi piace pagare evidentemente 🤣
+
+Mattia Galante da faccio sta cosa delle misure poi passo al l...
+Mattia Galante
+
+faccio sta cosa delle misure poi passo al layout e ti dico se ho dubbi 
+
+Ivan Lo Torto da ma non mi pare ci siano modifiche al layout
+
+Ivan Lo Torto
+12:56
+
+ma non mi pare ci siano modifiche al layout
+
+Ivan Lo Torto da solo a qualche testo, forse
+Ivan Lo Torto
+
+solo a qualche testo, forse
+
+Mattia Galante da immagine
+
+Mattia Galante
+12:57
+
+immagine
+
+Mattia Galante da credo vogliano ripetere info order ref e o ...
+Mattia Galante
+
+credo vogliano ripetere info order ref e o order anche a fine ordine 
+
+Mattia Galante da ma basta copiare la riga penso di farcela 
+Mattia Galante
+
+ma basta copiare la riga penso di farcela 
+
+Mattia Galante da prima di farlo la sento 
+Mattia Galante
+
+prima di farlo la sento 
+
+Mattia Galante da poteva tradurre in italiano che era piu pre...
+Mattia Galante
+
+poteva tradurre in italiano che era piu preciso... 
+
+Mattia Galante da si certo brava karina -.- immagine
+Mattia Galante
+
+si certo brava karina -.-
+
+immagine
+
+Mattia Galante da ahhahaha
+Mattia Galante
+
+ahhahaha
+
+Ivan Lo Torto da la traduzione è ancora più bella: "Cara Kar...
+
+Ivan Lo Torto
+12:59
+
+la traduzione è ancora più bella: "Cara Karina"
+
+Mattia Galante da ahahhahahah
+
+Mattia Galante
+12:59
+
+ahahhahahah
+
+Mattia Galante da dear^2
+Mattia Galante
+
+dear^2
+
+Mattia Galante da immagine
+Mattia Galante
+
+immagine
+
+Mattia Galante da le rispondo srotolando il mio rotolo 
+Mattia Galante
+
+le rispondo srotolando il mio rotolo 
+
+Mattia Galante da haahhahahahahaha
+Mattia Galante
+
+haahhahahahahaha
+
+Mattia Galante da ok quindi la misura in fr è giusta come val...
+Mattia Galante
+
+ok quindi la misura in fr è giusta come valore basta mettere m al posto di cm 
+
+Mattia Galante da solo usa devo fare la differenza tra le due...
+Mattia Galante
+
+solo usa devo fare la differenza tra le due cose perche prima usavo le stesse variabili ma ci siamo 
+
+Mattia Galante da a dop 
+Mattia Galante
+
+a dop 
+
+25 September
+Mattia Galante da Ciao Ivan
+
+Mattia Galante
+09:12
+
+Ciao Ivan
+
+Mattia Galante da ieri ho aggiunto quelle cose al layout ma h...
+Mattia Galante
+
+ieri ho aggiunto quelle cose al layout ma ho notato una cosa che manca tra le nuove richieste
+
+Mattia Galante da ripetere numero oridine nella pagina succes...
+Mattia Galante
+
+ripetere numero oridine nella pagina successiva
+
+Mattia Galante da mi viene in mente di sfruttare il loop dell...
+Mattia Galante
+
+mi viene in mente di sfruttare il loop della testata dato che ripete le info testata ad ogni pagina 
+
+Mattia Galante da magari con una condizione se pagina diverso...
+Mattia Galante
+
+magari con una condizione se pagina diverso da 1 allora ripeti 
+
+ha il menu contestuale
+
+
