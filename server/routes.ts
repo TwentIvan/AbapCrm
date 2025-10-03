@@ -54,25 +54,77 @@ function parseChatContent(content: string, platform: string): {
   const participantMap = new Map<string, {id: string, name: string}>();
   
   if (platform === 'teams') {
-    // Teams format: "[Name] timestamp\nmessage" (repeating)
-    const teamsHeaderPattern = /^\[([^\]]+)\]\s*(.*)/;
+    // Teams real export format:
+    // "Nome da preview..."
+    // "Nome"
+    // "[timestamp]" (optional)
+    // ""
+    // "messaggio"
     
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      const match = line.match(teamsHeaderPattern);
+    // Filter out Teams UI noise (menu, buttons, etc)
+    const uiNoisePatterns = [
+      /^Ha il menu contestuale$/,
+      /^Chat$/,
+      /^Non letto$/,
+      /^Canali$/,
+      /^Messaggi non letti/,
+      /^Ultimo messaggio/,
+      /^Chat di gruppo/,
+      /^Importante$/,
+      /^Urgente$/,
+      /^Bozza$/,
+      /^Colori spenti$/,
+      /^Riunione/,
+      /^Privata$/,
+      /^Condiviso$/,
+      /^Canale/,
+      /^Team$/,
+      /^Visualizzazione temporanea$/,
+      /^Community$/,
+      /^\d+\sreazione/i  // "1 reazione Mi piace"
+    ];
+    
+    const cleanLines = lines.filter(line => {
+      const trimmed = line.trim();
+      return trimmed && !uiNoisePatterns.some(pattern => pattern.test(trimmed));
+    });
+    
+    // State machine: preview → name → timestamp → blank → body
+    let i = 0;
+    while (i < cleanLines.length) {
+      const line = cleanLines[i].trim();
       
-      if (match) {
-        const senderName = match[1].trim();
-        const timestamp = match[2].trim() || new Date().toISOString();
+      // Look for preview line pattern: "Nome da text..."
+      const previewMatch = line.match(/^([^da]+)\s+da\s+.*/);
+      if (previewMatch) {
+        const senderName = previewMatch[1].trim();
+        i++; // Move to name line
         
-        // Collect message lines until next header
-        const messageLines: string[] = [];
-        i++;
-        while (i < lines.length && !lines[i].match(teamsHeaderPattern)) {
-          messageLines.push(lines[i]);
+        // Next line should be just the name (confirm it matches)
+        if (i < cleanLines.length && cleanLines[i].trim() === senderName) {
+          i++; // Move past name
+        }
+        
+        // Check for timestamp (optional - HH:MM format)
+        let timestamp = '';
+        if (i < cleanLines.length && /^\d{1,2}:\d{2}$/.test(cleanLines[i].trim())) {
+          timestamp = cleanLines[i].trim();
           i++;
         }
-        i--; // Step back to not skip next header
+        
+        // Skip blank lines
+        while (i < cleanLines.length && !cleanLines[i].trim()) {
+          i++;
+        }
+        
+        // Collect message body until next preview pattern
+        const messageLines: string[] = [];
+        while (i < cleanLines.length) {
+          const nextLine = cleanLines[i].trim();
+          if (/^[^da]+\s+da\s+/.test(nextLine)) break; // Next message starts
+          messageLines.push(cleanLines[i]);
+          i++;
+        }
         
         const text = messageLines.join('\n').trim();
         if (text) {
@@ -86,10 +138,12 @@ function parseChatContent(content: string, platform: string): {
             id: `msg-${messages.length}`,
             senderId,
             senderName,
-            timestamp,
+            timestamp: timestamp || 'no time',
             text
           });
         }
+      } else {
+        i++; // Skip unrecognized lines
       }
     }
   } else if (platform === 'whatsapp') {

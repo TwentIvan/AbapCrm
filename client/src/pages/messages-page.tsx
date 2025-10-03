@@ -1547,37 +1547,21 @@ export default function MessagesPage() {
                     ) : (
                       renderedContent ? (
                         <>
-                          {/* 🔍 DEBUG: Log what we're about to render */}
-                          {(() => {
-                            console.log(`[RENDER-DEBUG] About to render CLEANED content:`, {
-                              bodyHtmlLength: renderedContent.bodyHtml?.length || 0,
-                              bodyTextLength: renderedContent.bodyText?.length || 0,
-                              willRenderHtml: !!renderedContent.bodyHtml,
-                              _cacheBreaker: (renderedContent as any)._cacheBreaker
-                            });
-                            console.log('[CONTENT-DEBUG] First 500 chars of CLEANED content:', renderedContent.bodyHtml?.substring(0, 500));
-                            console.log('[CONTENT-DEBUG] Last 500 chars of CLEANED content:', renderedContent.bodyHtml?.substring(-500));
-                            return null;
-                          })()}
-                          
-                          {/* Parsing failure warning */}
-                          {renderedContent.metadata?.parsingFailed ? (
-                            <>
-                              {console.log('[WARNING-RENDERED] Avviso giallo sta per essere mostrato!')}
-                              <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4" data-testid="warning-parsing-failed">
-                                <div className="flex items-start gap-3">
-                                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
-                                  <div className="flex-1">
-                                    <h4 className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">Formato non riconosciuto</h4>
-                                    <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                                      Il contenuto incollato non corrisponde al formato atteso per {renderedContent.metadata.platform || 'questa piattaforma'}. 
-                                      Il testo originale è visualizzato sotto. Assicurati di copiare solo la conversazione senza menu o elementi dell'interfaccia.
-                                    </p>
-                                  </div>
+                          {/* Parsing failure warning - MUST be shown before messages check */}
+                          {renderedContent.metadata?.parsingFailed && (
+                            <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4" data-testid="warning-parsing-failed">
+                              <div className="flex items-start gap-3">
+                                <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">Formato non riconosciuto</h4>
+                                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                                    Il contenuto incollato non corrisponde al formato atteso per {renderedContent.metadata.platform || 'questa piattaforma'}. 
+                                    Il testo originale è visualizzato sotto. Assicurati di copiare solo la conversazione senza menu o elementi dell'interfaccia.
+                                  </p>
                                 </div>
                               </div>
-                            </>
-                          ) : console.log('[WARNING-NOT-RENDERED] Condizione parsingFailed è false, nessun avviso')}
+                            </div>
+                          )}
                           
                           {/* Structured chat rendering if metadata exists */}
                           {renderedContent.metadata?.messages && renderedContent.metadata.messages.length > 0 ? (
