@@ -4,6 +4,32 @@ This CRM application is designed for SAP ABAP freelancers to manage projects, ta
 
 # Recent Changes
 
+## ➕ MANUAL MESSAGE ENTRY WITH FAB (October 2025)
+**FLOATING ACTION BUTTON FOR CHAT/SMS/OTHER MESSAGES**
+
+Successfully implemented manual message entry system with floating action button:
+
+### ✅ **FAB Implementation**
+- **Fixed Position**: Blue circular button in bottom-right corner (bottom-8 right-8)
+- **Plus Icon**: Clear visual indicator for creating new messages
+- **z-index 50**: Appears above all other content
+- **data-testid**: `button-add-message` for testing
+
+### ✅ **Type Pre-selection**
+- **Smart Default**: Form opens with type pre-selected based on active tab
+- **Key-based Remount**: `key={filterType}` forces form to reset when tab changes
+- **Schema Validation**: `userId` and `receivedAt` are optional (backend provides defaults)
+
+### ✅ **UI Differentiation**
+- **Email Tab**: Shows "Sincronizza Email" button for automatic IMAP sync
+- **Chat/SMS/Altro Tabs**: Shows informational message "Solo inserimento manuale - Usa il pulsante '+' per aggiungere"
+- **Clear UX**: Visual distinction between automatic (Email) and manual (Chat/SMS/Other) entry
+
+### ✅ **Testing Results**
+- **E2E Test**: ✅ PASSED - FAB visible, type pre-selection works, message creation successful
+- **Message Counts**: Correctly updates tab counters after creation
+- **Filtering**: New messages appear in correct type tab
+
 ## 📬 MESSAGE TYPE FILTERING & CATEGORIZATION (October 2025)
 **MULTI-CHANNEL MESSAGE SUPPORT WITH TAB FILTERS**
 
