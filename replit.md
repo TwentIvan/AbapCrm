@@ -4,6 +4,28 @@ This CRM application is designed for SAP ABAP freelancers to manage projects, ta
 
 # Recent Changes
 
+## 📬 MESSAGE TYPE FILTERING & CATEGORIZATION (October 2025)
+**MULTI-CHANNEL MESSAGE SUPPORT WITH TAB FILTERS**
+
+Successfully implemented message type categorization and filtering system:
+
+### ✅ **Message Type Column**
+- **Type Column Added**: New "Tipo" column in messages table with 4 message types
+- **Icons**: Email (📧 Mail), Chat (💬 MessageSquare), SMS (📱 MessageSquare), Altro (📄 FileText)
+- **Table Layout**: Fixed table layout with proper column width percentages
+
+### ✅ **Tab-Based Filtering**
+- **5 Filter Tabs**: Tutti, Email, Chat, SMS, Altro with live message counts
+- **Dynamic Counters**: Each tab shows real-time count (e.g., "Email (7)", "Chat (0)")
+- **Filter Logic**: Seamlessly integrated with existing search functionality
+- **Empty States**: Proper "Nessun messaggio ricevuto" when no messages match filter
+
+### ✅ **Use Cases Supported**
+- Email communication tracking
+- Teams chat conversations (with participant detection in square brackets)
+- SMS message management
+- Other message types (documents, notes, etc.)
+
 ## 🎉 MAJOR MODULAR REFACTOR COMPLETED (September 2025)
 **EMAIL TRAINING SYSTEM - MODULAR TRANSFORMATION**
 
