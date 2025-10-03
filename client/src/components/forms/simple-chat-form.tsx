@@ -38,7 +38,6 @@ export default function SimpleChatForm({ onSuccess, defaultType = "chat" }: Simp
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
   const [platform, setPlatform] = useState<ChatPlatform>("teams");
-  const [pastedImages, setPastedImages] = useState<Array<{ file: File; url: string }>>([]);
 
   const createMutation = useMutation({
     mutationFn: (data: { content: string; platform: ChatPlatform; type: string }) => 
@@ -61,48 +60,6 @@ export default function SimpleChatForm({ onSuccess, defaultType = "chat" }: Simp
     },
   });
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    console.log("🎨 [PASTE] Event triggered!");
-    
-    const items = e.clipboardData?.items;
-    console.log("🎨 [PASTE] ClipboardData items:", items ? items.length : 'none');
-    
-    if (!items) {
-      console.log("🎨 [PASTE] No clipboard items found");
-      return;
-    }
-
-    const imageFiles: Array<{ file: File; url: string }> = [];
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      console.log(`🎨 [PASTE] Item ${i}: type="${item.type}", kind="${item.kind}"`);
-      
-      // Check if item is an image
-      if (item.type.indexOf('image') !== -1) {
-        console.log(`🎨 [PASTE] Found image! Type: ${item.type}`);
-        const file = item.getAsFile();
-        if (file) {
-          const url = URL.createObjectURL(file);
-          imageFiles.push({ file, url });
-          console.log(`🎨 [PASTE] Image added: ${file.name}, size: ${file.size} bytes`);
-        } else {
-          console.log("🎨 [PASTE] getAsFile() returned null");
-        }
-      }
-    }
-
-    console.log(`🎨 [PASTE] Total images captured: ${imageFiles.length}`);
-
-    if (imageFiles.length > 0) {
-      setPastedImages(prev => [...prev, ...imageFiles]);
-      toast({
-        title: `${imageFiles.length} immagini catturate`,
-        description: "Le immagini saranno incluse nel messaggio.",
-      });
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -115,7 +72,6 @@ export default function SimpleChatForm({ onSuccess, defaultType = "chat" }: Simp
       return;
     }
 
-    // TODO: Upload images and include them in the message
     createMutation.mutate({ 
       content: content.trim(), 
       platform,
@@ -165,42 +121,11 @@ export default function SimpleChatForm({ onSuccess, defaultType = "chat" }: Simp
           className="min-h-[300px] font-mono text-sm"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          onPaste={handlePaste}
           data-testid="textarea-chat-content"
         />
         <p className="text-xs text-muted-foreground">
           Incolla il contenuto copiato dalla chat. Il sistema estrarrà automaticamente mittente, destinatario e messaggio.
         </p>
-        
-        {/* Pasted Images Preview */}
-        {pastedImages.length > 0 && (
-          <div className="space-y-2">
-            <Label className="text-green-600 dark:text-green-400">
-              ✓ {pastedImages.length} immagine{pastedImages.length > 1 ? 'i' : ''} catturata{pastedImages.length > 1 ? 'e' : ''} dalla clipboard
-            </Label>
-            <div className="grid grid-cols-4 gap-2">
-              {pastedImages.map((img, idx) => (
-                <div key={idx} className="relative group">
-                  <img 
-                    src={img.url} 
-                    alt={`Pasted ${idx + 1}`} 
-                    className="w-full h-24 object-cover rounded border border-green-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      URL.revokeObjectURL(img.url);
-                      setPastedImages(prev => prev.filter((_, i) => i !== idx));
-                    }}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Submit Button */}
