@@ -41,79 +41,121 @@ function getOptionalOrganizationId(req: any): string | null {
   return req.headers['x-organization-id'] as string || null;
 }
 
-// Chat content parser - normalizes different platform formats
+// Chat content parser - normalizes different platform formats into structured conversation data
 function parseChatContent(content: string, platform: string): {
-  from: string | null;
-  fromName: string | null;
-  to: string | null;
-  toName: string | null;
-  message: string;
-  subject: string | null;
+  participants: Array<{id: string, name: string}>;
+  messages: Array<{id: string, senderId: string, senderName: string, timestamp: string, text: string}>;
+  firstAuthor: string | null;
+  summary: string;
+  rawSource: string;
 } {
   const lines = content.trim().split('\n');
+  const messages: Array<{id: string, senderId: string, senderName: string, timestamp: string, text: string}> = [];
+  const participantMap = new Map<string, {id: string, name: string}>();
   
   if (platform === 'teams') {
-    // Teams format detection: "[Name] timestamp\nmessage"
-    // Example: "[John Doe] 10:30 AM\nHello everyone"
-    const teamsPattern = /^\[([^\]]+)\]/;
-    const firstLine = lines[0]?.trim() || '';
-    const match = firstLine.match(teamsPattern);
+    // Teams format: "[Name] timestamp\nmessage" (repeating)
+    const teamsHeaderPattern = /^\[([^\]]+)\]\s*(.*)/;
     
-    if (match) {
-      const fromName = match[1].trim();
-      // Remove the header line and join the rest as message
-      const message = lines.slice(1).join('\n').trim();
-      return {
-        from: null,
-        fromName,
-        to: null,
-        toName: null,
-        message,
-        subject: `Message from ${fromName}`
-      };
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      const match = line.match(teamsHeaderPattern);
+      
+      if (match) {
+        const senderName = match[1].trim();
+        const timestamp = match[2].trim() || new Date().toISOString();
+        
+        // Collect message lines until next header
+        const messageLines: string[] = [];
+        i++;
+        while (i < lines.length && !lines[i].match(teamsHeaderPattern)) {
+          messageLines.push(lines[i]);
+          i++;
+        }
+        i--; // Step back to not skip next header
+        
+        const text = messageLines.join('\n').trim();
+        if (text) {
+          const senderId = senderName.toLowerCase().replace(/\s+/g, '-');
+          
+          if (!participantMap.has(senderId)) {
+            participantMap.set(senderId, { id: senderId, name: senderName });
+          }
+          
+          messages.push({
+            id: `msg-${messages.length}`,
+            senderId,
+            senderName,
+            timestamp,
+            text
+          });
+        }
+      }
     }
   } else if (platform === 'whatsapp') {
-    // WhatsApp format: "timestamp - Name: message"
-    // Example: "10:30 AM - John Doe: Hello"
-    const whatsappPattern = /^[\d:]+\s*[AP]M\s*-\s*([^:]+):\s*(.+)/;
-    const match = content.match(whatsappPattern);
+    // WhatsApp format: "timestamp - Name: message" (one per line)
+    const whatsappPattern = /^([\d:]+\s*[AP]M)\s*-\s*([^:]+):\s*(.+)/;
     
-    if (match) {
-      const fromName = match[1].trim();
-      const message = match[2].trim();
-      return {
-        from: null,
-        fromName,
-        to: null,
-        toName: null,
-        message,
-        subject: `WhatsApp from ${fromName}`
-      };
+    for (const line of lines) {
+      const match = line.match(whatsappPattern);
+      if (match) {
+        const timestamp = match[1].trim();
+        const senderName = match[2].trim();
+        const text = match[3].trim();
+        const senderId = senderName.toLowerCase().replace(/\s+/g, '-');
+        
+        if (!participantMap.has(senderId)) {
+          participantMap.set(senderId, { id: senderId, name: senderName });
+        }
+        
+        messages.push({
+          id: `msg-${messages.length}`,
+          senderId,
+          senderName,
+          timestamp,
+          text
+        });
+      }
     }
   } else if (platform === 'googlemeet') {
-    // Google Meet chat format: "Name\ntimestamp\nmessage"
-    if (lines.length >= 2) {
-      const fromName = lines[0].trim();
-      const message = lines.slice(2).join('\n').trim() || lines[1].trim();
-      return {
-        from: null,
-        fromName,
-        to: null,
-        toName: null,
-        message,
-        subject: `Meet chat from ${fromName}`
-      };
+    // Google Meet format: "Name\ntimestamp\nmessage" (repeating)
+    for (let i = 0; i < lines.length; i += 3) {
+      if (i + 2 < lines.length) {
+        const senderName = lines[i].trim();
+        const timestamp = lines[i + 1].trim();
+        const text = lines[i + 2].trim();
+        const senderId = senderName.toLowerCase().replace(/\s+/g, '-');
+        
+        if (!participantMap.has(senderId)) {
+          participantMap.set(senderId, { id: senderId, name: senderName });
+        }
+        
+        messages.push({
+          id: `msg-${messages.length}`,
+          senderId,
+          senderName,
+          timestamp,
+          text
+        });
+      }
     }
   }
   
-  // Fallback: treat entire content as message
+  const participants = Array.from(participantMap.values());
+  const firstAuthor = messages.length > 0 ? messages[0].senderName : null;
+  const participantNames = participants.map(p => p.name).join(', ');
+  const summary = participants.length > 1 
+    ? `Chat among ${participants.length} participants` 
+    : firstAuthor 
+      ? `Chat with ${firstAuthor}` 
+      : 'Chat conversation';
+  
   return {
-    from: null,
-    fromName: null,
-    to: null,
-    toName: null,
-    message: content.trim(),
-    subject: 'Chat message'
+    participants,
+    messages,
+    firstAuthor,
+    summary,
+    rawSource: content.trim()
   };
 }
 
@@ -1873,20 +1915,35 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         return res.status(400).json({ error: "content, platform, and type are required" });
       }
 
-      // Parse chat content based on platform
+      // Parse chat content based on platform - returns structured conversation data
       const parsed = parseChatContent(content, platform);
+      
+      // Format body as readable conversation (for compatibility with existing UI)
+      const formattedBody = parsed.messages.map(msg => 
+        `[${msg.timestamp}] ${msg.senderName}: ${msg.text}`
+      ).join('\n\n');
+      
+      // Build metadata with structured conversation
+      const metadata = {
+        platform,
+        participants: parsed.participants,
+        messages: parsed.messages,
+        summary: parsed.summary,
+        rawSource: parsed.rawSource
+      };
       
       const organizationId = getOrganizationId(req);
       const messageData = insertMessageSchema.parse({
         type,
         status: "unread",
-        fromEmail: parsed.from || "unknown@chat.local",
-        fromName: parsed.fromName || parsed.from || "Sconosciuto",
-        toEmail: parsed.to || req.user!.email || "me@chat.local",
-        toName: parsed.toName || parsed.to || "Me",
-        subject: `${platform.charAt(0).toUpperCase() + platform.slice(1)} - ${parsed.subject || 'Chat'}`,
-        body: parsed.message,
+        fromEmail: parsed.firstAuthor ? `${parsed.firstAuthor.toLowerCase().replace(/\s+/g, '.')}@${platform}.local` : "unknown@chat.local",
+        fromName: parsed.firstAuthor || "Sconosciuto",
+        toEmail: req.user!.email || "me@chat.local",
+        toName: req.user!.username || "Me",
+        subject: parsed.summary,
+        body: formattedBody,
         htmlBody: "",
+        metadata,
         messageId: `${platform}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         attachments: [],
         userId: req.user!.id,
