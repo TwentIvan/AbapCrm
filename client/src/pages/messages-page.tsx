@@ -703,7 +703,6 @@ export default function MessagesPage() {
         <Header 
           title="Messaggi"
           subtitle="Gestisci email, chat, SMS e altri messaggi con suggerimenti AI"
-          onNewClick={() => setShowNewMessageDialog(true)}
         />
         
         <div className="px-6 py-2 border-b">
@@ -1892,6 +1891,16 @@ export default function MessagesPage() {
         </main>
   </div>
 
+  {/* Floating Action Button for new message */}
+  <Button
+    onClick={() => setShowNewMessageDialog(true)}
+    className="fixed bottom-8 right-8 h-16 w-16 rounded-full shadow-lg z-50"
+    size="icon"
+    data-testid="button-add-message"
+  >
+    <Plus className="h-8 w-8" />
+  </Button>
+
   {/* Create Message Dialog */}
   <Dialog open={showNewMessageDialog} onOpenChange={setShowNewMessageDialog}>
     <DialogContent>
@@ -1899,6 +1908,7 @@ export default function MessagesPage() {
         <DialogTitle>Nuovo Messaggio</DialogTitle>
       </DialogHeader>
       <MessageForm 
+        key={filterType} 
         onSuccess={() => setShowNewMessageDialog(false)}
         defaultValues={{
           type: filterType === "all" ? "email" : filterType
