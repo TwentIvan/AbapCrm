@@ -1790,9 +1790,11 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/messages", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
+      const organizationId = getOrganizationId(req);
       const messageData = insertMessageSchema.parse({
         ...req.body,
         userId: req.user!.id,
+        organizationId,
         receivedAt: req.body.receivedAt ? new Date(req.body.receivedAt) : new Date()
       });
       const message = await storage.createMessage(messageData);

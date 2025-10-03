@@ -17,6 +17,7 @@ interface MessageFormProps {
 
 const messageFormSchema = insertMessageSchema.extend({
   receivedAt: insertMessageSchema.shape.receivedAt.optional(),
+  userId: insertMessageSchema.shape.userId.optional(),
 });
 
 export default function MessageForm({ onSuccess, defaultValues }: MessageFormProps) {

@@ -697,6 +697,7 @@ export default function MessagesPage() {
   };
 
   return (
+    <>
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 overflow-hidden">
@@ -1889,7 +1890,8 @@ export default function MessagesPage() {
             </Panel>
           </PanelGroup>
         </main>
-  </div>
+      </div>
+    </div>
 
   {/* Floating Action Button for new message */}
   <Button
@@ -1916,6 +1918,6 @@ export default function MessagesPage() {
       />
     </DialogContent>
   </Dialog>
-</div>
+  </>
 );
 }
