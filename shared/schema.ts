@@ -226,6 +226,8 @@ export const messages = pgTable("messages", {
   htmlBody: text("html_body"),
   // 🔧 PLAN B: Forward detection artifacts for cascade pipeline
   forwardArtifacts: jsonb("forward_artifacts"), // { rfc822Payload?: {...}, resentHeaders?: {...}, hasRfc822: boolean, hasResent: boolean }
+  // Chat metadata for multi-message conversations
+  metadata: jsonb("metadata"), // { platform?: string, participants?: Array, messages?: Array, summary?: string, rawSource?: string }
   attachments: text("attachments").array(), // Array di nomi/paths allegati
   receivedAt: timestamp("received_at").notNull(),
   // Email Threading Support
