@@ -127,8 +127,9 @@ export default function MessagesPage() {
 
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
-    fromEmail: 40, // percentuale
-    subject: 40,
+    type: 8, // percentuale
+    fromEmail: 35,
+    subject: 37,
     receivedAt: 20
   });
   const [isResizing, setIsResizing] = useState(false);
@@ -398,6 +399,16 @@ export default function MessagesPage() {
     }
   };
 
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'email': return <Mail className="h-4 w-4" />;
+      case 'chat': return <MessageSquare className="h-4 w-4" />;
+      case 'sms': return <MessageSquare className="h-4 w-4" />;
+      case 'other': return <FileText className="h-4 w-4" />;
+      default: return <Mail className="h-4 w-4" />;
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'unread': return 'bg-blue-500';
@@ -536,7 +547,7 @@ export default function MessagesPage() {
     e.stopPropagation();
     
     const startX = e.clientX;
-    const startWidths = [...Object.values(columnWidths)]; // [40, 40, 20]
+    const startWidths = [...Object.values(columnWidths)]; // [type, fromEmail, subject, receivedAt]
     
     const onMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX;
@@ -545,18 +556,22 @@ export default function MessagesPage() {
       
       const newWidths = [...startWidths];
       
-      if (columnIndex === 0) { // fromEmail
-        newWidths[0] = Math.max(20, Math.min(70, startWidths[0] + deltaPercent));
+      if (columnIndex === 0) { // type
+        newWidths[0] = Math.max(5, Math.min(15, startWidths[0] + deltaPercent));
         newWidths[1] = Math.max(20, Math.min(70, startWidths[1] - deltaPercent));
-      } else if (columnIndex === 1) { // subject
+      } else if (columnIndex === 1) { // fromEmail
         newWidths[1] = Math.max(20, Math.min(70, startWidths[1] + deltaPercent));
-        newWidths[2] = Math.max(10, Math.min(40, startWidths[2] - deltaPercent));
+        newWidths[2] = Math.max(20, Math.min(70, startWidths[2] - deltaPercent));
+      } else if (columnIndex === 2) { // subject
+        newWidths[2] = Math.max(20, Math.min(70, startWidths[2] + deltaPercent));
+        newWidths[3] = Math.max(10, Math.min(40, startWidths[3] - deltaPercent));
       }
       
       setColumnWidths({
-        fromEmail: newWidths[0],
-        subject: newWidths[1],
-        receivedAt: newWidths[2]
+        type: newWidths[0],
+        fromEmail: newWidths[1],
+        subject: newWidths[2],
+        receivedAt: newWidths[3]
       });
     };
     
@@ -760,9 +775,24 @@ export default function MessagesPage() {
               </CardHeader>
               <CardContent className="p-0 flex flex-col flex-1 min-h-0">
                 <div className="border rounded-md">
-                  <Table>
+                  <Table style={{ tableLayout: 'fixed', width: '100%' }}>
                     <TableHeader>
                       <TableRow>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50 relative"
+                          style={{ width: `${columnWidths.type}%` }}
+                          data-testid="header-type"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span>Tipo</span>
+                          </div>
+                          {/* Resize handle */}
+                          <div
+                            className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-border hover:bg-primary transition-colors z-10"
+                            onMouseDown={(e) => handleColumnResize(e, 0)}
+                            title="Trascina per ridimensionare"
+                          />
+                        </TableHead>
                         <TableHead 
                           className="cursor-pointer hover:bg-muted/50 relative"
                           style={{ width: `${columnWidths.fromEmail}%` }}
@@ -776,7 +806,7 @@ export default function MessagesPage() {
                           {/* Resize handle */}
                           <div
                             className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-border hover:bg-primary transition-colors z-10"
-                            onMouseDown={(e) => handleColumnResize(e, 0)}
+                            onMouseDown={(e) => handleColumnResize(e, 1)}
                             title="Trascina per ridimensionare"
                           />
                         </TableHead>
@@ -793,7 +823,7 @@ export default function MessagesPage() {
                           {/* Resize handle */}
                           <div
                             className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-border hover:bg-primary transition-colors z-10"
-                            onMouseDown={(e) => handleColumnResize(e, 1)}
+                            onMouseDown={(e) => handleColumnResize(e, 2)}
                             title="Trascina per ridimensionare"
                           />
                         </TableHead>
@@ -812,13 +842,13 @@ export default function MessagesPage() {
                     </TableHeader>
                   </Table>
                   <ScrollArea className="flex-1 min-h-0">
-                    <Table>
+                    <Table style={{ tableLayout: 'fixed', width: '100%' }}>
                       <TableBody>
                         {showThreadView ? (
                           // Thread View
                           threads.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={3} className="h-32 text-center">
+                              <TableCell colSpan={4} className="h-32 text-center">
                                 <div className="flex flex-col items-center justify-center text-muted-foreground">
                                   <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
                                   <p>Nessun thread trovato</p>
@@ -834,7 +864,7 @@ export default function MessagesPage() {
                                   onClick={() => toggleThread(thread.threadId)}
                                   data-testid={`thread-${thread.threadId}`}
                                 >
-                                  <TableCell colSpan={3} className="py-4">
+                                  <TableCell colSpan={4} className="py-4">
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-3">
                                         {expandedThreads.has(thread.threadId) ? (
@@ -876,6 +906,11 @@ export default function MessagesPage() {
                                             } ${message.status === 'unread' ? 'border-l-blue-500' : ''}`}
                                             onClick={() => handleSelectMessage(message)}
                                           >
+                                            <TableCell style={{ width: `${columnWidths.type}%` }}>
+                                              <div className="flex items-center justify-center pl-4">
+                                                {getTypeIcon(message.type)}
+                                              </div>
+                                            </TableCell>
                                             <TableCell style={{ width: `${columnWidths.fromEmail}%` }}>
                                               <div className="space-y-1 pl-4">
                                                 <div className="flex items-center gap-2">
@@ -929,7 +964,7 @@ export default function MessagesPage() {
                           // Normal Message View
                           filteredAndSortedMessages.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={3} className="h-32 text-center">
+                              <TableCell colSpan={4} className="h-32 text-center">
                                 <div className="flex flex-col items-center justify-center text-muted-foreground">
                                   <Mail className="h-8 w-8 mb-2 opacity-50" />
                                   <p>{searchTerm ? 'Nessun messaggio trovato' : 'Nessun messaggio ricevuto'}</p>
@@ -949,6 +984,12 @@ export default function MessagesPage() {
                                 } ${message.status === 'unread' ? 'border-l-4 border-l-blue-500' : ''}`}
                                 onClick={() => handleSelectMessage(message)}
                               >
+                                {/* Colonna Tipo */}
+                                <TableCell style={{ width: `${columnWidths.type}%` }}>
+                                  <div className="flex items-center justify-center">
+                                    {getTypeIcon(message.type)}
+                                  </div>
+                                </TableCell>
                                 {/* Colonna Mittente */}
                                 <TableCell style={{ width: `${columnWidths.fromEmail}%` }}>
                                   <div className="space-y-1">
