@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
@@ -115,6 +116,7 @@ export default function MessagesPage() {
   const [selectedCustomReasonId, setSelectedCustomReasonId] = useState<string | null>(null);
   const [showThreadView, setShowThreadView] = useState(false);
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  const [filterType, setFilterType] = useState<"all" | "email" | "chat" | "sms" | "other">("all");
   
   // Training mode states
   const [isTrainingMode, setIsTrainingMode] = useState(false);
@@ -502,6 +504,18 @@ export default function MessagesPage() {
     ? threads.reduce((sum, thread) => sum + thread.unreadCount, 0)
     : messages.filter(m => m.status === 'unread').length;
 
+  // Calculate message counts by type
+  const typeCounts = React.useMemo(() => {
+    const counts = {
+      all: messages.length,
+      email: messages.filter(m => m.type === 'email').length,
+      chat: messages.filter(m => m.type === 'chat').length,
+      sms: messages.filter(m => m.type === 'sms').length,
+      other: messages.filter(m => m.type === 'other').length,
+    };
+    return counts;
+  }, [messages]);
+
   const toggleThread = (threadId: string) => {
     const newExpanded = new Set(expandedThreads);
     if (expandedThreads.has(threadId)) {
@@ -515,6 +529,10 @@ export default function MessagesPage() {
   // Filtro e ordinamento messaggi
   const filteredAndSortedMessages = messages
     .filter(message => {
+      // Filter by type
+      if (filterType !== "all" && message.type !== filterType) return false;
+      
+      // Filter by search term
       if (!searchTerm) return true;
       const searchLower = searchTerm.toLowerCase();
       return (
@@ -772,6 +790,30 @@ export default function MessagesPage() {
                     data-testid="search-messages"
                   />
                 </div>
+                {/* Filter tabs by message type */}
+                <Tabs value={filterType} onValueChange={(value) => setFilterType(value as typeof filterType)} className="w-full">
+                  <TabsList className="grid w-full grid-cols-5">
+                    <TabsTrigger value="all" data-testid="tab-all">
+                      Tutti ({typeCounts.all})
+                    </TabsTrigger>
+                    <TabsTrigger value="email" data-testid="tab-email">
+                      <Mail className="h-4 w-4 mr-1" />
+                      Email ({typeCounts.email})
+                    </TabsTrigger>
+                    <TabsTrigger value="chat" data-testid="tab-chat">
+                      <MessageSquare className="h-4 w-4 mr-1" />
+                      Chat ({typeCounts.chat})
+                    </TabsTrigger>
+                    <TabsTrigger value="sms" data-testid="tab-sms">
+                      <MessageSquare className="h-4 w-4 mr-1" />
+                      SMS ({typeCounts.sms})
+                    </TabsTrigger>
+                    <TabsTrigger value="other" data-testid="tab-other">
+                      <FileText className="h-4 w-4 mr-1" />
+                      Altro ({typeCounts.other})
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </CardHeader>
               <CardContent className="p-0 flex flex-col flex-1 min-h-0">
                 <div className="border rounded-md">
