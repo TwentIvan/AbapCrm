@@ -18,7 +18,8 @@ import {
   insertVpnSoftwareSchema, insertVpnSystemsSchema, vpnConnections,
   insertDiscoveredVpnSoftwareSchema, insertDiscoveredVpnConfigurationSchema,
   insertOrganizationSchema, insertUserOrganizationSchema, insertOrganizationInvitationSchema,
-  insertOrganizationDomainSchema, insertEmailFeedbackSchema, insertEmailTrainingSelectionSchema
+  insertOrganizationDomainSchema, insertEmailFeedbackSchema, insertEmailTrainingSelectionSchema,
+  type EmailConfig
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -2255,7 +2256,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         port: savedConfig.port,
         tls: savedConfig.tls,
         folder: firstFolder,
-        userId: req.user!.id
+        userId: req.user!.id,
+        organizationId: getOrganizationId(req)
       };
 
       // Disconnect existing service first
@@ -2372,7 +2374,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
           port: updatedConfig.port,
           tls: updatedConfig.tls,
           folder: firstFolder,
-          userId: req.user!.id
+          userId: req.user!.id,
+          organizationId: getOrganizationId(req)
         };
         
         try {
@@ -2443,7 +2446,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
           port: updatedConfig.port,
           tls: updatedConfig.tls,
           folder: firstFolder,
-          userId: req.user!.id
+          userId: req.user!.id,
+          organizationId: getOrganizationId(req)
         };
         
         initializeEmailService(imapConfig);
@@ -2460,18 +2464,58 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/email/sync", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
-    const service = getEmailService();
+    let service = getEmailService();
     if (!service) {
       return res.status(400).json({ error: "Email service not configured" });
     }
 
     // Check if service is connected
     if (!(service as any).isServiceConnected()) {
-      const status = (service as any).getConnectionStatus();
-      return res.status(400).json({ 
-        error: "Email service not connected", 
-        details: status.error 
-      });
+      console.log('[SYNC] Email service not connected, attempting to reconnect...');
+      
+      // Try to reinitialize the service with current config
+      try {
+        const emailConfigs = await storage.getEmailConfigs(req.user!.id);
+        const activeConfig = emailConfigs.find((c: EmailConfig) => c.isActive);
+        
+        if (activeConfig) {
+          const firstFolder = activeConfig.folders && activeConfig.folders.length > 0 
+            ? activeConfig.folders[0] 
+            : "INBOX";
+          
+          const imapConfig = {
+            user: activeConfig.email,
+            password: activeConfig.password,
+            host: activeConfig.host,
+            port: activeConfig.port,
+            tls: activeConfig.tls,
+            folder: firstFolder,
+            userId: req.user!.id,
+            organizationId: getOrganizationId(req)
+          };
+          
+          console.log('[SYNC] Reinitializing email service...');
+          initializeEmailService(imapConfig);
+          
+          // Get the reinitialized service
+          service = getEmailService();
+          
+          if (!service || !(service as any).isServiceConnected()) {
+            const status = (service as any)?.getConnectionStatus() || { error: 'Service failed to reconnect' };
+            return res.status(400).json({ 
+              error: "Email service not connected", 
+              details: status.error 
+            });
+          }
+          
+          console.log('[SYNC] Email service reconnected successfully');
+        } else {
+          return res.status(400).json({ error: "No active email configuration found" });
+        }
+      } catch (error) {
+        console.error('[SYNC] Failed to reconnect email service:', error);
+        return res.status(500).json({ error: "Failed to reconnect email service" });
+      }
     }
 
     try {
