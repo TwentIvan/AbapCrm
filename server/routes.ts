@@ -1886,7 +1886,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         remainderText: null,
         remainderHtml: null,
         headerSummary: null,
-        isForwarded: false
+        isForwarded: false,
+        metadata: message.metadata || undefined
       };
       
       console.log(`[RENDER-ROUTE] 🎯 Simple mode result: bodyHtml=${cleanedHtml?.length || 0} chars (original: ${message.htmlBody?.length || 0})`);

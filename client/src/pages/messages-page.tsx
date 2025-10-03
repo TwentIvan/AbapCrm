@@ -72,6 +72,13 @@ interface RenderedMessageContent {
   remainderHtml: string | null;
   headerSummary: string | null;
   isForwarded: boolean;
+  metadata?: {
+    platform?: string;
+    participants?: Array<{id: string; name: string}>;
+    messages?: Array<{id: string; senderId: string; senderName: string; timestamp: string; text: string}>;
+    summary?: string;
+    rawSource?: string;
+  };
 }
 
 // ✅ MODULAR: Unified selection record type
@@ -1550,10 +1557,51 @@ export default function MessagesPage() {
                             console.log('[CONTENT-DEBUG] Last 500 chars of CLEANED content:', renderedContent.bodyHtml?.substring(-500));
                             return null;
                           })()}
-                          {renderedContent.bodyHtml ? (
-                            <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderedContent.bodyHtml }} data-testid="email-content-main" />
+                          
+                          {/* Structured chat rendering if metadata exists */}
+                          {renderedContent.metadata?.messages && renderedContent.metadata.messages.length > 0 ? (
+                            <div className="space-y-4" data-testid="chat-structured-view">
+                              {/* Platform badge */}
+                              {renderedContent.metadata.platform && (
+                                <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
+                                  <MessageSquare className="h-4 w-4" />
+                                  {renderedContent.metadata.platform.charAt(0).toUpperCase() + renderedContent.metadata.platform.slice(1)}
+                                </div>
+                              )}
+                              
+                              {/* Participants */}
+                              {renderedContent.metadata.participants && renderedContent.metadata.participants.length > 0 && (
+                                <div className="bg-muted/30 rounded-lg p-3">
+                                  <div className="text-sm font-medium mb-2">Partecipanti ({renderedContent.metadata.participants.length})</div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {renderedContent.metadata.participants.map(p => (
+                                      <span key={p.id} className="inline-flex items-center px-2 py-1 bg-background rounded text-xs" data-testid={`participant-${p.id}`}>
+                                        {p.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Messages */}
+                              <div className="space-y-3">
+                                {renderedContent.metadata.messages.map((msg, idx) => (
+                                  <div key={msg.id} className="border-l-2 border-blue-200 dark:border-blue-800 pl-4 py-2" data-testid={`chat-message-${idx}`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="font-medium text-sm">{msg.senderName}</span>
+                                      <span className="text-xs text-muted-foreground">{msg.timestamp}</span>
+                                    </div>
+                                    <div className="text-sm whitespace-pre-wrap">{msg.text}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           ) : (
-                            <div className="whitespace-pre-wrap text-sm" data-testid="email-content-main">{renderedContent.bodyText || 'Nessun contenuto'}</div>
+                            renderedContent.bodyHtml ? (
+                              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderedContent.bodyHtml }} data-testid="email-content-main" />
+                            ) : (
+                              <div className="whitespace-pre-wrap text-sm" data-testid="email-content-main">{renderedContent.bodyText || 'Nessun contenuto'}</div>
+                            )
                           )}
                           {(renderedContent.remainderText || renderedContent.remainderHtml) && (
                             <div className="border-t pt-4">
