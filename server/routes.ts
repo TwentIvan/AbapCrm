@@ -2049,6 +2049,9 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       // Parse chat content based on platform - returns structured conversation data
       const parsed = parseChatContent(content, platform);
       
+      console.log('[CHAT-PARSER] firstAuthor:', parsed.firstAuthor);
+      console.log('[CHAT-PARSER] First 3 messages:', JSON.stringify(parsed.messages.slice(0, 3)));
+      
       // Format body as readable conversation (for compatibility with existing UI)
       const formattedBody = parsed.messages.map(msg => 
         `[${msg.timestamp}] ${msg.senderName}: ${msg.text}`
