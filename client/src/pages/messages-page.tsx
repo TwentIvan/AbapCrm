@@ -701,8 +701,8 @@ export default function MessagesPage() {
       <Sidebar />
       <div className="flex-1 overflow-hidden">
         <Header 
-          title="Messaggi Email"
-          subtitle="Gestisci le email ricevute e i suggerimenti AI"
+          title="Messaggi"
+          subtitle="Gestisci email, chat, SMS e altri messaggi con suggerimenti AI"
           onNewClick={() => setShowNewMessageDialog(true)}
         />
         
@@ -721,16 +721,24 @@ export default function MessagesPage() {
                 <MessageSquare className="h-4 w-4 mr-2" />
                 {showThreadView ? 'Vista normale' : 'Vista thread'}
               </Button>
-              <Button 
-                onClick={() => syncMutation.mutate()}
-                disabled={syncMutation.isPending}
-                size="sm"
-                variant="outline"
-                data-testid="button-sync-emails"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-                Sincronizza
-              </Button>
+              {(filterType === "all" || filterType === "email") && (
+                <Button 
+                  onClick={() => syncMutation.mutate()}
+                  disabled={syncMutation.isPending}
+                  size="sm"
+                  variant="outline"
+                  data-testid="button-sync-emails"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                  Sincronizza Email
+                </Button>
+              )}
+              {(filterType === "chat" || filterType === "sms" || filterType === "other") && (
+                <div className="flex items-center text-sm text-muted-foreground bg-muted px-3 py-1 rounded-md">
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Solo inserimento manuale - Usa il pulsante "+" per aggiungere
+                </div>
+              )}
             </div>
             {messages.length > 0 && (
               <AlertDialog>
@@ -1890,7 +1898,12 @@ export default function MessagesPage() {
       <DialogHeader>
         <DialogTitle>Nuovo Messaggio</DialogTitle>
       </DialogHeader>
-      <MessageForm onSuccess={() => setShowNewMessageDialog(false)} />
+      <MessageForm 
+        onSuccess={() => setShowNewMessageDialog(false)}
+        defaultValues={{
+          type: filterType === "all" ? "email" : filterType
+        }}
+      />
     </DialogContent>
   </Dialog>
 </div>
