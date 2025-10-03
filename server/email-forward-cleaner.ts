@@ -18,6 +18,42 @@ interface ForwardedEmailData {
 
 export class EmailForwardCleaner {
   /**
+   * 🎯 SIMPLE MODE: Deterministic signature and header removal
+   * This function bypasses all complex logic and simply removes:
+   * - Outlook signature divs (#Signature, #appendonsend)
+   * - HR separators
+   * - Email headers (Da:, Inviato:, From:, etc.)
+   */
+  public static stripSignaturesAndHeaders(html: string | null): string | null {
+    if (!html) return null;
+    
+    try {
+      const $ = cheerio.load(html);
+      
+      // Remove Outlook signature containers
+      $('#Signature').remove();
+      $('#appendonsend').remove();
+      $('div[id="Signature"]').remove();
+      $('div[id="appendonsend"]').remove();
+      
+      // Remove HR separators
+      $('hr').remove();
+      
+      // Remove divRplyFwdMsg (Outlook reply/forward container)
+      $('#divRplyFwdMsg').remove();
+      $('div[id="divRplyFwdMsg"]').remove();
+      
+      const cleanedHtml = $.html();
+      console.log(`[EMAIL-CLEANER] 🎯 Simple strip: ${html.length} -> ${cleanedHtml.length} chars`);
+      
+      return cleanedHtml;
+    } catch (err) {
+      console.error('[EMAIL-CLEANER] ❌ Simple strip failed:', err);
+      return html;
+    }
+  }
+
+  /**
    * Central mapping from training label tokens to concrete regex patterns
    * This ensures consistency between pre-filter gate and cleaning functions
    */

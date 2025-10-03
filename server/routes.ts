@@ -1756,18 +1756,22 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const message = await storage.getMessage(req.params.id, req.user!.id);
       if (!message) return res.sendStatus(404);
 
-      // Utilizza EmailForwardCleaner per dividere il contenuto con training data
+      // 🎯 SIMPLE MODE: Just strip signatures and headers, no thread splitting
       console.log(`[RENDER-ROUTE] Processing message ${req.params.id}: text=${(message.body || '').length} chars, html=${(message.htmlBody || '').length} chars`);
       
-      // 🔧 FIX: Visualizzazione normale USA ALGORITMO BASE (no training)
-      // Training viene applicato SOLO con "Riprocessa"
-      console.log(`[RENDER-ROUTE] Using base email cleaning (no training)`);
-      const renderedContent = EmailForwardCleaner.splitEmailContent(
-        message.subject ?? "",
-        message.body ?? "",
-        message.htmlBody || null
-      );
-      console.log(`[RENDER-ROUTE] Split result: bodyText=${renderedContent.bodyText.length} chars, bodyHtml=${renderedContent.bodyHtml?.length || 0} chars, remainderHtml=${renderedContent.remainderHtml?.length || 0} chars, isForwarded=${renderedContent.isForwarded}`);
+      // Apply simple deterministic cleaning
+      const cleanedHtml = EmailForwardCleaner.stripSignaturesAndHeaders(message.htmlBody || null);
+      
+      const renderedContent = {
+        bodyText: message.body ?? "",
+        bodyHtml: cleanedHtml,
+        remainderText: null,
+        remainderHtml: null,
+        headerSummary: null,
+        isForwarded: false
+      };
+      
+      console.log(`[RENDER-ROUTE] 🎯 Simple mode result: bodyHtml=${cleanedHtml?.length || 0} chars (original: ${message.htmlBody?.length || 0})`);
 
       // 🚀 FORCE FRESH CONTENT: Add timestamp to bypass ALL caching
       const responseWithTimestamp = {
