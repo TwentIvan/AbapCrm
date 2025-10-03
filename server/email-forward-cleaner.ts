@@ -57,6 +57,15 @@ export class EmailForwardCleaner {
         return this.type === 'text' && !this.data.replace(/[\s\u00a0\ufeff\n\r\t]+/g, '').length;
       }).remove();
       
+      // Remove initial empty div containing only br (Outlook placeholder)
+      $('body > div.elementToProof').each(function() {
+        const content = $(this).text().trim();
+        const hasOnlyBr = $(this).children().length === 1 && $(this).children('br').length === 1;
+        if (!content && hasOnlyBr) {
+          $(this).remove();
+        }
+      });
+      
       let cleanedHtml = $.html();
       
       // Remove the P {margin-top:0;margin-bottom:0;} string wherever it appears
