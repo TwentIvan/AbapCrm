@@ -14,7 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square, Trash2, ExternalLink, History, MessageSquare } from "lucide-react";
 import type { Task, Project, TimeEntry } from "@shared/schema";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { useOrganization } from "@/hooks/use-organization";
+import { useOrganization } from "@/contexts/organization-context";
 import TaskForm from "@/components/forms/task-form";
 import TaskFormContainer from "@/components/forms/task-form-container";
 import AuditHistory from "@/components/ui/audit-history";

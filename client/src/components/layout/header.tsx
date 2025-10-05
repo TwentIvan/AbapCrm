@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock, Settings, LogOut, Globe } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock, Settings, LogOut, Globe, Eye } from "lucide-react";
 import { ThemeSelector } from "@/components/theme/theme-selector";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -19,7 +20,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useAuth } from "@/hooks/use-auth";
-import { useOrganization } from "@/hooks/use-organization";
+import { useOrganization } from "@/contexts/organization-context";
 import { useTranslation, Language } from "@/lib/i18n";
 
 interface HeaderProps {
@@ -34,7 +35,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
-  const { organizations, currentOrganization, switchOrganization } = useOrganization();
+  const { organizations, currentOrganization, switchOrganization, personalScope, setPersonalScope } = useOrganization();
   const { language, setLanguage, t } = useTranslation();
 
   const userInitials = user?.firstName && user?.lastName 
@@ -344,6 +345,24 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     </DropdownMenuItem>
                   ))}
                   <DropdownMenuSeparator />
+                  {currentOrganization?.name === "Personal" && (
+                    <>
+                      <div className="px-2 py-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Eye className="h-4 w-4" style={{ color: '#6b7280' }} />
+                            <span className="text-sm font-medium">Vedi tutte le org</span>
+                          </div>
+                          <Switch
+                            checked={personalScope === 'all'}
+                            onCheckedChange={(checked) => setPersonalScope(checked ? 'all' : 'personal')}
+                            data-testid="switch-personal-scope"
+                          />
+                        </div>
+                      </div>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem onClick={() => window.location.href = "/organizations"}>
                     <Building className="h-4 w-4 mr-2" style={{ color: '#6b7280' }} />
                     Gestisci Organizzazioni

@@ -1,7 +1,7 @@
 import { useParams } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
-import { useOrganization } from "@/hooks/use-organization";
+import { useOrganization } from "@/contexts/organization-context";
 import FormContainer, { useFormRouting } from "./form-container";
 import SimpleVPNForm from "./simple-vpn-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

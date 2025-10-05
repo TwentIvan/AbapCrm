@@ -1,7 +1,8 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-// Global state for current organization ID - will be set by useOrganization hook
+// Global state for current organization ID and scope - will be set by OrganizationProvider
 let currentOrganizationId: string | null = null;
+let currentPersonalScope: 'personal' | 'all' = 'personal';
 
 export function setCurrentOrganizationId(organizationId: string | null) {
   currentOrganizationId = organizationId;
@@ -9,6 +10,14 @@ export function setCurrentOrganizationId(organizationId: string | null) {
 
 export function getCurrentOrganizationId() {
   return currentOrganizationId;
+}
+
+export function setCurrentPersonalScope(scope: 'personal' | 'all') {
+  currentPersonalScope = scope;
+}
+
+export function getCurrentPersonalScope() {
+  return currentPersonalScope;
 }
 
 async function throwIfResNotOk(res: Response) {
@@ -31,6 +40,9 @@ export async function apiRequest(
   if (currentOrganizationId) {
     headers["X-Organization-Id"] = currentOrganizationId;
   }
+  
+  // Add personal scope header
+  headers["X-Organization-Scope"] = currentPersonalScope;
 
   const res = await fetch(url, {
     method,
@@ -55,6 +67,9 @@ export const getQueryFn: <T>(options: {
     if (currentOrganizationId) {
       headers["X-Organization-Id"] = currentOrganizationId;
     }
+    
+    // Add personal scope header
+    headers["X-Organization-Scope"] = currentPersonalScope;
 
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",

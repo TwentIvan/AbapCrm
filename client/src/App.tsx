@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { AuthProvider } from "@/hooks/use-auth";
 import { I18nProvider } from "@/lib/i18n";
-import { useOrganization } from "@/hooks/use-organization";
+import { OrganizationProvider } from "@/contexts/organization-context";
 import { ProtectedRoute } from "./lib/protected-route";
 
 import AuthPage from "@/pages/auth-page";
@@ -30,9 +30,6 @@ import AccountPage from "@/pages/account-page";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  // Initialize organization context
-  useOrganization();
-  
   return (
     <Switch>
       <ProtectedRoute path="/" component={OrganizationsPage} />
@@ -80,12 +77,14 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <I18nProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Router />
-            </TooltipProvider>
-          </I18nProvider>
+          <OrganizationProvider>
+            <I18nProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Router />
+              </TooltipProvider>
+            </I18nProvider>
+          </OrganizationProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

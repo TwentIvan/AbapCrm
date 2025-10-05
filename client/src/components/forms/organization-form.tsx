@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { Building } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useOrganization } from "@/hooks/use-organization";
+import { useOrganization } from "@/contexts/organization-context";
 import { useStandardCrud } from "@/lib/cache-manager";
 import {
   Select,

@@ -10,7 +10,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { useOrganization } from "@/hooks/use-organization";
+import { useOrganization } from "@/contexts/organization-context";
 import { Building, ChevronDown, Settings, LogOut, Users, Check } from "lucide-react";
 import AccountSettingsDialog from "./account-settings-dialog";
 
