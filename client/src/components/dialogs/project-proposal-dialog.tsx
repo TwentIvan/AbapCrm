@@ -146,7 +146,7 @@ export function ProjectProposalDialog({
             </TabsTrigger>
             <TabsTrigger value="tasks" data-testid="tab-tasks">
               <CheckSquare className="h-4 w-4 mr-2" />
-              Task ({editedProposal.tasks?.length || 0})
+              Task ({editedProposal?.tasks?.length || 0})
             </TabsTrigger>
           </TabsList>
 
