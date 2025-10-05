@@ -413,9 +413,9 @@ export default function MessagesPage() {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'email': return <Mail className="h-4 w-4" />;
-      case 'chat': return <MessageSquare className="h-4 w-4" />;
-      case 'sms': return <MessageSquare className="h-4 w-4" />;
+      case 'email': return <Mail className="h-4 w-4 text-amber-600" />;
+      case 'chat': return <MessageSquare className="h-4 w-4 text-indigo-600" />;
+      case 'sms': return <MessageSquare className="h-4 w-4 text-green-400" />;
       case 'other': return <FileText className="h-4 w-4" />;
       default: return <Mail className="h-4 w-4" />;
     }
@@ -794,7 +794,6 @@ export default function MessagesPage() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <Mail className="h-5 w-5" />
-                    Lista Messaggi
                   </CardTitle>
                 </div>
                 {/* Barra di ricerca */}
@@ -838,21 +837,23 @@ export default function MessagesPage() {
                   <Table style={{ tableLayout: 'fixed', width: '100%' }}>
                     <TableHeader>
                       <TableRow>
-                        <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 relative"
-                          style={{ width: `${columnWidths.type}%` }}
-                          data-testid="header-type"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <span>Tipo</span>
-                          </div>
-                          {/* Resize handle */}
-                          <div
-                            className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-border hover:bg-primary transition-colors z-10"
-                            onMouseDown={(e) => handleColumnResize(e, 0)}
-                            title="Trascina per ridimensionare"
-                          />
-                        </TableHead>
+                        {filterType === 'all' && (
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50 relative"
+                            style={{ width: `${columnWidths.type}%` }}
+                            data-testid="header-type"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span>Tipo</span>
+                            </div>
+                            {/* Resize handle */}
+                            <div
+                              className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-border hover:bg-primary transition-colors z-10"
+                              onMouseDown={(e) => handleColumnResize(e, 0)}
+                              title="Trascina per ridimensionare"
+                            />
+                          </TableHead>
+                        )}
                         <TableHead 
                           className="cursor-pointer hover:bg-muted/50 relative"
                           style={{ width: `${columnWidths.fromEmail}%` }}
@@ -870,23 +871,25 @@ export default function MessagesPage() {
                             title="Trascina per ridimensionare"
                           />
                         </TableHead>
-                        <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 relative"
-                          style={{ width: `${columnWidths.subject}%` }}
-                          onClick={() => handleSort('subject')}
-                          data-testid="header-sort-subject"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <span>Oggetto</span>
-                            {getSortIcon('subject')}
-                          </div>
-                          {/* Resize handle */}
-                          <div
-                            className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-border hover:bg-primary transition-colors z-10"
-                            onMouseDown={(e) => handleColumnResize(e, 2)}
-                            title="Trascina per ridimensionare"
-                          />
-                        </TableHead>
+                        {filterType === 'email' && (
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50 relative"
+                            style={{ width: `${columnWidths.subject}%` }}
+                            onClick={() => handleSort('subject')}
+                            data-testid="header-sort-subject"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span>Oggetto</span>
+                              {getSortIcon('subject')}
+                            </div>
+                            {/* Resize handle */}
+                            <div
+                              className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-border hover:bg-primary transition-colors z-10"
+                              onMouseDown={(e) => handleColumnResize(e, 2)}
+                              title="Trascina per ridimensionare"
+                            />
+                          </TableHead>
+                        )}
                         <TableHead 
                           className="cursor-pointer hover:bg-muted/50"
                           style={{ width: `${columnWidths.receivedAt}%` }}
@@ -966,11 +969,13 @@ export default function MessagesPage() {
                                             } ${message.status === 'unread' ? 'border-l-blue-500' : ''}`}
                                             onClick={() => handleSelectMessage(message)}
                                           >
-                                            <TableCell style={{ width: `${columnWidths.type}%` }}>
-                                              <div className="flex items-center justify-center pl-4">
-                                                {getTypeIcon(message.type)}
-                                              </div>
-                                            </TableCell>
+                                            {filterType === 'all' && (
+                                              <TableCell style={{ width: `${columnWidths.type}%` }}>
+                                                <div className="flex items-center justify-center pl-4">
+                                                  {getTypeIcon(message.type)}
+                                                </div>
+                                              </TableCell>
+                                            )}
                                             <TableCell style={{ width: `${columnWidths.fromEmail}%` }}>
                                               <div className="space-y-1 pl-4">
                                                 <div className="flex items-center gap-2">
@@ -993,18 +998,20 @@ export default function MessagesPage() {
                                               </div>
                                             </TableCell>
                                             
-                                            <TableCell style={{ width: `${columnWidths.subject}%` }}>
-                                              <div className="space-y-1 pl-4">
-                                                <p className={`text-sm truncate ${
-                                                  message.status === 'unread' ? 'font-bold text-foreground' : 'font-normal text-foreground'
-                                                }`}>
-                                                  {message.subject || 'Nessun oggetto'}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground truncate">
-                                                  {message.body ? message.body.substring(0, 60) + '...' : 'Nessun contenuto'}
-                                                </p>
-                                              </div>
-                                            </TableCell>
+                                            {filterType === 'email' && (
+                                              <TableCell style={{ width: `${columnWidths.subject}%` }}>
+                                                <div className="space-y-1 pl-4">
+                                                  <p className={`text-sm truncate ${
+                                                    message.status === 'unread' ? 'font-bold text-foreground' : 'font-normal text-foreground'
+                                                  }`}>
+                                                    {message.subject || 'Nessun oggetto'}
+                                                  </p>
+                                                  <p className="text-xs text-muted-foreground truncate">
+                                                    {message.body ? message.body.substring(0, 60) + '...' : 'Nessun contenuto'}
+                                                  </p>
+                                                </div>
+                                              </TableCell>
+                                            )}
                                             
                                             <TableCell className="text-xs text-muted-foreground" style={{ width: `${columnWidths.receivedAt}%` }}>
                                               <div className="space-y-1 pl-4">
@@ -1045,11 +1052,13 @@ export default function MessagesPage() {
                                 onClick={() => handleSelectMessage(message)}
                               >
                                 {/* Colonna Tipo */}
-                                <TableCell style={{ width: `${columnWidths.type}%` }}>
-                                  <div className="flex items-center justify-center">
-                                    {getTypeIcon(message.type)}
-                                  </div>
-                                </TableCell>
+                                {filterType === 'all' && (
+                                  <TableCell style={{ width: `${columnWidths.type}%` }}>
+                                    <div className="flex items-center justify-center">
+                                      {getTypeIcon(message.type)}
+                                    </div>
+                                  </TableCell>
+                                )}
                                 {/* Colonna Mittente */}
                                 <TableCell style={{ width: `${columnWidths.fromEmail}%` }}>
                                   <div className="space-y-1">
@@ -1078,18 +1087,20 @@ export default function MessagesPage() {
                                 </TableCell>
                                 
                                 {/* Colonna Oggetto */}
-                                <TableCell style={{ width: `${columnWidths.subject}%` }}>
-                                  <div className="space-y-1">
-                                    <p className={`text-sm truncate ${
-                                      message.status === 'unread' ? 'font-bold text-foreground' : 'font-normal text-foreground'
-                                    }`}>
-                                      {message.subject || 'Nessun oggetto'}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {message.body ? message.body.substring(0, 80) + '...' : 'Nessun contenuto'}
-                                    </p>
-                                  </div>
-                                </TableCell>
+                                {filterType === 'email' && (
+                                  <TableCell style={{ width: `${columnWidths.subject}%` }}>
+                                    <div className="space-y-1">
+                                      <p className={`text-sm truncate ${
+                                        message.status === 'unread' ? 'font-bold text-foreground' : 'font-normal text-foreground'
+                                      }`}>
+                                        {message.subject || 'Nessun oggetto'}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground truncate">
+                                        {message.body ? message.body.substring(0, 80) + '...' : 'Nessun contenuto'}
+                                      </p>
+                                    </div>
+                                  </TableCell>
+                                )}
                                 
                                 {/* Colonna Data/Ora */}
                                 <TableCell className="text-xs text-muted-foreground" style={{ width: `${columnWidths.receivedAt}%` }}>
