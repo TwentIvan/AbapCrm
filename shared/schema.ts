@@ -68,6 +68,7 @@ export const projects = pgTable("projects", {
   progress: integer("progress").default(0).notNull(),
   estimatedEffort: integer("estimated_effort"), // in hours
   color: text("color").default("#3B82F6").notNull(), // Colore esadecimale per il progetto
+  sourceMessageIds: text("source_message_ids").array().default([]), // IDs dei messaggi da cui è stato creato
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -97,6 +98,7 @@ export const tasks = pgTable("tasks", {
   estimatedEffort: integer("estimated_effort"), // in hours
   remainingEffort: integer("remaining_effort"), // in hours - automatically calculated
   completionPercentage: integer("completion_percentage").default(0).notNull(), // 0-100
+  sourceMessageIds: text("source_message_ids").array().default([]), // IDs dei messaggi da cui è stato creato
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -148,6 +150,7 @@ export const partners = pgTable("partners", {
   userId: uuid("user_id").references(() => users.id).notNull(),
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   notes: text("notes"),
+  sourceMessageIds: text("source_message_ids").array().default([]), // IDs dei messaggi da cui è stato creato
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
