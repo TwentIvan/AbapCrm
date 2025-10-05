@@ -67,7 +67,10 @@ export function ProjectProposalDialog({
     }
   }, [proposal]);
 
-  if (!editedProposal || !proposal) return null;
+  // Guard: ensure proposal is fully loaded before rendering
+  if (!editedProposal || !proposal || !editedProposal.project || !editedProposal.partner || !editedProposal.tasks) {
+    return null;
+  }
 
   const updateProject = (field: string, value: any) => {
     setEditedProposal({
