@@ -73,6 +73,12 @@ export function ProjectProposalDialog({
   // Use editedProposal if available, otherwise fall back to proposal
   const currentProposal = editedProposal || proposal;
 
+  // Additional safety: ensure all required fields exist
+  if (!currentProposal.project || !currentProposal.partner || !currentProposal.tasks) {
+    console.error('[ProjectProposalDialog] Invalid proposal structure:', currentProposal);
+    return null;
+  }
+
   const updateProject = (field: string, value: any) => {
     const base = editedProposal || proposal;
     setEditedProposal({
