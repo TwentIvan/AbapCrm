@@ -12,7 +12,10 @@ interface Organization {
 }
 
 export function useOrganization() {
-  const [currentOrganizationId, setCurrentOrganizationId] = useState<string | null>(null);
+  const [currentOrganizationId, setCurrentOrganizationId] = useState<string | null>(() => {
+    // Initialize from localStorage if available
+    return localStorage.getItem('currentOrganizationId');
+  });
   const queryClient = useQueryClient();
 
   // Fetch user's organizations - NO CACHE to ensure login state changes are detected
@@ -32,21 +35,33 @@ export function useOrganization() {
   // Set default organization on load
   useEffect(() => {
     if (organizations && organizations.length > 0 && !currentOrganizationId) {
-      // Look for "Personal" organization first, otherwise take the first one
-      const personalOrg = organizations.find(org => org.name === "Personal");
-      const defaultOrg = personalOrg || organizations[0];
-      setCurrentOrganizationId(defaultOrg.id);
+      // Try to restore from localStorage first
+      const savedOrgId = localStorage.getItem('currentOrganizationId');
+      const savedOrg = savedOrgId ? organizations.find(org => org.id === savedOrgId) : null;
+      
+      if (savedOrg) {
+        setCurrentOrganizationId(savedOrg.id);
+      } else {
+        // Look for "Personal" organization first, otherwise take the first one
+        const personalOrg = organizations.find(org => org.name === "Personal");
+        const defaultOrg = personalOrg || organizations[0];
+        setCurrentOrganizationId(defaultOrg.id);
+      }
     }
   }, [organizations, currentOrganizationId, isLoading]);
 
-  // Update global organization ID whenever it changes
+  // Update global organization ID and localStorage whenever it changes
   useEffect(() => {
     setGlobalOrganizationId(currentOrganizationId);
+    if (currentOrganizationId) {
+      localStorage.setItem('currentOrganizationId', currentOrganizationId);
+    }
   }, [currentOrganizationId]);
 
   // Switch organization
   const switchOrganization = (organizationId: string) => {
     setCurrentOrganizationId(organizationId);
+    localStorage.setItem('currentOrganizationId', organizationId);
     // Invalidate all queries that depend on organization context
     queryClient.invalidateQueries();
   };
