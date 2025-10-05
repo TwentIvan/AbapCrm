@@ -70,37 +70,40 @@ export function ProjectProposalDialog({
   // Guard: only check proposal (editedProposal will be initialized from it)
   if (!proposal) return null;
 
+  // Use editedProposal if available, otherwise fall back to proposal
+  const currentProposal = editedProposal || proposal;
+
   const updateProject = (field: string, value: any) => {
-    if (!editedProposal) return;
+    const base = editedProposal || proposal;
     setEditedProposal({
-      ...editedProposal,
-      project: { ...editedProposal.project, [field]: value }
+      ...base,
+      project: { ...base.project, [field]: value }
     });
   };
 
   const updatePartner = (field: string, value: any) => {
-    if (!editedProposal) return;
+    const base = editedProposal || proposal;
     setEditedProposal({
-      ...editedProposal,
-      partner: { ...editedProposal.partner, [field]: value }
+      ...base,
+      partner: { ...base.partner, [field]: value }
     });
   };
 
   const updateTask = (index: number, field: string, value: any) => {
-    if (!editedProposal) return;
-    const newTasks = [...editedProposal.tasks];
+    const base = editedProposal || proposal;
+    const newTasks = [...base.tasks];
     newTasks[index] = { ...newTasks[index], [field]: value };
-    setEditedProposal({ ...editedProposal, tasks: newTasks });
+    setEditedProposal({ ...base, tasks: newTasks });
   };
 
   const removeTask = (index: number) => {
-    if (!editedProposal) return;
-    const newTasks = editedProposal.tasks.filter((_, i) => i !== index);
-    setEditedProposal({ ...editedProposal, tasks: newTasks });
+    const base = editedProposal || proposal;
+    const newTasks = base.tasks.filter((_, i) => i !== index);
+    setEditedProposal({ ...base, tasks: newTasks });
   };
 
   const addTask = () => {
-    if (!editedProposal) return;
+    const base = editedProposal || proposal;
     const newTask = {
       isNew: true,
       title: "",
@@ -109,8 +112,8 @@ export function ProjectProposalDialog({
       taskType: "other" as const,
     };
     setEditedProposal({
-      ...editedProposal,
-      tasks: [...editedProposal.tasks, newTask]
+      ...base,
+      tasks: [...base.tasks, newTask]
     });
   };
 
@@ -146,13 +149,13 @@ export function ProjectProposalDialog({
             </TabsTrigger>
             <TabsTrigger value="tasks" data-testid="tab-tasks">
               <CheckSquare className="h-4 w-4 mr-2" />
-              Task ({editedProposal?.tasks?.length || 0})
+              Task ({currentProposal.tasks?.length || 0})
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="project" className="space-y-4 mt-4">
             <div className="flex items-center gap-2 mb-2">
-              {editedProposal.project.isNew ? (
+              {currentProposal.project.isNew ? (
                 <Badge variant="default" className="bg-green-500">Nuovo Progetto</Badge>
               ) : (
                 <Badge variant="secondary">Modifica Progetto Esistente</Badge>
@@ -164,7 +167,7 @@ export function ProjectProposalDialog({
                 <Label htmlFor="project-name">Nome Progetto</Label>
                 <Input
                   id="project-name"
-                  value={editedProposal.project.name}
+                  value={currentProposal.project.name}
                   onChange={(e) => updateProject('name', e.target.value)}
                   data-testid="input-project-name"
                 />
@@ -174,7 +177,7 @@ export function ProjectProposalDialog({
                 <Label htmlFor="project-description">Descrizione</Label>
                 <Textarea
                   id="project-description"
-                  value={editedProposal.project.description}
+                  value={currentProposal.project.description}
                   onChange={(e) => updateProject('description', e.target.value)}
                   rows={4}
                   data-testid="input-project-description"
@@ -185,7 +188,7 @@ export function ProjectProposalDialog({
                 <div>
                   <Label htmlFor="project-status">Status</Label>
                   <Select
-                    value={editedProposal.project.status}
+                    value={currentProposal.project.status}
                     onValueChange={(value) => updateProject('status', value)}
                   >
                     <SelectTrigger id="project-status" data-testid="select-project-status">
@@ -206,7 +209,7 @@ export function ProjectProposalDialog({
                   <Input
                     id="project-effort"
                     type="number"
-                    value={editedProposal.project.estimatedEffort || ''}
+                    value={currentProposal.project.estimatedEffort || ''}
                     onChange={(e) => updateProject('estimatedEffort', e.target.value ? Number(e.target.value) : undefined)}
                     data-testid="input-project-effort"
                   />
@@ -219,7 +222,7 @@ export function ProjectProposalDialog({
                   <Input
                     id="project-start"
                     type="date"
-                    value={editedProposal.project.startDate || ''}
+                    value={currentProposal.project.startDate || ''}
                     onChange={(e) => updateProject('startDate', e.target.value)}
                     data-testid="input-project-start"
                   />
@@ -230,7 +233,7 @@ export function ProjectProposalDialog({
                   <Input
                     id="project-end"
                     type="date"
-                    value={editedProposal.project.endDate || ''}
+                    value={currentProposal.project.endDate || ''}
                     onChange={(e) => updateProject('endDate', e.target.value)}
                     data-testid="input-project-end"
                   />
@@ -241,7 +244,7 @@ export function ProjectProposalDialog({
 
           <TabsContent value="partner" className="space-y-4 mt-4">
             <div className="flex items-center gap-2 mb-2">
-              {editedProposal.partner.isNew ? (
+              {currentProposal.partner.isNew ? (
                 <Badge variant="default" className="bg-green-500">Nuovo Partner</Badge>
               ) : (
                 <Badge variant="secondary">Partner Esistente</Badge>
@@ -253,7 +256,7 @@ export function ProjectProposalDialog({
                 <Label htmlFor="partner-name">Nome</Label>
                 <Input
                   id="partner-name"
-                  value={editedProposal.partner.name}
+                  value={currentProposal.partner.name}
                   onChange={(e) => updatePartner('name', e.target.value)}
                   data-testid="input-partner-name"
                 />
@@ -264,7 +267,7 @@ export function ProjectProposalDialog({
                 <Input
                   id="partner-email"
                   type="email"
-                  value={editedProposal.partner.email || ''}
+                  value={currentProposal.partner.email || ''}
                   onChange={(e) => updatePartner('email', e.target.value)}
                   data-testid="input-partner-email"
                 />
@@ -274,7 +277,7 @@ export function ProjectProposalDialog({
                 <Label htmlFor="partner-company">Azienda</Label>
                 <Input
                   id="partner-company"
-                  value={editedProposal.partner.company || ''}
+                  value={currentProposal.partner.company || ''}
                   onChange={(e) => updatePartner('company', e.target.value)}
                   data-testid="input-partner-company"
                 />
@@ -283,7 +286,7 @@ export function ProjectProposalDialog({
               <div>
                 <Label htmlFor="partner-type">Tipo</Label>
                 <Select
-                  value={editedProposal.partner.type}
+                  value={currentProposal.partner.type}
                   onValueChange={(value) => updatePartner('type', value)}
                 >
                   <SelectTrigger id="partner-type" data-testid="select-partner-type">
@@ -301,7 +304,7 @@ export function ProjectProposalDialog({
           </TabsContent>
 
           <TabsContent value="tasks" className="space-y-4 mt-4">
-            {editedProposal.tasks?.map((task, index) => (
+            {currentProposal.tasks?.map((task, index) => (
               <div key={index} className="border rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -434,7 +437,7 @@ export function ProjectProposalDialog({
             Annulla
           </Button>
           <Button
-            onClick={() => onApply(editedProposal)}
+            onClick={() => onApply(currentProposal)}
             disabled={isApplying}
             data-testid="button-apply"
           >
