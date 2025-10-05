@@ -200,11 +200,11 @@ export function ProjectProposalDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="planning">Planning</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="review">Review</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="on_hold">On Hold</SelectItem>
+                      <SelectItem value="planning">Pianificazione</SelectItem>
+                      <SelectItem value="in_progress">In Corso</SelectItem>
+                      <SelectItem value="review">Revisione</SelectItem>
+                      <SelectItem value="completed">Completato</SelectItem>
+                      <SelectItem value="on_hold">In Pausa</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -382,16 +382,16 @@ export function ProjectProposalDialog({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="development">Development</SelectItem>
-                        <SelectItem value="analysis">Analysis</SelectItem>
-                        <SelectItem value="design">Design</SelectItem>
-                        <SelectItem value="testing">Testing</SelectItem>
-                        <SelectItem value="consulting">Consulting</SelectItem>
-                        <SelectItem value="meeting">Meeting</SelectItem>
-                        <SelectItem value="documentation">Documentation</SelectItem>
-                        <SelectItem value="maintenance">Maintenance</SelectItem>
-                        <SelectItem value="support">Support</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="development">Sviluppo</SelectItem>
+                        <SelectItem value="analysis">Analisi</SelectItem>
+                        <SelectItem value="design">Progettazione</SelectItem>
+                        <SelectItem value="testing">Test</SelectItem>
+                        <SelectItem value="consulting">Consulenza</SelectItem>
+                        <SelectItem value="meeting">Riunione</SelectItem>
+                        <SelectItem value="documentation">Documentazione</SelectItem>
+                        <SelectItem value="maintenance">Manutenzione</SelectItem>
+                        <SelectItem value="support">Supporto</SelectItem>
+                        <SelectItem value="other">Altro</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
