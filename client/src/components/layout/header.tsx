@@ -322,8 +322,23 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               {/* Logo Organizzazione - Centro (cliccabile per switch) */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-14 h-14 rounded-full bg-background border border-border hover:bg-accent">
-                    <User className="text-muted-foreground" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={`w-14 h-14 rounded-full transition-all duration-300 ${
+                      currentOrganization?.name === "Personal" && personalScope === 'all'
+                        ? 'bg-blue-50 dark:bg-blue-950 border-2 border-blue-500 shadow-lg shadow-blue-500/50 hover:bg-blue-100 dark:hover:bg-blue-900'
+                        : 'bg-background border border-border hover:bg-accent'
+                    }`}
+                  >
+                    <User 
+                      className={`transition-colors duration-300 ${
+                        currentOrganization?.name === "Personal" && personalScope === 'all'
+                          ? 'text-blue-600 dark:text-blue-400'
+                          : 'text-muted-foreground'
+                      }`}
+                      style={{ width: '2rem', height: '2rem' }} 
+                    />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-64">
