@@ -173,7 +173,7 @@ export function ProjectProposalDialog({
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="force-new-project"
-                    checked={false}
+                    checked={currentProposal.project.isNew}
                     onCheckedChange={(checked) => {
                       if (checked) {
                         updateProject('isNew', true);
@@ -286,7 +286,7 @@ export function ProjectProposalDialog({
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="force-new-partner"
-                    checked={false}
+                    checked={currentProposal.partner.isNew}
                     onCheckedChange={(checked) => {
                       if (checked) {
                         updatePartner('isNew', true);

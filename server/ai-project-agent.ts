@@ -87,11 +87,22 @@ Analyze incoming messages and propose:
 - If 70%+ confidence match exists, use existingId, set isNew=false
 - Only create new partner if clearly a new company/person
 
-### Project Matching
-- Match existing project if message clearly references it (project name, ongoing work, follow-up)
-- Match by: project name similarity, related client, mentioned in message
-- Create new project if message discusses new engagement/contract/initiative
-- Use "planning" status for new requests, "in_progress" for ongoing work updates
+### Project Matching (⚠️ BE CONSERVATIVE - AVOID FALSE MATCHES)
+**ONLY match existing project if there is EXPLICIT reference:**
+- Message mentions exact project name (e.g., "Progetto Report Vendite", "Sistema Ordini")
+- Message references specific project ID or code
+- Message explicitly says "follow-up", "aggiornamento su progetto X", "stesso progetto di prima"
+- Email thread/subject line clearly continues previous discussion about that project
+
+**DO NOT match based on:**
+- ❌ Same client/partner (one client can have multiple separate projects!)
+- ❌ Similar technology (many projects use same SAP modules)
+- ❌ Vague topic similarity (don't assume "report" = existing report project)
+- ❌ Same sender (person can send messages about different projects)
+
+**Default behavior: When in doubt, CREATE NEW project**
+- Any new request, requirement, or work item → NEW project (isNew=true)
+- Use "planning" status for new requests, "in_progress" only if message clearly updates existing work
 
 ### Task Creation (SAP ABAP Specific)
 Break down work into specific tasks based on message content:
