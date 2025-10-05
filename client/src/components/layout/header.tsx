@@ -322,24 +322,35 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               {/* Logo Organizzazione - Centro (cliccabile per switch) */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className={`w-14 h-14 rounded-full transition-all duration-300 ${
+                  <div 
+                    className={`rounded-full p-[3px] transition-all duration-300 ${
                       currentOrganization?.name === "Personal" && personalScope === 'all'
-                        ? 'bg-blue-50 dark:bg-blue-950 border-2 border-blue-500 shadow-lg shadow-blue-500/50 hover:bg-blue-100 dark:hover:bg-blue-900'
-                        : 'bg-background border border-border hover:bg-accent'
+                        ? 'animate-pulse'
+                        : ''
                     }`}
+                    style={
+                      currentOrganization?.name === "Personal" && personalScope === 'all'
+                        ? {
+                            background: 'conic-gradient(from 0deg, #ef4444 0deg 90deg, #22c55e 90deg 180deg, #3b82f6 180deg 270deg, #eab308 270deg 360deg)',
+                          }
+                        : undefined
+                    }
                   >
-                    <User 
-                      className={`transition-colors duration-300 ${
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className={`w-14 h-14 rounded-full transition-all duration-300 ${
                         currentOrganization?.name === "Personal" && personalScope === 'all'
-                          ? 'text-blue-600 dark:text-blue-400'
-                          : 'text-muted-foreground'
+                          ? 'bg-background hover:bg-accent'
+                          : 'bg-background border border-border hover:bg-accent'
                       }`}
-                      style={{ width: '2rem', height: '2rem' }} 
-                    />
-                  </Button>
+                    >
+                      <User 
+                        className="text-muted-foreground"
+                        style={{ width: '2rem', height: '2rem' }} 
+                      />
+                    </Button>
+                  </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-64">
                   {organizations?.map((org) => (
