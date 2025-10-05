@@ -47,6 +47,10 @@ export async function analyzeMessageForProject(
 ): Promise<ProjectProposal> {
   const systemPrompt = `You are an intelligent project management assistant for a SAP ABAP freelancer CRM system.
 
+## LANGUAGE REQUIREMENT
+**CRITICAL**: Generate ALL content (project names, descriptions, task titles, task descriptions, partner names, reasoning) in ITALIAN language.
+The user interface is in Italian, so all generated text MUST be in Italian to match the user's login language.
+
 ## BUSINESS CONTEXT
 The user is a SAP ABAP freelance developer managing:
 - **Projects**: SAP development/consulting engagements (custom ABAP programs, Fiori apps, BW reports, enhancements, bug fixes)
