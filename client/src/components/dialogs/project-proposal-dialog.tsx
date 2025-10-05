@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Sparkles, Building2, FolderKanban, CheckSquare, Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -159,11 +160,35 @@ export function ProjectProposalDialog({
           </TabsList>
 
           <TabsContent value="project" className="space-y-4 mt-4">
-            <div className="flex items-center gap-2 mb-2">
-              {currentProposal.project.isNew ? (
-                <Badge variant="default" className="bg-green-500">Nuovo Progetto</Badge>
-              ) : (
-                <Badge variant="secondary">Modifica Progetto Esistente</Badge>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                {currentProposal.project.isNew ? (
+                  <Badge variant="default" className="bg-green-500">Nuovo Progetto</Badge>
+                ) : (
+                  <Badge variant="secondary">Modifica Progetto Esistente</Badge>
+                )}
+              </div>
+              
+              {!currentProposal.project.isNew && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="force-new-project"
+                    checked={false}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        updateProject('isNew', true);
+                        updateProject('existingId', undefined);
+                      }
+                    }}
+                    data-testid="checkbox-force-new-project"
+                  />
+                  <label
+                    htmlFor="force-new-project"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Forza creazione nuovo progetto
+                  </label>
+                </div>
               )}
             </div>
 
@@ -248,11 +273,35 @@ export function ProjectProposalDialog({
           </TabsContent>
 
           <TabsContent value="partner" className="space-y-4 mt-4">
-            <div className="flex items-center gap-2 mb-2">
-              {currentProposal.partner.isNew ? (
-                <Badge variant="default" className="bg-green-500">Nuovo Partner</Badge>
-              ) : (
-                <Badge variant="secondary">Partner Esistente</Badge>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                {currentProposal.partner.isNew ? (
+                  <Badge variant="default" className="bg-green-500">Nuovo Partner</Badge>
+                ) : (
+                  <Badge variant="secondary">Partner Esistente</Badge>
+                )}
+              </div>
+              
+              {!currentProposal.partner.isNew && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="force-new-partner"
+                    checked={false}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        updatePartner('isNew', true);
+                        updatePartner('existingId', undefined);
+                      }
+                    }}
+                    data-testid="checkbox-force-new-partner"
+                  />
+                  <label
+                    htmlFor="force-new-partner"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Forza creazione nuovo partner
+                  </label>
+                </div>
               )}
             </div>
 
