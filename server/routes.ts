@@ -2496,7 +2496,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             userId,
             organizationId
           };
-          results.partner = await storage.createPartner(partnerData, userId, organizationId);
+          results.partner = await storage.createPartner(partnerData, { userId });
         } else if (proposal.partner.existingId) {
           results.partner = await storage.getPartner(proposal.partner.existingId, userId);
         }
@@ -2516,7 +2516,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             userId,
             organizationId
           };
-          results.project = await storage.createProject(projectData, userId, organizationId);
+          results.project = await storage.createProject(projectData, { userId });
         } else if (proposal.project.existingId) {
           // Update existing project
           const updateData = {
@@ -2543,7 +2543,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
               userId,
               organizationId
             };
-            const task = await storage.createTask(taskData, userId, organizationId);
+            const task = await storage.createTask(taskData, { userId });
             results.tasks.push(task);
           } else if (taskProposal.existingId) {
             // Update existing task
