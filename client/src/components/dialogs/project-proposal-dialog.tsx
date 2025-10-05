@@ -140,7 +140,7 @@ export function ProjectProposalDialog({
             </TabsTrigger>
             <TabsTrigger value="tasks" data-testid="tab-tasks">
               <CheckSquare className="h-4 w-4 mr-2" />
-              Task ({editedProposal.tasks.length})
+              Task ({editedProposal.tasks?.length || 0})
             </TabsTrigger>
           </TabsList>
 
@@ -295,7 +295,7 @@ export function ProjectProposalDialog({
           </TabsContent>
 
           <TabsContent value="tasks" className="space-y-4 mt-4">
-            {editedProposal.tasks.map((task, index) => (
+            {editedProposal.tasks?.map((task, index) => (
               <div key={index} className="border rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
