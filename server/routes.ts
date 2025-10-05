@@ -2488,15 +2488,15 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       // 1. Create or update partner
       if (proposal.partner) {
         if (proposal.partner.isNew) {
-          const partnerData = insertPartnerSchema.parse({
+          const partnerData: any = {
             name: proposal.partner.name,
             email: proposal.partner.email,
             company: proposal.partner.company,
             type: proposal.partner.type,
             userId,
             organizationId
-          });
-          results.partner = await storage.createPartner(partnerData);
+          };
+          results.partner = await storage.createPartner(partnerData, userId, organizationId);
         } else if (proposal.partner.existingId) {
           results.partner = await storage.getPartner(proposal.partner.existingId, userId);
         }
@@ -2505,7 +2505,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       // 2. Create or update project
       if (proposal.project) {
         if (proposal.project.isNew) {
-          const projectData = insertProjectSchema.parse({
+          const projectData: any = {
             name: proposal.project.name,
             description: proposal.project.description,
             status: proposal.project.status,
@@ -2515,8 +2515,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             clientId: results.partner?.id,
             userId,
             organizationId
-          });
-          results.project = await storage.createProject(projectData);
+          };
+          results.project = await storage.createProject(projectData, userId, organizationId);
         } else if (proposal.project.existingId) {
           // Update existing project
           const updateData = {
@@ -2524,7 +2524,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             status: proposal.project.status,
             endDate: proposal.project.endDate ? new Date(proposal.project.endDate) : undefined,
           };
-          results.project = await storage.updateProject(proposal.project.existingId, updateData, userId);
+          results.project = await storage.updateProject(proposal.project.existingId, updateData, userId, organizationId);
         }
       }
       
@@ -2532,7 +2532,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       if (proposal.tasks && proposal.tasks.length > 0) {
         for (const taskProposal of proposal.tasks) {
           if (taskProposal.isNew) {
-            const taskData = insertTaskSchema.parse({
+            const taskData: any = {
               title: taskProposal.title,
               description: taskProposal.description,
               priority: taskProposal.priority,
@@ -2542,8 +2542,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
               projectId: results.project?.id,
               userId,
               organizationId
-            });
-            const task = await storage.createTask(taskData);
+            };
+            const task = await storage.createTask(taskData, userId, organizationId);
             results.tasks.push(task);
           } else if (taskProposal.existingId) {
             // Update existing task
@@ -2553,7 +2553,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
               estimatedEffort: taskProposal.estimatedEffort,
               dueDate: taskProposal.dueDate ? new Date(taskProposal.dueDate) : undefined,
             };
-            const task = await storage.updateTask(taskProposal.existingId, updateData, userId);
+            const task = await storage.updateTask(taskProposal.existingId, updateData, userId, organizationId);
             results.tasks.push(task);
           }
         }

@@ -42,7 +42,8 @@ import {
   AlertTriangle,
   RotateCcw,
   MessageSquare,
-  ChevronRight
+  ChevronRight,
+  Sparkles
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { BarChart3, TrendingUp, Database, Image } from "lucide-react";
@@ -50,6 +51,7 @@ import type { Message, Project, Task, Partner } from "@shared/schema";
 import { format } from "date-fns";
 import MessageForm from "@/components/forms/message-form";
 import SimpleChatForm from "@/components/forms/simple-chat-form";
+import { ProjectProposalDialog } from "@/components/dialogs/project-proposal-dialog";
 import { useAuth } from "@/hooks/use-auth";
 
 interface AISuggestion {
@@ -135,6 +137,10 @@ export default function MessagesPage() {
   const [selections, setSelections] = useState<{
     [messageId: string]: SelectionRecord[];
   }>({});
+
+  // AI Project Agent states
+  const [showProposalDialog, setShowProposalDialog] = useState(false);
+  const [currentProposal, setCurrentProposal] = useState<any>(null);
 
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
@@ -373,6 +379,51 @@ export default function MessagesPage() {
       toast({
         title: "Errore",
         description: error.message || "Errore durante l'eliminazione dei messaggi.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // AI Project Agent mutations
+  const analyzeProjectMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      const response = await apiRequest("POST", `/api/messages/${messageId}/analyze-project`, {});
+      return response;
+    },
+    onSuccess: (data) => {
+      setCurrentProposal(data);
+      setShowProposalDialog(true);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore analisi",
+        description: error.message || "Impossibile analizzare il messaggio.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const applyProposalMutation = useMutation({
+    mutationFn: async ({ messageId, proposal }: { messageId: string; proposal: any }) => {
+      const response = await apiRequest("POST", `/api/messages/${messageId}/apply-project-proposal`, { proposal });
+      return response;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      setShowProposalDialog(false);
+      setCurrentProposal(null);
+      toast({
+        title: "Proposta applicata!",
+        description: `Progetto, partner e task creati con successo.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile applicare la proposta.",
         variant: "destructive",
       });
     },
@@ -1271,6 +1322,18 @@ export default function MessagesPage() {
                           <RefreshCw className="h-4 w-4 mr-2" />
                           {reprocessMutation.isPending ? 'Riprocessando...' : 'Riprocessa email'}
                         </Button>
+
+                        <Button
+                          onClick={() => selectedMessage && analyzeProjectMutation.mutate(selectedMessage.id)}
+                          variant="outline"
+                          size="sm"
+                          disabled={analyzeProjectMutation.isPending || !selectedMessage}
+                          data-testid="button-analyze-project"
+                          className="bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100"
+                        >
+                          <Sparkles className="h-4 w-4 mr-2 text-purple-500" />
+                          {analyzeProjectMutation.isPending ? 'Analizzando...' : 'Analizza con AI'}
+                        </Button>
                         
                         {isTrainingMode && (
                           <>
@@ -2082,6 +2145,22 @@ export default function MessagesPage() {
       )}
     </DialogContent>
   </Dialog>
+
+  {/* AI Project Proposal Dialog */}
+  <ProjectProposalDialog
+    open={showProposalDialog}
+    onOpenChange={setShowProposalDialog}
+    proposal={currentProposal}
+    onApply={async (editedProposal) => {
+      if (selectedMessage) {
+        await applyProposalMutation.mutateAsync({
+          messageId: selectedMessage.id,
+          proposal: editedProposal
+        });
+      }
+    }}
+    isApplying={applyProposalMutation.isPending}
+  />
   </>
 );
 }

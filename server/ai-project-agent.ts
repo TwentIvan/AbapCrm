@@ -2,7 +2,7 @@
 // Using OpenAI integration from blueprint:javascript_openai
 
 import OpenAI from "openai";
-import type { SelectMessage, SelectProject, SelectPartner, SelectTask } from "@shared/schema";
+import type { Message, Project, Partner, Task } from "@shared/schema";
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -40,10 +40,10 @@ export interface ProjectProposal {
 }
 
 export async function analyzeMessageForProject(
-  message: SelectMessage,
-  existingProjects: SelectProject[],
-  existingPartners: SelectPartner[],
-  existingTasks: SelectTask[]
+  message: Message,
+  existingProjects: Project[],
+  existingPartners: Partner[],
+  existingTasks: Task[]
 ): Promise<ProjectProposal> {
   const systemPrompt = `You are an intelligent project management assistant for SAP ABAP freelancers.
 Analyze email/chat messages and propose:
