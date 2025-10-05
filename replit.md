@@ -11,8 +11,12 @@ Successfully implemented AI-powered project agent that analyzes messages and pro
 
 ### ✅ **Backend AI Service**
 - **OpenAI Integration**: Uses gpt-5 model with structured JSON response format
-- **Context-Aware Analysis**: Retrieves existing projects, partners, tasks for intelligent suggestions
+- **Architecture-Aware Prompts**: Detailed system prompt explaining CRM architecture, entity relationships, SAP ABAP context
+- **Context-Aware Analysis**: Retrieves existing projects, partners, tasks for intelligent matching
 - **Service Layer**: `server/ai-project-agent.ts` with `analyzeMessageForProject()` function
+- **SAP ABAP Expertise**: AI understands SAP terminology, project types, effort estimation for ABAP/Fiori/BW work
+- **Intelligent Matching**: Prefers matching existing partners (70%+ confidence), recognizes related projects
+- **Task Breakdown**: Automatically decomposes work into 2-5 specific tasks with appropriate types and priorities
 - **Structured Proposals**: Returns ProjectProposal with project, partner, tasks, and reasoning
 
 ### ✅ **API Endpoints**

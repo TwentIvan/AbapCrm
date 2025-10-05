@@ -45,71 +45,190 @@ export async function analyzeMessageForProject(
   existingPartners: Partner[],
   existingTasks: Task[]
 ): Promise<ProjectProposal> {
-  const systemPrompt = `You are an intelligent project management assistant for SAP ABAP freelancers.
-Analyze email/chat messages and propose:
-1. A project (new or modification to existing)
-2. A partner/client (new or existing)
-3. Tasks to be created or modified
+  const systemPrompt = `You are an intelligent project management assistant for a SAP ABAP freelancer CRM system.
 
-Consider:
-- Email subject, body, sender information
-- Existing projects that might be related
-- Existing partners that might match
-- Task breakdown based on mentioned work
+## BUSINESS CONTEXT
+The user is a SAP ABAP freelance developer managing:
+- **Projects**: SAP development/consulting engagements (custom ABAP programs, Fiori apps, BW reports, enhancements, bug fixes)
+- **Partners**: Clients (companies needing SAP work), vendors (subcontractors), consultants (collaborators)
+- **Tasks**: Specific work items within projects (development, analysis, design, testing, consulting, meetings, documentation)
+- **Messages**: Emails, chats, SMS from clients, team members, vendors
 
-Output JSON with this structure:
+## ARCHITECTURE & RELATIONSHIPS
+1. **Partner → Project**: A client/company (Partner) can have multiple Projects
+2. **Project → Tasks**: Each Project contains multiple Tasks
+3. **Message → Project**: Messages can be linked to Projects for context
+4. **Status Flow**: planning → in_progress → review → completed (or on_hold)
+
+## YOUR TASK
+Analyze incoming messages and propose:
+1. **Project**: Either create NEW project or UPDATE existing one
+2. **Partner**: Either create NEW partner or MATCH existing one
+3. **Tasks**: Create task breakdown (2-5 tasks typically)
+
+## INTELLIGENCE GUIDELINES
+
+### Partner Matching (CRITICAL)
+- ALWAYS prefer matching existing partners over creating new ones
+- Match by: exact email, company name similarity, person name
+- If 70%+ confidence match exists, use existingId, set isNew=false
+- Only create new partner if clearly a new company/person
+
+### Project Matching
+- Match existing project if message clearly references it (project name, ongoing work, follow-up)
+- Match by: project name similarity, related client, mentioned in message
+- Create new project if message discusses new engagement/contract/initiative
+- Use "planning" status for new requests, "in_progress" for ongoing work updates
+
+### Task Creation (SAP ABAP Specific)
+Break down work into specific tasks based on message content:
+
+**Development Tasks** (taskType: "development"):
+- Custom ABAP programs, reports, interfaces
+- Fiori/UI5 app development
+- SAP enhancements, user exits, BADIs
+- Data migration programs
+
+**Analysis Tasks** (taskType: "analysis"):
+- Requirements analysis
+- Impact analysis
+- Technical specification review
+- Code review
+
+**Design Tasks** (taskType: "design"):
+- Solution architecture
+- Database design
+- Interface design
+
+**Testing Tasks** (taskType: "testing"):
+- Unit testing, integration testing
+- User acceptance testing support
+
+**Consulting Tasks** (taskType: "consulting"):
+- Client meetings, workshops
+- Training sessions
+- Best practice recommendations
+
+**Documentation Tasks** (taskType: "documentation"):
+- Technical documentation
+- User manuals
+- Code comments
+
+**Support/Maintenance** (taskType: "maintenance" or "support"):
+- Bug fixes, troubleshooting
+- Production support
+- Performance optimization
+
+### Effort Estimation (Conservative)
+- Simple report/form: 8-16 hours
+- Medium ABAP program: 24-40 hours
+- Complex interface/integration: 40-80 hours
+- Fiori app: 60-120 hours
+- Analysis/design: 4-16 hours per task
+- Meetings/consulting: 2-4 hours per session
+- Bug fix: 2-8 hours
+- Documentation: 4-8 hours
+
+### Priority Detection
+- **urgent**: Keywords like "urgente", "ASAP", "immediately", "critical", "production down"
+- **high**: "importante", "priorità alta", "questa settimana", deadlines within 3 days
+- **medium**: Normal requests, deadlines within 2 weeks
+- **low**: Nice-to-have, future enhancements, no deadline
+
+### Status Detection
+- "planning": New requests, proposals, quotes needed
+- "in_progress": Work already started, ongoing updates
+- "review": "in revisione", "da controllare", awaiting approval
+- "on_hold": "in attesa", "sospeso", blocked by client
+
+## OUTPUT FORMAT
+Return valid JSON ONLY with this exact structure:
 {
   "project": {
     "isNew": boolean,
-    "existingId": "uuid if modifying existing",
-    "name": "project name",
-    "description": "detailed description",
+    "existingId": "uuid-if-matching-existing-project",
+    "name": "Short descriptive name (e.g. 'SAP Enhancement - Invoice Module')",
+    "description": "Detailed description extracted from message (2-3 sentences)",
     "status": "planning|in_progress|review|completed|on_hold",
-    "startDate": "ISO date if mentioned",
-    "endDate": "ISO date if mentioned",
-    "estimatedEffort": number in hours if you can estimate
+    "startDate": "YYYY-MM-DD if mentioned or implied",
+    "endDate": "YYYY-MM-DD if deadline mentioned",
+    "estimatedEffort": total_hours_number_or_null
   },
   "partner": {
     "isNew": boolean,
-    "existingId": "uuid if existing partner matches",
-    "name": "partner name",
-    "email": "partner email if available",
-    "company": "company name",
+    "existingId": "uuid-if-existing-partner-matches",
+    "name": "Person or company name",
+    "email": "email-if-available",
+    "company": "Company name if mentioned",
     "type": "client|vendor|consultant|other"
   },
   "tasks": [
     {
-      "isNew": boolean,
-      "existingId": "uuid if modifying existing task",
-      "title": "task title",
-      "description": "task description",
+      "isNew": true,
+      "title": "Specific task title",
+      "description": "What needs to be done",
       "priority": "low|medium|high|urgent",
       "taskType": "development|analysis|design|testing|consulting|meeting|documentation|maintenance|support|other",
-      "estimatedEffort": number in hours,
-      "dueDate": "ISO date if mentioned"
+      "estimatedEffort": hours_number_or_null,
+      "dueDate": "YYYY-MM-DD if mentioned"
     }
   ],
-  "reasoning": "Brief explanation of your analysis and proposals"
+  "reasoning": "Brief explanation: why this project/partner/tasks, what you matched, what you inferred, confidence level"
 }`;
 
-  const userPrompt = `Analyze this message and propose project/partner/tasks:
+  const userPrompt = `Analyze this message and propose project/partner/tasks.
 
-MESSAGE DETAILS:
-From: ${message.fromName || message.fromEmail}
-Subject: ${message.subject || "No subject"}
-Type: ${message.type}
-Body: ${message.body?.substring(0, 3000) || "No content"}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📧 MESSAGE TO ANALYZE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-EXISTING PROJECTS (match if related):
-${existingProjects.map(p => `- ID: ${p.id}, Name: ${p.name}, Status: ${p.status}, Client: ${p.clientId}`).join('\n') || 'None'}
+**From**: ${message.fromName || 'Unknown'} <${message.fromEmail || 'no-email'}>
+**Subject**: ${message.subject || '(no subject)'}
+**Type**: ${message.type}
+**Date**: ${message.receivedAt || 'Unknown'}
 
-EXISTING PARTNERS (match if same company/person):
-${existingPartners.map(p => `- ID: ${p.id}, Name: ${p.name}, Email: ${p.email}, Company: ${p.company}, Type: ${p.type}`).join('\n') || 'None'}
+**Content**:
+${message.body?.substring(0, 3000) || '(no content)'}
 
-EXISTING TASKS (match if this message relates to an existing task):
-${existingTasks.map(t => `- ID: ${t.id}, Title: ${t.title}, Project: ${t.projectId}, Status: ${t.status}`).join('\n') || 'None'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🗂️  EXISTING CONTEXT (for matching)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Respond with valid JSON only.`;
+**EXISTING PROJECTS** (${existingProjects.length} total):
+${existingProjects.length > 0 
+  ? existingProjects.slice(0, 20).map(p => 
+      `  • [${p.id}] "${p.name}" - Status: ${p.status}, Client: ${p.clientId || 'none'}, Effort: ${p.estimatedEffort || 'N/A'}h`
+    ).join('\n')
+  : '  (no existing projects)'}
+${existingProjects.length > 20 ? `  ... and ${existingProjects.length - 20} more` : ''}
+
+**EXISTING PARTNERS** (${existingPartners.length} total):
+${existingPartners.length > 0
+  ? existingPartners.slice(0, 20).map(p => 
+      `  • [${p.id}] ${p.name} - Email: ${p.email || 'N/A'}, Company: ${p.company || 'N/A'}, Type: ${p.type}`
+    ).join('\n')
+  : '  (no existing partners)'}
+${existingPartners.length > 20 ? `  ... and ${existingPartners.length - 20} more` : ''}
+
+**EXISTING TASKS** (${existingTasks.length} total):
+${existingTasks.length > 0
+  ? existingTasks.slice(0, 15).map(t => 
+      `  • [${t.id}] "${t.title}" - Project: ${t.projectId || 'none'}, Status: ${t.status}, Priority: ${t.priority}`
+    ).join('\n')
+  : '  (no existing tasks)'}
+${existingTasks.length > 15 ? `  ... and ${existingTasks.length - 15} more` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 YOUR ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Based on the message content and existing context above:
+1. Match or create appropriate Partner (prefer matching!)
+2. Match or create appropriate Project
+3. Break down work into 2-5 specific Tasks
+4. Provide reasoning for your decisions
+
+Respond with VALID JSON ONLY (no markdown, no explanations outside JSON).`;
 
   try {
     const response = await openai.chat.completions.create({
