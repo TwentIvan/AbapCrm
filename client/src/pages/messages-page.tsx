@@ -391,6 +391,16 @@ export default function MessagesPage() {
       return await response.json();
     },
     onSuccess: (data) => {
+      // Check if message was already processed
+      if (data.alreadyProcessed) {
+        toast({
+          title: "Messaggio già processato",
+          description: data.warning || "Questo messaggio è già stato processato dall'AI.",
+          variant: "default",
+        });
+        return;
+      }
+      
       setCurrentProposal(data);
       setShowProposalDialog(true);
     },
@@ -802,37 +812,49 @@ export default function MessagesPage() {
               )}
             </div>
             {messages.length > 0 && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button 
-                    size="sm"
-                    variant="destructive"
-                    data-testid="button-clear-all-messages"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Elimina tutti
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Eliminare tutti i messaggi?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Questa azione eliminerà tutti i {messages.length} messaggi email. 
-                      Potrai ricaricarli usando il bottone "Sincronizza" per vedere la nuova formattazione HTML.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annulla</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => clearAllMessagesMutation.mutate()}
-                      disabled={clearAllMessagesMutation.isPending}
-                      className="bg-destructive hover:bg-destructive/90"
+              <div className="flex items-center space-x-2">
+                <Button 
+                  onClick={() => selectedMessage && analyzeProjectMutation.mutate(selectedMessage.id)}
+                  disabled={analyzeProjectMutation.isPending || !selectedMessage}
+                  size="sm"
+                  data-testid="button-analyze-project"
+                  className="bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
+                >
+                  <Sparkles className="h-4 w-4 mr-2 text-purple-500" />
+                  {analyzeProjectMutation.isPending ? 'Analizzando...' : 'Analizza con AI'}
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      size="sm"
+                      variant="destructive"
+                      data-testid="button-clear-all-messages"
                     >
-                      {clearAllMessagesMutation.isPending ? "Eliminando..." : "Elimina tutti"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Elimina tutti
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Eliminare tutti i messaggi?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Questa azione eliminerà tutti i {messages.length} messaggi email. 
+                        Potrai ricaricarli usando il bottone "Sincronizza" per vedere la nuova formattazione HTML.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annulla</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => clearAllMessagesMutation.mutate()}
+                        disabled={clearAllMessagesMutation.isPending}
+                        className="bg-destructive hover:bg-destructive/90"
+                      >
+                        {clearAllMessagesMutation.isPending ? "Eliminando..." : "Elimina tutti"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             )}
           </div>
         </div>
@@ -1321,18 +1343,6 @@ export default function MessagesPage() {
                         >
                           <RefreshCw className="h-4 w-4 mr-2" />
                           {reprocessMutation.isPending ? 'Riprocessando...' : 'Riprocessa email'}
-                        </Button>
-
-                        <Button
-                          onClick={() => selectedMessage && analyzeProjectMutation.mutate(selectedMessage.id)}
-                          variant="outline"
-                          size="sm"
-                          disabled={analyzeProjectMutation.isPending || !selectedMessage}
-                          data-testid="button-analyze-project"
-                          className="bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100"
-                        >
-                          <Sparkles className="h-4 w-4 mr-2 text-purple-500" />
-                          {analyzeProjectMutation.isPending ? 'Analizzando...' : 'Analizza con AI'}
                         </Button>
                         
                         {isTrainingMode && (
