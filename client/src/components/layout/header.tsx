@@ -323,11 +323,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div 
-                    className={`rounded-full p-[3px] transition-all duration-300 ${
-                      currentOrganization?.name === "Personal" && personalScope === 'all'
-                        ? 'animate-pulse'
-                        : ''
-                    }`}
+                    className="rounded-full p-[3px] transition-all duration-300"
                     style={
                       currentOrganization?.name === "Personal" && personalScope === 'all'
                         ? {
@@ -339,14 +335,14 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className={`w-14 h-14 rounded-full transition-all duration-300 ${
+                      className={`w-14 h-14 rounded-full shadow-lg transition-all duration-300 ${
                         currentOrganization?.name === "Personal" && personalScope === 'all'
                           ? 'bg-background hover:bg-accent'
                           : 'bg-background border border-border hover:bg-accent'
                       }`}
                     >
                       <User 
-                        className="text-muted-foreground"
+                        className="text-blue-600 dark:text-blue-400"
                         style={{ width: '2rem', height: '2rem' }} 
                       />
                     </Button>
