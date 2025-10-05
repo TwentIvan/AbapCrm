@@ -41,6 +41,37 @@ function getOptionalOrganizationId(req: any): string | null {
   return req.headers['x-organization-id'] as string || null;
 }
 
+// Helper function to get Personal scope from request header
+function getPersonalScope(req: any): 'personal' | 'all' {
+  const scope = req.headers['x-organization-scope'] as string;
+  return (scope === 'all' || scope === 'personal') ? scope : 'personal';
+}
+
+// Helper function to get all organization IDs for a user (for Personal "all" scope)
+async function getUserOrganizationIds(userId: string): Promise<string[]> {
+  const userOrgs = await storage.getUserOrganizations(userId);
+  return userOrgs.map(org => org.id);
+}
+
+// Helper function to get organization IDs to filter by, considering Personal scope
+async function getOrganizationIdsForFilter(req: any): Promise<string[]> {
+  const organizationId = getOrganizationId(req);
+  const scope = getPersonalScope(req);
+  
+  // Check if this is the "Personal" organization (by name check via storage)
+  const orgs = await storage.getUserOrganizations(req.user.id);
+  const currentOrg = orgs.find(org => org.id === organizationId);
+  const isPersonal = currentOrg?.name === 'Personal';
+  
+  // If Personal + scope 'all', return ALL user's organization IDs
+  if (isPersonal && scope === 'all') {
+    return orgs.map(org => org.id);
+  }
+  
+  // Otherwise, return just the current organization ID
+  return [organizationId];
+}
+
 // Chat content parser - normalizes different platform formats into structured conversation data
 function parseChatContent(content: string, platform: string): {
   participants: Array<{id: string, name: string}>;
