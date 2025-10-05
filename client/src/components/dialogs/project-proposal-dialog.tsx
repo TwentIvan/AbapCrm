@@ -75,7 +75,6 @@ export function ProjectProposalDialog({
 
   // Additional safety: ensure all required fields exist
   if (!currentProposal.project || !currentProposal.partner || !currentProposal.tasks) {
-    console.error('[ProjectProposalDialog] Invalid proposal structure:', currentProposal);
     return null;
   }
 

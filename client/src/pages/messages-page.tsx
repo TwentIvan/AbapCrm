@@ -388,7 +388,7 @@ export default function MessagesPage() {
   const analyzeProjectMutation = useMutation({
     mutationFn: async (messageId: string) => {
       const response = await apiRequest("POST", `/api/messages/${messageId}/analyze-project`, {});
-      return response;
+      return await response.json();
     },
     onSuccess: (data) => {
       setCurrentProposal(data);
@@ -406,7 +406,7 @@ export default function MessagesPage() {
   const applyProposalMutation = useMutation({
     mutationFn: async ({ messageId, proposal }: { messageId: string; proposal: any }) => {
       const response = await apiRequest("POST", `/api/messages/${messageId}/apply-project-proposal`, { proposal });
-      return response;
+      return await response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
