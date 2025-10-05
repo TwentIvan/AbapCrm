@@ -67,12 +67,11 @@ export function ProjectProposalDialog({
     }
   }, [proposal]);
 
-  // Guard: ensure proposal is fully loaded before rendering
-  if (!editedProposal || !proposal || !editedProposal.project || !editedProposal.partner || !editedProposal.tasks) {
-    return null;
-  }
+  // Guard: only check proposal (editedProposal will be initialized from it)
+  if (!proposal) return null;
 
   const updateProject = (field: string, value: any) => {
+    if (!editedProposal) return;
     setEditedProposal({
       ...editedProposal,
       project: { ...editedProposal.project, [field]: value }
@@ -80,6 +79,7 @@ export function ProjectProposalDialog({
   };
 
   const updatePartner = (field: string, value: any) => {
+    if (!editedProposal) return;
     setEditedProposal({
       ...editedProposal,
       partner: { ...editedProposal.partner, [field]: value }
@@ -87,17 +87,20 @@ export function ProjectProposalDialog({
   };
 
   const updateTask = (index: number, field: string, value: any) => {
+    if (!editedProposal) return;
     const newTasks = [...editedProposal.tasks];
     newTasks[index] = { ...newTasks[index], [field]: value };
     setEditedProposal({ ...editedProposal, tasks: newTasks });
   };
 
   const removeTask = (index: number) => {
+    if (!editedProposal) return;
     const newTasks = editedProposal.tasks.filter((_, i) => i !== index);
     setEditedProposal({ ...editedProposal, tasks: newTasks });
   };
 
   const addTask = () => {
+    if (!editedProposal) return;
     const newTask = {
       isNew: true,
       title: "",
