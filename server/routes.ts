@@ -2440,6 +2440,151 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // AI Project Agent - Analyze message and propose project/partner/tasks
+  app.post("/api/messages/:id/analyze-project", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const message = await storage.getMessage(req.params.id, req.user!.id);
+      if (!message) return res.sendStatus(404);
+      
+      const organizationId = getOrganizationId(req);
+      
+      // Get existing data for context
+      const existingProjects = await storage.getProjects(req.user!.id, organizationId);
+      const existingPartners = await storage.getPartners(req.user!.id, organizationId);
+      const existingTasks = await storage.getTasks(req.user!.id, organizationId);
+      
+      // Import and use AI agent
+      const { analyzeMessageForProject } = await import('./ai-project-agent');
+      const proposal = await analyzeMessageForProject(
+        message,
+        existingProjects,
+        existingPartners,
+        existingTasks
+      );
+      
+      res.json(proposal);
+    } catch (error) {
+      console.error("AI project analysis error:", error);
+      res.status(500).json({ error: "Failed to analyze message for project", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  // Apply AI project proposal - creates/updates project, partner, tasks
+  app.post("/api/messages/:id/apply-project-proposal", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { proposal } = req.body;
+      if (!proposal) return res.status(400).json({ error: "Proposal required" });
+      
+      const organizationId = getOrganizationId(req);
+      const userId = req.user!.id;
+      const results: any = {
+        project: null,
+        partner: null,
+        tasks: []
+      };
+      
+      // 1. Create or update partner
+      if (proposal.partner) {
+        if (proposal.partner.isNew) {
+          const partnerData = insertPartnerSchema.parse({
+            name: proposal.partner.name,
+            email: proposal.partner.email,
+            company: proposal.partner.company,
+            type: proposal.partner.type,
+            userId,
+            organizationId
+          });
+          results.partner = await storage.createPartner(partnerData);
+        } else if (proposal.partner.existingId) {
+          results.partner = await storage.getPartner(proposal.partner.existingId, userId);
+        }
+      }
+      
+      // 2. Create or update project
+      if (proposal.project) {
+        if (proposal.project.isNew) {
+          const projectData = insertProjectSchema.parse({
+            name: proposal.project.name,
+            description: proposal.project.description,
+            status: proposal.project.status,
+            startDate: proposal.project.startDate ? new Date(proposal.project.startDate) : undefined,
+            endDate: proposal.project.endDate ? new Date(proposal.project.endDate) : undefined,
+            estimatedEffort: proposal.project.estimatedEffort,
+            clientId: results.partner?.id,
+            userId,
+            organizationId
+          });
+          results.project = await storage.createProject(projectData);
+        } else if (proposal.project.existingId) {
+          // Update existing project
+          const updateData = {
+            description: proposal.project.description,
+            status: proposal.project.status,
+            endDate: proposal.project.endDate ? new Date(proposal.project.endDate) : undefined,
+          };
+          results.project = await storage.updateProject(proposal.project.existingId, updateData, userId);
+        }
+      }
+      
+      // 3. Create or update tasks
+      if (proposal.tasks && proposal.tasks.length > 0) {
+        for (const taskProposal of proposal.tasks) {
+          if (taskProposal.isNew) {
+            const taskData = insertTaskSchema.parse({
+              title: taskProposal.title,
+              description: taskProposal.description,
+              priority: taskProposal.priority,
+              taskType: taskProposal.taskType,
+              estimatedEffort: taskProposal.estimatedEffort,
+              dueDate: taskProposal.dueDate ? new Date(taskProposal.dueDate) : undefined,
+              projectId: results.project?.id,
+              userId,
+              organizationId
+            });
+            const task = await storage.createTask(taskData);
+            results.tasks.push(task);
+          } else if (taskProposal.existingId) {
+            // Update existing task
+            const updateData = {
+              description: taskProposal.description,
+              priority: taskProposal.priority,
+              estimatedEffort: taskProposal.estimatedEffort,
+              dueDate: taskProposal.dueDate ? new Date(taskProposal.dueDate) : undefined,
+            };
+            const task = await storage.updateTask(taskProposal.existingId, updateData, userId);
+            results.tasks.push(task);
+          }
+        }
+      }
+      
+      // 4. Link message to project
+      if (results.project) {
+        await storage.updateMessage(req.params.id, {
+          projectId: results.project.id,
+          partnerId: results.partner?.id,
+          status: 'processed'
+        }, userId);
+      }
+      
+      console.log('[AI-PROJECT-AGENT] Applied proposal:', {
+        messageId: req.params.id,
+        projectCreated: proposal.project?.isNew,
+        partnerCreated: proposal.partner?.isNew,
+        tasksCreated: proposal.tasks?.filter((t: any) => t.isNew).length
+      });
+      
+      res.json({
+        success: true,
+        results
+      });
+    } catch (error) {
+      console.error("Apply project proposal error:", error);
+      res.status(500).json({ error: "Failed to apply proposal", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
   // Message Links
   app.get("/api/messages/linked/:tableName/:recordId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
