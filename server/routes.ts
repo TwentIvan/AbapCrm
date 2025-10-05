@@ -2448,11 +2448,29 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       if (!message) return res.sendStatus(404);
       
       const organizationId = getOrganizationId(req);
+      const messageId = req.params.id;
       
-      // Get existing data for context
+      // Check if this message has already been processed
       const existingProjects = await storage.getProjects(req.user!.id, organizationId);
       const existingPartners = await storage.getPartners(req.user!.id, organizationId);
       const existingTasks = await storage.getTasks(req.user!.id, organizationId);
+      
+      const linkedProject = existingProjects.find(p => p.sourceMessageIds?.includes(messageId));
+      const linkedPartner = existingPartners.find(p => p.sourceMessageIds?.includes(messageId));
+      const linkedTasks = existingTasks.filter(t => t.sourceMessageIds?.includes(messageId));
+      
+      // If already processed, return a special response
+      if (linkedProject || linkedPartner || linkedTasks.length > 0) {
+        return res.json({
+          alreadyProcessed: true,
+          warning: "Questo messaggio è già stato processato. Riprocessarlo potrebbe creare duplicati.",
+          existing: {
+            project: linkedProject,
+            partner: linkedPartner,
+            tasks: linkedTasks
+          }
+        });
+      }
       
       // Import and use AI agent
       const { analyzeMessageForProject } = await import('./ai-project-agent');
@@ -2493,12 +2511,18 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             email: proposal.partner.email,
             company: proposal.partner.company,
             type: proposal.partner.type,
+            sourceMessageIds: [req.params.id],
             userId,
             organizationId
           };
           results.partner = await storage.createPartner(partnerData, { userId });
         } else if (proposal.partner.existingId) {
           results.partner = await storage.getPartner(proposal.partner.existingId, userId);
+          // Add messageId to existing partner's sourceMessageIds if not already there
+          if (results.partner && (!results.partner.sourceMessageIds || !results.partner.sourceMessageIds.includes(req.params.id))) {
+            const updatedSourceIds = [...(results.partner.sourceMessageIds || []), req.params.id];
+            await storage.updatePartner(results.partner.id, { sourceMessageIds: updatedSourceIds }, userId, organizationId);
+          }
         }
       }
       
@@ -2513,12 +2537,19 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             endDate: proposal.project.endDate ? new Date(proposal.project.endDate) : undefined,
             estimatedEffort: proposal.project.estimatedEffort,
             clientId: results.partner?.id,
+            sourceMessageIds: [req.params.id],
             userId,
             organizationId
           };
           results.project = await storage.createProject(projectData, { userId });
         } else if (proposal.project.existingId) {
-          // Update existing project
+          // Update existing project with message link
+          const existingProject = await storage.getProject(proposal.project.existingId, userId);
+          if (existingProject && (!existingProject.sourceMessageIds || !existingProject.sourceMessageIds.includes(req.params.id))) {
+            const updatedSourceIds = [...(existingProject.sourceMessageIds || []), req.params.id];
+            await storage.updateProject(proposal.project.existingId, { sourceMessageIds: updatedSourceIds }, userId, organizationId);
+          }
+          // Update existing project fields
           const updateData = {
             description: proposal.project.description,
             status: proposal.project.status,
@@ -2540,12 +2571,19 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
               estimatedEffort: taskProposal.estimatedEffort,
               dueDate: taskProposal.dueDate ? new Date(taskProposal.dueDate) : undefined,
               projectId: results.project?.id,
+              sourceMessageIds: [req.params.id],
               userId,
               organizationId
             };
             const task = await storage.createTask(taskData, { userId });
             results.tasks.push(task);
           } else if (taskProposal.existingId) {
+            // Add messageId to existing task's sourceMessageIds if not already there
+            const existingTask = await storage.getTask(taskProposal.existingId, userId);
+            if (existingTask && (!existingTask.sourceMessageIds || !existingTask.sourceMessageIds.includes(req.params.id))) {
+              const updatedSourceIds = [...(existingTask.sourceMessageIds || []), req.params.id];
+              await storage.updateTask(taskProposal.existingId, { sourceMessageIds: updatedSourceIds }, userId, organizationId);
+            }
             // Update existing task
             const updateData = {
               description: taskProposal.description,
