@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -114,6 +115,7 @@ const groupSelectionsByType = (selections: SelectionRecord[]) => {
 
 export default function MessagesPage() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showNewMessageDialog, setShowNewMessageDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -814,14 +816,26 @@ export default function MessagesPage() {
             {messages.length > 0 && (
               <div className="flex items-center space-x-2">
                 <Button 
-                  onClick={() => selectedMessage && analyzeProjectMutation.mutate(selectedMessage.id)}
-                  disabled={analyzeProjectMutation.isPending || !selectedMessage}
+                  onClick={() => {
+                    const messagesToAnalyze = selectedMessageIds.length > 0 
+                      ? selectedMessageIds 
+                      : (selectedMessage ? [selectedMessage.id] : []);
+                    if (messagesToAnalyze.length > 0) {
+                      // Process each message sequentially
+                      messagesToAnalyze.forEach(id => analyzeProjectMutation.mutate(id));
+                    }
+                  }}
+                  disabled={analyzeProjectMutation.isPending || (!selectedMessage && selectedMessageIds.length === 0)}
                   size="sm"
                   data-testid="button-analyze-project"
                   className="bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
                 >
                   <Sparkles className="h-4 w-4 mr-2 text-purple-500" />
-                  {analyzeProjectMutation.isPending ? 'Analizzando...' : 'Analizza con AI'}
+                  {analyzeProjectMutation.isPending 
+                    ? 'Analizzando...' 
+                    : selectedMessageIds.length > 0 
+                      ? `Analizza ${selectedMessageIds.length} messaggi` 
+                      : 'Analizza con AI'}
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
