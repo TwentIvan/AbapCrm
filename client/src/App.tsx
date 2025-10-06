@@ -14,6 +14,7 @@ import OrganizationsPage from "@/pages/organizations-page";
 import ProjectsPage from "@/pages/projects-page";
 import TasksPage from "@/pages/tasks-page";
 import PartnersPage from "@/pages/partners-page";
+import ContactsPage from "@/pages/contacts-page";
 import CalendarPage from "@/pages/calendar-page";
 import GlobalCalendarPage from "@/pages/global-calendar-page";
 import TimesheetPage from "@/pages/timesheet-page";
@@ -44,6 +45,7 @@ function Router() {
       <ProtectedRoute path="/partners" component={PartnersPage} />
       <ProtectedRoute path="/partners/new" component={PartnersPage} />
       <ProtectedRoute path="/partners/:id/edit" component={PartnersPage} />
+      <ProtectedRoute path="/contacts" component={ContactsPage} />
       <ProtectedRoute path="/calendar" component={CalendarPage} />
       <ProtectedRoute path="/planning-calendar" component={GlobalCalendarPage} />
       <ProtectedRoute path="/timesheet" component={TimesheetPage} />
