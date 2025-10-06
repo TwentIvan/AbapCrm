@@ -1,5 +1,5 @@
 import { 
-  users, projects, tasks, partners, deals, calendarEvents, timeEntries, planningWindows, messages, comments, messageLinks, emailConfigs,
+  users, projects, tasks, partners, contacts, deals, calendarEvents, timeEntries, planningWindows, messages, comments, messageLinks, emailConfigs,
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
@@ -11,6 +11,7 @@ import {
   type Project, type InsertProject,
   type Task, type InsertTask,
   type Partner, type InsertPartner,
+  type Contact, type InsertContact,
   type Deal, type InsertDeal,
   type CalendarEvent, type InsertCalendarEvent,
   type PlanningWindow, type InsertPlanningWindow,
@@ -110,6 +111,14 @@ export interface IStorage {
   createPartner(partner: InsertPartner & { organizationId: string }): Promise<Partner>;
   updatePartner(id: string, partner: Partial<InsertPartner>, userId: string, organizationId: string): Promise<Partner | undefined>;
   deletePartner(id: string, userId: string, organizationId: string): Promise<boolean>;
+
+  // Contacts
+  getContacts(userId: string, organizationId: string): Promise<Contact[]>;
+  getContact(id: string, userId: string, organizationId: string): Promise<Contact | undefined>;
+  getContactByEmail(email: string, userId: string, organizationId: string): Promise<Contact | undefined>;
+  createContact(contact: InsertContact & { organizationId: string }): Promise<Contact>;
+  updateContact(id: string, contact: Partial<InsertContact>, userId: string, organizationId: string): Promise<Contact | undefined>;
+  deleteContact(id: string, userId: string, organizationId: string): Promise<boolean>;
 
   // Deals
   getDeals(userId: string, organizationId: string): Promise<Deal[]>;
@@ -1270,6 +1279,104 @@ export class DatabaseStorage implements IStorage {
         'partners',
         oldPartner.id,
         oldPartner,
+        {
+          userId: auditContext.userId,
+          organizationId: organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Contacts
+  async getContacts(userId: string, organizationId: string): Promise<Contact[]> {
+    return await db.select().from(contacts)
+      .where(and(eq(contacts.userId, userId), eq(contacts.organizationId, organizationId)))
+      .orderBy(desc(contacts.updatedAt));
+  }
+
+  async getContact(id: string, userId: string, organizationId: string): Promise<Contact | undefined> {
+    const [contact] = await db.select().from(contacts)
+      .where(and(eq(contacts.id, id), eq(contacts.userId, userId), eq(contacts.organizationId, organizationId)));
+    return contact || undefined;
+  }
+
+  async getContactByEmail(email: string, userId: string, organizationId: string): Promise<Contact | undefined> {
+    const [contact] = await db.select().from(contacts)
+      .where(and(eq(contacts.email, email), eq(contacts.userId, userId), eq(contacts.organizationId, organizationId)));
+    return contact || undefined;
+  }
+
+  async createContact(contact: InsertContact & { organizationId: string }, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Contact> {
+    const [newContact] = await db
+      .insert(contacts)
+      .values(contact)
+      .returning();
+    
+    // Log audit trail for contact creation
+    if (auditContext) {
+      await AuditService.logCreate(
+        'contacts',
+        newContact.id,
+        newContact,
+        {
+          userId: auditContext.userId,
+          organizationId: contact.organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
+    return newContact;
+  }
+
+  async updateContact(id: string, contact: Partial<InsertContact>, userId: string, organizationId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Contact | undefined> {
+    // Get old values for audit trail
+    const oldContact = auditContext ? await this.getContact(id, userId, organizationId) : null;
+    
+    const [updatedContact] = await db
+      .update(contacts)
+      .set({ ...contact, updatedAt: new Date() })
+      .where(and(eq(contacts.id, id), eq(contacts.userId, userId), eq(contacts.organizationId, organizationId)))
+      .returning();
+    
+    // Log audit trail for contact update
+    if (auditContext && updatedContact && oldContact) {
+      await AuditService.logUpdate(
+        'contacts',
+        updatedContact.id,
+        oldContact,
+        updatedContact,
+        {
+          userId: auditContext.userId,
+          organizationId: organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+    
+    return updatedContact || undefined;
+  }
+
+  async deleteContact(id: string, userId: string, organizationId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<boolean> {
+    // Get old values for audit trail
+    const oldContact = auditContext ? await this.getContact(id, userId, organizationId) : null;
+    
+    const result = await db
+      .delete(contacts)
+      .where(and(eq(contacts.id, id), eq(contacts.userId, userId), eq(contacts.organizationId, organizationId)));
+    
+    // Log audit trail for contact deletion
+    if (auditContext && oldContact && (result.rowCount || 0) > 0) {
+      await AuditService.logDelete(
+        'contacts',
+        oldContact.id,
+        oldContact,
         {
           userId: auditContext.userId,
           organizationId: organizationId,

@@ -155,6 +155,23 @@ export const partners = pgTable("partners", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Contacts - Contatti di riferimento (persone individuali)
+export const contacts = pgTable("contacts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // Nome completo
+  email: text("email").notNull(), // Email (identificatore principale)
+  phone: text("phone"),
+  position: text("position"), // Ruolo/posizione
+  company: text("company"), // Azienda di appartenenza
+  partnerId: uuid("partner_id").references(() => partners.id), // Partner associato (opzionale)
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
+  notes: text("notes"),
+  sourceMessageIds: text("source_message_ids").array().default([]), // IDs dei messaggi da cui è stato creato
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const dealStageEnum = pgEnum("deal_stage", ["prospecting", "proposal", "negotiation", "closing", "won", "lost"]);
 
 export const deals = pgTable("deals", {
@@ -912,6 +929,7 @@ export const partnersRelations = relations(partners, ({ one, many }) => ({
   sapSystems: many(sapSystems),
   vpnConnections: many(vpnConnections),
   vpnSystems: many(vpnSystems),
+  contacts: many(contacts),
 }));
 
 export const humanResourcesRelations = relations(humanResources, ({ one }) => ({
@@ -954,6 +972,12 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
   comments: many(comments),
   messageLinks: many(messageLinks),
   proposals: many(proposals),
+}));
+
+export const contactsRelations = relations(contacts, ({ one }) => ({
+  user: one(users, { fields: [contacts.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [contacts.organizationId], references: [organizations.id] }),
+  partner: one(partners, { fields: [contacts.partnerId], references: [partners.id] }),
 }));
 
 export const proposalsRelations = relations(proposals, ({ one }) => ({
@@ -1114,6 +1138,13 @@ export const insertPartnerSchema = createInsertSchema(partners).omit({
   organizationId: true, // Auto-filled from user session
 });
 
+export const insertContactSchema = createInsertSchema(contacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  organizationId: true, // Auto-filled from user session
+});
+
 export const insertDealSchema = createInsertSchema(deals).omit({
   id: true,
   createdAt: true,
@@ -1232,6 +1263,8 @@ export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Partner = typeof partners.$inferSelect;
 export type InsertPartner = z.infer<typeof insertPartnerSchema>;
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = z.infer<typeof insertContactSchema>;
 export type Deal = typeof deals.$inferSelect;
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type CalendarEvent = typeof calendarEvents.$inferSelect;

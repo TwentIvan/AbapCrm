@@ -8,7 +8,7 @@ import { generateVPNAutomationScript, discoverVPNConnections, discoverAvailableV
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
 import { 
-  insertProjectSchema, insertTaskSchema, insertPartnerSchema, 
+  insertProjectSchema, insertTaskSchema, insertPartnerSchema, insertContactSchema,
   insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema,
   insertMessageSchema, insertCommentSchema, insertMessageLinkSchema, insertEmailConfigSchema, insertTimesheetSchema,
   insertSalesOrderSchema, insertSalesOrderItemSchema, insertRateAgreementSchema,
@@ -20,7 +20,7 @@ import {
   insertOrganizationSchema, insertUserOrganizationSchema, insertOrganizationInvitationSchema,
   insertOrganizationDomainSchema, insertEmailFeedbackSchema, insertEmailTrainingSelectionSchema,
   type EmailConfig,
-  projects, tasks, partners, messages, deals, calendarEvents, salesOrders, rateAgreements,
+  projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements,
   humanResources, sapSystems, systemCredentials, timesheets, comments
 } from "@shared/schema";
 import { aiService } from "./ai-service";
@@ -1574,6 +1574,82 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error('Logo download error:', error);
       res.sendStatus(404);
+    }
+  });
+
+  // Contacts
+  app.get("/api/contacts", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      const contactsList = await db.select().from(contacts)
+        .where(and(
+          eq(contacts.userId, req.user!.id),
+          inArray(contacts.organizationId, organizationIds)
+        ));
+      res.json(contactsList);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.get("/api/contacts/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const organizationId = getOrganizationId(req);
+    const contact = await storage.getContact(req.params.id, req.user!.id, organizationId);
+    if (!contact) return res.sendStatus(404);
+    res.json(contact);
+  });
+
+  app.post("/api/contacts", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const organizationId = getOrganizationId(req);
+      const contactData = insertContactSchema.parse({
+        name: req.body.name,
+        email: req.body.email,
+        phone: req.body.phone || null,
+        position: req.body.position || null,
+        company: req.body.company || null,
+        partnerId: req.body.partnerId || null,
+        notes: req.body.notes || null,
+        userId: req.user!.id,
+        organizationId: organizationId
+      });
+      
+      const auditContext = AuditService.createContext(req);
+      const contact = await storage.createContact({ ...contactData, organizationId }, auditContext);
+      res.status(201).json(contact);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid contact data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.put("/api/contacts/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const auditContext = AuditService.createContext(req);
+      const contact = await storage.updateContact(req.params.id, req.body, req.user!.id, organizationId, auditContext);
+      if (!contact) return res.sendStatus(404);
+      res.json(contact);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid contact data" });
+    }
+  });
+
+  app.delete("/api/contacts/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const auditContext = AuditService.createContext(req);
+      const deleted = await storage.deleteContact(req.params.id, req.user!.id, organizationId, auditContext);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("[DELETE CONTACT] Error:", error);
+      res.sendStatus(500);
     }
   });
 
