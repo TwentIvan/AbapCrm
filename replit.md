@@ -54,8 +54,16 @@ Authentication is session-based, using a local strategy with username/password a
 ### Multi-Organization Filtering
 The system supports cross-organization data visibility with intelligent filtering. A `Personal Scope Toggle` allows users from the 'Personal' organization to view data across all their organizations or only their personal items. Other organizations are restricted to viewing only their own data. This is implemented with `X-Organization-Id` and `X-Organization-Scope` headers, and backend queries using `inArray(table.organizationId, organizationIds)`.
 
-### AI Project Agent
-An AI-powered agent integrates with `OpenAI` (gpt-5) to analyze messages and propose project, partner, and task creations. It uses architecture-aware prompts and context-aware analysis (retrieving existing records) to intelligently match and decompose work into structured proposals. The frontend provides a dialog for users to review and apply these proposals.
+### AI Project Agent & Background Proposal System
+An AI-powered agent integrates with `OpenAI` (gpt-5) to analyze messages and propose project, partner, and task creations. The system features **background asynchronous processing** to avoid blocking users during AI analysis:
+
+- **Asynchronous Analysis**: When users trigger message analysis, proposals are generated in the background and saved to a dedicated `proposals` table
+- **Proposals Table**: Stores AI-generated proposals with status tracking (pending, accepted, rejected, partially_accepted) and JSONB proposal data
+- **Proposals Management Page**: Dedicated `/proposals` page for viewing, filtering, and managing AI proposals with status-based tabs
+- **Visual Indicators**: Messages with pending proposals display a purple badge with Sparkles icon and proposal count in the messages list
+- **Sidebar Integration**: "Proposte AI" menu item provides quick access to proposal management
+
+The agent uses architecture-aware prompts and context-aware analysis (retrieving existing records) to intelligently match and decompose work into structured proposals. Users can accept or reject proposals from the dedicated proposals page.
 
 ### Multi-Message Chat Normalization
 The application includes a system for parsing and normalizing multi-message conversations from various platforms (Teams, WhatsApp, Google Meet) into a structured format stored in a `jsonb metadata` column. This enables a rich, structured display of chat conversations in the UI.
