@@ -3,7 +3,7 @@ import {
   timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
-  emailVerificationTokens, organizationDomains, emailFeedbacks, customFeedbackReasons, emailTrainingSelections,
+  emailVerificationTokens, organizationDomains, emailFeedbacks, customFeedbackReasons, emailTrainingSelections, proposals,
   type User, type InsertUser,
   type Organization, type InsertOrganization,
   type UserOrganization, type InsertUserOrganization,
@@ -40,7 +40,8 @@ import {
   type OrganizationDomain, type InsertOrganizationDomain,
   type EmailFeedback, type InsertEmailFeedback,
   type CustomFeedbackReason, type InsertCustomFeedbackReason,
-  type EmailTrainingSelection, type InsertEmailTrainingSelection
+  type EmailTrainingSelection, type InsertEmailTrainingSelection,
+  type Proposal, type InsertProposal
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull } from "drizzle-orm";
@@ -183,6 +184,14 @@ export interface IStorage {
   getUnreadMessages(userId: string): Promise<Message[]>;
   markMessageAsRead(id: string, userId: string): Promise<Message | undefined>;
   backfillThreadIds(userId: string): Promise<{updated: number, errors: number, total: number}>;
+
+  // Proposals
+  getProposals(userId: string, organizationId: string): Promise<Proposal[]>;
+  getProposal(id: string, userId: string, organizationId: string): Promise<Proposal | undefined>;
+  getProposalsByMessage(messageId: string, userId: string): Promise<Proposal[]>;
+  createProposal(proposal: InsertProposal): Promise<Proposal>;
+  updateProposal(id: string, proposal: Partial<InsertProposal>, userId: string, organizationId: string): Promise<Proposal | undefined>;
+  deleteProposal(id: string, userId: string, organizationId: string): Promise<boolean>;
 
   // Email Feedbacks
   createEmailFeedback(feedback: InsertEmailFeedback): Promise<EmailFeedback>;
@@ -1999,6 +2008,73 @@ export class DatabaseStorage implements IStorage {
     const result = { updated, errors, total };
     console.log('[BACKFILL] Completed:', result);
     return result;
+  }
+
+  // Proposals
+  async getProposals(userId: string, organizationId: string): Promise<Proposal[]> {
+    return await db
+      .select()
+      .from(proposals)
+      .where(and(
+        eq(proposals.userId, userId),
+        eq(proposals.organizationId, organizationId)
+      ))
+      .orderBy(desc(proposals.createdAt));
+  }
+
+  async getProposal(id: string, userId: string, organizationId: string): Promise<Proposal | undefined> {
+    const [proposal] = await db
+      .select()
+      .from(proposals)
+      .where(and(
+        eq(proposals.id, id),
+        eq(proposals.userId, userId),
+        eq(proposals.organizationId, organizationId)
+      ));
+    return proposal || undefined;
+  }
+
+  async getProposalsByMessage(messageId: string, userId: string): Promise<Proposal[]> {
+    return await db
+      .select()
+      .from(proposals)
+      .where(and(
+        eq(proposals.messageId, messageId),
+        eq(proposals.userId, userId)
+      ))
+      .orderBy(desc(proposals.createdAt));
+  }
+
+  async createProposal(proposal: InsertProposal): Promise<Proposal> {
+    const [newProposal] = await db
+      .insert(proposals)
+      .values(proposal)
+      .returning();
+    return newProposal;
+  }
+
+  async updateProposal(id: string, proposalUpdate: Partial<InsertProposal>, userId: string, organizationId: string): Promise<Proposal | undefined> {
+    const [updated] = await db
+      .update(proposals)
+      .set({ ...proposalUpdate, updatedAt: new Date() })
+      .where(and(
+        eq(proposals.id, id),
+        eq(proposals.userId, userId),
+        eq(proposals.organizationId, organizationId)
+      ))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteProposal(id: string, userId: string, organizationId: string): Promise<boolean> {
+    const result = await db
+      .delete(proposals)
+      .where(and(
+        eq(proposals.id, id),
+        eq(proposals.userId, userId),
+        eq(proposals.organizationId, organizationId)
+      ));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   // Email Feedbacks

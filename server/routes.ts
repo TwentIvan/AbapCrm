@@ -2527,7 +2527,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
-  // AI Project Agent - Analyze message and propose project/partner/tasks
+  // AI Project Agent - Analyze message and create proposal in background
   app.post("/api/messages/:id/analyze-project", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
@@ -2536,42 +2536,262 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       
       const organizationId = getOrganizationId(req);
       const messageId = req.params.id;
+      const userId = req.user!.id;
       
-      // Check if this message has already been processed
-      const existingProjects = await storage.getProjects(req.user!.id, organizationId);
-      const existingPartners = await storage.getPartners(req.user!.id, organizationId);
-      const existingTasks = await storage.getTasks(req.user!.id, organizationId);
+      // Check if there's already a pending proposal for this message
+      const existingProposals = await storage.getProposalsByMessage(messageId, userId);
+      const pendingProposal = existingProposals.find(p => p.status === 'pending');
       
-      const linkedProject = existingProjects.find(p => p.sourceMessageIds?.includes(messageId));
-      const linkedPartner = existingPartners.find(p => p.sourceMessageIds?.includes(messageId));
-      const linkedTasks = existingTasks.filter(t => t.sourceMessageIds?.includes(messageId));
-      
-      // If already processed, return a special response
-      if (linkedProject || linkedPartner || linkedTasks.length > 0) {
+      if (pendingProposal) {
         return res.json({
-          alreadyProcessed: true,
-          warning: "Questo messaggio è già stato processato. Riprocessarlo potrebbe creare duplicati.",
-          existing: {
-            project: linkedProject,
-            partner: linkedPartner,
-            tasks: linkedTasks
-          }
+          success: true,
+          message: "Analisi già in corso",
+          proposalId: pendingProposal.id
         });
       }
       
-      // Import and use AI agent
-      const { analyzeMessageForProject } = await import('./ai-project-agent');
-      const proposal = await analyzeMessageForProject(
-        message,
-        existingProjects,
-        existingPartners,
-        existingTasks
-      );
+      // Create a pending proposal immediately
+      const proposal = await storage.createProposal({
+        userId,
+        organizationId,
+        messageId,
+        status: 'pending',
+        proposalData: { processing: true },
+      });
       
-      res.json(proposal);
+      // Start AI analysis in background (don't await)
+      (async () => {
+        try {
+          const existingProjects = await storage.getProjects(userId, organizationId);
+          const existingPartners = await storage.getPartners(userId, organizationId);
+          const existingTasks = await storage.getTasks(userId, organizationId);
+          
+          const { analyzeMessageForProject } = await import('./ai-project-agent');
+          const analysisResult = await analyzeMessageForProject(
+            message,
+            existingProjects,
+            existingPartners,
+            existingTasks
+          );
+          
+          // Update proposal with results
+          await storage.updateProposal(proposal.id, {
+            proposalData: analysisResult,
+            status: 'pending'
+          }, userId, organizationId);
+          
+          console.log(`[AI] Proposal ${proposal.id} analysis completed for message ${messageId}`);
+        } catch (error) {
+          console.error(`[AI] Error analyzing message ${messageId}:`, error);
+          // Update proposal with error
+          await storage.updateProposal(proposal.id, {
+            status: 'pending',
+            errorMessage: error instanceof Error ? error.message : String(error)
+          }, userId, organizationId);
+        }
+      })();
+      
+      // Return immediately
+      res.json({
+        success: true,
+        message: "Analisi avviata in background",
+        proposalId: proposal.id
+      });
     } catch (error) {
       console.error("AI project analysis error:", error);
-      res.status(500).json({ error: "Failed to analyze message for project", details: error instanceof Error ? error.message : String(error) });
+      res.status(500).json({ error: "Failed to start analysis", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  // Get all proposals for current organization
+  app.get("/api/proposals", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const proposals = await storage.getProposals(req.user!.id, organizationId);
+      res.json(proposals);
+    } catch (error) {
+      console.error("Get proposals error:", error);
+      res.status(500).json({ error: "Failed to get proposals" });
+    }
+  });
+
+  // Get single proposal
+  app.get("/api/proposals/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const proposal = await storage.getProposal(req.params.id, req.user!.id, organizationId);
+      if (!proposal) return res.sendStatus(404);
+      res.json(proposal);
+    } catch (error) {
+      console.error("Get proposal error:", error);
+      res.status(500).json({ error: "Failed to get proposal" });
+    }
+  });
+
+  // Get proposals for a specific message
+  app.get("/api/messages/:id/proposals", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const proposals = await storage.getProposalsByMessage(req.params.id, req.user!.id);
+      res.json(proposals);
+    } catch (error) {
+      console.error("Get message proposals error:", error);
+      res.status(500).json({ error: "Failed to get message proposals" });
+    }
+  });
+
+  // Apply a proposal
+  app.post("/api/proposals/:id/apply", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const userId = req.user!.id;
+      
+      const proposal = await storage.getProposal(req.params.id, userId, organizationId);
+      if (!proposal) return res.sendStatus(404);
+      
+      if (proposal.status !== 'pending') {
+        return res.status(400).json({ error: "Proposal already processed" });
+      }
+      
+      const proposalData = proposal.proposalData as any;
+      if (!proposalData || proposalData.processing) {
+        return res.status(400).json({ error: "Proposal analysis not yet complete" });
+      }
+      
+      const results: any = {
+        project: null,
+        partner: null,
+        tasks: []
+      };
+      
+      // 1. Create or update partner
+      if (proposalData.partner) {
+        if (proposalData.partner.isNew) {
+          const partnerData: any = {
+            name: proposalData.partner.name,
+            email: proposalData.partner.email,
+            company: proposalData.partner.company,
+            type: proposalData.partner.type,
+            sourceMessageIds: [proposal.messageId],
+            userId,
+            organizationId
+          };
+          results.partner = await storage.createPartner(partnerData, { userId });
+        } else if (proposalData.partner.existingId) {
+          results.partner = await storage.getPartner(proposalData.partner.existingId, userId, organizationId);
+          if (results.partner && (!results.partner.sourceMessageIds || !results.partner.sourceMessageIds.includes(proposal.messageId))) {
+            const updatedSourceIds = [...(results.partner.sourceMessageIds || []), proposal.messageId];
+            await storage.updatePartner(results.partner.id, { sourceMessageIds: updatedSourceIds }, userId, organizationId);
+          }
+        }
+      }
+      
+      // 2. Create or update project
+      if (proposalData.project) {
+        if (proposalData.project.isNew) {
+          const projectData: any = {
+            name: proposalData.project.name,
+            description: proposalData.project.description,
+            status: proposalData.project.status,
+            startDate: proposalData.project.startDate ? new Date(proposalData.project.startDate) : undefined,
+            endDate: proposalData.project.endDate ? new Date(proposalData.project.endDate) : undefined,
+            estimatedEffort: proposalData.project.estimatedEffort,
+            clientId: results.partner?.id,
+            sourceMessageIds: [proposal.messageId],
+            userId,
+            organizationId
+          };
+          results.project = await storage.createProject(projectData, { userId });
+        } else if (proposalData.project.existingId) {
+          results.project = await storage.getProject(proposalData.project.existingId, userId, organizationId);
+          if (results.project && (!results.project.sourceMessageIds || !results.project.sourceMessageIds.includes(proposal.messageId))) {
+            const updatedSourceIds = [...(results.project.sourceMessageIds || []), proposal.messageId];
+            await storage.updateProject(results.project.id, { sourceMessageIds: updatedSourceIds }, userId, organizationId);
+          }
+        }
+      }
+      
+      // 3. Create tasks
+      if (proposalData.tasks && Array.isArray(proposalData.tasks)) {
+        for (const taskProposal of proposalData.tasks) {
+          if (taskProposal.isNew) {
+            const taskData: any = {
+              title: taskProposal.title,
+              description: taskProposal.description,
+              priority: taskProposal.priority,
+              taskType: taskProposal.taskType,
+              estimatedEffort: taskProposal.estimatedEffort,
+              dueDate: taskProposal.dueDate ? new Date(taskProposal.dueDate) : undefined,
+              projectId: results.project?.id,
+              sourceMessageIds: [proposal.messageId],
+              userId,
+              organizationId
+            };
+            const task = await storage.createTask(taskData, { userId });
+            results.tasks.push(task);
+          } else if (taskProposal.existingId) {
+            const task = await storage.getTask(taskProposal.existingId, userId, organizationId);
+            if (task && (!task.sourceMessageIds || !task.sourceMessageIds.includes(proposal.messageId))) {
+              const updatedSourceIds = [...(task.sourceMessageIds || []), proposal.messageId];
+              await storage.updateTask(task.id, { sourceMessageIds: updatedSourceIds }, userId, organizationId);
+            }
+            if (task) results.tasks.push(task);
+          }
+        }
+      }
+      
+      // Update proposal status
+      await storage.updateProposal(req.params.id, {
+        status: 'accepted',
+        appliedAt: new Date(),
+        appliedBy: userId
+      }, userId, organizationId);
+      
+      res.json({
+        success: true,
+        results
+      });
+    } catch (error) {
+      console.error("Apply proposal error:", error);
+      res.status(500).json({ error: "Failed to apply proposal", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  // Reject a proposal
+  app.post("/api/proposals/:id/reject", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const userId = req.user!.id;
+      
+      const proposal = await storage.getProposal(req.params.id, userId, organizationId);
+      if (!proposal) return res.sendStatus(404);
+      
+      await storage.updateProposal(req.params.id, {
+        status: 'rejected'
+      }, userId, organizationId);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Reject proposal error:", error);
+      res.status(500).json({ error: "Failed to reject proposal" });
+    }
+  });
+
+  // Delete a proposal
+  app.delete("/api/proposals/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const deleted = await storage.deleteProposal(req.params.id, req.user!.id, organizationId);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Delete proposal error:", error);
+      res.status(500).json({ error: "Failed to delete proposal" });
     }
   });
 
