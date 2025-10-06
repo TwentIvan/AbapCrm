@@ -184,6 +184,49 @@ export default function ProposalsPage() {
           </Card>
         )}
 
+        {proposalData.contacts && proposalData.contacts.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Contatti di riferimento ({proposalData.contacts.length})</CardTitle>
+              <CardDescription>
+                Contatti estratti dal messaggio che verranno creati quando applichi la proposta
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {proposalData.contacts.map((contact: any, idx: number) => (
+                  <div key={idx} className="border-l-2 border-blue-500 pl-3 py-1">
+                    <div className="space-y-1">
+                      <div className="font-medium">{contact.name}</div>
+                      <div className="text-sm text-muted-foreground">{contact.email}</div>
+                      {contact.position && (
+                        <div className="text-sm">
+                          <strong>Ruolo:</strong> {contact.position}
+                        </div>
+                      )}
+                      {contact.company && (
+                        <div className="text-sm">
+                          <strong>Azienda:</strong> {contact.company}
+                        </div>
+                      )}
+                      {contact.phone && (
+                        <div className="text-sm">
+                          <strong>Telefono:</strong> {contact.phone}
+                        </div>
+                      )}
+                      {contact.notes && (
+                        <div className="text-sm text-muted-foreground italic mt-1">
+                          {contact.notes}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {proposalData.project && (
           <Card>
             <CardHeader>
