@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
-import { Check, X, Clock, AlertCircle, Eye, Sparkles, Mail, Loader2 } from "lucide-react";
+import { Check, X, Clock, AlertCircle, Eye, Sparkles, Mail, Loader2, RefreshCw } from "lucide-react";
 import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -34,10 +34,12 @@ export default function ProposalsPage() {
   const { toast } = useToast();
   const { currentOrganizationId } = useOrganization();
 
-  const { data: proposals = [], isLoading } = useQuery<Proposal[]>({
+  const { data: proposals = [], isLoading, refetch } = useQuery<Proposal[]>({
     queryKey: ["/api/proposals"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
+    refetchInterval: 5000, // Refresh ogni 5 secondi per aggiornamenti rapidi
+    refetchIntervalInBackground: true,
   });
 
   const applyProposalMutation = useMutation({
@@ -228,17 +230,29 @@ export default function ProposalsPage() {
     <div className="flex h-screen overflow-hidden bg-background dark:bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+        <Header title="Proposte AI" subtitle="Gestisci le proposte generate dall'intelligenza artificiale" />
         <main className="flex-1 overflow-auto p-6">
           <div className="max-w-7xl mx-auto space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2" data-testid="text-page-title">
-                <Sparkles className="w-8 h-8" />
-                Proposte AI
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Gestisci le proposte generate dall'AI per creare progetti, partner e task dai messaggi
-              </p>
+            <div className="flex items-start justify-between">
+              <div>
+                <h1 className="text-3xl font-bold flex items-center gap-2" data-testid="text-page-title">
+                  <Sparkles className="w-8 h-8" />
+                  Proposte AI
+                </h1>
+                <p className="text-muted-foreground mt-1">
+                  Gestisci le proposte generate dall'AI per creare progetti, partner e task dai messaggi
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                data-testid="button-refresh-proposals"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Ricarica
+              </Button>
             </div>
 
             <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
