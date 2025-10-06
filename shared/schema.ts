@@ -270,6 +270,9 @@ export const comments = pgTable("comments", {
 // Message Links - Sistema per collegare messaggi a qualsiasi entità del CRM
 export const messageLinkTypeEnum = pgEnum("message_link_type", ["discussion", "attachment", "reference", "notification"]);
 
+// AI Proposals - Status enum
+export const proposalStatusEnum = pgEnum("proposal_status", ["pending", "accepted", "rejected", "partially_accepted"]);
+
 export const messageLinks = pgTable("message_links", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   messageId: uuid("message_id").references(() => messages.id).notNull(),
@@ -281,6 +284,21 @@ export const messageLinks = pgTable("message_links", {
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
   notes: text("notes"), // Note aggiuntive sul collegamento
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// AI Proposals - Proposte AI salvate in background per analisi messaggi
+export const proposals = pgTable("proposals", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  messageId: uuid("message_id").references(() => messages.id).notNull(),
+  status: proposalStatusEnum("status").default("pending").notNull(),
+  proposalData: jsonb("proposal_data").notNull(), // { project, partner, tasks, reasoning }
+  errorMessage: text("error_message"), // Eventuale errore durante l'analisi
+  appliedAt: timestamp("applied_at"), // Quando è stata applicata
+  appliedBy: uuid("applied_by").references(() => users.id), // Chi ha applicato la proposta
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Domini supportati dalle organizzazioni (per identificazione automatica email)
@@ -935,6 +953,14 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
   partner: one(partners, { fields: [messages.partnerId], references: [partners.id] }),
   comments: many(comments),
   messageLinks: many(messageLinks),
+  proposals: many(proposals),
+}));
+
+export const proposalsRelations = relations(proposals, ({ one }) => ({
+  user: one(users, { fields: [proposals.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [proposals.organizationId], references: [organizations.id] }),
+  message: one(messages, { fields: [proposals.messageId], references: [messages.id] }),
+  appliedByUser: one(users, { fields: [proposals.appliedBy], references: [users.id] }),
 }));
 
 export const commentsRelations = relations(comments, ({ one }) => ({
@@ -1119,6 +1145,14 @@ export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
   updatedAt: true,
   duration: true,
 });
+
+export const insertProposalSchema = createInsertSchema(proposals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertProposal = z.infer<typeof insertProposalSchema>;
+export type Proposal = typeof proposals.$inferSelect;
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,
