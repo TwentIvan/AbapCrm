@@ -26,6 +26,14 @@ export interface ProjectProposal {
     company?: string;
     type: "client" | "vendor" | "consultant" | "other";
   };
+  contacts?: Array<{
+    name: string;
+    email: string;
+    phone?: string;
+    position?: string;
+    company?: string;
+    notes?: string;
+  }>;
   tasks: Array<{
     isNew: boolean;
     existingId?: string;
@@ -77,7 +85,8 @@ The user is a SAP ABAP freelance developer managing:
 Analyze incoming messages and propose:
 1. **Project**: Either create NEW project or UPDATE existing one
 2. **Partner**: Either create NEW partner or MATCH existing one
-3. **Tasks**: Create task breakdown (2-5 tasks typically)
+3. **Contacts**: Extract reference contacts from the message (people mentioned in CC, signatures, or body)
+4. **Tasks**: Create task breakdown (2-5 tasks typically)
 
 ## INTELLIGENCE GUIDELINES
 
@@ -86,6 +95,36 @@ Analyze incoming messages and propose:
 - Match by: exact email, company name similarity, person name
 - If 70%+ confidence match exists, use existingId, set isNew=false
 - Only create new partner if clearly a new company/person
+
+### Contact Extraction (IMPORTANT - NEW FEATURE)
+Extract reference contacts from the message - these are people mentioned or visible in the email who may be useful for future reference:
+
+**Where to look for contacts:**
+- Email CC/BCC recipients
+- Email signatures (look for name, email, phone, position)
+- People mentioned in the body ("Please contact Marco for...", "Ti presento Andrea, il nostro...", "Collaborerò con Sara su questo progetto")
+- People who should be involved ("Coinvolgere Maria", "Sentire Luca", "Forward to Giovanni")
+
+**What to extract:**
+- **name**: Full name of the person (REQUIRED)
+- **email**: Email address (REQUIRED - do not create contact without email)
+- **phone**: Phone number if mentioned
+- **position**: Job title or role (e.g., "Project Manager", "SAP Consultant", "IT Director")
+- **company**: Company/organization if mentioned
+- **notes**: Brief context about why this contact is relevant (e.g., "Referente tecnico per il progetto", "Responsabile acquisti cliente")
+
+**Rules:**
+- Extract ONLY real people (not generic addresses like info@, support@)
+- Do NOT extract the sender (they're already captured in partner)
+- Do NOT extract the recipient (that's the user)
+- Email is MANDATORY - don't create contact without email
+- Include 0-5 contacts per message (don't force it if there aren't any)
+- Keep notes concise (1-2 frasi in italiano)
+
+**Examples of valid contacts:**
+- CC recipient: marco.rossi@acmecorp.it with signature showing "Marco Rossi - SAP Technical Lead"
+- Mentioned: "Collaborerò con Sara Bianchi (s.bianchi@example.com) sul modulo fatturazione"
+- Signature: "Luca Verdi | Project Manager | +39 333 1234567 | l.verdi@company.it"
 
 ### Project Matching (⚠️ BE CONSERVATIVE - AVOID FALSE MATCHES)
 **ONLY match existing project if there is EXPLICIT reference:**
@@ -188,6 +227,16 @@ Return valid JSON ONLY with this exact structure (with ITALIAN content):
     "company": "Nome azienda se menzionata",
     "type": "client|vendor|consultant|other"
   },
+  "contacts": [
+    {
+      "name": "Nome completo della persona",
+      "email": "email@domain.com (REQUIRED)",
+      "phone": "Numero di telefono se disponibile (opzionale)",
+      "position": "Ruolo o posizione lavorativa (opzionale)",
+      "company": "Azienda di appartenenza (opzionale)",
+      "notes": "ITALIAN: Breve contesto sul perché questo contatto è rilevante (1-2 frasi in italiano)"
+    }
+  ],
   "tasks": [
     {
       "isNew": true,
@@ -199,7 +248,7 @@ Return valid JSON ONLY with this exact structure (with ITALIAN content):
       "dueDate": "YYYY-MM-DD if mentioned"
     }
   ],
-  "reasoning": "ITALIAN: Breve spiegazione in italiano del perché hai proposto questo progetto/partner/task, cosa hai abbinato, cosa hai dedotto, livello di confidenza"
+  "reasoning": "ITALIAN: Breve spiegazione in italiano del perché hai proposto questo progetto/partner/task/contatti, cosa hai abbinato, cosa hai dedotto, livello di confidenza"
 }`;
 
   const userPrompt = `Analyze this message and propose project/partner/tasks.
@@ -250,9 +299,10 @@ ${existingTasks.length > 15 ? `  ... and ${existingTasks.length - 15} more` : ''
 
 Based on the message content and existing context above:
 1. Match or create appropriate Partner (prefer matching!)
-2. Match or create appropriate Project
-3. Break down work into 2-5 specific Tasks
-4. Provide reasoning for your decisions
+2. Extract relevant Contacts (people in CC, signatures, or mentioned in body)
+3. Match or create appropriate Project
+4. Break down work into 2-5 specific Tasks
+5. Provide reasoning for your decisions
 
 Respond with VALID JSON ONLY (no markdown, no explanations outside JSON).`;
 
