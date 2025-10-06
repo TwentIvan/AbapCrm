@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import newLogo from "@assets/thu solo logo_1757017376100.jpg";
 import ImageContainer from "@/components/ui/image-container";
@@ -13,9 +13,11 @@ const getDefaultNavigation = (t: any) => [
   { id: "1", name: t("nav.projects"), href: "/projects", icon: FolderOpen, testId: "nav-projects" },
   { id: "2", name: t("nav.tasks"), href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
   { id: "3", name: t("nav.partners"), href: "/partners", icon: Handshake, testId: "nav-partners" },
-  { id: "4", name: t("nav.salesOrders"), href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
-  { id: "5", name: t("nav.rateAgreements"), href: "/rate-agreements", icon: DollarSign, testId: "nav-rate-agreements" },
-  { id: "6", name: t("nav.humanResources"), href: "/human-resources", icon: Users, testId: "nav-human-resources" },
+  { id: "4", name: t("nav.messages"), href: "/messages", icon: Mail, testId: "nav-messages" },
+  { id: "5", name: t("nav.proposals"), href: "/proposals", icon: Sparkles, testId: "nav-proposals" },
+  { id: "6", name: t("nav.salesOrders"), href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
+  { id: "7", name: t("nav.rateAgreements"), href: "/rate-agreements", icon: DollarSign, testId: "nav-rate-agreements" },
+  { id: "8", name: t("nav.humanResources"), href: "/human-resources", icon: Users, testId: "nav-human-resources" },
 ];
 
 // Systems group
