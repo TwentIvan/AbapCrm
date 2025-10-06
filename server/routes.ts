@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { db } from "./db";
-import { sql, inArray, eq, and } from "drizzle-orm";
+import { sql, inArray, eq, and, desc, asc } from "drizzle-orm";
 import { generateVPNAutomationScript, discoverVPNConnections, discoverAvailableVPNSoftware, testVPNConnection } from "./vpn-automation";
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
@@ -804,11 +804,34 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
-      const tasksList = await db.select().from(tasks)
+      const tasksList = await db.select({
+        id: tasks.id,
+        title: tasks.title,
+        description: tasks.description,
+        status: tasks.status,
+        priority: tasks.priority,
+        taskType: tasks.taskType,
+        projectId: tasks.projectId,
+        parentTaskId: tasks.parentTaskId,
+        userId: tasks.userId,
+        assignedTo: tasks.assignedTo,
+        sapSystemId: tasks.sapSystemId,
+        dueDate: tasks.dueDate,
+        completedAt: tasks.completedAt,
+        estimatedEffort: tasks.estimatedEffort,
+        remainingEffort: tasks.remainingEffort,
+        completionPercentage: tasks.completionPercentage,
+        createdAt: tasks.createdAt,
+        updatedAt: tasks.updatedAt,
+        organizationId: tasks.organizationId,
+        projectName: projects.name,
+      }).from(tasks)
+        .leftJoin(projects, eq(tasks.projectId, projects.id))
         .where(and(
           eq(tasks.userId, req.user!.id),
           inArray(tasks.organizationId, organizationIds)
-        ));
+        ))
+        .orderBy(desc(tasks.updatedAt));
       res.json(tasksList);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
@@ -1633,17 +1656,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Calendar Events
   app.get("/api/calendar-events", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    try {
-      const organizationIds = await getOrganizationIdsForFilter(req);
-      const eventsList = await db.select().from(calendarEvents)
-        .where(and(
-          eq(calendarEvents.userId, req.user!.id),
-          inArray(calendarEvents.organizationId, organizationIds)
-        ));
-      res.json(eventsList);
-    } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
-    }
+    const events = await storage.getCalendarEvents(req.user!.id);
+    res.json(events);
   });
 
   app.get("/api/calendar-events/:id", async (req, res) => {
@@ -1836,17 +1850,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Timesheets
   app.get("/api/timesheets", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    try {
-      const organizationIds = await getOrganizationIdsForFilter(req);
-      const timesheetsList = await db.select().from(timesheets)
-        .where(and(
-          eq(timesheets.userId, req.user!.id),
-          inArray(timesheets.organizationId, organizationIds)
-        ));
-      res.json(timesheetsList);
-    } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
-    }
+    const timesheets = await storage.getTimesheets(req.user!.id);
+    res.json(timesheets);
   });
 
   app.get("/api/timesheets/:id", async (req, res) => {
@@ -2236,17 +2241,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Comments
   app.get("/api/comments", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    try {
-      const organizationIds = await getOrganizationIdsForFilter(req);
-      const commentsList = await db.select().from(comments)
-        .where(and(
-          eq(comments.userId, req.user!.id),
-          inArray(comments.organizationId, organizationIds)
-        ));
-      res.json(commentsList);
-    } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
-    }
+    const comments = await storage.getComments(req.user!.id);
+    res.json(comments);
   });
 
   app.get("/api/comments/project/:projectId", async (req, res) => {
@@ -3412,17 +3408,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Sales Orders
   app.get("/api/sales-orders", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    try {
-      const organizationIds = await getOrganizationIdsForFilter(req);
-      const ordersList = await db.select().from(salesOrders)
-        .where(and(
-          eq(salesOrders.userId, req.user!.id),
-          inArray(salesOrders.organizationId, organizationIds)
-        ));
-      res.json(ordersList);
-    } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
-    }
+    const orders = await storage.getSalesOrders(req.user!.id);
+    res.json(orders);
   });
 
   app.get("/api/sales-orders/:id", async (req, res) => {
@@ -3580,17 +3567,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Rate Agreements
   app.get("/api/rate-agreements", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    try {
-      const organizationIds = await getOrganizationIdsForFilter(req);
-      const agreementsList = await db.select().from(rateAgreements)
-        .where(and(
-          eq(rateAgreements.userId, req.user!.id),
-          inArray(rateAgreements.organizationId, organizationIds)
-        ));
-      res.json(agreementsList);
-    } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
-    }
+    const agreements = await storage.getRateAgreements(req.user!.id);
+    res.json(agreements);
   });
 
   app.get("/api/rate-agreements/:id", async (req, res) => {
@@ -4490,17 +4468,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // System Credentials (unified SAP + VPN)
   app.get("/api/system-credentials", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    try {
-      const organizationIds = await getOrganizationIdsForFilter(req);
-      const credentialsList = await db.select().from(systemCredentials)
-        .where(and(
-          eq(systemCredentials.userId, req.user!.id),
-          inArray(systemCredentials.organizationId, organizationIds)
-        ));
-      res.json(credentialsList);
-    } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
-    }
+    const credentials = await storage.getSystemCredentials(req.user!.id);
+    res.json(credentials);
   });
 
   app.get("/api/system-credentials/:id", async (req, res) => {
