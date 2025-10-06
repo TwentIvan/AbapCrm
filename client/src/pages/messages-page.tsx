@@ -210,6 +210,13 @@ export default function MessagesPage() {
     queryKey: ["/api/feedback/custom-reasons"],
   });
 
+  // Query per le proposte AI disponibili
+  const { data: proposals = [] } = useQuery<any[]>({
+    queryKey: ["/api/proposals"],
+    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchIntervalInBackground: true,
+  });
+
   // Query per il contenuto renderizzato del messaggio selezionato
   const { data: renderedContent } = useQuery<RenderedMessageContent>({
     queryKey: ["/api/messages", selectedMessage?.id, "rendered"],
@@ -1128,6 +1135,7 @@ export default function MessagesPage() {
                           ) : (
                             filteredAndSortedMessages.map((message) => {
                             const linkedObject = getLinkedObjectName(message);
+                            const messageProposals = proposals.filter(p => p.messageId === message.id && p.status === 'pending');
                             
                             return (
                               <TableRow
@@ -1161,6 +1169,12 @@ export default function MessagesPage() {
                                       <Badge variant="outline" className="text-xs">
                                         <Link className="h-3 w-3 mr-1" />
                                         {linkedObject.type}: {linkedObject.name}
+                                      </Badge>
+                                    )}
+                                    {messageProposals.length > 0 && (
+                                      <Badge variant="outline" className="text-xs bg-purple-50 border-purple-200 text-purple-600">
+                                        <Sparkles className="h-3 w-3 mr-1" />
+                                        {messageProposals.length} {messageProposals.length === 1 ? 'proposta' : 'proposte'} AI
                                       </Badge>
                                     )}
                                     {message.confidenceScore && (
