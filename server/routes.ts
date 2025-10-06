@@ -1797,8 +1797,14 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/time-entries", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
+      const task = await storage.getTask(req.body.taskId, req.user!.id);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
       const entryData = insertTimeEntrySchema.parse({
         taskId: req.body.taskId,
+        organizationId: task.organizationId,
         startTime: req.body.startTime ? new Date(req.body.startTime) : new Date(),
         endTime: req.body.endTime ? new Date(req.body.endTime) : undefined,
         description: req.body.description || undefined,
