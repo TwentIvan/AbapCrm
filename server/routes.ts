@@ -1797,13 +1797,9 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/time-entries", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      console.log('[TIME-ENTRY] Creating entry:', { taskId: req.body.taskId, userId: req.user!.id });
-      
       // Get task to retrieve organizationId (using direct DB query to avoid organizationId filter)
       const [task] = await db.select().from(tasks)
         .where(and(eq(tasks.id, req.body.taskId), eq(tasks.userId, req.user!.id)));
-      
-      console.log('[TIME-ENTRY] Task query result:', task ? { id: task.id, organizationId: task.organizationId } : 'NOT FOUND');
       
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
