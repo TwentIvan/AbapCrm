@@ -2740,7 +2740,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const results: any = {
         project: null,
         partner: null,
-        tasks: []
+        tasks: [],
+        contacts: []
       };
       
       // 1. Create or update partner
@@ -2815,6 +2816,39 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
               await storage.updateTask(task.id, { sourceMessageIds: updatedSourceIds }, userId, organizationId);
             }
             if (task) results.tasks.push(task);
+          }
+        }
+      }
+      
+      // 4. Create contacts (with duplicate checking by email)
+      if (proposalData.contacts && Array.isArray(proposalData.contacts)) {
+        for (const contactProposal of proposalData.contacts) {
+          // Skip if no email (email is required for contacts)
+          if (!contactProposal.email) continue;
+          
+          // Check if contact already exists by email
+          const existingContact = await storage.getContactByEmail(contactProposal.email, userId, organizationId);
+          
+          if (!existingContact) {
+            // Create new contact
+            const contactData: any = {
+              name: contactProposal.name,
+              email: contactProposal.email,
+              phone: contactProposal.phone || null,
+              position: contactProposal.position || null,
+              company: contactProposal.company || null,
+              notes: contactProposal.notes || null,
+              partnerId: results.partner?.id || null,
+              userId,
+              organizationId
+            };
+            const contact = await storage.createContact(contactData, { userId });
+            results.contacts.push(contact);
+            console.log(`[PROPOSAL APPLY] Created contact: ${contact.name} (${contact.email})`);
+          } else {
+            // Contact already exists, skip creation
+            results.contacts.push(existingContact);
+            console.log(`[PROPOSAL APPLY] Skipped duplicate contact: ${existingContact.name} (${existingContact.email})`);
           }
         }
       }

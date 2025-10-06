@@ -60,9 +60,10 @@ export default function ProposalsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       toast({
         title: "Proposta applicata",
-        description: "Le entità sono state create con successo",
+        description: "Le entità sono state create con successo, inclusi i contatti estratti",
       });
       setShowApplyDialog(false);
       setSelectedProposal(null);
