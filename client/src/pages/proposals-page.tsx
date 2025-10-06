@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,16 @@ export default function ProposalsPage() {
     refetchInterval: 5000, // Refresh ogni 5 secondi per aggiornamenti rapidi
     refetchIntervalInBackground: true,
   });
+
+  // Sincronizza la proposta selezionata con i dati aggiornati
+  useEffect(() => {
+    if (selectedProposal && proposals.length > 0) {
+      const updatedProposal = proposals.find(p => p.id === selectedProposal.id);
+      if (updatedProposal && JSON.stringify(updatedProposal.proposalData) !== JSON.stringify(selectedProposal.proposalData)) {
+        setSelectedProposal(updatedProposal);
+      }
+    }
+  }, [proposals, selectedProposal]);
 
   const applyProposalMutation = useMutation({
     mutationFn: (proposalId: string) =>
