@@ -1797,7 +1797,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/time-entries", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const task = await storage.getTask(req.body.taskId, req.user!.id);
+      // Get task to retrieve organizationId (using direct DB query to avoid organizationId filter)
+      const [task] = await db.select().from(tasks)
+        .where(and(eq(tasks.id, req.body.taskId), eq(tasks.userId, req.user!.id)));
+      
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
       }

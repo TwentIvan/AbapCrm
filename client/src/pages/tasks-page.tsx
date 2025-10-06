@@ -137,6 +137,12 @@ function TaskTimerButtons({ task }: { task: Task }) {
   const hasRunningTimer = !!runningEntry;
 
   const handleStart = (e?: any) => {
+    console.log('🔵 START CLICKED!', { taskId: task.id, taskTitle: task.title });
+    console.log('🔵 Button state:', { 
+      isPending: startTimerMutation.isPending, 
+      hasRunningTimer,
+      runningEntry 
+    });
     e?.stopPropagation(); // Prevent event bubbling
     startTimerMutation.mutate();
   };
@@ -249,7 +255,11 @@ function TaskTimerButtons({ task }: { task: Task }) {
             <Button
               size="sm"
               className="bg-blue-600 hover:bg-blue-700 text-white border-0"
-              onClick={handleStart}
+              onClick={(e) => {
+                console.log('🟢 BUTTON ONCLICK TRIGGERED');
+                handleStart(e);
+              }}
+              onMouseDown={() => console.log('🟡 BUTTON MOUSEDOWN')}
               disabled={startTimerMutation.isPending || hasRunningTimer}
               data-testid={`button-start-timer-${task.id}`}
               data-timer-button="true"
