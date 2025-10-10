@@ -46,21 +46,27 @@ function NavItem({ item, isActive }: { item: any; isActive: boolean }) {
 
   return (
     <div 
-      className="w-full p-2 rounded-md group flex items-center cursor-pointer transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
+      className="w-full cursor-pointer transition-all duration-200 sidebar-nav-item"
       data-testid={item.testId}
       onClick={() => setLocation(item.href)}
     >
       <div 
-        className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1" 
-        style={{ 
-          backgroundColor: isActive ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.1)', 
-          border: '1px solid rgba(59, 130, 246, 0.2)', 
-          minWidth: '240px', 
-          maxWidth: '240px' 
-        }}
+        className={cn(
+          "flex items-center gap-3 px-4 py-3 rounded-xl nav-box transition-all duration-200",
+          "bg-white dark:bg-gray-800 shadow-sm hover:shadow-md",
+          isActive && "bg-blue-50 dark:bg-blue-900/30"
+        )}
       >
-        <Icon className="h-5 w-5 flex-shrink-0 mr-3 text-muted-foreground" />
-        <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
+        <div className={cn(
+          "p-2 rounded-lg transition-colors",
+          isActive ? "bg-blue-500" : "bg-blue-400"
+        )}>
+          <Icon className="h-5 w-5 flex-shrink-0 text-white" />
+        </div>
+        <span className={cn(
+          "text-sm font-medium flex-1",
+          isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
+        )}>{item.name}</span>
       </div>
     </div>
   );
@@ -73,29 +79,37 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
   return (
     <div className="space-y-1">
       <div 
-        className="w-full p-2 rounded-md group flex items-center transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20"
+        className="w-full transition-all duration-200 sidebar-nav-item"
         data-testid={item.testId}
       >
         <div 
-          className="flex items-center px-3 py-2 rounded-full nav-box transition-colors flex-1 pointer-events-none" 
-          style={{ 
-            backgroundColor: hasActiveChild ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.1)', 
-            border: '1px solid rgba(59, 130, 246, 0.2)', 
-            minWidth: '240px', 
-            maxWidth: '240px' 
-          }}
+          className={cn(
+            "flex items-center gap-3 px-4 py-3 rounded-xl nav-box transition-all duration-200",
+            "bg-white dark:bg-gray-800 shadow-sm hover:shadow-md",
+            hasActiveChild && "bg-blue-50 dark:bg-blue-900/30"
+          )}
         >
-          <Icon className="h-6 w-6 flex-shrink-0 mr-3 text-muted-foreground" />
-          <span className="text-base font-medium flex-1 text-muted-foreground">{item.name}</span>
+          <div className={cn(
+            "p-2 rounded-lg transition-colors",
+            hasActiveChild ? "bg-blue-500" : "bg-blue-400"
+          )}>
+            <Icon className="h-5 w-5 flex-shrink-0 text-white" />
+          </div>
+          <span className={cn(
+            "text-sm font-medium flex-1",
+            hasActiveChild ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
+          )}>{item.name}</span>
           <button 
             onClick={onToggle}
-            className="ml-2 w-6 h-6 rounded-full border border-current hover:bg-white/20 transition-colors flex items-center justify-center pointer-events-auto"
-            style={{ borderColor: 'rgba(59, 130, 246, 0.9)', color: 'rgba(59, 130, 246, 0.9)' }}
+            className={cn(
+              "ml-2 w-6 h-6 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center justify-center",
+              "text-blue-500 dark:text-blue-400"
+            )}
           >
             {isOpen ? (
-              <Minus className="h-3 w-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+              <Minus className="h-3 w-3" />
             ) : (
-              <Plus className="h-3 w-3" style={{ color: 'rgba(59, 130, 246, 0.9)' }} />
+              <Plus className="h-3 w-3" />
             )}
           </button>
         </div>
@@ -111,26 +125,33 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
   const Icon = item.icon;
 
   return (
-    <div className="ml-4">
-      <div className="w-full p-2 rounded-md group flex items-center transition-colors sidebar-nav-item text-muted-foreground hover:bg-muted/20">
-        <button 
-          className="flex items-center px-3 py-1 rounded-full nav-box transition-colors flex-1 cursor-pointer border-0 bg-transparent" 
-          style={{ 
-            backgroundColor: isActive ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.08)', 
-            border: '1px solid rgba(59, 130, 246, 0.15)', 
-            minWidth: '220px', 
-            maxWidth: '220px' 
-          }}
-          onClick={() => {
-            console.log('Child clicked:', item.name);
-            setLocation(item.href);
-          }}
-          data-testid={item.testId}
-          type="button"
+    <div className="ml-6">
+      <div 
+        className="w-full cursor-pointer transition-all duration-200 sidebar-nav-item"
+        onClick={() => {
+          console.log('Child clicked:', item.name);
+          setLocation(item.href);
+        }}
+        data-testid={item.testId}
+      >
+        <div 
+          className={cn(
+            "flex items-center gap-3 px-4 py-2.5 rounded-xl nav-box transition-all duration-200",
+            "bg-white dark:bg-gray-800 shadow-sm hover:shadow-md",
+            isActive && "bg-blue-50 dark:bg-blue-900/30"
+          )}
         >
-          <Icon className="h-5 w-5 flex-shrink-0 mr-2 text-muted-foreground" />
-          <span className="text-sm font-medium flex-1 text-muted-foreground text-left">{item.name}</span>
-        </button>
+          <div className={cn(
+            "p-1.5 rounded-lg transition-colors",
+            isActive ? "bg-blue-500" : "bg-blue-400"
+          )}>
+            <Icon className="h-4 w-4 flex-shrink-0 text-white" />
+          </div>
+          <span className={cn(
+            "text-sm font-medium flex-1",
+            isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
+          )}>{item.name}</span>
+        </div>
       </div>
     </div>
   );
