@@ -92,9 +92,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const getButtonStyle = (buttonId: string, hoveredId: string | null) => {
     const isHovered = buttonId === hoveredId;
     return {
-      backgroundColor: 'rgba(59, 130, 246, 0.1)',
       borderRadius: isHovered ? '2rem' : '50%',
-      border: '1px solid rgba(59, 130, 246, 0.2)',
       width: isHovered ? 'auto' : '3.5rem',
       height: '3.5rem',
       minWidth: isHovered ? '200px' : '3.5rem',
@@ -115,11 +113,9 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         <div className="flex items-stretch space-x-1">
           {/* Area Title with Icon */}
           <div 
-            className="flex items-center space-x-3 px-4 py-2 shadow-sm"
+            className="flex items-center space-x-3 px-4 py-2 bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg transition-all duration-200"
             style={{ 
-              background: 'linear-gradient(to right, rgba(59, 130, 246, 0.15), rgba(255, 255, 255, 0.8))',
-              borderRadius: '3rem 0 0 3rem',
-              border: '1px solid rgba(59, 130, 246, 0.2)'
+              borderRadius: '3rem 0 0 3rem'
             }}
           >
             <AreaIcon className="text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
@@ -135,11 +131,9 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           
           {/* Search Box - espandibile */}
           <div 
-            className="flex items-center px-4 py-2 shadow-sm cursor-pointer transition-all duration-300"
+            className="flex items-center px-4 py-2 bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg cursor-pointer transition-all duration-300"
             style={{ 
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
               borderRadius: '0 3rem 3rem 0',
-              border: '1px solid rgba(59, 130, 246, 0.2)',
               width: isSearchOpen ? '300px' : 'auto',
               minWidth: isSearchOpen ? '300px' : 'auto'
             }}
@@ -198,7 +192,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <Link href="/messages">
                 <Button 
                   variant="ghost" 
-                  className="flex items-center"
+                  className="flex items-center bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg"
                   style={getButtonStyle('messages', hoveredButton)}
                   onMouseEnter={() => setHoveredButton('messages')}
                   onMouseLeave={() => setHoveredButton(null)}
@@ -217,7 +211,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <Link href="/calendar">
                 <Button 
                   variant="ghost" 
-                  className="flex items-center"
+                  className="flex items-center bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg"
                   style={getButtonStyle('calendar', hoveredButton)}
                   onMouseEnter={() => setHoveredButton('calendar')}
                   onMouseLeave={() => setHoveredButton(null)}
@@ -236,7 +230,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <Link href="/planning-calendar">
                 <Button 
                   variant="ghost" 
-                  className="flex items-center"
+                  className="flex items-center bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg"
                   style={getButtonStyle('planning', hoveredButton)}
                   onMouseEnter={() => setHoveredButton('planning')}
                   onMouseLeave={() => setHoveredButton(null)}
@@ -258,7 +252,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           
           {/* User & Organization Box with Switch */}
           {user && (
-            <div className="relative rounded-full px-4 py-2 flex items-center space-x-4" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+            <div className="relative rounded-full px-4 py-2 flex items-center space-x-4 bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg transition-all duration-200">
               {/* Language Selector - Bandiera Flat */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
