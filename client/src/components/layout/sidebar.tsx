@@ -52,8 +52,8 @@ function NavItem({ item, isActive }: { item: any; isActive: boolean }) {
     >
       <div 
         className={cn(
-          "flex items-center gap-3 px-4 py-3 rounded-xl nav-box transition-all duration-200",
-          "bg-blue-50/60 dark:bg-blue-900/30 shadow-sm hover:shadow-md",
+          "flex items-center gap-3 px-4 py-2 rounded-xl nav-box transition-all duration-200",
+          "bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg",
           isActive && "bg-blue-100/80 dark:bg-blue-900/50"
         )}
       >
@@ -84,8 +84,8 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
       >
         <div 
           className={cn(
-            "flex items-center gap-3 px-4 py-3 rounded-xl nav-box transition-all duration-200",
-            "bg-blue-50/60 dark:bg-blue-900/30 shadow-sm hover:shadow-md",
+            "flex items-center gap-3 px-4 py-2 rounded-xl nav-box transition-all duration-200",
+            "bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg",
             hasActiveChild && "bg-blue-100/80 dark:bg-blue-900/50"
           )}
         >
@@ -136,8 +136,8 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
       >
         <div 
           className={cn(
-            "flex items-center gap-3 px-4 py-2.5 rounded-xl nav-box transition-all duration-200",
-            "bg-blue-50/60 dark:bg-blue-900/30 shadow-sm hover:shadow-md",
+            "flex items-center gap-3 px-4 py-1.5 rounded-xl nav-box transition-all duration-200",
+            "bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg",
             isActive && "bg-blue-100/80 dark:bg-blue-900/50"
           )}
         >
