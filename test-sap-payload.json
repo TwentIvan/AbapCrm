@@ -1,0 +1,39 @@
+{
+  "projectId": "550e8400-e29b-41d4-a716-446655440000",
+  "requests": [
+    {
+      "requestNumber": "DEVK900001",
+      "description": "Test Transport Request",
+      "status": "modifiable",
+      "owner": "TESTUSER",
+      "targetSystem": "PRD",
+      "createdDate": "2025-01-13T10:00:00Z",
+      "category": "Development",
+      "tasks": [
+        {
+          "taskNumber": "DEVK900002",
+          "description": "Development Task",
+          "taskType": "development",
+          "owner": "TESTUSER",
+          "status": "modifiable"
+        }
+      ],
+      "objects": [
+        {
+          "objectType": "program",
+          "objectName": "Z_TEST_PROGRAM",
+          "packageName": "Z_PACKAGE",
+          "taskNumber": "DEVK900002",
+          "content": [
+            {
+              "contentType": "abap_code",
+              "content": "REPORT z_test_program.\nWRITE: / 'Hello World'.",
+              "lineNumber": 1,
+              "language": "ABAP"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
