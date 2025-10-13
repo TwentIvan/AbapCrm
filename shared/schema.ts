@@ -902,6 +902,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   comments: many(comments),
   sapSystems: many(sapSystems),
   transportRequests: many(transportRequests),
+  sapTransportRequests: many(sapTransportRequests),
   interventionDocuments: many(interventionDocuments),
 }));
 
@@ -1473,6 +1474,99 @@ export type EmailVerificationToken = typeof emailVerificationTokens.$inferSelect
 export type InsertEmailVerificationToken = typeof emailVerificationTokens.$inferInsert;
 export const insertEmailVerificationTokenSchema = createInsertSchema(emailVerificationTokens).omit({ id: true, createdAt: true, updatedAt: true });
 
+// SAP Transport Request System
+export const sapTransportStatusEnum = pgEnum("sap_transport_status", ["modifiable", "released", "imported", "error"]);
+export const sapTaskTypeEnum = pgEnum("sap_task_type", ["development", "customizing", "repair"]);
+export const sapObjectTypeEnum = pgEnum("sap_object_type", ["program", "function", "class", "table", "view", "report", "screen", "smartform", "webdynpro", "other"]);
+
+// Transport Requests - Richieste di trasporto SAP
+export const sapTransportRequests = pgTable("sap_transport_requests", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // SAP identifiers
+  requestNumber: text("request_number").notNull().unique(), // es. DEVK900123
+  description: text("description").notNull(),
+  status: sapTransportStatusEnum("status").default("modifiable").notNull(),
+  owner: text("owner").notNull(), // SAP username
+  targetSystem: text("target_system"), // Sistema target (es. QAS, PRD)
+  
+  // Project association
+  projectId: uuid("project_id").references(() => projects.id).notNull(),
+  
+  // Organization context
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  
+  // SAP dates
+  createdDate: timestamp("created_date"),
+  releasedDate: timestamp("released_date"),
+  importedDate: timestamp("imported_date"),
+  
+  // Metadata
+  sapSystemId: uuid("sap_system_id").references(() => sapSystems.id), // Sistema SAP di origine
+  category: text("category"), // Categoria trasporto (es. CUST, WORKBENCH)
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Transport Tasks - Task associati alle transport request
+export const sapTransportTasks = pgTable("sap_transport_tasks", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // SAP identifiers
+  taskNumber: text("task_number").notNull().unique(), // es. DEVK900124
+  requestId: uuid("request_id").references(() => sapTransportRequests.id, { onDelete: "cascade" }).notNull(),
+  description: text("description"),
+  taskType: sapTaskTypeEnum("task_type").default("development").notNull(),
+  owner: text("owner").notNull(), // SAP username
+  status: sapTransportStatusEnum("status").default("modifiable").notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Transport Objects - Oggetti modificati nelle transport request
+export const sapTransportObjects = pgTable("sap_transport_objects", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // SAP identifiers
+  requestId: uuid("request_id").references(() => sapTransportRequests.id, { onDelete: "cascade" }).notNull(),
+  taskId: uuid("task_id").references(() => sapTransportTasks.id, { onDelete: "cascade" }),
+  
+  // Object info
+  objectType: sapObjectTypeEnum("object_type").default("other").notNull(),
+  objectName: text("object_name").notNull(), // Nome oggetto SAP
+  objectKey: text("object_key"), // Chiave oggetto (es. per funzioni, classi)
+  packageName: text("package_name"), // Package/Devclass
+  
+  // Lock info
+  lockStatus: text("lock_status"), // Stato del lock
+  lockedBy: text("locked_by"), // Utente che ha il lock
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Object Content - Contenuto degli oggetti SAP
+export const sapObjectContent = pgTable("sap_object_content", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  objectId: uuid("object_id").references(() => sapTransportObjects.id, { onDelete: "cascade" }).notNull(),
+  
+  // Content info
+  contentType: text("content_type").notNull(), // "source", "documentation", "metadata"
+  content: text("content").notNull(), // Contenuto effettivo (codice sorgente, doc, etc.)
+  lineNumber: integer("line_number"), // Numero riga per il codice
+  
+  // Metadata
+  language: text("language").default("ABAP"), // Linguaggio
+  encoding: text("encoding").default("UTF-8"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Audit Log System - Universal change tracking for all entities
 export const auditActionEnum = pgEnum("audit_action", ["CREATE", "UPDATE", "DELETE"]);
 
@@ -1565,6 +1659,23 @@ export type EmailTrainingSelection = typeof emailTrainingSelections.$inferSelect
 export type InsertEmailTrainingSelection = typeof emailTrainingSelections.$inferInsert;
 export const insertEmailTrainingSelectionSchema = createInsertSchema(emailTrainingSelections).omit({ id: true, createdAt: true, updatedAt: true });
 
+// SAP Transport Request types
+export type SapTransportRequest = typeof sapTransportRequests.$inferSelect;
+export type InsertSapTransportRequest = typeof sapTransportRequests.$inferInsert;
+export const insertSapTransportRequestSchema = createInsertSchema(sapTransportRequests).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type SapTransportTask = typeof sapTransportTasks.$inferSelect;
+export type InsertSapTransportTask = typeof sapTransportTasks.$inferInsert;
+export const insertSapTransportTaskSchema = createInsertSchema(sapTransportTasks).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type SapTransportObject = typeof sapTransportObjects.$inferSelect;
+export type InsertSapTransportObject = typeof sapTransportObjects.$inferInsert;
+export const insertSapTransportObjectSchema = createInsertSchema(sapTransportObjects).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type SapObjectContent = typeof sapObjectContent.$inferSelect;
+export type InsertSapObjectContent = typeof sapObjectContent.$inferInsert;
+export const insertSapObjectContentSchema = createInsertSchema(sapObjectContent).omit({ id: true, createdAt: true, updatedAt: true });
+
 // Relations for audit logs
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   user: one(users, {
@@ -1643,6 +1754,58 @@ export const emailTrainingSelectionsRelations = relations(emailTrainingSelection
   user: one(users, {
     fields: [emailTrainingSelections.userId],
     references: [users.id],
+  }),
+}));
+
+// Relations for SAP Transport Requests
+export const sapTransportRequestsRelations = relations(sapTransportRequests, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [sapTransportRequests.projectId],
+    references: [projects.id],
+  }),
+  user: one(users, {
+    fields: [sapTransportRequests.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [sapTransportRequests.organizationId],
+    references: [organizations.id],
+  }),
+  sapSystem: one(sapSystems, {
+    fields: [sapTransportRequests.sapSystemId],
+    references: [sapSystems.id],
+  }),
+  tasks: many(sapTransportTasks),
+  objects: many(sapTransportObjects),
+}));
+
+// Relations for SAP Transport Tasks
+export const sapTransportTasksRelations = relations(sapTransportTasks, ({ one, many }) => ({
+  request: one(sapTransportRequests, {
+    fields: [sapTransportTasks.requestId],
+    references: [sapTransportRequests.id],
+  }),
+  objects: many(sapTransportObjects),
+}));
+
+// Relations for SAP Transport Objects
+export const sapTransportObjectsRelations = relations(sapTransportObjects, ({ one, many }) => ({
+  request: one(sapTransportRequests, {
+    fields: [sapTransportObjects.requestId],
+    references: [sapTransportRequests.id],
+  }),
+  task: one(sapTransportTasks, {
+    fields: [sapTransportObjects.taskId],
+    references: [sapTransportTasks.id],
+  }),
+  contents: many(sapObjectContent),
+}));
+
+// Relations for SAP Object Content
+export const sapObjectContentRelations = relations(sapObjectContent, ({ one }) => ({
+  object: one(sapTransportObjects, {
+    fields: [sapObjectContent.objectId],
+    references: [sapTransportObjects.id],
   }),
 }));
 
