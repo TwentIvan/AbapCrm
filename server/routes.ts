@@ -5028,6 +5028,64 @@ Format the response as professional documentation suitable for client delivery.`
     }
   });
 
+  // SAP Transport Requests - GET endpoints
+  app.get("/api/sap-transport-requests", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const requests = await storage.getSapTransportRequests(req.user!.id);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching SAP transport requests:", error);
+      res.status(500).json({ error: "Failed to fetch SAP transport requests" });
+    }
+  });
+
+  app.get("/api/sap-transport-requests/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const request = await storage.getSapTransportRequest(req.params.id, req.user!.id);
+      if (!request) return res.sendStatus(404);
+      res.json(request);
+    } catch (error) {
+      console.error("Error fetching SAP transport request:", error);
+      res.status(500).json({ error: "Failed to fetch SAP transport request" });
+    }
+  });
+
+  app.get("/api/sap-transport-requests/:requestId/tasks", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const tasks = await storage.getSapTransportTasks(req.params.requestId, req.user!.id);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching SAP transport tasks:", error);
+      res.status(500).json({ error: "Failed to fetch SAP transport tasks" });
+    }
+  });
+
+  app.get("/api/sap-transport-requests/:requestId/objects", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const objects = await storage.getSapTransportObjects(req.params.requestId, req.user!.id);
+      res.json(objects);
+    } catch (error) {
+      console.error("Error fetching SAP transport objects:", error);
+      res.status(500).json({ error: "Failed to fetch SAP transport objects" });
+    }
+  });
+
+  app.delete("/api/sap-transport-requests/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const success = await storage.deleteSapTransportRequest(req.params.id, req.user!.id);
+      if (!success) return res.sendStatus(404);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting SAP transport request:", error);
+      res.status(500).json({ error: "Failed to delete SAP transport request" });
+    }
+  });
+
   // SAP Transport Requests - Endpoint per ricevere dati da SAP ABAP report
   app.post("/api/sap-transport", async (req, res) => {
     // Verifica autenticazione: API key o sessione utente

@@ -25,6 +25,7 @@ import RateAgreementsPage from "@/pages/rate-agreements-page";
 import HumanResourcesPage from "@/pages/human-resources-page";
 import SalesOrdersPage from "@/pages/sales-orders-page";
 import SapSystemsPage from "@/pages/sap-systems-page";
+import SapTransportPage from "@/pages/sap-transport-page";
 import { SystemCredentialsPage } from "@/pages/system-credentials-page";
 import VPNConnectionsPage from "@/pages/vpn-connections-page";
 import EmailAccountsPage from "@/pages/email-accounts-page";
@@ -58,6 +59,7 @@ function Router() {
       <ProtectedRoute path="/sap-systems" component={SapSystemsPage} />
       <ProtectedRoute path="/sap-systems/new" component={SapSystemsPage} />
       <ProtectedRoute path="/sap-systems/:id/edit" component={SapSystemsPage} />
+      <ProtectedRoute path="/sap-transport" component={SapTransportPage} />
       <ProtectedRoute path="/vpn-connections" component={VPNConnectionsPage} />
       <ProtectedRoute path="/vpn-connections/new" component={VPNConnectionsPage} />
       <ProtectedRoute path="/vpn-connections/:id/edit" component={VPNConnectionsPage} />

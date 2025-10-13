@@ -50,7 +50,7 @@ import {
   type SapObjectContent, type InsertSapObjectContent
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, isNotNull } from "drizzle-orm";
+import { eq, and, desc, asc, isNotNull, inArray } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import MemoryStore from "memorystore";
@@ -387,8 +387,11 @@ export interface IStorage {
   createSapTransportTask(task: InsertSapTransportTask): Promise<SapTransportTask>;
   createSapTransportObject(object: InsertSapTransportObject): Promise<SapTransportObject>;
   createSapObjectContent(content: InsertSapObjectContent): Promise<SapObjectContent>;
-  getSapTransportRequests(projectId: string, userId: string, organizationId: string): Promise<SapTransportRequest[]>;
-  getSapTransportRequest(id: string, userId: string, organizationId: string): Promise<SapTransportRequest | undefined>;
+  getSapTransportRequests(userId: string): Promise<SapTransportRequest[]>;
+  getSapTransportRequest(id: string, userId: string): Promise<SapTransportRequest | undefined>;
+  getSapTransportTasks(requestId: string, userId: string): Promise<SapTransportTask[]>;
+  getSapTransportObjects(requestId: string, userId: string): Promise<SapTransportObject[]>;
+  deleteSapTransportRequest(id: string, userId: string): Promise<boolean>;
 
   sessionStore: session.Store;
 }
@@ -3480,26 +3483,83 @@ export class DatabaseStorage implements IStorage {
     return newContent;
   }
 
-  async getSapTransportRequests(projectId: string, userId: string, organizationId: string): Promise<SapTransportRequest[]> {
+  async getSapTransportRequests(userId: string): Promise<SapTransportRequest[]> {
+    const user = await this.getUser(userId);
+    if (!user) return [];
+    
+    const userOrgs = await this.getUserOrganizations(userId);
+    const organizationIds = userOrgs.map(org => org.id);
+    
+    if (organizationIds.length === 0) return [];
+    
     return await db.query.sapTransportRequests.findMany({
-      where: and(
-        eq(sapTransportRequests.projectId, projectId),
-        eq(sapTransportRequests.userId, userId),
-        eq(sapTransportRequests.organizationId, organizationId)
-      ),
+      where: inArray(sapTransportRequests.organizationId, organizationIds),
       orderBy: desc(sapTransportRequests.createdAt),
     });
   }
 
-  async getSapTransportRequest(id: string, userId: string, organizationId: string): Promise<SapTransportRequest | undefined> {
+  async getSapTransportRequest(id: string, userId: string): Promise<SapTransportRequest | undefined> {
+    const userOrgs = await this.getUserOrganizations(userId);
+    const organizationIds = userOrgs.map(org => org.id);
+    
+    if (organizationIds.length === 0) return undefined;
+    
     const request = await db.query.sapTransportRequests.findFirst({
       where: and(
         eq(sapTransportRequests.id, id),
-        eq(sapTransportRequests.userId, userId),
-        eq(sapTransportRequests.organizationId, organizationId)
+        inArray(sapTransportRequests.organizationId, organizationIds)
       ),
     });
     return request || undefined;
+  }
+
+  async getSapTransportTasks(requestId: string, userId: string): Promise<SapTransportTask[]> {
+    // Verifica prima che la request appartenga all'utente
+    const request = await this.getSapTransportRequest(requestId, userId);
+    if (!request) return [];
+    
+    return await db.query.sapTransportTasks.findMany({
+      where: eq(sapTransportTasks.requestId, requestId),
+      orderBy: asc(sapTransportTasks.taskNumber),
+    });
+  }
+
+  async getSapTransportObjects(requestId: string, userId: string): Promise<SapTransportObject[]> {
+    // Verifica prima che la request appartenga all'utente
+    const request = await this.getSapTransportRequest(requestId, userId);
+    if (!request) return [];
+    
+    return await db.query.sapTransportObjects.findMany({
+      where: eq(sapTransportObjects.requestId, requestId),
+      orderBy: asc(sapTransportObjects.objectName),
+    });
+  }
+
+  async deleteSapTransportRequest(id: string, userId: string): Promise<boolean> {
+    // Verifica che la request appartenga all'utente
+    const request = await this.getSapTransportRequest(id, userId);
+    if (!request) return false;
+
+    // Elimina in cascata: prima content, poi objects, poi tasks, poi request
+    const objects = await db.query.sapTransportObjects.findMany({
+      where: eq(sapTransportObjects.requestId, id),
+    });
+    
+    // Elimina contenuti
+    for (const obj of objects) {
+      await db.delete(sapObjectContent).where(eq(sapObjectContent.objectId, obj.id));
+    }
+    
+    // Elimina oggetti
+    await db.delete(sapTransportObjects).where(eq(sapTransportObjects.requestId, id));
+    
+    // Elimina task
+    await db.delete(sapTransportTasks).where(eq(sapTransportTasks.requestId, id));
+    
+    // Elimina la request
+    await db.delete(sapTransportRequests).where(eq(sapTransportRequests.id, id));
+    
+    return true;
   }
 }
 

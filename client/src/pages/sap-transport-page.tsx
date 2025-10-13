@@ -1,0 +1,499 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
+import { useOrganization } from "@/contexts/organization-context";
+import Sidebar from "@/components/layout/sidebar";
+import Header from "@/components/layout/header";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Package, FileCode, Calendar, User, Trash2, Info, ChevronDown, ChevronRight } from "lucide-react";
+import { format } from "date-fns";
+
+interface SapTransportRequest {
+  id: string;
+  projectId: string;
+  userId: string;
+  organizationId: string;
+  requestNumber: string;
+  description: string;
+  status: 'modifiable' | 'released' | 'imported' | 'error';
+  owner: string;
+  targetSystem?: string;
+  createdDate?: Date;
+  releasedDate?: Date;
+  category?: string;
+  sapSystemId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface SapTransportTask {
+  id: string;
+  requestId: string;
+  taskNumber: string;
+  description?: string;
+  taskType: 'development' | 'customizing' | 'repair';
+  owner: string;
+  status: 'modifiable' | 'released' | 'imported' | 'error';
+  createdAt: Date;
+}
+
+interface SapTransportObject {
+  id: string;
+  requestId: string;
+  taskId?: string;
+  objectType: 'program' | 'function' | 'class' | 'table' | 'view' | 'report' | 'screen' | 'smartform' | 'webdynpro' | 'other';
+  objectName: string;
+  objectKey?: string;
+  packageName?: string;
+  createdAt: Date;
+}
+
+const statusColors = {
+  modifiable: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100",
+  released: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
+  imported: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100",
+  error: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
+};
+
+const statusLabels = {
+  modifiable: "Modificabile",
+  released: "Rilasciata",
+  imported: "Importata",
+  error: "Errore",
+};
+
+const taskTypeLabels = {
+  development: "Sviluppo",
+  customizing: "Customizing",
+  repair: "Correzione",
+};
+
+const objectTypeLabels = {
+  program: "Programma",
+  function: "Funzione",
+  class: "Classe",
+  table: "Tabella",
+  view: "Vista",
+  report: "Report",
+  screen: "Dynpro",
+  smartform: "SmartForm",
+  webdynpro: "WebDynpro",
+  other: "Altro",
+};
+
+export default function SapTransportPage() {
+  const [selectedRequest, setSelectedRequest] = useState<SapTransportRequest | null>(null);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
+  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { currentOrganizationId } = useOrganization();
+
+  const { data: requests = [], isLoading } = useQuery<SapTransportRequest[]>({
+    queryKey: ["/api/sap-transport-requests"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+  });
+
+  const { data: tasks = [] } = useQuery<SapTransportTask[]>({
+    queryKey: ["/api/sap-transport-requests", selectedRequest?.id, "tasks"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!selectedRequest?.id,
+  });
+
+  const { data: objects = [] } = useQuery<SapTransportObject[]>({
+    queryKey: ["/api/sap-transport-requests", selectedRequest?.id, "objects"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!selectedRequest?.id,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      await apiRequest("DELETE", `/api/sap-transport-requests/${requestId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sap-transport-requests"] });
+      setShowDeleteDialog(false);
+      setSelectedRequest(null);
+      toast({
+        title: "Transport Request eliminata",
+        description: "La transport request è stata eliminata con successo.",
+      });
+    },
+  });
+
+  const handleViewDetails = (request: SapTransportRequest) => {
+    setSelectedRequest(request);
+    setShowDetailsDialog(true);
+  };
+
+  const handleDelete = (request: SapTransportRequest) => {
+    setSelectedRequest(request);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (selectedRequest) {
+      deleteMutation.mutate(selectedRequest.id);
+    }
+  };
+
+  const toggleExpanded = (requestId: string) => {
+    setExpandedRequests(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(requestId)) {
+        newSet.delete(requestId);
+      } else {
+        newSet.add(requestId);
+      }
+      return newSet;
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+        <Sidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header title="SAP Transport" subtitle="Gestione transport request" />
+          <main className="flex-1 overflow-y-auto p-6">
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-64" />
+              <Skeleton className="h-96 w-full" />
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      <Sidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header title="SAP Transport" subtitle="Gestione transport request" />
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white" data-testid="heading-sap-transport">
+                  SAP Transport Requests
+                </h1>
+                <p className="text-gray-500 dark:text-gray-400 mt-1">
+                  Gestisci le transport request ricevute dai sistemi SAP
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-sm" data-testid="badge-count">
+                  {requests.length} Transport{requests.length !== 1 ? 's' : ''}
+                </Badge>
+              </div>
+            </div>
+
+            {requests.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Package className="h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Nessuna Transport Request
+                  </h3>
+                  <p className="text-gray-500 dark:text-gray-400 text-center max-w-md">
+                    Le transport request inviate dai report ABAP appariranno qui. 
+                    Usa l'endpoint API per inviare i dati dal sistema SAP.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {requests.map((request) => (
+                  <Card key={request.id} className="hover:shadow-lg transition-shadow" data-testid={`card-request-${request.id}`}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleExpanded(request.id)}
+                              className="h-6 w-6 p-0"
+                              data-testid={`button-expand-${request.id}`}
+                            >
+                              {expandedRequests.has(request.id) ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <CardTitle className="text-xl" data-testid={`text-request-number-${request.id}`}>
+                              {request.requestNumber}
+                            </CardTitle>
+                            <Badge className={statusColors[request.status]} data-testid={`badge-status-${request.id}`}>
+                              {statusLabels[request.status]}
+                            </Badge>
+                          </div>
+                          <CardDescription className="mt-2 ml-9" data-testid={`text-description-${request.id}`}>
+                            {request.description}
+                          </CardDescription>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewDetails(request)}
+                            data-testid={`button-view-details-${request.id}`}
+                          >
+                            <Info className="h-4 w-4 mr-2" />
+                            Dettagli
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(request)}
+                            className="text-red-600 hover:text-red-700"
+                            data-testid={`button-delete-${request.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    
+                    {expandedRequests.has(request.id) && (
+                      <CardContent className="pt-0">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                              <User className="h-4 w-4" />
+                              Owner
+                            </p>
+                            <p className="font-medium text-gray-900 dark:text-white" data-testid={`text-owner-${request.id}`}>
+                              {request.owner}
+                            </p>
+                          </div>
+                          {request.targetSystem && (
+                            <div>
+                              <p className="text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                                <Package className="h-4 w-4" />
+                                Sistema Target
+                              </p>
+                              <p className="font-medium text-gray-900 dark:text-white">
+                                {request.targetSystem}
+                              </p>
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              Creata
+                            </p>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {format(new Date(request.createdAt), "dd/MM/yyyy HH:mm")}
+                            </p>
+                          </div>
+                          {request.releasedDate && (
+                            <div>
+                              <p className="text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                                <Calendar className="h-4 w-4" />
+                                Rilasciata
+                              </p>
+                              <p className="font-medium text-gray-900 dark:text-white">
+                                {format(new Date(request.releasedDate), "dd/MM/yyyy HH:mm")}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Details Dialog */}
+          <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle data-testid="dialog-title-details">
+                  Dettagli Transport Request: {selectedRequest?.requestNumber}
+                </DialogTitle>
+                <DialogDescription>
+                  Visualizza tasks e oggetti collegati a questa transport request
+                </DialogDescription>
+              </DialogHeader>
+              
+              {selectedRequest && (
+                <Tabs defaultValue="info" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="info" data-testid="tab-info">Informazioni</TabsTrigger>
+                    <TabsTrigger value="tasks" data-testid="tab-tasks">
+                      Tasks {tasks.length > 0 && `(${tasks.length})`}
+                    </TabsTrigger>
+                    <TabsTrigger value="objects" data-testid="tab-objects">
+                      Oggetti {objects.length > 0 && `(${objects.length})`}
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="info" className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Request Number</label>
+                        <p className="text-lg font-semibold text-gray-900 dark:text-white">{selectedRequest.requestNumber}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
+                        <div className="mt-1">
+                          <Badge className={statusColors[selectedRequest.status]}>
+                            {statusLabels[selectedRequest.status]}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Descrizione</label>
+                        <p className="text-gray-900 dark:text-white">{selectedRequest.description}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Owner</label>
+                        <p className="text-gray-900 dark:text-white">{selectedRequest.owner}</p>
+                      </div>
+                      {selectedRequest.targetSystem && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Sistema Target</label>
+                          <p className="text-gray-900 dark:text-white">{selectedRequest.targetSystem}</p>
+                        </div>
+                      )}
+                      {selectedRequest.category && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Categoria</label>
+                          <p className="text-gray-900 dark:text-white">{selectedRequest.category}</p>
+                        </div>
+                      )}
+                      <div>
+                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data Creazione</label>
+                        <p className="text-gray-900 dark:text-white">
+                          {format(new Date(selectedRequest.createdAt), "dd/MM/yyyy HH:mm:ss")}
+                        </p>
+                      </div>
+                      {selectedRequest.releasedDate && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data Rilascio</label>
+                          <p className="text-gray-900 dark:text-white">
+                            {format(new Date(selectedRequest.releasedDate), "dd/MM/yyyy HH:mm:ss")}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="tasks">
+                    {tasks.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        Nessun task associato a questa transport request
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Task Number</TableHead>
+                            <TableHead>Tipo</TableHead>
+                            <TableHead>Owner</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Descrizione</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {tasks.map((task) => (
+                            <TableRow key={task.id} data-testid={`row-task-${task.id}`}>
+                              <TableCell className="font-medium">{task.taskNumber}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{taskTypeLabels[task.taskType]}</Badge>
+                              </TableCell>
+                              <TableCell>{task.owner}</TableCell>
+                              <TableCell>
+                                <Badge className={statusColors[task.status]}>
+                                  {statusLabels[task.status]}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="max-w-xs truncate">{task.description || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="objects">
+                    {objects.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        Nessun oggetto associato a questa transport request
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Tipo</TableHead>
+                            <TableHead>Nome Oggetto</TableHead>
+                            <TableHead>Package</TableHead>
+                            <TableHead>Object Key</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {objects.map((obj) => (
+                            <TableRow key={obj.id} data-testid={`row-object-${obj.id}`}>
+                              <TableCell>
+                                <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                                  <FileCode className="h-3 w-3" />
+                                  {objectTypeLabels[obj.objectType]}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-mono font-semibold">{obj.objectName}</TableCell>
+                              <TableCell>{obj.packageName || '-'}</TableCell>
+                              <TableCell className="font-mono text-sm">{obj.objectKey || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Sei sicuro di voler eliminare la transport request <strong>{selectedRequest?.requestNumber}</strong>?
+                  Questa azione eliminerà anche tutti i task e gli oggetti associati e non può essere annullata.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="button-cancel-delete">Annulla</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={confirmDelete}
+                  className="bg-red-600 hover:bg-red-700"
+                  data-testid="button-confirm-delete"
+                >
+                  Elimina
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </main>
+      </div>
+    </div>
+  );
+}
