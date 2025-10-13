@@ -4,6 +4,7 @@ import {
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
   emailVerificationTokens, organizationDomains, emailFeedbacks, customFeedbackReasons, emailTrainingSelections, proposals,
+  sapTransportRequests, sapTransportTasks, sapTransportObjects, sapObjectContent,
   type User, type InsertUser,
   type Organization, type InsertOrganization,
   type UserOrganization, type InsertUserOrganization,
@@ -42,7 +43,11 @@ import {
   type EmailFeedback, type InsertEmailFeedback,
   type CustomFeedbackReason, type InsertCustomFeedbackReason,
   type EmailTrainingSelection, type InsertEmailTrainingSelection,
-  type Proposal, type InsertProposal
+  type Proposal, type InsertProposal,
+  type SapTransportRequest, type InsertSapTransportRequest,
+  type SapTransportTask, type InsertSapTransportTask,
+  type SapTransportObject, type InsertSapTransportObject,
+  type SapObjectContent, type InsertSapObjectContent
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull } from "drizzle-orm";
@@ -376,6 +381,14 @@ export interface IStorage {
   setResetToken(userId: string, token: string, expiry: Date): Promise<void>;
   getUserByResetToken(token: string): Promise<User | undefined>;
   clearResetToken(userId: string): Promise<void>;
+
+  // SAP Transport Requests
+  createSapTransportRequest(request: InsertSapTransportRequest): Promise<SapTransportRequest>;
+  createSapTransportTask(task: InsertSapTransportTask): Promise<SapTransportTask>;
+  createSapTransportObject(object: InsertSapTransportObject): Promise<SapTransportObject>;
+  createSapObjectContent(content: InsertSapObjectContent): Promise<SapObjectContent>;
+  getSapTransportRequests(projectId: string, userId: string, organizationId: string): Promise<SapTransportRequest[]>;
+  getSapTransportRequest(id: string, userId: string, organizationId: string): Promise<SapTransportRequest | undefined>;
 
   sessionStore: session.Store;
 }
@@ -3432,6 +3445,61 @@ export class DatabaseStorage implements IStorage {
       },
       orderBy: [asc(emailConfigs.email)],
     });
+  }
+
+  // SAP Transport Requests Implementation
+  async createSapTransportRequest(request: InsertSapTransportRequest): Promise<SapTransportRequest> {
+    const [newRequest] = await db
+      .insert(sapTransportRequests)
+      .values(request)
+      .returning();
+    return newRequest;
+  }
+
+  async createSapTransportTask(task: InsertSapTransportTask): Promise<SapTransportTask> {
+    const [newTask] = await db
+      .insert(sapTransportTasks)
+      .values(task)
+      .returning();
+    return newTask;
+  }
+
+  async createSapTransportObject(object: InsertSapTransportObject): Promise<SapTransportObject> {
+    const [newObject] = await db
+      .insert(sapTransportObjects)
+      .values(object)
+      .returning();
+    return newObject;
+  }
+
+  async createSapObjectContent(content: InsertSapObjectContent): Promise<SapObjectContent> {
+    const [newContent] = await db
+      .insert(sapObjectContent)
+      .values(content)
+      .returning();
+    return newContent;
+  }
+
+  async getSapTransportRequests(projectId: string, userId: string, organizationId: string): Promise<SapTransportRequest[]> {
+    return await db.query.sapTransportRequests.findMany({
+      where: and(
+        eq(sapTransportRequests.projectId, projectId),
+        eq(sapTransportRequests.userId, userId),
+        eq(sapTransportRequests.organizationId, organizationId)
+      ),
+      orderBy: desc(sapTransportRequests.createdAt),
+    });
+  }
+
+  async getSapTransportRequest(id: string, userId: string, organizationId: string): Promise<SapTransportRequest | undefined> {
+    const request = await db.query.sapTransportRequests.findFirst({
+      where: and(
+        eq(sapTransportRequests.id, id),
+        eq(sapTransportRequests.userId, userId),
+        eq(sapTransportRequests.organizationId, organizationId)
+      ),
+    });
+    return request || undefined;
   }
 }
 
