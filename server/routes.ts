@@ -19,6 +19,7 @@ import {
   insertDiscoveredVpnSoftwareSchema, insertDiscoveredVpnConfigurationSchema,
   insertOrganizationSchema, insertUserOrganizationSchema, insertOrganizationInvitationSchema,
   insertOrganizationDomainSchema, insertEmailFeedbackSchema, insertEmailTrainingSelectionSchema,
+  insertSapTransportRequestSchema, insertSapTransportTaskSchema, insertSapTransportObjectSchema, insertSapObjectContentSchema,
   type EmailConfig,
   projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements,
   humanResources, sapSystems, systemCredentials, timesheets, comments
@@ -5023,6 +5024,138 @@ Format the response as professional documentation suitable for client delivery.`
       res.status(500).json({ 
         error: "Failed to retrieve audit history", 
         details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
+  // SAP Transport Requests - Endpoint per ricevere dati da SAP ABAP report
+  app.post("/api/sap-transport", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      
+      // Validazione dati in arrivo da SAP
+      const sapDataSchema = z.object({
+        projectId: z.string().uuid(),
+        requests: z.array(z.object({
+          requestNumber: z.string(),
+          description: z.string(),
+          status: z.enum(['modifiable', 'released', 'imported', 'error']).optional(),
+          owner: z.string(),
+          targetSystem: z.string().optional(),
+          createdDate: z.string().optional(),
+          releasedDate: z.string().optional(),
+          category: z.string().optional(),
+          sapSystemId: z.string().uuid().optional(),
+          tasks: z.array(z.object({
+            taskNumber: z.string(),
+            description: z.string().optional(),
+            taskType: z.enum(['development', 'customizing', 'repair']).optional(),
+            owner: z.string(),
+            status: z.enum(['modifiable', 'released', 'imported', 'error']).optional(),
+          })).optional(),
+          objects: z.array(z.object({
+            objectType: z.enum(['program', 'function', 'class', 'table', 'view', 'report', 'screen', 'smartform', 'webdynpro', 'other']).optional(),
+            objectName: z.string(),
+            objectKey: z.string().optional(),
+            packageName: z.string().optional(),
+            taskNumber: z.string().optional(),
+            content: z.array(z.object({
+              contentType: z.string(),
+              content: z.string(),
+              lineNumber: z.number().optional(),
+              language: z.string().optional(),
+            })).optional(),
+          })).optional(),
+        }))
+      });
+      
+      const validatedData = sapDataSchema.parse(req.body);
+      
+      // Salva le transport request
+      const savedRequests = [];
+      
+      for (const requestData of validatedData.requests) {
+        // Crea la transport request
+        const transportRequest = await storage.createSapTransportRequest({
+          projectId: validatedData.projectId,
+          userId,
+          organizationId,
+          requestNumber: requestData.requestNumber,
+          description: requestData.description,
+          status: requestData.status || 'modifiable',
+          owner: requestData.owner,
+          targetSystem: requestData.targetSystem,
+          createdDate: requestData.createdDate ? new Date(requestData.createdDate) : undefined,
+          releasedDate: requestData.releasedDate ? new Date(requestData.releasedDate) : undefined,
+          category: requestData.category,
+          sapSystemId: requestData.sapSystemId,
+        });
+        
+        // Salva i task
+        const savedTasks = [];
+        if (requestData.tasks) {
+          for (const taskData of requestData.tasks) {
+            const task = await storage.createSapTransportTask({
+              requestId: transportRequest.id,
+              taskNumber: taskData.taskNumber,
+              description: taskData.description,
+              taskType: taskData.taskType || 'development',
+              owner: taskData.owner,
+              status: taskData.status || 'modifiable',
+            });
+            savedTasks.push(task);
+          }
+        }
+        
+        // Salva gli oggetti
+        if (requestData.objects) {
+          for (const objectData of requestData.objects) {
+            // Trova il task corrispondente se specificato
+            const taskId = objectData.taskNumber 
+              ? savedTasks.find(t => t.taskNumber === objectData.taskNumber)?.id 
+              : undefined;
+            
+            const sapObject = await storage.createSapTransportObject({
+              requestId: transportRequest.id,
+              taskId,
+              objectType: objectData.objectType || 'other',
+              objectName: objectData.objectName,
+              objectKey: objectData.objectKey,
+              packageName: objectData.packageName,
+            });
+            
+            // Salva il contenuto
+            if (objectData.content) {
+              for (const contentData of objectData.content) {
+                await storage.createSapObjectContent({
+                  objectId: sapObject.id,
+                  contentType: contentData.contentType,
+                  content: contentData.content,
+                  lineNumber: contentData.lineNumber,
+                  language: contentData.language,
+                });
+              }
+            }
+          }
+        }
+        
+        savedRequests.push(transportRequest);
+      }
+      
+      res.json({ 
+        success: true, 
+        message: `Salvate ${savedRequests.length} transport request con successo`,
+        requests: savedRequests 
+      });
+      
+    } catch (error) {
+      console.error("Errore salvataggio SAP transport:", error);
+      res.status(500).json({ 
+        error: "Errore nel salvataggio delle transport request SAP",
+        details: error instanceof Error ? error.message : String(error)
       });
     }
   });
