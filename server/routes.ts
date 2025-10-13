@@ -5030,11 +5030,37 @@ Format the response as professional documentation suitable for client delivery.`
 
   // SAP Transport Requests - Endpoint per ricevere dati da SAP ABAP report
   app.post("/api/sap-transport", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    // Verifica autenticazione: API key o sessione utente
+    const apiKey = req.headers['x-api-key'] as string;
+    const validApiKey = process.env.SAP_API_KEY;
+    
+    let userId: string;
+    let organizationId: string;
+    
+    if (apiKey && validApiKey && apiKey === validApiKey) {
+      // Autenticazione via API key - usa userId e organizationId dal payload
+      const bodyUserId = req.body.userId as string | undefined;
+      const bodyOrgId = req.body.organizationId as string | undefined;
+      
+      if (!bodyUserId || !bodyOrgId) {
+        return res.status(400).json({ 
+          error: "userId e organizationId sono richiesti quando si usa API key" 
+        });
+      }
+      
+      userId = bodyUserId;
+      organizationId = bodyOrgId;
+    } else if (req.isAuthenticated()) {
+      // Autenticazione via sessione
+      userId = req.user!.id;
+      organizationId = getOrganizationId(req);
+    } else {
+      return res.status(401).json({ 
+        error: "Autenticazione richiesta: fornire X-API-Key header o sessione valida" 
+      });
+    }
     
     try {
-      const userId = req.user!.id;
-      const organizationId = getOrganizationId(req);
       
       // Validazione dati in arrivo da SAP
       const sapDataSchema = z.object({
