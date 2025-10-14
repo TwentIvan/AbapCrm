@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, FileCode, Calendar, User, Trash2, Info, ChevronDown, ChevronRight } from "lucide-react";
+import { Package, FileCode, Calendar, User, Trash2, Info, ChevronDown, ChevronRight, ClipboardPaste } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 
 interface SapTransportRequest {
@@ -94,6 +95,8 @@ export default function SapTransportPage() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
+  const [showPasteDialog, setShowPasteDialog] = useState(false);
+  const [jsonContent, setJsonContent] = useState("");
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -131,6 +134,40 @@ export default function SapTransportPage() {
       });
     },
   });
+
+  const pasteMutation = useMutation({
+    mutationFn: async (jsonContent: string) => {
+      return await apiRequest("POST", "/api/sap-transport/paste", { jsonContent });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sap-transport-requests"] });
+      toast({
+        title: "Transport Request importata",
+        description: "Il JSON è stato importato con successo.",
+      });
+      setShowPasteDialog(false);
+      setJsonContent("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore nell'importazione",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePasteJson = () => {
+    if (!jsonContent.trim()) {
+      toast({
+        title: "Attenzione",
+        description: "Incolla un JSON valido prima di importare.",
+        variant: "destructive",
+      });
+      return;
+    }
+    pasteMutation.mutate(jsonContent);
+  };
 
   const handleViewDetails = (request: SapTransportRequest) => {
     setSelectedRequest(request);
@@ -194,6 +231,14 @@ export default function SapTransportPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setShowPasteDialog(true)}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-100 shadow-md"
+                  data-testid="button-paste-json"
+                >
+                  <ClipboardPaste className="h-4 w-4 mr-2" />
+                  Incolla JSON
+                </Button>
                 <Badge variant="outline" className="text-sm" data-testid="badge-count">
                   {requests.length} Transport{requests.length !== 1 ? 's' : ''}
                 </Badge>
@@ -492,6 +537,52 @@ export default function SapTransportPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Paste JSON Dialog */}
+          <Dialog open={showPasteDialog} onOpenChange={setShowPasteDialog}>
+            <DialogContent className="max-w-4xl max-h-[80vh]">
+              <DialogHeader>
+                <DialogTitle>Incolla JSON Transport Request</DialogTitle>
+                <DialogDescription>
+                  Incolla il JSON della transport request da importare. Il sistema validerà automaticamente il formato.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Textarea
+                  placeholder='{"request_number": "DEVK900123", "description": "...", ...}'
+                  value={jsonContent}
+                  onChange={(e) => setJsonContent(e.target.value)}
+                  className="font-mono text-sm min-h-[400px]"
+                  data-testid="textarea-json-content"
+                />
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Formato richiesto: JSON con campi request_number, description, owner, project_id
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowPasteDialog(false);
+                        setJsonContent("");
+                      }}
+                      data-testid="button-cancel-paste"
+                    >
+                      Annulla
+                    </Button>
+                    <Button
+                      onClick={handlePasteJson}
+                      disabled={pasteMutation.isPending || !jsonContent.trim()}
+                      className="bg-blue-600 hover:bg-blue-700"
+                      data-testid="button-import-json"
+                    >
+                      {pasteMutation.isPending ? "Importazione..." : "Importa"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
     </div>
