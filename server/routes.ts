@@ -5244,6 +5244,51 @@ Format the response as professional documentation suitable for client delivery.`
     }
   });
 
+  // SAP Transport Requests - Endpoint per incollare JSON manualmente
+  app.post("/api/sap-transport/paste", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { jsonContent } = req.body;
+      
+      if (!jsonContent || typeof jsonContent !== 'string') {
+        return res.status(400).json({ error: "Campo 'jsonContent' mancante o non valido" });
+      }
+      
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      
+      // Usa il processore per validare e salvare il JSON
+      const { SapTransportProcessor } = await import('./sap-transport-processor');
+      const result = await SapTransportProcessor.processTransportRequestJson(
+        jsonContent,
+        userId,
+        organizationId,
+        `paste-${Date.now()}` // messageId fittizio per il paste manuale
+      );
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: "Transport Request importata con successo",
+          requestId: result.requestId 
+        });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          error: result.error 
+        });
+      }
+      
+    } catch (error) {
+      console.error("Errore processamento JSON incollato:", error);
+      res.status(500).json({ 
+        error: "Errore nel processamento del JSON",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
