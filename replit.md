@@ -4,11 +4,20 @@ This CRM application is designed for SAP ABAP freelancers to manage projects, ta
 
 ## SAP Transport Request Integration
 
-The system supports two methods for receiving Transport Requests from SAP systems:
+The system supports three methods for receiving Transport Requests from SAP systems:
 1. **Direct API** - ABAP reports can send JSON via POST to `/api/sap-transport` with API key authentication
 2. **Email Integration** - ABAP reports can send JSON attachments to a dedicated email folder, making the system completely independent from client IT infrastructure
+3. **Manual Paste** - Users can manually paste JSON via UI dialog, launched directly from project actions
 
 The email-based approach provides full autonomy: users configure a dedicated email folder (e.g., "SAP Transport"), and the IMAP service automatically processes JSON attachments to create Transport Requests with tasks and objects in the database.
+
+## SAP Shortcut Integration
+
+Projects with an associated SAP system can launch the **ZTHU_DOCUMENTATION** program directly:
+- The system generates a `.sap` shortcut file with connection parameters
+- Clicking the project action "Lancia ZTHU_DOCUMENTATION" downloads the shortcut and opens the paste JSON dialog
+- Users execute the ABAP program, copy the JSON output, and paste it directly into the dialog
+- The Transport Request is automatically created and linked to the project
 
 # User Preferences
 

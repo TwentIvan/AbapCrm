@@ -30,7 +30,7 @@ export function SapPasteJsonDialog({ open, onOpenChange, projectId }: SapPasteJs
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sap-transport"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sap-transport-requests"] });
       toast({
         title: "Transport Request importata",
         description: "Il JSON è stato processato e la Transport Request è stata creata con successo.",
