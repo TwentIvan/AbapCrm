@@ -158,7 +158,7 @@ export class ImapEmailService {
         });
 
         stream.once('end', () => {
-          this.parseAndSaveEmail(body, seqno);
+          this.parseAndSaveEmail(body, seqno, this.config.folder);
         });
       });
 
@@ -176,7 +176,7 @@ export class ImapEmailService {
     });
   }
 
-  private async parseAndSaveEmail(rawEmail: string, seqno: number) {
+  private async parseAndSaveEmail(rawEmail: string, seqno: number, folderName: string) {
     try {
       const parsed = await simpleParser(rawEmail);
       
@@ -221,6 +221,35 @@ export class ImapEmailService {
         }
         
         console.log(`[IMAP] Saved ${attachments.length} unique attachments (${parsed.attachments.length} total, ${parsed.attachments.length - attachments.length} duplicates removed)`);
+        
+        // 🚀 PROCESSO SAP TRANSPORT REQUESTS da JSON allegati
+        // Se siamo nella cartella SAP Transport, processiamo i JSON
+        const isSapTransportFolder = folderName.toLowerCase().includes('sap') || 
+                                      folderName.toLowerCase().includes('transport');
+        
+        if (isSapTransportFolder && parsed.attachments && parsed.attachments.length > 0) {
+          const { SapTransportProcessor } = await import('./sap-transport-processor');
+          
+          for (const attachment of parsed.attachments) {
+            if (attachment.content && 
+                SapTransportProcessor.isTransportRequestJson(attachment.filename || '', attachment.content)) {
+              console.log(`[SAP-TR] Trovato JSON Transport Request: ${attachment.filename}`);
+              
+              const result = await SapTransportProcessor.processTransportRequestJson(
+                attachment.content.toString('utf-8'),
+                this.config.userId,
+                this.config.organizationId,
+                messageId
+              );
+              
+              if (result.success) {
+                console.log(`[SAP-TR] ✅ Transport Request processata con successo: ${result.requestId}`);
+              } else {
+                console.error(`[SAP-TR] ❌ Errore processamento TR: ${result.error}`);
+              }
+            }
+          }
+        }
       }
 
       // Helper to get first email address
