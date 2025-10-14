@@ -1,0 +1,38 @@
+{
+  "request_number": "DEVK900999",
+  "description": "Test Transport Request da Email",
+  "owner": "TESTUSER",
+  "project_id": "4dbaa04c-4b5a-40bd-90f9-312149b920b2",
+  "status": "modifiable",
+  "target_system": "QAS",
+  "release_date": "2025-01-20T14:30:00Z",
+  "tasks": [
+    {
+      "task_number": "DEVK901000",
+      "description": "Task di test sviluppo",
+      "user": "TESTUSER",
+      "status": "modifiable"
+    }
+  ],
+  "objects": [
+    {
+      "object_name": "ZMM_TEST_REPORT",
+      "object_type": "program",
+      "lock_status": "locked",
+      "content": [
+        {
+          "line_number": 1,
+          "content": "REPORT zmm_test_report."
+        },
+        {
+          "line_number": 2,
+          "content": "* Report di test per Transport Request"
+        },
+        {
+          "line_number": 3,
+          "content": "WRITE: / 'Hello SAP Transport!'."
+        }
+      ]
+    }
+  ]
+}
