@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import { nanoid } from "nanoid";
+import { z } from "zod";
 import type { 
   InsertSapTransportRequest, 
   InsertSapTransportTask,
@@ -7,31 +8,39 @@ import type {
   InsertSapObjectContent 
 } from "@shared/schema";
 
-interface TransportRequestJson {
-  request_number: string;
-  description?: string;
-  status?: string;
-  owner?: string;
-  target_system?: string;
-  release_date?: string;
-  project_id?: string;
-  tasks?: Array<{
-    task_number: string;
-    description?: string;
-    user?: string;
-    status?: string;
-  }>;
-  objects?: Array<{
-    object_name: string;
-    object_type?: string;
-    description?: string;
-    lock_status?: string;
-    content?: Array<{
-      line_number: number;
-      content: string;
-    }>;
-  }>;
-}
+// Schema Zod completo per validazione JSON Transport Request
+const TransportContentSchema = z.object({
+  line_number: z.number().int().positive(),
+  content: z.string()
+});
+
+const TransportObjectSchema = z.object({
+  object_name: z.string().min(1, "object_name obbligatorio"),
+  object_type: z.enum(["program", "class", "function", "table", "view", "report", "screen", "smartform", "webdynpro", "other"]).optional(),
+  lock_status: z.string().optional(),
+  content: z.array(TransportContentSchema).optional()
+});
+
+const TransportTaskSchema = z.object({
+  task_number: z.string().min(1, "task_number obbligatorio"),
+  description: z.string().optional(),
+  user: z.string().min(1, "user obbligatorio per task"),
+  status: z.enum(["modifiable", "released", "imported", "error"]).optional()
+});
+
+const TransportRequestJsonSchema = z.object({
+  request_number: z.string().min(1, "request_number obbligatorio"),
+  description: z.string().min(1, "description obbligatoria"),
+  owner: z.string().min(1, "owner obbligatorio"),
+  project_id: z.string().uuid("project_id deve essere un UUID valido"),
+  status: z.enum(["modifiable", "released", "imported", "error"]).optional(),
+  target_system: z.string().optional(),
+  release_date: z.string().datetime().optional(), // ISO 8601 format
+  tasks: z.array(TransportTaskSchema).optional(),
+  objects: z.array(TransportObjectSchema).optional()
+});
+
+type TransportRequestJson = z.infer<typeof TransportRequestJsonSchema>;
 
 export class SapTransportProcessor {
   /**
@@ -47,26 +56,27 @@ export class SapTransportProcessor {
       console.log(`[SAP-TR] Processing Transport Request JSON for user ${userId}`);
       
       // Parse del JSON
-      const data: TransportRequestJson = JSON.parse(jsonContent);
-      
-      // Validazione campi obbligatori
-      if (!data.request_number) {
-        return { success: false, error: "Campo 'request_number' mancante nel JSON" };
-      }
-      if (!data.description) {
-        return { success: false, error: "Campo 'description' mancante nel JSON" };
-      }
-      if (!data.owner) {
-        return { success: false, error: "Campo 'owner' mancante nel JSON" };
-      }
-      if (!data.project_id) {
-        return { success: false, error: "Campo 'project_id' mancante nel JSON" };
+      let jsonData: any;
+      try {
+        jsonData = JSON.parse(jsonContent);
+      } catch (error) {
+        return { success: false, error: "JSON non valido o malformato" };
       }
       
-      // Verifica se la TR esiste già
+      // Validazione Zod completa
+      const validationResult = TransportRequestJsonSchema.safeParse(jsonData);
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+        console.error(`[SAP-TR] Validation errors: ${errors}`);
+        return { success: false, error: `Errori validazione JSON: ${errors}` };
+      }
+      
+      const data = validationResult.data;
+      
+      // Verifica se la TR esiste già (include organizationId per multi-org)
       const existingRequests = await storage.getSapTransportRequests(userId);
       const existingRequest = existingRequests.find(
-        (r) => r.requestNumber === data.request_number
+        (r) => r.requestNumber === data.request_number && r.organizationId === organizationId
       );
       
       if (existingRequest) {
@@ -78,14 +88,14 @@ export class SapTransportProcessor {
         };
       }
       
-      // Crea la Transport Request
+      // Crea la Transport Request (data.release_date già validata da Zod)
       const requestData: InsertSapTransportRequest = {
         userId,
         organizationId,
         projectId: data.project_id,
         requestNumber: data.request_number,
         description: data.description,
-        status: (data.status as "modifiable" | "released" | "imported" | "error") || "modifiable",
+        status: data.status || "modifiable",
         owner: data.owner,
         targetSystem: data.target_system || null,
         releasedDate: data.release_date ? new Date(data.release_date) : null
@@ -94,20 +104,15 @@ export class SapTransportProcessor {
       const newRequest = await storage.createSapTransportRequest(requestData);
       console.log(`[SAP-TR] Created Transport Request ${newRequest.requestNumber} (${newRequest.id})`);
       
-      // Processa Tasks se presenti
+      // Processa Tasks se presenti (già validati da Zod)
       if (data.tasks && data.tasks.length > 0) {
         for (const task of data.tasks) {
-          if (!task.user) {
-            console.warn(`[SAP-TR] Task ${task.task_number} skipped - missing 'user' field`);
-            continue;
-          }
-          
           const taskData: InsertSapTransportTask = {
             requestId: newRequest.id,
             taskNumber: task.task_number,
             description: task.description || null,
             owner: task.user,
-            status: (task.status as "modifiable" | "released" | "imported" | "error") || "modifiable",
+            status: task.status || "modifiable",
             taskType: "development" // Default
           };
           
@@ -116,13 +121,13 @@ export class SapTransportProcessor {
         console.log(`[SAP-TR] Created ${data.tasks.length} tasks for ${newRequest.requestNumber}`);
       }
       
-      // Processa Objects se presenti
+      // Processa Objects se presenti (già validati da Zod)
       if (data.objects && data.objects.length > 0) {
         for (const obj of data.objects) {
           const objectData: InsertSapTransportObject = {
             requestId: newRequest.id,
             objectName: obj.object_name,
-            objectType: (obj.object_type as "program" | "class" | "function" | "table" | "view" | "report" | "screen" | "smartform" | "webdynpro" | "other") || "other",
+            objectType: obj.object_type || "other",
             lockStatus: obj.lock_status || null
           };
           

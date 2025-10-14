@@ -2,6 +2,14 @@
 
 This CRM application is designed for SAP ABAP freelancers to manage projects, tasks, business deals, partners, and calendar events. It provides a unified dashboard for essential business management tools, including project tracking, deal pipeline, partner relationship management, and task organization, built as a full-stack web application. The application incorporates an AI-powered project agent for intelligent message analysis and semi-automatic project creation, along with robust multi-organization data filtering capabilities.
 
+## SAP Transport Request Integration
+
+The system supports two methods for receiving Transport Requests from SAP systems:
+1. **Direct API** - ABAP reports can send JSON via POST to `/api/sap-transport` with API key authentication
+2. **Email Integration** - ABAP reports can send JSON attachments to a dedicated email folder, making the system completely independent from client IT infrastructure
+
+The email-based approach provides full autonomy: users configure a dedicated email folder (e.g., "SAP Transport"), and the IMAP service automatically processes JSON attachments to create Transport Requests with tasks and objects in the database.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
