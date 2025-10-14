@@ -1,10 +1,14 @@
-# Configurazione SAP Transport via Email
+# Configurazione SAP Transport - Metodi di Acquisizione
 
 ## Come Funziona
 
-Il sistema permette di ricevere Transport Requests SAP tramite email invece che via API diretta. Questo ti rende completamente indipendente dall'IT del cliente.
+Il sistema offre **3 metodi** per acquisire Transport Requests SAP, garantendo massima flessibilità:
 
-## Setup
+1. **API Diretta** - Invio JSON via POST con API key (richiede accesso alla rete del cliente)
+2. **Email con Allegato JSON** - Il sistema estrae automaticamente i JSON dalle email (indipendente dall'IT)
+3. **Incolla Manuale JSON** - Copia/incolla diretto nella UI (fallback universale se email ha problemi)
+
+## Metodo 1: Email con Allegato JSON
 
 ### 1. Configura una Cartella Email Dedicata
 
@@ -69,7 +73,30 @@ Il sistema ABAP deve inviare un'email con un allegato JSON alla cartella configu
 - `tasks[]`: Array di task
 - `objects[]`: Array di oggetti modificati
 
-## Processamento
+## Metodo 2: Incolla JSON Manuale
+
+### Setup Rapido
+
+1. Vai su **Menu → SAP Transport Requests**
+2. Clicca il pulsante **"Incolla JSON"** in alto a destra
+3. Incolla il JSON della Transport Request nel campo di testo
+4. Clicca **"Importa"**
+
+### Vantaggi
+
+- ✅ Funziona sempre, anche se email ha problemi
+- ✅ Nessuna configurazione richiesta
+- ✅ Ideale per import singoli o test
+- ✅ Validazione immediata con messaggi di errore chiari
+
+### Quando Usarlo
+
+- L'email non funziona o è in manutenzione
+- Devi importare rapidamente una singola TR
+- Vuoi testare il sistema con dati di esempio
+- Il sistema ABAP non può inviare email
+
+## Processamento (valido per entrambi i metodi)
 
 1. Il sistema IMAP monitora la cartella configurata
 2. Quando riceve un'email con allegato JSON:
