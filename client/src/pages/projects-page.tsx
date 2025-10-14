@@ -19,8 +19,10 @@ import { UniversalTable, createStandardColumns } from "@/components/ui/universal
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { LayoutControlBox } from "@/components/ui/layout-control-box";
 import { TableConfiguration } from "@/components/ui/table-configuration";
-import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2, History, MessageSquare } from "lucide-react";
-import { Project, Partner } from "@shared/schema";
+import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2, History, MessageSquare, Workflow } from "lucide-react";
+import { Project, Partner, SapSystem } from "@shared/schema";
+import { SapPasteJsonDialog } from "@/components/dialogs/sap-paste-json-dialog";
+import { downloadZTHUDocumentationShortcut } from "@/lib/sap-shortcut";
 import ProjectForm from "@/components/forms/project-form";
 import ProjectFormContainer from "@/components/forms/project-form-container";
 import ProjectPlanner from "@/components/planning/project-planner";
@@ -52,6 +54,8 @@ export default function ProjectsPage() {
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showPlanner, setShowPlanner] = useState(false);
   const [selectedProjectForPlanner, setSelectedProjectForPlanner] = useState<Project | null>(null);
+  const [showSapPasteDialog, setShowSapPasteDialog] = useState(false);
+  const [selectedProjectForSap, setSelectedProjectForSap] = useState<Project | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -85,6 +89,15 @@ export default function ProjectsPage() {
     enabled: !!currentOrganizationId, // Wait for organization context
     staleTime: 30 * 60 * 1000, // 30 minutes
     refetchOnMount: false, // Use cache if available
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: sapSystems = [] } = useQuery<SapSystem[]>({
+    queryKey: ["/api/sap-systems"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+    staleTime: 30 * 60 * 1000,
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
 
@@ -163,6 +176,48 @@ export default function ProjectsPage() {
   const handleClosePlanner = () => {
     setShowPlanner(false);
     setSelectedProjectForPlanner(null);
+  };
+
+  const handleLaunchSapDocumentation = (project: Project) => {
+    // Trova il sistema SAP associato al progetto
+    const projectSapSystem = sapSystems.find(sys => sys.projectId === project.id);
+    
+    if (!projectSapSystem) {
+      toast({
+        title: "Sistema SAP non trovato",
+        description: "Nessun sistema SAP è collegato a questo progetto. Configurane uno prima di procedere.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Scarica il SAP shortcut per ZTHU_DOCUMENTATION
+    try {
+      downloadZTHUDocumentationShortcut({
+        systemName: projectSapSystem.name,
+        description: projectSapSystem.description || undefined,
+        serverHost: projectSapSystem.serverHost,
+        systemId: projectSapSystem.systemId,
+        systemNumber: projectSapSystem.systemNumber,
+        client: projectSapSystem.client,
+        language: "IT",
+      });
+
+      // Apri il dialog di paste JSON
+      setSelectedProjectForSap(project);
+      setShowSapPasteDialog(true);
+
+      toast({
+        title: "Shortcut SAP scaricato",
+        description: "Il file .sap è stato scaricato. Aprilo per lanciare ZTHU_DOCUMENTATION e poi incolla il JSON qui.",
+      });
+    } catch (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile generare lo shortcut SAP.",
+        variant: "destructive",
+      });
+    }
   };
 
   const confirmDelete = () => {
@@ -257,6 +312,15 @@ export default function ProjectsPage() {
               <Target className="mr-2 h-4 w-4" />
               Planner
             </DropdownMenuItem>
+            {sapSystems.some(sys => sys.projectId === project.id) && (
+              <DropdownMenuItem 
+                onClick={() => handleLaunchSapDocumentation(project)}
+                data-testid={`menu-sap-zthu-${project.id}`}
+              >
+                <Workflow className="mr-2 h-4 w-4" />
+                Lancia ZTHU_DOCUMENTATION
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem 
               onClick={() => handleSingleDelete(project)}
               className="text-destructive"
@@ -408,6 +472,13 @@ export default function ProjectsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* SAP Paste JSON Dialog */}
+      <SapPasteJsonDialog 
+        open={showSapPasteDialog} 
+        onOpenChange={setShowSapPasteDialog}
+        projectId={selectedProjectForSap?.id}
+      />
 
       {/* Table Configuration Dialog */}
       <TableConfiguration
