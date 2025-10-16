@@ -59,7 +59,7 @@ export function generateSapShortcut(params: SapShortcutParams): string {
       lines.push(`Type=Transaction`);
     } else if (params.programName) {
       lines.push(`Command=${params.programName}`);
-      lines.push(`Type=SystemCommand`);
+      lines.push(`Type=Report`);
     }
   }
   
