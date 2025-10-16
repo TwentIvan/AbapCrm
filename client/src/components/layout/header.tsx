@@ -121,8 +121,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
       </div>
       
       {/* Main Header */}
-      <div className="px-6 py-4">
-      <div className="flex items-center justify-between">
+      <div className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-stretch space-x-1">
           {/* Area Title with Icon */}
           <div 
@@ -440,7 +439,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             </div>
           )}
         </div>
-      </div>
       </div>
     </header>
   );
