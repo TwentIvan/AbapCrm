@@ -42,19 +42,22 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
     );
   }
 
-  // Raggruppa i task per OWNER (assignedToName o "Non assegnato")
-  const tasksByOwner = tasks.reduce((acc, task) => {
-    if (task.startDate && task.dueDate) { // Solo task con date complete
-      const owner = (task as any).assignedToName || "Non assegnato";
-      if (!acc[owner]) {
-        acc[owner] = [];
+  // Raggruppa i task per milestone, poi per owner
+  const tasksByMilestone = tasks.reduce((acc, task) => {
+    if (task.milestoneId && task.startDate && task.dueDate) {
+      if (!acc[task.milestoneId]) {
+        acc[task.milestoneId] = {};
       }
-      acc[owner].push(task);
+      const owner = (task as any).assignedToName || "Non assegnato";
+      if (!acc[task.milestoneId][owner]) {
+        acc[task.milestoneId][owner] = [];
+      }
+      acc[task.milestoneId][owner].push(task);
     }
     return acc;
-  }, {} as Record<string, Task[]>);
+  }, {} as Record<string, Record<string, Task[]>>);
 
-  // Lavora SOLO con giorni - niente conversioni Date o millisecondi
+  // Lavora SOLO con giorni
   const dateToDay = (dateStr: string): number => {
     const [year, month, day] = dateStr.split('-').map(Number);
     return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
@@ -89,10 +92,9 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
     return dateToDay(date1Str) - dateToDay(date2Str);
   };
   
-  // Calcola l'intervallo includendo TUTTE le date: milestone E task
+  // Calcola l'intervallo includendo TUTTE le date
   const allDays = validMilestones.flatMap(m => [dateToDay(m.startDate!), dateToDay(m.endDate!)]);
   
-  // Aggiungi le date dei task per auto-espandere il Gantt
   tasks.forEach(task => {
     if (task.startDate) {
       const taskStartStr = new Date(task.startDate).toISOString().split('T')[0];
@@ -147,7 +149,6 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
         const start2 = new Date(task2.startDate).toISOString().split('T')[0];
         const end2 = new Date(task2.dueDate).toISOString().split('T')[0];
         
-        // Check overlap
         const start1Day = dateToDay(start1);
         const end1Day = dateToDay(end1);
         const start2Day = dateToDay(start2);
@@ -249,7 +250,7 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
       <div className="sticky top-0 z-20 bg-background border-b">
         <div className="flex">
           <div className="w-48 px-4 py-3 font-semibold border-r bg-muted">
-            Owner
+            Milestone / Owner
           </div>
           <div className="flex-1 px-4 py-3 font-semibold">
             Timeline ({formatDateStr(minDateStr)} - {formatDateStr(maxDateStr)})
@@ -257,7 +258,7 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
         </div>
       </div>
 
-      {/* Milestone Rows */}
+      {/* Milestones con task raggruppati per owner */}
       {validMilestones.map((milestone) => {
         const startStr = dragState?.id === milestone.id && dragState.previewStartStr
           ? dragState.previewStartStr
@@ -269,111 +270,115 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
         const left = getPosition(startStr);
         const width = getWidth(startStr, endStr);
         const project = projects.find(p => p.id === milestone.projectId);
+        const milestoneTasksByOwner = tasksByMilestone[milestone.id] || {};
 
         return (
-          <div key={milestone.id} className="flex border-b hover:bg-muted/50 transition-colors">
-            <div className="w-48 px-4 py-4 border-r flex flex-col gap-1">
-              <div className="font-medium text-sm">{milestone.name}</div>
-              <div className="text-xs text-muted-foreground">{project?.name}</div>
-            </div>
-            
-            <div className="flex-1 relative h-16">
-              {/* Grid lines */}
-              {gridBoundaries.map((boundary) => (
-                <div
-                  key={boundary}
-                  className="absolute top-0 bottom-0 border-l border-border/30"
-                  style={{ left: `${(boundary / totalDays) * 100}%` }}
-                />
-              ))}
+          <div key={milestone.id}>
+            {/* Milestone Row */}
+            <div className="flex border-b hover:bg-muted/50 transition-colors">
+              <div className="w-48 px-4 py-4 border-r flex flex-col gap-1">
+                <div className="font-medium text-sm">{milestone.name}</div>
+                <div className="text-xs text-muted-foreground">{project?.name}</div>
+              </div>
               
-              {/* Milestone Bar */}
-              <div
-                className="absolute top-2 h-8 bg-primary/80 rounded cursor-move hover:bg-primary transition-colors flex items-center px-2"
-                style={{ left: `${left}%`, width: `${width}%` }}
-                onClick={() => onMilestoneClick?.(milestone)}
-                onMouseDown={(e) => handleMouseDown(e, milestone, 'move')}
-              >
-                <div className="flex items-center gap-2 text-xs text-primary-foreground truncate">
-                  <span className="font-medium">{formatDateStr(startStr)} - {formatDateStr(endStr)}</span>
-                  {milestone.progress !== null && milestone.progress !== undefined && (
-                    <Badge variant="secondary" className="text-xs">
-                      {milestone.progress}%
-                    </Badge>
-                  )}
-                </div>
+              <div className="flex-1 relative h-16">
+                {/* Grid lines */}
+                {gridBoundaries.map((boundary) => (
+                  <div
+                    key={boundary}
+                    className="absolute top-0 bottom-0 border-l border-border/30"
+                    style={{ left: `${(boundary / totalDays) * 100}%` }}
+                  />
+                ))}
                 
-                {/* Resize handles */}
+                {/* Milestone Bar */}
                 <div
-                  className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-primary-foreground/20"
-                  onMouseDown={(e) => handleMouseDown(e, milestone, 'resize-start')}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <div
-                  className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-primary-foreground/20"
-                  onMouseDown={(e) => handleMouseDown(e, milestone, 'resize-end')}
-                  onClick={(e) => e.stopPropagation()}
-                />
+                  className="absolute top-2 h-8 bg-primary/80 rounded cursor-move hover:bg-primary transition-colors flex items-center px-2"
+                  style={{ left: `${left}%`, width: `${width}%` }}
+                  onClick={() => onMilestoneClick?.(milestone)}
+                  onMouseDown={(e) => handleMouseDown(e, milestone, 'move')}
+                >
+                  <div className="flex items-center gap-2 text-xs text-primary-foreground truncate">
+                    <span className="font-medium">{formatDateStr(startStr)} - {formatDateStr(endStr)}</span>
+                    {milestone.progress !== null && milestone.progress !== undefined && (
+                      <Badge variant="secondary" className="text-xs">
+                        {milestone.progress}%
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {/* Resize handles */}
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-primary-foreground/20"
+                    onMouseDown={(e) => handleMouseDown(e, milestone, 'resize-start')}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-primary-foreground/20"
+                    onMouseDown={(e) => handleMouseDown(e, milestone, 'resize-end')}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
 
-      {/* Task Rows Grouped by Owner */}
-      {Object.entries(tasksByOwner).map(([owner, ownerTasks]) => {
-        const overlaps = getTaskOverlaps(ownerTasks);
-        
-        return (
-          <div key={owner} className="flex border-b hover:bg-muted/50 transition-colors">
-            <div className="w-48 px-4 py-4 border-r flex flex-col gap-1">
-              <div className="font-medium text-sm text-blue-600">{owner}</div>
-              <div className="text-xs text-muted-foreground">{ownerTasks.length} task</div>
-            </div>
-            
-            <div className="flex-1 relative h-16">
-              {/* Grid lines */}
-              {gridBoundaries.map((boundary) => (
-                <div
-                  key={boundary}
-                  className="absolute top-0 bottom-0 border-l border-border/30"
-                  style={{ left: `${(boundary / totalDays) * 100}%` }}
-                />
-              ))}
+            {/* Task Rows per questo milestone, raggruppati per owner */}
+            {Object.entries(milestoneTasksByOwner).map(([owner, ownerTasks]) => {
+              const overlaps = getTaskOverlaps(ownerTasks);
               
-              {/* Task Bars */}
-              {ownerTasks.map((task, index) => {
-                if (!task.startDate || !task.dueDate) return null;
-                
-                const taskStartStr = new Date(task.startDate).toISOString().split('T')[0];
-                const taskEndStr = new Date(task.dueDate).toISOString().split('T')[0];
-                const left = getPosition(taskStartStr);
-                const width = getWidth(taskStartStr, taskEndStr);
-                const hasOverlap = overlaps.get(task.id) || false;
-                
-                return (
-                  <div
-                    key={task.id}
-                    className={`absolute top-2 h-8 rounded flex items-center px-2 cursor-pointer transition-all hover:opacity-90 ${
-                      getStatusColor(task.status)
-                    } ${hasOverlap ? 'shadow-[0_0_8px_rgba(0,0,0,0.4)] ring-2 ring-yellow-400' : ''}`}
-                    style={{ 
-                      left: `${left}%`, 
-                      width: `${width}%`,
-                      opacity: hasOverlap ? 0.85 : 1,
-                    }}
-                    title={`${task.title} (${formatDateStr(taskStartStr)} - ${formatDateStr(taskEndStr)})`}
-                  >
-                    <div className="flex items-center gap-1 text-xs text-white truncate">
-                      <span className="font-medium truncate">{task.title}</span>
-                      <Badge variant="outline" className={`text-xs ${getPriorityColor(task.priority)} text-white border-white/30`}>
-                        {task.priority}
-                      </Badge>
-                    </div>
+              return (
+                <div key={`${milestone.id}-${owner}`} className="flex border-b hover:bg-muted/50 transition-colors bg-muted/20">
+                  <div className="w-48 px-4 py-3 border-r flex flex-col gap-1 pl-8">
+                    <div className="font-medium text-sm text-blue-600">{owner}</div>
+                    <div className="text-xs text-muted-foreground">{ownerTasks.length} task</div>
                   </div>
-                );
-              })}
-            </div>
+                  
+                  <div className="flex-1 relative h-12">
+                    {/* Grid lines */}
+                    {gridBoundaries.map((boundary) => (
+                      <div
+                        key={boundary}
+                        className="absolute top-0 bottom-0 border-l border-border/30"
+                        style={{ left: `${(boundary / totalDays) * 100}%` }}
+                      />
+                    ))}
+                    
+                    {/* Task Bars */}
+                    {ownerTasks.map((task) => {
+                      if (!task.startDate || !task.dueDate) return null;
+                      
+                      const taskStartStr = new Date(task.startDate).toISOString().split('T')[0];
+                      const taskEndStr = new Date(task.dueDate).toISOString().split('T')[0];
+                      const left = getPosition(taskStartStr);
+                      const width = getWidth(taskStartStr, taskEndStr);
+                      const hasOverlap = overlaps.get(task.id) || false;
+                      
+                      return (
+                        <div
+                          key={task.id}
+                          className={`absolute top-1 h-8 rounded flex items-center px-2 cursor-pointer transition-all hover:opacity-90 ${
+                            getStatusColor(task.status)
+                          } ${hasOverlap ? 'shadow-[0_0_8px_rgba(0,0,0,0.4)] ring-2 ring-yellow-400' : ''}`}
+                          style={{ 
+                            left: `${left}%`, 
+                            width: `${width}%`,
+                            opacity: hasOverlap ? 0.85 : 1,
+                          }}
+                          title={`${task.title} (${formatDateStr(taskStartStr)} - ${formatDateStr(taskEndStr)})`}
+                        >
+                          <div className="flex items-center gap-1 text-xs text-white truncate">
+                            <span className="font-medium truncate">{task.title}</span>
+                            <Badge variant="outline" className={`text-xs ${getPriorityColor(task.priority)} text-white border-white/30`}>
+                              {task.priority}
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         );
       })}
