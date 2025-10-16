@@ -13,26 +13,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Server, Building, Globe } from "lucide-react";
 
-// Manual schema definition to avoid type inference issues
+// Create a form-specific schema with proper types
 const formSchema = z.object({
-  userId: z.string().optional(),
-  organizationId: z.string().optional(),
-  partnerId: z.string().optional(),
-  projectId: z.string().optional(),
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  systemId: z.string().min(1, "System ID is required").max(3, "Max 3 characters"),
-  systemType: z.enum(["ecc", "s4hana", "bw", "crm", "srm", "scm", "other"]).default("ecc"),
-  status: z.enum(["active", "inactive", "maintenance", "decommissioned"]).default("active"),
-  serverHost: z.string().min(1, "Server host is required"),
-  systemNumber: z.string().min(1, "System number is required"),
-  applicationServerPort: z.number().min(1).max(65535).optional(),
+  name: z.string().min(1, "Nome richiesto"),
+  systemId: z.string().min(1, "System ID richiesto").max(3, "Max 3 caratteri"),
+  serverHost: z.string().min(1, "Server host richiesto"),
+  systemNumber: z.string().min(1, "System number richiesto"),
+  applicationServerPort: z.coerce.number().min(1).max(65535).optional(),
   landscape: z.string().optional(),
+  description: z.string().optional(),
+  partnerId: z.string().optional().nullable(),
+  systemType: z.string().optional(),
+  status: z.string().optional(),
   messageServerHost: z.string().optional(),
-  messageServerPort: z.number().optional(),
+  messageServerPort: z.coerce.number().optional(),
   routerString: z.string().optional(),
-  isActive: z.boolean().default(true),
   vpnConnectionId: z.string().optional(),
+  isActive: z.boolean().optional(),
 });
 
 interface SapSystemFormProps {
@@ -64,7 +61,7 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
       applicationServerPort: system?.applicationServerPort || 3200,
       landscape: system?.landscape || "development",
       description: system?.description || "",
-      partnerId: system?.partnerId || "",
+      partnerId: system?.partnerId || undefined,
       isActive: system?.isActive ?? true,
     },
   });
