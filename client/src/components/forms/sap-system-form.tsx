@@ -13,9 +13,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Server, Building, Globe } from "lucide-react";
 
-// Extend the schema for form validation
-const formSchema = insertSapSystemSchema.extend({
-  applicationServerPort: z.coerce.number().min(1).max(65535).optional(),
+// Manual schema definition to avoid type inference issues
+const formSchema = z.object({
+  userId: z.string().optional(),
+  organizationId: z.string().optional(),
+  partnerId: z.string().optional(),
+  projectId: z.string().optional(),
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+  systemId: z.string().min(1, "System ID is required").max(3, "Max 3 characters"),
+  systemType: z.enum(["ecc", "s4hana", "bw", "crm", "srm", "scm", "other"]).default("ecc"),
+  status: z.enum(["active", "inactive", "maintenance", "decommissioned"]).default("active"),
+  serverHost: z.string().min(1, "Server host is required"),
+  systemNumber: z.string().min(1, "System number is required"),
+  applicationServerPort: z.number().min(1).max(65535).optional(),
+  landscape: z.string().optional(),
+  messageServerHost: z.string().optional(),
+  messageServerPort: z.number().optional(),
+  routerString: z.string().optional(),
+  isActive: z.boolean().default(true),
+  vpnConnectionId: z.string().optional(),
 });
 
 interface SapSystemFormProps {
@@ -328,7 +345,7 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Associated Partner</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || undefined}>
                       <FormControl>
                         <SelectTrigger data-testid="select-partner">
                           <SelectValue placeholder="Select a partner (optional)" />
