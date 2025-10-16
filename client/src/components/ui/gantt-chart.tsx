@@ -92,10 +92,14 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!dragState || !containerRef.current) return;
+    if (!dragState) return;
+    
+    // Usa la riga corrente invece del containerRef condiviso
+    const currentRow = document.querySelector(`[data-milestone-id="${dragState.id}"]`)?.closest('.gantt-row') as HTMLElement;
+    if (!currentRow) return;
     
     const deltaX = e.clientX - dragState.startX;
-    const rect = containerRef.current.getBoundingClientRect();
+    const rect = currentRow.getBoundingClientRect();
     const timelineWidth = rect.width - 192;
     const totalDays = totalMs / (24 * 60 * 60 * 1000);
     const deltaDays = (deltaX / timelineWidth) * totalDays;
@@ -137,23 +141,12 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
       }
     }
 
-    // Aggiorna lo stato con preview per tooltip
+    // Aggiorna lo stato con preview - React riposizionerà automaticamente
     setDragState({
       ...dragState,
       previewStart: newStart,
       previewEnd: newEnd
     });
-
-    // Visual feedback
-    const milestoneElement = document.querySelector(`[data-milestone-id="${dragState.id}"]`);
-    if (milestoneElement) {
-      const rawLeft = getPosition(newStart);
-      const rawWidth = getWidth(newStart, newEnd);
-      const leftPos = clampPosition(rawLeft);
-      const width = clampWidth(rawLeft, rawWidth);
-      (milestoneElement as HTMLElement).style.left = `${leftPos}%`;
-      (milestoneElement as HTMLElement).style.width = `${width}%`;
-    }
   };
 
   const handleMouseUp = () => {
@@ -270,34 +263,47 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
               {/* Milestone rows */}
               <div className="space-y-3" style={{ position: 'relative', zIndex: 1 }}>
                 {sortedMilestones.map((milestone) => {
-                  const start = new Date(milestone.startDate!);
-                  const end = new Date(milestone.endDate!);
+                  // Usa preview date se questo milestone è in drag, altrimenti usa le date salvate
+                  const start = dragState?.id === milestone.id && dragState.previewStart
+                    ? dragState.previewStart
+                    : new Date(milestone.startDate!);
+                  const end = dragState?.id === milestone.id && dragState.previewEnd
+                    ? dragState.previewEnd
+                    : new Date(milestone.endDate!);
+                  
                   const rawLeftPos = getPosition(start);
                   const rawBarWidth = getWidth(start, end);
                   const leftPos = clampPosition(rawLeftPos);
                   const barWidth = clampWidth(rawLeftPos, rawBarWidth);
 
-                  // Dipendenza
+                  // Dipendenza - usa preview date se disponibili
                   const prerequisite = milestone.dependsOnMilestoneId 
                     ? validMilestones.find(m => m.id === milestone.dependsOnMilestoneId)
                     : null;
 
+                  // Usa preview date per prerequisite se in drag
+                  const prereqEnd = prerequisite
+                    ? (dragState?.id === prerequisite.id && dragState.previewEnd
+                      ? dragState.previewEnd
+                      : new Date(prerequisite.endDate!))
+                    : null;
+
                   // Controlla sovrapposizione dipendenze - vera sovrapposizione solo se child inizia PRIMA che finisca il padre
-                  const hasOverlap = prerequisite && prerequisite.endDate && 
-                    (new Date(milestone.startDate!).getTime() < new Date(prerequisite.endDate).getTime());
+                  const hasOverlap = prerequisite && prereqEnd && 
+                    (start.getTime() < prereqEnd.getTime());
                   
-                  if (hasOverlap && prerequisite) {
+                  if (hasOverlap && prereqEnd) {
                     console.log("OVERLAP DETECTED:", {
                       milestone: milestone.name,
-                      milestoneStart: new Date(milestone.startDate!).toISOString(),
-                      prerequisite: prerequisite.name,
-                      prerequisiteEnd: new Date(prerequisite.endDate!).toISOString(),
-                      overlapMs: new Date(prerequisite.endDate!).getTime() - new Date(milestone.startDate!).getTime()
+                      milestoneStart: start.toISOString(),
+                      prerequisite: prerequisite?.name,
+                      prerequisiteEnd: prereqEnd.toISOString(),
+                      overlapMs: prereqEnd.getTime() - start.getTime()
                     });
                   }
 
                   return (
-                    <div key={milestone.id} className="relative h-16">
+                    <div key={milestone.id} className="gantt-row relative h-16">
                       <div className="flex items-center gap-4">
                         {/* Nome milestone */}
                         <div className="w-48 flex-shrink-0">
@@ -319,9 +325,9 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                         {/* Timeline */}
                         <div className="flex-1 relative h-16">
                           {/* Linea dipendenza discreta */}
-                          {prerequisite && prerequisite.endDate && (
+                          {prerequisite && prereqEnd && (
                             (() => {
-                              const prereqEnd = new Date(prerequisite.endDate);
+                              // Usa le date sincronizzate già calcolate
                               const prereqPos = getPosition(prereqEnd);
                               const milestonePos = getPosition(start);
                               
@@ -360,11 +366,10 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                           )}
 
                           {/* Area rossa di conflitto (separata) */}
-                          {hasOverlap && prerequisite && (
+                          {hasOverlap && prereqEnd && (
                             (() => {
-                              const prereqEnd = new Date(prerequisite.endDate!);
-                              const childStart = new Date(milestone.startDate!);
-                              const overlapStart = childStart;
+                              // Usa le date sincronizzate già calcolate
+                              const overlapStart = start;
                               const overlapEnd = prereqEnd;
                               const rawOverlapLeft = getPosition(overlapStart);
                               const rawOverlapWidth = getWidth(overlapStart, overlapEnd);
