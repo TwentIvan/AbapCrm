@@ -279,16 +279,17 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                     ? validMilestones.find(m => m.id === milestone.dependsOnMilestoneId)
                     : null;
 
-                  // Controlla sovrapposizione dipendenze (considera anche le ore)
+                  // Controlla sovrapposizione dipendenze - vera sovrapposizione solo se child inizia PRIMA che finisca il padre
                   const hasOverlap = prerequisite && prerequisite.endDate && 
-                    (new Date(milestone.startDate!).getTime() <= new Date(prerequisite.endDate).getTime());
+                    (new Date(milestone.startDate!).getTime() < new Date(prerequisite.endDate).getTime());
                   
                   if (hasOverlap && prerequisite) {
                     console.log("OVERLAP DETECTED:", {
                       milestone: milestone.name,
                       milestoneStart: new Date(milestone.startDate!).toISOString(),
                       prerequisite: prerequisite.name,
-                      prerequisiteEnd: new Date(prerequisite.endDate!).toISOString()
+                      prerequisiteEnd: new Date(prerequisite.endDate!).toISOString(),
+                      overlapMs: new Date(prerequisite.endDate!).getTime() - new Date(milestone.startDate!).getTime()
                     });
                   }
 

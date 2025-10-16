@@ -5596,13 +5596,16 @@ Format the response as professional documentation suitable for client delivery.`
   app.put("/api/project-milestones/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
+      console.log("PUT milestone - body received:", JSON.stringify(req.body, null, 2));
       const validation = insertProjectMilestoneSchema.partial().safeParse(req.body);
       if (!validation.success) {
+        console.error("PUT milestone validation error:", JSON.stringify(validation.error.errors, null, 2));
         return res.status(400).json({ 
           error: "Invalid data", 
           details: validation.error.errors 
         });
       }
+      console.log("PUT milestone - validation passed:", JSON.stringify(validation.data, null, 2));
 
       const [milestone] = await db.update(projectMilestones)
         .set({ ...validation.data, updatedAt: new Date() })
