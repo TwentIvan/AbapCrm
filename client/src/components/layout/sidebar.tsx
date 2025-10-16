@@ -8,25 +8,10 @@ import { cn } from "@/lib/utils";
 import newLogo from "@assets/thu solo logo_1757017376100.jpg";
 import ImageContainer from "@/components/ui/image-container";
 
-// Main navigation (Organizations già rimosso dalla lista principale)  
-const getDefaultNavigation = (t: any) => [
-  { id: "1", name: t("nav.projects"), href: "/projects", icon: FolderOpen, testId: "nav-projects" },
-  { id: "2", name: t("nav.tasks"), href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
-  { id: "3", name: t("nav.partners"), href: "/partners", icon: Handshake, testId: "nav-partners" },
-  { id: "8", name: t("nav.humanResources"), href: "/human-resources", icon: Users, testId: "nav-human-resources" },
-];
-
-// Vendita group
-const getDefaultVenditaItems = (t: any) => [
-  { id: "v1", name: t("nav.rateAgreements"), href: "/rate-agreements", icon: DollarSign, testId: "nav-rate-agreements" },
-  { id: "v2", name: t("nav.salesOrders"), href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
-  { id: "v3", name: "Fatture", href: "/invoices", icon: FileText, testId: "nav-invoices" },
-];
-
-// Acquisti group
-const getDefaultAcquistiItems = (t: any) => [
-  { id: "a1", name: "Ordini d'acquisto", href: "/purchase-orders", icon: FileText, testId: "nav-purchase-orders" },
-  { id: "a2", name: "Fatture fornitori", href: "/vendor-invoices", icon: FileText, testId: "nav-vendor-invoices" },
+// Anagrafiche group
+const getDefaultAnagraficheItems = (t: any) => [
+  { id: "ana1", name: t("nav.partners"), href: "/partners", icon: Handshake, testId: "nav-partners" },
+  { id: "ana2", name: "Risorse", href: "/human-resources", icon: Users, testId: "nav-human-resources" },
 ];
 
 // Systems group
@@ -37,6 +22,25 @@ const getDefaultSystemsItems = (t: any) => [
   { id: "s4", name: "SAP Transport", href: "/sap-transport", icon: Radar, testId: "nav-sap-transport" },
 ];
 
+// Main navigation (dopo Anagrafiche e Sistemi)
+const getDefaultNavigation = (t: any) => [
+  { id: "1", name: t("nav.projects"), href: "/projects", icon: FolderOpen, testId: "nav-projects" },
+  { id: "2", name: t("nav.tasks"), href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
+];
+
+// Vendita group
+const getDefaultVenditaItems = (t: any) => [
+  { id: "v1", name: t("nav.rateAgreements"), href: "/rate-agreements", icon: DollarSign, testId: "nav-rate-agreements" },
+  { id: "v2", name: "Ordini di vendita", href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
+  { id: "v3", name: "Fatture", href: "/invoices", icon: FileText, testId: "nav-invoices" },
+];
+
+// Acquisti group
+const getDefaultAcquistiItems = (t: any) => [
+  { id: "a1", name: "Ordini d'acquisto", href: "/purchase-orders", icon: FileText, testId: "nav-purchase-orders" },
+  { id: "a2", name: "Fatture fornitori", href: "/vendor-invoices", icon: FileText, testId: "nav-vendor-invoices" },
+];
+
 const getDefaultTimeManagementItems = (t: any) => [
   { id: "t1", name: t("nav.timeEntries"), href: "/timesheet", icon: Clock, testId: "nav-timesheet" },
   { id: "t2", name: t("nav.timesheets"), href: "/timesheets", icon: Clock, testId: "nav-timesheets" },
@@ -44,9 +48,10 @@ const getDefaultTimeManagementItems = (t: any) => [
 
 // Parent sections
 const getDefaultParentItems = (t: any) => [
+  { id: "p0", name: "Anagrafiche", icon: Contact, testId: "nav-anagrafiche", type: "anagrafiche" },
+  { id: "p3", name: t("nav.systems"), icon: Shield, testId: "nav-systems", type: "systems" },
   { id: "p1", name: "Vendite", icon: DollarSign, testId: "nav-vendite", type: "vendita" },
   { id: "p2", name: "Acquisti", icon: FileText, testId: "nav-acquisti", type: "acquisti" },
-  { id: "p3", name: t("nav.systems"), icon: Shield, testId: "nav-systems", type: "systems" },
   { id: "p4", name: t("nav.timeManagement"), icon: Clock, testId: "nav-time-management", type: "timeManagement" },
 ];
 
@@ -176,23 +181,27 @@ export default function Sidebar() {
   const { user, logoutMutation } = useAuth();
   const { t } = useTranslation();
   const navigation = getDefaultNavigation(t);
+  const anagraficheItems = getDefaultAnagraficheItems(t);
   const venditaItems = getDefaultVenditaItems(t);
   const acquistiItems = getDefaultAcquistiItems(t);
   const systemsItems = getDefaultSystemsItems(t);
   const timeManagementItems = getDefaultTimeManagementItems(t);
   const parentItems = getDefaultParentItems(t);
+  const [isAnagraficheOpen, setIsAnagraficheOpen] = useState(false);
   const [isVenditaOpen, setIsVenditaOpen] = useState(false);
   const [isAcquistiOpen, setIsAcquistiOpen] = useState(false);
   const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(false);
   const [isSystemsOpen, setIsSystemsOpen] = useState(false);
   
   // Auto-open parent menus when child is active
+  const hasActiveAnagraficheChild = anagraficheItems.some((item: any) => location === item.href);
   const hasActiveVenditaChild = venditaItems.some((item: any) => location === item.href);
   const hasActiveAcquistiChild = acquistiItems.some((item: any) => location === item.href);
   const hasActiveSystemsChild = systemsItems.some((item: any) => location === item.href);
   const hasActiveTimeChild = timeManagementItems.some((item: any) => location === item.href);
   
   // Keep menus open if they have active children
+  const shouldAnagraficheBeOpen = isAnagraficheOpen || hasActiveAnagraficheChild;
   const shouldVenditaBeOpen = isVenditaOpen || hasActiveVenditaChild;
   const shouldAcquistiBeOpen = isAcquistiOpen || hasActiveAcquistiChild;
   const shouldSystemsBeOpen = isSystemsOpen || hasActiveSystemsChild;
@@ -202,7 +211,13 @@ export default function Sidebar() {
   const handleToggle = (type: string) => {
     console.log('Executing toggle for:', type);
     
-    if (type === 'vendita') {
+    if (type === 'anagrafiche') {
+      if (hasActiveAnagraficheChild && isAnagraficheOpen) {
+        console.log('Preventing anagrafiche close - has active child');
+        return;
+      }
+      setIsAnagraficheOpen(!isAnagraficheOpen);
+    } else if (type === 'vendita') {
       if (hasActiveVenditaChild && isVenditaOpen) {
         console.log('Preventing vendita close - has active child');
         return;
@@ -248,17 +263,10 @@ export default function Sidebar() {
 
       {/* Navigation Menu */}
       <nav className="flex-1 p-4 space-y-2">
-        {/* Main Navigation */}
-        {navigation.map((item: any) => {
-          const isActive = location === item.href;
-          return (
-            <NavItem key={item.id} item={item} isActive={isActive} />
-          );
-        })}
-        
-        {/* Parent Sections (Vendita, Acquisti, Systems & Time Management) */}
+        {/* Parent Sections (Anagrafiche, Sistemi prima - poi Progetti/Tasks - poi Vendite, Acquisti, Time Management) */}
         <div>
           {parentItems.map((item: any) => {
+            const isAnagraficheItem = item.type === 'anagrafiche';
             const isVenditaItem = item.type === 'vendita';
             const isAcquistiItem = item.type === 'acquisti';
             const isSystemsItem = item.type === 'systems';
@@ -268,7 +276,11 @@ export default function Sidebar() {
             let hasActiveChild = false;
             let childItems: any[] = [];
             
-            if (isVenditaItem) {
+            if (isAnagraficheItem) {
+              isOpen = shouldAnagraficheBeOpen;
+              hasActiveChild = hasActiveAnagraficheChild;
+              childItems = anagraficheItems;
+            } else if (isVenditaItem) {
               isOpen = shouldVenditaBeOpen;
               hasActiveChild = hasActiveVenditaChild;
               childItems = venditaItems;
@@ -284,6 +296,83 @@ export default function Sidebar() {
               isOpen = shouldTimeManagementBeOpen;
               hasActiveChild = hasActiveTimeChild;
               childItems = timeManagementItems;
+            }
+            
+            // Render Anagrafiche e Sistemi prima
+            if (isAnagraficheItem || isSystemsItem) {
+              return (
+                <div key={item.id}>
+                  <ParentItem
+                    item={item}
+                    isOpen={isOpen}
+                    hasActiveChild={hasActiveChild}
+                    onToggle={() => handleToggle(item.type)}
+                  >
+                    {childItems.map((childItem: any) => {
+                      const isChildActive = location === childItem.href;
+                      return (
+                        <SubNavItem 
+                          key={childItem.id} 
+                          item={childItem} 
+                          isActive={isChildActive}
+                          onChildClick={() => {}}
+                        />
+                      );
+                    })}
+                  </ParentItem>
+                </div>
+              );
+            }
+            return null;
+          })}
+        </div>
+        
+        {/* Main Navigation (Progetti, Tasks) */}
+        {navigation.map((item: any) => {
+          const isActive = location === item.href;
+          return (
+            <NavItem key={item.id} item={item} isActive={isActive} />
+          );
+        })}
+        
+        {/* Altri Parent Sections (Vendite, Acquisti, Time Management) */}
+        <div>
+          {parentItems.map((item: any) => {
+            const isAnagraficheItem = item.type === 'anagrafiche';
+            const isVenditaItem = item.type === 'vendita';
+            const isAcquistiItem = item.type === 'acquisti';
+            const isSystemsItem = item.type === 'systems';
+            const isTimeItem = item.type === 'timeManagement';
+            
+            let isOpen = false;
+            let hasActiveChild = false;
+            let childItems: any[] = [];
+            
+            if (isAnagraficheItem) {
+              isOpen = shouldAnagraficheBeOpen;
+              hasActiveChild = hasActiveAnagraficheChild;
+              childItems = anagraficheItems;
+            } else if (isVenditaItem) {
+              isOpen = shouldVenditaBeOpen;
+              hasActiveChild = hasActiveVenditaChild;
+              childItems = venditaItems;
+            } else if (isAcquistiItem) {
+              isOpen = shouldAcquistiBeOpen;
+              hasActiveChild = hasActiveAcquistiChild;
+              childItems = acquistiItems;
+            } else if (isSystemsItem) {
+              isOpen = shouldSystemsBeOpen;
+              hasActiveChild = hasActiveSystemsChild;
+              childItems = systemsItems;
+            } else if (isTimeItem) {
+              isOpen = shouldTimeManagementBeOpen;
+              hasActiveChild = hasActiveTimeChild;
+              childItems = timeManagementItems;
+            }
+            
+            // Render Vendite, Acquisti, Time Management (saltando Anagrafiche e Sistemi già renderizzati)
+            if (isAnagraficheItem || isSystemsItem) {
+              return null;
             }
             
             return (
