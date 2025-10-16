@@ -210,8 +210,6 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
           (a.displayOrder || 0) - (b.displayOrder || 0)
         );
 
-        const TIMELINE_OFFSET_PX = 208; // 192px label + 16px gap
-        
         return (
           <div key={projectId} className="space-y-4">
             <h3 className="font-semibold text-lg">{project?.name || 'Progetto non assegnato'}</h3>
@@ -223,34 +221,8 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
             >
-              {/* Gridlines SVG - UNA VOLTA per progetto */}
-              <svg 
-                className="absolute top-0 bottom-0 pointer-events-none" 
-                style={{ left: `${TIMELINE_OFFSET_PX}px`, right: 0, zIndex: 0 }}
-              >
-                {gridBoundaries.map((dayIndex) => {
-                  const dayPos = (dayIndex / totalDays) * 100;
-                  return (
-                    <line
-                      key={`boundary-${dayIndex}`}
-                      x1={`${dayPos}%`}
-                      y1="0"
-                      x2={`${dayPos}%`}
-                      y2="100%"
-                      stroke="rgb(100, 116, 139)"
-                      strokeWidth="2"
-                      strokeDasharray="4 2"
-                      opacity="0.6"
-                    />
-                  );
-                })}
-              </svg>
-
               {dragState && dragState.previewStartStr && dragState.previewEndStr && (
-                <div 
-                  className="absolute top-0 pointer-events-none z-50"
-                  style={{ left: `${TIMELINE_OFFSET_PX}px` }}
-                >
+                <div className="absolute top-0 left-48 ml-4 pointer-events-none z-50">
                   <div className="bg-black/80 text-white px-3 py-2 rounded text-xs font-medium whitespace-nowrap inline-block">
                     {formatDateStr(dragState.previewStartStr)} - {formatDateStr(dragState.previewEndStr)}
                   </div>
@@ -258,6 +230,30 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
               )}
 
               <div className="space-y-3" style={{ position: 'relative', zIndex: 1 }}>
+                {/* Gridlines wrapper - stesso layout delle milestone */}
+                <div className="flex items-center gap-4 pointer-events-none absolute inset-0" style={{ zIndex: 0 }}>
+                  <div className="w-48 flex-shrink-0"></div>
+                  <div className="flex-1 relative h-full">
+                    <svg className="absolute inset-0 w-full h-full">
+                      {gridBoundaries.map((dayIndex) => {
+                        const dayPos = (dayIndex / totalDays) * 100;
+                        return (
+                          <line
+                            key={`boundary-${dayIndex}`}
+                            x1={`${dayPos}%`}
+                            y1="0"
+                            x2={`${dayPos}%`}
+                            y2="100%"
+                            stroke="rgb(100, 116, 139)"
+                            strokeWidth="2"
+                            strokeDasharray="4 2"
+                            opacity="0.6"
+                          />
+                        );
+                      })}
+                    </svg>
+                  </div>
+                </div>
                 {sortedMilestones.map((milestone) => {
                   const startStr = dragState?.id === milestone.id && dragState.previewStartStr
                     ? dragState.previewStartStr
