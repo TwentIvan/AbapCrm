@@ -44,7 +44,7 @@ const getDefaultTimeManagementItems = (t: any) => [
 
 // Parent sections
 const getDefaultParentItems = (t: any) => [
-  { id: "p1", name: "Vendita", icon: DollarSign, testId: "nav-vendita", type: "vendita" },
+  { id: "p1", name: "Vendite", icon: DollarSign, testId: "nav-vendite", type: "vendita" },
   { id: "p2", name: "Acquisti", icon: FileText, testId: "nav-acquisti", type: "acquisti" },
   { id: "p3", name: t("nav.systems"), icon: Shield, testId: "nav-systems", type: "systems" },
   { id: "p4", name: t("nav.timeManagement"), icon: Clock, testId: "nav-time-management", type: "timeManagement" },

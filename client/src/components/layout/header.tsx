@@ -514,6 +514,17 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           )}
         </div>
       </div>
+      
+      {/* Geometric Decoration Bar */}
+      <div className="w-full h-2 flex">
+        <div className="flex-1 bg-blue-600 dark:bg-blue-400"></div>
+        <div className="flex-1 bg-blue-500 dark:bg-blue-300"></div>
+        <div className="flex-1 bg-blue-400 dark:bg-blue-200"></div>
+        <div className="flex-1 bg-purple-500 dark:bg-purple-400"></div>
+        <div className="flex-1 bg-blue-400 dark:bg-blue-200"></div>
+        <div className="flex-1 bg-blue-500 dark:bg-blue-300"></div>
+        <div className="flex-1 bg-blue-600 dark:bg-blue-400"></div>
+      </div>
     </header>
   );
 }
