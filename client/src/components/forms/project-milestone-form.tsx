@@ -219,7 +219,7 @@ export default function ProjectMilestoneForm({ milestone, onSuccess }: ProjectMi
                     <SelectContent>
                       {projects.map((project) => (
                         <SelectItem key={project.id} value={project.id}>
-                          {project.projectName}
+                          {project.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
