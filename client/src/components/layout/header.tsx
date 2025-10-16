@@ -92,7 +92,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const getButtonStyle = (buttonId: string, hoveredId: string | null) => {
     const isHovered = buttonId === hoveredId;
     return {
-      borderRadius: isHovered ? '2rem' : '50%',
+      borderRadius: isHovered ? '0.5rem' : '50%',
       width: isHovered ? 'auto' : '3.5rem',
       height: '3.5rem',
       minWidth: isHovered ? '200px' : '3.5rem',
@@ -108,7 +108,20 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   };
 
   return (
-    <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-10">
+    <header className="bg-card border-b border-border sticky top-0 z-10">
+      {/* Top Brand Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-700 dark:to-blue-500 py-1 px-6">
+        <h1 className="text-center text-sm font-black tracking-tighter uppercase">
+          <span className="text-blue-100">THE</span>
+          {' '}
+          <span className="text-blue-200">HUB</span>
+          {' '}
+          <span className="text-blue-100">UP</span>
+        </h1>
+      </div>
+      
+      {/* Main Header */}
+      <div className="px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-stretch space-x-1">
           {/* Area Title with Icon */}
@@ -427,6 +440,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             </div>
           )}
         </div>
+      </div>
       </div>
     </header>
   );
