@@ -179,8 +179,8 @@ export default function ProjectsPage() {
   };
 
   const handleLaunchSapDocumentation = (project: Project) => {
-    // Trova il sistema SAP associato al progetto
-    const projectSapSystem = sapSystems.find(sys => sys.projectId === project.id);
+    // Trova il sistema SAP associato al progetto tramite sapSystemId
+    const projectSapSystem = sapSystems.find(sys => sys.id === project.sapSystemId);
     
     if (!projectSapSystem) {
       toast({
@@ -312,7 +312,7 @@ export default function ProjectsPage() {
               <Target className="mr-2 h-4 w-4" />
               Planner
             </DropdownMenuItem>
-            {sapSystems.some(sys => sys.projectId === project.id) && (
+            {project.sapSystemId && (
               <DropdownMenuItem 
                 onClick={() => handleLaunchSapDocumentation(project)}
                 data-testid={`menu-sap-zthu-${project.id}`}
