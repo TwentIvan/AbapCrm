@@ -53,17 +53,16 @@ function NavItem({ item, isActive }: { item: any; isActive: boolean }) {
     >
       <div 
         className={cn(
-          "flex items-center gap-3 px-4 py-2 rounded-xl nav-box transition-all duration-200",
+          "flex items-center gap-3 px-4 py-2 rounded-md nav-box transition-all duration-200",
           "bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg",
-          isActive && "bg-blue-100/80 dark:bg-blue-900/50"
+          "border-l-4 border-blue-400",
+          isActive && "bg-blue-100/80 dark:bg-blue-900/50 border-l-4 border-blue-500"
         )}
       >
-        <div className={cn(
-          "p-2 rounded-lg transition-colors",
-          isActive ? "bg-blue-500" : "bg-blue-400"
-        )}>
-          <Icon className="h-5 w-5 flex-shrink-0 text-white" />
-        </div>
+        <Icon className={cn(
+          "h-5 w-5 flex-shrink-0 transition-colors",
+          isActive ? "text-blue-500" : "text-blue-400"
+        )} />
         <span className={cn(
           "text-sm font-medium flex-1",
           isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
@@ -85,17 +84,16 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
       >
         <div 
           className={cn(
-            "flex items-center gap-3 px-4 py-2 rounded-xl nav-box transition-all duration-200",
+            "flex items-center gap-3 px-4 py-2 rounded-md nav-box transition-all duration-200",
             "bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg",
-            hasActiveChild && "bg-blue-100/80 dark:bg-blue-900/50"
+            "border-l-4 border-blue-400",
+            hasActiveChild && "bg-blue-100/80 dark:bg-blue-900/50 border-l-4 border-blue-500"
           )}
         >
-          <div className={cn(
-            "p-2 rounded-lg transition-colors",
-            hasActiveChild ? "bg-blue-500" : "bg-blue-400"
-          )}>
-            <Icon className="h-5 w-5 flex-shrink-0 text-white" />
-          </div>
+          <Icon className={cn(
+            "h-5 w-5 flex-shrink-0 transition-colors",
+            hasActiveChild ? "text-blue-500" : "text-blue-400"
+          )} />
           <span className={cn(
             "text-sm font-medium flex-1",
             hasActiveChild ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
@@ -103,7 +101,7 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
           <button 
             onClick={onToggle}
             className={cn(
-              "ml-2 w-6 h-6 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center justify-center",
+              "ml-2 w-6 h-6 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center justify-center",
               "text-blue-500 dark:text-blue-400"
             )}
           >
@@ -137,17 +135,16 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
       >
         <div 
           className={cn(
-            "flex items-center gap-3 px-4 py-1.5 rounded-xl nav-box transition-all duration-200",
+            "flex items-center gap-3 px-4 py-1.5 rounded-md nav-box transition-all duration-200",
             "bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg",
-            isActive && "bg-blue-100/80 dark:bg-blue-900/50"
+            "border-l-4 border-blue-400",
+            isActive && "bg-blue-100/80 dark:bg-blue-900/50 border-l-4 border-blue-500"
           )}
         >
-          <div className={cn(
-            "p-1.5 rounded-lg transition-colors",
-            isActive ? "bg-blue-500" : "bg-blue-400"
-          )}>
-            <Icon className="h-4 w-4 flex-shrink-0 text-white" />
-          </div>
+          <Icon className={cn(
+            "h-4 w-4 flex-shrink-0 transition-colors",
+            isActive ? "text-blue-500" : "text-blue-400"
+          )} />
           <span className={cn(
             "text-sm font-medium flex-1",
             isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"

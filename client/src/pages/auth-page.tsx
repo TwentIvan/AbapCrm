@@ -179,7 +179,7 @@ export default function AuthPage() {
             <div className="w-full max-w-md mx-auto lg:mx-0">
               <Card className="shadow-xl border-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm">
                 <CardHeader className="space-y-4 text-center">
-                  <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto">
+                  <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center mx-auto">
                     <Shield className="h-8 w-8 text-white" />
                   </div>
                   <div>
