@@ -156,6 +156,12 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
       return;
     }
     
+    console.log("Drag end:", {
+      id: dragState.id,
+      start: dragState.previewStart.toISOString(),
+      end: dragState.previewEnd.toISOString()
+    });
+    
     onMilestoneUpdate?.(dragState.id, dragState.previewStart, dragState.previewEnd);
     setDragState(null);
   };
@@ -335,6 +341,31 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                             })()
                           )}
 
+                          {/* Area rossa di conflitto (separata) */}
+                          {hasOverlap && prerequisite && (
+                            (() => {
+                              const prereqEnd = new Date(prerequisite.endDate!);
+                              const childStart = new Date(milestone.startDate!);
+                              const overlapStart = childStart;
+                              const overlapEnd = prereqEnd;
+                              const overlapLeft = getPosition(overlapStart);
+                              const overlapWidth = getWidth(overlapStart, overlapEnd);
+                              
+                              return (
+                                <div
+                                  className="absolute top-1/2 -translate-y-1/2 h-10 rounded-sm pointer-events-none"
+                                  style={{
+                                    left: `${overlapLeft}%`,
+                                    width: `${overlapWidth}%`,
+                                    background: 'repeating-linear-gradient(45deg, rgba(239, 68, 68, 0.5), rgba(239, 68, 68, 0.5) 8px, rgba(239, 68, 68, 0.3) 8px, rgba(239, 68, 68, 0.3) 16px)',
+                                    border: '2px solid rgb(239, 68, 68)',
+                                    zIndex: 8
+                                  }}
+                                />
+                              );
+                            })()
+                          )}
+
                           {/* Barra milestone */}
                           <div
                             data-milestone-id={milestone.id}
@@ -343,25 +374,12 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                               left: `${leftPos}%`,
                               width: `${barWidth}%`,
                               cursor: dragState?.id === milestone.id ? 'grabbing' : 'grab',
-                              boxShadow: hasOverlap 
-                                ? '0 0 0 3px rgba(239, 68, 68, 0.5), 0 0 12px rgba(239, 68, 68, 0.6)' 
-                                : '0 2px 4px rgba(0,0,0,0.2)',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                               zIndex: dragState?.id === milestone.id ? 20 : 10,
                               position: 'relative'
                             }}
                             onMouseDown={(e) => handleMouseDown(e, milestone, 'move')}
                           >
-                            {/* Ombreggiatura rossa MOLTO VISIBILE */}
-                            {hasOverlap && (
-                              <div 
-                                className="absolute inset-0 rounded pointer-events-none" 
-                                style={{ 
-                                  background: 'repeating-linear-gradient(45deg, rgba(239, 68, 68, 0.4), rgba(239, 68, 68, 0.4) 10px, rgba(239, 68, 68, 0.2) 10px, rgba(239, 68, 68, 0.2) 20px)',
-                                  border: '2px solid rgb(239, 68, 68)',
-                                  zIndex: 100
-                                }} 
-                              />
-                            )}
 
                             {/* Resize handle sinistra */}
                             <div
