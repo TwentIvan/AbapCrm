@@ -104,6 +104,7 @@ export default function ProjectMilestoneForm({ milestone, onSuccess }: ProjectMi
         completedDate: data.completedDate ? new Date(data.completedDate).toISOString() : undefined,
         dependsOnMilestoneId: data.dependsOnMilestoneId || undefined,
       };
+      console.log("Sending milestone payload:", payload);
       return await apiRequest("POST", "/api/project-milestones", payload);
     },
     onSuccess: () => {
