@@ -178,7 +178,7 @@ export default function ProjectsPage() {
     setSelectedProjectForPlanner(null);
   };
 
-  const handleLaunchSapDocumentation = (project: Project) => {
+  const handleLaunchSapDocumentation = async (project: Project) => {
     // Trova il sistema SAP associato al progetto tramite sapSystemId
     const projectSapSystem = sapSystems.find(sys => sys.id === project.sapSystemId);
     
@@ -203,13 +203,16 @@ export default function ProjectsPage() {
         language: "IT",
       });
 
+      // Copia l'ID del progetto nel clipboard
+      await navigator.clipboard.writeText(project.id);
+
       // Apri il dialog di paste JSON
       setSelectedProjectForSap(project);
       setShowSapPasteDialog(true);
 
       toast({
         title: "Shortcut SAP scaricato",
-        description: "Il file .sap è stato scaricato. Aprilo per lanciare ZTHU_DOCUMENTATION e poi incolla il JSON qui.",
+        description: `Il file .sap è stato scaricato. ID progetto copiato nel clipboard: ${project.id.substring(0, 8)}...`,
       });
     } catch (error) {
       toast({
