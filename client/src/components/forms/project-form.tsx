@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertProjectSchema, Partner, Project } from "@shared/schema";
+import { insertProjectSchema, Partner, Project, SapSystem } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ const formSchema = z.object({
   status: z.enum(["planning", "in_progress", "review", "completed", "on_hold"]),
   clientId: z.string().optional(),
   parentProjectId: z.string().optional(),
+  sapSystemId: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   budget: z.string().optional(),
@@ -54,6 +55,16 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
     enabled: !!user,
   });
 
+  const { data: sapSystems } = useQuery<SapSystem[]>({
+    queryKey: ["/api/sap-systems"],
+    enabled: !!user,
+    queryFn: async () => {
+      const res = await fetch("/api/sap-systems", { credentials: "include" });
+      if (!res.ok) throw new Error('Failed to fetch SAP systems');
+      return res.json();
+    },
+  });
+
   const clients = partners?.filter(partner => partner.type === "client") || [];
   const parentProjects = projects?.filter(p => p.id !== project?.id) || []; // Exclude current project
 
@@ -65,6 +76,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       status: project?.status || "planning",
       clientId: project?.clientId || "no-client",
       parentProjectId: project?.parentProjectId || "no-parent",
+      sapSystemId: project?.sapSystemId || "no-sap-system",
       startDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
       endDate: project?.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "",
       budget: project?.budget || "",
@@ -80,6 +92,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
         userId: user!.id,
         clientId: data.clientId && data.clientId !== "no-client" ? data.clientId : null,
         parentProjectId: data.parentProjectId && data.parentProjectId !== "no-parent" ? data.parentProjectId : null,
+        sapSystemId: data.sapSystemId && data.sapSystemId !== "no-sap-system" ? data.sapSystemId : null,
         startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
         endDate: data.endDate ? new Date(data.endDate).toISOString() : null,
         budget: data.budget || null,
@@ -220,6 +233,32 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                     {parentProjects.map((parentProject) => (
                       <SelectItem key={parentProject.id} value={parentProject.id}>
                         {parentProject.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="sapSystemId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Sistema SAP (Opzionale)</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || "no-sap-system"}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-sap-system">
+                      <SelectValue placeholder={sapSystems === undefined ? "Caricamento sistemi..." : "Seleziona un sistema SAP"} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="no-sap-system">Nessun sistema SAP</SelectItem>
+                    {sapSystems?.map((sapSystem) => (
+                      <SelectItem key={sapSystem.id} value={sapSystem.id}>
+                        {sapSystem.name} ({sapSystem.landscape})
                       </SelectItem>
                     ))}
                   </SelectContent>

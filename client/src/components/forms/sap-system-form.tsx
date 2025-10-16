@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { insertSapSystemSchema, type SapSystem, type Partner, type Project } from "@shared/schema";
+import { insertSapSystemSchema, type SapSystem, type Partner } from "@shared/schema";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,16 +37,6 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
     },
   });
 
-  // Fetch projects for the project selection
-  const { data: projects } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
-    queryFn: async () => {
-      const res = await fetch("/api/projects", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch projects');
-      return res.json();
-    },
-  });
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -58,7 +48,6 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
       landscape: system?.landscape || "development",
       description: system?.description || "",
       partnerId: system?.partnerId || "",
-      projectId: system?.projectId || "",
       isActive: system?.isActive ?? true,
     },
   });
@@ -328,11 +317,11 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                 name="partnerId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Partner Associato (Opzionale)</FormLabel>
+                    <FormLabel>Associated Partner</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-partner">
-                          <SelectValue placeholder="Seleziona un partner (opzionale)" />
+                          <SelectValue placeholder="Select a partner (optional)" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -350,35 +339,7 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      Collega questo sistema SAP a un partner
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="projectId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Progetto Associato (Opzionale)</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-project">
-                          <SelectValue placeholder={projects === undefined ? "Caricamento progetti..." : "Seleziona un progetto (opzionale)"} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {projects?.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Collega questo sistema SAP a un progetto specifico
+                      Link this SAP system to a business partner
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
