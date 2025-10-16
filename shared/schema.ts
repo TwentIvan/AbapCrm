@@ -89,6 +89,7 @@ export const tasks = pgTable("tasks", {
   priority: taskPriorityEnum("priority").default("medium").notNull(),
   taskType: taskTypeEnum("task_type").default("other").notNull(), // Tipo di lavoro per accordi tariffari
   projectId: uuid("project_id").references(() => projects.id),
+  milestoneId: uuid("milestone_id").references(() => projectMilestones.id), // Collegamento alla milestone
   parentTaskId: uuid("parent_task_id"), // Self-reference for task hierarchy
   userId: uuid("user_id").references(() => users.id).notNull(),
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation

@@ -17,7 +17,7 @@ import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { Target, MoreHorizontal, Edit, Trash2, Table as TableIcon, Calendar, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { ProjectMilestone, Project } from "@shared/schema";
+import { ProjectMilestone, Project, Task } from "@shared/schema";
 import ProjectMilestoneForm from "@/components/forms/project-milestone-form";
 import { GanttChart } from "@/components/ui/gantt-chart";
 
@@ -46,6 +46,12 @@ export default function ProjectMilestonesPage() {
 
   const { data: projects = [] } = useQuery<Project[]>({ 
     queryKey: ["/api/projects"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: tasks = [] } = useQuery<Task[]>({
+    queryKey: ["/api/tasks"],
     queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000,
   });
@@ -334,6 +340,7 @@ export default function ProjectMilestonesPage() {
               <GanttChart
                 milestones={milestones}
                 projects={projects || []}
+                tasks={tasks || []}
                 onMilestoneClick={handleEdit}
                 onMilestoneUpdate={handleMilestoneUpdate}
               />

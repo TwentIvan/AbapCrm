@@ -1,16 +1,17 @@
 import { useState, useRef } from "react";
-import { ProjectMilestone } from "@shared/schema";
+import { ProjectMilestone, Task } from "@shared/schema";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
 interface GanttChartProps {
   milestones: ProjectMilestone[];
   projects: Array<{ id: string; name: string }>;
+  tasks?: Task[];
   onMilestoneClick?: (milestone: ProjectMilestone) => void;
   onMilestoneUpdate?: (id: string, startDate: string, endDate: string) => void;
 }
 
-export function GanttChart({ milestones, projects, onMilestoneClick, onMilestoneUpdate }: GanttChartProps) {
+export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick, onMilestoneUpdate }: GanttChartProps) {
   const [dragState, setDragState] = useState<{ 
     id: string; 
     type: 'move' | 'resize-start' | 'resize-end';
@@ -40,6 +41,17 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
       </div>
     );
   }
+
+  // Raggruppa i task per milestone
+  const tasksByMilestone = tasks.reduce((acc, task) => {
+    if (task.milestoneId && task.dueDate) {
+      if (!acc[task.milestoneId]) {
+        acc[task.milestoneId] = [];
+      }
+      acc[task.milestoneId].push(task);
+    }
+    return acc;
+  }, {} as Record<string, Task[]>);
 
   // Lavora SOLO con giorni - niente conversioni Date o millisecondi
   const dateToDay = (dateStr: string): number => {
@@ -279,6 +291,8 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
                   const hasOverlap = prerequisite && prereqEndStr && 
                     compareDates(startStr, prereqEndStr) <= 0;
+
+                  const milestoneTasks = tasksByMilestone[milestone.id] || [];
 
                   return (
                     <div key={milestone.id} className="gantt-row relative h-16">
