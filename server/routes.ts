@@ -834,10 +834,7 @@ export function registerRoutes(app: Express): Server {
       }).from(tasks)
         .leftJoin(projects, eq(tasks.projectId, projects.id))
         .leftJoin(users, eq(tasks.assignedTo, users.id))
-        .where(and(
-          eq(tasks.userId, req.user!.id),
-          inArray(tasks.organizationId, organizationIds)
-        ))
+        .where(inArray(tasks.organizationId, organizationIds))
         .orderBy(desc(tasks.updatedAt));
       console.log('[GET TASKS] Sample task:', JSON.stringify(tasksList[0], null, 2));
       res.json(tasksList);
