@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { ProjectMilestone, Task } from "@shared/schema";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface GanttChartProps {
   milestones: ProjectMilestone[];
@@ -22,7 +23,20 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
     previewStartStr?: string;
     previewEndStr?: string;
   } | null>(null);
+  const [expandedOwners, setExpandedOwners] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const toggleOwnerExpansion = (key: string) => {
+    setExpandedOwners(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
 
   if (milestones.length === 0) {
     return (
@@ -461,21 +475,36 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
 
                   const taskRows = Object.entries(milestoneTasksByOwner).flatMap(([ownerName, ownerTasks]) => {
                     const overlaps = getTaskOverlaps(ownerTasks);
+                    const ownerKey = `${milestone.id}-${ownerName}`;
+                    const isExpanded = expandedOwners.has(ownerKey);
                     
-                    return (
-                      <div key={`${milestone.id}-${ownerName}`} className="gantt-row relative h-10 ml-4">
+                    const ownerHeaderRow = (
+                      <div key={ownerKey} className="gantt-row relative h-10 ml-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-44 flex-shrink-0">
-                            <div className="text-xs font-medium text-blue-600">
-                              {ownerName}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {ownerTasks.length} task
+                          <div className="w-44 flex-shrink-0 flex items-center gap-1">
+                            <button
+                              onClick={() => toggleOwnerExpansion(ownerKey)}
+                              className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+                              data-testid={`toggle-owner-${ownerKey}`}
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                              )}
+                            </button>
+                            <div className="flex-1">
+                              <div className="text-xs font-medium text-blue-600">
+                                {ownerName}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {ownerTasks.length} task
+                              </div>
                             </div>
                           </div>
 
                           <div className="flex-1 relative h-10">
-                            {ownerTasks.map((task) => {
+                            {!isExpanded && ownerTasks.map((task) => {
                               const taskStartStr = new Date(task.startDate!).toISOString().split('T')[0];
                               const taskEndStr = new Date(task.dueDate!).toISOString().split('T')[0];
                               const taskStartPos = getPosition(taskStartStr);
@@ -503,6 +532,48 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                         </div>
                       </div>
                     );
+
+                    if (!isExpanded) {
+                      return [ownerHeaderRow];
+                    }
+
+                    const expandedTaskRows = ownerTasks.map((task) => {
+                      const taskStartStr = new Date(task.startDate!).toISOString().split('T')[0];
+                      const taskEndStr = new Date(task.dueDate!).toISOString().split('T')[0];
+                      const taskStartPos = getPosition(taskStartStr);
+                      const taskWidth = getWidth(taskStartStr, taskEndStr);
+                      const clampedTaskStartPos = clampPosition(taskStartPos);
+                      const clampedTaskWidth = clampWidth(taskStartPos, taskWidth);
+                      const hasOverlap = overlaps.get(task.id) || false;
+
+                      return (
+                        <div key={task.id} className="gantt-row relative h-8 ml-8">
+                          <div className="flex items-center gap-4">
+                            <div className="w-36 flex-shrink-0">
+                              <div className="text-xs truncate text-muted-foreground">
+                                {task.title}
+                              </div>
+                            </div>
+
+                            <div className="flex-1 relative h-8">
+                              <div
+                                className={`absolute top-1/2 -translate-y-1/2 h-5 rounded ${taskStatusColors[task.status || "todo"]} ${
+                                  hasOverlap ? 'shadow-[0_0_8px_rgba(0,0,0,0.4)] ring-2 ring-yellow-400' : ''
+                                }`}
+                                style={{
+                                  left: `${clampedTaskStartPos}%`,
+                                  width: `${clampedTaskWidth}%`,
+                                  zIndex: hasOverlap ? 12 : 8
+                                }}
+                                title={`${task.title} - ${formatDateStr(taskStartStr, 'long')} → ${formatDateStr(taskEndStr, 'long')}`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    });
+
+                    return [ownerHeaderRow, ...expandedTaskRows];
                   });
 
                   return [milestoneRow, ...taskRows];
