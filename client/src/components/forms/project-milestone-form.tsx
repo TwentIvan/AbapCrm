@@ -236,8 +236,8 @@ export default function ProjectMilestoneForm({ milestone, onSuccess }: ProjectMi
                 <FormItem>
                   <FormLabel>Milestone Prerequisito</FormLabel>
                   <Select 
-                    onValueChange={field.onChange} 
-                    value={field.value || ""} 
+                    onValueChange={(value) => field.onChange(value === "none" ? "" : value)} 
+                    value={field.value || "none"} 
                     disabled={!projectId || projectMilestones.length === 0}
                     data-testid="select-prerequisite"
                   >
@@ -247,7 +247,7 @@ export default function ProjectMilestoneForm({ milestone, onSuccess }: ProjectMi
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Nessun prerequisito</SelectItem>
+                      <SelectItem value="none">Nessun prerequisito</SelectItem>
                       {projectMilestones.map((m) => (
                         <SelectItem key={m.id} value={m.id}>
                           {m.name}
