@@ -51,12 +51,17 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
   const getPosition = (date: Date) => {
     const ms = date.getTime() - minDate.getTime();
-    return (ms / totalMs) * 100;
+    const pos = (ms / totalMs) * 100;
+    // Clamp tra 0 e 100 per evitare sforamenti
+    return Math.max(0, Math.min(100, pos));
   };
 
   const getWidth = (start: Date, end: Date) => {
     const durationMs = end.getTime() - start.getTime();
-    return (durationMs / totalMs) * 100;
+    const width = (durationMs / totalMs) * 100;
+    const startPos = getPosition(start);
+    // Clamp width per non sforare il 100%
+    return Math.max(0, Math.min(100 - startPos, width));
   };
 
   const getDayFromPosition = (x: number): number => {
@@ -277,6 +282,15 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                   // Controlla sovrapposizione dipendenze (considera anche le ore)
                   const hasOverlap = prerequisite && prerequisite.endDate && 
                     (new Date(milestone.startDate!).getTime() <= new Date(prerequisite.endDate).getTime());
+                  
+                  if (hasOverlap && prerequisite) {
+                    console.log("OVERLAP DETECTED:", {
+                      milestone: milestone.name,
+                      milestoneStart: new Date(milestone.startDate!).toISOString(),
+                      prerequisite: prerequisite.name,
+                      prerequisiteEnd: new Date(prerequisite.endDate!).toISOString()
+                    });
+                  }
 
                   return (
                     <div key={milestone.id} className="relative h-16">

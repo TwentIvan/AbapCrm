@@ -2098,7 +2098,11 @@ export const insertProjectAssignmentSchema = createInsertSchema(projectAssignmen
   updatedAt: true,
 });
 
-export const insertProjectMilestoneSchema = createInsertSchema(projectMilestones).omit({
+export const insertProjectMilestoneSchema = createInsertSchema(projectMilestones, {
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+  completedDate: z.coerce.date().optional(),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
