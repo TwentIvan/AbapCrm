@@ -5528,7 +5528,7 @@ Format the response as professional documentation suitable for client delivery.`
         ...m,
         startDate: m.startDate ? new Date(m.startDate).toISOString() : null,
         endDate: m.endDate ? new Date(m.endDate).toISOString() : null,
-        completionDate: m.completionDate ? new Date(m.completionDate).toISOString() : null
+        completedDate: m.completedDate ? new Date(m.completedDate).toISOString() : null
       }));
       
       res.json(milestonesWithUTCDates);
@@ -5552,7 +5552,7 @@ Format the response as professional documentation suitable for client delivery.`
         ...m,
         startDate: m.startDate ? new Date(m.startDate).toISOString() : null,
         endDate: m.endDate ? new Date(m.endDate).toISOString() : null,
-        completionDate: m.completionDate ? new Date(m.completionDate).toISOString() : null
+        completedDate: m.completedDate ? new Date(m.completedDate).toISOString() : null
       }));
       
       res.json(milestonesWithUTCDates);
@@ -5578,7 +5578,7 @@ Format the response as professional documentation suitable for client delivery.`
         ...m,
         startDate: m.startDate ? new Date(m.startDate).toISOString() : null,
         endDate: m.endDate ? new Date(m.endDate).toISOString() : null,
-        completionDate: m.completionDate ? new Date(m.completionDate).toISOString() : null
+        completedDate: m.completedDate ? new Date(m.completedDate).toISOString() : null
       };
       
       res.json(milestoneWithUTCDates);
