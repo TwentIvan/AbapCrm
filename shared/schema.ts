@@ -490,6 +490,7 @@ export const sapSystems = pgTable("sap_systems", {
   projectId: uuid("project_id").references(() => projects.id), // Progetto associato opzionale
   name: text("name").notNull(), // Nome del sistema (es. "PRD", "DEV", "QAS")
   description: text("description"),
+  systemId: text("system_id").notNull(), // System ID SAP (3 caratteri, es. "PRD", "DEV", "QAS")
   systemType: sapSystemTypeEnum("system_type").default("ecc").notNull(),
   status: sapSystemStatusEnum("status").default("active").notNull(),
   

@@ -16,6 +16,7 @@ import { Loader2, Server, Building, Globe } from "lucide-react";
 // Extend the schema for form validation
 const formSchema = insertSapSystemSchema.extend({
   applicationServerPort: z.coerce.number().min(1).max(65535).optional(),
+  systemId: z.string().min(1, "System ID è obbligatorio").max(3, "System ID deve essere max 3 caratteri").toUpperCase(),
 });
 
 interface SapSystemFormProps {
@@ -41,9 +42,9 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: system?.name || "",
+      systemId: system?.systemId || "",
       serverHost: system?.serverHost || "",
       systemNumber: system?.systemNumber || "00",
-      clientNumber: system?.clientNumber || "100",
       applicationServerPort: system?.applicationServerPort || 3200,
       landscape: system?.landscape || "development",
       description: system?.description || "",
@@ -291,20 +292,20 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
 
                 <FormField
                   control={form.control}
-                  name="clientNumber"
+                  name="systemId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Client Number</FormLabel>
+                      <FormLabel>System ID</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="100" 
+                          placeholder="PRD" 
                           {...field}
                           maxLength={3}
-                          data-testid="input-client-number"
+                          data-testid="input-system-id"
                         />
                       </FormControl>
                       <FormDescription>
-                        3-digit SAP client number
+                        3-caratteri System ID SAP (es. PRD, DEV, QAS)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
