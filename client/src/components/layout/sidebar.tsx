@@ -181,6 +181,41 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
   );
 }
 
+export default function Sidebar() {
+  const [location] = useLocation();
+  const { user, logoutMutation } = useAuth();
+  const { t } = useTranslation();
+  const navigation = getDefaultNavigation(t);
+  const anagraficheDirectItems = getDefaultAnagraficheDirectItems(t);
+  const soluzioniItems = getDefaultSoluzioniItems(t);
+  const venditaItems = getDefaultVenditaItems(t);
+  const acquistiItems = getDefaultAcquistiItems(t);
+  const systemsItems = getDefaultSystemsItems(t);
+  const timeManagementItems = getDefaultTimeManagementItems(t);
+  const parentItems = getDefaultParentItems(t);
+  const [isAnagraficheOpen, setIsAnagraficheOpen] = useState(false);
+  const [isSoluzioniOpen, setIsSoluzioniOpen] = useState(false);
+  const [isVenditaOpen, setIsVenditaOpen] = useState(false);
+  const [isAcquistiOpen, setIsAcquistiOpen] = useState(false);
+  const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(false);
+  const [isSystemsOpen, setIsSystemsOpen] = useState(false);
+  
+  // Auto-open parent menus when child is active
+  const hasActiveAnagraficheDirectChild = anagraficheDirectItems.some((item: any) => location === item.href);
+  const hasActiveSystemsChild = systemsItems.some((item: any) => location === item.href);
+  const hasActiveAnagraficheChild = hasActiveAnagraficheDirectChild || hasActiveSystemsChild;
+  const hasActiveSoluzioniChild = soluzioniItems.some((item: any) => location === item.href);
+  const hasActiveVenditaChild = venditaItems.some((item: any) => location === item.href);
+  const hasActiveAcquistiChild = acquistiItems.some((item: any) => location === item.href);
+  const hasActiveTimeChild = timeManagementItems.some((item: any) => location === item.href);
+  
+  // Keep menus open if they have active children
+  const shouldAnagraficheBeOpen = isAnagraficheOpen || hasActiveAnagraficheChild;
+  const shouldSystemsBeOpen = isSystemsOpen || hasActiveSystemsChild;
+  const shouldSoluzioniBeOpen = isSoluzioniOpen || hasActiveSoluzioniChild;
+  const shouldVenditaBeOpen = isVenditaOpen || hasActiveVenditaChild;
+  const shouldAcquistiBeOpen = isAcquistiOpen || hasActiveAcquistiChild;
+  const shouldTimeManagementBeOpen = isTimeManagementOpen || hasActiveTimeChild;
   
   // Semplice funzione di toggle - chiude solo se non ci sono figli attivi
   const handleToggle = (type: string) => {
@@ -198,6 +233,12 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
         return;
       }
       setIsSystemsOpen(!isSystemsOpen);
+    } else if (type === 'soluzioni') {
+      if (hasActiveSoluzioniChild && isSoluzioniOpen) {
+        console.log('Preventing soluzioni close - has active child');
+        return;
+      }
+      setIsSoluzioniOpen(!isSoluzioniOpen);
     } else if (type === 'vendita') {
       if (hasActiveVenditaChild && isVenditaOpen) {
         console.log('Preventing vendita close - has active child');
@@ -291,10 +332,11 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
           );
         })}
         
-        {/* Altri Parent Sections (Vendite, Acquisti, Time Management) */}
+        {/* Altri Parent Sections (Soluzioni, Vendite, Acquisti, Time Management) */}
         <div>
           {parentItems.map((item: any) => {
             const isAnagraficheItem = item.type === 'anagrafiche';
+            const isSoluzioniItem = item.type === 'soluzioni';
             const isVenditaItem = item.type === 'vendita';
             const isAcquistiItem = item.type === 'acquisti';
             const isTimeItem = item.type === 'timeManagement';
@@ -308,7 +350,11 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
             let hasActiveChild = false;
             let childItems: any[] = [];
             
-            if (isVenditaItem) {
+            if (isSoluzioniItem) {
+              isOpen = shouldSoluzioniBeOpen;
+              hasActiveChild = hasActiveSoluzioniChild;
+              childItems = soluzioniItems;
+            } else if (isVenditaItem) {
               isOpen = shouldVenditaBeOpen;
               hasActiveChild = hasActiveVenditaChild;
               childItems = venditaItems;
