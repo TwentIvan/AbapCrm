@@ -20,9 +20,11 @@ import {
   insertOrganizationSchema, insertUserOrganizationSchema, insertOrganizationInvitationSchema,
   insertOrganizationDomainSchema, insertEmailFeedbackSchema, insertEmailTrainingSelectionSchema,
   insertSapTransportRequestSchema, insertSapTransportTaskSchema, insertSapTransportObjectSchema, insertSapObjectContentSchema,
+  insertProjectAssignmentSchema, insertProjectMilestoneSchema, insertPurchaseOrderSchema, insertVendorInvoiceSchema,
   type EmailConfig,
   projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements,
-  humanResources, sapSystems, systemCredentials, timesheets, comments, proposals
+  humanResources, sapSystems, systemCredentials, timesheets, comments, proposals,
+  projectAssignments, projectMilestones, purchaseOrders, vendorInvoices
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -5343,6 +5345,511 @@ Format the response as professional documentation suitable for client delivery.`
         error: "Errore nel processamento del JSON",
         details: error instanceof Error ? error.message : String(error)
       });
+    }
+  });
+
+  // ========== Project Assignments API ==========
+  app.get("/api/project-assignments", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      const assignments = await db.select().from(projectAssignments)
+        .where(and(
+          eq(projectAssignments.userId, req.user!.id),
+          inArray(projectAssignments.organizationId, organizationIds)
+        ));
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching project assignments:", error);
+      res.status(500).json({ error: "Failed to fetch project assignments" });
+    }
+  });
+
+  app.get("/api/project-assignments/project/:projectId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const assignments = await db.select().from(projectAssignments)
+        .where(and(
+          eq(projectAssignments.projectId, req.params.projectId),
+          eq(projectAssignments.userId, req.user!.id)
+        ));
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error fetching project assignments:", error);
+      res.status(500).json({ error: "Failed to fetch project assignments" });
+    }
+  });
+
+  app.get("/api/project-assignments/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const assignment = await db.select().from(projectAssignments)
+        .where(and(
+          eq(projectAssignments.id, req.params.id),
+          eq(projectAssignments.userId, req.user!.id)
+        ))
+        .limit(1);
+      if (!assignment.length) return res.sendStatus(404);
+      res.json(assignment[0]);
+    } catch (error) {
+      console.error("Error fetching project assignment:", error);
+      res.status(500).json({ error: "Failed to fetch project assignment" });
+    }
+  });
+
+  app.post("/api/project-assignments", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const dataWithUserId = {
+        ...req.body,
+        userId: req.user!.id,
+        organizationId, // Always use organizationId from header for security
+        startDate: req.body.startDate ? new Date(req.body.startDate) : null,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : null,
+      };
+
+      const validation = insertProjectAssignmentSchema.safeParse(dataWithUserId);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      // Wrap assignment + PO creation in a transaction for atomicity
+      const result = await db.transaction(async (tx) => {
+        const [assignment] = await tx.insert(projectAssignments).values(validation.data).returning();
+        
+        // Auto-generate Purchase Order if engagementType is set
+        if (assignment.engagementType && assignment.resourceId) {
+          const resource = await tx.select().from(humanResources).where(eq(humanResources.id, assignment.resourceId)).limit(1);
+          if (resource.length) {
+            const orderNumber = `PO-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+            const amount = assignment.engagementType === 'fixed' 
+              ? parseFloat(assignment.fixedAmount || '0')
+              : parseFloat(assignment.hourlyRate || '0') * parseFloat(assignment.estimatedHours || '0');
+            
+            const [po] = await tx.insert(purchaseOrders).values({
+              userId: req.user!.id,
+              organizationId: assignment.organizationId,
+              orderNumber,
+              vendorOrganizationId: resource[0].externalOrganizationId,
+              vendorName: resource[0].name,
+              projectId: assignment.projectId,
+              projectAssignmentId: assignment.id,
+              totalAmount: amount.toString(),
+              taxAmount: '0',
+              currency: assignment.currency,
+              description: assignment.title,
+              status: 'draft',
+            }).returning();
+
+            // Update assignment with PO reference
+            await tx.update(projectAssignments)
+              .set({ 
+                purchaseOrderId: po.id, 
+                autoPurchaseOrderGenerated: true 
+              })
+              .where(eq(projectAssignments.id, assignment.id));
+          }
+        }
+        
+        // Return the final assignment
+        const [finalAssignment] = await tx.select().from(projectAssignments).where(eq(projectAssignments.id, assignment.id)).limit(1);
+        return finalAssignment;
+      });
+
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating project assignment:", error);
+      res.status(500).json({ error: "Failed to create project assignment" });
+    }
+  });
+
+  app.put("/api/project-assignments/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const validation = insertProjectAssignmentSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const [assignment] = await db.update(projectAssignments)
+        .set({ ...validation.data, updatedAt: new Date() })
+        .where(and(
+          eq(projectAssignments.id, req.params.id),
+          eq(projectAssignments.userId, req.user!.id)
+        ))
+        .returning();
+      
+      if (!assignment) return res.sendStatus(404);
+      res.json(assignment);
+    } catch (error) {
+      console.error("Error updating project assignment:", error);
+      res.status(500).json({ error: "Failed to update project assignment" });
+    }
+  });
+
+  app.delete("/api/project-assignments/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const [deleted] = await db.delete(projectAssignments)
+        .where(and(
+          eq(projectAssignments.id, req.params.id),
+          eq(projectAssignments.userId, req.user!.id)
+        ))
+        .returning();
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting project assignment:", error);
+      res.status(500).json({ error: "Failed to delete project assignment" });
+    }
+  });
+
+  // ========== Project Milestones API ==========
+  app.get("/api/project-milestones", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      const milestones = await db.select().from(projectMilestones)
+        .where(and(
+          eq(projectMilestones.userId, req.user!.id),
+          inArray(projectMilestones.organizationId, organizationIds)
+        ))
+        .orderBy(asc(projectMilestones.displayOrder));
+      res.json(milestones);
+    } catch (error) {
+      console.error("Error fetching project milestones:", error);
+      res.status(500).json({ error: "Failed to fetch project milestones" });
+    }
+  });
+
+  app.get("/api/project-milestones/project/:projectId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const milestones = await db.select().from(projectMilestones)
+        .where(and(
+          eq(projectMilestones.projectId, req.params.projectId),
+          eq(projectMilestones.userId, req.user!.id)
+        ))
+        .orderBy(asc(projectMilestones.displayOrder));
+      res.json(milestones);
+    } catch (error) {
+      console.error("Error fetching project milestones:", error);
+      res.status(500).json({ error: "Failed to fetch project milestones" });
+    }
+  });
+
+  app.get("/api/project-milestones/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const milestone = await db.select().from(projectMilestones)
+        .where(and(
+          eq(projectMilestones.id, req.params.id),
+          eq(projectMilestones.userId, req.user!.id)
+        ))
+        .limit(1);
+      if (!milestone.length) return res.sendStatus(404);
+      res.json(milestone[0]);
+    } catch (error) {
+      console.error("Error fetching project milestone:", error);
+      res.status(500).json({ error: "Failed to fetch project milestone" });
+    }
+  });
+
+  app.post("/api/project-milestones", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const dataWithUserId = {
+        ...req.body,
+        userId: req.user!.id,
+        organizationId, // Always use organizationId from header for security
+        startDate: req.body.startDate ? new Date(req.body.startDate) : null,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : null,
+        completedDate: req.body.completedDate ? new Date(req.body.completedDate) : null,
+      };
+
+      const validation = insertProjectMilestoneSchema.safeParse(dataWithUserId);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const [milestone] = await db.insert(projectMilestones).values(validation.data).returning();
+      res.status(201).json(milestone);
+    } catch (error) {
+      console.error("Error creating project milestone:", error);
+      res.status(500).json({ error: "Failed to create project milestone" });
+    }
+  });
+
+  app.put("/api/project-milestones/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const validation = insertProjectMilestoneSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const [milestone] = await db.update(projectMilestones)
+        .set({ ...validation.data, updatedAt: new Date() })
+        .where(and(
+          eq(projectMilestones.id, req.params.id),
+          eq(projectMilestones.userId, req.user!.id)
+        ))
+        .returning();
+      
+      if (!milestone) return res.sendStatus(404);
+      res.json(milestone);
+    } catch (error) {
+      console.error("Error updating project milestone:", error);
+      res.status(500).json({ error: "Failed to update project milestone" });
+    }
+  });
+
+  app.delete("/api/project-milestones/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const [deleted] = await db.delete(projectMilestones)
+        .where(and(
+          eq(projectMilestones.id, req.params.id),
+          eq(projectMilestones.userId, req.user!.id)
+        ))
+        .returning();
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting project milestone:", error);
+      res.status(500).json({ error: "Failed to delete project milestone" });
+    }
+  });
+
+  // ========== Purchase Orders API ==========
+  app.get("/api/purchase-orders", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      const orders = await db.select().from(purchaseOrders)
+        .where(and(
+          eq(purchaseOrders.userId, req.user!.id),
+          inArray(purchaseOrders.organizationId, organizationIds)
+        ))
+        .orderBy(desc(purchaseOrders.createdAt));
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching purchase orders:", error);
+      res.status(500).json({ error: "Failed to fetch purchase orders" });
+    }
+  });
+
+  app.get("/api/purchase-orders/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const order = await db.select().from(purchaseOrders)
+        .where(and(
+          eq(purchaseOrders.id, req.params.id),
+          eq(purchaseOrders.userId, req.user!.id)
+        ))
+        .limit(1);
+      if (!order.length) return res.sendStatus(404);
+      res.json(order[0]);
+    } catch (error) {
+      console.error("Error fetching purchase order:", error);
+      res.status(500).json({ error: "Failed to fetch purchase order" });
+    }
+  });
+
+  app.post("/api/purchase-orders", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const dataWithUserId = {
+        ...req.body,
+        userId: req.user!.id,
+        organizationId, // Always use organizationId from header for security
+        orderDate: req.body.orderDate ? new Date(req.body.orderDate) : new Date(),
+        expectedDeliveryDate: req.body.expectedDeliveryDate ? new Date(req.body.expectedDeliveryDate) : null,
+        sentDate: req.body.sentDate ? new Date(req.body.sentDate) : null,
+        receivedDate: req.body.receivedDate ? new Date(req.body.receivedDate) : null,
+      };
+
+      const validation = insertPurchaseOrderSchema.safeParse(dataWithUserId);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const [order] = await db.insert(purchaseOrders).values(validation.data).returning();
+      res.status(201).json(order);
+    } catch (error) {
+      console.error("Error creating purchase order:", error);
+      res.status(500).json({ error: "Failed to create purchase order" });
+    }
+  });
+
+  app.put("/api/purchase-orders/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const validation = insertPurchaseOrderSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const [order] = await db.update(purchaseOrders)
+        .set({ ...validation.data, updatedAt: new Date() })
+        .where(and(
+          eq(purchaseOrders.id, req.params.id),
+          eq(purchaseOrders.userId, req.user!.id)
+        ))
+        .returning();
+      
+      if (!order) return res.sendStatus(404);
+      res.json(order);
+    } catch (error) {
+      console.error("Error updating purchase order:", error);
+      res.status(500).json({ error: "Failed to update purchase order" });
+    }
+  });
+
+  app.delete("/api/purchase-orders/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const [deleted] = await db.delete(purchaseOrders)
+        .where(and(
+          eq(purchaseOrders.id, req.params.id),
+          eq(purchaseOrders.userId, req.user!.id)
+        ))
+        .returning();
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting purchase order:", error);
+      res.status(500).json({ error: "Failed to delete purchase order" });
+    }
+  });
+
+  // ========== Vendor Invoices API ==========
+  app.get("/api/vendor-invoices", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      const invoices = await db.select().from(vendorInvoices)
+        .where(and(
+          eq(vendorInvoices.userId, req.user!.id),
+          inArray(vendorInvoices.organizationId, organizationIds)
+        ))
+        .orderBy(desc(vendorInvoices.createdAt));
+      res.json(invoices);
+    } catch (error) {
+      console.error("Error fetching vendor invoices:", error);
+      res.status(500).json({ error: "Failed to fetch vendor invoices" });
+    }
+  });
+
+  app.get("/api/vendor-invoices/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const invoice = await db.select().from(vendorInvoices)
+        .where(and(
+          eq(vendorInvoices.id, req.params.id),
+          eq(vendorInvoices.userId, req.user!.id)
+        ))
+        .limit(1);
+      if (!invoice.length) return res.sendStatus(404);
+      res.json(invoice[0]);
+    } catch (error) {
+      console.error("Error fetching vendor invoice:", error);
+      res.status(500).json({ error: "Failed to fetch vendor invoice" });
+    }
+  });
+
+  app.post("/api/vendor-invoices", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const dataWithUserId = {
+        ...req.body,
+        userId: req.user!.id,
+        organizationId, // Always use organizationId from header for security
+        invoiceDate: req.body.invoiceDate ? new Date(req.body.invoiceDate) : new Date(),
+        dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
+        receivedDate: req.body.receivedDate ? new Date(req.body.receivedDate) : new Date(),
+        paidDate: req.body.paidDate ? new Date(req.body.paidDate) : null,
+      };
+
+      const validation = insertVendorInvoiceSchema.safeParse(dataWithUserId);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const [invoice] = await db.insert(vendorInvoices).values(validation.data).returning();
+      res.status(201).json(invoice);
+    } catch (error) {
+      console.error("Error creating vendor invoice:", error);
+      res.status(500).json({ error: "Failed to create vendor invoice" });
+    }
+  });
+
+  app.put("/api/vendor-invoices/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const validation = insertVendorInvoiceSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const [invoice] = await db.update(vendorInvoices)
+        .set({ ...validation.data, updatedAt: new Date() })
+        .where(and(
+          eq(vendorInvoices.id, req.params.id),
+          eq(vendorInvoices.userId, req.user!.id)
+        ))
+        .returning();
+      
+      if (!invoice) return res.sendStatus(404);
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error updating vendor invoice:", error);
+      res.status(500).json({ error: "Failed to update vendor invoice" });
+    }
+  });
+
+  app.delete("/api/vendor-invoices/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const [deleted] = await db.delete(vendorInvoices)
+        .where(and(
+          eq(vendorInvoices.id, req.params.id),
+          eq(vendorInvoices.userId, req.user!.id)
+        ))
+        .returning();
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting vendor invoice:", error);
+      res.status(500).json({ error: "Failed to delete vendor invoice" });
     }
   });
 
