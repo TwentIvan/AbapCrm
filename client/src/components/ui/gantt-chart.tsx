@@ -42,9 +42,9 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
     );
   }
 
-  // Raggruppa i task per milestone
+  // Raggruppa i task per milestone (TUTTI i task, anche senza date)
   const tasksByMilestone = tasks.reduce((acc, task) => {
-    if (task.milestoneId && task.dueDate) {
+    if (task.milestoneId) {
       if (!acc[task.milestoneId]) {
         acc[task.milestoneId] = [];
       }
@@ -439,7 +439,6 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                   );
 
                   const taskRows = milestoneTasks
-                    .filter(task => task.startDate || task.dueDate)
                     .map((task) => {
                       const hasStartAndEnd = task.startDate && task.dueDate;
                       const taskStartStr = task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : null;
@@ -505,7 +504,23 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                         );
                       }
                       
-                      return null;
+                      // Task senza date - mostra placeholder
+                      return (
+                        <div key={task.id} className="gantt-row relative h-8 ml-4">
+                          <div className="flex items-center gap-4">
+                            <div className="w-44 flex-shrink-0">
+                              <div className="text-xs truncate text-muted-foreground">
+                                {task.title}
+                              </div>
+                            </div>
+                            <div className="flex-1 relative h-8 flex items-center">
+                              <div className="text-xs text-amber-600 dark:text-amber-400 italic">
+                                ⚠️ Definisci date inizio/fine
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
                     })
                     .filter(Boolean);
 
