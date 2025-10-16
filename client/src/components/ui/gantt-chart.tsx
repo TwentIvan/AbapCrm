@@ -51,18 +51,17 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
   const getPosition = (date: Date) => {
     const ms = date.getTime() - minDate.getTime();
-    const pos = (ms / totalMs) * 100;
-    // Clamp tra 0 e 100 per evitare sforamenti
-    return Math.max(0, Math.min(100, pos));
+    return (ms / totalMs) * 100;
   };
 
   const getWidth = (start: Date, end: Date) => {
     const durationMs = end.getTime() - start.getTime();
-    const width = (durationMs / totalMs) * 100;
-    const startPos = getPosition(start);
-    // Clamp width per non sforare il 100%
-    return Math.max(0, Math.min(100 - startPos, width));
+    return (durationMs / totalMs) * 100;
   };
+
+  // Clamp solo per rendering CSS per evitare sforamenti visivi
+  const clampPosition = (pos: number) => Math.max(0, Math.min(100, pos));
+  const clampWidth = (left: number, width: number) => Math.max(0, Math.min(100 - left, width));
 
   const getDayFromPosition = (x: number): number => {
     if (!containerRef.current) return 0;
@@ -148,8 +147,10 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     // Visual feedback
     const milestoneElement = document.querySelector(`[data-milestone-id="${dragState.id}"]`);
     if (milestoneElement) {
-      const leftPos = getPosition(newStart);
-      const width = getWidth(newStart, newEnd);
+      const rawLeft = getPosition(newStart);
+      const rawWidth = getWidth(newStart, newEnd);
+      const leftPos = clampPosition(rawLeft);
+      const width = clampWidth(rawLeft, rawWidth);
       (milestoneElement as HTMLElement).style.left = `${leftPos}%`;
       (milestoneElement as HTMLElement).style.width = `${width}%`;
     }
@@ -271,8 +272,10 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                 {sortedMilestones.map((milestone) => {
                   const start = new Date(milestone.startDate!);
                   const end = new Date(milestone.endDate!);
-                  const leftPos = getPosition(start);
-                  const barWidth = getWidth(start, end);
+                  const rawLeftPos = getPosition(start);
+                  const rawBarWidth = getWidth(start, end);
+                  const leftPos = clampPosition(rawLeftPos);
+                  const barWidth = clampWidth(rawLeftPos, rawBarWidth);
 
                   // Dipendenza
                   const prerequisite = milestone.dependsOnMilestoneId 
@@ -363,8 +366,10 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                               const childStart = new Date(milestone.startDate!);
                               const overlapStart = childStart;
                               const overlapEnd = prereqEnd;
-                              const overlapLeft = getPosition(overlapStart);
-                              const overlapWidth = getWidth(overlapStart, overlapEnd);
+                              const rawOverlapLeft = getPosition(overlapStart);
+                              const rawOverlapWidth = getWidth(overlapStart, overlapEnd);
+                              const overlapLeft = clampPosition(rawOverlapLeft);
+                              const overlapWidth = clampWidth(rawOverlapLeft, rawOverlapWidth);
                               
                               return (
                                 <div
