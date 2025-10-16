@@ -42,13 +42,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   const { data: partners, isLoading: isLoadingPartners, error: partnersError } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
     enabled: !!user,
-    queryFn: async () => {
-      const res = await fetch("/api/partners", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch partners');
-      return res.json();
-    },
   });
-
 
   const { data: projects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -58,11 +52,6 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
   const { data: sapSystems, isLoading: isLoadingSapSystems } = useQuery<SapSystem[]>({
     queryKey: ["/api/sap-systems"],
     enabled: !!user,
-    queryFn: async () => {
-      const res = await fetch("/api/sap-systems", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch SAP systems');
-      return res.json();
-    },
   });
 
   const clients = partners?.filter(partner => partner.type === "client") || [];
