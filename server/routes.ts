@@ -5523,23 +5523,23 @@ Format the response as professional documentation suitable for client delivery.`
         ))
         .orderBy(asc(projectMilestones.displayOrder));
       
-      // Converti le date PostgreSQL (senza timezone) forzando interpretazione UTC
-      const toUTC = (d: Date | null) => {
+      // Converti date a formato YYYY-MM-DD (solo parte date, senza timezone)
+      const toDateOnly = (d: Date | null) => {
         if (!d) return null;
-        return new Date(Date.UTC(
-          d.getFullYear(), d.getMonth(), d.getDate(),
-          d.getHours(), d.getMinutes(), d.getSeconds()
-        )).toISOString();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
       };
       
-      const milestonesWithUTCDates = milestones.map(m => ({
+      const milestonesWithDateOnly = milestones.map(m => ({
         ...m,
-        startDate: toUTC(m.startDate),
-        endDate: toUTC(m.endDate),
-        completedDate: toUTC(m.completedDate)
+        startDate: toDateOnly(m.startDate),
+        endDate: toDateOnly(m.endDate),
+        completedDate: toDateOnly(m.completedDate)
       }));
       
-      res.json(milestonesWithUTCDates);
+      res.json(milestonesWithDateOnly);
     } catch (error) {
       console.error("Error fetching project milestones:", error);
       res.status(500).json({ error: "Failed to fetch project milestones" });
@@ -5556,22 +5556,22 @@ Format the response as professional documentation suitable for client delivery.`
         ))
         .orderBy(asc(projectMilestones.displayOrder));
       
-      const toUTC = (d: Date | null) => {
+      const toDateOnly = (d: Date | null) => {
         if (!d) return null;
-        return new Date(Date.UTC(
-          d.getFullYear(), d.getMonth(), d.getDate(),
-          d.getHours(), d.getMinutes(), d.getSeconds()
-        )).toISOString();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
       };
       
-      const milestonesWithUTCDates = milestones.map(m => ({
+      const milestonesWithDateOnly = milestones.map(m => ({
         ...m,
-        startDate: toUTC(m.startDate),
-        endDate: toUTC(m.endDate),
-        completedDate: toUTC(m.completedDate)
+        startDate: toDateOnly(m.startDate),
+        endDate: toDateOnly(m.endDate),
+        completedDate: toDateOnly(m.completedDate)
       }));
       
-      res.json(milestonesWithUTCDates);
+      res.json(milestonesWithDateOnly);
     } catch (error) {
       console.error("Error fetching project milestones:", error);
       res.status(500).json({ error: "Failed to fetch project milestones" });
@@ -5590,22 +5590,22 @@ Format the response as professional documentation suitable for client delivery.`
       if (!milestone.length) return res.sendStatus(404);
       
       const m = milestone[0];
-      const toUTC = (d: Date | null) => {
+      const toDateOnly = (d: Date | null) => {
         if (!d) return null;
-        return new Date(Date.UTC(
-          d.getFullYear(), d.getMonth(), d.getDate(),
-          d.getHours(), d.getMinutes(), d.getSeconds()
-        )).toISOString();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
       };
       
-      const milestoneWithUTCDates = {
+      const milestoneWithDateOnly = {
         ...m,
-        startDate: toUTC(m.startDate),
-        endDate: toUTC(m.endDate),
-        completedDate: toUTC(m.completedDate)
+        startDate: toDateOnly(m.startDate),
+        endDate: toDateOnly(m.endDate),
+        completedDate: toDateOnly(m.completedDate)
       };
       
-      res.json(milestoneWithUTCDates);
+      res.json(milestoneWithDateOnly);
     } catch (error) {
       console.error("Error fetching project milestone:", error);
       res.status(500).json({ error: "Failed to fetch project milestone" });

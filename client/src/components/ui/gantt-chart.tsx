@@ -43,10 +43,18 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     );
   }
 
-  // Calcola range date con precisione millisecondi
-  const allDates = validMilestones.flatMap(m => [new Date(m.startDate!), new Date(m.endDate!)]);
-  const minDate = startOfDay(min(allDates));
-  const maxDate = startOfDay(max(allDates));
+  // Parse date strings (YYYY-MM-DD) come startOfDay locale per evitare problemi timezone
+  const parseDate = (dateStr: string | Date): Date => {
+    if (dateStr instanceof Date) {
+      return startOfDay(dateStr);
+    }
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return startOfDay(new Date(year, month - 1, day));
+  };
+  
+  const allDates = validMilestones.flatMap(m => [parseDate(m.startDate!), parseDate(m.endDate!)]);
+  const minDate = min(allDates);
+  const maxDate = max(allDates);
   const totalMs = maxDate.getTime() - minDate.getTime() + (24 * 60 * 60 * 1000); // +1 giorno in ms
   const allDays = eachDayOfInterval({ start: minDate, end: maxDate });
 
@@ -80,8 +88,8 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     e.stopPropagation();
     e.preventDefault();
     
-    const start = new Date(milestone.startDate!);
-    const end = new Date(milestone.endDate!);
+    const start = parseDate(milestone.startDate!);
+    const end = parseDate(milestone.endDate!);
     
     // Cattura geometria dalla riga corrente usando currentTarget
     const row = (e.currentTarget as HTMLElement).closest('.gantt-row') as HTMLElement;
@@ -251,10 +259,10 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                   // Usa preview date se questo milestone è in drag, altrimenti usa le date salvate
                   const start = dragState?.id === milestone.id && dragState.previewStart
                     ? dragState.previewStart
-                    : new Date(milestone.startDate!);
+                    : parseDate(milestone.startDate!);
                   const end = dragState?.id === milestone.id && dragState.previewEnd
                     ? dragState.previewEnd
-                    : new Date(milestone.endDate!);
+                    : parseDate(milestone.endDate!);
                   
                   const rawLeftPos = getPosition(start);
                   const rawBarWidth = getWidth(start, end);
@@ -270,7 +278,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                   const prereqEnd = prerequisite
                     ? (dragState?.id === prerequisite.id && dragState.previewEnd
                       ? dragState.previewEnd
-                      : new Date(prerequisite.endDate!))
+                      : parseDate(prerequisite.endDate!))
                     : null;
 
                   // Controlla sovrapposizione dipendenze - vera sovrapposizione solo se child inizia PRIMA che finisca il padre
