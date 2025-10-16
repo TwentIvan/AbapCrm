@@ -266,7 +266,7 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                     </svg>
                   </div>
                 </div>
-                {sortedMilestones.map((milestone) => {
+                {sortedMilestones.flatMap((milestone) => {
                   const startStr = dragState?.id === milestone.id && dragState.previewStartStr
                     ? dragState.previewStartStr
                     : milestone.startDate!;
@@ -294,7 +294,14 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
 
                   const milestoneTasks = tasksByMilestone[milestone.id] || [];
 
-                  return (
+                  const taskStatusColors: Record<string, string> = {
+                    todo: "bg-gray-400 dark:bg-gray-600",
+                    in_progress: "bg-blue-500 dark:bg-blue-600",
+                    review: "bg-yellow-500 dark:bg-yellow-600",
+                    completed: "bg-green-500 dark:bg-green-600"
+                  };
+
+                  const milestoneRow = (
                     <div key={milestone.id} className="gantt-row relative h-16">
                       <div className="flex items-center gap-4">
                         <div className="w-48 flex-shrink-0">
@@ -416,6 +423,40 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                       </div>
                     </div>
                   );
+
+                  const taskRows = milestoneTasks
+                    .filter(task => task.dueDate)
+                    .map((task) => {
+                      const taskDueDateStr = task.dueDate!.toString().split('T')[0];
+                      const taskPos = getPosition(taskDueDateStr);
+                      const clampedTaskPos = clampPosition(taskPos);
+
+                      return (
+                        <div key={task.id} className="gantt-row relative h-8 ml-4">
+                          <div className="flex items-center gap-4">
+                            <div className="w-44 flex-shrink-0">
+                              <div className="text-xs truncate text-muted-foreground">
+                                {task.title}
+                              </div>
+                            </div>
+
+                            <div className="flex-1 relative h-8">
+                              <div
+                                className={`absolute top-1/2 -translate-y-1/2 h-3 rounded ${taskStatusColors[task.status || "todo"]}`}
+                                style={{
+                                  left: `${clampedTaskPos}%`,
+                                  width: '4px',
+                                  zIndex: 8
+                                }}
+                                title={`${task.title} - ${formatDateStr(taskDueDateStr, 'long')}`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    });
+
+                  return [milestoneRow, ...taskRows];
                 })}
               </div>
             </div>
