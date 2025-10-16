@@ -107,7 +107,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     e.preventDefault();
     
     const row = (e.currentTarget as HTMLElement).closest('.gantt-row') as HTMLElement;
-    const rowWidth = row ? row.getBoundingClientRect().width - 192 : 800;
+    const rowWidth = row ? row.getBoundingClientRect().width - 208 : 800;
     
     setDragState({
       id: milestone.id,
