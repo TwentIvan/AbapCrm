@@ -92,7 +92,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const getButtonStyle = (buttonId: string, hoveredId: string | null) => {
     const isHovered = buttonId === hoveredId;
     return {
-      borderRadius: isHovered ? '0.5rem' : '50%',
+      borderRadius: '0.5rem',
       width: isHovered ? 'auto' : '3.5rem',
       height: '3.5rem',
       minWidth: isHovered ? '200px' : '3.5rem',
@@ -111,7 +111,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
     <header className="bg-card border-b border-border sticky top-0 z-10">
       {/* Top Brand Header */}
       <div className="bg-blue-50 dark:bg-blue-950/30 py-2 px-6 border-b border-blue-100 dark:border-blue-900">
-        <h1 className="text-center font-black tracking-tight uppercase">
+        <h1 className="text-left font-black tracking-tight uppercase">
           <span className="text-lg text-blue-600 dark:text-blue-400">THE</span>
           {' '}
           <span className="text-3xl text-blue-500 dark:text-blue-300">HUB</span>
