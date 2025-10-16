@@ -16,7 +16,6 @@ import { Loader2 } from "lucide-react";
 
 const formSchema = insertTaskSchema.omit({
   userId: true,
-  assignedTo: true,
 }).extend({
   startDate: z.string().optional(),
   dueDate: z.string().optional(),
@@ -25,6 +24,7 @@ const formSchema = insertTaskSchema.omit({
   parentTaskId: z.string().optional(),
   estimatedEffort: z.string().optional(),
   sapSystemId: z.string().optional(),
+  assignedTo: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -64,6 +64,12 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
     enabled: !!user, // Only fetch when user is authenticated
   });
 
+  const { data: users } = useQuery<any[]>({
+    queryKey: ["/api/users"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!user,
+  });
+
   const activeProjects = projects?.filter(project => project.status !== "completed") || [];
   
   const parentTasks = tasks?.filter(t => t.id !== task?.id) || []; // Exclude current task
@@ -82,6 +88,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : "",
       estimatedEffort: task?.estimatedEffort?.toString() || "",
       sapSystemId: task?.sapSystemId || "none",
+      assignedTo: task?.assignedTo || "none",
     },
   });
 
@@ -100,6 +107,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : "",
         estimatedEffort: task.estimatedEffort?.toString() || "",
         sapSystemId: task.sapSystemId || "none",
+        assignedTo: task.assignedTo || "none",
       });
     }
   }, [task, form]);
@@ -117,7 +125,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         dueDate: data.dueDate || null,
         estimatedEffort: data.estimatedEffort ? parseInt(data.estimatedEffort) : null,
         completionPercentage: task?.completionPercentage || 0,
-        assignedTo: task?.assignedTo || null,
+        assignedTo: data.assignedTo && data.assignedTo !== "none" ? data.assignedTo : null,
       };
       
       if (task) {
@@ -269,6 +277,32 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="assignedTo"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Owner (Assegnato a)</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || "none"}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-task-owner">
+                    <SelectValue placeholder="Seleziona owner" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">Non assegnato</SelectItem>
+                  {users?.map(u => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.firstName} {u.lastName} ({u.username})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
