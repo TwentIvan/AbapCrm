@@ -152,16 +152,28 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
     if (dragState.type === 'move') {
       const targetDay = Math.max(0, Math.min(totalDays - duration - 1, dayAtCursor - dragState.offsetDays));
-      newStart = addDays(minDate, targetDay);
+      newStart = addDays(minDate, Math.floor(targetDay));
+      // Aggiungi 12 ore se è una mezza giornata
+      if (targetDay % 1 === 0.5) {
+        newStart = addHours(newStart, 12);
+      }
       newEnd = addDays(newStart, duration);
     } else if (dragState.type === 'resize-start') {
-      const targetDay = Math.max(0, Math.min(differenceInDays(end, minDate) - 1, dayAtCursor));
-      newStart = addDays(minDate, targetDay);
+      const targetDay = Math.max(0, Math.min(differenceInDays(end, minDate) - 0.5, dayAtCursor));
+      newStart = addDays(minDate, Math.floor(targetDay));
+      // Aggiungi 12 ore se è una mezza giornata
+      if (targetDay % 1 === 0.5) {
+        newStart = addHours(newStart, 12);
+      }
       newEnd = end;
-    } else {
-      const targetDay = Math.max(differenceInDays(start, minDate) + 1, Math.min(totalDays, dayAtCursor));
+    } else { // resize-end
+      const targetDay = Math.max(differenceInDays(start, minDate) + 0.5, Math.min(totalDays, dayAtCursor));
       newStart = start;
-      newEnd = addDays(minDate, targetDay);
+      newEnd = addDays(minDate, Math.floor(targetDay));
+      // Aggiungi 12 ore se è una mezza giornata
+      if (targetDay % 1 === 0.5) {
+        newEnd = addHours(newEnd, 12);
+      }
     }
 
     onMilestoneUpdate?.(milestone.id, newStart, newEnd);
