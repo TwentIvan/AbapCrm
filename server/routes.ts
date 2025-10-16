@@ -537,8 +537,8 @@ export function registerRoutes(app: Express): Server {
   // Users
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const users = await storage.getUsers();
-    res.json(users);
+    const usersList = await storage.getUsers();
+    res.json(usersList);
   });
 
   // Organizations
