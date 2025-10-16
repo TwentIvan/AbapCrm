@@ -88,6 +88,38 @@ The application includes a system for parsing and normalizing multi-message conv
 ### Modular Design
 A significant refactor transformed the email training system into a fully modular design, unifying logic for handling text selections and reducing code duplication. This improves maintainability and consistency for adding new selection types.
 
+### Freelance Engagement & Procurement System
+The system includes a complete freelance engagement management workflow with procurement capabilities:
+
+- **Project Assignments** (`project_assignments`): Tracks freelance engagements on projects with two compensation models:
+  - **Fixed Amount**: One-time project fee with defined scope
+  - **Hourly Rate**: Time & materials with hourly billing and estimated hours
+  - Automatic Purchase Order generation upon assignment creation
+  - Links freelances (from `human_resources`) to projects with start/end dates and status tracking
+
+- **Project Milestones** (`project_milestones`): Gantt chart and timeline visualization for project phases:
+  - Milestone dependencies (prerequisite milestones)
+  - Progress tracking (0-100%)
+  - Budget vs actual cost tracking
+  - Deliverables and completion date tracking
+  - Display order for visual organization
+
+- **Purchase Orders** (`purchase_orders`): Procurement workflow for vendor orders:
+  - Auto-generation from project assignments
+  - Vendor management (organization or partner-based)
+  - Order lifecycle: draft → approved → sent → received
+  - Tax calculations and currency support
+  - Terms & conditions tracking
+
+- **Vendor Invoices** (`vendor_invoices`): Invoice management for vendor payments:
+  - Links to purchase orders and projects
+  - Invoice lifecycle: received → approved → paid
+  - Subtotal, tax, and total amount tracking
+  - Attachment storage for invoice PDFs
+  - Due date and payment tracking
+
+The system supports seamless integration between timesheet entries (hourly engagements) and project assignments for automatic cost calculation and invoicing.
+
 # External Dependencies
 
 ## Database Services

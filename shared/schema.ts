@@ -464,6 +464,9 @@ export const humanResources = pgTable("human_resources", {
   // Collegamento all'utente del sistema
   linkedUserId: uuid("linked_user_id").references(() => users.id), // Utente collegato (99% dei casi)
   
+  // Collegamento all'organizzazione esterna (se la risorsa è un freelance con proprio account)
+  externalOrganizationId: uuid("external_organization_id").references(() => organizations.id), // Organizzazione del freelance
+  
   // Tariffa base della risorsa (può essere sovrascritta dagli accordi)
   baseHourlyRate: decimal("base_hourly_rate", { precision: 10, scale: 2 }),
   
@@ -939,9 +942,11 @@ export const partnersRelations = relations(partners, ({ one, many }) => ({
   contacts: many(contacts),
 }));
 
-export const humanResourcesRelations = relations(humanResources, ({ one }) => ({
+export const humanResourcesRelations = relations(humanResources, ({ one, many }) => ({
   user: one(users, { fields: [humanResources.userId], references: [users.id] }),
   linkedUser: one(users, { fields: [humanResources.linkedUserId], references: [users.id], relationName: "linkedUser" }),
+  externalOrganization: one(organizations, { fields: [humanResources.externalOrganizationId], references: [organizations.id], relationName: "externalOrgResources" }),
+  projectAssignments: many(projectAssignments),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({
@@ -1573,6 +1578,172 @@ export const sapObjectContent = pgTable("sap_object_content", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ========== Project Assignments & Milestones ==========
+
+// Engagement/Assignment Types
+export const engagementTypeEnum = pgEnum("engagement_type", ["fixed", "hourly"]);
+export const assignmentStatusEnum = pgEnum("assignment_status", ["active", "completed", "cancelled"]);
+export const milestoneStatusEnum = pgEnum("milestone_status", ["planned", "in_progress", "completed", "cancelled"]);
+export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", ["draft", "approved", "sent", "received", "cancelled"]);
+export const vendorInvoiceStatusEnum = pgEnum("vendor_invoice_status", ["draft", "received", "approved", "paid", "cancelled"]);
+
+// Project Assignments - Ingaggi freelance sui progetti
+export const projectAssignments = pgTable("project_assignments", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
+  resourceId: uuid("resource_id").references(() => humanResources.id).notNull(), // Il freelance
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
+  
+  // Tipo di compenso
+  engagementType: engagementTypeEnum("engagement_type").notNull(),
+  
+  // Importi
+  fixedAmount: decimal("fixed_amount", { precision: 10, scale: 2 }), // Se tipo 'fixed'
+  hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }), // Se tipo 'hourly'
+  estimatedHours: decimal("estimated_hours", { precision: 8, scale: 2 }), // Stima ore per budget
+  currency: text("currency").default("EUR").notNull(),
+  
+  // Date e stato
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  status: assignmentStatusEnum("status").default("active").notNull(),
+  
+  // Note e descrizione
+  title: text("title").notNull(), // "Sviluppo Feature X"
+  description: text("description"),
+  notes: text("notes"),
+  
+  // Auto-generazione Purchase Order
+  autoPurchaseOrderGenerated: boolean("auto_purchase_order_generated").default(false).notNull(),
+  purchaseOrderId: uuid("purchase_order_id"), // PO generato automaticamente (FK aggiunto dopo)
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Project Milestones - Milestone/Gantt per progetti
+export const projectMilestones = pgTable("project_milestones", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
+  
+  // Informazioni milestone
+  name: text("name").notNull(), // "Sprint 1", "Alpha Release", "Go-Live"
+  description: text("description"),
+  
+  // Date e durata
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  completedDate: timestamp("completed_date"), // Data effettiva completamento
+  
+  // Stato e progresso
+  status: milestoneStatusEnum("status").default("planned").notNull(),
+  progress: integer("progress").default(0).notNull(), // 0-100
+  
+  // Budget e costi
+  budgetAmount: decimal("budget_amount", { precision: 10, scale: 2 }),
+  actualCost: decimal("actual_cost", { precision: 10, scale: 2 }),
+  currency: text("currency").default("EUR").notNull(),
+  
+  // Dipendenze
+  dependsOnMilestoneId: uuid("depends_on_milestone_id"), // Milestone prerequisito (FK self-reference)
+  
+  // Ordine di visualizzazione
+  displayOrder: integer("display_order").default(0).notNull(),
+  
+  // Deliverables e note
+  deliverables: text("deliverables"), // Cosa deve essere consegnato
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ========== Procurement (Acquisti) ==========
+
+// Purchase Orders - Ordini di acquisto
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
+  
+  // Numero e riferimenti
+  orderNumber: text("order_number").notNull().unique(), // PO-2025-001
+  vendorOrganizationId: uuid("vendor_organization_id").references(() => organizations.id), // Organizzazione fornitore
+  vendorPartnerId: uuid("vendor_partner_id").references(() => partners.id), // Partner fornitore (se non ha org)
+  vendorName: text("vendor_name").notNull(), // Nome fornitore (denormalizzato per storico)
+  
+  // Progetto collegato
+  projectId: uuid("project_id").references(() => projects.id),
+  projectAssignmentId: uuid("project_assignment_id"), // Se generato da assignment (FK aggiunto dopo)
+  
+  // Importi
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default('0').notNull(),
+  currency: text("currency").default("EUR").notNull(),
+  
+  // Date
+  orderDate: timestamp("order_date").defaultNow().notNull(),
+  expectedDeliveryDate: timestamp("expected_delivery_date"),
+  
+  // Stato
+  status: purchaseOrderStatusEnum("status").default("draft").notNull(),
+  
+  // Descrizione e note
+  description: text("description").notNull(),
+  notes: text("notes"),
+  termsAndConditions: text("terms_and_conditions"),
+  
+  // Tracking
+  sentDate: timestamp("sent_date"),
+  receivedDate: timestamp("received_date"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Vendor Invoices - Fatture fornitori
+export const vendorInvoices = pgTable("vendor_invoices", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
+  
+  // Numero fattura e riferimenti
+  invoiceNumber: text("invoice_number").notNull(), // Numero fattura del fornitore
+  purchaseOrderId: uuid("purchase_order_id").references(() => purchaseOrders.id), // PO collegato
+  vendorOrganizationId: uuid("vendor_organization_id").references(() => organizations.id), // Organizzazione fornitore
+  vendorPartnerId: uuid("vendor_partner_id").references(() => partners.id), // Partner fornitore
+  vendorName: text("vendor_name").notNull(), // Nome fornitore (denormalizzato)
+  
+  // Progetto collegato
+  projectId: uuid("project_id").references(() => projects.id),
+  
+  // Importi
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default('0').notNull(),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("EUR").notNull(),
+  
+  // Date
+  invoiceDate: timestamp("invoice_date").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  receivedDate: timestamp("received_date").defaultNow().notNull(), // Quando è arrivata
+  paidDate: timestamp("paid_date"), // Quando è stata pagata
+  
+  // Stato
+  status: vendorInvoiceStatusEnum("status").default("received").notNull(),
+  
+  // Descrizione e allegati
+  description: text("description").notNull(),
+  notes: text("notes"),
+  attachmentUrl: text("attachment_url"), // URL del PDF fattura
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Audit Log System - Universal change tracking for all entities
 export const auditActionEnum = pgEnum("audit_action", ["CREATE", "UPDATE", "DELETE"]);
 
@@ -1814,4 +1985,145 @@ export const sapObjectContentRelations = relations(sapObjectContent, ({ one }) =
     references: [sapTransportObjects.id],
   }),
 }));
+
+// Relations for Project Assignments
+export const projectAssignmentsRelations = relations(projectAssignments, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectAssignments.projectId],
+    references: [projects.id],
+  }),
+  resource: one(humanResources, {
+    fields: [projectAssignments.resourceId],
+    references: [humanResources.id],
+  }),
+  user: one(users, {
+    fields: [projectAssignments.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [projectAssignments.organizationId],
+    references: [organizations.id],
+  }),
+  purchaseOrder: one(purchaseOrders, {
+    fields: [projectAssignments.purchaseOrderId],
+    references: [purchaseOrders.id],
+  }),
+}));
+
+// Relations for Project Milestones
+export const projectMilestonesRelations = relations(projectMilestones, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectMilestones.projectId],
+    references: [projects.id],
+  }),
+  user: one(users, {
+    fields: [projectMilestones.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [projectMilestones.organizationId],
+    references: [organizations.id],
+  }),
+  dependsOnMilestone: one(projectMilestones, {
+    fields: [projectMilestones.dependsOnMilestoneId],
+    references: [projectMilestones.id],
+    relationName: "milestoneDependency",
+  }),
+}));
+
+// Relations for Purchase Orders
+export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many }) => ({
+  user: one(users, {
+    fields: [purchaseOrders.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [purchaseOrders.organizationId],
+    references: [organizations.id],
+  }),
+  vendorOrganization: one(organizations, {
+    fields: [purchaseOrders.vendorOrganizationId],
+    references: [organizations.id],
+    relationName: "vendorPurchaseOrders",
+  }),
+  vendorPartner: one(partners, {
+    fields: [purchaseOrders.vendorPartnerId],
+    references: [partners.id],
+  }),
+  project: one(projects, {
+    fields: [purchaseOrders.projectId],
+    references: [projects.id],
+  }),
+  projectAssignment: one(projectAssignments, {
+    fields: [purchaseOrders.projectAssignmentId],
+    references: [projectAssignments.id],
+  }),
+  vendorInvoices: many(vendorInvoices),
+}));
+
+// Relations for Vendor Invoices
+export const vendorInvoicesRelations = relations(vendorInvoices, ({ one }) => ({
+  user: one(users, {
+    fields: [vendorInvoices.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [vendorInvoices.organizationId],
+    references: [organizations.id],
+  }),
+  purchaseOrder: one(purchaseOrders, {
+    fields: [vendorInvoices.purchaseOrderId],
+    references: [purchaseOrders.id],
+  }),
+  vendorOrganization: one(organizations, {
+    fields: [vendorInvoices.vendorOrganizationId],
+    references: [organizations.id],
+    relationName: "vendorInvoices",
+  }),
+  vendorPartner: one(partners, {
+    fields: [vendorInvoices.vendorPartnerId],
+    references: [partners.id],
+  }),
+  project: one(projects, {
+    fields: [vendorInvoices.projectId],
+    references: [projects.id],
+  }),
+}));
+
+// ========== Insert Schemas for New Tables ==========
+
+export const insertProjectAssignmentSchema = createInsertSchema(projectAssignments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProjectMilestoneSchema = createInsertSchema(projectMilestones).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertVendorInvoiceSchema = createInsertSchema(vendorInvoices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ========== Type Exports for New Tables ==========
+
+export type ProjectAssignment = typeof projectAssignments.$inferSelect;
+export type InsertProjectAssignment = z.infer<typeof insertProjectAssignmentSchema>;
+export type ProjectMilestone = typeof projectMilestones.$inferSelect;
+export type InsertProjectMilestone = z.infer<typeof insertProjectMilestoneSchema>;
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
+export type VendorInvoice = typeof vendorInvoices.$inferSelect;
+export type InsertVendorInvoice = z.infer<typeof insertVendorInvoiceSchema>;
 
