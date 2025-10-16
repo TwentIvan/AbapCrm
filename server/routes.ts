@@ -1197,6 +1197,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.put("/api/tasks/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
+      console.log('[TASK UPDATE] Received body:', JSON.stringify(req.body, null, 2));
+      
       // Create a partial update schema that makes all fields optional
       const updateData: any = {};
       
