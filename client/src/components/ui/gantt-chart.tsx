@@ -1,10 +1,9 @@
 import { useState, useRef } from "react";
 import { ProjectMilestone } from "@shared/schema";
-import { format, differenceInDays, min, max, addDays, eachDayOfInterval } from "date-fns";
+import { format, differenceInDays, min, max, addDays, eachDayOfInterval, startOfDay } from "date-fns";
 import { it } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight } from "lucide-react";
 
 interface GanttChartProps {
   milestones: ProjectMilestone[];
@@ -14,18 +13,10 @@ interface GanttChartProps {
 }
 
 export function GanttChart({ milestones, projects, onMilestoneClick, onMilestoneUpdate }: GanttChartProps) {
-  const [draggingState, setDraggingState] = useState<{ 
+  const [dragState, setDragState] = useState<{ 
     id: string; 
-    startDate: Date; 
-    endDate: Date; 
-    originalStart: Date;
-    originalEnd: Date;
-  } | null>(null);
-  const [resizingState, setResizingState] = useState<{ 
-    id: string; 
-    edge: 'start' | 'end';
-    startDate: Date;
-    endDate: Date;
+    type: 'move' | 'resize-start' | 'resize-end';
+    offsetDays: number;
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -37,7 +28,6 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     );
   }
 
-  // Filtra milestone con date valide
   const validMilestones = milestones.filter(m => m.startDate && m.endDate);
   
   if (validMilestones.length === 0) {
@@ -50,94 +40,113 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
   // Calcola range date
   const allDates = validMilestones.flatMap(m => [new Date(m.startDate!), new Date(m.endDate!)]);
-  const minDate = min(allDates);
-  const maxDate = max(allDates);
+  const minDate = startOfDay(min(allDates));
+  const maxDate = startOfDay(max(allDates));
   const totalDays = differenceInDays(maxDate, minDate) + 1;
-
-  // Genera array di tutti i giorni per le gridlines
   const allDays = eachDayOfInterval({ start: minDate, end: maxDate });
 
   const getPosition = (date: Date) => {
-    const days = differenceInDays(date, minDate);
+    const days = differenceInDays(startOfDay(date), minDate);
     return (days / totalDays) * 100;
   };
 
   const getWidth = (start: Date, end: Date) => {
-    const days = differenceInDays(end, start) + 1;
+    const days = differenceInDays(startOfDay(end), startOfDay(start)) + 1;
     return (days / totalDays) * 100;
   };
 
-  const getDateFromPosition = (positionPercent: number): Date => {
-    const days = Math.round((positionPercent / 100) * totalDays);
-    return addDays(minDate, days);
+  const getDayFromPosition = (x: number): number => {
+    if (!containerRef.current) return 0;
+    const rect = containerRef.current.getBoundingClientRect();
+    const relativeX = x - rect.left - 192; // 192px = w-48 (12rem)
+    const timelineWidth = rect.width - 192;
+    const percent = (relativeX / timelineWidth) * 100;
+    return Math.round((percent / 100) * totalDays);
   };
 
-  const handleBarMouseDown = (e: React.MouseEvent, milestone: ProjectMilestone, edge?: 'start' | 'end') => {
+  const handleMouseDown = (e: React.MouseEvent, milestone: ProjectMilestone, type: 'move' | 'resize-start' | 'resize-end') => {
     e.stopPropagation();
-    const start = new Date(milestone.startDate!);
-    const end = new Date(milestone.endDate!);
+    e.preventDefault();
     
-    if (edge) {
-      setResizingState({ 
-        id: milestone.id, 
-        edge,
-        startDate: start,
-        endDate: end
-      });
-    } else {
-      setDraggingState({ 
-        id: milestone.id,
-        startDate: start,
-        endDate: end,
-        originalStart: start,
-        originalEnd: end
-      });
-    }
+    const dayAtCursor = getDayFromPosition(e.clientX);
+    const start = new Date(milestone.startDate!);
+    const startDay = differenceInDays(startOfDay(start), minDate);
+    
+    setDragState({
+      id: milestone.id,
+      type,
+      offsetDays: dayAtCursor - startDay
+    });
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!containerRef.current) return;
+    if (!dragState || !containerRef.current) return;
+    
+    const dayAtCursor = getDayFromPosition(e.clientX);
+    const milestone = validMilestones.find(m => m.id === dragState.id);
+    if (!milestone) return;
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const positionPercent = (x / rect.width) * 100;
-    const newDate = getDateFromPosition(Math.max(0, Math.min(100, positionPercent)));
+    const start = new Date(milestone.startDate!);
+    const end = new Date(milestone.endDate!);
+    const duration = differenceInDays(end, start);
 
-    if (draggingState) {
-      const duration = differenceInDays(draggingState.originalEnd, draggingState.originalStart);
-      const newEndDate = addDays(newDate, duration);
-      setDraggingState({
-        ...draggingState,
-        startDate: newDate,
-        endDate: newEndDate
-      });
-    } else if (resizingState) {
-      if (resizingState.edge === 'start') {
-        if (newDate < resizingState.endDate) {
-          setResizingState({
-            ...resizingState,
-            startDate: newDate
-          });
-        }
-      } else {
-        if (newDate > resizingState.startDate) {
-          setResizingState({
-            ...resizingState,
-            endDate: newDate
-          });
-        }
-      }
+    let newStart: Date;
+    let newEnd: Date;
+
+    if (dragState.type === 'move') {
+      const targetDay = Math.max(0, Math.min(totalDays - duration - 1, dayAtCursor - dragState.offsetDays));
+      newStart = addDays(minDate, targetDay);
+      newEnd = addDays(newStart, duration);
+    } else if (dragState.type === 'resize-start') {
+      const targetDay = Math.max(0, Math.min(differenceInDays(end, minDate) - 1, dayAtCursor));
+      newStart = addDays(minDate, targetDay);
+      newEnd = end;
+    } else { // resize-end
+      const targetDay = Math.max(differenceInDays(start, minDate) + 1, Math.min(totalDays, dayAtCursor));
+      newStart = start;
+      newEnd = addDays(minDate, targetDay);
+    }
+
+    // Visual feedback only - we'll save on mouseup
+    const milestoneElement = document.querySelector(`[data-milestone-id="${dragState.id}"]`);
+    if (milestoneElement) {
+      const leftPos = getPosition(newStart);
+      const width = getWidth(newStart, newEnd);
+      (milestoneElement as HTMLElement).style.left = `${leftPos}%`;
+      (milestoneElement as HTMLElement).style.width = `${width}%`;
     }
   };
 
-  const handleMouseUp = () => {
-    if (draggingState) {
-      onMilestoneUpdate?.(draggingState.id, draggingState.startDate, draggingState.endDate);
-      setDraggingState(null);
-    } else if (resizingState) {
-      onMilestoneUpdate?.(resizingState.id, resizingState.startDate, resizingState.endDate);
-      setResizingState(null);
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!dragState) return;
+    
+    const dayAtCursor = getDayFromPosition(e.clientX);
+    const milestone = validMilestones.find(m => m.id === dragState.id);
+    if (!milestone) return;
+
+    const start = new Date(milestone.startDate!);
+    const end = new Date(milestone.endDate!);
+    const duration = differenceInDays(end, start);
+
+    let newStart: Date;
+    let newEnd: Date;
+
+    if (dragState.type === 'move') {
+      const targetDay = Math.max(0, Math.min(totalDays - duration - 1, dayAtCursor - dragState.offsetDays));
+      newStart = addDays(minDate, targetDay);
+      newEnd = addDays(newStart, duration);
+    } else if (dragState.type === 'resize-start') {
+      const targetDay = Math.max(0, Math.min(differenceInDays(end, minDate) - 1, dayAtCursor));
+      newStart = addDays(minDate, targetDay);
+      newEnd = end;
+    } else {
+      const targetDay = Math.max(differenceInDays(start, minDate) + 1, Math.min(totalDays, dayAtCursor));
+      newStart = start;
+      newEnd = addDays(minDate, targetDay);
     }
+
+    onMilestoneUpdate?.(milestone.id, newStart, newEnd);
+    setDragState(null);
   };
 
   const statusColors = {
@@ -154,7 +163,6 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     cancelled: "Annullato"
   };
 
-  // Raggruppa per progetto
   const milestonesByProject = validMilestones.reduce((acc, milestone) => {
     const projectId = milestone.projectId || 'no-project';
     if (!acc[projectId]) acc[projectId] = [];
@@ -165,12 +173,12 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
   return (
     <div className="space-y-8">
       {/* Timeline Header */}
-      <div className="relative">
-        <div className="flex justify-between text-sm text-muted-foreground mb-2">
+      <div className="relative pl-48">
+        <div className="flex justify-between text-sm font-medium text-muted-foreground mb-2">
           <span>{format(minDate, "dd MMM yyyy", { locale: it })}</span>
           <span>{format(maxDate, "dd MMM yyyy", { locale: it })}</span>
         </div>
-        <div className="relative h-1 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        <div className="relative h-2 bg-gray-200 dark:bg-gray-700 rounded"></div>
       </div>
 
       {/* Gantt per progetto */}
@@ -182,106 +190,54 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
         return (
           <div key={projectId} className="space-y-4">
-            <h3 className="font-semibold text-lg">
-              {project?.name || 'Progetto non assegnato'}
-            </h3>
+            <h3 className="font-semibold text-lg">{project?.name || 'Progetto non assegnato'}</h3>
             
             <div 
               ref={containerRef}
-              className="relative"
+              className="relative select-none"
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
             >
-              {/* Gridlines verticali - layer dietro tutto */}
-              <div className="absolute inset-0 pointer-events-none z-0">
+              {/* Gridlines verticali */}
+              <div className="absolute left-48 right-0 top-0 bottom-0 pointer-events-none">
                 {allDays.map((day, index) => {
                   const pos = getPosition(day);
                   return (
                     <div
                       key={index}
-                      className="absolute top-0 bottom-0 border-l-2 border-dashed border-gray-300 dark:border-gray-600"
-                      style={{ left: `calc(12rem + ${pos}% * (100% - 12rem) / 100)` }}
+                      className="absolute top-0 bottom-0 w-px bg-gray-300 dark:bg-gray-600"
+                      style={{ 
+                        left: `${pos}%`,
+                        borderLeft: '1px dashed currentColor',
+                        opacity: 0.4
+                      }}
                     />
                   );
                 })}
               </div>
 
-              {/* Layer dipendenze - sopra gridlines, sotto milestone bars */}
-              <div className="absolute inset-0 pointer-events-none z-10">
+              {/* Milestone rows */}
+              <div className="space-y-3">
                 {sortedMilestones.map((milestone) => {
+                  const start = new Date(milestone.startDate!);
+                  const end = new Date(milestone.endDate!);
+                  const leftPos = getPosition(start);
+                  const barWidth = getWidth(start, end);
+
+                  // Dipendenza
                   const prerequisite = milestone.dependsOnMilestoneId 
                     ? validMilestones.find(m => m.id === milestone.dependsOnMilestoneId)
                     : null;
 
-                  if (!prerequisite || !prerequisite.endDate) return null;
-
-                  const prereqEnd = new Date(prerequisite.endDate);
-                  const milestoneStart = new Date(milestone.startDate!);
-                  const prereqPos = getPosition(prereqEnd);
-                  const milestonePos = getPosition(milestoneStart);
-                  
-                  const prereqIndex = sortedMilestones.findIndex(m => m.id === prerequisite.id);
-                  const milestoneIndex = sortedMilestones.findIndex(m => m.id === milestone.id);
-                  
-                  const isForward = prereqPos <= milestonePos;
-                  const lineWidth = Math.abs(milestonePos - prereqPos);
-                  
-                  const lineStyle = isForward 
-                    ? { left: `calc(12rem + ${prereqPos}% * (100% - 12rem) / 100)`, width: `calc(${lineWidth}% * (100% - 12rem) / 100)` }
-                    : { right: `calc(100% - 12rem - ${prereqPos}% * (100% - 12rem) / 100)`, width: `calc(${lineWidth}% * (100% - 12rem) / 100)` };
-                  
-                  const topOffset = prereqIndex * 72 + 48;
-                  const height = Math.abs(milestoneIndex - prereqIndex) * 72;
-                  
                   return (
-                    <div
-                      key={`dep-${milestone.id}`}
-                      className="absolute"
-                      style={{ 
-                        top: `${topOffset}px`,
-                        height: `${height}px`,
-                        ...lineStyle
-                      }}
-                    >
-                      <div className="relative w-full h-full">
-                        <div 
-                          className="absolute top-1/2 -translate-y-1/2 w-full h-2 bg-gradient-to-r from-purple-500 to-purple-600 dark:from-purple-400 dark:to-purple-500 rounded-full shadow-lg"
-                          style={{
-                            filter: 'drop-shadow(0 0 6px rgba(168, 85, 247, 0.7))'
-                          }}
-                        >
-                          <ArrowRight 
-                            className={`absolute top-1/2 -translate-y-1/2 h-6 w-6 text-purple-600 dark:text-purple-400 ${
-                              isForward ? 'right-0 translate-x-1/2' : 'left-0 -translate-x-1/2 rotate-180'
-                            }`}
-                            style={{ filter: 'drop-shadow(0 0 4px rgba(168, 85, 247, 0.9))' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Milestone rows - layer sopra */}
-              <div className="space-y-3 relative z-20">
-                {sortedMilestones.map((milestone) => {
-                  const state = draggingState?.id === milestone.id ? draggingState : 
-                                resizingState?.id === milestone.id ? resizingState : null;
-                  const start = state ? state.startDate : new Date(milestone.startDate!);
-                  const end = state ? state.endDate : new Date(milestone.endDate!);
-                  const leftPos = getPosition(start);
-                  const barWidth = getWidth(start, end);
-
-                  return (
-                    <div key={milestone.id} className="relative h-12">
-                      {/* Milestone info */}
+                    <div key={milestone.id} className="relative h-16">
                       <div className="flex items-center gap-4">
+                        {/* Nome milestone */}
                         <div className="w-48 flex-shrink-0">
                           <button
                             onClick={() => onMilestoneClick?.(milestone)}
-                            className="text-sm font-medium hover:underline text-left"
+                            className="text-sm font-medium hover:underline text-left truncate w-full"
                             data-testid={`gantt-milestone-${milestone.id}`}
                           >
                             {milestone.name}
@@ -290,54 +246,90 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                             <Badge className={`${statusColors[milestone.status || "planned"]} text-white text-xs`}>
                               {statusLabels[milestone.status || "planned"]}
                             </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {milestone.progress || 0}%
-                            </span>
+                            <span className="text-xs text-muted-foreground">{milestone.progress || 0}%</span>
                           </div>
                         </div>
 
-                        {/* Timeline bar */}
-                        <div className="flex-1 relative h-12">
-                          {/* Barra milestone con resize handles */}
+                        {/* Timeline */}
+                        <div className="flex-1 relative h-16">
+                          {/* Linea dipendenza - MOLTO EVIDENTE */}
+                          {prerequisite && prerequisite.endDate && (
+                            (() => {
+                              const prereqEnd = new Date(prerequisite.endDate);
+                              const prereqPos = getPosition(prereqEnd);
+                              const milestonePos = getPosition(start);
+                              
+                              return (
+                                <svg 
+                                  className="absolute inset-0 pointer-events-none overflow-visible"
+                                  style={{ zIndex: 5 }}
+                                >
+                                  <defs>
+                                    <marker
+                                      id={`arrow-${milestone.id}`}
+                                      markerWidth="10"
+                                      markerHeight="10"
+                                      refX="9"
+                                      refY="3"
+                                      orient="auto"
+                                      markerUnits="strokeWidth"
+                                    >
+                                      <path d="M0,0 L0,6 L9,3 z" fill="#a855f7" />
+                                    </marker>
+                                  </defs>
+                                  <line
+                                    x1={`${prereqPos}%`}
+                                    y1="50%"
+                                    x2={`${milestonePos}%`}
+                                    y2="50%"
+                                    stroke="#a855f7"
+                                    strokeWidth="3"
+                                    markerEnd={`url(#arrow-${milestone.id})`}
+                                    style={{
+                                      filter: 'drop-shadow(0 0 4px rgba(168, 85, 247, 0.8))'
+                                    }}
+                                  />
+                                </svg>
+                              );
+                            })()
+                          )}
+
+                          {/* Barra milestone */}
                           <div
-                            className={`absolute top-1/2 -translate-y-1/2 h-9 rounded-md transition-all hover:opacity-90 group ${statusColors[milestone.status || "planned"]}`}
+                            data-milestone-id={milestone.id}
+                            className={`absolute top-1/2 -translate-y-1/2 h-10 rounded group ${statusColors[milestone.status || "planned"]}`}
                             style={{
                               left: `${leftPos}%`,
                               width: `${barWidth}%`,
-                              cursor: draggingState?.id === milestone.id ? 'grabbing' : 'grab',
-                              boxShadow: state
-                                ? '0 6px 16px rgba(0,0,0,0.4)' 
-                                : '0 2px 6px rgba(0,0,0,0.15)',
-                              transform: state ? 'translateY(-50%) scale(1.05)' : 'translateY(-50%)',
+                              cursor: dragState?.id === milestone.id ? 'grabbing' : 'grab',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                              zIndex: dragState?.id === milestone.id ? 20 : 10
                             }}
-                            onMouseDown={(e) => handleBarMouseDown(e, milestone)}
+                            onMouseDown={(e) => handleMouseDown(e, milestone, 'move')}
                           >
-                            {/* Resize handle - start */}
+                            {/* Resize handle sinistra */}
                             <div
-                              className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded-l-md flex items-center justify-center"
-                              onMouseDown={(e) => handleBarMouseDown(e, milestone, 'start')}
+                              className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize bg-black/0 hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              onMouseDown={(e) => handleMouseDown(e, milestone, 'resize-start')}
                             >
-                              <div className="w-1 h-4 bg-white/60 rounded" />
+                              <div className="w-1 h-6 bg-white/80 rounded-full" />
                             </div>
                             
-                            {/* Contenuto barra */}
+                            {/* Contenuto */}
                             <div className="px-3 h-full flex items-center justify-center pointer-events-none">
-                              <Progress 
-                                value={milestone.progress || 0} 
-                                className="h-1.5 bg-white/30"
-                              />
+                              <Progress value={milestone.progress || 0} className="h-1.5 bg-white/30" />
                             </div>
 
-                            {/* Resize handle - end */}
+                            {/* Resize handle destra */}
                             <div
-                              className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded-r-md flex items-center justify-center"
-                              onMouseDown={(e) => handleBarMouseDown(e, milestone, 'end')}
+                              className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize bg-black/0 hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              onMouseDown={(e) => handleMouseDown(e, milestone, 'resize-end')}
                             >
-                              <div className="w-1 h-4 bg-white/60 rounded" />
+                              <div className="w-1 h-6 bg-white/80 rounded-full" />
                             </div>
                           </div>
 
-                          {/* Date tooltip */}
+                          {/* Date */}
                           <div 
                             className="absolute top-full mt-1 text-xs text-muted-foreground whitespace-nowrap pointer-events-none"
                             style={{ left: `${leftPos}%` }}
