@@ -106,8 +106,8 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     e.stopPropagation();
     e.preventDefault();
     
-    const row = (e.currentTarget as HTMLElement).closest('.gantt-row') as HTMLElement;
-    const rowWidth = row ? row.getBoundingClientRect().width - 208 : 800;
+    const timeline = (e.currentTarget as HTMLElement).closest('.gantt-timeline') as HTMLElement;
+    const rowWidth = timeline ? timeline.getBoundingClientRect().width : 800;
     
     setDragState({
       id: milestone.id,
@@ -221,30 +221,11 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
             >
-              <svg className="absolute left-52 right-0 top-0 bottom-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }}>
-                {gridBoundaries.map((dayIndex) => {
-                  const dayPos = (dayIndex / totalDays) * 100;
-                  return (
-                    <line
-                      key={`boundary-${dayIndex}`}
-                      x1={`${dayPos}%`}
-                      y1="0"
-                      x2={`${dayPos}%`}
-                      y2="100%"
-                      stroke="rgb(100, 116, 139)"
-                      strokeWidth="2"
-                      strokeDasharray="4 2"
-                      opacity="0.6"
-                    />
-                  );
-                })}
-              </svg>
-
               {dragState && dragState.previewStartStr && dragState.previewEndStr && (
                 <div 
-                  className="absolute top-0 left-52 right-0 pointer-events-none z-50"
+                  className="absolute top-0 left-48 right-0 pointer-events-none z-50"
                 >
-                  <div className="bg-black/80 text-white px-3 py-2 rounded text-xs font-medium whitespace-nowrap inline-block">
+                  <div className="bg-black/80 text-white px-3 py-2 rounded text-xs font-medium whitespace-nowrap inline-block ml-4">
                     {formatDateStr(dragState.previewStartStr)} - {formatDateStr(dragState.previewEndStr)}
                   </div>
                 </div>
@@ -296,7 +277,26 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                           </div>
                         </div>
 
-                        <div className="flex-1 relative h-16">
+                        <div className="flex-1 relative h-16 gantt-timeline">
+                          <svg className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+                            {gridBoundaries.map((dayIndex) => {
+                              const dayPos = (dayIndex / totalDays) * 100;
+                              return (
+                                <line
+                                  key={`boundary-${dayIndex}`}
+                                  x1={`${dayPos}%`}
+                                  y1="0"
+                                  x2={`${dayPos}%`}
+                                  y2="100%"
+                                  stroke="rgb(100, 116, 139)"
+                                  strokeWidth="2"
+                                  strokeDasharray="4 2"
+                                  opacity="0.6"
+                                />
+                              );
+                            })}
+                          </svg>
+                          
                           {prerequisite && prereqEndStr && (
                             (() => {
                               const prereqPos = getPosition(prereqEndStr);
