@@ -16,7 +16,6 @@ import { Loader2, Server, Building, Globe } from "lucide-react";
 // Extend the schema for form validation
 const formSchema = insertSapSystemSchema.extend({
   applicationServerPort: z.coerce.number().min(1).max(65535).optional(),
-  systemId: z.string().min(1, "System ID è obbligatorio").max(3, "System ID deve essere max 3 caratteri").transform(val => val.toUpperCase()),
 });
 
 interface SapSystemFormProps {
@@ -55,11 +54,16 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
 
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
+      // Convert systemId to uppercase before sending
+      const payload = {
+        ...data,
+        systemId: data.systemId?.toUpperCase() || '',
+      };
       const response = await fetch("/api/sap-systems", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) {
         const error = await response.json();
@@ -86,11 +90,16 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
 
   const updateMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
+      // Convert systemId to uppercase before sending
+      const payload = {
+        ...data,
+        systemId: data.systemId?.toUpperCase() || '',
+      };
       const response = await fetch(`/api/sap-systems/${system!.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) {
         const error = await response.json();
