@@ -110,13 +110,13 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   return (
     <header className="bg-card border-b border-border sticky top-0 z-10">
       {/* Top Brand Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-700 dark:to-blue-500 py-1 px-6">
-        <h1 className="text-center text-sm font-black tracking-tighter uppercase">
-          <span className="text-blue-100">THE</span>
+      <div className="bg-blue-50 dark:bg-blue-950/30 py-2 px-6 border-b border-blue-100 dark:border-blue-900">
+        <h1 className="text-center font-black tracking-tight uppercase">
+          <span className="text-lg text-blue-600 dark:text-blue-400">THE</span>
           {' '}
-          <span className="text-blue-200">HUB</span>
+          <span className="text-3xl text-blue-500 dark:text-blue-300">HUB</span>
           {' '}
-          <span className="text-blue-100">UP</span>
+          <span className="text-3xl text-blue-600 dark:text-blue-400">UP</span>
         </h1>
       </div>
       
@@ -127,7 +127,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           <div 
             className="flex items-center space-x-3 px-4 py-2 bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg transition-all duration-200"
             style={{ 
-              borderRadius: '3rem 0 0 3rem'
+              borderRadius: '0.5rem 0 0 0.5rem'
             }}
           >
             <AreaIcon className="text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
@@ -145,7 +145,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           <div 
             className="flex items-center px-4 py-2 bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg cursor-pointer transition-all duration-300"
             style={{ 
-              borderRadius: '0 3rem 3rem 0',
+              borderRadius: '0 0.5rem 0.5rem 0',
               width: isSearchOpen ? '300px' : 'auto',
               minWidth: isSearchOpen ? '300px' : 'auto'
             }}
@@ -264,26 +264,26 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           
           {/* User & Organization Box with Switch */}
           {user && (
-            <div className="relative rounded-full px-4 py-2 flex items-center space-x-4 bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg transition-all duration-200">
+            <div className="relative rounded-lg px-4 py-2 flex items-center space-x-4 bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg transition-all duration-200">
               {/* Language Selector - Bandiera Flat */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="w-14 h-14 rounded-full bg-background border border-border hover:bg-accent flex-shrink-0 p-0 overflow-hidden" 
+                    className="w-14 h-14 rounded-lg bg-background border border-border hover:bg-accent flex-shrink-0 p-0 overflow-hidden" 
                     data-testid="button-language-flag"
                   >
                     {language === "it" ? (
                       <div 
-                        className="w-12 h-12 rounded-full"
+                        className="w-12 h-12 rounded-md"
                         style={{
                           background: 'linear-gradient(to right, #009246 33%, #FFFFFF 33%, #FFFFFF 67%, #CE2B37 67%)'
                         }}
                       />
                     ) : (
                       <div 
-                        className="w-12 h-12 rounded-full bg-cover bg-center"
+                        className="w-12 h-12 rounded-md bg-cover bg-center"
                         style={{
                           backgroundImage: 'url(https://cdn-icons-png.flaticon.com/128/197/197374.png)'
                         }}
@@ -298,7 +298,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   >
                     <div className="flex items-center space-x-3">
                       <div 
-                        className="w-6 h-6 rounded-full flex-shrink-0"
+                        className="w-6 h-6 rounded-sm flex-shrink-0"
                         style={{
                           background: 'linear-gradient(to right, #009246 33%, #FFFFFF 33%, #FFFFFF 67%, #CE2B37 67%)'
                         }}
@@ -313,7 +313,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   >
                     <div className="flex items-center space-x-3">
                       <div 
-                        className="w-6 h-6 rounded-full bg-cover bg-center flex-shrink-0"
+                        className="w-6 h-6 rounded-sm bg-cover bg-center flex-shrink-0"
                         style={{
                           backgroundImage: 'url(https://cdn-icons-png.flaticon.com/128/197/197374.png)'
                         }}
@@ -329,7 +329,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div 
-                    className="rounded-full p-[3px] transition-all duration-300"
+                    className="rounded-lg p-[3px] transition-all duration-300"
                     style={
                       currentOrganization?.name === "Personal" && personalScope === 'all'
                         ? {
@@ -341,7 +341,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className={`w-14 h-14 rounded-full shadow-lg transition-all duration-300 ${
+                      className={`w-14 h-14 rounded-lg shadow-lg transition-all duration-300 ${
                         currentOrganization?.name === "Personal" && personalScope === 'all'
                           ? 'bg-background hover:bg-accent'
                           : 'bg-background border border-border hover:bg-accent'
@@ -413,9 +413,9 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               {/* Avatar Utente - Destra (cliccabile per logout/impostazioni) */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-14 h-14 rounded-full bg-primary hover:bg-primary/90">
-                    <Avatar className="w-14 h-14">
-                      <AvatarFallback className="text-lg font-medium text-primary-foreground bg-primary">
+                  <Button variant="ghost" size="icon" className="w-14 h-14 rounded-lg bg-primary hover:bg-primary/90">
+                    <Avatar className="w-14 h-14 rounded-lg">
+                      <AvatarFallback className="text-lg font-medium text-primary-foreground bg-primary rounded-lg">
                         {userInitials}
                       </AvatarFallback>
                     </Avatar>
