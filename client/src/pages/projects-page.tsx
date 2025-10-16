@@ -198,14 +198,18 @@ export default function ProjectsPage() {
         credentials: "include",
       });
       
-      let clipboardContent = project.id; // Default: solo project ID
-      let toastMessage = `ID progetto copiato: ${project.id.substring(0, 8)}...`;
+      // Credenziali di default se non configurate
+      const DEFAULT_USERNAME = "IDG-DELGIU";
+      const DEFAULT_PASSWORD = "IdgfabSviluppo05!";
+      
+      let clipboardContent = `${DEFAULT_PASSWORD}\n${project.id}`; // Default: password + project ID
+      let toastMessage = `Password SAP (default) e ID progetto copiati nel clipboard`;
       
       if (credentialsResponse.ok) {
         const credentials = await credentialsResponse.json();
-        if (credentials && credentials.password) {
-          // Formato strutturato: PASSWORD su prima riga, PROJECT_ID su seconda
-          clipboardContent = `${credentials.password}\n${project.id}`;
+        if (credentials && credentials.length > 0 && credentials[0].password) {
+          // Usa credenziali configurate se disponibili
+          clipboardContent = `${credentials[0].password}\n${project.id}`;
           toastMessage = `Password SAP e ID progetto copiati nel clipboard`;
         }
       }
