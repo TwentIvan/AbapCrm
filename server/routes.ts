@@ -4112,7 +4112,13 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/sap-systems", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const systemData = { ...req.body, userId: req.user!.id };
+      const organizationId = getOrganizationId(req);
+      const systemData = { 
+        ...req.body, 
+        userId: req.user!.id,
+        organizationId,
+        systemId: req.body.systemId?.toUpperCase() || req.body.systemId
+      };
       const validatedData = insertSapSystemSchema.parse(systemData);
       const system = await storage.createSapSystem(validatedData);
       res.status(201).json(system);
