@@ -6,7 +6,7 @@ import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { insertTaskSchema, Project, Task, SapSystem } from "@shared/schema";
+import { insertTaskSchema, Project, Task, SapSystem, ProjectMilestone } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ const formSchema = insertTaskSchema.omit({
 }).extend({
   dueDate: z.string().optional(),
   projectId: z.string().optional(),
+  milestoneId: z.string().optional(),
   parentTaskId: z.string().optional(),
   estimatedEffort: z.string().optional(),
   sapSystemId: z.string().optional(),
@@ -56,6 +57,12 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
     enabled: !!user, // Only fetch when user is authenticated
   });
 
+  const { data: milestones } = useQuery<ProjectMilestone[]>({
+    queryKey: ["/api/project-milestones"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!user, // Only fetch when user is authenticated
+  });
+
   const activeProjects = projects?.filter(project => project.status !== "completed") || [];
   
   const parentTasks = tasks?.filter(t => t.id !== task?.id) || []; // Exclude current task
@@ -68,6 +75,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       status: task?.status || "todo",
       priority: task?.priority || "medium",
       projectId: task?.projectId || "none",
+      milestoneId: task?.milestoneId || "none",
       parentTaskId: task?.parentTaskId || "no-parent",
       dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "",
       estimatedEffort: task?.estimatedEffort?.toString() || "",
@@ -84,6 +92,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         status: task.status || "todo",
         priority: task.priority || "medium",
         projectId: task.projectId || "none",
+        milestoneId: task.milestoneId || "none",
         parentTaskId: task.parentTaskId || "no-parent",
         dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "",
         estimatedEffort: task.estimatedEffort?.toString() || "",
@@ -98,6 +107,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         ...data,
         userId: user!.id,
         projectId: data.projectId && !["none", "loading", "error", "no-projects"].includes(data.projectId) ? data.projectId : null,
+        milestoneId: data.milestoneId && data.milestoneId !== "none" ? data.milestoneId : null,
         parentTaskId: data.parentTaskId && data.parentTaskId !== "no-parent" ? data.parentTaskId : null,
         sapSystemId: data.sapSystemId && data.sapSystemId !== "none" ? data.sapSystemId : null,
         dueDate: data.dueDate || null,
@@ -287,6 +297,32 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                       </SelectItem>
                     ))
                   )}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="milestoneId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Milestone (Optional)</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || "none"}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-task-milestone">
+                    <SelectValue placeholder="Select milestone" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">Nessuna milestone</SelectItem>
+                  {milestones?.map((milestone) => (
+                    <SelectItem key={milestone.id} value={milestone.id}>
+                      {milestone.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormMessage />
