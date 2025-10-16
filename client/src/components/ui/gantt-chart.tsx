@@ -109,6 +109,8 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     // Snap a mezze giornate
     const snappedDelta = Math.round(deltaDays * 2) / 2;
     
+    console.log("Drag calc:", { deltaX, rowWidth: dragState.rowWidth, totalDays, deltaDays, snappedDelta });
+    
     const durationMs = dragState.originalEnd.getTime() - dragState.originalStart.getTime();
 
     let newStart: Date;
