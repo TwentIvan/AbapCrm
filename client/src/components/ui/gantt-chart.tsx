@@ -354,6 +354,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                                     width: `${overlapWidth}%`,
                                     background: 'repeating-linear-gradient(45deg, rgba(239, 68, 68, 0.5), rgba(239, 68, 68, 0.5) 8px, rgba(239, 68, 68, 0.3) 8px, rgba(239, 68, 68, 0.3) 16px)',
                                     border: '2px solid rgb(239, 68, 68)',
+                                    boxShadow: '0 8px 16px rgba(239, 68, 68, 0.6), 0 4px 8px rgba(0, 0, 0, 0.3)',
                                     zIndex: 8
                                   }}
                                 />
