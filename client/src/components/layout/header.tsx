@@ -136,8 +136,21 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         </h1>
       </div>
       
-      {/* Main Header */}
-      <div className="px-6 py-4 flex items-center justify-between">
+      {/* Main Header with Geometric Background */}
+      <div className="px-6 py-4 flex items-center justify-between relative">
+        {/* Geometric Background Pattern */}
+        <div className="absolute inset-0 flex opacity-10">
+          <div className="flex-1 bg-blue-600 dark:bg-blue-400"></div>
+          <div className="flex-1 bg-blue-500 dark:bg-blue-300"></div>
+          <div className="flex-1 bg-blue-400 dark:bg-blue-200"></div>
+          <div className="flex-1 bg-purple-500 dark:bg-purple-400"></div>
+          <div className="flex-1 bg-blue-400 dark:bg-blue-200"></div>
+          <div className="flex-1 bg-blue-500 dark:bg-blue-300"></div>
+          <div className="flex-1 bg-blue-600 dark:bg-blue-400"></div>
+        </div>
+        
+        {/* Content above background */}
+        <div className="relative z-10 flex items-center justify-between w-full">
         <div className="flex items-stretch space-x-1">
           {/* Area Title with Icon */}
           <div 
@@ -513,17 +526,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             </div>
           )}
         </div>
-      </div>
-      
-      {/* Geometric Decoration Bar */}
-      <div className="w-full h-2 flex">
-        <div className="flex-1 bg-blue-600 dark:bg-blue-400"></div>
-        <div className="flex-1 bg-blue-500 dark:bg-blue-300"></div>
-        <div className="flex-1 bg-blue-400 dark:bg-blue-200"></div>
-        <div className="flex-1 bg-purple-500 dark:bg-purple-400"></div>
-        <div className="flex-1 bg-blue-400 dark:bg-blue-200"></div>
-        <div className="flex-1 bg-blue-500 dark:bg-blue-300"></div>
-        <div className="flex-1 bg-blue-600 dark:bg-blue-400"></div>
+        </div>
       </div>
     </header>
   );
