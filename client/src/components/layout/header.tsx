@@ -236,23 +236,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               </>
             )}
           </div>
-
-          {/* New Button - shown only if onNewClick is provided */}
-          {onNewClick && (
-            <Button
-              onClick={onNewClick}
-              className="ml-2 bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 px-4 py-2"
-              style={{ 
-                borderRadius: '0.5rem',
-                height: '3.5rem',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)'
-              }}
-              data-testid="button-new"
-            >
-              <Plus className="h-5 w-5" />
-              <span className="font-medium">Nuovo</span>
-            </Button>
-          )}
         </div>
 
         <div className="flex items-center space-x-4">

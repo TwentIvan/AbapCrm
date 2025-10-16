@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { Target, MoreHorizontal, Edit, Trash2, Table as TableIcon, Calendar } from "lucide-react";
+import { Target, MoreHorizontal, Edit, Trash2, Table as TableIcon, Calendar, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { ProjectMilestone, Project } from "@shared/schema";
@@ -234,11 +234,19 @@ export default function ProjectMilestonesPage() {
         <Header 
           title="Project Milestones"
           subtitle="Gestisci le milestone dei progetti con visualizzazione timeline"
-          onNewClick={handleAdd}
         />
         <main className="p-6 space-y-6">
           <div className="flex items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-4">
+              <Button
+                onClick={handleAdd}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                data-testid="button-new"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nuova Milestone
+              </Button>
+              
               <LayoutManager
                 currentLayoutName={currentLayoutName}
                 savedLayouts={savedLayouts}
