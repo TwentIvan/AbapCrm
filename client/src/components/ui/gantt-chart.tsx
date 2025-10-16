@@ -72,8 +72,8 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     const percent = (relativeX / timelineWidth) * 100;
     const totalDays = totalMs / (24 * 60 * 60 * 1000);
     const exactDays = (percent / 100) * totalDays;
-    // Snap a mezze giornate (0.5 giorni)
-    return Math.round(exactDays * 2) / 2;
+    // Snap a giorni interi
+    return Math.round(exactDays);
   };
 
   const handleMouseDown = (e: React.MouseEvent, milestone: ProjectMilestone, type: 'move' | 'resize-start' | 'resize-end') => {
@@ -106,8 +106,8 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     const totalDays = totalMs / (24 * 60 * 60 * 1000);
     const deltaDays = (deltaX / dragState.rowWidth) * totalDays;
     
-    // Snap a mezze giornate
-    const snappedDelta = Math.round(deltaDays * 2) / 2;
+    // Snap a giorni interi
+    const snappedDelta = Math.round(deltaDays);
     
     console.log("Drag calc:", { deltaX, rowWidth: dragState.rowWidth, totalDays, deltaDays, snappedDelta });
     
@@ -215,10 +215,9 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
             >
               {/* SVG Background con gridlines */}
               <svg className="absolute left-48 right-0 top-0 bottom-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }}>
-                {allDays.flatMap((day, index) => {
+                {allDays.map((day, index) => {
                   const dayPos = getPosition(day);
-                  const halfDayPos = getPosition(addHours(day, 12));
-                  return [
+                  return (
                     // Linea giornata intera
                     <line
                       key={`day-${index}`}
@@ -230,20 +229,8 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                       strokeWidth="2"
                       strokeDasharray="4 2"
                       opacity="0.6"
-                    />,
-                    // Linea mezza giornata
-                    <line
-                      key={`half-${index}`}
-                      x1={`${halfDayPos}%`}
-                      y1="0"
-                      x2={`${halfDayPos}%`}
-                      y2="100%"
-                      stroke="rgb(148, 163, 184)"
-                      strokeWidth="1"
-                      strokeDasharray="3 2"
-                      opacity="0.4"
                     />
-                  ];
+                  );
                 })}
               </svg>
 
@@ -253,7 +240,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                   className="absolute top-0 left-48 right-0 pointer-events-none z-50"
                 >
                   <div className="bg-black/80 text-white px-3 py-2 rounded text-xs font-medium whitespace-nowrap inline-block">
-                    {format(dragState.previewStart, "dd/MM/yyyy HH:mm", { locale: it })} - {format(dragState.previewEnd, "dd/MM/yyyy HH:mm", { locale: it })}
+                    {format(dragState.previewStart, "dd/MM/yyyy", { locale: it })} - {format(dragState.previewEnd, "dd/MM/yyyy", { locale: it })}
                   </div>
                 </div>
               )}
