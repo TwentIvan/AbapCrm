@@ -1204,8 +1204,12 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       if (req.body.description !== undefined) updateData.description = req.body.description || null;
       if (req.body.status !== undefined) updateData.status = req.body.status;
       if (req.body.priority !== undefined) updateData.priority = req.body.priority;
+      if (req.body.taskType !== undefined) updateData.taskType = req.body.taskType;
       if (req.body.projectId !== undefined) updateData.projectId = req.body.projectId;
+      if (req.body.parentTaskId !== undefined) updateData.parentTaskId = req.body.parentTaskId || null;
+      if (req.body.milestoneId !== undefined) updateData.milestoneId = req.body.milestoneId || null;
       if (req.body.sapSystemId !== undefined) updateData.sapSystemId = req.body.sapSystemId;
+      if (req.body.startDate !== undefined) updateData.startDate = req.body.startDate ? new Date(req.body.startDate) : null;
       if (req.body.dueDate !== undefined) updateData.dueDate = req.body.dueDate ? new Date(req.body.dueDate) : null;
       if (req.body.estimatedEffort !== undefined) updateData.estimatedEffort = req.body.estimatedEffort || null;
       if (req.body.completionPercentage !== undefined) updateData.completionPercentage = req.body.completionPercentage;
