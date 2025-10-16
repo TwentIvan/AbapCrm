@@ -25,7 +25,12 @@ const getDefaultSystemsItems = (t: any) => [
 const getDefaultNavigation = (t: any) => [
   { id: "1", name: t("nav.projects"), href: "/projects", icon: FolderOpen, testId: "nav-projects" },
   { id: "2", name: t("nav.tasks"), href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
-  { id: "3", name: "SAP Transport", href: "/sap-transport", icon: Radar, testId: "nav-sap-transport" },
+];
+
+// Soluzioni group
+const getDefaultSoluzioniItems = (t: any) => [
+  { id: "sol1", name: "Elenco", href: "/sap-transport", icon: FolderTree, testId: "nav-solutions-list" },
+  { id: "sol2", name: "Pacchetti", href: "/solution-packages", icon: Code, testId: "nav-solution-packages" },
 ];
 
 // Vendita group
@@ -49,6 +54,7 @@ const getDefaultTimeManagementItems = (t: any) => [
 // Parent sections
 const getDefaultParentItems = (t: any) => [
   { id: "p0", name: "Anagrafiche", icon: Contact, testId: "nav-anagrafiche", type: "anagrafiche" },
+  { id: "p3", name: "Soluzioni", icon: Radar, testId: "nav-soluzioni", type: "soluzioni" },
   { id: "p1", name: "Vendite", icon: DollarSign, testId: "nav-vendite", type: "vendita" },
   { id: "p2", name: "Acquisti", icon: FileText, testId: "nav-acquisti", type: "acquisti" },
   { id: "p4", name: t("nav.timeManagement"), icon: Clock, testId: "nav-time-management", type: "timeManagement" },
@@ -175,37 +181,6 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
   );
 }
 
-export default function Sidebar() {
-  const [location] = useLocation();
-  const { user, logoutMutation } = useAuth();
-  const { t } = useTranslation();
-  const navigation = getDefaultNavigation(t);
-  const anagraficheDirectItems = getDefaultAnagraficheDirectItems(t);
-  const venditaItems = getDefaultVenditaItems(t);
-  const acquistiItems = getDefaultAcquistiItems(t);
-  const systemsItems = getDefaultSystemsItems(t);
-  const timeManagementItems = getDefaultTimeManagementItems(t);
-  const parentItems = getDefaultParentItems(t);
-  const [isAnagraficheOpen, setIsAnagraficheOpen] = useState(false);
-  const [isVenditaOpen, setIsVenditaOpen] = useState(false);
-  const [isAcquistiOpen, setIsAcquistiOpen] = useState(false);
-  const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(false);
-  const [isSystemsOpen, setIsSystemsOpen] = useState(false);
-  
-  // Auto-open parent menus when child is active
-  const hasActiveAnagraficheDirectChild = anagraficheDirectItems.some((item: any) => location === item.href);
-  const hasActiveSystemsChild = systemsItems.some((item: any) => location === item.href);
-  const hasActiveAnagraficheChild = hasActiveAnagraficheDirectChild || hasActiveSystemsChild;
-  const hasActiveVenditaChild = venditaItems.some((item: any) => location === item.href);
-  const hasActiveAcquistiChild = acquistiItems.some((item: any) => location === item.href);
-  const hasActiveTimeChild = timeManagementItems.some((item: any) => location === item.href);
-  
-  // Keep menus open if they have active children
-  const shouldAnagraficheBeOpen = isAnagraficheOpen || hasActiveAnagraficheChild;
-  const shouldSystemsBeOpen = isSystemsOpen || hasActiveSystemsChild;
-  const shouldVenditaBeOpen = isVenditaOpen || hasActiveVenditaChild;
-  const shouldAcquistiBeOpen = isAcquistiOpen || hasActiveAcquistiChild;
-  const shouldTimeManagementBeOpen = isTimeManagementOpen || hasActiveTimeChild;
   
   // Semplice funzione di toggle - chiude solo se non ci sono figli attivi
   const handleToggle = (type: string) => {
