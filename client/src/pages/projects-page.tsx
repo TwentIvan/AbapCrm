@@ -198,12 +198,9 @@ export default function ProjectsPage() {
         credentials: "include",
       });
       
-      // Credenziali di default se non configurate
-      const DEFAULT_USERNAME = "IDG-DELGIU";
-      const DEFAULT_PASSWORD = "IdgfabSviluppo05!";
-      
-      let clipboardContent = `${DEFAULT_PASSWORD}\n${project.id}`; // Default: password + project ID
-      let toastMessage = `Password SAP (default) e ID progetto copiati nel clipboard`;
+      // Usa credenziali di default dal sistema SAP se disponibili
+      let clipboardContent = project.id; // Fallback: solo project ID
+      let toastMessage = `ID progetto copiato nel clipboard`;
       
       if (credentialsResponse.ok) {
         const credentials = await credentialsResponse.json();
@@ -212,6 +209,12 @@ export default function ProjectsPage() {
           clipboardContent = `${credentials[0].password}\n${project.id}`;
           toastMessage = `Password SAP e ID progetto copiati nel clipboard`;
         }
+      }
+      
+      // Se non ci sono credenziali configurate, usa quelle di default del sistema
+      if (clipboardContent === project.id && projectSapSystem.defaultPassword) {
+        clipboardContent = `${projectSapSystem.defaultPassword}\n${project.id}`;
+        toastMessage = `Password SAP (default) e ID progetto copiati nel clipboard`;
       }
 
       downloadZTHUDocumentationShortcut({
