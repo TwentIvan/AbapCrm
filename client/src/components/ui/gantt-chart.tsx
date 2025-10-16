@@ -221,7 +221,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
             >
-              <svg className="absolute left-48 right-0 top-0 bottom-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }}>
+              <svg className="absolute left-52 right-0 top-0 bottom-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }}>
                 {gridBoundaries.map((dayIndex) => {
                   const dayPos = (dayIndex / totalDays) * 100;
                   return (
@@ -242,7 +242,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
               {dragState && dragState.previewStartStr && dragState.previewEndStr && (
                 <div 
-                  className="absolute top-0 left-48 right-0 pointer-events-none z-50"
+                  className="absolute top-0 left-52 right-0 pointer-events-none z-50"
                 >
                   <div className="bg-black/80 text-white px-3 py-2 rounded text-xs font-medium whitespace-nowrap inline-block">
                     {formatDateStr(dragState.previewStartStr)} - {formatDateStr(dragState.previewEndStr)}
