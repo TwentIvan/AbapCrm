@@ -19,6 +19,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     startX: number;
     originalStart: Date;
     originalEnd: Date;
+    rowWidth: number;
     previewStart?: Date;
     previewEnd?: Date;
   } | null>(null);
@@ -82,27 +83,28 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     const start = new Date(milestone.startDate!);
     const end = new Date(milestone.endDate!);
     
+    // Cattura geometria dalla riga corrente usando currentTarget
+    const row = (e.currentTarget as HTMLElement).closest('.gantt-row') as HTMLElement;
+    const rowWidth = row ? row.getBoundingClientRect().width - 192 : 800; // fallback
+    
+    console.log("MouseDown geometry:", { rowWidth, clientX: e.clientX });
+    
     setDragState({
       id: milestone.id,
       type,
       startX: e.clientX,
       originalStart: start,
-      originalEnd: end
+      originalEnd: end,
+      rowWidth
     });
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!dragState) return;
     
-    // Usa la riga corrente invece del containerRef condiviso
-    const currentRow = document.querySelector(`[data-milestone-id="${dragState.id}"]`)?.closest('.gantt-row') as HTMLElement;
-    if (!currentRow) return;
-    
     const deltaX = e.clientX - dragState.startX;
-    const rect = currentRow.getBoundingClientRect();
-    const timelineWidth = rect.width - 192;
     const totalDays = totalMs / (24 * 60 * 60 * 1000);
-    const deltaDays = (deltaX / timelineWidth) * totalDays;
+    const deltaDays = (deltaX / dragState.rowWidth) * totalDays;
     
     // Snap a mezze giornate
     const snappedDelta = Math.round(deltaDays * 2) / 2;
