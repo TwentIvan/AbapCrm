@@ -368,7 +368,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                               left: `${leftPos}%`,
                               width: `${barWidth}%`,
                               cursor: dragState?.id === milestone.id ? 'grabbing' : 'grab',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                              boxShadow: '0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2)',
                               zIndex: dragState?.id === milestone.id ? 20 : 10,
                               position: 'relative'
                             }}
