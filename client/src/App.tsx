@@ -24,6 +24,7 @@ import ProposalsPage from "@/pages/proposals-page";
 import RateAgreementsPage from "@/pages/rate-agreements-page";
 import HumanResourcesPage from "@/pages/human-resources-page";
 import SalesOrdersPage from "@/pages/sales-orders-page";
+import ProjectAssignmentsPage from "@/pages/project-assignments-page";
 import SapSystemsPage from "@/pages/sap-systems-page";
 import SapTransportPage from "@/pages/sap-transport-page";
 import { SystemCredentialsPage } from "@/pages/system-credentials-page";
@@ -56,6 +57,7 @@ function Router() {
       <ProtectedRoute path="/rate-agreements" component={RateAgreementsPage} />
       <ProtectedRoute path="/human-resources" component={HumanResourcesPage} />
       <ProtectedRoute path="/sales-orders" component={SalesOrdersPage} />
+      <ProtectedRoute path="/project-assignments" component={ProjectAssignmentsPage} />
       <ProtectedRoute path="/sap-systems" component={SapSystemsPage} />
       <ProtectedRoute path="/sap-systems/new" component={SapSystemsPage} />
       <ProtectedRoute path="/sap-systems/:id/edit" component={SapSystemsPage} />

@@ -25,6 +25,8 @@ const getDefaultSystemsItems = (t: any) => [
 const getDefaultNavigation = (t: any) => [
   { id: "1", name: t("nav.projects"), href: "/projects", icon: FolderOpen, testId: "nav-projects" },
   { id: "2", name: t("nav.tasks"), href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
+  { id: "3", name: "Assegnazioni", href: "/project-assignments", icon: Users, testId: "nav-project-assignments" },
+  { id: "4", name: "Milestones", href: "/project-milestones", icon: BarChart3, testId: "nav-project-milestones" },
 ];
 
 // Soluzioni group
