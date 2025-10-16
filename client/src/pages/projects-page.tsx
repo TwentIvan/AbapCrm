@@ -221,8 +221,9 @@ export default function ProjectsPage() {
         systemName: projectSapSystem.name,
         description: projectSapSystem.description || undefined,
         serverHost: projectSapSystem.serverHost,
-        systemId: projectSapSystem.name, // Usa il nome come system ID
+        systemId: projectSapSystem.systemId || projectSapSystem.name, // Usa systemId se disponibile
         systemNumber: projectSapSystem.systemNumber,
+        applicationServerPort: projectSapSystem.applicationServerPort || undefined,
         client: "100", // Client di default - verrà sovrascritto dall'utente in SAP
         language: "IT",
       });

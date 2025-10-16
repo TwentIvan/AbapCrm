@@ -13,6 +13,7 @@ export interface SapShortcutParams {
   serverHost: string;
   systemId: string;
   systemNumber: string;
+  applicationServerPort?: number;
   client: string;
   language?: string;
   transactionCode?: string;
@@ -26,19 +27,15 @@ export interface SapShortcutParams {
 export function generateSapShortcut(params: SapShortcutParams): string {
   const lines: string[] = [];
   
-  // System section
+  // System section con GuiParm (formato standard SAP)
   lines.push("[System]");
-  lines.push(`Name=${params.systemName}`);
-  if (params.description) {
-    lines.push(`Description=${params.description}`);
-  }
+  lines.push(`Name=${params.systemId}`);
   lines.push(`Client=${params.client}`);
-  
-  // Connection section  
-  lines.push("[Connection]");
-  lines.push(`Server=${params.serverHost}`);
-  lines.push(`SystemId=${params.systemId}`);
-  lines.push(`SystemNumber=${params.systemNumber}`);
+  // GuiParm formato: /H/hostname/S/port
+  // Usa applicationServerPort se disponibile, altrimenti calcola da systemNumber
+  const sapPort = params.applicationServerPort || 
+    parseInt(`32${params.systemNumber.padStart(2, '0')}`);
+  lines.push(`GuiParm=/H/${params.serverHost}/S/${sapPort}`);
   
   // User section
   if (params.username || params.language) {
@@ -58,19 +55,20 @@ export function generateSapShortcut(params: SapShortcutParams): string {
       lines.push(`Command=${params.transactionCode}`);
       lines.push(`Type=Transaction`);
     } else if (params.programName) {
-      lines.push(`Command=${params.programName}`);
-      lines.push(`Type=Report`);
+      // Per i report SAP, usa SE38 con il nome del programma
+      lines.push(`Command=SE38 RS ${params.programName}`);
+      lines.push(`Type=Transaction`);
     }
   }
   
   // Configuration section
   lines.push("[Configuration]");
-  lines.push("WorkDir=");
+  lines.push("Workplace=false");
+  lines.push("GuiSize=");
   
   // Options section
   lines.push("[Options]");
-  lines.push("Reuse=1");
-  lines.push("GuiSize=Maximized");
+  lines.push("Reuse=0");
   
   return lines.join("\r\n");
 }
@@ -101,6 +99,7 @@ export function generateZTHUDocumentationShortcut(systemData: {
   serverHost: string;
   systemId: string;
   systemNumber: string;
+  applicationServerPort?: number;
   client: string;
   language?: string;
   username?: string;
@@ -120,6 +119,7 @@ export function downloadZTHUDocumentationShortcut(systemData: {
   serverHost: string;
   systemId: string;
   systemNumber: string;
+  applicationServerPort?: number;
   client: string;
   language?: string;
   username?: string;
