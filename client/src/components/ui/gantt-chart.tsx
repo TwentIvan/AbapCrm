@@ -84,7 +84,8 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
   const minDateStr = dayToDate(minDay);
   const maxDateStr = dayToDate(maxDay);
   
-  const gridDates = Array.from({ length: totalDays }, (_, i) => dayToDate(minDay + i));
+  // Gridlines rappresentano confini tra giorni: serve totalDays + 1 linee per totalDays giorni
+  const gridBoundaries = Array.from({ length: totalDays + 1 }, (_, i) => i);
 
   const getPosition = (dateStr: string): number => {
     const day = dateToDay(dateStr);
@@ -221,11 +222,11 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
               onMouseLeave={handleMouseUp}
             >
               <svg className="absolute left-48 right-0 top-0 bottom-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }}>
-                {gridDates.map((dateStr, index) => {
-                  const dayPos = getPosition(dateStr);
+                {gridBoundaries.map((dayIndex) => {
+                  const dayPos = (dayIndex / totalDays) * 100;
                   return (
                     <line
-                      key={`day-${index}`}
+                      key={`boundary-${dayIndex}`}
                       x1={`${dayPos}%`}
                       y1="0"
                       x2={`${dayPos}%`}
