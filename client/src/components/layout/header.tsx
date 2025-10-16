@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock, Settings, LogOut, Globe, Eye } from "lucide-react";
+import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock, Settings, LogOut, Globe, Eye, Sparkles } from "lucide-react";
 import { ThemeSelector } from "@/components/theme/theme-selector";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -72,7 +72,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const getButtonTransform = (buttonId: string, hoveredId: string | null) => {
     if (!hoveredId) return 'translateX(0)';
     
-    const buttons = ['messages', 'calendar', 'planning'];
+    const buttons = ['messages', 'calendar', 'planning', 'proposals', 'partners'];
     const currentIndex = buttons.indexOf(buttonId);
     const hoveredIndex = buttons.indexOf(hoveredId);
     
@@ -257,6 +257,43 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </Button>
               </Link>
               
+              {/* Proposte AI Button */}
+              <Link href="/proposals">
+                <Button 
+                  variant="ghost" 
+                  className="flex items-center bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg"
+                  style={getButtonStyle('proposals', hoveredButton)}
+                  onMouseEnter={() => setHoveredButton('proposals')}
+                  onMouseLeave={() => setHoveredButton(null)}
+                  data-testid="button-proposals"
+                >
+                  <Sparkles className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                  {hoveredButton === 'proposals' && (
+                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                      Proposte AI
+                    </span>
+                  )}
+                </Button>
+              </Link>
+              
+              {/* Contatti Button */}
+              <Link href="/partners">
+                <Button 
+                  variant="ghost" 
+                  className="flex items-center bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg"
+                  style={getButtonStyle('partners', hoveredButton)}
+                  onMouseEnter={() => setHoveredButton('partners')}
+                  onMouseLeave={() => setHoveredButton(null)}
+                  data-testid="button-partners"
+                >
+                  <Users className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                  {hoveredButton === 'partners' && (
+                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                      Contatti
+                    </span>
+                  )}
+                </Button>
+              </Link>
 
             </div>
           </TooltipProvider>
