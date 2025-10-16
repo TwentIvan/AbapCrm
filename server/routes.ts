@@ -819,6 +819,7 @@ export function registerRoutes(app: Express): Server {
         milestoneId: tasks.milestoneId,
         userId: tasks.userId,
         assignedTo: tasks.assignedTo,
+        assignedToName: sql<string>`${users.username}`.as('assigned_to_name'),
         sapSystemId: tasks.sapSystemId,
         startDate: tasks.startDate,
         dueDate: tasks.dueDate,
@@ -832,6 +833,7 @@ export function registerRoutes(app: Express): Server {
         projectName: projects.name,
       }).from(tasks)
         .leftJoin(projects, eq(tasks.projectId, projects.id))
+        .leftJoin(users, eq(tasks.assignedTo, users.id))
         .where(and(
           eq(tasks.userId, req.user!.id),
           inArray(tasks.organizationId, organizationIds)
