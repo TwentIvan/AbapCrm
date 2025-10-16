@@ -5577,6 +5577,8 @@ Format the response as professional documentation suitable for client delivery.`
 
       const validation = insertProjectMilestoneSchema.safeParse(dataWithUserId);
       if (!validation.success) {
+        console.error("Milestone validation error:", JSON.stringify(validation.error.errors, null, 2));
+        console.error("Data received:", JSON.stringify(dataWithUserId, null, 2));
         return res.status(400).json({ 
           error: "Invalid data", 
           details: validation.error.errors 
