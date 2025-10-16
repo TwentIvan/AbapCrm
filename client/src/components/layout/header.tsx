@@ -138,9 +138,9 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
       
       {/* Main Header with Geometric Background */}
       <div className="px-6 py-4 flex items-center justify-between relative overflow-hidden">
-        {/* Irregular Geometric Background Pattern - denso e continuo */}
+        {/* Irregular Geometric Background Pattern - denso e continuo che copre tutta la larghezza */}
         <div className="absolute inset-0 opacity-30">
-          {/* Forme geometriche irregolari dense con bianco alternato */}
+          {/* Forme geometriche irregolari dense con bianco alternato - pattern esteso */}
           <div className="absolute top-0 left-0 w-24 h-full bg-blue-500 dark:bg-blue-700" style={{ clipPath: 'polygon(0 0, 100% 15%, 85% 100%, 0 90%)' }}></div>
           <div className="absolute top-0 left-20 w-28 h-full bg-white dark:bg-gray-800" style={{ clipPath: 'polygon(10% 0, 100% 0, 95% 100%, 0 100%)' }}></div>
           <div className="absolute top-0 left-40 w-24 h-full bg-sky-500 dark:bg-sky-700" style={{ clipPath: 'polygon(0 20%, 100% 0, 100% 80%, 0 100%)' }}></div>
@@ -157,6 +157,24 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           <div className="absolute top-0 left-252 w-28 h-full bg-white dark:bg-gray-700" style={{ clipPath: 'polygon(10% 0, 100% 5%, 95% 100%, 0 100%)' }}></div>
           <div className="absolute top-0 left-272 w-24 h-full bg-cyan-500 dark:bg-cyan-600" style={{ clipPath: 'polygon(0 10%, 100% 0, 100% 95%, 0 90%)' }}></div>
           <div className="absolute top-0 left-290 w-26 h-full bg-blue-400 dark:bg-blue-700" style={{ clipPath: 'polygon(20% 0, 100% 15%, 90% 100%, 0 80%)' }}></div>
+          {/* Continua il pattern fino alla fine */}
+          <div className="absolute top-0 left-[310px] w-28 h-full bg-sky-500 dark:bg-sky-700" style={{ clipPath: 'polygon(0 0, 100% 20%, 85% 100%, 0 95%)' }}></div>
+          <div className="absolute top-0 left-[332px] w-24 h-full bg-white dark:bg-gray-800" style={{ clipPath: 'polygon(15% 0, 100% 0, 100% 100%, 0 90%)' }}></div>
+          <div className="absolute top-0 left-[350px] w-26 h-full bg-blue-500 dark:bg-blue-600" style={{ clipPath: 'polygon(0 10%, 100% 5%, 90% 100%, 5% 85%)' }}></div>
+          <div className="absolute top-0 left-[368px] w-28 h-full bg-cyan-400 dark:bg-cyan-700" style={{ clipPath: 'polygon(10% 0, 100% 15%, 95% 100%, 0 100%)' }}></div>
+          <div className="absolute top-0 left-[388px] w-24 h-full bg-blue-600 dark:bg-blue-700" style={{ clipPath: 'polygon(0 0, 100% 25%, 85% 100%, 0 80%)' }}></div>
+          <div className="absolute top-0 left-[406px] w-32 h-full bg-white dark:bg-gray-700" style={{ clipPath: 'polygon(20% 0, 100% 10%, 100% 90%, 0 95%)' }}></div>
+          <div className="absolute top-0 left-[430px] w-24 h-full bg-sky-600 dark:bg-sky-600" style={{ clipPath: 'polygon(0 15%, 100% 0, 95% 100%, 10% 100%)' }}></div>
+          <div className="absolute top-0 left-[448px] w-28 h-full bg-blue-400 dark:bg-blue-700" style={{ clipPath: 'polygon(5% 0, 100% 20%, 90% 100%, 0 85%)' }}></div>
+          {/* Pattern per la parte destra - usa right invece di left per coprire meglio */}
+          <div className="absolute top-0 right-0 w-32 h-full bg-sky-500 dark:bg-sky-700" style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 100%, 0 85%)' }}></div>
+          <div className="absolute top-0 right-24 w-28 h-full bg-white dark:bg-gray-800" style={{ clipPath: 'polygon(0 10%, 100% 0, 95% 100%, 0 100%)' }}></div>
+          <div className="absolute top-0 right-44 w-24 h-full bg-cyan-500 dark:bg-cyan-600" style={{ clipPath: 'polygon(15% 0, 100% 15%, 100% 90%, 0 80%)' }}></div>
+          <div className="absolute top-0 right-62 w-26 h-full bg-blue-500 dark:bg-blue-600" style={{ clipPath: 'polygon(0 0, 100% 20%, 85% 100%, 5% 95%)' }}></div>
+          <div className="absolute top-0 right-80 w-28 h-full bg-sky-400 dark:bg-sky-700" style={{ clipPath: 'polygon(10% 0, 100% 5%, 100% 95%, 0 90%)' }}></div>
+          <div className="absolute top-0 right-100 w-24 h-full bg-white dark:bg-gray-700" style={{ clipPath: 'polygon(0 15%, 100% 0, 90% 100%, 0 100%)' }}></div>
+          <div className="absolute top-0 right-118 w-32 h-full bg-blue-600 dark:bg-blue-700" style={{ clipPath: 'polygon(20% 0, 100% 10%, 95% 100%, 0 85%)' }}></div>
+          <div className="absolute top-0 right-142 w-24 h-full bg-cyan-400 dark:bg-cyan-700" style={{ clipPath: 'polygon(0 0, 100% 25%, 85% 100%, 10% 95%)' }}></div>
         </div>
         
         {/* Content above background */}
