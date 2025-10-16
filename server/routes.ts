@@ -5522,7 +5522,16 @@ Format the response as professional documentation suitable for client delivery.`
           inArray(projectMilestones.organizationId, organizationIds)
         ))
         .orderBy(asc(projectMilestones.displayOrder));
-      res.json(milestones);
+      
+      // Converti le date in ISO UTC per evitare problemi di timezone
+      const milestonesWithUTCDates = milestones.map(m => ({
+        ...m,
+        startDate: m.startDate ? new Date(m.startDate).toISOString() : null,
+        endDate: m.endDate ? new Date(m.endDate).toISOString() : null,
+        completionDate: m.completionDate ? new Date(m.completionDate).toISOString() : null
+      }));
+      
+      res.json(milestonesWithUTCDates);
     } catch (error) {
       console.error("Error fetching project milestones:", error);
       res.status(500).json({ error: "Failed to fetch project milestones" });
@@ -5538,7 +5547,15 @@ Format the response as professional documentation suitable for client delivery.`
           eq(projectMilestones.userId, req.user!.id)
         ))
         .orderBy(asc(projectMilestones.displayOrder));
-      res.json(milestones);
+      
+      const milestonesWithUTCDates = milestones.map(m => ({
+        ...m,
+        startDate: m.startDate ? new Date(m.startDate).toISOString() : null,
+        endDate: m.endDate ? new Date(m.endDate).toISOString() : null,
+        completionDate: m.completionDate ? new Date(m.completionDate).toISOString() : null
+      }));
+      
+      res.json(milestonesWithUTCDates);
     } catch (error) {
       console.error("Error fetching project milestones:", error);
       res.status(500).json({ error: "Failed to fetch project milestones" });
@@ -5555,7 +5572,16 @@ Format the response as professional documentation suitable for client delivery.`
         ))
         .limit(1);
       if (!milestone.length) return res.sendStatus(404);
-      res.json(milestone[0]);
+      
+      const m = milestone[0];
+      const milestoneWithUTCDates = {
+        ...m,
+        startDate: m.startDate ? new Date(m.startDate).toISOString() : null,
+        endDate: m.endDate ? new Date(m.endDate).toISOString() : null,
+        completionDate: m.completionDate ? new Date(m.completionDate).toISOString() : null
+      };
+      
+      res.json(milestoneWithUTCDates);
     } catch (error) {
       console.error("Error fetching project milestone:", error);
       res.status(500).json({ error: "Failed to fetch project milestone" });
