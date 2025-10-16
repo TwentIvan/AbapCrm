@@ -75,10 +75,10 @@ export default function ProjectMilestonesPage() {
   });
 
   const updateDatesMutation = useMutation({
-    mutationFn: async ({ id, startDate, endDate }: { id: string; startDate: Date; endDate: Date }) => {
+    mutationFn: async ({ id, startDate, endDate }: { id: string; startDate: string; endDate: string }) => {
       return apiRequest("PUT", `/api/project-milestones/${id}`, {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+        startDate,
+        endDate,
       });
     },
     onSuccess: () => {
@@ -94,7 +94,7 @@ export default function ProjectMilestonesPage() {
     },
   });
 
-  const handleMilestoneUpdate = (id: string, startDate: Date, endDate: Date) => {
+  const handleMilestoneUpdate = (id: string, startDate: string, endDate: string) => {
     updateDatesMutation.mutate({ id, startDate, endDate });
   };
 

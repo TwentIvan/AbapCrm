@@ -1633,10 +1633,10 @@ export const projectMilestones = pgTable("project_milestones", {
   name: text("name").notNull(), // "Sprint 1", "Alpha Release", "Go-Live"
   description: text("description"),
   
-  // Date e durata
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
-  completedDate: timestamp("completed_date"), // Data effettiva completamento
+  // Date e durata (solo stringhe YYYY-MM-DD, no timezone)
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  completedDate: text("completed_date"), // Data effettiva completamento
   
   // Stato e progresso
   status: milestoneStatusEnum("status").default("planned").notNull(),
@@ -2099,9 +2099,9 @@ export const insertProjectAssignmentSchema = createInsertSchema(projectAssignmen
 });
 
 export const insertProjectMilestoneSchema = createInsertSchema(projectMilestones, {
-  startDate: z.coerce.date(),
-  endDate: z.coerce.date(),
-  completedDate: z.coerce.date().optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato data non valido (richiesto YYYY-MM-DD)"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato data non valido (richiesto YYYY-MM-DD)"),
+  completedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato data non valido (richiesto YYYY-MM-DD)").optional(),
 }).omit({
   id: true,
   createdAt: true,

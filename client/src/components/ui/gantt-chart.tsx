@@ -1,7 +1,5 @@
 import { useState, useRef } from "react";
 import { ProjectMilestone } from "@shared/schema";
-import { format, differenceInDays, differenceInMilliseconds, min, max, addDays, eachDayOfInterval, startOfDay, addHours, isBefore } from "date-fns";
-import { it } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
@@ -9,7 +7,7 @@ interface GanttChartProps {
   milestones: ProjectMilestone[];
   projects: Array<{ id: string; name: string }>;
   onMilestoneClick?: (milestone: ProjectMilestone) => void;
-  onMilestoneUpdate?: (id: string, startDate: Date, endDate: Date) => void;
+  onMilestoneUpdate?: (id: string, startDate: string, endDate: string) => void;
 }
 
 export function GanttChart({ milestones, projects, onMilestoneClick, onMilestoneUpdate }: GanttChartProps) {
@@ -17,11 +15,11 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     id: string; 
     type: 'move' | 'resize-start' | 'resize-end';
     startX: number;
-    originalStart: Date;
-    originalEnd: Date;
+    originalStartStr: string;
+    originalEndStr: string;
     rowWidth: number;
-    previewStart?: Date;
-    previewEnd?: Date;
+    previewStartStr?: string;
+    previewEndStr?: string;
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -43,66 +41,79 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     );
   }
 
-  // Parse date strings (YYYY-MM-DD) come startOfDay locale per evitare problemi timezone
-  const parseDate = (dateStr: string | Date): Date => {
-    if (dateStr instanceof Date) {
-      return startOfDay(dateStr);
-    }
+  // Lavora SOLO con giorni - niente conversioni Date o millisecondi
+  const dateToDay = (dateStr: string): number => {
     const [year, month, day] = dateStr.split('-').map(Number);
-    return startOfDay(new Date(year, month - 1, day));
+    return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
   };
   
-  const allDates = validMilestones.flatMap(m => [parseDate(m.startDate!), parseDate(m.endDate!)]);
-  const minDate = min(allDates);
-  const maxDate = max(allDates);
-  const totalMs = maxDate.getTime() - minDate.getTime() + (24 * 60 * 60 * 1000); // +1 giorno in ms
-  const allDays = eachDayOfInterval({ start: minDate, end: maxDate });
-
-  const getPosition = (date: Date) => {
-    const ms = date.getTime() - minDate.getTime();
-    return (ms / totalMs) * 100;
+  const dayToDate = (day: number): string => {
+    const timestamp = day * 86400000;
+    const d = new Date(timestamp);
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dayStr = String(d.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${dayStr}`;
   };
 
-  const getWidth = (start: Date, end: Date) => {
-    const durationMs = end.getTime() - start.getTime();
-    return (durationMs / totalMs) * 100;
+  const addDaysToDate = (dateStr: string, days: number): string => {
+    const day = dateToDay(dateStr);
+    return dayToDate(day + days);
   };
 
-  // Clamp solo per rendering CSS per evitare sforamenti visivi
+  const formatDateStr = (dateStr: string, formatType: 'short' | 'long' = 'short'): string => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+    const monthNamesFull = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+    
+    if (formatType === 'long') {
+      return `${day.toString().padStart(2, '0')} ${monthNamesFull[month - 1]} ${year}`;
+    }
+    return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}`;
+  };
+
+  const compareDates = (date1Str: string, date2Str: string): number => {
+    return dateToDay(date1Str) - dateToDay(date2Str);
+  };
+  
+  const allDays = validMilestones.flatMap(m => [dateToDay(m.startDate!), dateToDay(m.endDate!)]);
+  const minDay = Math.min(...allDays);
+  const maxDay = Math.max(...allDays);
+  const totalDays = maxDay - minDay + 1;
+  
+  const minDateStr = dayToDate(minDay);
+  const maxDateStr = dayToDate(maxDay);
+  
+  const gridDates = Array.from({ length: totalDays }, (_, i) => dayToDate(minDay + i));
+
+  const getPosition = (dateStr: string): number => {
+    const day = dateToDay(dateStr);
+    return ((day - minDay) / totalDays) * 100;
+  };
+
+  const getWidth = (startStr: string, endStr: string): number => {
+    const startDay = dateToDay(startStr);
+    const endDay = dateToDay(endStr);
+    // +1 per durata inclusiva (milestone di 1 giorno deve avere larghezza visibile)
+    return ((endDay - startDay + 1) / totalDays) * 100;
+  };
+
   const clampPosition = (pos: number) => Math.max(0, Math.min(100, pos));
   const clampWidth = (left: number, width: number) => Math.max(0, Math.min(100 - left, width));
-
-  const getDayFromPosition = (x: number): number => {
-    if (!containerRef.current) return 0;
-    const rect = containerRef.current.getBoundingClientRect();
-    const relativeX = x - rect.left - 192; // 192px = w-48 (12rem)
-    const timelineWidth = rect.width - 192;
-    const percent = (relativeX / timelineWidth) * 100;
-    const totalDays = totalMs / (24 * 60 * 60 * 1000);
-    const exactDays = (percent / 100) * totalDays;
-    // Snap a giorni interi
-    return Math.round(exactDays);
-  };
 
   const handleMouseDown = (e: React.MouseEvent, milestone: ProjectMilestone, type: 'move' | 'resize-start' | 'resize-end') => {
     e.stopPropagation();
     e.preventDefault();
     
-    const start = parseDate(milestone.startDate!);
-    const end = parseDate(milestone.endDate!);
-    
-    // Cattura geometria dalla riga corrente usando currentTarget
     const row = (e.currentTarget as HTMLElement).closest('.gantt-row') as HTMLElement;
-    const rowWidth = row ? row.getBoundingClientRect().width - 192 : 800; // fallback
-    
-    console.log("MouseDown geometry:", { rowWidth, clientX: e.clientX });
+    const rowWidth = row ? row.getBoundingClientRect().width - 192 : 800;
     
     setDragState({
       id: milestone.id,
       type,
       startX: e.clientX,
-      originalStart: start,
-      originalEnd: end,
+      originalStartStr: milestone.startDate!,
+      originalEndStr: milestone.endDate!,
       rowWidth
     });
   };
@@ -111,64 +122,54 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     if (!dragState) return;
     
     const deltaX = e.clientX - dragState.startX;
-    const totalDays = totalMs / (24 * 60 * 60 * 1000);
     const deltaDays = (deltaX / dragState.rowWidth) * totalDays;
-    
-    // Snap a giorni interi
     const snappedDelta = Math.round(deltaDays);
     
-    console.log("Drag calc:", { deltaX, rowWidth: dragState.rowWidth, totalDays, deltaDays, snappedDelta });
-    
-    const durationMs = dragState.originalEnd.getTime() - dragState.originalStart.getTime();
+    const originalStartDay = dateToDay(dragState.originalStartStr);
+    const originalEndDay = dateToDay(dragState.originalEndStr);
+    const durationDays = originalEndDay - originalStartDay;
 
-    let newStart: Date;
-    let newEnd: Date;
-
-    // Converti giorni in millisecondi (0.5 giorni = 12 ore)
-    const deltaMs = snappedDelta * 24 * 60 * 60 * 1000;
+    let newStartStr: string;
+    let newEndStr: string;
 
     if (dragState.type === 'move') {
-      // Sposta entrambe le date preservando la durata
-      newStart = new Date(dragState.originalStart.getTime() + deltaMs);
-      newEnd = new Date(newStart.getTime() + durationMs);
+      newStartStr = addDaysToDate(dragState.originalStartStr, snappedDelta);
+      newEndStr = addDaysToDate(newStartStr, durationDays);
     } else if (dragState.type === 'resize-start') {
-      // Modifica solo la data di inizio
-      newStart = new Date(dragState.originalStart.getTime() + deltaMs);
-      newEnd = dragState.originalEnd;
-    } else { // resize-end
-      // Modifica solo la data di fine
-      newStart = dragState.originalStart;
-      newEnd = new Date(dragState.originalEnd.getTime() + deltaMs);
+      newStartStr = addDaysToDate(dragState.originalStartStr, snappedDelta);
+      newEndStr = dragState.originalEndStr;
+      // Clamp: start non può andare oltre end
+      if (dateToDay(newStartStr) > dateToDay(newEndStr)) {
+        newStartStr = newEndStr;
+      }
+    } else {
+      newStartStr = dragState.originalStartStr;
+      newEndStr = addDaysToDate(dragState.originalEndStr, snappedDelta);
+      // Clamp: end non può andare prima di start
+      if (dateToDay(newEndStr) < dateToDay(newStartStr)) {
+        newEndStr = newStartStr;
+      }
     }
 
-    // Aggiorna lo stato con preview - React riposizionerà automaticamente
     setDragState({
       ...dragState,
-      previewStart: newStart,
-      previewEnd: newEnd
+      previewStartStr: newStartStr,
+      previewEndStr: newEndStr
     });
   };
 
   const handleMouseUp = async () => {
-    if (!dragState || !dragState.previewStart || !dragState.previewEnd) {
+    if (!dragState || !dragState.previewStartStr || !dragState.previewEndStr) {
       setDragState(null);
       return;
     }
     
-    const finalStart = dragState.previewStart;
-    const finalEnd = dragState.previewEnd;
+    const finalStartStr = dragState.previewStartStr;
+    const finalEndStr = dragState.previewEndStr;
     
-    console.log("Drag end:", {
-      id: dragState.id,
-      start: finalStart.toISOString(),
-      end: finalEnd.toISOString()
-    });
-    
-    // Pulisci lo stato PRIMA di aggiornare per evitare race condition
     setDragState(null);
     
-    // Poi aggiorna - questo triggera il refetch
-    await onMilestoneUpdate?.(dragState.id, finalStart, finalEnd);
+    await onMilestoneUpdate?.(dragState.id, finalStartStr, finalEndStr);
   };
 
   const statusColors = {
@@ -194,16 +195,14 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
   return (
     <div className="space-y-8">
-      {/* Timeline Header */}
       <div className="relative pl-48">
         <div className="flex justify-between text-sm font-medium text-muted-foreground mb-2">
-          <span>{format(minDate, "dd MMM yyyy", { locale: it })}</span>
-          <span>{format(maxDate, "dd MMM yyyy", { locale: it })}</span>
+          <span>{formatDateStr(minDateStr, 'long')}</span>
+          <span>{formatDateStr(maxDateStr, 'long')}</span>
         </div>
         <div className="relative h-2 bg-gray-200 dark:bg-gray-700 rounded"></div>
       </div>
 
-      {/* Gantt per progetto */}
       {Object.entries(milestonesByProject).map(([projectId, projectMilestones]) => {
         const project = projects.find(p => p.id === projectId);
         const sortedMilestones = [...projectMilestones].sort((a, b) => 
@@ -221,12 +220,10 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
             >
-              {/* SVG Background con gridlines */}
               <svg className="absolute left-48 right-0 top-0 bottom-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }}>
-                {allDays.map((day, index) => {
-                  const dayPos = getPosition(day);
+                {gridDates.map((dateStr, index) => {
+                  const dayPos = getPosition(dateStr);
                   return (
-                    // Linea giornata intera
                     <line
                       key={`day-${index}`}
                       x1={`${dayPos}%`}
@@ -242,63 +239,46 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                 })}
               </svg>
 
-              {/* Tooltip data durante drag */}
-              {dragState && dragState.previewStart && dragState.previewEnd && (
+              {dragState && dragState.previewStartStr && dragState.previewEndStr && (
                 <div 
                   className="absolute top-0 left-48 right-0 pointer-events-none z-50"
                 >
                   <div className="bg-black/80 text-white px-3 py-2 rounded text-xs font-medium whitespace-nowrap inline-block">
-                    {format(dragState.previewStart, "dd/MM/yyyy", { locale: it })} - {format(dragState.previewEnd, "dd/MM/yyyy", { locale: it })}
+                    {formatDateStr(dragState.previewStartStr)} - {formatDateStr(dragState.previewEndStr)}
                   </div>
                 </div>
               )}
 
-              {/* Milestone rows */}
               <div className="space-y-3" style={{ position: 'relative', zIndex: 1 }}>
                 {sortedMilestones.map((milestone) => {
-                  // Usa preview date se questo milestone è in drag, altrimenti usa le date salvate
-                  const start = dragState?.id === milestone.id && dragState.previewStart
-                    ? dragState.previewStart
-                    : parseDate(milestone.startDate!);
-                  const end = dragState?.id === milestone.id && dragState.previewEnd
-                    ? dragState.previewEnd
-                    : parseDate(milestone.endDate!);
+                  const startStr = dragState?.id === milestone.id && dragState.previewStartStr
+                    ? dragState.previewStartStr
+                    : milestone.startDate!;
+                  const endStr = dragState?.id === milestone.id && dragState.previewEndStr
+                    ? dragState.previewEndStr
+                    : milestone.endDate!;
                   
-                  const rawLeftPos = getPosition(start);
-                  const rawBarWidth = getWidth(start, end);
+                  const rawLeftPos = getPosition(startStr);
+                  const rawBarWidth = getWidth(startStr, endStr);
                   const leftPos = clampPosition(rawLeftPos);
                   const barWidth = clampWidth(rawLeftPos, rawBarWidth);
 
-                  // Dipendenza - usa preview date se disponibili
                   const prerequisite = milestone.dependsOnMilestoneId 
                     ? validMilestones.find(m => m.id === milestone.dependsOnMilestoneId)
                     : null;
 
-                  // Usa preview date per prerequisite se in drag
-                  const prereqEnd = prerequisite
-                    ? (dragState?.id === prerequisite.id && dragState.previewEnd
-                      ? dragState.previewEnd
-                      : parseDate(prerequisite.endDate!))
+                  const prereqEndStr = prerequisite
+                    ? (dragState?.id === prerequisite.id && dragState.previewEndStr
+                      ? dragState.previewEndStr
+                      : prerequisite.endDate!)
                     : null;
 
-                  // Controlla sovrapposizione dipendenze - vera sovrapposizione solo se child inizia PRIMA che finisca il padre
-                  const hasOverlap = prerequisite && prereqEnd && 
-                    (start.getTime() < prereqEnd.getTime());
-                  
-                  if (hasOverlap && prereqEnd) {
-                    console.log("OVERLAP DETECTED:", {
-                      milestone: milestone.name,
-                      milestoneStart: start.toISOString(),
-                      prerequisite: prerequisite?.name,
-                      prerequisiteEnd: prereqEnd.toISOString(),
-                      overlapMs: prereqEnd.getTime() - start.getTime()
-                    });
-                  }
+                  const hasOverlap = prerequisite && prereqEndStr && 
+                    compareDates(startStr, prereqEndStr) < 0;
 
                   return (
                     <div key={milestone.id} className="gantt-row relative h-16">
                       <div className="flex items-center gap-4">
-                        {/* Nome milestone */}
                         <div className="w-48 flex-shrink-0">
                           <button
                             onClick={() => onMilestoneClick?.(milestone)}
@@ -315,14 +295,11 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                           </div>
                         </div>
 
-                        {/* Timeline */}
                         <div className="flex-1 relative h-16">
-                          {/* Linea dipendenza discreta */}
-                          {prerequisite && prereqEnd && (
+                          {prerequisite && prereqEndStr && (
                             (() => {
-                              // Usa le date sincronizzate già calcolate
-                              const prereqPos = getPosition(prereqEnd);
-                              const milestonePos = getPosition(start);
+                              const prereqPos = getPosition(prereqEndStr);
+                              const milestonePos = getPosition(startStr);
                               
                               return (
                                 <svg 
@@ -358,14 +335,10 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                             })()
                           )}
 
-                          {/* Area rossa di conflitto (separata) */}
-                          {hasOverlap && prereqEnd && (
+                          {hasOverlap && prereqEndStr && (
                             (() => {
-                              // Usa le date sincronizzate già calcolate
-                              const overlapStart = start;
-                              const overlapEnd = prereqEnd;
-                              const rawOverlapLeft = getPosition(overlapStart);
-                              const rawOverlapWidth = getWidth(overlapStart, overlapEnd);
+                              const rawOverlapLeft = getPosition(startStr);
+                              const rawOverlapWidth = getWidth(startStr, prereqEndStr);
                               const overlapLeft = clampPosition(rawOverlapLeft);
                               const overlapWidth = clampWidth(rawOverlapLeft, rawOverlapWidth);
                               
@@ -384,7 +357,6 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                             })()
                           )}
 
-                          {/* Barra milestone */}
                           <div
                             data-milestone-id={milestone.id}
                             className={`absolute top-1/2 -translate-y-1/2 h-10 rounded group ${statusColors[milestone.status || "planned"]}`}
@@ -398,8 +370,6 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                             }}
                             onMouseDown={(e) => handleMouseDown(e, milestone, 'move')}
                           >
-
-                            {/* Resize handle sinistra */}
                             <div
                               className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize bg-black/0 hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
                               onMouseDown={(e) => handleMouseDown(e, milestone, 'resize-start')}
@@ -407,12 +377,10 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                               <div className="w-1 h-6 bg-white/80 rounded-full" />
                             </div>
                             
-                            {/* Contenuto */}
                             <div className="px-3 h-full flex items-center justify-center pointer-events-none">
                               <Progress value={milestone.progress || 0} className="h-1.5 bg-white/30" />
                             </div>
 
-                            {/* Resize handle destra */}
                             <div
                               className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize bg-black/0 hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
                               onMouseDown={(e) => handleMouseDown(e, milestone, 'resize-end')}
@@ -421,12 +389,11 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                             </div>
                           </div>
 
-                          {/* Date */}
                           <div 
                             className="absolute top-full mt-1 text-xs text-muted-foreground whitespace-nowrap pointer-events-none"
                             style={{ left: `${leftPos}%` }}
                           >
-                            {format(start, "dd/MM")} - {format(end, "dd/MM")}
+                            {formatDateStr(startStr)} - {formatDateStr(endStr)}
                           </div>
                         </div>
                       </div>

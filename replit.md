@@ -103,6 +103,15 @@ The system includes a complete freelance engagement management workflow with pro
   - Budget vs actual cost tracking
   - Deliverables and completion date tracking
   - Display order for visual organization
+  
+  **Gantt Chart Implementation (Timezone-Free Architecture)**:
+  - All milestone dates stored as YYYY-MM-DD strings (text columns) instead of timestamps
+  - Backend normalization function converts any incoming date format to YYYY-MM-DD strings
+  - Frontend uses Date.UTC for all date calculations (completely timezone-independent)
+  - Full-day precision with inclusive duration (+1 day for width calculation)
+  - Drag/resize with automatic clamping to prevent invalid date ranges (start > end)
+  - No locale-dependent Date constructors - eliminates ~8% gridline misalignment bug
+  - String-based date contract throughout entire stack ensures consistency
 
 - **Purchase Orders** (`purchase_orders`): Procurement workflow for vendor orders:
   - Auto-generation from project assignments

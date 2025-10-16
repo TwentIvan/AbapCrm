@@ -5511,6 +5511,16 @@ Format the response as professional documentation suitable for client delivery.`
     }
   });
 
+  // Helper: normalizza date ISO/Date objects in stringhe YYYY-MM-DD
+  const normalizeDateToYYYYMMDD = (dateInput: string | Date | null | undefined): string | null => {
+    if (!dateInput) return null;
+    const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // ========== Project Milestones API ==========
   app.get("/api/project-milestones", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -5523,23 +5533,8 @@ Format the response as professional documentation suitable for client delivery.`
         ))
         .orderBy(asc(projectMilestones.displayOrder));
       
-      // Converti date a formato YYYY-MM-DD (solo parte date, senza timezone)
-      const toDateOnly = (d: Date | null) => {
-        if (!d) return null;
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
-      
-      const milestonesWithDateOnly = milestones.map(m => ({
-        ...m,
-        startDate: toDateOnly(m.startDate),
-        endDate: toDateOnly(m.endDate),
-        completedDate: toDateOnly(m.completedDate)
-      }));
-      
-      res.json(milestonesWithDateOnly);
+      // Le date sono già stringhe YYYY-MM-DD nel database
+      res.json(milestones);
     } catch (error) {
       console.error("Error fetching project milestones:", error);
       res.status(500).json({ error: "Failed to fetch project milestones" });
@@ -5556,22 +5551,8 @@ Format the response as professional documentation suitable for client delivery.`
         ))
         .orderBy(asc(projectMilestones.displayOrder));
       
-      const toDateOnly = (d: Date | null) => {
-        if (!d) return null;
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
-      
-      const milestonesWithDateOnly = milestones.map(m => ({
-        ...m,
-        startDate: toDateOnly(m.startDate),
-        endDate: toDateOnly(m.endDate),
-        completedDate: toDateOnly(m.completedDate)
-      }));
-      
-      res.json(milestonesWithDateOnly);
+      // Le date sono già stringhe YYYY-MM-DD nel database
+      res.json(milestones);
     } catch (error) {
       console.error("Error fetching project milestones:", error);
       res.status(500).json({ error: "Failed to fetch project milestones" });
@@ -5589,23 +5570,8 @@ Format the response as professional documentation suitable for client delivery.`
         .limit(1);
       if (!milestone.length) return res.sendStatus(404);
       
-      const m = milestone[0];
-      const toDateOnly = (d: Date | null) => {
-        if (!d) return null;
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
-      
-      const milestoneWithDateOnly = {
-        ...m,
-        startDate: toDateOnly(m.startDate),
-        endDate: toDateOnly(m.endDate),
-        completedDate: toDateOnly(m.completedDate)
-      };
-      
-      res.json(milestoneWithDateOnly);
+      // Le date sono già stringhe YYYY-MM-DD nel database
+      res.json(milestone[0]);
     } catch (error) {
       console.error("Error fetching project milestone:", error);
       res.status(500).json({ error: "Failed to fetch project milestone" });
@@ -5620,9 +5586,9 @@ Format the response as professional documentation suitable for client delivery.`
         ...req.body,
         userId: req.user!.id,
         organizationId, // Always use organizationId from header for security
-        startDate: req.body.startDate ? new Date(req.body.startDate) : null,
-        endDate: req.body.endDate ? new Date(req.body.endDate) : null,
-        completedDate: req.body.completedDate ? new Date(req.body.completedDate) : null,
+        startDate: normalizeDateToYYYYMMDD(req.body.startDate),
+        endDate: normalizeDateToYYYYMMDD(req.body.endDate),
+        completedDate: normalizeDateToYYYYMMDD(req.body.completedDate),
       };
 
       const validation = insertProjectMilestoneSchema.safeParse(dataWithUserId);
@@ -5646,8 +5612,16 @@ Format the response as professional documentation suitable for client delivery.`
   app.put("/api/project-milestones/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      console.log("PUT milestone - body received:", JSON.stringify(req.body, null, 2));
-      const validation = insertProjectMilestoneSchema.partial().safeParse(req.body);
+      // Normalizza le date in YYYY-MM-DD se presenti
+      const normalizedData = {
+        ...req.body,
+        ...(req.body.startDate && { startDate: normalizeDateToYYYYMMDD(req.body.startDate) }),
+        ...(req.body.endDate && { endDate: normalizeDateToYYYYMMDD(req.body.endDate) }),
+        ...(req.body.completedDate && { completedDate: normalizeDateToYYYYMMDD(req.body.completedDate) }),
+      };
+      console.log("PUT milestone - normalized data:", JSON.stringify(normalizedData, null, 2));
+      
+      const validation = insertProjectMilestoneSchema.partial().safeParse(normalizedData);
       if (!validation.success) {
         console.error("PUT milestone validation error:", JSON.stringify(validation.error.errors, null, 2));
         return res.status(400).json({ 
