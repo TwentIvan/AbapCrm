@@ -13,9 +13,20 @@ const getDefaultNavigation = (t: any) => [
   { id: "1", name: t("nav.projects"), href: "/projects", icon: FolderOpen, testId: "nav-projects" },
   { id: "2", name: t("nav.tasks"), href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
   { id: "3", name: t("nav.partners"), href: "/partners", icon: Handshake, testId: "nav-partners" },
-  { id: "6", name: t("nav.salesOrders"), href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
-  { id: "7", name: t("nav.rateAgreements"), href: "/rate-agreements", icon: DollarSign, testId: "nav-rate-agreements" },
   { id: "8", name: t("nav.humanResources"), href: "/human-resources", icon: Users, testId: "nav-human-resources" },
+];
+
+// Vendita group
+const getDefaultVenditaItems = (t: any) => [
+  { id: "v1", name: t("nav.rateAgreements"), href: "/rate-agreements", icon: DollarSign, testId: "nav-rate-agreements" },
+  { id: "v2", name: t("nav.salesOrders"), href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
+  { id: "v3", name: "Fatture", href: "/invoices", icon: FileText, testId: "nav-invoices" },
+];
+
+// Acquisti group
+const getDefaultAcquistiItems = (t: any) => [
+  { id: "a1", name: "Ordini d'acquisto", href: "/purchase-orders", icon: FileText, testId: "nav-purchase-orders" },
+  { id: "a2", name: "Fatture fornitori", href: "/vendor-invoices", icon: FileText, testId: "nav-vendor-invoices" },
 ];
 
 // Systems group
@@ -33,8 +44,10 @@ const getDefaultTimeManagementItems = (t: any) => [
 
 // Parent sections
 const getDefaultParentItems = (t: any) => [
-  { id: "p1", name: t("nav.systems"), icon: Shield, testId: "nav-systems", type: "systems" },
-  { id: "p2", name: t("nav.timeManagement"), icon: Clock, testId: "nav-time-management", type: "timeManagement" },
+  { id: "p1", name: "Vendita", icon: DollarSign, testId: "nav-vendita", type: "vendita" },
+  { id: "p2", name: "Acquisti", icon: FileText, testId: "nav-acquisti", type: "acquisti" },
+  { id: "p3", name: t("nav.systems"), icon: Shield, testId: "nav-systems", type: "systems" },
+  { id: "p4", name: t("nav.timeManagement"), icon: Clock, testId: "nav-time-management", type: "timeManagement" },
 ];
 
 // Simple Navigation Item Component
@@ -163,32 +176,51 @@ export default function Sidebar() {
   const { user, logoutMutation } = useAuth();
   const { t } = useTranslation();
   const navigation = getDefaultNavigation(t);
+  const venditaItems = getDefaultVenditaItems(t);
+  const acquistiItems = getDefaultAcquistiItems(t);
   const systemsItems = getDefaultSystemsItems(t);
   const timeManagementItems = getDefaultTimeManagementItems(t);
   const parentItems = getDefaultParentItems(t);
+  const [isVenditaOpen, setIsVenditaOpen] = useState(false);
+  const [isAcquistiOpen, setIsAcquistiOpen] = useState(false);
   const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(false);
   const [isSystemsOpen, setIsSystemsOpen] = useState(false);
   
   // Auto-open parent menus when child is active
+  const hasActiveVenditaChild = venditaItems.some((item: any) => location === item.href);
+  const hasActiveAcquistiChild = acquistiItems.some((item: any) => location === item.href);
   const hasActiveSystemsChild = systemsItems.some((item: any) => location === item.href);
   const hasActiveTimeChild = timeManagementItems.some((item: any) => location === item.href);
   
   // Keep menus open if they have active children
+  const shouldVenditaBeOpen = isVenditaOpen || hasActiveVenditaChild;
+  const shouldAcquistiBeOpen = isAcquistiOpen || hasActiveAcquistiChild;
   const shouldSystemsBeOpen = isSystemsOpen || hasActiveSystemsChild;
   const shouldTimeManagementBeOpen = isTimeManagementOpen || hasActiveTimeChild;
+  
   // Semplice funzione di toggle - chiude solo se non ci sono figli attivi
   const handleToggle = (type: string) => {
     console.log('Executing toggle for:', type);
     
-    if (type === 'systems') {
-      // Non chiudere se c'è un figlio attivo
+    if (type === 'vendita') {
+      if (hasActiveVenditaChild && isVenditaOpen) {
+        console.log('Preventing vendita close - has active child');
+        return;
+      }
+      setIsVenditaOpen(!isVenditaOpen);
+    } else if (type === 'acquisti') {
+      if (hasActiveAcquistiChild && isAcquistiOpen) {
+        console.log('Preventing acquisti close - has active child');
+        return;
+      }
+      setIsAcquistiOpen(!isAcquistiOpen);
+    } else if (type === 'systems') {
       if (hasActiveSystemsChild && isSystemsOpen) {
         console.log('Preventing systems close - has active child');
         return;
       }
       setIsSystemsOpen(!isSystemsOpen);
     } else if (type === 'timeManagement') {
-      // Non chiudere se c'è un figlio attivo
       if (hasActiveTimeChild && isTimeManagementOpen) {
         console.log('Preventing timeManagement close - has active child');
         return;
@@ -224,15 +256,35 @@ export default function Sidebar() {
           );
         })}
         
-        {/* Parent Sections (Systems & Time Management) */}
+        {/* Parent Sections (Vendita, Acquisti, Systems & Time Management) */}
         <div>
           {parentItems.map((item: any) => {
+            const isVenditaItem = item.type === 'vendita';
+            const isAcquistiItem = item.type === 'acquisti';
             const isSystemsItem = item.type === 'systems';
             const isTimeItem = item.type === 'timeManagement';
-            const isOpen = isSystemsItem ? shouldSystemsBeOpen : (isTimeItem ? shouldTimeManagementBeOpen : false);
             
-            // Check if any child is active  
-            const hasActiveChild = isSystemsItem ? hasActiveSystemsChild : hasActiveTimeChild;
+            let isOpen = false;
+            let hasActiveChild = false;
+            let childItems: any[] = [];
+            
+            if (isVenditaItem) {
+              isOpen = shouldVenditaBeOpen;
+              hasActiveChild = hasActiveVenditaChild;
+              childItems = venditaItems;
+            } else if (isAcquistiItem) {
+              isOpen = shouldAcquistiBeOpen;
+              hasActiveChild = hasActiveAcquistiChild;
+              childItems = acquistiItems;
+            } else if (isSystemsItem) {
+              isOpen = shouldSystemsBeOpen;
+              hasActiveChild = hasActiveSystemsChild;
+              childItems = systemsItems;
+            } else if (isTimeItem) {
+              isOpen = shouldTimeManagementBeOpen;
+              hasActiveChild = hasActiveTimeChild;
+              childItems = timeManagementItems;
+            }
             
             return (
               <div key={item.id}>
@@ -244,7 +296,7 @@ export default function Sidebar() {
                   children={
                     isOpen && (
                       <div className="space-y-1">
-                        {(isSystemsItem ? systemsItems : timeManagementItems).map((subItem: any) => {
+                        {childItems.map((subItem: any) => {
                           const isActive = location === subItem.href;
                           return (
                             <SubNavItem 
