@@ -93,6 +93,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     const deltaX = e.clientX - dragState.startX;
     const rect = containerRef.current.getBoundingClientRect();
     const timelineWidth = rect.width - 192;
+    const totalDays = totalMs / (24 * 60 * 60 * 1000);
     const deltaDays = (deltaX / timelineWidth) * totalDays;
     
     // Snap a mezze giornate
