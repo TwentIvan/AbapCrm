@@ -114,33 +114,21 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     let newStart: Date;
     let newEnd: Date;
 
+    // Converti giorni in millisecondi (0.5 giorni = 12 ore)
+    const deltaMs = snappedDelta * 24 * 60 * 60 * 1000;
+
     if (dragState.type === 'move') {
       // Sposta entrambe le date preservando la durata
-      newStart = addDays(dragState.originalStart, Math.floor(snappedDelta));
-      if (snappedDelta % 1 === 0.5) {
-        newStart = addHours(newStart, 12);
-      } else if (snappedDelta % 1 === -0.5) {
-        newStart = addHours(newStart, -12);
-      }
+      newStart = new Date(dragState.originalStart.getTime() + deltaMs);
       newEnd = new Date(newStart.getTime() + durationMs);
     } else if (dragState.type === 'resize-start') {
       // Modifica solo la data di inizio
-      newStart = addDays(dragState.originalStart, Math.floor(snappedDelta));
-      if (snappedDelta % 1 === 0.5) {
-        newStart = addHours(newStart, 12);
-      } else if (snappedDelta % 1 === -0.5) {
-        newStart = addHours(newStart, -12);
-      }
+      newStart = new Date(dragState.originalStart.getTime() + deltaMs);
       newEnd = dragState.originalEnd;
     } else { // resize-end
       // Modifica solo la data di fine
       newStart = dragState.originalStart;
-      newEnd = addDays(dragState.originalEnd, Math.floor(snappedDelta));
-      if (snappedDelta % 1 === 0.5) {
-        newEnd = addHours(newEnd, 12);
-      } else if (snappedDelta % 1 === -0.5) {
-        newEnd = addHours(newEnd, -12);
-      }
+      newEnd = new Date(dragState.originalEnd.getTime() + deltaMs);
     }
 
     // Aggiorna lo stato con preview - React riposizionerà automaticamente
