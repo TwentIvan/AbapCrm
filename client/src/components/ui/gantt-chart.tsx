@@ -141,20 +141,26 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     });
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = async () => {
     if (!dragState || !dragState.previewStart || !dragState.previewEnd) {
       setDragState(null);
       return;
     }
     
+    const finalStart = dragState.previewStart;
+    const finalEnd = dragState.previewEnd;
+    
     console.log("Drag end:", {
       id: dragState.id,
-      start: dragState.previewStart.toISOString(),
-      end: dragState.previewEnd.toISOString()
+      start: finalStart.toISOString(),
+      end: finalEnd.toISOString()
     });
     
-    onMilestoneUpdate?.(dragState.id, dragState.previewStart, dragState.previewEnd);
+    // Pulisci lo stato PRIMA di aggiornare per evitare race condition
     setDragState(null);
+    
+    // Poi aggiorna - questo triggera il refetch
+    await onMilestoneUpdate?.(dragState.id, finalStart, finalEnd);
   };
 
   const statusColors = {
