@@ -278,7 +278,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                     : null;
 
                   const hasOverlap = prerequisite && prereqEndStr && 
-                    compareDates(startStr, prereqEndStr) < 0;
+                    compareDates(startStr, prereqEndStr) <= 0;
 
                   return (
                     <div key={milestone.id} className="gantt-row relative h-16">
