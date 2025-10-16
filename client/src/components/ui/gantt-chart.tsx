@@ -219,7 +219,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
               onMouseLeave={handleMouseUp}
             >
               {/* Gridlines verticali - giornate e mezze giornate */}
-              <div className="absolute left-48 right-0 top-0 bottom-0 pointer-events-none">
+              <div className="absolute left-48 right-0 top-0 bottom-0 pointer-events-none z-0">
                 {allDays.flatMap((day, index) => {
                   const dayPos = getPosition(day);
                   const halfDayPos = getPosition(addHours(day, 12));
@@ -227,21 +227,21 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                     // Linea giornata intera (più scura)
                     <div
                       key={`day-${index}`}
-                      className="absolute top-0 bottom-0 w-px bg-gray-400 dark:bg-gray-500"
+                      className="absolute top-0 bottom-0 w-px bg-gray-500 dark:bg-gray-400"
                       style={{ 
                         left: `${dayPos}%`,
                         borderLeft: '1px dashed currentColor',
-                        opacity: 0.5
+                        opacity: 0.6
                       }}
                     />,
-                    // Linea mezza giornata (più chiara)
+                    // Linea mezza giornata (visibile)
                     <div
                       key={`half-${index}`}
-                      className="absolute top-0 bottom-0 w-px bg-gray-300 dark:bg-gray-600"
+                      className="absolute top-0 bottom-0 w-px bg-gray-400 dark:bg-gray-500"
                       style={{ 
                         left: `${halfDayPos}%`,
                         borderLeft: '1px dashed currentColor',
-                        opacity: 0.25
+                        opacity: 0.4
                       }}
                     />
                   ];
