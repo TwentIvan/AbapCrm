@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { ProjectMilestone } from "@shared/schema";
-import { format, differenceInDays, min, max, addDays, eachDayOfInterval, startOfDay } from "date-fns";
+import { format, differenceInDays, min, max, addDays, eachDayOfInterval, startOfDay, addHours, isBefore } from "date-fns";
 import { it } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,8 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     id: string; 
     type: 'move' | 'resize-start' | 'resize-end';
     offsetDays: number;
+    previewStart?: Date;
+    previewEnd?: Date;
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +63,8 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     const relativeX = x - rect.left - 192; // 192px = w-48 (12rem)
     const timelineWidth = rect.width - 192;
     const percent = (relativeX / timelineWidth) * 100;
-    return Math.round((percent / 100) * totalDays);
+    // Snap a mezze giornate (0.5 giorni)
+    return Math.round(((percent / 100) * totalDays) * 2) / 2;
   };
 
   const handleMouseDown = (e: React.MouseEvent, milestone: ProjectMilestone, type: 'move' | 'resize-start' | 'resize-end') => {
@@ -95,17 +98,33 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
     if (dragState.type === 'move') {
       const targetDay = Math.max(0, Math.min(totalDays - duration - 1, dayAtCursor - dragState.offsetDays));
-      newStart = addDays(minDate, targetDay);
+      newStart = addDays(minDate, Math.floor(targetDay));
+      if (targetDay % 1 === 0.5) {
+        newStart = addHours(newStart, 12);
+      }
       newEnd = addDays(newStart, duration);
     } else if (dragState.type === 'resize-start') {
-      const targetDay = Math.max(0, Math.min(differenceInDays(end, minDate) - 1, dayAtCursor));
-      newStart = addDays(minDate, targetDay);
+      const targetDay = Math.max(0, Math.min(differenceInDays(end, minDate) - 0.5, dayAtCursor));
+      newStart = addDays(minDate, Math.floor(targetDay));
+      if (targetDay % 1 === 0.5) {
+        newStart = addHours(newStart, 12);
+      }
       newEnd = end;
     } else { // resize-end
-      const targetDay = Math.max(differenceInDays(start, minDate) + 1, Math.min(totalDays, dayAtCursor));
+      const targetDay = Math.max(differenceInDays(start, minDate) + 0.5, Math.min(totalDays, dayAtCursor));
       newStart = start;
-      newEnd = addDays(minDate, targetDay);
+      newEnd = addDays(minDate, Math.floor(targetDay));
+      if (targetDay % 1 === 0.5) {
+        newEnd = addHours(newEnd, 12);
+      }
     }
+
+    // Aggiorna lo stato con preview per tooltip
+    setDragState({
+      ...dragState,
+      previewStart: newStart,
+      previewEnd: newEnd
+    });
 
     // Visual feedback only - we'll save on mouseup
     const milestoneElement = document.querySelector(`[data-milestone-id="${dragState.id}"]`);
@@ -199,23 +218,46 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
             >
-              {/* Gridlines verticali */}
+              {/* Gridlines verticali - giornate e mezze giornate */}
               <div className="absolute left-48 right-0 top-0 bottom-0 pointer-events-none">
-                {allDays.map((day, index) => {
-                  const pos = getPosition(day);
-                  return (
+                {allDays.flatMap((day, index) => {
+                  const dayPos = getPosition(day);
+                  const halfDayPos = getPosition(addHours(day, 12));
+                  return [
+                    // Linea giornata intera (più scura)
                     <div
-                      key={index}
+                      key={`day-${index}`}
+                      className="absolute top-0 bottom-0 w-px bg-gray-400 dark:bg-gray-500"
+                      style={{ 
+                        left: `${dayPos}%`,
+                        borderLeft: '1px dashed currentColor',
+                        opacity: 0.5
+                      }}
+                    />,
+                    // Linea mezza giornata (più chiara)
+                    <div
+                      key={`half-${index}`}
                       className="absolute top-0 bottom-0 w-px bg-gray-300 dark:bg-gray-600"
                       style={{ 
-                        left: `${pos}%`,
+                        left: `${halfDayPos}%`,
                         borderLeft: '1px dashed currentColor',
-                        opacity: 0.4
+                        opacity: 0.25
                       }}
                     />
-                  );
+                  ];
                 })}
               </div>
+
+              {/* Tooltip data durante drag */}
+              {dragState && dragState.previewStart && dragState.previewEnd && (
+                <div 
+                  className="absolute top-0 left-48 right-0 pointer-events-none z-50"
+                >
+                  <div className="bg-black/80 text-white px-3 py-2 rounded text-xs font-medium whitespace-nowrap inline-block">
+                    {format(dragState.previewStart, "dd/MM/yyyy HH:mm", { locale: it })} - {format(dragState.previewEnd, "dd/MM/yyyy HH:mm", { locale: it })}
+                  </div>
+                </div>
+              )}
 
               {/* Milestone rows */}
               <div className="space-y-3">
@@ -229,6 +271,10 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                   const prerequisite = milestone.dependsOnMilestoneId 
                     ? validMilestones.find(m => m.id === milestone.dependsOnMilestoneId)
                     : null;
+
+                  // Controlla sovrapposizione dipendenze
+                  const hasOverlap = prerequisite && prerequisite.endDate && 
+                    isBefore(new Date(milestone.startDate!), new Date(prerequisite.endDate));
 
                   return (
                     <div key={milestone.id} className="relative h-16">
@@ -297,19 +343,26 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                           {/* Barra milestone */}
                           <div
                             data-milestone-id={milestone.id}
-                            className={`absolute top-1/2 -translate-y-1/2 h-10 rounded group ${statusColors[milestone.status || "planned"]}`}
+                            className={`absolute top-1/2 -translate-y-1/2 h-10 rounded group ${statusColors[milestone.status || "planned"]} ${hasOverlap ? 'ring-2 ring-red-500' : ''}`}
                             style={{
                               left: `${leftPos}%`,
                               width: `${barWidth}%`,
                               cursor: dragState?.id === milestone.id ? 'grabbing' : 'grab',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                              boxShadow: hasOverlap 
+                                ? '0 0 12px rgba(239, 68, 68, 0.6), 0 2px 4px rgba(0,0,0,0.2)' 
+                                : '0 2px 4px rgba(0,0,0,0.2)',
                               zIndex: dragState?.id === milestone.id ? 20 : 10
                             }}
                             onMouseDown={(e) => handleMouseDown(e, milestone, 'move')}
                           >
+                            {/* Ombreggiatura rossa per sovrapposizione */}
+                            {hasOverlap && (
+                              <div className="absolute inset-0 bg-red-500/30 rounded pointer-events-none" />
+                            )}
+
                             {/* Resize handle sinistra */}
                             <div
-                              className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize bg-black/0 hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize bg-black/0 hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
                               onMouseDown={(e) => handleMouseDown(e, milestone, 'resize-start')}
                             >
                               <div className="w-1 h-6 bg-white/80 rounded-full" />
@@ -322,7 +375,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
                             {/* Resize handle destra */}
                             <div
-                              className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize bg-black/0 hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize bg-black/0 hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
                               onMouseDown={(e) => handleMouseDown(e, milestone, 'resize-end')}
                             >
                               <div className="w-1 h-6 bg-white/80 rounded-full" />
