@@ -514,18 +514,29 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                               const hasOverlap = overlaps.get(task.id) || false;
 
                               return (
-                                <div
-                                  key={task.id}
-                                  className={`absolute top-1/2 -translate-y-1/2 h-5 rounded ${taskStatusColors[task.status || "todo"]} ${
-                                    hasOverlap ? 'shadow-[0_0_8px_rgba(0,0,0,0.4)] ring-2 ring-yellow-400' : ''
-                                  }`}
-                                  style={{
-                                    left: `${clampedTaskStartPos}%`,
-                                    width: `${clampedTaskWidth}%`,
-                                    zIndex: hasOverlap ? 12 : 8
-                                  }}
-                                  title={`${task.title} - ${formatDateStr(taskStartStr, 'long')} → ${formatDateStr(taskEndStr, 'long')}`}
-                                />
+                                <div key={task.id} className="relative">
+                                  {hasOverlap && (
+                                    <div
+                                      className="absolute top-1/2 -translate-y-1/2 h-5 rounded pointer-events-none"
+                                      style={{
+                                        left: `${clampedTaskStartPos}%`,
+                                        width: `${clampedTaskWidth}%`,
+                                        background: 'repeating-linear-gradient(45deg, rgba(239, 68, 68, 0.6), rgba(239, 68, 68, 0.6) 8px, rgba(239, 68, 68, 0.4) 8px, rgba(239, 68, 68, 0.4) 16px)',
+                                        border: '3px solid rgb(239, 68, 68)',
+                                        zIndex: 9
+                                      }}
+                                    />
+                                  )}
+                                  <div
+                                    className={`absolute top-1/2 -translate-y-1/2 h-5 rounded ${taskStatusColors[task.status || "todo"]}`}
+                                    style={{
+                                      left: `${clampedTaskStartPos}%`,
+                                      width: `${clampedTaskWidth}%`,
+                                      zIndex: hasOverlap ? 10 : 8
+                                    }}
+                                    title={`${task.title} - ${formatDateStr(taskStartStr, 'long')} → ${formatDateStr(taskEndStr, 'long')}`}
+                                  />
+                                </div>
                               );
                             })}
                           </div>
@@ -556,14 +567,24 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                             </div>
 
                             <div className="flex-1 relative h-8">
+                              {hasOverlap && (
+                                <div
+                                  className="absolute top-1/2 -translate-y-1/2 h-5 rounded pointer-events-none"
+                                  style={{
+                                    left: `${clampedTaskStartPos}%`,
+                                    width: `${clampedTaskWidth}%`,
+                                    background: 'repeating-linear-gradient(45deg, rgba(239, 68, 68, 0.6), rgba(239, 68, 68, 0.6) 8px, rgba(239, 68, 68, 0.4) 8px, rgba(239, 68, 68, 0.4) 16px)',
+                                    border: '3px solid rgb(239, 68, 68)',
+                                    zIndex: 9
+                                  }}
+                                />
+                              )}
                               <div
-                                className={`absolute top-1/2 -translate-y-1/2 h-5 rounded ${taskStatusColors[task.status || "todo"]} ${
-                                  hasOverlap ? 'shadow-[0_0_8px_rgba(0,0,0,0.4)] ring-2 ring-yellow-400' : ''
-                                }`}
+                                className={`absolute top-1/2 -translate-y-1/2 h-5 rounded ${taskStatusColors[task.status || "todo"]}`}
                                 style={{
                                   left: `${clampedTaskStartPos}%`,
                                   width: `${clampedTaskWidth}%`,
-                                  zIndex: hasOverlap ? 12 : 8
+                                  zIndex: hasOverlap ? 10 : 8
                                 }}
                                 title={`${task.title} - ${formatDateStr(taskStartStr, 'long')} → ${formatDateStr(taskEndStr, 'long')}`}
                               />
