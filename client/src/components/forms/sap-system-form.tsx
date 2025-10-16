@@ -16,7 +16,7 @@ import { Loader2, Server, Building, Globe } from "lucide-react";
 // Extend the schema for form validation
 const formSchema = insertSapSystemSchema.extend({
   applicationServerPort: z.coerce.number().min(1).max(65535).optional(),
-  systemId: z.string().min(1, "System ID è obbligatorio").max(3, "System ID deve essere max 3 caratteri").toUpperCase(),
+  systemId: z.string().min(1, "System ID è obbligatorio").max(3, "System ID deve essere max 3 caratteri").transform(val => val.toUpperCase()),
 });
 
 interface SapSystemFormProps {
