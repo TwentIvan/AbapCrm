@@ -13,9 +13,6 @@ const getDefaultNavigation = (t: any) => [
   { id: "1", name: t("nav.projects"), href: "/projects", icon: FolderOpen, testId: "nav-projects" },
   { id: "2", name: t("nav.tasks"), href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
   { id: "3", name: t("nav.partners"), href: "/partners", icon: Handshake, testId: "nav-partners" },
-  { id: "3b", name: t("nav.contacts"), href: "/contacts", icon: Contact, testId: "nav-contacts" },
-  { id: "4", name: t("nav.messages"), href: "/messages", icon: Mail, testId: "nav-messages" },
-  { id: "5", name: t("nav.proposals"), href: "/proposals", icon: Sparkles, testId: "nav-proposals" },
   { id: "6", name: t("nav.salesOrders"), href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
   { id: "7", name: t("nav.rateAgreements"), href: "/rate-agreements", icon: DollarSign, testId: "nav-rate-agreements" },
   { id: "8", name: t("nav.humanResources"), href: "/human-resources", icon: Users, testId: "nav-human-resources" },
@@ -203,7 +200,7 @@ export default function Sidebar() {
   return (
     <aside className="w-80 bg-card border-r border-border flex flex-col">
       {/* Logo and Brand */}
-      <div className="p-6 border-b border-border">
+      <div className="p-6">
         <div className="flex justify-center">
           <ImageContainer
             src={newLogo}

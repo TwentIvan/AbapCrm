@@ -88,7 +88,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const getButtonTransform = (buttonId: string, hoveredId: string | null) => {
     if (!hoveredId) return 'translateX(0)';
     
-    const buttons = ['proposals', 'partners', 'messages', 'calendar', 'planning'];
+    const buttons = ['proposals', 'messages', 'calendar', 'planning', 'partners'];
     const currentIndex = buttons.indexOf(buttonId);
     const hoveredIndex = buttons.indexOf(hoveredId);
     
@@ -216,7 +216,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           <TooltipProvider delayDuration={300}>
             {/* Quick Access Buttons */}
             <div className="flex items-center space-x-2">
-              {/* Proposte AI Button */}
+              {/* Proposte AI Button - Personalizzato con THU AI */}
               <Link href="/proposals">
                 <Button 
                   variant="ghost" 
@@ -226,8 +226,11 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   onMouseLeave={() => setHoveredButton(null)}
                   data-testid="button-proposals"
                 >
-                  <div className="relative">
-                    <Sparkles className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                  <div className="relative flex items-center">
+                    <div className="flex items-baseline space-x-0.5">
+                      <span className="text-2xl font-black text-blue-600 dark:text-blue-400">THU</span>
+                      <span className="text-xs font-bold text-purple-500 dark:text-purple-400">AI</span>
+                    </div>
                     {(pendingProposals?.count ?? 0) > 0 && (
                       <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                         {(pendingProposals?.count ?? 0) > 9 ? '9+' : pendingProposals?.count}
@@ -237,25 +240,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   {hoveredButton === 'proposals' && (
                     <span className="ml-3 text-foreground font-medium whitespace-nowrap">
                       Proposte AI
-                    </span>
-                  )}
-                </Button>
-              </Link>
-              
-              {/* Contatti Button */}
-              <Link href="/partners">
-                <Button 
-                  variant="ghost" 
-                  className="flex items-center bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg"
-                  style={getButtonStyle('partners', hoveredButton)}
-                  onMouseEnter={() => setHoveredButton('partners')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                  data-testid="button-partners"
-                >
-                  <Users className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                  {hoveredButton === 'partners' && (
-                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
-                      Contatti
                     </span>
                   )}
                 </Button>
@@ -328,6 +312,27 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             </div>
           </TooltipProvider>
 
+          {/* Contatti Button - Tutto a destra */}
+          <TooltipProvider delayDuration={300}>
+            <Link href="/partners">
+              <Button 
+                variant="ghost" 
+                className="flex items-center bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg"
+                style={getButtonStyle('partners', hoveredButton)}
+                onMouseEnter={() => setHoveredButton('partners')}
+                onMouseLeave={() => setHoveredButton(null)}
+                data-testid="button-partners"
+              >
+                <Users className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                {hoveredButton === 'partners' && (
+                  <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                    Contatti
+                  </span>
+                )}
+              </Button>
+            </Link>
+          </TooltipProvider>
+          
           
           {/* User & Organization Box with Switch */}
           {user && (
