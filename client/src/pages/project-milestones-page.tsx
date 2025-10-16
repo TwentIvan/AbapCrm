@@ -128,7 +128,7 @@ export default function ProjectMilestonesPage() {
       searchable: true,
       render: (milestone: ProjectMilestone) => {
         const project = projects.find(p => p.id === milestone.projectId);
-        return project?.projectName || "-";
+        return project?.name || "-";
       }
     },
     {
