@@ -76,18 +76,16 @@ export default function ProjectMilestonesPage() {
 
   const updateDatesMutation = useMutation({
     mutationFn: async ({ id, startDate, endDate }: { id: string; startDate: Date; endDate: Date }) => {
-      const payload = {
+      return apiRequest("PUT", `/api/project-milestones/${id}`, {
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
-      };
-      console.log("Sending update:", payload);
-      return apiRequest("PUT", `/api/project-milestones/${id}`, payload);
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/project-milestones"] });
+      toast({ title: "Aggiornato", description: "Milestone aggiornata con successo" });
     },
     onError: (error: any) => {
-      console.error("Update failed:", error);
       toast({ 
         variant: "destructive",
         title: "Errore", 

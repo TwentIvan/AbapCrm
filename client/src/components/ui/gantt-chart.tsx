@@ -91,18 +91,18 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
     const start = new Date(milestone.startDate!);
     const end = new Date(milestone.endDate!);
-    const duration = differenceInDays(end, start);
+    const durationMs = end.getTime() - start.getTime(); // Durata in millisecondi
 
     let newStart: Date;
     let newEnd: Date;
 
     if (dragState.type === 'move') {
-      const targetDay = Math.max(0, Math.min(totalDays - duration - 1, dayAtCursor - dragState.offsetDays));
+      const targetDay = Math.max(0, Math.min(totalDays - 1, dayAtCursor - dragState.offsetDays));
       newStart = addDays(minDate, Math.floor(targetDay));
       if (targetDay % 1 === 0.5) {
         newStart = addHours(newStart, 12);
       }
-      newEnd = addDays(newStart, duration);
+      newEnd = new Date(newStart.getTime() + durationMs); // Preserva durata esatta
     } else if (dragState.type === 'resize-start') {
       const targetDay = Math.max(0, Math.min(differenceInDays(end, minDate) - 0.5, dayAtCursor));
       newStart = addDays(minDate, Math.floor(targetDay));
@@ -145,19 +145,19 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
     const start = new Date(milestone.startDate!);
     const end = new Date(milestone.endDate!);
-    const duration = differenceInDays(end, start);
+    const durationMs = end.getTime() - start.getTime(); // Durata in millisecondi
 
     let newStart: Date;
     let newEnd: Date;
 
     if (dragState.type === 'move') {
-      const targetDay = Math.max(0, Math.min(totalDays - duration - 1, dayAtCursor - dragState.offsetDays));
+      const targetDay = Math.max(0, Math.min(totalDays - 1, dayAtCursor - dragState.offsetDays));
       newStart = addDays(minDate, Math.floor(targetDay));
       // Aggiungi 12 ore se è una mezza giornata
       if (targetDay % 1 === 0.5) {
         newStart = addHours(newStart, 12);
       }
-      newEnd = addDays(newStart, duration);
+      newEnd = new Date(newStart.getTime() + durationMs); // Preserva durata esatta
     } else if (dragState.type === 'resize-start') {
       const targetDay = Math.max(0, Math.min(differenceInDays(end, minDate) - 0.5, dayAtCursor));
       newStart = addDays(minDate, Math.floor(targetDay));
@@ -236,24 +236,26 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                   const dayPos = getPosition(day);
                   const halfDayPos = getPosition(addHours(day, 12));
                   return [
-                    // Linea giornata intera (più scura)
+                    // Linea giornata intera (più scura e visibile)
                     <div
                       key={`day-${index}`}
-                      className="absolute top-0 bottom-0 w-px bg-gray-500 dark:bg-gray-400"
+                      className="absolute top-0 bottom-0"
                       style={{ 
                         left: `${dayPos}%`,
-                        borderLeft: '1px dashed currentColor',
-                        opacity: 0.6
+                        width: '2px',
+                        background: 'rgba(100, 116, 139, 0.6)',
+                        borderLeft: '2px dashed rgba(100, 116, 139, 0.6)'
                       }}
                     />,
-                    // Linea mezza giornata (visibile)
+                    // Linea mezza giornata (visibile, più chiara)
                     <div
                       key={`half-${index}`}
-                      className="absolute top-0 bottom-0 w-px bg-gray-400 dark:bg-gray-500"
+                      className="absolute top-0 bottom-0"
                       style={{ 
                         left: `${halfDayPos}%`,
-                        borderLeft: '1px dashed currentColor',
-                        opacity: 0.4
+                        width: '1px',
+                        background: 'rgba(148, 163, 184, 0.4)',
+                        borderLeft: '1px dashed rgba(148, 163, 184, 0.4)'
                       }}
                     />
                   ];
