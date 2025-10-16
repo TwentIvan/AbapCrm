@@ -27,6 +27,7 @@ import SalesOrdersPage from "@/pages/sales-orders-page";
 import ProjectAssignmentsPage from "@/pages/project-assignments-page";
 import ProjectMilestonesPage from "@/pages/project-milestones-page";
 import PurchaseOrdersPage from "@/pages/purchase-orders-page";
+import VendorInvoicesPage from "@/pages/vendor-invoices-page";
 import SapSystemsPage from "@/pages/sap-systems-page";
 import SapTransportPage from "@/pages/sap-transport-page";
 import { SystemCredentialsPage } from "@/pages/system-credentials-page";
@@ -62,6 +63,7 @@ function Router() {
       <ProtectedRoute path="/project-assignments" component={ProjectAssignmentsPage} />
       <ProtectedRoute path="/project-milestones" component={ProjectMilestonesPage} />
       <ProtectedRoute path="/purchase-orders" component={PurchaseOrdersPage} />
+      <ProtectedRoute path="/vendor-invoices" component={VendorInvoicesPage} />
       <ProtectedRoute path="/sap-systems" component={SapSystemsPage} />
       <ProtectedRoute path="/sap-systems/new" component={SapSystemsPage} />
       <ProtectedRoute path="/sap-systems/:id/edit" component={SapSystemsPage} />
