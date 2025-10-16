@@ -193,6 +193,23 @@ export default function ProjectsPage() {
 
     // Scarica il SAP shortcut per ZTHU_DOCUMENTATION
     try {
+      // Recupera le credenziali SAP attive per questo sistema
+      const credentialsResponse = await fetch(`/api/sap-systems/${projectSapSystem.id}/credentials/active`, {
+        credentials: "include",
+      });
+      
+      let clipboardContent = project.id; // Default: solo project ID
+      let toastMessage = `ID progetto copiato: ${project.id.substring(0, 8)}...`;
+      
+      if (credentialsResponse.ok) {
+        const credentials = await credentialsResponse.json();
+        if (credentials && credentials.password) {
+          // Formato strutturato: PASSWORD su prima riga, PROJECT_ID su seconda
+          clipboardContent = `${credentials.password}\n${project.id}`;
+          toastMessage = `Password SAP e ID progetto copiati nel clipboard`;
+        }
+      }
+
       downloadZTHUDocumentationShortcut({
         systemName: projectSapSystem.name,
         description: projectSapSystem.description || undefined,
@@ -203,8 +220,8 @@ export default function ProjectsPage() {
         language: "IT",
       });
 
-      // Copia l'ID del progetto nel clipboard
-      await navigator.clipboard.writeText(project.id);
+      // Copia nel clipboard
+      await navigator.clipboard.writeText(clipboardContent);
 
       // Apri il dialog di paste JSON
       setSelectedProjectForSap(project);
@@ -212,7 +229,7 @@ export default function ProjectsPage() {
 
       toast({
         title: "Shortcut SAP scaricato",
-        description: `Il file .sap è stato scaricato. ID progetto copiato nel clipboard: ${project.id.substring(0, 8)}...`,
+        description: toastMessage,
       });
     } catch (error) {
       toast({
