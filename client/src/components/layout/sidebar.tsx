@@ -59,10 +59,12 @@ function NavItem({ item, isActive }: { item: any; isActive: boolean }) {
           isActive && "bg-blue-100/80 dark:bg-blue-900/50 border-l-4 border-blue-500"
         )}
       >
-        <Icon className={cn(
-          "h-5 w-5 flex-shrink-0 transition-colors",
-          isActive ? "text-blue-500" : "text-blue-400"
-        )} />
+        <div className={cn(
+          "p-2 rounded-md transition-colors",
+          isActive ? "bg-blue-500" : "bg-blue-400"
+        )}>
+          <Icon className="h-5 w-5 flex-shrink-0 text-white" />
+        </div>
         <span className={cn(
           "text-sm font-medium flex-1",
           isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
@@ -90,10 +92,12 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
             hasActiveChild && "bg-blue-100/80 dark:bg-blue-900/50 border-l-4 border-blue-500"
           )}
         >
-          <Icon className={cn(
-            "h-5 w-5 flex-shrink-0 transition-colors",
-            hasActiveChild ? "text-blue-500" : "text-blue-400"
-          )} />
+          <div className={cn(
+            "p-2 rounded-md transition-colors",
+            hasActiveChild ? "bg-blue-500" : "bg-blue-400"
+          )}>
+            <Icon className="h-5 w-5 flex-shrink-0 text-white" />
+          </div>
           <span className={cn(
             "text-sm font-medium flex-1",
             hasActiveChild ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
@@ -141,10 +145,12 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
             isActive && "bg-blue-100/80 dark:bg-blue-900/50 border-l-4 border-blue-500"
           )}
         >
-          <Icon className={cn(
-            "h-4 w-4 flex-shrink-0 transition-colors",
-            isActive ? "text-blue-500" : "text-blue-400"
-          )} />
+          <div className={cn(
+            "p-1.5 rounded-md transition-colors",
+            isActive ? "bg-blue-500" : "bg-blue-400"
+          )}>
+            <Icon className="h-4 w-4 flex-shrink-0 text-white" />
+          </div>
           <span className={cn(
             "text-sm font-medium flex-1",
             isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
