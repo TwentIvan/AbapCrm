@@ -21,12 +21,12 @@ const getDefaultSystemsItems = (t: any) => [
   { id: "s3", name: "Credenziali", href: "/system-credentials", icon: Key, testId: "nav-system-credentials" },
 ];
 
-// Main navigation (dopo Anagrafiche)
-const getDefaultNavigation = (t: any) => [
-  { id: "1", name: t("nav.projects"), href: "/projects", icon: FolderOpen, testId: "nav-projects" },
-  { id: "2", name: t("nav.tasks"), href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
-  { id: "3", name: "Assegnazioni", href: "/project-assignments", icon: Users, testId: "nav-project-assignments" },
-  { id: "4", name: "Milestones", href: "/project-milestones", icon: BarChart3, testId: "nav-project-milestones" },
+// Progetti group (nested items)
+const getDefaultProgettiItems = (t: any) => [
+  { id: "prj1", name: "Anagrafica", href: "/projects", icon: FolderOpen, testId: "nav-projects" },
+  { id: "prj2", name: "Milestones", href: "/project-milestones", icon: BarChart3, testId: "nav-project-milestones" },
+  { id: "prj3", name: "Attività", href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
+  { id: "prj4", name: "Assegnazioni", href: "/project-assignments", icon: Users, testId: "nav-project-assignments" },
 ];
 
 // Soluzioni group
@@ -56,6 +56,7 @@ const getDefaultTimeManagementItems = (t: any) => [
 // Parent sections
 const getDefaultParentItems = (t: any) => [
   { id: "p0", name: "Anagrafiche", icon: Contact, testId: "nav-anagrafiche", type: "anagrafiche" },
+  { id: "p5", name: "Progetti", icon: FolderOpen, testId: "nav-progetti", type: "progetti" },
   { id: "p3", name: "Soluzioni", icon: Radar, testId: "nav-soluzioni", type: "soluzioni" },
   { id: "p1", name: "Vendite", icon: DollarSign, testId: "nav-vendite", type: "vendita" },
   { id: "p2", name: "Acquisti", icon: FileText, testId: "nav-acquisti", type: "acquisti" },
@@ -187,8 +188,8 @@ export default function Sidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
   const { t } = useTranslation();
-  const navigation = getDefaultNavigation(t);
   const anagraficheDirectItems = getDefaultAnagraficheDirectItems(t);
+  const progettiItems = getDefaultProgettiItems(t);
   const soluzioniItems = getDefaultSoluzioniItems(t);
   const venditaItems = getDefaultVenditaItems(t);
   const acquistiItems = getDefaultAcquistiItems(t);
@@ -196,6 +197,7 @@ export default function Sidebar() {
   const timeManagementItems = getDefaultTimeManagementItems(t);
   const parentItems = getDefaultParentItems(t);
   const [isAnagraficheOpen, setIsAnagraficheOpen] = useState(false);
+  const [isProgettiOpen, setIsProgettiOpen] = useState(false);
   const [isSoluzioniOpen, setIsSoluzioniOpen] = useState(false);
   const [isVenditaOpen, setIsVenditaOpen] = useState(false);
   const [isAcquistiOpen, setIsAcquistiOpen] = useState(false);
@@ -206,6 +208,7 @@ export default function Sidebar() {
   const hasActiveAnagraficheDirectChild = anagraficheDirectItems.some((item: any) => location === item.href);
   const hasActiveSystemsChild = systemsItems.some((item: any) => location === item.href);
   const hasActiveAnagraficheChild = hasActiveAnagraficheDirectChild || hasActiveSystemsChild;
+  const hasActiveProgettiChild = progettiItems.some((item: any) => location === item.href);
   const hasActiveSoluzioniChild = soluzioniItems.some((item: any) => location === item.href);
   const hasActiveVenditaChild = venditaItems.some((item: any) => location === item.href);
   const hasActiveAcquistiChild = acquistiItems.some((item: any) => location === item.href);
@@ -214,6 +217,7 @@ export default function Sidebar() {
   // Keep menus open if they have active children
   const shouldAnagraficheBeOpen = isAnagraficheOpen || hasActiveAnagraficheChild;
   const shouldSystemsBeOpen = isSystemsOpen || hasActiveSystemsChild;
+  const shouldProgettiBeOpen = isProgettiOpen || hasActiveProgettiChild;
   const shouldSoluzioniBeOpen = isSoluzioniOpen || hasActiveSoluzioniChild;
   const shouldVenditaBeOpen = isVenditaOpen || hasActiveVenditaChild;
   const shouldAcquistiBeOpen = isAcquistiOpen || hasActiveAcquistiChild;
@@ -235,6 +239,12 @@ export default function Sidebar() {
         return;
       }
       setIsSystemsOpen(!isSystemsOpen);
+    } else if (type === 'progetti') {
+      if (hasActiveProgettiChild && isProgettiOpen) {
+        console.log('Preventing progetti close - has active child');
+        return;
+      }
+      setIsProgettiOpen(!isProgettiOpen);
     } else if (type === 'soluzioni') {
       if (hasActiveSoluzioniChild && isSoluzioniOpen) {
         console.log('Preventing soluzioni close - has active child');
@@ -326,18 +336,11 @@ export default function Sidebar() {
           </ParentItem>
         </div>
         
-        {/* Main Navigation (Progetti, Tasks) */}
-        {navigation.map((item: any) => {
-          const isActive = location === item.href;
-          return (
-            <NavItem key={item.id} item={item} isActive={isActive} />
-          );
-        })}
-        
-        {/* Altri Parent Sections (Soluzioni, Vendite, Acquisti, Time Management) */}
+        {/* Altri Parent Sections (Progetti, Soluzioni, Vendite, Acquisti, Time Management) */}
         <div>
           {parentItems.map((item: any) => {
             const isAnagraficheItem = item.type === 'anagrafiche';
+            const isProgettiItem = item.type === 'progetti';
             const isSoluzioniItem = item.type === 'soluzioni';
             const isVenditaItem = item.type === 'vendita';
             const isAcquistiItem = item.type === 'acquisti';
@@ -352,7 +355,11 @@ export default function Sidebar() {
             let hasActiveChild = false;
             let childItems: any[] = [];
             
-            if (isSoluzioniItem) {
+            if (isProgettiItem) {
+              isOpen = shouldProgettiBeOpen;
+              hasActiveChild = hasActiveProgettiChild;
+              childItems = progettiItems;
+            } else if (isSoluzioniItem) {
               isOpen = shouldSoluzioniBeOpen;
               hasActiveChild = hasActiveSoluzioniChild;
               childItems = soluzioniItems;
