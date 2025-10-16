@@ -88,7 +88,21 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
     return dateToDay(date1Str) - dateToDay(date2Str);
   };
   
+  // Calcola l'intervallo includendo TUTTE le date: milestone E task
   const allDays = validMilestones.flatMap(m => [dateToDay(m.startDate!), dateToDay(m.endDate!)]);
+  
+  // Aggiungi le date dei task per auto-espandere il Gantt
+  tasks.forEach(task => {
+    if (task.startDate) {
+      const taskStartStr = task.startDate.toString().split('T')[0]; // Estrai solo YYYY-MM-DD
+      allDays.push(dateToDay(taskStartStr));
+    }
+    if (task.dueDate) {
+      const taskEndStr = task.dueDate.toString().split('T')[0]; // Estrai solo YYYY-MM-DD
+      allDays.push(dateToDay(taskEndStr));
+    }
+  });
+  
   const minDay = Math.min(...allDays);
   const maxDay = Math.max(...allDays);
   const totalDays = maxDay - minDay + 1;
@@ -425,36 +439,75 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                   );
 
                   const taskRows = milestoneTasks
-                    .filter(task => task.dueDate)
+                    .filter(task => task.startDate || task.dueDate)
                     .map((task) => {
-                      const taskDueDateStr = task.dueDate!.toString().split('T')[0];
-                      const taskPos = getPosition(taskDueDateStr);
-                      const clampedTaskPos = clampPosition(taskPos);
-
-                      return (
-                        <div key={task.id} className="gantt-row relative h-8 ml-4">
-                          <div className="flex items-center gap-4">
-                            <div className="w-44 flex-shrink-0">
-                              <div className="text-xs truncate text-muted-foreground">
-                                {task.title}
+                      const hasStartAndEnd = task.startDate && task.dueDate;
+                      const taskStartStr = task.startDate ? task.startDate.toString().split('T')[0] : null;
+                      const taskEndStr = task.dueDate ? task.dueDate.toString().split('T')[0] : null;
+                      
+                      // Se ha sia start che end, mostra come range
+                      if (hasStartAndEnd && taskStartStr && taskEndStr) {
+                        const rawLeft = getPosition(taskStartStr);
+                        const rawWidth = getWidth(taskStartStr, taskEndStr);
+                        const leftPos = clampPosition(rawLeft);
+                        const barWidth = clampWidth(rawLeft, rawWidth);
+                        
+                        return (
+                          <div key={task.id} className="gantt-row relative h-8 ml-4">
+                            <div className="flex items-center gap-4">
+                              <div className="w-44 flex-shrink-0">
+                                <div className="text-xs truncate text-muted-foreground">
+                                  {task.title}
+                                </div>
+                              </div>
+                              <div className="flex-1 relative">
+                                <div
+                                  className={`absolute top-1/2 -translate-y-1/2 h-6 rounded ${taskStatusColors[task.status || "todo"]} opacity-60`}
+                                  style={{
+                                    left: `${leftPos}%`,
+                                    width: `${barWidth}%`,
+                                    zIndex: 5
+                                  }}
+                                  title={`${task.title}\n${formatDateStr(taskStartStr, 'long')} - ${formatDateStr(taskEndStr, 'long')}`}
+                                />
                               </div>
                             </div>
+                          </div>
+                        );
+                      }
+                      
+                      // Se ha solo dueDate, mostra come linea verticale (punto)
+                      if (taskEndStr) {
+                        const taskPos = getPosition(taskEndStr);
+                        const clampedTaskPos = clampPosition(taskPos);
 
-                            <div className="flex-1 relative h-8">
-                              <div
-                                className={`absolute top-1/2 -translate-y-1/2 h-3 rounded ${taskStatusColors[task.status || "todo"]}`}
-                                style={{
-                                  left: `${clampedTaskPos}%`,
-                                  width: '4px',
-                                  zIndex: 8
-                                }}
-                                title={`${task.title} - ${formatDateStr(taskDueDateStr, 'long')}`}
-                              />
+                        return (
+                          <div key={task.id} className="gantt-row relative h-8 ml-4">
+                            <div className="flex items-center gap-4">
+                              <div className="w-44 flex-shrink-0">
+                                <div className="text-xs truncate text-muted-foreground">
+                                  {task.title}
+                                </div>
+                              </div>
+                              <div className="flex-1 relative h-8">
+                                <div
+                                  className={`absolute top-1/2 -translate-y-1/2 h-3 rounded ${taskStatusColors[task.status || "todo"]}`}
+                                  style={{
+                                    left: `${clampedTaskPos}%`,
+                                    width: '4px',
+                                    zIndex: 8
+                                  }}
+                                  title={`${task.title} - ${formatDateStr(taskEndStr, 'long')}`}
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    });
+                        );
+                      }
+                      
+                      return null;
+                    })
+                    .filter(Boolean);
 
                   return [milestoneRow, ...taskRows];
                 })}

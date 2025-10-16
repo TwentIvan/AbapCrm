@@ -95,6 +95,7 @@ export const tasks = pgTable("tasks", {
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   assignedTo: uuid("assigned_to").references(() => users.id),
   sapSystemId: uuid("sap_system_id").references(() => sapSystems.id), // Collegamento al sistema SAP per connessione automatica
+  startDate: timestamp("start_date"),
   dueDate: timestamp("due_date"),
   completedAt: timestamp("completed_at"),
   estimatedEffort: integer("estimated_effort"), // in hours

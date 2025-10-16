@@ -18,6 +18,7 @@ const formSchema = insertTaskSchema.omit({
   userId: true,
   assignedTo: true,
 }).extend({
+  startDate: z.string().optional(),
   dueDate: z.string().optional(),
   projectId: z.string().optional(),
   milestoneId: z.string().optional(),
@@ -77,7 +78,8 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       projectId: task?.projectId || "none",
       milestoneId: task?.milestoneId || "none",
       parentTaskId: task?.parentTaskId || "no-parent",
-      dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "",
+      startDate: task?.startDate ? new Date(task.startDate).toISOString().slice(0, 16) : "",
+      dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : "",
       estimatedEffort: task?.estimatedEffort?.toString() || "",
       sapSystemId: task?.sapSystemId || "none",
     },
@@ -94,7 +96,8 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         projectId: task.projectId || "none",
         milestoneId: task.milestoneId || "none",
         parentTaskId: task.parentTaskId || "no-parent",
-        dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "",
+        startDate: task.startDate ? new Date(task.startDate).toISOString().slice(0, 16) : "",
+        dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : "",
         estimatedEffort: task.estimatedEffort?.toString() || "",
         sapSystemId: task.sapSystemId || "none",
       });
@@ -110,6 +113,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         milestoneId: data.milestoneId && data.milestoneId !== "none" ? data.milestoneId : null,
         parentTaskId: data.parentTaskId && data.parentTaskId !== "no-parent" ? data.parentTaskId : null,
         sapSystemId: data.sapSystemId && data.sapSystemId !== "none" ? data.sapSystemId : null,
+        startDate: data.startDate || null,
         dueDate: data.dueDate || null,
         estimatedEffort: data.estimatedEffort ? parseInt(data.estimatedEffort) : null,
         completionPercentage: task?.completionPercentage || 0,
@@ -382,23 +386,43 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="dueDate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Due Date (Optional)</FormLabel>
-              <FormControl>
-                <Input 
-                  {...field} 
-                  type="date"
-                  data-testid="input-task-due-date"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="startDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Data Inizio (Optional)</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field} 
+                    type="datetime-local"
+                    data-testid="input-task-start-date"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="dueDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Data Fine (Optional)</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field} 
+                    type="datetime-local"
+                    data-testid="input-task-due-date"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
       </form>
     </Form>
   );
