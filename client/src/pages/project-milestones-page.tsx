@@ -14,13 +14,14 @@ import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { Target, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { Target, MoreHorizontal, Edit, Trash2, Table as TableIcon, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { ProjectMilestone, Project } from "@shared/schema";
 import ProjectMilestoneForm from "@/components/forms/project-milestone-form";
 
 export default function ProjectMilestonesPage() {
+  const [viewMode, setViewMode] = useState<"table" | "gantt">("table");
   const [selectedMilestones, setSelectedMilestones] = useState<ProjectMilestone[]>([]);
   const [editingMilestone, setEditingMilestone] = useState<ProjectMilestone | undefined>(undefined);
   const [showForm, setShowForm] = useState(false);
@@ -235,23 +236,48 @@ export default function ProjectMilestonesPage() {
           onNewClick={handleAdd}
         />
         <main className="p-6 space-y-6">
-          <div className="flex items-center gap-4 mb-4">
-            <LayoutManager
-              currentLayoutName={currentLayoutName}
-              savedLayouts={savedLayouts}
-              onLoadLayout={loadLayout}
-              onRenameLayout={renameLayout}
-              onDeleteLayout={deleteLayout}
-            />
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowConfigDialog(true)}
-              data-testid="button-configure-columns"
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Configura
-            </Button>
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-4">
+              <LayoutManager
+                currentLayoutName={currentLayoutName}
+                savedLayouts={savedLayouts}
+                onLoadLayout={loadLayout}
+                onRenameLayout={renameLayout}
+                onDeleteLayout={deleteLayout}
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowConfigDialog(true)}
+                data-testid="button-configure-columns"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Configura
+              </Button>
+            </div>
+            
+            <div className="flex items-center gap-2 border rounded-md p-1">
+              <Button
+                variant={viewMode === "table" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("table")}
+                data-testid="button-view-table"
+                className="gap-2"
+              >
+                <TableIcon className="h-4 w-4" />
+                Tabella
+              </Button>
+              <Button
+                variant={viewMode === "gantt" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("gantt")}
+                data-testid="button-view-gantt"
+                className="gap-2"
+              >
+                <Calendar className="h-4 w-4" />
+                Gantt
+              </Button>
+            </div>
           </div>
 
           <UniversalTable
