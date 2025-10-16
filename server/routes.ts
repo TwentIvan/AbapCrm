@@ -819,7 +819,7 @@ export function registerRoutes(app: Express): Server {
         milestoneId: tasks.milestoneId,
         userId: tasks.userId,
         assignedTo: tasks.assignedTo,
-        assignedToName: sql<string>`${users.username}`.as('assigned_to_name'),
+        assignedToName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.username})`.as('assigned_to_name'),
         sapSystemId: tasks.sapSystemId,
         startDate: tasks.startDate,
         dueDate: tasks.dueDate,

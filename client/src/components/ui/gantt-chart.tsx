@@ -479,8 +479,8 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                     const isExpanded = expandedOwners.has(ownerKey);
                     
                     const ownerHeaderRow = (
-                      <div key={ownerKey} className="gantt-row relative h-10 ml-4">
-                        <div className="flex items-center gap-4">
+                      <div key={ownerKey} className={`gantt-row relative ml-4 ${isExpanded ? 'h-8' : 'h-10'}`}>
+                        <div className="flex items-center gap-4 h-full">
                           <div className="w-44 flex-shrink-0 flex items-center gap-1">
                             <button
                               onClick={() => toggleOwnerExpansion(ownerKey)}
@@ -497,13 +497,15 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                               <div className="text-xs font-medium text-blue-600">
                                 {ownerName}
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                {ownerTasks.length} task
-                              </div>
+                              {!isExpanded && (
+                                <div className="text-xs text-muted-foreground">
+                                  {ownerTasks.length} task
+                                </div>
+                              )}
                             </div>
                           </div>
 
-                          <div className="flex-1 relative h-10">
+                          <div className={`flex-1 relative ${isExpanded ? 'h-8' : 'h-10'}`}>
                             {!isExpanded && ownerTasks.map((task) => {
                               const taskStartStr = new Date(task.startDate!).toISOString().split('T')[0];
                               const taskEndStr = new Date(task.dueDate!).toISOString().split('T')[0];
