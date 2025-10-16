@@ -42,21 +42,21 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     );
   }
 
-  // Calcola range date
+  // Calcola range date con precisione millisecondi
   const allDates = validMilestones.flatMap(m => [new Date(m.startDate!), new Date(m.endDate!)]);
   const minDate = startOfDay(min(allDates));
   const maxDate = startOfDay(max(allDates));
-  const totalDays = differenceInDays(maxDate, minDate) + 1;
+  const totalMs = maxDate.getTime() - minDate.getTime() + (24 * 60 * 60 * 1000); // +1 giorno in ms
   const allDays = eachDayOfInterval({ start: minDate, end: maxDate });
 
   const getPosition = (date: Date) => {
-    const days = differenceInDays(startOfDay(date), minDate);
-    return (days / totalDays) * 100;
+    const ms = date.getTime() - minDate.getTime();
+    return (ms / totalMs) * 100;
   };
 
   const getWidth = (start: Date, end: Date) => {
-    const days = differenceInDays(startOfDay(end), startOfDay(start)) + 1;
-    return (days / totalDays) * 100;
+    const durationMs = end.getTime() - start.getTime();
+    return (durationMs / totalMs) * 100;
   };
 
   const getDayFromPosition = (x: number): number => {
@@ -65,6 +65,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     const relativeX = x - rect.left - 192; // 192px = w-48 (12rem)
     const timelineWidth = rect.width - 192;
     const percent = (relativeX / timelineWidth) * 100;
+    const totalDays = totalMs / (24 * 60 * 60 * 1000);
     const exactDays = (percent / 100) * totalDays;
     // Snap a mezze giornate (0.5 giorni)
     return Math.round(exactDays * 2) / 2;
@@ -266,9 +267,9 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                     ? validMilestones.find(m => m.id === milestone.dependsOnMilestoneId)
                     : null;
 
-                  // Controlla sovrapposizione dipendenze
+                  // Controlla sovrapposizione dipendenze (considera anche le ore)
                   const hasOverlap = prerequisite && prerequisite.endDate && 
-                    isBefore(new Date(milestone.startDate!), new Date(prerequisite.endDate));
+                    (new Date(milestone.startDate!).getTime() <= new Date(prerequisite.endDate).getTime());
 
                   return (
                     <div key={milestone.id} className="relative h-16">
@@ -292,7 +293,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
                         {/* Timeline */}
                         <div className="flex-1 relative h-16">
-                          {/* Linea dipendenza */}
+                          {/* Linea dipendenza discreta */}
                           {prerequisite && prerequisite.endDate && (
                             (() => {
                               const prereqEnd = new Date(prerequisite.endDate);
@@ -307,14 +308,14 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                                   <defs>
                                     <marker
                                       id={`arrow-${milestone.id}`}
-                                      markerWidth="10"
-                                      markerHeight="10"
-                                      refX="9"
+                                      markerWidth="8"
+                                      markerHeight="8"
+                                      refX="7"
                                       refY="3"
                                       orient="auto"
                                       markerUnits="strokeWidth"
                                     >
-                                      <path d="M0,0 L0,6 L9,3 z" fill="#a855f7" />
+                                      <path d="M0,0 L0,6 L7,3 z" fill="rgb(148, 163, 184)" />
                                     </marker>
                                   </defs>
                                   <line
@@ -322,12 +323,11 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                                     y1="50%"
                                     x2={`${milestonePos}%`}
                                     y2="50%"
-                                    stroke="#a855f7"
-                                    strokeWidth="3"
+                                    stroke="rgb(148, 163, 184)"
+                                    strokeWidth="1.5"
+                                    strokeDasharray="4 2"
                                     markerEnd={`url(#arrow-${milestone.id})`}
-                                    style={{
-                                      filter: 'drop-shadow(0 0 4px rgba(168, 85, 247, 0.8))'
-                                    }}
+                                    opacity="0.5"
                                   />
                                 </svg>
                               );
