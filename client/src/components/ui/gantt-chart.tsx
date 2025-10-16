@@ -42,21 +42,56 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
     );
   }
 
-  // Raggruppa i task per milestone
-  const tasksByMilestone = tasks.reduce((acc, task) => {
-    if (task.milestoneId && task.dueDate) {
-      if (!acc[task.milestoneId]) {
-        acc[task.milestoneId] = [];
-      }
-      acc[task.milestoneId].push(task);
-    }
-    return acc;
-  }, {} as Record<string, Task[]>);
-
   // Lavora SOLO con giorni - niente conversioni Date o millisecondi
   const dateToDay = (dateStr: string): number => {
     const [year, month, day] = dateStr.split('-').map(Number);
     return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+  };
+
+  // Raggruppa i task per milestone, poi per owner
+  const tasksByMilestoneAndOwner = tasks.reduce((acc, task) => {
+    if (task.milestoneId && task.startDate && task.dueDate) {
+      if (!acc[task.milestoneId]) {
+        acc[task.milestoneId] = {};
+      }
+      const ownerName = (task as any).assignedToName || "Non assegnato";
+      if (!acc[task.milestoneId][ownerName]) {
+        acc[task.milestoneId][ownerName] = [];
+      }
+      acc[task.milestoneId][ownerName].push(task);
+    }
+    return acc;
+  }, {} as Record<string, Record<string, Task[]>>);
+
+  // Funzione per rilevare sovrapposizioni tra task
+  const getTaskOverlaps = (ownerTasks: Task[]): Map<string, boolean> => {
+    const overlaps = new Map<string, boolean>();
+    for (let i = 0; i < ownerTasks.length; i++) {
+      const task1 = ownerTasks[i];
+      if (!task1.startDate || !task1.dueDate) continue;
+      
+      const start1 = new Date(task1.startDate).toISOString().split('T')[0];
+      const end1 = new Date(task1.dueDate).toISOString().split('T')[0];
+      
+      for (let j = i + 1; j < ownerTasks.length; j++) {
+        const task2 = ownerTasks[j];
+        if (!task2.startDate || !task2.dueDate) continue;
+        
+        const start2 = new Date(task2.startDate).toISOString().split('T')[0];
+        const end2 = new Date(task2.dueDate).toISOString().split('T')[0];
+        
+        const start1Day = dateToDay(start1);
+        const end1Day = dateToDay(end1);
+        const start2Day = dateToDay(start2);
+        const end2Day = dateToDay(end2);
+        
+        if (start1Day <= end2Day && start2Day <= end1Day) {
+          overlaps.set(task1.id, true);
+          overlaps.set(task2.id, true);
+        }
+      }
+    }
+    return overlaps;
   };
   
   const dayToDate = (day: number): string => {
@@ -292,7 +327,7 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                   const hasOverlap = prerequisite && prereqEndStr && 
                     compareDates(startStr, prereqEndStr) <= 0;
 
-                  const milestoneTasks = tasksByMilestone[milestone.id] || [];
+                  const milestoneTasksByOwner = tasksByMilestoneAndOwner[milestone.id] || {};
 
                   const taskStatusColors: Record<string, string> = {
                     todo: "bg-gray-400 dark:bg-gray-600",
@@ -424,41 +459,51 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                     </div>
                   );
 
-                  const taskRows = milestoneTasks
-                    .filter(task => task.dueDate)
-                    .map((task) => {
-                      const taskDueDateStr = task.dueDate!.toString().split('T')[0];
-                      const taskPos = getPosition(taskDueDateStr);
-                      const clampedTaskPos = clampPosition(taskPos);
-                      const ownerName = (task as any).assignedToName || "Non assegnato";
-
-                      return (
-                        <div key={task.id} className="gantt-row relative h-8 ml-4">
-                          <div className="flex items-center gap-4">
-                            <div className="w-44 flex-shrink-0">
-                              <div className="text-xs truncate text-muted-foreground">
-                                {task.title}
-                              </div>
-                              <div className="text-xs truncate text-blue-600 font-medium">
-                                {ownerName}
-                              </div>
+                  const taskRows = Object.entries(milestoneTasksByOwner).flatMap(([ownerName, ownerTasks]) => {
+                    const overlaps = getTaskOverlaps(ownerTasks);
+                    
+                    return (
+                      <div key={`${milestone.id}-${ownerName}`} className="gantt-row relative h-10 ml-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-44 flex-shrink-0">
+                            <div className="text-xs font-medium text-blue-600">
+                              {ownerName}
                             </div>
-
-                            <div className="flex-1 relative h-8">
-                              <div
-                                className={`absolute top-1/2 -translate-y-1/2 h-3 rounded ${taskStatusColors[task.status || "todo"]}`}
-                                style={{
-                                  left: `${clampedTaskPos}%`,
-                                  width: '4px',
-                                  zIndex: 8
-                                }}
-                                title={`${task.title} - ${ownerName} - ${formatDateStr(taskDueDateStr, 'long')}`}
-                              />
+                            <div className="text-xs text-muted-foreground">
+                              {ownerTasks.length} task
                             </div>
                           </div>
+
+                          <div className="flex-1 relative h-10">
+                            {ownerTasks.map((task) => {
+                              const taskStartStr = new Date(task.startDate!).toISOString().split('T')[0];
+                              const taskEndStr = new Date(task.dueDate!).toISOString().split('T')[0];
+                              const taskStartPos = getPosition(taskStartStr);
+                              const taskWidth = getWidth(taskStartStr, taskEndStr);
+                              const clampedTaskStartPos = clampPosition(taskStartPos);
+                              const clampedTaskWidth = clampWidth(taskStartPos, taskWidth);
+                              const hasOverlap = overlaps.get(task.id) || false;
+
+                              return (
+                                <div
+                                  key={task.id}
+                                  className={`absolute top-1/2 -translate-y-1/2 h-5 rounded ${taskStatusColors[task.status || "todo"]} ${
+                                    hasOverlap ? 'shadow-[0_0_8px_rgba(0,0,0,0.4)] ring-2 ring-yellow-400' : ''
+                                  }`}
+                                  style={{
+                                    left: `${clampedTaskStartPos}%`,
+                                    width: `${clampedTaskWidth}%`,
+                                    zIndex: hasOverlap ? 12 : 8
+                                  }}
+                                  title={`${task.title} - ${formatDateStr(taskStartStr, 'long')} → ${formatDateStr(taskEndStr, 'long')}`}
+                                />
+                              );
+                            })}
+                          </div>
                         </div>
-                      );
-                    });
+                      </div>
+                    );
+                  });
 
                   return [milestoneRow, ...taskRows];
                 })}
