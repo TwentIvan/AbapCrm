@@ -217,6 +217,10 @@ export default function ProjectsPage() {
         toastMessage = `Password SAP (default) e ID progetto copiati nel clipboard`;
       }
 
+      // Copia prima nel clipboard (prima del download per evitare interferenze)
+      await navigator.clipboard.writeText(clipboardContent);
+
+      // Poi scarica lo shortcut SAP
       downloadZTHUDocumentationShortcut({
         systemName: projectSapSystem.name,
         description: projectSapSystem.description || undefined,
@@ -226,10 +230,8 @@ export default function ProjectsPage() {
         applicationServerPort: projectSapSystem.applicationServerPort || undefined,
         client: "100", // Client di default - verrà sovrascritto dall'utente in SAP
         language: "IT",
+        username: projectSapSystem.defaultUsername || undefined, // Username nello shortcut
       });
-
-      // Copia nel clipboard
-      await navigator.clipboard.writeText(clipboardContent);
 
       // Apri il dialog di paste JSON
       setSelectedProjectForSap(project);
