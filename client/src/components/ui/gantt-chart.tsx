@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { ProjectMilestone } from "@shared/schema";
-import { format, differenceInDays, min, max, addDays, eachDayOfInterval, startOfDay, addHours, isBefore } from "date-fns";
+import { format, differenceInDays, differenceInMilliseconds, min, max, addDays, eachDayOfInterval, startOfDay, addHours, isBefore } from "date-fns";
 import { it } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,9 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
   const [dragState, setDragState] = useState<{ 
     id: string; 
     type: 'move' | 'resize-start' | 'resize-end';
-    offsetDays: number;
+    startX: number;
+    originalStart: Date;
+    originalEnd: Date;
     previewStart?: Date;
     previewEnd?: Date;
   } | null>(null);
@@ -63,59 +65,69 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     const relativeX = x - rect.left - 192; // 192px = w-48 (12rem)
     const timelineWidth = rect.width - 192;
     const percent = (relativeX / timelineWidth) * 100;
+    const exactDays = (percent / 100) * totalDays;
     // Snap a mezze giornate (0.5 giorni)
-    return Math.round(((percent / 100) * totalDays) * 2) / 2;
+    return Math.round(exactDays * 2) / 2;
   };
 
   const handleMouseDown = (e: React.MouseEvent, milestone: ProjectMilestone, type: 'move' | 'resize-start' | 'resize-end') => {
     e.stopPropagation();
     e.preventDefault();
     
-    const dayAtCursor = getDayFromPosition(e.clientX);
     const start = new Date(milestone.startDate!);
-    const startDay = differenceInDays(startOfDay(start), minDate);
+    const end = new Date(milestone.endDate!);
     
     setDragState({
       id: milestone.id,
       type,
-      offsetDays: dayAtCursor - startDay
+      startX: e.clientX,
+      originalStart: start,
+      originalEnd: end
     });
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!dragState || !containerRef.current) return;
     
-    const dayAtCursor = getDayFromPosition(e.clientX);
-    const milestone = validMilestones.find(m => m.id === dragState.id);
-    if (!milestone) return;
-
-    const start = new Date(milestone.startDate!);
-    const end = new Date(milestone.endDate!);
-    const durationMs = end.getTime() - start.getTime(); // Durata in millisecondi
+    const deltaX = e.clientX - dragState.startX;
+    const rect = containerRef.current.getBoundingClientRect();
+    const timelineWidth = rect.width - 192;
+    const deltaDays = (deltaX / timelineWidth) * totalDays;
+    
+    // Snap a mezze giornate
+    const snappedDelta = Math.round(deltaDays * 2) / 2;
+    
+    const durationMs = dragState.originalEnd.getTime() - dragState.originalStart.getTime();
 
     let newStart: Date;
     let newEnd: Date;
 
     if (dragState.type === 'move') {
-      const targetDay = Math.max(0, Math.min(totalDays - 1, dayAtCursor - dragState.offsetDays));
-      newStart = addDays(minDate, Math.floor(targetDay));
-      if (targetDay % 1 === 0.5) {
+      // Sposta entrambe le date preservando la durata
+      newStart = addDays(dragState.originalStart, Math.floor(snappedDelta));
+      if (snappedDelta % 1 === 0.5) {
         newStart = addHours(newStart, 12);
+      } else if (snappedDelta % 1 === -0.5) {
+        newStart = addHours(newStart, -12);
       }
-      newEnd = new Date(newStart.getTime() + durationMs); // Preserva durata esatta
+      newEnd = new Date(newStart.getTime() + durationMs);
     } else if (dragState.type === 'resize-start') {
-      const targetDay = Math.max(0, Math.min(differenceInDays(end, minDate) - 0.5, dayAtCursor));
-      newStart = addDays(minDate, Math.floor(targetDay));
-      if (targetDay % 1 === 0.5) {
+      // Modifica solo la data di inizio
+      newStart = addDays(dragState.originalStart, Math.floor(snappedDelta));
+      if (snappedDelta % 1 === 0.5) {
         newStart = addHours(newStart, 12);
+      } else if (snappedDelta % 1 === -0.5) {
+        newStart = addHours(newStart, -12);
       }
-      newEnd = end;
+      newEnd = dragState.originalEnd;
     } else { // resize-end
-      const targetDay = Math.max(differenceInDays(start, minDate) + 0.5, Math.min(totalDays, dayAtCursor));
-      newStart = start;
-      newEnd = addDays(minDate, Math.floor(targetDay));
-      if (targetDay % 1 === 0.5) {
+      // Modifica solo la data di fine
+      newStart = dragState.originalStart;
+      newEnd = addDays(dragState.originalEnd, Math.floor(snappedDelta));
+      if (snappedDelta % 1 === 0.5) {
         newEnd = addHours(newEnd, 12);
+      } else if (snappedDelta % 1 === -0.5) {
+        newEnd = addHours(newEnd, -12);
       }
     }
 
@@ -126,7 +138,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
       previewEnd: newEnd
     });
 
-    // Visual feedback only - we'll save on mouseup
+    // Visual feedback
     const milestoneElement = document.querySelector(`[data-milestone-id="${dragState.id}"]`);
     if (milestoneElement) {
       const leftPos = getPosition(newStart);
@@ -136,47 +148,13 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
     }
   };
 
-  const handleMouseUp = (e: React.MouseEvent) => {
-    if (!dragState) return;
-    
-    const dayAtCursor = getDayFromPosition(e.clientX);
-    const milestone = validMilestones.find(m => m.id === dragState.id);
-    if (!milestone) return;
-
-    const start = new Date(milestone.startDate!);
-    const end = new Date(milestone.endDate!);
-    const durationMs = end.getTime() - start.getTime(); // Durata in millisecondi
-
-    let newStart: Date;
-    let newEnd: Date;
-
-    if (dragState.type === 'move') {
-      const targetDay = Math.max(0, Math.min(totalDays - 1, dayAtCursor - dragState.offsetDays));
-      newStart = addDays(minDate, Math.floor(targetDay));
-      // Aggiungi 12 ore se è una mezza giornata
-      if (targetDay % 1 === 0.5) {
-        newStart = addHours(newStart, 12);
-      }
-      newEnd = new Date(newStart.getTime() + durationMs); // Preserva durata esatta
-    } else if (dragState.type === 'resize-start') {
-      const targetDay = Math.max(0, Math.min(differenceInDays(end, minDate) - 0.5, dayAtCursor));
-      newStart = addDays(minDate, Math.floor(targetDay));
-      // Aggiungi 12 ore se è una mezza giornata
-      if (targetDay % 1 === 0.5) {
-        newStart = addHours(newStart, 12);
-      }
-      newEnd = end;
-    } else { // resize-end
-      const targetDay = Math.max(differenceInDays(start, minDate) + 0.5, Math.min(totalDays, dayAtCursor));
-      newStart = start;
-      newEnd = addDays(minDate, Math.floor(targetDay));
-      // Aggiungi 12 ore se è una mezza giornata
-      if (targetDay % 1 === 0.5) {
-        newEnd = addHours(newEnd, 12);
-      }
+  const handleMouseUp = () => {
+    if (!dragState || !dragState.previewStart || !dragState.previewEnd) {
+      setDragState(null);
+      return;
     }
-
-    onMilestoneUpdate?.(milestone.id, newStart, newEnd);
+    
+    onMilestoneUpdate?.(dragState.id, dragState.previewStart, dragState.previewEnd);
     setDragState(null);
   };
 
@@ -230,37 +208,39 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
             >
-              {/* Gridlines verticali - giornate e mezze giornate */}
-              <div className="absolute left-48 right-0 top-0 bottom-0 pointer-events-none z-0">
+              {/* SVG Background con gridlines */}
+              <svg className="absolute left-48 right-0 top-0 bottom-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }}>
                 {allDays.flatMap((day, index) => {
                   const dayPos = getPosition(day);
                   const halfDayPos = getPosition(addHours(day, 12));
                   return [
-                    // Linea giornata intera (più scura e visibile)
-                    <div
+                    // Linea giornata intera
+                    <line
                       key={`day-${index}`}
-                      className="absolute top-0 bottom-0"
-                      style={{ 
-                        left: `${dayPos}%`,
-                        width: '2px',
-                        background: 'rgba(100, 116, 139, 0.6)',
-                        borderLeft: '2px dashed rgba(100, 116, 139, 0.6)'
-                      }}
+                      x1={`${dayPos}%`}
+                      y1="0"
+                      x2={`${dayPos}%`}
+                      y2="100%"
+                      stroke="rgb(100, 116, 139)"
+                      strokeWidth="2"
+                      strokeDasharray="4 2"
+                      opacity="0.6"
                     />,
-                    // Linea mezza giornata (visibile, più chiara)
-                    <div
+                    // Linea mezza giornata
+                    <line
                       key={`half-${index}`}
-                      className="absolute top-0 bottom-0"
-                      style={{ 
-                        left: `${halfDayPos}%`,
-                        width: '1px',
-                        background: 'rgba(148, 163, 184, 0.4)',
-                        borderLeft: '1px dashed rgba(148, 163, 184, 0.4)'
-                      }}
+                      x1={`${halfDayPos}%`}
+                      y1="0"
+                      x2={`${halfDayPos}%`}
+                      y2="100%"
+                      stroke="rgb(148, 163, 184)"
+                      strokeWidth="1"
+                      strokeDasharray="3 2"
+                      opacity="0.4"
                     />
                   ];
                 })}
-              </div>
+              </svg>
 
               {/* Tooltip data durante drag */}
               {dragState && dragState.previewStart && dragState.previewEnd && (
@@ -274,7 +254,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
               )}
 
               {/* Milestone rows */}
-              <div className="space-y-3">
+              <div className="space-y-3" style={{ position: 'relative', zIndex: 1 }}>
                 {sortedMilestones.map((milestone) => {
                   const start = new Date(milestone.startDate!);
                   const end = new Date(milestone.endDate!);
@@ -312,7 +292,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
 
                         {/* Timeline */}
                         <div className="flex-1 relative h-16">
-                          {/* Linea dipendenza - MOLTO EVIDENTE */}
+                          {/* Linea dipendenza */}
                           {prerequisite && prerequisite.endDate && (
                             (() => {
                               const prereqEnd = new Date(prerequisite.endDate);
@@ -357,21 +337,29 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                           {/* Barra milestone */}
                           <div
                             data-milestone-id={milestone.id}
-                            className={`absolute top-1/2 -translate-y-1/2 h-10 rounded group ${statusColors[milestone.status || "planned"]} ${hasOverlap ? 'ring-2 ring-red-500' : ''}`}
+                            className={`absolute top-1/2 -translate-y-1/2 h-10 rounded group ${statusColors[milestone.status || "planned"]}`}
                             style={{
                               left: `${leftPos}%`,
                               width: `${barWidth}%`,
                               cursor: dragState?.id === milestone.id ? 'grabbing' : 'grab',
                               boxShadow: hasOverlap 
-                                ? '0 0 12px rgba(239, 68, 68, 0.6), 0 2px 4px rgba(0,0,0,0.2)' 
+                                ? '0 0 0 3px rgba(239, 68, 68, 0.5), 0 0 12px rgba(239, 68, 68, 0.6)' 
                                 : '0 2px 4px rgba(0,0,0,0.2)',
-                              zIndex: dragState?.id === milestone.id ? 20 : 10
+                              zIndex: dragState?.id === milestone.id ? 20 : 10,
+                              position: 'relative'
                             }}
                             onMouseDown={(e) => handleMouseDown(e, milestone, 'move')}
                           >
-                            {/* Ombreggiatura rossa per sovrapposizione */}
+                            {/* Ombreggiatura rossa MOLTO VISIBILE */}
                             {hasOverlap && (
-                              <div className="absolute inset-0 bg-red-500/30 rounded pointer-events-none" />
+                              <div 
+                                className="absolute inset-0 rounded pointer-events-none" 
+                                style={{ 
+                                  background: 'repeating-linear-gradient(45deg, rgba(239, 68, 68, 0.4), rgba(239, 68, 68, 0.4) 10px, rgba(239, 68, 68, 0.2) 10px, rgba(239, 68, 68, 0.2) 20px)',
+                                  border: '2px solid rgb(239, 68, 68)',
+                                  zIndex: 100
+                                }} 
+                              />
                             )}
 
                             {/* Resize handle sinistra */}
