@@ -74,6 +74,22 @@ export default function ProjectMilestonesPage() {
     }
   });
 
+  const updateDatesMutation = useMutation({
+    mutationFn: async ({ id, startDate, endDate }: { id: string; startDate: Date; endDate: Date }) => {
+      return apiRequest("PUT", `/api/project-milestones/${id}`, {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/project-milestones"] });
+    },
+  });
+
+  const handleMilestoneUpdate = (id: string, startDate: Date, endDate: Date) => {
+    updateDatesMutation.mutate({ id, startDate, endDate });
+  };
+
   const handleEdit = (milestone: ProjectMilestone) => {
     setEditingMilestone(milestone);
     setShowForm(true);
@@ -311,6 +327,7 @@ export default function ProjectMilestonesPage() {
                 milestones={milestones}
                 projects={projects || []}
                 onMilestoneClick={handleEdit}
+                onMilestoneUpdate={handleMilestoneUpdate}
               />
             </div>
           )}
