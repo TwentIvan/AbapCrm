@@ -334,7 +334,11 @@ export default function ProjectsPage() {
             </DropdownMenuItem>
             {project.sapSystemId && (
               <DropdownMenuItem 
-                onClick={() => handleLaunchSapDocumentation(project)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleLaunchSapDocumentation(project);
+                }}
                 data-testid={`menu-sap-zthu-${project.id}`}
               >
                 <Workflow className="mr-2 h-4 w-4" />
