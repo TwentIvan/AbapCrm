@@ -55,7 +55,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
     enabled: !!user,
   });
 
-  const { data: sapSystems } = useQuery<SapSystem[]>({
+  const { data: sapSystems, isLoading: isLoadingSapSystems } = useQuery<SapSystem[]>({
     queryKey: ["/api/sap-systems"],
     enabled: !!user,
     queryFn: async () => {
@@ -248,10 +248,17 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Sistema SAP (Opzionale)</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || "no-sap-system"}>
+                <Select onValueChange={field.onChange} value={field.value || "no-sap-system"} disabled={isLoadingSapSystems}>
                   <FormControl>
                     <SelectTrigger data-testid="select-sap-system">
-                      <SelectValue placeholder={sapSystems === undefined ? "Caricamento sistemi..." : "Seleziona un sistema SAP"} />
+                      {isLoadingSapSystems ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Caricamento sistemi SAP...</span>
+                        </div>
+                      ) : (
+                        <SelectValue placeholder="Seleziona un sistema SAP" />
+                      )}
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
