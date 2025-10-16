@@ -29,6 +29,8 @@ const formSchema = z.object({
   messageServerPort: z.coerce.number().optional(),
   routerString: z.string().optional(),
   vpnConnectionId: z.string().optional(),
+  defaultUsername: z.string().optional(),
+  defaultPassword: z.string().optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -62,6 +64,8 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
       landscape: system?.landscape || "development",
       description: system?.description || "",
       partnerId: system?.partnerId || undefined,
+      defaultUsername: system?.defaultUsername || "",
+      defaultPassword: system?.defaultPassword || "",
       isActive: system?.isActive ?? true,
     },
   });
@@ -364,6 +368,62 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                     </Select>
                     <FormDescription>
                       Link this SAP system to a business partner
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Default Credentials */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Server className="h-5 w-5" />
+                Credenziali di Default
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="defaultUsername"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username di Default</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="es. IDG-DELGIU" 
+                        {...field} 
+                        value={field.value || ''}
+                        data-testid="input-default-username"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Username da utilizzare quando non ci sono credenziali specifiche configurate
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="defaultPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password di Default</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="password"
+                        placeholder="Password di default" 
+                        {...field} 
+                        value={field.value || ''}
+                        data-testid="input-default-password"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Password da utilizzare quando non ci sono credenziali specifiche configurate
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
