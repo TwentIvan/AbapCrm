@@ -24,7 +24,7 @@ import {
   type EmailConfig,
   projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals,
-  projectAssignments, projectMilestones, purchaseOrders, vendorInvoices
+  projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
