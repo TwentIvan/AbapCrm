@@ -5523,12 +5523,20 @@ Format the response as professional documentation suitable for client delivery.`
         ))
         .orderBy(asc(projectMilestones.displayOrder));
       
-      // Converti le date in ISO UTC per evitare problemi di timezone
+      // Converti le date PostgreSQL (senza timezone) forzando interpretazione UTC
+      const toUTC = (d: Date | null) => {
+        if (!d) return null;
+        return new Date(Date.UTC(
+          d.getFullYear(), d.getMonth(), d.getDate(),
+          d.getHours(), d.getMinutes(), d.getSeconds()
+        )).toISOString();
+      };
+      
       const milestonesWithUTCDates = milestones.map(m => ({
         ...m,
-        startDate: m.startDate ? new Date(m.startDate).toISOString() : null,
-        endDate: m.endDate ? new Date(m.endDate).toISOString() : null,
-        completedDate: m.completedDate ? new Date(m.completedDate).toISOString() : null
+        startDate: toUTC(m.startDate),
+        endDate: toUTC(m.endDate),
+        completedDate: toUTC(m.completedDate)
       }));
       
       res.json(milestonesWithUTCDates);
@@ -5548,11 +5556,19 @@ Format the response as professional documentation suitable for client delivery.`
         ))
         .orderBy(asc(projectMilestones.displayOrder));
       
+      const toUTC = (d: Date | null) => {
+        if (!d) return null;
+        return new Date(Date.UTC(
+          d.getFullYear(), d.getMonth(), d.getDate(),
+          d.getHours(), d.getMinutes(), d.getSeconds()
+        )).toISOString();
+      };
+      
       const milestonesWithUTCDates = milestones.map(m => ({
         ...m,
-        startDate: m.startDate ? new Date(m.startDate).toISOString() : null,
-        endDate: m.endDate ? new Date(m.endDate).toISOString() : null,
-        completedDate: m.completedDate ? new Date(m.completedDate).toISOString() : null
+        startDate: toUTC(m.startDate),
+        endDate: toUTC(m.endDate),
+        completedDate: toUTC(m.completedDate)
       }));
       
       res.json(milestonesWithUTCDates);
@@ -5574,11 +5590,19 @@ Format the response as professional documentation suitable for client delivery.`
       if (!milestone.length) return res.sendStatus(404);
       
       const m = milestone[0];
+      const toUTC = (d: Date | null) => {
+        if (!d) return null;
+        return new Date(Date.UTC(
+          d.getFullYear(), d.getMonth(), d.getDate(),
+          d.getHours(), d.getMinutes(), d.getSeconds()
+        )).toISOString();
+      };
+      
       const milestoneWithUTCDates = {
         ...m,
-        startDate: m.startDate ? new Date(m.startDate).toISOString() : null,
-        endDate: m.endDate ? new Date(m.endDate).toISOString() : null,
-        completedDate: m.completedDate ? new Date(m.completedDate).toISOString() : null
+        startDate: toUTC(m.startDate),
+        endDate: toUTC(m.endDate),
+        completedDate: toUTC(m.completedDate)
       };
       
       res.json(milestoneWithUTCDates);
