@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { ProjectMilestone, Project } from "@shared/schema";
 import ProjectMilestoneForm from "@/components/forms/project-milestone-form";
+import { GanttChart } from "@/components/ui/gantt-chart";
 
 export default function ProjectMilestonesPage() {
   const [viewMode, setViewMode] = useState<"table" | "gantt">("table");
@@ -280,21 +281,31 @@ export default function ProjectMilestonesPage() {
             </div>
           </div>
 
-          <UniversalTable
-            data={milestones}
-            columns={columns}
-            enableSelection={true}
-            onSelectionChange={(rows) => setSelectedMilestones(rows as ProjectMilestone[])}
-            onRowClick={handleEdit}
-            bulkActions={[
-              {
-                label: "Elimina Selezionati",
-                icon: Trash2,
-                variant: "destructive",
-                onClick: () => handleDelete(selectedMilestones)
-              }
-            ]}
-          />
+          {viewMode === "table" ? (
+            <UniversalTable
+              data={milestones}
+              columns={columns}
+              enableSelection={true}
+              onSelectionChange={(rows) => setSelectedMilestones(rows as ProjectMilestone[])}
+              onRowClick={handleEdit}
+              bulkActions={[
+                {
+                  label: "Elimina Selezionati",
+                  icon: Trash2,
+                  variant: "destructive",
+                  onClick: () => handleDelete(selectedMilestones)
+                }
+              ]}
+            />
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <GanttChart
+                milestones={milestones}
+                projects={projects || []}
+                onMilestoneClick={handleEdit}
+              />
+            </div>
+          )}
 
           {/* Create/Edit Dialog */}
           <Dialog open={showForm} onOpenChange={setShowForm}>

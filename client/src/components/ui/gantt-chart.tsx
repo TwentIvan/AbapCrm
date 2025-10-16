@@ -7,7 +7,7 @@ import { ArrowRight } from "lucide-react";
 
 interface GanttChartProps {
   milestones: ProjectMilestone[];
-  projects: Array<{ id: string; projectName: string }>;
+  projects: Array<{ id: string; name: string }>;
   onMilestoneClick?: (milestone: ProjectMilestone) => void;
 }
 
@@ -90,7 +90,7 @@ export function GanttChart({ milestones, projects, onMilestoneClick }: GanttChar
         return (
           <div key={projectId} className="space-y-4">
             <h3 className="font-semibold text-lg">
-              {project?.projectName || 'Progetto non assegnato'}
+              {project?.name || 'Progetto non assegnato'}
             </h3>
             
             <div className="space-y-3">
@@ -130,23 +130,41 @@ export function GanttChart({ milestones, projects, onMilestoneClick }: GanttChar
                       {/* Timeline bar */}
                       <div className="flex-1 relative h-10">
                         {/* Linea dipendenza */}
-                        {prerequisite && (
+                        {prerequisite && prerequisite.endDate && (
                           (() => {
-                            const prereqEnd = new Date(prerequisite.endDate!);
+                            const prereqEnd = new Date(prerequisite.endDate);
                             const prereqPos = getPosition(prereqEnd);
+                            
+                            // La linea parte sempre dal prerequisito e va verso il dipendente
+                            const isForward = prereqPos <= leftPos;
+                            const lineWidth = Math.abs(leftPos - prereqPos);
+                            
+                            // Stile dinamico per posizionamento
+                            const lineStyle = isForward 
+                              ? { left: `${prereqPos}%`, width: `${lineWidth}%` }
+                              : { right: `${100 - prereqPos}%`, width: `${lineWidth}%` };
                             
                             return (
                               <div
                                 className="absolute top-1/2 h-0.5 bg-gray-400 dark:bg-gray-600"
-                                style={{
-                                  left: `${prereqPos}%`,
-                                  width: `${Math.abs(leftPos - prereqPos)}%`,
-                                }}
+                                style={lineStyle}
                               >
-                                <ArrowRight className="absolute right-0 -top-2 h-4 w-4 text-gray-400 dark:text-gray-600" />
+                                {/* Freccia sempre sul dipendente (milestone corrente) */}
+                                <ArrowRight 
+                                  className={`absolute -top-2 h-4 w-4 text-gray-400 dark:text-gray-600 ${
+                                    isForward ? 'right-0' : 'left-0 rotate-180'
+                                  }`}
+                                />
                               </div>
                             );
                           })()
+                        )}
+                        
+                        {/* Warning se dipendenza senza date */}
+                        {prerequisite && !prerequisite.endDate && (
+                          <div className="absolute top-0 left-0 text-xs text-yellow-600 dark:text-yellow-400">
+                            ⚠️ Prerequisito senza data fine
+                          </div>
                         )}
 
                         {/* Barra milestone */}
