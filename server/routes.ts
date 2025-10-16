@@ -837,6 +837,7 @@ export function registerRoutes(app: Express): Server {
           inArray(tasks.organizationId, organizationIds)
         ))
         .orderBy(desc(tasks.updatedAt));
+      console.log('[GET TASKS] Sample task:', JSON.stringify(tasksList[0], null, 2));
       res.json(tasksList);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
