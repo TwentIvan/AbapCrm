@@ -352,10 +352,10 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                                   style={{
                                     left: `${overlapLeft}%`,
                                     width: `${overlapWidth}%`,
-                                    background: 'repeating-linear-gradient(45deg, rgba(239, 68, 68, 0.5), rgba(239, 68, 68, 0.5) 8px, rgba(239, 68, 68, 0.3) 8px, rgba(239, 68, 68, 0.3) 16px)',
-                                    border: '2px solid rgb(239, 68, 68)',
+                                    background: 'repeating-linear-gradient(45deg, rgba(239, 68, 68, 0.6), rgba(239, 68, 68, 0.6) 8px, rgba(239, 68, 68, 0.4) 8px, rgba(239, 68, 68, 0.4) 16px)',
+                                    border: '3px solid rgb(239, 68, 68)',
                                     boxShadow: '0 8px 16px rgba(239, 68, 68, 0.6), 0 4px 8px rgba(0, 0, 0, 0.3)',
-                                    zIndex: 8
+                                    zIndex: 15
                                   }}
                                 />
                               );
@@ -369,7 +369,6 @@ export function GanttChart({ milestones, projects, onMilestoneClick, onMilestone
                               left: `${leftPos}%`,
                               width: `${barWidth}%`,
                               cursor: dragState?.id === milestone.id ? 'grabbing' : 'grab',
-                              boxShadow: '0 8px 16px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.3)',
                               zIndex: dragState?.id === milestone.id ? 20 : 10,
                               position: 'relative'
                             }}
