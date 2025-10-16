@@ -22,6 +22,8 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useOrganization } from "@/contexts/organization-context";
 import { useTranslation, Language } from "@/lib/i18n";
+import { useQuery } from "@tanstack/react-query";
+import { getQueryFn } from "@/lib/queryClient";
 
 interface HeaderProps {
   title: string;
@@ -41,6 +43,20 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const userInitials = user?.firstName && user?.lastName 
     ? `${user.firstName[0]}${user.lastName[0]}` 
     : user?.username?.[0]?.toUpperCase() || "U";
+
+  // Query per conteggio messaggi non letti
+  const { data: unreadMessages } = useQuery<{ count: number }>({
+    queryKey: ['/api/messages/unread-count'],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganization,
+  });
+
+  // Query per conteggio proposte in sospeso
+  const { data: pendingProposals } = useQuery<{ count: number }>({
+    queryKey: ['/api/proposals/pending-count'],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganization,
+  });
 
   // Mappatura route -> icona per l'area corrente
   const getAreaIcon = (path: string) => {
@@ -72,7 +88,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const getButtonTransform = (buttonId: string, hoveredId: string | null) => {
     if (!hoveredId) return 'translateX(0)';
     
-    const buttons = ['messages', 'calendar', 'planning', 'proposals', 'partners'];
+    const buttons = ['proposals', 'partners', 'messages', 'calendar', 'planning'];
     const currentIndex = buttons.indexOf(buttonId);
     const hoveredIndex = buttons.indexOf(hoveredId);
     
@@ -200,17 +216,69 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           <TooltipProvider delayDuration={300}>
             {/* Quick Access Buttons */}
             <div className="flex items-center space-x-2">
+              {/* Proposte AI Button */}
+              <Link href="/proposals">
+                <Button 
+                  variant="ghost" 
+                  className="flex items-center bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg relative"
+                  style={getButtonStyle('proposals', hoveredButton)}
+                  onMouseEnter={() => setHoveredButton('proposals')}
+                  onMouseLeave={() => setHoveredButton(null)}
+                  data-testid="button-proposals"
+                >
+                  <div className="relative">
+                    <Sparkles className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                    {(pendingProposals?.count ?? 0) > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                        {(pendingProposals?.count ?? 0) > 9 ? '9+' : pendingProposals?.count}
+                      </span>
+                    )}
+                  </div>
+                  {hoveredButton === 'proposals' && (
+                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                      Proposte AI
+                    </span>
+                  )}
+                </Button>
+              </Link>
+              
+              {/* Contatti Button */}
+              <Link href="/partners">
+                <Button 
+                  variant="ghost" 
+                  className="flex items-center bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg"
+                  style={getButtonStyle('partners', hoveredButton)}
+                  onMouseEnter={() => setHoveredButton('partners')}
+                  onMouseLeave={() => setHoveredButton(null)}
+                  data-testid="button-partners"
+                >
+                  <Users className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                  {hoveredButton === 'partners' && (
+                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                      Contatti
+                    </span>
+                  )}
+                </Button>
+              </Link>
+
               {/* Messages Button */}
               <Link href="/messages">
                 <Button 
                   variant="ghost" 
-                  className="flex items-center bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg"
+                  className="flex items-center bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg relative"
                   style={getButtonStyle('messages', hoveredButton)}
                   onMouseEnter={() => setHoveredButton('messages')}
                   onMouseLeave={() => setHoveredButton(null)}
                   data-testid="button-messages"
                 >
-                  <Mail className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                  <div className="relative">
+                    <Mail className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                    {(unreadMessages?.count ?? 0) > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                        {(unreadMessages?.count ?? 0) > 9 ? '9+' : unreadMessages?.count}
+                      </span>
+                    )}
+                  </div>
                   {hoveredButton === 'messages' && (
                     <span className="ml-3 text-foreground font-medium whitespace-nowrap">
                       {t("nav.messages")}
@@ -252,44 +320,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   {hoveredButton === 'planning' && (
                     <span className="ml-3 text-foreground font-medium whitespace-nowrap">
                       Pianificazione Progetti
-                    </span>
-                  )}
-                </Button>
-              </Link>
-              
-              {/* Proposte AI Button */}
-              <Link href="/proposals">
-                <Button 
-                  variant="ghost" 
-                  className="flex items-center bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg"
-                  style={getButtonStyle('proposals', hoveredButton)}
-                  onMouseEnter={() => setHoveredButton('proposals')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                  data-testid="button-proposals"
-                >
-                  <Sparkles className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                  {hoveredButton === 'proposals' && (
-                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
-                      Proposte AI
-                    </span>
-                  )}
-                </Button>
-              </Link>
-              
-              {/* Contatti Button */}
-              <Link href="/partners">
-                <Button 
-                  variant="ghost" 
-                  className="flex items-center bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg"
-                  style={getButtonStyle('partners', hoveredButton)}
-                  onMouseEnter={() => setHoveredButton('partners')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                  data-testid="button-partners"
-                >
-                  <Users className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                  {hoveredButton === 'partners' && (
-                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
-                      Contatti
                     </span>
                   )}
                 </Button>

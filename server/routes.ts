@@ -22,7 +22,7 @@ import {
   insertSapTransportRequestSchema, insertSapTransportTaskSchema, insertSapTransportObjectSchema, insertSapObjectContentSchema,
   type EmailConfig,
   projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements,
-  humanResources, sapSystems, systemCredentials, timesheets, comments
+  humanResources, sapSystems, systemCredentials, timesheets, comments, proposals
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -2146,6 +2146,31 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     res.json(messages);
   });
 
+  app.get("/api/messages/unread-count", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const organizationId = req.headers['x-organization-id'] as string;
+    if (!organizationId) return res.status(400).json({ error: "Organization ID required" });
+    
+    try {
+      const result = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.userId, req.user!.id),
+            eq(messages.organizationId, organizationId),
+            eq(messages.status, 'unread')
+          )
+        );
+      
+      res.json({ count: result[0]?.count || 0 });
+    } catch (error) {
+      console.error('Error counting unread messages:', error);
+      res.status(500).json({ error: "Failed to count unread messages" });
+    }
+  });
+
   app.get("/api/messages/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const message = await storage.getMessage(req.params.id, req.user!.id);
@@ -2690,6 +2715,32 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Get proposals error:", error);
       res.status(500).json({ error: "Failed to get proposals" });
+    }
+  });
+
+  // Get count of pending proposals for current organization
+  app.get("/api/proposals/pending-count", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const organizationId = req.headers['x-organization-id'] as string;
+    if (!organizationId) return res.status(400).json({ error: "Organization ID required" });
+    
+    try {
+      const result = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(proposals)
+        .where(
+          and(
+            eq(proposals.userId, req.user!.id),
+            eq(proposals.organizationId, organizationId),
+            eq(proposals.status, 'pending')
+          )
+        );
+      
+      res.json({ count: result[0]?.count || 0 });
+    } catch (error) {
+      console.error('Error counting pending proposals:', error);
+      res.status(500).json({ error: "Failed to count pending proposals" });
     }
   });
 
