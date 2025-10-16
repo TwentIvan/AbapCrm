@@ -76,12 +76,7 @@ export default function ProjectMilestonesPage() {
 
   const updateDatesMutation = useMutation({
     mutationFn: async ({ id, startDate, endDate }: { id: string; startDate: Date; endDate: Date }) => {
-      // Trova la milestone completa per includere tutti i campi
-      const milestone = milestones.find(m => m.id === id);
-      if (!milestone) throw new Error("Milestone not found");
-      
       return apiRequest("PUT", `/api/project-milestones/${id}`, {
-        ...milestone,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
       });
