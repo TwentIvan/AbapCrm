@@ -94,11 +94,11 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
   // Aggiungi le date dei task per auto-espandere il Gantt
   tasks.forEach(task => {
     if (task.startDate) {
-      const taskStartStr = task.startDate.toString().split('T')[0]; // Estrai solo YYYY-MM-DD
+      const taskStartStr = new Date(task.startDate).toISOString().split('T')[0]; // Estrai YYYY-MM-DD da ISO string
       allDays.push(dateToDay(taskStartStr));
     }
     if (task.dueDate) {
-      const taskEndStr = task.dueDate.toString().split('T')[0]; // Estrai solo YYYY-MM-DD
+      const taskEndStr = new Date(task.dueDate).toISOString().split('T')[0]; // Estrai YYYY-MM-DD da ISO string
       allDays.push(dateToDay(taskEndStr));
     }
   });
@@ -442,8 +442,8 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                     .filter(task => task.startDate || task.dueDate)
                     .map((task) => {
                       const hasStartAndEnd = task.startDate && task.dueDate;
-                      const taskStartStr = task.startDate ? task.startDate.toString().split('T')[0] : null;
-                      const taskEndStr = task.dueDate ? task.dueDate.toString().split('T')[0] : null;
+                      const taskStartStr = task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : null;
+                      const taskEndStr = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : null;
                       
                       // Se ha sia start che end, mostra come range
                       if (hasStartAndEnd && taskStartStr && taskEndStr) {
