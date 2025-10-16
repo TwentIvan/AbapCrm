@@ -97,8 +97,8 @@ export default function ProjectMilestoneForm({ milestone, onSuccess }: ProjectMi
     mutationFn: async (data: ProjectMilestoneFormData) => {
       const payload = {
         ...data,
-        budgetAmount: data.budgetAmount ? parseFloat(data.budgetAmount) : undefined,
-        actualCost: data.actualCost ? parseFloat(data.actualCost) : undefined,
+        budgetAmount: data.budgetAmount || undefined,
+        actualCost: data.actualCost || undefined,
         startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
         endDate: data.endDate ? new Date(data.endDate).toISOString() : undefined,
         completedDate: data.completedDate ? new Date(data.completedDate).toISOString() : undefined,
@@ -129,8 +129,8 @@ export default function ProjectMilestoneForm({ milestone, onSuccess }: ProjectMi
     mutationFn: async (data: ProjectMilestoneFormData) => {
       const payload = {
         ...data,
-        budgetAmount: data.budgetAmount ? parseFloat(data.budgetAmount) : undefined,
-        actualCost: data.actualCost ? parseFloat(data.actualCost) : undefined,
+        budgetAmount: data.budgetAmount || undefined,
+        actualCost: data.actualCost || undefined,
         startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
         endDate: data.endDate ? new Date(data.endDate).toISOString() : undefined,
         completedDate: data.completedDate ? new Date(data.completedDate).toISOString() : undefined,
