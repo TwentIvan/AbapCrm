@@ -320,17 +320,11 @@ export default function PartnersPage() {
               key={`partners-table-${currentLayoutName}-${JSON.stringify(layout.columns)}`}
               columns={tableColumns}
               data={partners || []}
-              searchPlaceholder="Search partners..."
               onRowClick={handleEdit}
               enableSelection={true}
               onSelectionChange={setSelectedPartners}
-              bulkActions={bulkActions}
               tableId="partners"
               configurableColumns={true}
-              enableAdvancedFilters={true}
-              filterColumns={filterColumns}
-              enableAggregation={true}
-              aggregationColumns={aggregationColumns}
               enableColumnReordering={true}
               enableClipboardCopy={true}
               editingLayout={editingLayout}

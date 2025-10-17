@@ -120,23 +120,30 @@ export function DataTable<TData, TValue>({
   const selectionColumn = enableSelection ? [{
     id: "select",
     header: ({ table }: any) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-        data-testid="checkbox-select-all"
-      />
+      <div className="flex items-center justify-start">
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          data-testid="checkbox-select-all"
+        />
+      </div>
     ),
     cell: ({ row }: any) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        data-testid={`checkbox-select-${row.id}`}
-      />
+      <div className="flex items-center justify-start">
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          data-testid={`checkbox-select-${row.id}`}
+        />
+      </div>
     ),
     enableSorting: false,
     enableHiding: false,
+    enableColumnFilter: false,
+    enableResizing: false,
+    size: 40,
   }] : [];
 
   // Apply column ordering - SIMPLIFIED since we now use layout.columns positions
@@ -327,31 +334,34 @@ export function DataTable<TData, TValue>({
       )}
 
       {/* Search, Filters and Column Visibility */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder={searchPlaceholder}
-              value={globalFilter ?? ""}
-              onChange={(event) => setGlobalFilter(String(event.target.value))}
-              className="pl-10"
-              data-testid="input-table-search"
-            />
+      {(searchPlaceholder || enableAdvancedFilters || configurableColumns) && (
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            {searchPlaceholder && (
+              <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder={searchPlaceholder}
+                  value={globalFilter ?? ""}
+                  onChange={(event) => setGlobalFilter(String(event.target.value))}
+                  className="pl-10"
+                  data-testid="input-table-search"
+                />
+              </div>
+            )}
+
+            {enableAdvancedFilters && filterColumns.length > 0 && (
+              <AdvancedFilters
+                columns={filterColumns}
+                filters={advancedFilters}
+                onChange={setAdvancedFilters}
+              />
+            )}
           </div>
 
-          {enableAdvancedFilters && filterColumns.length > 0 && (
-            <AdvancedFilters
-              columns={filterColumns}
-              filters={advancedFilters}
-              onChange={setAdvancedFilters}
-            />
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {configurableColumns && (
-            <TableConfiguration
+          <div className="flex items-center gap-2">
+            {configurableColumns && (
+              <TableConfiguration
               tableId={tableId}
               availableColumns={allColumns
                 .filter(col => {
@@ -393,9 +403,9 @@ export function DataTable<TData, TValue>({
               Reset Layout
             </Button>
           )}
-          
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Aggregations Row - Top */}
       {/* Aggregations disabled */}
