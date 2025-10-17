@@ -69,7 +69,7 @@ export default function BusinessScenariosManager({ organizationId, organizationN
 
   // Fetch business scenarios
   const { data: scenarios, isLoading: loadingScenarios } = useQuery<BusinessScenario[]>({
-    queryKey: ["/api/business-scenarios", organizationId],
+    queryKey: [`/api/business-scenarios/${organizationId}`],
     queryFn: getQueryFn({ on401: "throw" }),
   });
 
@@ -94,7 +94,7 @@ export default function BusinessScenariosManager({ organizationId, organizationN
     mutationFn: (data: BusinessScenarioFormData) =>
       apiRequest("POST", "/api/business-scenarios", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/business-scenarios", organizationId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/business-scenarios/${organizationId}`] });
       setShowForm(false);
       form.reset();
       toast({ title: "Creato", description: "Scenario di business creato con successo" });
@@ -107,7 +107,7 @@ export default function BusinessScenariosManager({ organizationId, organizationN
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/business-scenarios/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/business-scenarios", organizationId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/business-scenarios/${organizationId}`] });
       setShowDeleteDialog(false);
       setScenarioToDelete(null);
       toast({ title: "Eliminato", description: "Scenario di business eliminato con successo" });
