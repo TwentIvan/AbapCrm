@@ -137,7 +137,15 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
     return dateToDay(date1Str) - dateToDay(date2Str);
   };
   
-  const allDays = validMilestones.flatMap(m => [dateToDay(m.startDate!), dateToDay(m.endDate!)]);
+  // Calcola le date cardine considerando sia milestone che task
+  const validTasks = tasks.filter(t => t.startDate && t.dueDate);
+  const allDays = [
+    ...validMilestones.flatMap(m => [dateToDay(m.startDate!), dateToDay(m.endDate!)]),
+    ...validTasks.flatMap(t => [
+      dateToDay(new Date(t.startDate!).toISOString().split('T')[0]),
+      dateToDay(new Date(t.dueDate!).toISOString().split('T')[0])
+    ])
+  ];
   const minDay = Math.min(...allDays);
   const maxDay = Math.max(...allDays);
   const totalDays = maxDay - minDay + 1;
