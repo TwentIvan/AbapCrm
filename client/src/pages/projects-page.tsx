@@ -55,7 +55,18 @@ type ProjectRelationships = {
 function useProjectRelationships(projectId: string, currentOrganizationId: string | null) {
   return useQuery<ProjectRelationships>({
     queryKey: [`/api/projects/${projectId}/relationships`, currentOrganizationId],
-    queryFn: getQueryFn({ on401: "throw" }),
+    queryFn: async () => {
+      const headers: Record<string, string> = {};
+      if (currentOrganizationId) {
+        headers["X-Organization-Id"] = currentOrganizationId;
+      }
+      const res = await fetch(`/api/projects/${projectId}/relationships`, {
+        credentials: "include",
+        headers,
+      });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
     enabled: !!currentOrganizationId,
   });
 }
