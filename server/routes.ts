@@ -1412,6 +1412,132 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     res.json(partner);
   });
 
+  app.get("/api/partners/:id/relationships", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const partnerId = req.params.id;
+      const organizationIds = await getOrganizationIdsForFilter(req);
+
+      // Get projects where partner is client
+      const projectsList = await db.select({
+        id: projects.id,
+        name: projects.name,
+      })
+      .from(projects)
+      .where(and(
+        eq(projects.clientId, partnerId),
+        inArray(projects.organizationId, organizationIds)
+      ))
+      .limit(20);
+
+      // Get contacts
+      const contactsList = await db.select({
+        id: contacts.id,
+        name: contacts.name,
+      })
+      .from(contacts)
+      .where(and(
+        eq(contacts.partnerId, partnerId),
+        inArray(contacts.organizationId, organizationIds)
+      ))
+      .limit(20);
+
+      // Get deals
+      const dealsList = await db.select({
+        id: deals.id,
+        name: deals.title,
+      })
+      .from(deals)
+      .where(and(
+        eq(deals.partnerId, partnerId),
+        inArray(deals.organizationId, organizationIds)
+      ))
+      .limit(20);
+
+      // Get SAP systems
+      const sapSystemsList = await db.select({
+        id: sapSystems.id,
+        name: sapSystems.name,
+      })
+      .from(sapSystems)
+      .where(and(
+        eq(sapSystems.partnerId, partnerId),
+        inArray(sapSystems.organizationId, organizationIds)
+      ))
+      .limit(20);
+
+      // Get VPN connections
+      const vpnConnectionsList = await db.select({
+        id: vpnConnections.id,
+        name: vpnConnections.name,
+      })
+      .from(vpnConnections)
+      .where(and(
+        eq(vpnConnections.partnerId, partnerId),
+        inArray(vpnConnections.organizationId, organizationIds)
+      ))
+      .limit(20);
+
+      // Get purchase orders where partner is vendor
+      const purchaseOrdersList = await db.select({
+        id: purchaseOrders.id,
+        name: purchaseOrders.poNumber,
+      })
+      .from(purchaseOrders)
+      .where(and(
+        eq(purchaseOrders.vendorPartnerId, partnerId),
+        inArray(purchaseOrders.organizationId, organizationIds)
+      ))
+      .limit(20);
+
+      // Get vendor invoices where partner is vendor
+      const vendorInvoicesList = await db.select({
+        id: vendorInvoices.id,
+        name: vendorInvoices.invoiceNumber,
+      })
+      .from(vendorInvoices)
+      .where(and(
+        eq(vendorInvoices.vendorPartnerId, partnerId),
+        inArray(vendorInvoices.organizationId, organizationIds)
+      ))
+      .limit(20);
+
+      res.json({
+        projects: {
+          count: projectsList.length,
+          items: projectsList
+        },
+        contacts: {
+          count: contactsList.length,
+          items: contactsList
+        },
+        deals: {
+          count: dealsList.length,
+          items: dealsList
+        },
+        sapSystems: {
+          count: sapSystemsList.length,
+          items: sapSystemsList
+        },
+        vpnConnections: {
+          count: vpnConnectionsList.length,
+          items: vpnConnectionsList
+        },
+        purchaseOrders: {
+          count: purchaseOrdersList.length,
+          items: purchaseOrdersList
+        },
+        vendorInvoices: {
+          count: vendorInvoicesList.length,
+          items: vendorInvoicesList
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching partner relationships:", error);
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
   app.post("/api/partners", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     

@@ -26,6 +26,83 @@ import SimplePartnerForm from "@/components/forms/simple-partner-form";
 import AuditHistory from "@/components/ui/audit-history";
 import { MessageHistory } from "@/components/ui/message-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RelationshipBadge } from "@/components/ui/relationship-badge";
+import { useEntityRelationships } from "@/hooks/use-entity-relationships";
+
+// Component to display Projects count for a partner
+function PartnerProjectsCount({ partnerId, currentOrganizationId }: { partnerId: string; currentOrganizationId: string | null }) {
+  const { data: relationships, isLoading } = useEntityRelationships("partners", partnerId);
+  
+  if (!currentOrganizationId || isLoading) {
+    return <span className="text-sm text-muted-foreground">...</span>;
+  }
+
+  const count = relationships?.projects?.count || 0;
+  if (count === 0) {
+    return <span className="text-sm text-muted-foreground">-</span>;
+  }
+
+  return (
+    <RelationshipBadge
+      count={count}
+      label="Progetti"
+      items={relationships?.projects?.items || []}
+      targetPath="/projects"
+      filterParam="clientId"
+      sourceId={partnerId}
+    />
+  );
+}
+
+// Component to display Contacts count for a partner
+function PartnerContactsCount({ partnerId, currentOrganizationId }: { partnerId: string; currentOrganizationId: string | null }) {
+  const { data: relationships, isLoading } = useEntityRelationships("partners", partnerId);
+  
+  if (!currentOrganizationId || isLoading) {
+    return <span className="text-sm text-muted-foreground">...</span>;
+  }
+
+  const count = relationships?.contacts?.count || 0;
+  if (count === 0) {
+    return <span className="text-sm text-muted-foreground">-</span>;
+  }
+
+  return (
+    <RelationshipBadge
+      count={count}
+      label="Contatti"
+      items={relationships?.contacts?.items || []}
+      targetPath="/contacts"
+      filterParam="partnerId"
+      sourceId={partnerId}
+    />
+  );
+}
+
+// Component to display Deals count for a partner
+function PartnerDealsCount({ partnerId, currentOrganizationId }: { partnerId: string; currentOrganizationId: string | null }) {
+  const { data: relationships, isLoading } = useEntityRelationships("partners", partnerId);
+  
+  if (!currentOrganizationId || isLoading) {
+    return <span className="text-sm text-muted-foreground">...</span>;
+  }
+
+  const count = relationships?.deals?.count || 0;
+  if (count === 0) {
+    return <span className="text-sm text-muted-foreground">-</span>;
+  }
+
+  return (
+    <RelationshipBadge
+      count={count}
+      label="Deals"
+      items={relationships?.deals?.items || []}
+      targetPath="/deals"
+      filterParam="partnerId"
+      sourceId={partnerId}
+    />
+  );
+}
 
 const typeColors = {
   client: "bg-blue-100 text-blue-800",
@@ -226,6 +303,36 @@ export default function PartnersPage() {
       consultant: 'outline',
       other: 'destructive'
     }),
+    {
+      accessorKey: 'projects',
+      header: 'Progetti',
+      cell: ({ row }: any) => (
+        <PartnerProjectsCount 
+          partnerId={row.original.id} 
+          currentOrganizationId={currentOrganizationId} 
+        />
+      ),
+    },
+    {
+      accessorKey: 'contacts',
+      header: 'Contatti',
+      cell: ({ row }: any) => (
+        <PartnerContactsCount 
+          partnerId={row.original.id} 
+          currentOrganizationId={currentOrganizationId} 
+        />
+      ),
+    },
+    {
+      accessorKey: 'deals',
+      header: 'Deals',
+      cell: ({ row }: any) => (
+        <PartnerDealsCount 
+          partnerId={row.original.id} 
+          currentOrganizationId={currentOrganizationId} 
+        />
+      ),
+    },
     createTextColumn('company', 'Company', 30),
     createTextColumn('email', 'Email', 25),
     createTextColumn('phone', 'Phone', 15),
