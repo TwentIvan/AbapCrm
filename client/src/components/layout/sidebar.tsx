@@ -118,7 +118,7 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
           }}
         >
           <div className="p-1.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.3)' }}>
-            <Icon className="h-5 w-5 flex-shrink-0" style={{ color: 'hsl(var(--background))' }} />
+            <Icon className="h-5 w-5 flex-shrink-0 text-background" />
           </div>
           <span className={cn(
             "text-sm font-medium flex-1",
@@ -170,7 +170,7 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
           }}
         >
           <div className="p-1.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.3)' }}>
-            <Icon className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(var(--background))' }} />
+            <Icon className="h-4 w-4 flex-shrink-0 text-background" />
           </div>
           <span className={cn(
             "text-sm font-medium flex-1",
