@@ -155,7 +155,7 @@ const UniversalTableComponent = memo(function UniversalTable({
       {/* Tabella */}
       <div className="rounded-md border">
         <table className="w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-100 dark:bg-gray-800">
             <tr>
               {enableSelection && (
                 <th className="p-3 text-left w-12">
@@ -173,8 +173,8 @@ const UniversalTableComponent = memo(function UniversalTable({
               {columns.map((column) => (
                 <th 
                   key={column.key}
-                  className={`p-3 text-left font-medium text-gray-700 ${
-                    column.sortable ? 'cursor-pointer hover:bg-gray-100 select-none' : ''
+                  className={`p-3 text-left font-medium text-gray-700 dark:text-gray-300 ${
+                    column.sortable ? 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 select-none' : ''
                   }`}
                   onClick={() => column.sortable && handleSort(column.key)}
                 >
