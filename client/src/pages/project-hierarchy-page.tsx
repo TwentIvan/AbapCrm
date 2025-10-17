@@ -257,7 +257,7 @@ export default function ProjectHierarchyPage() {
                     data-testid="button-new-project"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Nuovo Progetto
+                    Crea
                   </Button>
                   <Button
                     variant={expandedByDefault ? "default" : "outline"}
