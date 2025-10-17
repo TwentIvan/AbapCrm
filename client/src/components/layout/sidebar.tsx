@@ -78,9 +78,9 @@ function NavItem({ item, isActive }: { item: any; isActive: boolean }) {
       <div 
         className={cn(
           "flex items-center gap-3 px-4 py-2 rounded-md nav-box transition-all duration-200",
-          "bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg",
+          "bg-sidebar-accent dark:bg-sidebar-accent shadow-md hover:shadow-lg",
           "border-l-4 border-blue-400",
-          isActive && "bg-blue-100/80 dark:bg-blue-900/50 border-l-4 border-blue-500"
+          isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80 border-l-4 border-blue-500"
         )}
       >
         <div className={cn(
@@ -111,9 +111,9 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
         <div 
           className={cn(
             "flex items-center gap-3 px-4 py-2 rounded-md nav-box transition-all duration-200",
-            "bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg",
+            "bg-sidebar-accent dark:bg-sidebar-accent shadow-md hover:shadow-lg",
             "border-l-4 border-blue-400",
-            hasActiveChild && "bg-blue-100/80 dark:bg-blue-900/50 border-l-4 border-blue-500"
+            hasActiveChild && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80 border-l-4 border-blue-500"
           )}
         >
           <div className={cn(
@@ -129,7 +129,7 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
           <button 
             onClick={onToggle}
             className={cn(
-              "ml-2 w-6 h-6 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center justify-center",
+              "ml-2 w-6 h-6 rounded-md hover:bg-sidebar-accent dark:hover:bg-sidebar-accent transition-colors flex items-center justify-center",
               "text-blue-500 dark:text-blue-400"
             )}
           >
@@ -164,9 +164,9 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
         <div 
           className={cn(
             "flex items-center gap-3 px-4 py-1.5 rounded-md nav-box transition-all duration-200",
-            "bg-blue-50/60 dark:bg-blue-900/30 shadow-md hover:shadow-lg",
+            "bg-sidebar-accent dark:bg-sidebar-accent shadow-md hover:shadow-lg",
             "border-l-4 border-blue-400",
-            isActive && "bg-blue-100/80 dark:bg-blue-900/50 border-l-4 border-blue-500"
+            isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80 border-l-4 border-blue-500"
           )}
         >
           <div className={cn(
@@ -274,7 +274,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-80 bg-card border-r border-border flex flex-col">
+    <aside className="w-80 bg-card flex flex-col">
       {/* Logo and Brand */}
       <div className="p-4">
         <div className="flex justify-center">
