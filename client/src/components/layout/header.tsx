@@ -241,7 +241,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         <div className="flex items-center space-x-4">
           <TooltipProvider delayDuration={300}>
             {/* Quick Access Buttons */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-4">
               {/* Proposte AI Button - Personalizzato con THU AI */}
               <Link href="/proposals">
                 <Button 
