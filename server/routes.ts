@@ -19,6 +19,7 @@ import {
   insertDiscoveredVpnSoftwareSchema, insertDiscoveredVpnConfigurationSchema,
   insertOrganizationSchema, insertUserOrganizationSchema, insertOrganizationInvitationSchema,
   insertOrganizationDomainSchema, insertEmailFeedbackSchema, insertEmailTrainingSelectionSchema,
+  insertBusinessScenarioSchema,
   insertSapTransportRequestSchema, insertSapTransportTaskSchema, insertSapTransportObjectSchema, insertSapObjectContentSchema,
   insertProjectAssignmentSchema, insertProjectMilestoneSchema, insertPurchaseOrderSchema, insertVendorInvoiceSchema,
   type EmailConfig,
@@ -594,6 +595,64 @@ export function registerRoutes(app: Express): Server {
     const deleted = await storage.deleteOrganization(req.params.id);
     if (!deleted) return res.sendStatus(404);
     res.sendStatus(204);
+  });
+
+  // Business Scenarios
+  app.get("/api/business-scenarios/:sourceOrganizationId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const scenarios = await storage.getBusinessScenarios(req.params.sourceOrganizationId);
+    res.json(scenarios);
+  });
+
+  app.get("/api/business-scenarios/detail/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const scenario = await storage.getBusinessScenario(req.params.id);
+    if (!scenario) return res.sendStatus(404);
+    res.json(scenario);
+  });
+
+  app.post("/api/business-scenarios", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const data = insertBusinessScenarioSchema.parse(req.body);
+      const scenario = await storage.createBusinessScenario(data);
+      res.json(scenario);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid business scenario data" });
+    }
+  });
+
+  app.put("/api/business-scenarios/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const data = insertBusinessScenarioSchema.partial().parse(req.body);
+      const scenario = await storage.updateBusinessScenario(req.params.id, data);
+      if (!scenario) return res.sendStatus(404);
+      res.json(scenario);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid business scenario data" });
+    }
+  });
+
+  app.delete("/api/business-scenarios/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const deleted = await storage.deleteBusinessScenario(req.params.id);
+    if (!deleted) return res.sendStatus(404);
+    res.sendStatus(204);
+  });
+
+  app.post("/api/business-scenarios/bulk-delete", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids)) {
+        return res.status(400).json({ error: "ids must be an array" });
+      }
+      const deletedCount = await storage.deleteBusinessScenarios(ids);
+      res.json({ deletedCount });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid request data" });
+    }
   });
 
   // User-Organization relationships
