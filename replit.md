@@ -129,6 +129,26 @@ The system includes a complete freelance engagement management workflow with pro
 
 The system supports seamless integration between timesheet entries (hourly engagements) and project assignments for automatic cost calculation and invoicing.
 
+### Business Scenarios - Organization Relationship Management
+The system includes a comprehensive business scenarios feature for defining and managing relationships between organizations:
+
+- **Business Scenarios** (`business_scenarios`): Many-to-many relationships between organizations with typed business contexts:
+  - **Relationship Types**: 
+    - `cliente_fattura` (Invoice Recipient) - Organization receives invoices
+    - `cliente_servizio` (Service Recipient) - Organization receives services
+    - `cliente_timesheet` (Timesheet Client) - Organization for timesheet billing
+    - `fornitore` (Vendor) - Organization provides goods/services
+    - `partner` (Partner) - Strategic partnership
+    - `subappaltatore` (Subcontractor) - Subcontracting relationship
+  - **Source/Target Organizations**: Defines directional relationships (e.g., Company A is invoice recipient for Company B)
+  - **Active/Inactive Status**: Track relationship lifecycle
+  - **Notes**: Additional context and relationship details
+  - **UI Integration**: Dedicated "Scenari" tab in organization edit dialog
+  - **Visual Management**: Card-based interface with color-coded relationship types
+  - **CRUD Operations**: Full create, read, update, delete with validation
+
+This feature enables users to model complex multi-organization business structures, track client-vendor relationships, and maintain clear visibility of inter-organizational dependencies for project and billing management.
+
 # External Dependencies
 
 ## Database Services
