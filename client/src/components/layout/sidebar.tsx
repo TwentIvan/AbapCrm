@@ -230,51 +230,23 @@ export default function Sidebar() {
   const shouldAcquistiBeOpen = isAcquistiOpen || hasActiveAcquistiChild;
   const shouldTimeManagementBeOpen = isTimeManagementOpen || hasActiveTimeChild;
   
-  // Semplice funzione di toggle - chiude solo se non ci sono figli attivi
+  // Semplice funzione di toggle - permette sempre di chiudere/aprire
   const handleToggle = (type: string) => {
     console.log('Executing toggle for:', type);
     
     if (type === 'anagrafiche') {
-      if (hasActiveAnagraficheChild && isAnagraficheOpen) {
-        console.log('Preventing anagrafiche close - has active child');
-        return;
-      }
       setIsAnagraficheOpen(!isAnagraficheOpen);
     } else if (type === 'systems') {
-      if (hasActiveSystemsChild && isSystemsOpen) {
-        console.log('Preventing systems close - has active child');
-        return;
-      }
       setIsSystemsOpen(!isSystemsOpen);
     } else if (type === 'progetti') {
-      if (hasActiveProgettiChild && isProgettiOpen) {
-        console.log('Preventing progetti close - has active child');
-        return;
-      }
       setIsProgettiOpen(!isProgettiOpen);
     } else if (type === 'soluzioni') {
-      if (hasActiveSoluzioniChild && isSoluzioniOpen) {
-        console.log('Preventing soluzioni close - has active child');
-        return;
-      }
       setIsSoluzioniOpen(!isSoluzioniOpen);
     } else if (type === 'vendita') {
-      if (hasActiveVenditaChild && isVenditaOpen) {
-        console.log('Preventing vendita close - has active child');
-        return;
-      }
       setIsVenditaOpen(!isVenditaOpen);
     } else if (type === 'acquisti') {
-      if (hasActiveAcquistiChild && isAcquistiOpen) {
-        console.log('Preventing acquisti close - has active child');
-        return;
-      }
       setIsAcquistiOpen(!isAcquistiOpen);
     } else if (type === 'timeManagement') {
-      if (hasActiveTimeChild && isTimeManagementOpen) {
-        console.log('Preventing timeManagement close - has active child');
-        return;
-      }
       setIsTimeManagementOpen(!isTimeManagementOpen);
     }
   };
@@ -297,7 +269,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 p-4 space-y-3">
+      <nav className="flex-1 px-4 pt-6 pb-4 space-y-4">
         {/* Anagrafiche Section (3 livelli: Anagrafiche > Partners/Risorse + Sistemi > SAP/VPN/Credenziali) */}
         <div>
           <ParentItem
