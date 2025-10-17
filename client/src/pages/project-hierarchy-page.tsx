@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { TreeView, TreeNode } from "@/components/ui/tree-view";
@@ -14,12 +14,14 @@ import {
   Search,
   ChevronRight,
   BarChart3,
-  Target
+  Target,
+  Plus
 } from "lucide-react";
 import { Project, Task } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
+import ProjectFormContainer from "@/components/forms/project-form-container";
 
 const statusColors: Record<string, string> = {
   planning: "bg-blue-500",
@@ -40,7 +42,9 @@ const taskStatusColors = {
 export default function ProjectHierarchyPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedByDefault, setExpandedByDefault] = useState(false);
+  const [showProjectForm, setShowProjectForm] = useState(false);
   const { currentOrganizationId } = useOrganization();
+  const queryClient = useQueryClient();
 
   const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -247,6 +251,15 @@ export default function ProjectHierarchyPage() {
                 
                 <div className="flex items-center gap-2">
                   <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setShowProjectForm(true)}
+                    data-testid="button-new-project"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nuovo Progetto
+                  </Button>
+                  <Button
                     variant={expandedByDefault ? "default" : "outline"}
                     size="sm"
                     onClick={() => setExpandedByDefault(!expandedByDefault)}
@@ -301,6 +314,16 @@ export default function ProjectHierarchyPage() {
           </div>
         </main>
       </div>
+
+      {/* Form per creare nuovo progetto */}
+      <ProjectFormContainer
+        open={showProjectForm}
+        onOpenChange={setShowProjectForm}
+        onSuccess={() => {
+          setShowProjectForm(false);
+          queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+        }}
+      />
     </div>
   );
 }
