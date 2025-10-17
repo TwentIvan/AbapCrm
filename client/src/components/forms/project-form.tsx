@@ -124,9 +124,9 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Project Name</FormLabel>
+              <FormLabel>Nome Progetto</FormLabel>
               <FormControl>
-                <Input {...field} data-testid="input-project-name" placeholder="Enter project name" />
+                <Input {...field} data-testid="input-project-name" placeholder="Inserisci nome progetto" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -138,13 +138,13 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>Descrizione</FormLabel>
               <FormControl>
                 <Textarea 
                   {...field} 
                   value={field.value || ""}
                   data-testid="input-project-description"
-                  placeholder="Describe the project..."
+                  placeholder="Descrivi il progetto..."
                   rows={3}
                 />
               </FormControl>
@@ -159,19 +159,19 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             name="status"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Status</FormLabel>
+                <FormLabel>Stato</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger data-testid="select-project-status">
-                      <SelectValue placeholder="Select status" />
+                      <SelectValue placeholder="Seleziona stato" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="planning">Planning</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="review">Review</SelectItem>
-                    <SelectItem value="on_hold">On Hold</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="planning">Pianificazione</SelectItem>
+                    <SelectItem value="in_progress">In Corso</SelectItem>
+                    <SelectItem value="review">Revisione</SelectItem>
+                    <SelectItem value="on_hold">In Pausa</SelectItem>
+                    <SelectItem value="completed">Completato</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -184,15 +184,15 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             name="clientId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Client (Optional)</FormLabel>
+                <FormLabel>Cliente (Opzionale)</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value || "no-client"}>
                   <FormControl>
                     <SelectTrigger data-testid="select-project-client">
-                      <SelectValue placeholder="Select client" />
+                      <SelectValue placeholder="Seleziona cliente" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="no-client">No client</SelectItem>
+                    <SelectItem value="no-client">Nessun cliente</SelectItem>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.name}
@@ -210,15 +210,15 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             name="parentProjectId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Parent Project (Optional)</FormLabel>
+                <FormLabel>Progetto Padre (Opzionale)</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value || "no-parent"}>
                   <FormControl>
                     <SelectTrigger data-testid="select-parent-project">
-                      <SelectValue placeholder="Select parent project" />
+                      <SelectValue placeholder="Seleziona progetto padre" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="no-parent">No parent project</SelectItem>
+                    <SelectItem value="no-parent">Nessun progetto padre</SelectItem>
                     {parentProjects.map((parentProject) => (
                       <SelectItem key={parentProject.id} value={parentProject.id}>
                         {parentProject.name}
@@ -271,7 +271,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             name="startDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Start Date (Optional)</FormLabel>
+                <FormLabel>Data Inizio (Opzionale)</FormLabel>
                 <FormControl>
                   <Input 
                     {...field} 
@@ -289,7 +289,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             name="endDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>End Date (Optional)</FormLabel>
+                <FormLabel>Data Fine (Opzionale)</FormLabel>
                 <FormControl>
                   <Input 
                     {...field} 
@@ -353,7 +353,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             {saveProjectMutation.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {project ? "Update Project" : "Create Project"}
+            {project ? "Salva" : "Crea"}
           </Button>
         </div>
       </form>
