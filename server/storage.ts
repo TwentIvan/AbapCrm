@@ -4,7 +4,7 @@ import {
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
   emailVerificationTokens, organizationDomains, emailFeedbacks, customFeedbackReasons, emailTrainingSelections, proposals,
-  sapTransportRequests, sapTransportTasks, sapTransportObjects, sapObjectContent,
+  sapTransportRequests, sapTransportTasks, sapTransportObjects, sapObjectContent, businessScenarios,
   type User, type InsertUser,
   type Organization, type InsertOrganization,
   type UserOrganization, type InsertUserOrganization,
@@ -47,7 +47,8 @@ import {
   type SapTransportRequest, type InsertSapTransportRequest,
   type SapTransportTask, type InsertSapTransportTask,
   type SapTransportObject, type InsertSapTransportObject,
-  type SapObjectContent, type InsertSapObjectContent
+  type SapObjectContent, type InsertSapObjectContent,
+  type BusinessScenario, type InsertBusinessScenario
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull, inArray } from "drizzle-orm";
@@ -70,6 +71,14 @@ export interface IStorage {
   createOrganization(organization: InsertOrganization, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Organization>;
   updateOrganization(id: string, organization: Partial<InsertOrganization>, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Organization | undefined>;
   deleteOrganization(id: string): Promise<boolean>;
+  
+  // Business Scenarios
+  getBusinessScenarios(sourceOrganizationId: string): Promise<BusinessScenario[]>;
+  getBusinessScenario(id: string): Promise<BusinessScenario | undefined>;
+  createBusinessScenario(scenario: InsertBusinessScenario): Promise<BusinessScenario>;
+  updateBusinessScenario(id: string, scenario: Partial<InsertBusinessScenario>): Promise<BusinessScenario | undefined>;
+  deleteBusinessScenario(id: string): Promise<boolean>;
+  deleteBusinessScenarios(ids: string[]): Promise<number>;
   
   // User-Organization relationships
   getUserOrganizations(userId: string): Promise<any[]>;
@@ -748,6 +757,57 @@ export class DatabaseStorage implements IStorage {
       console.error("Error deleting organization:", error);
       return false;
     }
+  }
+
+  // Business Scenarios
+  async getBusinessScenarios(sourceOrganizationId: string): Promise<BusinessScenario[]> {
+    const scenarios = await db
+      .select()
+      .from(businessScenarios)
+      .where(eq(businessScenarios.sourceOrganizationId, sourceOrganizationId))
+      .orderBy(desc(businessScenarios.createdAt));
+    return scenarios;
+  }
+
+  async getBusinessScenario(id: string): Promise<BusinessScenario | undefined> {
+    const [scenario] = await db
+      .select()
+      .from(businessScenarios)
+      .where(eq(businessScenarios.id, id))
+      .limit(1);
+    return scenario;
+  }
+
+  async createBusinessScenario(scenario: InsertBusinessScenario): Promise<BusinessScenario> {
+    const [newScenario] = await db
+      .insert(businessScenarios)
+      .values(scenario)
+      .returning();
+    return newScenario;
+  }
+
+  async updateBusinessScenario(id: string, scenario: Partial<InsertBusinessScenario>): Promise<BusinessScenario | undefined> {
+    const [updatedScenario] = await db
+      .update(businessScenarios)
+      .set({ ...scenario, updatedAt: new Date() })
+      .where(eq(businessScenarios.id, id))
+      .returning();
+    return updatedScenario || undefined;
+  }
+
+  async deleteBusinessScenario(id: string): Promise<boolean> {
+    const result = await db
+      .delete(businessScenarios)
+      .where(eq(businessScenarios.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async deleteBusinessScenarios(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    const result = await db
+      .delete(businessScenarios)
+      .where(sql`${businessScenarios.id} = ANY(${ids})`);
+    return result.rowCount || 0;
   }
 
   // User-Organization relationships
