@@ -7,7 +7,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ChevronRight } from "lucide-react";
 
 interface RelationshipItem {
   id: string;
@@ -65,17 +64,15 @@ export function RelationshipBadge({
     <TooltipProvider delayDuration={200}>
       <Tooltip open={isTooltipOpen} onOpenChange={setIsTooltipOpen}>
         <TooltipTrigger asChild>
-          <Badge
-            variant={variant}
-            className={`cursor-pointer hover:opacity-80 transition-opacity group ${className}`}
+          <div
+            className={`flex items-center justify-center w-8 h-8 rounded-full bg-blue-900 text-white font-semibold text-sm cursor-pointer hover:bg-blue-800 transition-colors ${className}`}
             onClick={handleClick}
             onMouseEnter={() => setIsTooltipOpen(true)}
             onMouseLeave={() => setIsTooltipOpen(false)}
             data-testid={`badge-${label.toLowerCase()}-${count}`}
           >
             {count}
-            <ChevronRight className="ml-1 h-3 w-3 opacity-60 group-hover:opacity-100 transition-opacity" />
-          </Badge>
+          </div>
         </TooltipTrigger>
         <TooltipContent 
           side="bottom" 
