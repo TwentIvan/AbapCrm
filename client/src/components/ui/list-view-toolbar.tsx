@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { LayoutControlBox } from "@/components/ui/layout-control-box";
 import { Plus, Copy, Edit, Trash2 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import type { SavedLayout } from "@/lib/user-preferences";
 
 interface ListViewToolbarProps {
@@ -15,6 +16,9 @@ interface ListViewToolbarProps {
   
   // View toggle (optional - for pages with multiple views)
   viewToggle?: ReactNode;
+  
+  // Custom actions (optional - special buttons to the left of standard actions)
+  customActions?: ReactNode;
   
   // Action buttons (always visible, but can be disabled)
   onCreateNew?: () => void;
@@ -38,6 +42,7 @@ export function ListViewToolbar({
   onDeleteLayout,
   onConfigureTable,
   viewToggle,
+  customActions,
   onCreateNew,
   onCopySelected,
   onBulkEdit,
@@ -60,11 +65,18 @@ export function ListViewToolbar({
           onDeleteLayout={onDeleteLayout}
           onConfigureTable={onConfigureTable}
         />
-        {viewToggle && <div>{viewToggle}</div>}
+        {viewToggle && <div className="bg-sidebar-accent rounded-md">{viewToggle}</div>}
       </div>
       
       {/* Right: Action Buttons (sempre presenti) */}
       <div className="flex items-center gap-2">
+        {/* Custom Actions + Separator */}
+        {customActions && (
+          <>
+            {customActions}
+            <Separator orientation="vertical" className="h-9" />
+          </>
+        )}
         {/* Crea */}
         {onCreateNew && (
           <Button

@@ -14,7 +14,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
-import { LayoutManager } from "@/components/ui/layout-manager";
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Server, Building, MoreHorizontal, Grid3X3, List, Edit, Trash2, Key, Wifi, Upload } from "lucide-react";
@@ -323,15 +322,18 @@ export default function SapSystemsPage() {
                 onBulkEdit={() => {/* TODO: implement bulk edit */}}
                 onDeleteSelected={() => setShowBulkDeleteDialog(true)}
                 hasSelection={selectedSystems.length > 0}
+                customActions={
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowImportDialog(true)} 
+                    data-testid="button-import-xml"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import XML
+                  </Button>
+                }
               />
-              <Button 
-                variant="outline" 
-                onClick={() => setShowImportDialog(true)} 
-                data-testid="button-import-xml"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Import from XML
-              </Button>
             </div>
 
             {renderTable()}

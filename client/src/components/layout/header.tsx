@@ -124,9 +124,9 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   };
 
   return (
-    <header className="bg-card border-b border-border sticky top-0 z-10">
+    <header className="bg-sidebar-accent border-b border-border sticky top-0 z-10">
       {/* Top Brand Header */}
-      <div className="bg-blue-50 dark:bg-blue-950/30 py-2 px-6">
+      <div className="bg-sidebar-accent py-2 px-6">
         <h1 className="text-left font-black tracking-tight uppercase">
           <span className="text-lg text-blue-600 dark:text-blue-400">THE</span>
           {' '}

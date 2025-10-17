@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Clock, Calendar, TrendingUp, Filter, List, LayoutGrid, Group, Settings2 } from "lucide-react";
+import { Clock, Calendar, TrendingUp, Filter, List, LayoutGrid, Group, Settings2, Clipboard } from "lucide-react";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, startOfDay, isSameDay } from "date-fns";
 import type { TimeEntry, Task, Project } from "@shared/schema";
 import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
@@ -109,6 +109,7 @@ export default function TimesheetPage() {
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [selectedGroupFields, setSelectedGroupFields] = useState<GroupingField[]>([]);
   const [showTimeNormalizer, setShowTimeNormalizer] = useState(false);
+  const [selectedEntries, setSelectedEntries] = useState<TimeEntry[]>([]);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -477,7 +478,59 @@ export default function TimesheetPage() {
             onCopySelected={() => {/* TODO: implement copy */}}
             onBulkEdit={() => {/* TODO: implement bulk edit */}}
             onDeleteSelected={() => {/* TODO: implement delete */}}
-            hasSelection={false}
+            hasSelection={selectedEntries.length > 0}
+            customActions={
+              <Button
+                variant="default"
+                size="sm"
+                disabled={selectedEntries.length === 0 || selectedGroupFields.length === 0}
+                onClick={async () => {
+                  if (selectedGroupFields.length === 0) {
+                    toast({ title: "Configurazione richiesta", description: "Seleziona almeno un campo per il raggruppamento", variant: "destructive" });
+                    return;
+                  }
+                  if (selectedEntries.length === 0) {
+                    toast({ title: "Nessuna voce selezionata", description: "Seleziona almeno una voce di tempo per creare il timesheet", variant: "destructive" });
+                    return;
+                  }
+                  
+                  const groupedData = processEntriesForTimesheet(tableData.filter(entry => selectedEntries.some(se => se.id === entry.id)), selectedGroupFields);
+                  const totalDuration = selectedEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
+                  const timesheetName = `Timesheet ${format(now, "dd/MM/yyyy HH:mm")}`;
+                  
+                  try {
+                    const response = await fetch('/api/timesheets', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({ 
+                        name: timesheetName, 
+                        description: `Timesheet con ${selectedEntries.length} voci raggruppate per ${selectedGroupFields.join(', ')}`, 
+                        groupingFields: selectedGroupFields, 
+                        timeEntryIds: selectedEntries.map(entry => entry.id), 
+                        groupedData: groupedData, 
+                        totalDuration: totalDuration, 
+                        totalEntries: selectedEntries.length 
+                      })
+                    });
+                    
+                    if (!response.ok) throw new Error('Errore nel salvare il timesheet');
+                    queryClient.invalidateQueries({ queryKey: ["/api/timesheets"] });
+                    toast({ title: "✓ Timesheet salvato", description: `Timesheet "${timesheetName}" creato con successo` });
+                  } catch (error) {
+                    toast({ 
+                      title: "Errore", 
+                      description: error instanceof Error ? error.message : "Errore nel salvare il timesheet", 
+                      variant: "destructive" 
+                    });
+                  }
+                }}
+                data-testid="button-create-timesheet"
+              >
+                <Clipboard className="h-4 w-4 mr-2" />
+                Crea Timesheet
+              </Button>
+            }
             viewToggle={
               <div className="flex bg-muted rounded-lg p-1">
                 <Button
@@ -612,6 +665,7 @@ export default function TimesheetPage() {
           enableAggregation={true}
           enableSelection={true}
           enableClipboardCopy={true}
+          onSelectionChange={(entries) => setSelectedEntries(entries as TimeEntry[])}
           aggregationColumns={[
             {
               id: "duration",

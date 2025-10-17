@@ -274,7 +274,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-80 bg-card border-r border-border flex flex-col">
+    <aside className="w-80 bg-sidebar-accent border-r border-border flex flex-col">
       {/* Logo and Brand */}
       <div className="p-6">
         <div className="flex justify-center">
