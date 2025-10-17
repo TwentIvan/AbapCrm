@@ -162,40 +162,33 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         
         {/* Content above background */}
         <div className="relative z-10 flex items-center justify-between w-full">
-        <div className="flex items-stretch space-x-1">
-          {/* Vetro blu dietro titolo+lente */}
+        <div className="flex items-stretch space-x-4">
           <div 
-            className="flex items-center rounded-lg p-1"
-            style={{ 
-              backgroundColor: 'rgba(30, 64, 175, 0.45)'
+            className="flex items-center space-x-3 px-4 py-2 bg-sidebar-accent rounded-lg"
+            style={{
+              border: '2px solid rgba(30, 64, 175, 0.3)'
             }}
           >
-            <div className="flex items-center space-x-3 px-4 py-2 bg-sidebar-accent rounded-lg">
-              <AreaIcon className="text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
-              <div className="flex flex-col overflow-visible">
-                <h2 className="text-lg font-semibold text-muted-foreground" style={{ whiteSpace: 'nowrap', overflow: 'visible' }} data-testid="text-page-title">
-                  {title}
-                </h2>
-                <p className="text-sm text-muted-foreground" style={{ whiteSpace: 'nowrap', overflow: 'visible' }} data-testid="text-page-subtitle">
-                  {subtitle}
-                </p>
-              </div>
+            <AreaIcon className="text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
+            <div className="flex flex-col overflow-visible">
+              <h2 className="text-lg font-semibold text-muted-foreground" style={{ whiteSpace: 'nowrap', overflow: 'visible' }} data-testid="text-page-title">
+                {title}
+              </h2>
+              <p className="text-sm text-muted-foreground" style={{ whiteSpace: 'nowrap', overflow: 'visible' }} data-testid="text-page-subtitle">
+                {subtitle}
+              </p>
             </div>
           </div>
           
-          {/* Vetro blu dietro search box */}
           <div 
-            className="flex items-center rounded-lg p-1"
+            className="flex items-center px-4 py-2 bg-sidebar-accent cursor-pointer rounded-lg"
+            onClick={() => !isSearchOpen && setIsSearchOpen(true)}
+            data-testid="button-search"
             style={{ 
-              backgroundColor: 'rgba(30, 64, 175, 0.45)',
+              border: '2px solid rgba(30, 64, 175, 0.3)',
               width: isSearchOpen ? '300px' : 'auto'
             }}
           >
-            <div 
-              className="flex items-center px-4 py-2 bg-sidebar-accent cursor-pointer rounded-lg flex-1"
-              onClick={() => !isSearchOpen && setIsSearchOpen(true)}
-              data-testid="button-search"
-            >
             {!isSearchOpen ? (
               <>
                 <Search className="h-8 w-8 text-muted-foreground flex-shrink-0" style={{ width: '2.25rem', height: '2.25rem', transform: 'scaleX(-1) translateX(-0.5rem)' }} />
@@ -237,7 +230,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </button>
               </>
             )}
-            </div>
           </div>
         </div>
 
