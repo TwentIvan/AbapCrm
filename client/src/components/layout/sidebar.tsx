@@ -244,18 +244,20 @@ export default function Sidebar() {
 
   return (
     <aside className="w-80 bg-card flex flex-col">
-      {/* Logo and Brand */}
-      <div className="p-4">
-        <div className="flex justify-center">
-          <ImageContainer
-            src={newLogo}
-            alt="App Logo"
-            fallbackType="logo"
-            size="custom"
-            containerClassName="w-48 h-32 bg-transparent"
-            className="object-contain"
-            data-testid="img-app-logo"
-          />
+      {/* Logo and Brand - Same height as Header */}
+      <div className="px-6 py-2">
+        <div className="py-4">
+          <div className="flex justify-center">
+            <ImageContainer
+              src={newLogo}
+              alt="App Logo"
+              fallbackType="logo"
+              size="custom"
+              containerClassName="w-48 h-14 bg-transparent"
+              className="object-contain"
+              data-testid="img-app-logo"
+            />
+          </div>
         </div>
       </div>
 
