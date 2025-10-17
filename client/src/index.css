@@ -97,22 +97,6 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    background-image: 
-      repeating-linear-gradient(
-        90deg,
-        transparent,
-        transparent 3px,
-        rgba(0, 0, 0, 0.025) 3px,
-        rgba(0, 0, 0, 0.025) 4px
-      ),
-      repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 3px,
-        rgba(0, 0, 0, 0.025) 3px,
-        rgba(0, 0, 0, 0.025) 4px
-      );
-    background-size: 8px 8px;
   }
 }
 
