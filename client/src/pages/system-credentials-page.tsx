@@ -249,14 +249,6 @@ export function SystemCredentialsPage() {
             enableSelection={true}
             onSelectionChange={(rows) => setSelectedCredentials(rows as SystemCredentials[])}
             onRowClick={handleEdit}
-            bulkActions={[
-              {
-                label: "Elimina Selezionate",
-                icon: Trash2,
-                variant: "destructive",
-                onClick: () => handleDelete(selectedCredentials)
-              }
-            ]}
           />
         </div>
 

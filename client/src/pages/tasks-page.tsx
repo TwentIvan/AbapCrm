@@ -746,14 +746,6 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
               enableSelection={true}
               onSelectionChange={(rows) => setSelectedTasks(rows as Task[])}
               onRowClick={handleEdit}
-              bulkActions={[
-                {
-                  label: "Elimina Selezionati",
-                  icon: Trash2,
-                  variant: "destructive",
-                  onClick: () => handleDelete(selectedTasks)
-                }
-              ]}
             />
           )}
         </div>

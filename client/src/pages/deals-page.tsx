@@ -328,14 +328,6 @@ export default function DealsPage() {
               searchPlaceholder="Cerca deal..."
               onSelectionChange={(rows) => setSelectedDeals(rows as Deal[])}
               onRowClick={handleEdit}
-              bulkActions={[
-                {
-                  label: "Elimina Selezionati",
-                  icon: Trash2,
-                  variant: "destructive",
-                  onClick: () => handleDelete(selectedDeals)
-                }
-              ]}
             />
           )}
             <div>

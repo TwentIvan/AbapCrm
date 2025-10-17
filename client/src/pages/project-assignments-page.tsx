@@ -259,14 +259,6 @@ export default function ProjectAssignmentsPage() {
             enableSelection={true}
             onSelectionChange={(rows) => setSelectedAssignments(rows as ProjectAssignment[])}
             onRowClick={handleEdit}
-            bulkActions={[
-              {
-                label: "Elimina Selezionati",
-                icon: Trash2,
-                variant: "destructive",
-                onClick: () => handleDelete(selectedAssignments)
-              }
-            ]}
           />
 
           {/* Create/Edit Dialog */}

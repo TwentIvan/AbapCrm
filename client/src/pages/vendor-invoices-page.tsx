@@ -231,14 +231,6 @@ export default function VendorInvoicesPage() {
             enableSelection={true}
             onSelectionChange={(rows) => setSelectedInvoices(rows as VendorInvoice[])}
             onRowClick={handleEdit}
-            bulkActions={[
-              {
-                label: "Elimina Selezionati",
-                icon: Trash2,
-                variant: "destructive",
-                onClick: () => handleDelete(selectedInvoices)
-              }
-            ]}
           />
 
           {/* Create/Edit Dialog */}

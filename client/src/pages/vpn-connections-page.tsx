@@ -303,14 +303,6 @@ export default function VPNConnectionsPage() {
             enableSelection={true}
             onSelectionChange={(rows) => setSelectedConnections(rows as VpnConnection[])}
             onRowClick={handleEdit}
-            bulkActions={[
-              {
-                label: "Elimina Selezionate",
-                icon: Trash2,
-                variant: "destructive",
-                onClick: () => handleDelete(selectedConnections)
-              }
-            ]}
           />
 
           {/* Form Container - supports both dialog and full-page modes */}

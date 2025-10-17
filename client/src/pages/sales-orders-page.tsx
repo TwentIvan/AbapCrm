@@ -243,14 +243,6 @@ export default function SalesOrdersPage() {
             enableSelection={true}
             onSelectionChange={(rows) => setSelectedOrders(rows as SalesOrder[])}
             onRowClick={handleEdit}
-            bulkActions={[
-              {
-                label: "Elimina Selezionati",
-                icon: Trash2,
-                variant: "destructive",
-                onClick: () => handleDelete(selectedOrders)
-              }
-            ]}
           />
 
           {/* Create/Edit Dialog */}

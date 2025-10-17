@@ -311,14 +311,6 @@ export default function ProjectMilestonesPage() {
               enableSelection={true}
               onSelectionChange={(rows) => setSelectedMilestones(rows as ProjectMilestone[])}
               onRowClick={handleEdit}
-              bulkActions={[
-                {
-                  label: "Elimina Selezionati",
-                  icon: Trash2,
-                  variant: "destructive",
-                  onClick: () => handleDelete(selectedMilestones)
-                }
-              ]}
             />
           ) : (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">

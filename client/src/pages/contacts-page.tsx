@@ -127,15 +127,6 @@ export default function ContactsPage() {
     bulkDeleteMutation.mutate(contactIds);
   };
 
-  const bulkActions = [
-    {
-      label: 'Elimina Selezionati',
-      icon: Trash2,
-      onClick: handleBulkDelete,
-      variant: 'destructive' as const,
-    },
-  ];
-
   // Define filter columns for advanced filtering
   const filterColumns = [
     { id: 'name', label: 'Nome', type: 'text' as const },
@@ -281,7 +272,6 @@ export default function ContactsPage() {
               onRowClick={handleEdit}
               enableSelection={true}
               onSelectionChange={setSelectedContacts}
-              bulkActions={bulkActions}
               tableId="contacts"
               configurableColumns={true}
               enableAdvancedFilters={true}

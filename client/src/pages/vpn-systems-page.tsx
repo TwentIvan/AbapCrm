@@ -272,14 +272,6 @@ export default function VpnSystemsPage() {
             searchPlaceholder="Cerca sistemi VPN..."
             onSelectionChange={(rows) => setSelectedItems(rows as VpnSystems[])}
             onRowClick={handleEdit}
-            bulkActions={[
-              {
-                label: "Elimina Selezionati",
-                icon: Trash2,
-                variant: "destructive",
-                onClick: () => handleDelete(selectedItems)
-              }
-            ]}
           />
 
           {/* Create/Edit Dialog */}

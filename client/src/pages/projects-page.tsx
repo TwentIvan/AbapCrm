@@ -417,14 +417,6 @@ export default function ProjectsPage() {
               searchPlaceholder="Cerca progetti..."
               onSelectionChange={(rows) => setSelectedProjects(rows as Project[])}
               onRowClick={handleEdit}
-              bulkActions={[
-                {
-                  label: "Elimina Selezionati",
-                  icon: Trash2,
-                  variant: "destructive",
-                  onClick: () => handleDelete(selectedProjects)
-                }
-              ]}
             />
           )}
         </div>

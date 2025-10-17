@@ -271,17 +271,6 @@ export default function SapSystemsPage() {
       enableSelection={true}
       onSelectionChange={(rows) => setSelectedSystems(rows as SapSystem[])}
       onRowClick={handleEdit}
-      bulkActions={[
-        {
-          label: "Delete Selected",
-          icon: Trash2,
-          onClick: (selectedRows) => {
-            setSelectedSystems(selectedRows as SapSystem[]);
-            setShowBulkDeleteDialog(true);
-          },
-          variant: "destructive",
-        },
-      ]}
       emptyMessage="Nessun sistema SAP trovato"
     />
   );

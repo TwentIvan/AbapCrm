@@ -225,15 +225,6 @@ export default function EmailAccountsPage() {
     bulkDeleteMutation.mutate(accountIds);
   };
 
-  const bulkActions = [
-    {
-      label: 'Elimina Selezionati',
-      icon: Trash2,
-      onClick: handleBulkDelete,
-      variant: 'destructive' as const,
-    },
-  ];
-
   // Define filter columns for advanced filtering
   const filterColumns = [
     { id: 'email', label: 'Email', type: 'text' as const },
@@ -403,7 +394,6 @@ export default function EmailAccountsPage() {
                 onRowClick={handleEdit}
                 enableSelection={true}
                 onSelectionChange={setSelectedAccounts}
-                bulkActions={bulkActions}
                 tableId="email-accounts"
                 configurableColumns={true}
                 enableAdvancedFilters={true}

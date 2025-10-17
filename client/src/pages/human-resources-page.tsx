@@ -191,14 +191,6 @@ export default function HumanResourcesPage() {
             searchPlaceholder="Cerca risorse..."
             onSelectionChange={(rows) => setSelectedResources(rows as HumanResource[])}
             onRowClick={handleEdit}
-            bulkActions={[
-              {
-                label: "Elimina Selezionati",
-                icon: Trash2,
-                variant: "destructive",
-                onClick: () => handleDelete(selectedResources)
-              }
-            ]}
           />
 
           {/* Create/Edit Dialog */}

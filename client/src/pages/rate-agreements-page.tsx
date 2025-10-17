@@ -259,14 +259,6 @@ export default function RateAgreementsPage() {
             searchPlaceholder="Cerca accordi..."
             onSelectionChange={(rows) => setSelectedAgreements(rows as RateAgreement[])}
             onRowClick={handleEdit}
-            bulkActions={[
-              {
-                label: "Elimina Selezionati",
-                icon: Trash2,
-                variant: "destructive",
-                onClick: () => handleDelete(selectedAgreements)
-              }
-            ]}
           />
 
           {/* Create/Edit Dialog */}

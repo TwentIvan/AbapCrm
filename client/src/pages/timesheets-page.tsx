@@ -432,50 +432,6 @@ export default function TimesheetsPage() {
     },
   ];
 
-  const bulkActions = [
-    {
-      label: "Elimina selezionati",
-      onClick: () => setShowBulkDeleteDialog(true),
-      icon: Trash2,
-      variant: "destructive" as const,
-      requiresSelection: true,
-    },
-    {
-      label: "Crea Ordine Vendita",
-      onClick: async (selectedTimesheets: Timesheet[]) => {
-        if (selectedTimesheets.length === 0) {
-          toast({
-            title: "Nessun timesheet selezionato",
-            description: "Seleziona almeno un timesheet per creare l'ordine",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        // Process each selected timesheet
-        for (const timesheet of selectedTimesheets) {
-          try {
-            await handleConvertToSalesOrder(timesheet);
-          } catch (error) {
-            console.error(`Error converting timesheet ${timesheet.name}:`, error);
-            toast({
-              title: "Errore conversione",
-              description: `Errore nel convertire il timesheet "${timesheet.name}"`,
-              variant: "destructive"
-            });
-          }
-        }
-      },
-      icon: ({ className }: { className?: string }) => (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-      variant: "default" as const,
-      requiresSelection: true,
-    },
-  ];
-
   const filterColumns = [
     {
       id: "name",
@@ -579,7 +535,6 @@ export default function TimesheetsPage() {
               searchPlaceholder="Cerca timesheets..."
               enableSelection={true}
               onSelectionChange={setSelectedTimesheets}
-              bulkActions={bulkActions}
               tableId="timesheets"
               configurableColumns={false}
               enableAdvancedFilters={false}
