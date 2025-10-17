@@ -1418,7 +1418,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const partnerId = req.params.id;
       const organizationIds = await getOrganizationIdsForFilter(req);
 
+      console.log(`[RELATIONSHIPS] Fetching relationships for partner ${partnerId} with orgs:`, organizationIds);
+
       // Get projects where partner is client
+      console.log('[RELATIONSHIPS] Fetching projects...');
       const projectsList = await db.select({
         id: projects.id,
         name: projects.name,
@@ -1429,8 +1432,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         inArray(projects.organizationId, organizationIds)
       ))
       .limit(20);
+      console.log(`[RELATIONSHIPS] Found ${projectsList.length} projects`);
 
       // Get contacts
+      console.log('[RELATIONSHIPS] Fetching contacts...');
       const contactsList = await db.select({
         id: contacts.id,
         name: contacts.name,
@@ -1441,8 +1446,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         inArray(contacts.organizationId, organizationIds)
       ))
       .limit(20);
+      console.log(`[RELATIONSHIPS] Found ${contactsList.length} contacts`);
 
       // Get deals
+      console.log('[RELATIONSHIPS] Fetching deals...');
       const dealsList = await db.select({
         id: deals.id,
         name: deals.title,
@@ -1453,8 +1460,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         inArray(deals.organizationId, organizationIds)
       ))
       .limit(20);
+      console.log(`[RELATIONSHIPS] Found ${dealsList.length} deals`);
 
       // Get SAP systems
+      console.log('[RELATIONSHIPS] Fetching SAP systems...');
       const sapSystemsList = await db.select({
         id: sapSystems.id,
         name: sapSystems.name,
@@ -1465,23 +1474,24 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         inArray(sapSystems.organizationId, organizationIds)
       ))
       .limit(20);
+      console.log(`[RELATIONSHIPS] Found ${sapSystemsList.length} SAP systems`);
 
-      // Get VPN connections
+      // Get VPN connections (note: vpn_connections table doesn't have organizationId)
+      console.log('[RELATIONSHIPS] Fetching VPN connections...');
       const vpnConnectionsList = await db.select({
         id: vpnConnections.id,
         name: vpnConnections.name,
       })
       .from(vpnConnections)
-      .where(and(
-        eq(vpnConnections.partnerId, partnerId),
-        inArray(vpnConnections.organizationId, organizationIds)
-      ))
+      .where(eq(vpnConnections.partnerId, partnerId))
       .limit(20);
+      console.log(`[RELATIONSHIPS] Found ${vpnConnectionsList.length} VPN connections`);
 
       // Get purchase orders where partner is vendor
+      console.log('[RELATIONSHIPS] Fetching purchase orders...');
       const purchaseOrdersList = await db.select({
         id: purchaseOrders.id,
-        name: purchaseOrders.poNumber,
+        name: purchaseOrders.orderNumber,
       })
       .from(purchaseOrders)
       .where(and(
@@ -1489,8 +1499,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         inArray(purchaseOrders.organizationId, organizationIds)
       ))
       .limit(20);
+      console.log(`[RELATIONSHIPS] Found ${purchaseOrdersList.length} purchase orders`);
 
       // Get vendor invoices where partner is vendor
+      console.log('[RELATIONSHIPS] Fetching vendor invoices...');
       const vendorInvoicesList = await db.select({
         id: vendorInvoices.id,
         name: vendorInvoices.invoiceNumber,
@@ -1501,6 +1513,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         inArray(vendorInvoices.organizationId, organizationIds)
       ))
       .limit(20);
+      console.log(`[RELATIONSHIPS] Found ${vendorInvoicesList.length} vendor invoices`);
 
       res.json({
         projects: {

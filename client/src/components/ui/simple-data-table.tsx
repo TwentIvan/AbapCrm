@@ -182,7 +182,8 @@ export function SimpleDataTable<TData, TValue>({
                     if (target.closest('[role="checkbox"]') || 
                         target.closest('button') || 
                         target.closest('input') ||
-                        target.closest('select')) {
+                        target.closest('select') ||
+                        target.closest('[data-relationship-badge]')) {
                       return;
                     }
                     onRowClick?.(row.original);

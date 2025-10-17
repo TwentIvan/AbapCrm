@@ -64,15 +64,19 @@ export function RelationshipBadge({
     <TooltipProvider delayDuration={200}>
       <Tooltip open={isTooltipOpen} onOpenChange={setIsTooltipOpen}>
         <TooltipTrigger asChild>
-          <div
-            className={`flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm cursor-pointer hover:opacity-90 transition-opacity ${className}`}
-            onClick={handleClick}
-            onMouseEnter={() => setIsTooltipOpen(true)}
-            onMouseLeave={() => setIsTooltipOpen(false)}
-            data-testid={`badge-${label.toLowerCase()}-${count}`}
-          >
-            {count}
-          </div>
+          <span>
+            <button
+              type="button"
+              className={`flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm cursor-pointer hover:opacity-90 transition-opacity ${className}`}
+              onClick={handleClick}
+              onMouseEnter={() => setIsTooltipOpen(true)}
+              onMouseLeave={() => setIsTooltipOpen(false)}
+              data-testid={`badge-${label.toLowerCase()}-${count}`}
+              data-relationship-badge="true"
+            >
+              {count}
+            </button>
+          </span>
         </TooltipTrigger>
         <TooltipContent 
           side="bottom" 
