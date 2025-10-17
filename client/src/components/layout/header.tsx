@@ -163,37 +163,39 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         {/* Content above background */}
         <div className="relative z-10 flex items-center justify-between w-full">
         <div className="flex items-stretch space-x-1">
-          {/* Area Title with Icon */}
+          {/* Vetro blu dietro titolo+lente */}
           <div 
-            className="flex items-center space-x-3 px-4 py-2 bg-sidebar-accent transition-all duration-200"
+            className="flex items-center rounded-lg p-1"
             style={{ 
-              borderRadius: '0.5rem 0 0 0.5rem',
-              boxShadow: '-6px 0 0 0 rgba(30, 64, 175, 0.45), 0 -6px 0 0 rgba(30, 64, 175, 0.45), 0 6px 0 0 rgba(30, 64, 175, 0.45)'
+              backgroundColor: 'rgba(30, 64, 175, 0.45)'
             }}
           >
-            <AreaIcon className="text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
-            <div className="flex flex-col overflow-visible">
-              <h2 className="text-lg font-semibold text-muted-foreground" style={{ whiteSpace: 'nowrap', overflow: 'visible' }} data-testid="text-page-title">
-                {title}
-              </h2>
-              <p className="text-sm text-muted-foreground" style={{ whiteSpace: 'nowrap', overflow: 'visible' }} data-testid="text-page-subtitle">
-                {subtitle}
-              </p>
+            <div className="flex items-center space-x-3 px-4 py-2 bg-sidebar-accent rounded-lg">
+              <AreaIcon className="text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
+              <div className="flex flex-col overflow-visible">
+                <h2 className="text-lg font-semibold text-muted-foreground" style={{ whiteSpace: 'nowrap', overflow: 'visible' }} data-testid="text-page-title">
+                  {title}
+                </h2>
+                <p className="text-sm text-muted-foreground" style={{ whiteSpace: 'nowrap', overflow: 'visible' }} data-testid="text-page-subtitle">
+                  {subtitle}
+                </p>
+              </div>
             </div>
           </div>
           
-          {/* Search Box - espandibile */}
+          {/* Vetro blu dietro search box */}
           <div 
-            className="flex items-center px-4 py-2 bg-sidebar-accent cursor-pointer transition-all duration-300"
+            className="flex items-center rounded-lg p-1"
             style={{ 
-              borderRadius: '0 0.5rem 0.5rem 0',
-              width: isSearchOpen ? '300px' : 'auto',
-              minWidth: isSearchOpen ? '300px' : 'auto',
-              boxShadow: '6px 0 0 0 rgba(30, 64, 175, 0.45), 0 -6px 0 0 rgba(30, 64, 175, 0.45), 0 6px 0 0 rgba(30, 64, 175, 0.45)'
+              backgroundColor: 'rgba(30, 64, 175, 0.45)',
+              width: isSearchOpen ? '300px' : 'auto'
             }}
-            onClick={() => !isSearchOpen && setIsSearchOpen(true)}
-            data-testid="button-search"
           >
+            <div 
+              className="flex items-center px-4 py-2 bg-sidebar-accent cursor-pointer rounded-lg flex-1"
+              onClick={() => !isSearchOpen && setIsSearchOpen(true)}
+              data-testid="button-search"
+            >
             {!isSearchOpen ? (
               <>
                 <Search className="h-8 w-8 text-muted-foreground flex-shrink-0" style={{ width: '2.25rem', height: '2.25rem', transform: 'scaleX(-1) translateX(-0.5rem)' }} />
@@ -235,21 +237,25 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </button>
               </>
             )}
+            </div>
           </div>
         </div>
 
         <div className="flex items-center space-x-4">
           <TooltipProvider delayDuration={300}>
-            {/* Quick Access Buttons */}
-            <div className="flex items-center space-x-4">
+            {/* Vetro blu dietro Quick Access Buttons */}
+            <div 
+              className="flex items-center rounded-lg p-1"
+              style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}
+            >
+              <div className="flex items-center space-x-2">
               {/* Proposte AI Button - Personalizzato con THU AI */}
               <Link href="/proposals">
                 <Button 
                   variant="ghost" 
                   className="flex items-center bg-sidebar-accent relative"
                   style={{
-                    ...getButtonStyle('proposals', hoveredButton),
-                    boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.45)'
+                    ...getButtonStyle('proposals', hoveredButton)
                   }}
                   onMouseEnter={() => setHoveredButton('proposals')}
                   onMouseLeave={() => setHoveredButton(null)}
@@ -282,8 +288,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   variant="ghost" 
                   className="flex items-center bg-sidebar-accent relative"
                   style={{
-                    ...getButtonStyle('messages', hoveredButton),
-                    boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.45)'
+                    ...getButtonStyle('messages', hoveredButton)
                   }}
                   onMouseEnter={() => setHoveredButton('messages')}
                   onMouseLeave={() => setHoveredButton(null)}
@@ -311,8 +316,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   variant="ghost" 
                   className="flex items-center bg-sidebar-accent"
                   style={{
-                    ...getButtonStyle('calendar', hoveredButton),
-                    boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.45)'
+                    ...getButtonStyle('calendar', hoveredButton)
                   }}
                   onMouseEnter={() => setHoveredButton('calendar')}
                   onMouseLeave={() => setHoveredButton(null)}
@@ -333,8 +337,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   variant="ghost" 
                   className="flex items-center bg-sidebar-accent"
                   style={{
-                    ...getButtonStyle('planning', hoveredButton),
-                    boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.45)'
+                    ...getButtonStyle('planning', hoveredButton)
                   }}
                   onMouseEnter={() => setHoveredButton('planning')}
                   onMouseLeave={() => setHoveredButton(null)}
@@ -348,43 +351,48 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   )}
                 </Button>
               </Link>
-
+              </div>
             </div>
           </TooltipProvider>
 
-          {/* Contatti Button - Tutto a destra */}
+          {/* Vetro blu dietro Contatti Button */}
           <TooltipProvider delayDuration={300}>
-            <Link href="/partners">
-              <Button 
-                variant="ghost" 
-                className="flex items-center bg-sidebar-accent"
-                style={{
-                  ...getButtonStyle('partners', hoveredButton),
-                  boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.45)'
-                }}
-                onMouseEnter={() => setHoveredButton('partners')}
-                onMouseLeave={() => setHoveredButton(null)}
-                data-testid="button-partners"
-              >
-                <Users className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                {hoveredButton === 'partners' && (
-                  <span className="ml-3 text-foreground font-medium whitespace-nowrap">
-                    Contatti
-                  </span>
-                )}
-              </Button>
-            </Link>
+            <div 
+              className="flex items-center rounded-lg p-1"
+              style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}
+            >
+              <Link href="/partners">
+                <Button 
+                  variant="ghost" 
+                  className="flex items-center bg-sidebar-accent"
+                  style={{
+                    ...getButtonStyle('partners', hoveredButton)
+                  }}
+                  onMouseEnter={() => setHoveredButton('partners')}
+                  onMouseLeave={() => setHoveredButton(null)}
+                  data-testid="button-partners"
+                >
+                  <Users className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                  {hoveredButton === 'partners' && (
+                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                      Contatti
+                    </span>
+                  )}
+                </Button>
+              </Link>
+            </div>
           </TooltipProvider>
           
           
-          {/* User & Organization Box with Switch */}
+          {/* Vetro blu dietro User & Organization Box */}
           {user && (
             <div 
-              className="relative rounded-lg px-4 py-2 flex items-center space-x-4 bg-sidebar-accent transition-all duration-200"
-              style={{
-                boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.45)'
-              }}
+              className="flex items-center rounded-lg p-1"
+              style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}
             >
+              <div 
+                className="relative rounded-lg px-4 py-2 flex items-center space-x-4 bg-sidebar-accent transition-all duration-200"
+              >
               {/* Language Selector - Bandiera Flat */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -556,6 +564,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            </div>
             </div>
           )}
         </div>
