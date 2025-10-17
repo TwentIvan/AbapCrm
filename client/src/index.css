@@ -27,11 +27,11 @@
   --chart-3: hsl(32, 100%, 47%);
   --chart-4: hsl(202, 67%, 71%);
   --chart-5: hsl(0, 68%, 56%);
-  --sidebar: hsl(0, 0%, 100%);
+  --sidebar: hsl(220, 15%, 95%);
   --sidebar-foreground: hsl(220, 15%, 20%);
   --sidebar-primary: hsl(220, 100%, 47%);
   --sidebar-primary-foreground: hsl(0, 0%, 100%);
-  --sidebar-accent: hsl(220, 15%, 95%);
+  --sidebar-accent: hsl(220, 15%, 90%);
   --sidebar-accent-foreground: hsl(220, 15%, 20%);
   --sidebar-border: hsl(220, 15%, 88%);
   --sidebar-ring: hsl(220, 100%, 47%);

@@ -67,7 +67,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   searchKey = "name",
-  searchPlaceholder = "Search...",
+  searchPlaceholder,
   onRowClick,
   configurableColumns = true,
   enableSelection = false,
