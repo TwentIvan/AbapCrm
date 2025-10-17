@@ -39,6 +39,46 @@ const statusColors = {
   on_hold: "bg-red-100 text-red-800",
 };
 
+// Component to display relationship badges for a project
+function ProjectRelationships({ project, currentOrganizationId }: { project: Project; currentOrganizationId: string | null }) {
+  const { data: relationships } = useQuery({
+    queryKey: [`/api/projects/${project.id}/relationships`, currentOrganizationId],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+  });
+
+  if (!currentOrganizationId) {
+    return <span className="text-sm text-muted-foreground">-</span>;
+  }
+
+  if (!relationships) {
+    return <span className="text-sm text-muted-foreground">Loading...</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      <RelationshipBadge
+        count={relationships.tasks?.count || 0}
+        label="Tasks"
+        items={relationships.tasks?.items || []}
+        targetPath="/tasks"
+        filterParam="projectId"
+        sourceId={project.id}
+        variant="secondary"
+      />
+      <RelationshipBadge
+        count={relationships.milestones?.count || 0}
+        label="Milestones"
+        items={relationships.milestones?.items || []}
+        targetPath="/project-milestones"
+        filterParam="projectId"
+        sourceId={project.id}
+        variant="outline"
+      />
+    </div>
+  );
+}
+
 export default function ProjectsPage() {
   const [location] = useLocation();
   const [selectedProjects, setSelectedProjects] = useState<Project[]>([]);
@@ -278,41 +318,6 @@ export default function ProjectsPage() {
     return client?.name || "N/A";
   };
 
-  // Component to display relationship badges for a project
-  const ProjectRelationships = ({ project }: { project: Project }) => {
-    const { data: relationships } = useQuery({
-      queryKey: [`/api/projects/${project.id}/relationships`],
-      queryFn: getQueryFn({ on401: "throw" }),
-    });
-
-    if (!relationships) {
-      return <span className="text-sm text-muted-foreground">Loading...</span>;
-    }
-
-    return (
-      <div className="flex flex-wrap gap-1">
-        <RelationshipBadge
-          count={relationships.tasks?.count || 0}
-          label="Tasks"
-          items={relationships.tasks?.items || []}
-          targetPath="/tasks"
-          filterParam="projectId"
-          sourceId={project.id}
-          variant="secondary"
-        />
-        <RelationshipBadge
-          count={relationships.milestones?.count || 0}
-          label="Milestones"
-          items={relationships.milestones?.items || []}
-          targetPath="/milestones"
-          filterParam="projectId"
-          sourceId={project.id}
-          variant="outline"
-        />
-      </div>
-    );
-  };
-
   const columns = [
     createStandardColumns.text("name", "Nome"),
     createStandardColumns.badge("status", "Status", statusColors),
@@ -356,7 +361,7 @@ export default function ProjectsPage() {
       label: "Relazioni", 
       sortable: false,
       searchable: false,
-      render: (project: Project) => <ProjectRelationships project={project} />
+      render: (project: Project) => <ProjectRelationships project={project} currentOrganizationId={currentOrganizationId} />
     },
     {
       key: "actions",
