@@ -168,7 +168,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             className="flex items-center space-x-3 px-4 py-2 bg-sidebar-accent transition-all duration-200"
             style={{ 
               borderRadius: '0.5rem 0 0 0.5rem',
-              boxShadow: '-6px -6px 0 0 rgba(30, 64, 175, 0.5), -6px 6px 0 0 rgba(30, 64, 175, 0.5), 0 -6px 0 0 rgba(30, 64, 175, 0.5), 0 6px 0 0 rgba(30, 64, 175, 0.5)'
+              boxShadow: '-6px 0 0 0 rgba(30, 64, 175, 0.5), 0 -6px 0 0 rgba(30, 64, 175, 0.5), 0 6px 0 0 rgba(30, 64, 175, 0.5)'
             }}
           >
             <AreaIcon className="text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
@@ -189,7 +189,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               borderRadius: '0 0.5rem 0.5rem 0',
               width: isSearchOpen ? '300px' : 'auto',
               minWidth: isSearchOpen ? '300px' : 'auto',
-              boxShadow: '6px -6px 0 0 rgba(30, 64, 175, 0.5), 6px 6px 0 0 rgba(30, 64, 175, 0.5), 0 -6px 0 0 rgba(30, 64, 175, 0.5), 0 6px 0 0 rgba(30, 64, 175, 0.5)'
+              boxShadow: '6px 0 0 0 rgba(30, 64, 175, 0.5), 0 -6px 0 0 rgba(30, 64, 175, 0.5), 0 6px 0 0 rgba(30, 64, 175, 0.5)'
             }}
             onClick={() => !isSearchOpen && setIsSearchOpen(true)}
             data-testid="button-search"
