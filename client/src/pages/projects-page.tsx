@@ -21,6 +21,7 @@ import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2, History, MessageSquare, Workflow } from "lucide-react";
 import { Project, Partner, SapSystem } from "@shared/schema";
+import { RelationshipBadge } from "@/components/ui/relationship-badge";
 import { SapPasteJsonDialog } from "@/components/dialogs/sap-paste-json-dialog";
 import { downloadZTHUDocumentationShortcut } from "@/lib/sap-shortcut";
 import ProjectForm from "@/components/forms/project-form";
@@ -277,6 +278,41 @@ export default function ProjectsPage() {
     return client?.name || "N/A";
   };
 
+  // Component to display relationship badges for a project
+  const ProjectRelationships = ({ project }: { project: Project }) => {
+    const { data: relationships } = useQuery({
+      queryKey: [`/api/projects/${project.id}/relationships`],
+      queryFn: getQueryFn({ on401: "throw" }),
+    });
+
+    if (!relationships) {
+      return <span className="text-sm text-muted-foreground">Loading...</span>;
+    }
+
+    return (
+      <div className="flex flex-wrap gap-1">
+        <RelationshipBadge
+          count={relationships.tasks?.count || 0}
+          label="Tasks"
+          items={relationships.tasks?.items || []}
+          targetPath="/tasks"
+          filterParam="projectId"
+          sourceId={project.id}
+          variant="secondary"
+        />
+        <RelationshipBadge
+          count={relationships.milestones?.count || 0}
+          label="Milestones"
+          items={relationships.milestones?.items || []}
+          targetPath="/milestones"
+          filterParam="projectId"
+          sourceId={project.id}
+          variant="outline"
+        />
+      </div>
+    );
+  };
+
   const columns = [
     createStandardColumns.text("name", "Nome"),
     createStandardColumns.badge("status", "Status", statusColors),
@@ -314,6 +350,13 @@ export default function ProjectsPage() {
       sortable: true,
       searchable: false,
       render: (project: Project) => `${project.progress}%`
+    },
+    {
+      key: "relationships",
+      label: "Relazioni", 
+      sortable: false,
+      searchable: false,
+      render: (project: Project) => <ProjectRelationships project={project} />
     },
     {
       key: "actions",

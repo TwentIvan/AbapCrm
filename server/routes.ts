@@ -800,6 +800,52 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get("/api/projects/:id/relationships", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const projectId = req.params.id;
+      const organizationIds = await getOrganizationIdsForFilter(req);
+
+      // Get tasks count and details
+      const tasksList = await db.select({
+        id: tasks.id,
+        title: tasks.title,
+      })
+      .from(tasks)
+      .where(and(
+        eq(tasks.projectId, projectId),
+        inArray(tasks.organizationId, organizationIds)
+      ))
+      .limit(20);
+
+      // Get milestones count and details
+      const milestonesList = await db.select({
+        id: projectMilestones.id,
+        name: projectMilestones.name,
+      })
+      .from(projectMilestones)
+      .where(and(
+        eq(projectMilestones.projectId, projectId),
+        inArray(projectMilestones.organizationId, organizationIds)
+      ))
+      .limit(20);
+
+      res.json({
+        tasks: {
+          count: tasksList.length,
+          items: tasksList.map(t => ({ id: t.id, name: t.title }))
+        },
+        milestones: {
+          count: milestonesList.length,
+          items: milestonesList.map(m => ({ id: m.id, name: m.name }))
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching project relationships:", error);
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
   app.post("/api/projects", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
