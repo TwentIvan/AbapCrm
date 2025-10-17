@@ -244,20 +244,25 @@ export default function Sidebar() {
 
   return (
     <aside className="w-80 bg-card flex flex-col">
-      {/* Logo and Brand - Same height as Header */}
-      <div className="px-6 py-2">
-        <div className="py-4">
-          <div className="flex justify-center">
-            <ImageContainer
-              src={newLogo}
-              alt="App Logo"
-              fallbackType="logo"
-              size="custom"
-              containerClassName="w-48 h-14 bg-transparent"
-              className="object-contain"
-              data-testid="img-app-logo"
-            />
-          </div>
+      {/* Logo and Brand - Matches Header structure exactly */}
+      {/* Top section - matches "THE HUB UP" header */}
+      <div className="py-2 px-4">
+        {/* Empty spacer to match top brand height */}
+        <div className="h-[2.25rem]"></div>
+      </div>
+      
+      {/* Main logo section - matches main header with Quick Access Buttons */}
+      <div className="px-6 py-4">
+        <div className="flex justify-center">
+          <ImageContainer
+            src={newLogo}
+            alt="App Logo"
+            fallbackType="logo"
+            size="custom"
+            containerClassName="w-48 h-32 bg-transparent"
+            className="object-contain"
+            data-testid="img-app-logo"
+          />
         </div>
       </div>
 
