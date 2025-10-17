@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LayoutManager } from "@/components/ui/layout-manager";
-import { LayoutControlBox } from "@/components/ui/layout-control-box";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -707,22 +707,20 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
         <Header 
           title="Tasks" 
           subtitle="Manage your project tasks and deliverables"
-          onNewClick={() => setShowCreateDialog(true)}
         />
         
         <div className="p-6">
-          {/* Layout Management and View Toggle */}
-          <div className="flex justify-between items-center mb-4">
-            {/* Layout Manager */}
-            <LayoutControlBox
-              currentLayoutName={currentLayoutName}
-              savedLayouts={savedLayouts}
-              onLoadLayout={loadLayout}
-              onRenameLayout={renameLayout}
-              onDeleteLayout={deleteLayout}
-              onConfigureTable={() => setShowConfigDialog(true)}
-            />
-          </div>
+          <ListViewToolbar
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onLoadLayout={loadLayout}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onConfigureTable={() => setShowConfigDialog(true)}
+            onCreateNew={() => setShowCreateDialog(true)}
+            onDeleteSelected={() => handleDelete(selectedTasks)}
+            hasSelection={selectedTasks.length > 0}
+          />
 
           {isLoading && (!tasks || tasks.length === 0) ? (
             <div className="space-y-4">

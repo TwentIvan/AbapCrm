@@ -17,7 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
-import { LayoutControlBox } from "@/components/ui/layout-control-box";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2, History, MessageSquare, Workflow } from "lucide-react";
 import { Project, Partner, SapSystem } from "@shared/schema";
@@ -376,21 +376,20 @@ export default function ProjectsPage() {
         <Header 
           title="Progetti" 
           subtitle="Gestione progetti SAP ABAP"
-          onNewClick={handleAdd}
         />
         
         <div className="p-6">
-          {/* Layout Control Box */}
-          <div className="flex justify-start items-center mb-4">
-            <LayoutControlBox
-              currentLayoutName={currentLayoutName}
-              savedLayouts={savedLayouts}
-              onLoadLayout={loadLayout}
-              onRenameLayout={renameLayout}
-              onDeleteLayout={deleteLayout}
-              onConfigureTable={() => setShowConfigDialog(true)}
-            />
-          </div>
+          <ListViewToolbar
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onLoadLayout={loadLayout}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onConfigureTable={() => setShowConfigDialog(true)}
+            onCreateNew={handleAdd}
+            onDeleteSelected={() => handleDelete(selectedProjects)}
+            hasSelection={selectedProjects.length > 0}
+          />
 
           {isLoading && (!projects || projects.length === 0) ? (
             <div className="space-y-4">

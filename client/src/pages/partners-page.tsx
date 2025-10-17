@@ -16,7 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DataTable, createImageColumn, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
-import { LayoutControlBox } from "@/components/ui/layout-control-box";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import ImageContainer from "@/components/ui/image-container";
 import { Building, Mail, Phone, MapPin, MoreHorizontal, Grid3X3, List, Edit, Trash2, History, MessageSquare } from "lucide-react";
@@ -284,22 +284,20 @@ export default function PartnersPage() {
         <Header 
           title="Partners" 
           subtitle="Manage your clients, vendors and business contacts"
-          onNewClick={() => setShowCreateDialog(true)}
         />
         
         <div className="p-6">
-          {/* Layout Management and View Toggle */}
-          <div className="flex justify-between items-center mb-4">
-            {/* Layout Manager */}
-            <LayoutControlBox
-              currentLayoutName={currentLayoutName}
-              savedLayouts={savedLayouts}
-              onLoadLayout={loadLayout}
-              onRenameLayout={renameLayout}
-              onDeleteLayout={deleteLayout}
-              onConfigureTable={() => setShowConfigDialog(true)}
-            />
-          </div>
+          <ListViewToolbar
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onLoadLayout={loadLayout}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onConfigureTable={() => setShowConfigDialog(true)}
+            onCreateNew={() => setShowCreateDialog(true)}
+            onDeleteSelected={() => setShowBulkDeleteDialog(true)}
+            hasSelection={selectedPartners.length > 0}
+          />
           {isLoading && (!partners || partners.length === 0) ? (
             <div className="space-y-4">
               {[...Array(6)].map((_, i) => (
