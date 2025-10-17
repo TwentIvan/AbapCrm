@@ -102,7 +102,7 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
   const Icon = item.icon;
 
   return (
-    <div className="space-y-2">
+    <>
       <div 
         className="w-full transition-all duration-200 sidebar-nav-item"
         data-testid={item.testId}
@@ -139,8 +139,8 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
           </button>
         </div>
       </div>
-      {isOpen && children}
-    </div>
+      {isOpen && <div className="mt-2 space-y-2">{children}</div>}
+    </>
   );
 }
 
@@ -262,8 +262,7 @@ export default function Sidebar() {
       {/* Navigation Menu */}
       <nav className="flex-1 px-4 pt-4 pb-4 space-y-4">
         {/* Anagrafiche Section (3 livelli: Anagrafiche > Partners/Risorse + Sistemi > SAP/VPN/Credenziali) */}
-        <div>
-          <ParentItem
+        <ParentItem
             item={{ id: "p0", name: "Anagrafiche", icon: Contact, testId: "nav-anagrafiche", type: "anagrafiche" }}
             isOpen={shouldAnagraficheBeOpen}
             hasActiveChild={hasActiveAnagraficheChild}
@@ -304,10 +303,8 @@ export default function Sidebar() {
               </ParentItem>
             </div>
           </ParentItem>
-        </div>
         
         {/* Altri Parent Sections (Progetti, Soluzioni, Vendite, Acquisti, Time Management) */}
-        <div>
           {parentItems.map((item: any) => {
             const isAnagraficheItem = item.type === 'anagrafiche';
             const isProgettiItem = item.type === 'progetti';
@@ -348,34 +345,27 @@ export default function Sidebar() {
             }
             
             return (
-              <div key={item.id}>
-                <ParentItem
-                  item={item}
-                  isOpen={isOpen}
-                  hasActiveChild={hasActiveChild}
-                  onToggle={() => handleToggle(item.type)}
-                  children={
-                    isOpen && (
-                      <div className="space-y-2">
-                        {childItems.map((subItem: any) => {
-                          const isActive = location === subItem.href;
-                          return (
-                            <SubNavItem 
-                              key={subItem.id} 
-                              item={subItem} 
-                              isActive={isActive} 
-                              onChildClick={() => {}}
-                            />
-                          );
-                        })}
-                      </div>
-                    )
-                  }
-                />
-              </div>
+              <ParentItem
+                key={item.id}
+                item={item}
+                isOpen={isOpen}
+                hasActiveChild={hasActiveChild}
+                onToggle={() => handleToggle(item.type)}
+              >
+                {childItems.map((subItem: any) => {
+                  const isActive = location === subItem.href;
+                  return (
+                    <SubNavItem 
+                      key={subItem.id} 
+                      item={subItem} 
+                      isActive={isActive} 
+                      onChildClick={() => {}}
+                    />
+                  );
+                })}
+              </ParentItem>
             );
           })}
-        </div>
       </nav>
 
       {/* User Profile */}
