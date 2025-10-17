@@ -244,9 +244,9 @@ export default function Sidebar() {
 
   return (
     <aside className="w-80 bg-card flex flex-col">
-      {/* Logo Box - Same total height as both headers combined */}
-      <div className="px-4 pt-2 pb-4">
-        <div className="flex justify-center items-center h-full">
+      {/* Logo Box - Same total height as both headers combined: py-2 + py-4 = py-6 */}
+      <div className="px-6 py-6">
+        <div className="flex justify-center items-center">
           <ImageContainer
             src={newLogo}
             alt="App Logo"
