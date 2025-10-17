@@ -243,13 +243,8 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
 
         <div className="flex items-center space-x-4">
           <TooltipProvider delayDuration={300}>
-            {/* Vetro blu dietro Quick Access Buttons */}
-            <div 
-              className="flex items-center rounded-lg p-1"
-              style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}
-            >
-              <div className="flex items-center space-x-2">
-              {/* Proposte AI Button - Personalizzato con THU AI */}
+            {/* THU AI Button - Vetro blu individuale */}
+            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <Link href="/proposals">
                 <Button 
                   variant="ghost" 
@@ -281,8 +276,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   )}
                 </Button>
               </Link>
+            </div>
 
-              {/* Messages Button */}
+            {/* Messages Button - Vetro blu individuale */}
+            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <Link href="/messages">
                 <Button 
                   variant="ghost" 
@@ -309,8 +306,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   )}
                 </Button>
               </Link>
-              
-              {/* Calendar Button */}
+            </div>
+            
+            {/* Calendar Button - Vetro blu individuale */}
+            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <Link href="/calendar">
                 <Button 
                   variant="ghost" 
@@ -330,8 +329,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   )}
                 </Button>
               </Link>
-              
-              {/* Planning Calendar Button */}
+            </div>
+            
+            {/* Planning Calendar Button - Vetro blu individuale */}
+            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <Link href="/planning-calendar">
                 <Button 
                   variant="ghost" 
@@ -351,16 +352,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   )}
                 </Button>
               </Link>
-              </div>
             </div>
           </TooltipProvider>
 
-          {/* Vetro blu dietro Contatti Button */}
+          {/* Contatti Button - Vetro blu individuale */}
           <TooltipProvider delayDuration={300}>
-            <div 
-              className="flex items-center rounded-lg p-1"
-              style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}
-            >
+            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <Link href="/partners">
                 <Button 
                   variant="ghost" 
@@ -384,12 +381,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           </TooltipProvider>
           
           
-          {/* Vetro blu dietro User & Organization Box */}
+          {/* User & Organization Box - Vetro blu individuale (bandiera + user info) */}
           {user && (
-            <div 
-              className="flex items-center rounded-lg p-1"
-              style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}
-            >
+            <>
+            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <div 
                 className="relative rounded-lg px-4 py-2 flex items-center space-x-4 bg-sidebar-accent transition-all duration-200"
               >
@@ -538,7 +533,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </span>
               </div>
               
-              {/* Avatar Utente - Destra (cliccabile per logout/impostazioni) */}
+            </div>
+            </div>
+            
+            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="w-14 h-14 rounded-lg bg-primary hover:bg-primary/90">
@@ -565,7 +563,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            </div>
+            </>
           )}
         </div>
         </div>
