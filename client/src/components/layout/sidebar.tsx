@@ -194,13 +194,13 @@ export default function Sidebar() {
   const systemsItems = getDefaultSystemsItems(t);
   const timeManagementItems = getDefaultTimeManagementItems(t);
   const parentItems = getDefaultParentItems(t);
-  const [isAnagraficheOpen, setIsAnagraficheOpen] = useState(false);
+  const [anagraficheManual, setAnagraficheManual] = useState<'open' | 'closed' | null>(null);
   const [progettiManual, setProgettiManual] = useState<'open' | 'closed' | null>(null);
   const [isSoluzioniOpen, setIsSoluzioniOpen] = useState(false);
   const [isVenditaOpen, setIsVenditaOpen] = useState(false);
   const [isAcquistiOpen, setIsAcquistiOpen] = useState(false);
   const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(false);
-  const [isSystemsOpen, setIsSystemsOpen] = useState(false);
+  const [systemsManual, setSystemsManual] = useState<'open' | 'closed' | null>(null);
   
   // Auto-open parent menus when child is active
   const hasActiveAnagraficheDirectChild = anagraficheDirectItems.some((item: any) => location === item.href);
@@ -212,23 +212,23 @@ export default function Sidebar() {
   const hasActiveAcquistiChild = acquistiItems.some((item: any) => location === item.href);
   const hasActiveTimeChild = timeManagementItems.some((item: any) => location === item.href);
   
-  // Keep menus open if they have active children - Progetti uses manual override
-  const shouldAnagraficheBeOpen = isAnagraficheOpen || hasActiveAnagraficheChild;
-  const shouldSystemsBeOpen = isSystemsOpen || hasActiveSystemsChild;
+  // Keep menus open if they have active children - with manual override
+  const shouldAnagraficheBeOpen = anagraficheManual === 'open' || (anagraficheManual !== 'closed' && hasActiveAnagraficheChild);
+  const shouldSystemsBeOpen = systemsManual === 'open' || (systemsManual !== 'closed' && hasActiveSystemsChild);
   const shouldProgettiBeOpen = progettiManual === 'open' || (progettiManual !== 'closed' && hasActiveProgettiChild);
   const shouldSoluzioniBeOpen = isSoluzioniOpen || hasActiveSoluzioniChild;
   const shouldVenditaBeOpen = isVenditaOpen || hasActiveVenditaChild;
   const shouldAcquistiBeOpen = isAcquistiOpen || hasActiveAcquistiChild;
   const shouldTimeManagementBeOpen = isTimeManagementOpen || hasActiveTimeChild;
   
-  // Toggle function with manual override for Progetti
+  // Toggle function with manual override
   const handleToggle = (type: string) => {
     console.log('Executing toggle for:', type);
     
     if (type === 'anagrafiche') {
-      setIsAnagraficheOpen(!isAnagraficheOpen);
+      setAnagraficheManual(shouldAnagraficheBeOpen ? 'closed' : 'open');
     } else if (type === 'systems') {
-      setIsSystemsOpen(!isSystemsOpen);
+      setSystemsManual(shouldSystemsBeOpen ? 'closed' : 'open');
     } else if (type === 'progetti') {
       setProgettiManual(shouldProgettiBeOpen ? 'closed' : 'open');
     } else if (type === 'soluzioni') {
