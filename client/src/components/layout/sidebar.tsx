@@ -109,7 +109,7 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
       >
         <div 
           className={cn(
-            "flex items-center gap-3 px-4 py-2 rounded-md nav-box transition-all duration-200",
+            "flex items-center gap-3 min-h-[40px] px-4 py-1.5 rounded-md nav-box transition-all duration-200",
             "bg-sidebar-accent dark:bg-sidebar-accent",
             hasActiveChild && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
           )}
@@ -161,7 +161,7 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
       >
         <div 
           className={cn(
-            "flex items-center gap-3 px-4 py-2 rounded-md nav-box transition-all duration-200",
+            "flex items-center gap-3 min-h-[40px] px-4 py-1.5 rounded-md nav-box transition-all duration-200",
             "bg-sidebar-accent dark:bg-sidebar-accent",
             isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
           )}
@@ -195,7 +195,7 @@ export default function Sidebar() {
   const timeManagementItems = getDefaultTimeManagementItems(t);
   const parentItems = getDefaultParentItems(t);
   const [isAnagraficheOpen, setIsAnagraficheOpen] = useState(false);
-  const [isProgettiOpen, setIsProgettiOpen] = useState(false);
+  const [progettiManual, setProgettiManual] = useState<'open' | 'closed' | null>(null);
   const [isSoluzioniOpen, setIsSoluzioniOpen] = useState(false);
   const [isVenditaOpen, setIsVenditaOpen] = useState(false);
   const [isAcquistiOpen, setIsAcquistiOpen] = useState(false);
@@ -212,16 +212,16 @@ export default function Sidebar() {
   const hasActiveAcquistiChild = acquistiItems.some((item: any) => location === item.href);
   const hasActiveTimeChild = timeManagementItems.some((item: any) => location === item.href);
   
-  // Keep menus open if they have active children
+  // Keep menus open if they have active children - Progetti uses manual override
   const shouldAnagraficheBeOpen = isAnagraficheOpen || hasActiveAnagraficheChild;
   const shouldSystemsBeOpen = isSystemsOpen || hasActiveSystemsChild;
-  const shouldProgettiBeOpen = isProgettiOpen || hasActiveProgettiChild;
+  const shouldProgettiBeOpen = progettiManual === 'open' || (progettiManual !== 'closed' && hasActiveProgettiChild);
   const shouldSoluzioniBeOpen = isSoluzioniOpen || hasActiveSoluzioniChild;
   const shouldVenditaBeOpen = isVenditaOpen || hasActiveVenditaChild;
   const shouldAcquistiBeOpen = isAcquistiOpen || hasActiveAcquistiChild;
   const shouldTimeManagementBeOpen = isTimeManagementOpen || hasActiveTimeChild;
   
-  // Semplice funzione di toggle - permette sempre di chiudere/aprire
+  // Toggle function with manual override for Progetti
   const handleToggle = (type: string) => {
     console.log('Executing toggle for:', type);
     
@@ -230,7 +230,7 @@ export default function Sidebar() {
     } else if (type === 'systems') {
       setIsSystemsOpen(!isSystemsOpen);
     } else if (type === 'progetti') {
-      setIsProgettiOpen(!isProgettiOpen);
+      setProgettiManual(shouldProgettiBeOpen ? 'closed' : 'open');
     } else if (type === 'soluzioni') {
       setIsSoluzioniOpen(!isSoluzioniOpen);
     } else if (type === 'vendita') {
@@ -260,7 +260,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-4 pt-4 pb-4 space-y-4">
+      <nav className="flex-1 px-4 pt-2 pb-4 space-y-2">
         {/* Anagrafiche Section (3 livelli: Anagrafiche > Partners/Risorse + Sistemi > SAP/VPN/Credenziali) */}
         <ParentItem
             item={{ id: "p0", name: "Anagrafiche", icon: Contact, testId: "nav-anagrafiche", type: "anagrafiche" }}
