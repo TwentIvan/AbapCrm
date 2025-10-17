@@ -85,12 +85,7 @@ function NavItem({ item, isActive }: { item: any; isActive: boolean }) {
           border: '2px solid rgba(30, 64, 175, 0.3)'
         }}
       >
-        <div className={cn(
-          "p-2 rounded-md transition-colors",
-          isActive ? "bg-blue-500" : "bg-blue-400"
-        )}>
-          <Icon className="h-5 w-5 flex-shrink-0 text-white" />
-        </div>
+        <Icon className="h-5 w-5 flex-shrink-0 text-blue-500" />
         <span className={cn(
           "text-sm font-medium flex-1",
           isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
@@ -105,7 +100,7 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
   const Icon = item.icon;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       <div 
         className="w-full transition-all duration-200 sidebar-nav-item"
         data-testid={item.testId}
@@ -120,12 +115,7 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
             border: '2px solid rgba(30, 64, 175, 0.3)'
           }}
         >
-          <div className={cn(
-            "p-2 rounded-md transition-colors",
-            hasActiveChild ? "bg-blue-500" : "bg-blue-400"
-          )}>
-            <Icon className="h-5 w-5 flex-shrink-0 text-white" />
-          </div>
+          <Icon className="h-5 w-5 flex-shrink-0 text-blue-500" />
           <span className={cn(
             "text-sm font-medium flex-1",
             hasActiveChild ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
@@ -167,7 +157,7 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
       >
         <div 
           className={cn(
-            "flex items-center gap-3 px-4 py-1.5 rounded-md nav-box transition-all duration-200",
+            "flex items-center gap-3 px-4 py-2 rounded-md nav-box transition-all duration-200",
             "bg-sidebar-accent dark:bg-sidebar-accent",
             isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
           )}
@@ -175,12 +165,7 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
             border: '2px solid rgba(30, 64, 175, 0.3)'
           }}
         >
-          <div className={cn(
-            "p-1.5 rounded-md transition-colors",
-            isActive ? "bg-blue-500" : "bg-blue-400"
-          )}>
-            <Icon className="h-4 w-4 flex-shrink-0 text-white" />
-          </div>
+          <Icon className="h-4 w-4 flex-shrink-0 text-blue-500" />
           <span className={cn(
             "text-sm font-medium flex-1",
             isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
@@ -269,7 +254,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-4 pt-16 pb-4 space-y-4">
+      <nav className="flex-1 px-4 pt-6 pb-4 space-y-4">
         {/* Anagrafiche Section (3 livelli: Anagrafiche > Partners/Risorse + Sistemi > SAP/VPN/Credenziali) */}
         <div>
           <ParentItem
@@ -365,7 +350,7 @@ export default function Sidebar() {
                   onToggle={() => handleToggle(item.type)}
                   children={
                     isOpen && (
-                      <div className="space-y-2">
+                      <div className="space-y-4">
                         {childItems.map((subItem: any) => {
                           const isActive = location === subItem.href;
                           return (
