@@ -78,6 +78,7 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
   }, {} as Record<string, Record<string, Task[]>>);
 
   // Funzione per rilevare sovrapposizioni tra task
+  // Marca SOLO il task successivo (quello che inizia dopo)
   const getTaskOverlaps = (ownerTasks: Task[]): Map<string, boolean> => {
     const overlaps = new Map<string, boolean>();
     for (let i = 0; i < ownerTasks.length; i++) {
@@ -100,7 +101,6 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
         const end2Day = dateToDay(end2);
         
         if (start1Day <= end2Day && start2Day <= end1Day) {
-          overlaps.set(task1.id, true);
           overlaps.set(task2.id, true);
         }
       }
@@ -477,11 +477,13 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                     const overlaps = getTaskOverlaps(ownerTasks);
                     const ownerKey = `${milestone.id}-${ownerName}`;
                     const isExpanded = expandedOwners.has(ownerKey);
+                    const firstTask = ownerTasks[0];
+                    const remainingTasks = ownerTasks.slice(1);
                     
                     const ownerHeaderRow = (
-                      <div key={ownerKey} className={`gantt-row relative ml-4 ${isExpanded ? 'py-1' : 'h-10'}`}>
+                      <div key={ownerKey} className={`gantt-row relative ml-4 h-10`}>
                         <div className="flex items-center gap-4 h-full">
-                          <div className={`${isExpanded ? 'w-full' : 'w-44'} flex-shrink-0 flex items-center gap-1 ${isExpanded ? 'py-0' : ''}`}>
+                          <div className="w-44 flex-shrink-0 flex items-center gap-1">
                             <button
                               onClick={() => toggleOwnerExpansion(ownerKey)}
                               className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
@@ -502,12 +504,16 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                                   {ownerTasks.length} task
                                 </div>
                               )}
+                              {isExpanded && firstTask && (
+                                <div className="text-xs truncate text-muted-foreground">
+                                  {firstTask.title}
+                                </div>
+                              )}
                             </div>
                           </div>
 
-                          {!isExpanded && (
-                            <div className="flex-1 relative h-10">
-                            {ownerTasks.map((task) => {
+                          <div className="flex-1 relative h-10">
+                            {!isExpanded && ownerTasks.map((task) => {
                               const taskStartStr = new Date(task.startDate!).toISOString().split('T')[0];
                               const taskEndStr = new Date(task.dueDate!).toISOString().split('T')[0];
                               const taskStartPos = getPosition(taskStartStr);
@@ -542,8 +548,42 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                                 </div>
                               );
                             })}
+                            {isExpanded && firstTask && (() => {
+                              const taskStartStr = new Date(firstTask.startDate!).toISOString().split('T')[0];
+                              const taskEndStr = new Date(firstTask.dueDate!).toISOString().split('T')[0];
+                              const taskStartPos = getPosition(taskStartStr);
+                              const taskWidth = getWidth(taskStartStr, taskEndStr);
+                              const clampedTaskStartPos = clampPosition(taskStartPos);
+                              const clampedTaskWidth = clampWidth(taskStartPos, taskWidth);
+                              const hasOverlap = overlaps.get(firstTask.id) || false;
+
+                              return (
+                                <div className="relative">
+                                  <div
+                                    className={`absolute top-1/2 -translate-y-1/2 h-5 rounded ${taskStatusColors[firstTask.status || "todo"]}`}
+                                    style={{
+                                      left: `${clampedTaskStartPos}%`,
+                                      width: `${clampedTaskWidth}%`,
+                                      zIndex: 8
+                                    }}
+                                    title={`${firstTask.title} - ${formatDateStr(taskStartStr, 'long')} → ${formatDateStr(taskEndStr, 'long')}`}
+                                  />
+                                  {hasOverlap && (
+                                    <div
+                                      className="absolute top-1/2 -translate-y-1/2 h-5 rounded pointer-events-none"
+                                      style={{
+                                        left: `${clampedTaskStartPos}%`,
+                                        width: `${clampedTaskWidth}%`,
+                                        background: 'repeating-linear-gradient(45deg, rgba(239, 68, 68, 0.6), rgba(239, 68, 68, 0.6) 8px, rgba(239, 68, 68, 0.4) 8px, rgba(239, 68, 68, 0.4) 16px)',
+                                        border: '3px solid rgb(239, 68, 68)',
+                                        zIndex: 11
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
-                          )}
                         </div>
                       </div>
                     );
@@ -552,7 +592,7 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                       return [ownerHeaderRow];
                     }
 
-                    const expandedTaskRows = ownerTasks.map((task) => {
+                    const expandedTaskRows = remainingTasks.map((task) => {
                       const taskStartStr = new Date(task.startDate!).toISOString().split('T')[0];
                       const taskEndStr = new Date(task.dueDate!).toISOString().split('T')[0];
                       const taskStartPos = getPosition(taskStartStr);
