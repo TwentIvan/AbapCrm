@@ -718,6 +718,8 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={() => setShowCreateDialog(true)}
+            onCopySelected={() => {/* TODO: implement copy */}}
+            onBulkEdit={() => {/* TODO: implement bulk edit */}}
             onDeleteSelected={() => handleDelete(selectedTasks)}
             hasSelection={selectedTasks.length > 0}
           />

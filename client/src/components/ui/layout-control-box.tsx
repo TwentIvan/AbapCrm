@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Table, ChevronDown, Settings, Layout } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ChevronDown, Settings, Layout, Pencil, Trash2 } from "lucide-react";
 import type { SavedLayout } from "@/lib/user-preferences";
 
 interface LayoutControlBoxProps {
@@ -21,67 +20,95 @@ export function LayoutControlBox({
   onDeleteLayout,
   onConfigureTable,
 }: LayoutControlBoxProps) {
-  const [hoveredSection, setHoveredSection] = useState<string | null>(null);
+  const handleRename = (layout: SavedLayout) => {
+    const newName = prompt(`Rinomina layout "${layout.name}":`, layout.name);
+    if (newName && newName.trim() && newName !== layout.name) {
+      onRenameLayout(layout.id, newName.trim());
+    }
+  };
+
+  const handleDelete = (layout: SavedLayout) => {
+    if (confirm(`Eliminare il layout "${layout.name}"?`)) {
+      onDeleteLayout(layout.id);
+    }
+  };
 
   return (
-    <div 
-      className="flex items-center px-3 py-2 rounded-full transition-colors" 
-      style={{ 
-        backgroundColor: hoveredSection ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)', 
-        border: '1px solid rgba(59, 130, 246, 0.2)',
-        minWidth: '280px'
-      }}
-      onMouseEnter={() => setHoveredSection('main')}
-      onMouseLeave={() => setHoveredSection(null)}
-    >
-      {/* Icona Tabella */}
-      <Table className="h-6 w-6 flex-shrink-0 mr-3 text-muted-foreground" />
-      
-      {/* Nome Layout Corrente */}
-      <span className="text-base font-medium flex-1 mr-3 text-muted-foreground">
+    <div className="flex items-center gap-3 bg-sidebar px-4 py-2 rounded-md">
+      {/* Nome Layout Attivo */}
+      <span className="text-sm font-medium text-sidebar-foreground">
         {currentLayoutName}
       </span>
       
-      {/* Selezione Layout */}
+      {/* Combo Selezione Layout */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button 
             variant="ghost" 
             size="sm" 
-            className="p-1 h-8 w-8 rounded-full hover:bg-white/20"
+            className="h-8 gap-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             data-testid="button-layout-selector"
           >
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <Layout className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="start" className="w-64">
           {savedLayouts.map((layout) => (
-            <DropdownMenuItem
-              key={layout.id}
-              onClick={() => onLoadLayout(layout.id)}
-              className={currentLayoutName === layout.name ? "bg-primary/10" : ""}
-              data-testid={`layout-option-${layout.id}`}
-            >
-              <Layout className="mr-2 h-4 w-4" />
-              {layout.name}
-              {layout.isDefault && (
-                <span className="ml-auto text-xs text-muted-foreground">(Default)</span>
-              )}
-            </DropdownMenuItem>
+            <div key={layout.id} className="group flex items-center">
+              <DropdownMenuItem
+                onClick={() => onLoadLayout(layout.id)}
+                className={`flex-1 ${currentLayoutName === layout.name ? "bg-primary/10" : ""}`}
+                data-testid={`layout-option-${layout.id}`}
+              >
+                <Layout className="mr-2 h-4 w-4" />
+                {layout.name}
+                {layout.isDefault && (
+                  <span className="ml-auto text-xs text-muted-foreground">(Default)</span>
+                )}
+              </DropdownMenuItem>
+              <div className="flex gap-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRename(layout);
+                  }}
+                  data-testid={`button-rename-${layout.id}`}
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(layout);
+                  }}
+                  data-testid={`button-delete-${layout.id}`}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
       
-      {/* Configurazione Tabella */}
+      {/* Tasto Configura BLU */}
       {onConfigureTable && (
         <Button 
-          variant="ghost" 
+          variant="default" 
           size="sm" 
           onClick={onConfigureTable}
-          className="p-1 h-8 w-8 rounded-full hover:bg-white/20 ml-1"
+          className="h-8 gap-2 bg-blue-600 hover:bg-blue-700 text-white"
           data-testid="button-configure-table"
         >
-          <Settings className="h-4 w-4 text-muted-foreground" />
+          <Settings className="h-4 w-4" />
+          Configura
         </Button>
       )}
     </div>

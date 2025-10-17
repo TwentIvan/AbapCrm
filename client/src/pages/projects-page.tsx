@@ -387,6 +387,8 @@ export default function ProjectsPage() {
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={handleAdd}
+            onCopySelected={() => {/* TODO: implement copy */}}
+            onBulkEdit={() => {/* TODO: implement bulk edit */}}
             onDeleteSelected={() => handleDelete(selectedProjects)}
             hasSelection={selectedProjects.length > 0}
           />

@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
-import { LayoutManager } from "@/components/ui/layout-manager";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Handshake, DollarSign, Calendar, TrendingUp, MoreHorizontal, Grid3X3, List, Edit, Trash2, History } from "lucide-react";
 import { Deal } from "@shared/schema";
@@ -290,29 +290,19 @@ export default function DealsPage() {
             </Card>
           </div>
 
-          {/* Layout Management and View Toggle */}
-          <div className="flex justify-between items-center mb-4">
-            {/* Layout Manager */}
-            <div className="flex items-center gap-4">
-              <LayoutManager
-                currentLayoutName={currentLayoutName}
-                savedLayouts={savedLayouts}
-                onLoadLayout={loadLayout}
-                onRenameLayout={renameLayout}
-                onDeleteLayout={deleteLayout}
-              />
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowConfigDialog(true)}
-                data-testid="button-configure-columns"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Configura
-              </Button>
-            </div>
-
-          </div>
+          <ListViewToolbar
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onLoadLayout={loadLayout}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onConfigureTable={() => setShowConfigDialog(true)}
+            onCreateNew={handleAdd}
+            onCopySelected={() => {/* TODO: implement copy */}}
+            onBulkEdit={() => {/* TODO: implement bulk edit */}}
+            onDeleteSelected={() => handleDelete(selectedDeals)}
+            hasSelection={selectedDeals.length > 0}
+          />
 
           {isLoading && (!deals || deals.length === 0) ? (
             <div className="space-y-4">

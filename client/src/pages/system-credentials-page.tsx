@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
-import { LayoutManager } from "@/components/ui/layout-manager";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Plus, Edit, Trash2, Key, Grid3X3, List, MoreHorizontal } from "lucide-react";
 import { SystemCredentials } from "@shared/schema";
@@ -229,50 +229,19 @@ export function SystemCredentialsPage() {
         />
         
         <div className="p-6">
-          {/* Layout Management and View Toggle */}
-          <div className="flex justify-between items-center mb-4">
-            {/* Layout Manager */}
-            <div className="flex items-center gap-4">
-              <LayoutManager
-                currentLayoutName={currentLayoutName}
-                savedLayouts={savedLayouts}
-                onLoadLayout={loadLayout}
-                onRenameLayout={renameLayout}
-                onDeleteLayout={deleteLayout}
-              />
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowConfigDialog(true)}
-                data-testid="button-configure-columns"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Configura
-              </Button>
-            </div>
-
-            {/* View Toggle */}
-            <div className="flex bg-muted rounded-lg p-1">
-              <Button
-                variant='default'
-                size="sm"
-                onClick={() => updateLayout({})}
-                data-testid="button-view-cards"
-              >
-                <Grid3X3 className="mr-2 h-4 w-4" />
-                Cards
-              </Button>
-              <Button
-                variant='ghost'
-                size="sm"
-                onClick={() => updateLayout({})}
-                data-testid="button-view-list"
-              >
-                <List className="mr-2 h-4 w-4" />
-                List
-              </Button>
-            </div>
-          </div>
+          <ListViewToolbar
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onLoadLayout={loadLayout}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onConfigureTable={() => setShowConfigDialog(true)}
+            onCreateNew={handleAdd}
+            onCopySelected={() => {/* TODO: implement copy */}}
+            onBulkEdit={() => {/* TODO: implement bulk edit */}}
+            onDeleteSelected={() => handleDelete(selectedCredentials)}
+            hasSelection={selectedCredentials.length > 0}
+          />
 
           <UniversalTable
             data={credentials}

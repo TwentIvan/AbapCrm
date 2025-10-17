@@ -209,6 +209,8 @@ export default function SalesOrdersPage() {
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={handleAdd}
+            onCopySelected={() => {/* TODO: implement copy */}}
+            onBulkEdit={() => {/* TODO: implement bulk edit */}}
             onDeleteSelected={() => setShowBulkDeleteDialog(true)}
             hasSelection={selectedOrders.length > 0}
             viewToggle={

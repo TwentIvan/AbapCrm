@@ -473,6 +473,11 @@ export default function TimesheetPage() {
             onRenameLayout={renameLayout}
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
+            onCreateNew={() => {/* TODO: implement create */}}
+            onCopySelected={() => {/* TODO: implement copy */}}
+            onBulkEdit={() => {/* TODO: implement bulk edit */}}
+            onDeleteSelected={() => {/* TODO: implement delete */}}
+            hasSelection={false}
             viewToggle={
               <div className="flex bg-muted rounded-lg p-1">
                 <Button

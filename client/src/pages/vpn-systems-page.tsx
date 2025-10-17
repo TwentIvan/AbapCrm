@@ -5,7 +5,7 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { LayoutManager } from "@/components/ui/layout-manager";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, type TableColumn } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
@@ -250,20 +250,18 @@ export default function VpnSystemsPage() {
           onNewClick={handleAdd}
         />
         <main className="p-6 space-y-6">
-          <LayoutManager
+          <ListViewToolbar
             currentLayoutName={currentLayoutName}
             savedLayouts={savedLayouts}
             onLoadLayout={loadLayout}
             onRenameLayout={renameLayout}
             onDeleteLayout={deleteLayout}
-            onEditLayout={(layoutToEdit: any) => {
-              setEditingLayout(layoutToEdit);
-              setShowConfigDialog(true);
-            }}
-            onConfigureTable={() => {
-              setEditingLayout(null);
-              setShowConfigDialog(true);
-            }}
+            onConfigureTable={() => setShowConfigDialog(true)}
+            onCreateNew={handleAdd}
+            onCopySelected={() => {/* TODO: implement copy */}}
+            onBulkEdit={() => {/* TODO: implement bulk edit */}}
+            onDeleteSelected={() => handleDelete(selectedItems)}
+            hasSelection={selectedItems.length > 0}
           />
 
           <UniversalTable

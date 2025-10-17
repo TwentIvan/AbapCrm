@@ -5,7 +5,7 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { LayoutManager } from "@/components/ui/layout-manager";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
@@ -209,24 +209,19 @@ export default function PurchaseOrdersPage() {
           onNewClick={handleAdd}
         />
         <main className="p-6 space-y-6">
-          <div className="flex items-center gap-4 mb-4">
-            <LayoutManager
-              currentLayoutName={currentLayoutName}
-              savedLayouts={savedLayouts}
-              onLoadLayout={loadLayout}
-              onRenameLayout={renameLayout}
-              onDeleteLayout={deleteLayout}
-            />
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowConfigDialog(true)}
-              data-testid="button-configure-columns"
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Configura
-            </Button>
-          </div>
+          <ListViewToolbar
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onLoadLayout={loadLayout}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onConfigureTable={() => setShowConfigDialog(true)}
+            onCreateNew={handleAdd}
+            onCopySelected={() => {/* TODO: implement copy */}}
+            onBulkEdit={() => {/* TODO: implement bulk edit */}}
+            onDeleteSelected={() => handleDelete(selectedOrders)}
+            hasSelection={selectedOrders.length > 0}
+          />
 
           <UniversalTable
             data={purchaseOrders}

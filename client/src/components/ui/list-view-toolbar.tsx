@@ -1,12 +1,8 @@
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { LayoutControlBox } from "@/components/ui/layout-control-box";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Plus, Copy, Trash2, Table, Grid3X3, Calendar as CalendarIcon, BarChart3 } from "lucide-react";
+import { Plus, Copy, Edit, Trash2 } from "lucide-react";
 import type { SavedLayout } from "@/lib/user-preferences";
-
-import type { ReactNode } from "react";
-
-export type ViewMode = "table" | "grid" | "kanban" | "calendar" | "gantt" | "tree";
 
 interface ListViewToolbarProps {
   // Layout management
@@ -17,39 +13,22 @@ interface ListViewToolbarProps {
   onDeleteLayout: (layoutId: string) => void;
   onConfigureTable?: () => void;
   
-  // View toggle (optional - only show if multiple views available)
-  viewMode?: ViewMode;
-  availableViews?: ViewMode[];
-  onViewModeChange?: (mode: ViewMode) => void;
-  viewToggle?: ReactNode;  // Custom view toggle for special cases
+  // View toggle (optional - for pages with multiple views)
+  viewToggle?: ReactNode;
   
-  // Action buttons
+  // Action buttons (always visible, but can be disabled)
   onCreateNew?: () => void;
   onCopySelected?: () => void;
+  onBulkEdit?: () => void;  // Modifica massiva
   onDeleteSelected?: () => void;
   
   // State
   hasSelection?: boolean;
-  disableActions?: boolean;
+  disableCreate?: boolean;
+  disableCopy?: boolean;
+  disableBulkEdit?: boolean;
+  disableDelete?: boolean;
 }
-
-const viewIcons: Record<ViewMode, typeof Table> = {
-  table: Table,
-  grid: Grid3X3,
-  kanban: BarChart3,
-  calendar: CalendarIcon,
-  gantt: BarChart3,
-  tree: BarChart3,
-};
-
-const viewLabels: Record<ViewMode, string> = {
-  table: "Tabella",
-  grid: "Griglia",
-  kanban: "Kanban",
-  calendar: "Calendario",
-  gantt: "Gantt",
-  tree: "Albero",
-};
 
 export function ListViewToolbar({
   currentLayoutName,
@@ -58,19 +37,17 @@ export function ListViewToolbar({
   onRenameLayout,
   onDeleteLayout,
   onConfigureTable,
-  viewMode,
-  availableViews = [],
-  onViewModeChange,
   viewToggle,
   onCreateNew,
   onCopySelected,
+  onBulkEdit,
   onDeleteSelected,
   hasSelection = false,
-  disableActions = false,
+  disableCreate = false,
+  disableCopy = false,
+  disableBulkEdit = false,
+  disableDelete = false,
 }: ListViewToolbarProps) {
-  const showViewToggle = availableViews.length > 1 && viewMode && onViewModeChange;
-  const hasViewToggle = viewToggle || showViewToggle;
-  
   return (
     <div className="grid grid-cols-3 items-center gap-4 mb-4">
       {/* Left: Layout Control Box */}
@@ -85,74 +62,65 @@ export function ListViewToolbar({
         />
       </div>
       
-      {/* Center: View Toggle (custom or built-in) */}
+      {/* Center: View Toggle (optional) */}
       <div className="flex justify-center">
-        {viewToggle ? (
-          viewToggle
-        ) : showViewToggle ? (
-          <ToggleGroup
-            type="single"
-            value={viewMode}
-            onValueChange={(value) => {
-              if (value) onViewModeChange(value as ViewMode);
-            }}
-            className="border rounded-md p-1"
-            data-testid="view-mode-toggle"
-          >
-            {availableViews.map((mode) => {
-              const Icon = viewIcons[mode];
-              return (
-                <ToggleGroupItem
-                  key={mode}
-                  value={mode}
-                  aria-label={viewLabels[mode]}
-                  data-testid={`view-mode-${mode}`}
-                  className="px-3"
-                >
-                  <Icon className="h-4 w-4" />
-                </ToggleGroupItem>
-              );
-            })}
-          </ToggleGroup>
-        ) : null}
+        {viewToggle}
       </div>
       
-      {/* Right: Action Buttons */}
+      {/* Right: Action Buttons (sempre presenti) */}
       <div className="flex items-center gap-2 justify-end">
+        {/* Crea */}
         {onCreateNew && (
           <Button
             variant="default"
-            size="icon"
+            size="sm"
             onClick={onCreateNew}
-            disabled={disableActions}
+            disabled={disableCreate}
+            className="h-9 gap-2"
             data-testid="button-create-new"
-            className="h-9 w-9"
           >
-            <Plus className="h-5 w-5" />
+            <Plus className="h-4 w-4" />
+            Crea
           </Button>
         )}
         
+        {/* Copia */}
         {onCopySelected && (
           <Button
             variant="outline"
-            size="icon"
+            size="sm"
             onClick={onCopySelected}
-            disabled={!hasSelection || disableActions}
+            disabled={!hasSelection || disableCopy}
+            className="h-9 gap-2"
             data-testid="button-copy-selected"
-            className="h-9 w-9"
           >
             <Copy className="h-4 w-4" />
           </Button>
         )}
         
+        {/* Modifica Massiva */}
+        {onBulkEdit && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onBulkEdit}
+            disabled={!hasSelection || disableBulkEdit}
+            className="h-9 gap-2"
+            data-testid="button-bulk-edit"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        )}
+        
+        {/* Elimina */}
         {onDeleteSelected && (
           <Button
             variant="outline"
-            size="icon"
+            size="sm"
             onClick={onDeleteSelected}
-            disabled={!hasSelection || disableActions}
+            disabled={!hasSelection || disableDelete}
+            className="h-9 gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
             data-testid="button-delete-selected"
-            className="h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-50"
           >
             <Trash2 className="h-4 w-4" />
           </Button>

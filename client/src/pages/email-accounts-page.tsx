@@ -367,6 +367,8 @@ export default function EmailAccountsPage() {
                 onDeleteLayout={deleteLayout}
                 onConfigureTable={() => setShowConfigDialog(true)}
                 onCreateNew={handleAdd}
+                onCopySelected={() => {/* TODO: implement copy */}}
+                onBulkEdit={() => {/* TODO: implement bulk edit */}}
                 onDeleteSelected={() => setShowBulkDeleteDialog(true)}
                 hasSelection={selectedAccounts.length > 0}
               />

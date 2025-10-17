@@ -251,6 +251,8 @@ export default function ContactsPage() {
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={() => setShowCreateDialog(true)}
+            onCopySelected={() => {/* TODO: implement copy */}}
+            onBulkEdit={() => {/* TODO: implement bulk edit */}}
             onDeleteSelected={() => setShowBulkDeleteDialog(true)}
             hasSelection={selectedContacts.length > 0}
           />

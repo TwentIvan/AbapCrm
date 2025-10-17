@@ -6,7 +6,7 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { LayoutManager } from "@/components/ui/layout-manager";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -283,12 +283,18 @@ export default function VPNConnectionsPage() {
           onNewClick={handleAdd}
         />
         <main className="p-6 space-y-6">
-          <LayoutManager
+          <ListViewToolbar
             currentLayoutName={currentLayoutName}
             savedLayouts={savedLayouts}
-            onLoadLayout={(layoutId: string) => { loadLayout(layoutId); }}
+            onLoadLayout={loadLayout}
             onRenameLayout={renameLayout}
             onDeleteLayout={deleteLayout}
+            onConfigureTable={() => {/* TODO: implement configure */}}
+            onCreateNew={handleAdd}
+            onCopySelected={() => {/* TODO: implement copy */}}
+            onBulkEdit={() => {/* TODO: implement bulk edit */}}
+            onDeleteSelected={() => handleDelete(selectedConnections)}
+            hasSelection={selectedConnections.length > 0}
           />
 
           <UniversalTable

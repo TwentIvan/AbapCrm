@@ -536,6 +536,11 @@ export default function TimesheetsPage() {
             onRenameLayout={renameLayout}
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
+            onCreateNew={() => {/* TODO: implement create */}}
+            onCopySelected={() => {/* TODO: implement copy */}}
+            onBulkEdit={() => {/* TODO: implement bulk edit */}}
+            onDeleteSelected={() => setShowBulkDeleteDialog(true)}
+            hasSelection={selectedTimesheets.length > 0}
             viewToggle={
               <div className="flex border rounded-lg">
                 <Button 
@@ -558,8 +563,6 @@ export default function TimesheetsPage() {
                 </Button>
               </div>
             }
-            onDeleteSelected={() => setShowBulkDeleteDialog(true)}
-            hasSelection={selectedTimesheets.length > 0}
           />
 
           {timesheets?.length === 0 ? (
