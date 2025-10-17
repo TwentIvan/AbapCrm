@@ -78,10 +78,12 @@ function NavItem({ item, isActive }: { item: any; isActive: boolean }) {
       <div 
         className={cn(
           "flex items-center gap-3 px-4 py-2 rounded-md nav-box transition-all duration-200",
-          "bg-sidebar-accent dark:bg-sidebar-accent shadow-md hover:shadow-lg",
-          "border-l-4 border-blue-400",
-          isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80 border-l-4 border-blue-500"
+          "bg-sidebar-accent dark:bg-sidebar-accent",
+          isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
         )}
+        style={{
+          border: '2px solid rgba(30, 64, 175, 0.3)'
+        }}
       >
         <div className={cn(
           "p-2 rounded-md transition-colors",
@@ -103,7 +105,7 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
   const Icon = item.icon;
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       <div 
         className="w-full transition-all duration-200 sidebar-nav-item"
         data-testid={item.testId}
@@ -111,10 +113,12 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
         <div 
           className={cn(
             "flex items-center gap-3 px-4 py-2 rounded-md nav-box transition-all duration-200",
-            "bg-sidebar-accent dark:bg-sidebar-accent shadow-md hover:shadow-lg",
-            "border-l-4 border-blue-400",
-            hasActiveChild && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80 border-l-4 border-blue-500"
+            "bg-sidebar-accent dark:bg-sidebar-accent",
+            hasActiveChild && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
           )}
+          style={{
+            border: '2px solid rgba(30, 64, 175, 0.3)'
+          }}
         >
           <div className={cn(
             "p-2 rounded-md transition-colors",
@@ -164,10 +168,12 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
         <div 
           className={cn(
             "flex items-center gap-3 px-4 py-1.5 rounded-md nav-box transition-all duration-200",
-            "bg-sidebar-accent dark:bg-sidebar-accent shadow-md hover:shadow-lg",
-            "border-l-4 border-blue-400",
-            isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80 border-l-4 border-blue-500"
+            "bg-sidebar-accent dark:bg-sidebar-accent",
+            isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
           )}
+          style={{
+            border: '2px solid rgba(30, 64, 175, 0.3)'
+          }}
         >
           <div className={cn(
             "p-1.5 rounded-md transition-colors",
@@ -291,7 +297,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-4 space-y-3 mt-8">
         {/* Anagrafiche Section (3 livelli: Anagrafiche > Partners/Risorse + Sistemi > SAP/VPN/Credenziali) */}
         <div>
           <ParentItem
@@ -387,7 +393,7 @@ export default function Sidebar() {
                   onToggle={() => handleToggle(item.type)}
                   children={
                     isOpen && (
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         {childItems.map((subItem: any) => {
                           const isActive = location === subItem.href;
                           return (
