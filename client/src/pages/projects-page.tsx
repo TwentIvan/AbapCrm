@@ -88,7 +88,7 @@ function ProjectTasksCount({ projectId, currentOrganizationId }: { projectId: st
     <RelationshipBadge
       count={count}
       label="Tasks"
-      items={(relationships?.tasks?.items || []).map(task => ({ id: task.id, name: task.title }))}
+      items={relationships?.tasks?.items || []}
       targetPath="/tasks"
       filterParam="projectId"
       sourceId={projectId}
