@@ -168,7 +168,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             className="flex items-center space-x-3 px-4 py-2 bg-sidebar-accent transition-all duration-200"
             style={{ 
               borderRadius: '0.5rem 0 0 0.5rem',
-              boxShadow: '-6px 0 0 0 rgba(29, 78, 216, 0.4), 0 -6px 0 0 rgba(29, 78, 216, 0.4), 0 6px 0 0 rgba(29, 78, 216, 0.4)'
+              boxShadow: '-6px -6px 0 0 rgba(30, 64, 175, 0.5), -6px 6px 0 0 rgba(30, 64, 175, 0.5), 0 -6px 0 0 rgba(30, 64, 175, 0.5), 0 6px 0 0 rgba(30, 64, 175, 0.5)'
             }}
           >
             <AreaIcon className="text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
@@ -189,7 +189,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               borderRadius: '0 0.5rem 0.5rem 0',
               width: isSearchOpen ? '300px' : 'auto',
               minWidth: isSearchOpen ? '300px' : 'auto',
-              boxShadow: '6px 0 0 0 rgba(29, 78, 216, 0.4), 0 -6px 0 0 rgba(29, 78, 216, 0.4), 0 6px 0 0 rgba(29, 78, 216, 0.4)'
+              boxShadow: '6px -6px 0 0 rgba(30, 64, 175, 0.5), 6px 6px 0 0 rgba(30, 64, 175, 0.5), 0 -6px 0 0 rgba(30, 64, 175, 0.5), 0 6px 0 0 rgba(30, 64, 175, 0.5)'
             }}
             onClick={() => !isSearchOpen && setIsSearchOpen(true)}
             data-testid="button-search"
@@ -249,7 +249,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   className="flex items-center bg-sidebar-accent relative"
                   style={{
                     ...getButtonStyle('proposals', hoveredButton),
-                    boxShadow: '0 0 0 6px rgba(29, 78, 216, 0.4)'
+                    boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.5)'
                   }}
                   onMouseEnter={() => setHoveredButton('proposals')}
                   onMouseLeave={() => setHoveredButton(null)}
@@ -283,7 +283,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   className="flex items-center bg-sidebar-accent relative"
                   style={{
                     ...getButtonStyle('messages', hoveredButton),
-                    boxShadow: '0 0 0 6px rgba(29, 78, 216, 0.4)'
+                    boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.5)'
                   }}
                   onMouseEnter={() => setHoveredButton('messages')}
                   onMouseLeave={() => setHoveredButton(null)}
@@ -312,7 +312,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   className="flex items-center bg-blue-50/90 dark:bg-blue-900/60"
                   style={{
                     ...getButtonStyle('calendar', hoveredButton),
-                    boxShadow: '0 0 0 6px rgba(29, 78, 216, 0.4)'
+                    boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.5)'
                   }}
                   onMouseEnter={() => setHoveredButton('calendar')}
                   onMouseLeave={() => setHoveredButton(null)}
@@ -334,7 +334,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   className="flex items-center bg-blue-50/90 dark:bg-blue-900/60"
                   style={{
                     ...getButtonStyle('planning', hoveredButton),
-                    boxShadow: '0 0 0 6px rgba(37, 99, 235, 0.3)'
+                    boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.5)'
                   }}
                   onMouseEnter={() => setHoveredButton('planning')}
                   onMouseLeave={() => setHoveredButton(null)}
@@ -360,7 +360,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 className="flex items-center bg-blue-50/90 dark:bg-blue-900/60"
                 style={{
                   ...getButtonStyle('partners', hoveredButton),
-                  boxShadow: '0 0 0 6px rgba(29, 78, 216, 0.4)'
+                  boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.5)'
                 }}
                 onMouseEnter={() => setHoveredButton('partners')}
                 onMouseLeave={() => setHoveredButton(null)}
@@ -382,7 +382,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             <div 
               className="relative rounded-lg px-4 py-2 flex items-center space-x-4 bg-sidebar-accent transition-all duration-200"
               style={{
-                boxShadow: '0 0 0 6px rgba(29, 78, 216, 0.4)'
+                boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.5)'
               }}
             >
               {/* Language Selector - Bandiera Flat */}
