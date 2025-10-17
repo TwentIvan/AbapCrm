@@ -479,9 +479,9 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                     const isExpanded = expandedOwners.has(ownerKey);
                     
                     const ownerHeaderRow = (
-                      <div key={ownerKey} className={`gantt-row relative ml-4 ${isExpanded ? 'h-8' : 'h-10'}`}>
+                      <div key={ownerKey} className={`gantt-row relative ml-4 ${isExpanded ? 'h-6' : 'h-10'}`}>
                         <div className="flex items-center gap-4 h-full">
-                          <div className="w-44 flex-shrink-0 flex items-center gap-1">
+                          <div className={`${isExpanded ? 'w-full' : 'w-44'} flex-shrink-0 flex items-center gap-1`}>
                             <button
                               onClick={() => toggleOwnerExpansion(ownerKey)}
                               className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
@@ -505,8 +505,9 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                             </div>
                           </div>
 
-                          <div className={`flex-1 relative ${isExpanded ? 'h-8' : 'h-10'}`}>
-                            {!isExpanded && ownerTasks.map((task) => {
+                          {!isExpanded && (
+                            <div className="flex-1 relative h-10">
+                            {ownerTasks.map((task) => {
                               const taskStartStr = new Date(task.startDate!).toISOString().split('T')[0];
                               const taskEndStr = new Date(task.dueDate!).toISOString().split('T')[0];
                               const taskStartPos = getPosition(taskStartStr);
@@ -542,6 +543,7 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                               );
                             })}
                           </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -560,9 +562,9 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                       const hasOverlap = overlaps.get(task.id) || false;
 
                       return (
-                        <div key={task.id} className="gantt-row relative h-8 ml-8">
+                        <div key={task.id} className="gantt-row relative h-8 ml-4">
                           <div className="flex items-center gap-4">
-                            <div className="w-36 flex-shrink-0">
+                            <div className="w-44 flex-shrink-0 pl-4">
                               <div className="text-xs truncate text-muted-foreground">
                                 {task.title}
                               </div>
