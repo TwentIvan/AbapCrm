@@ -297,7 +297,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 p-4 space-y-3 mt-8">
+      <nav className="flex-1 p-4 space-y-3">
         {/* Anagrafiche Section (3 livelli: Anagrafiche > Partners/Risorse + Sistemi > SAP/VPN/Credenziali) */}
         <div>
           <ParentItem
@@ -416,7 +416,7 @@ export default function Sidebar() {
       </nav>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-border">
+      <div className="p-6 border-t border-border">
         <div className="flex items-center space-x-3 p-3 rounded-md hover:bg-accent transition-colors">
           <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
             <User className="h-4 w-4 text-muted-foreground" />
