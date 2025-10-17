@@ -314,7 +314,7 @@ export default function PartnersPage() {
               enableSelection={true}
               onSelectionChange={setSelectedPartners}
               tableId="partners"
-              configurableColumns={true}
+              configurableColumns={false}
               enableColumnReordering={true}
               enableClipboardCopy={true}
               editingLayout={editingLayout}

@@ -274,16 +274,16 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-80 bg-sidebar-accent border-r border-border flex flex-col">
+    <aside className="w-80 bg-card border-r border-border flex flex-col">
       {/* Logo and Brand */}
-      <div className="p-6">
+      <div className="p-4">
         <div className="flex justify-center">
           <ImageContainer
             src={newLogo}
             alt="App Logo"
             fallbackType="logo"
             size="custom"
-            containerClassName="w-64 h-44 bg-transparent"
+            containerClassName="w-48 h-32 bg-transparent"
             className="object-contain"
             data-testid="img-app-logo"
           />
