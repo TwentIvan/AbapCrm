@@ -127,14 +127,14 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
           <button 
             onClick={onToggle}
             className={cn(
-              "ml-2 w-6 h-6 rounded-md hover:bg-sidebar-accent dark:hover:bg-sidebar-accent transition-colors flex items-center justify-center",
-              "text-blue-500 dark:text-blue-400"
+              "ml-2 w-7 h-7 rounded-md hover:bg-sidebar-accent dark:hover:bg-sidebar-accent transition-colors flex items-center justify-center",
+              "text-blue-600 dark:text-blue-400"
             )}
           >
             {isOpen ? (
-              <Minus className="h-3 w-3" />
+              <Minus className="h-4 w-4 font-bold stroke-[2.5]" />
             ) : (
-              <Plus className="h-3 w-3" />
+              <Plus className="h-4 w-4 font-bold stroke-[2.5]" />
             )}
           </button>
         </div>
