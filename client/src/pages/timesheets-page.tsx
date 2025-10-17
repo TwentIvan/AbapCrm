@@ -6,6 +6,7 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -525,52 +526,41 @@ export default function TimesheetsPage() {
         <Header 
           title="Timesheets" 
           subtitle="Gestisci i tuoi timesheet salvati"
-          onNewClick={() => {}}
         />
         
         <div className="p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 flex items-center gap-4">
-              <LayoutManager
-                currentLayoutName={currentLayoutName}
-                savedLayouts={savedLayouts}
-                onLoadLayout={loadLayout}
-                onRenameLayout={renameLayout}
-                onDeleteLayout={deleteLayout}
-              />
-              <div className="flex items-center gap-2">
+          <ListViewToolbar
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onLoadLayout={loadLayout}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onConfigureTable={() => setShowConfigDialog(true)}
+            viewToggle={
+              <div className="flex border rounded-lg">
                 <Button 
-                  variant="outline" 
+                  variant={viewMode === 'list' ? 'default' : 'ghost'} 
                   size="sm" 
-                  onClick={() => setShowConfigDialog(true)}
-                  data-testid="button-configure-columns"
+                  onClick={() => updateLayout({ viewMode: 'list' })}
+                  className="rounded-r-none"
+                  data-testid="button-view-list"
                 >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Configura
+                  <List className="h-4 w-4" />
                 </Button>
-                <div className="flex border rounded-lg">
-                  <Button 
-                    variant={viewMode === 'list' ? 'default' : 'ghost'} 
-                    size="sm" 
-                    onClick={() => updateLayout({ viewMode: 'list' })}
-                    className="rounded-r-none"
-                    data-testid="button-view-list"
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant={viewMode === 'cards' ? 'default' : 'ghost'} 
-                    size="sm" 
-                    onClick={() => updateLayout({ viewMode: 'cards' })}
-                    className="rounded-l-none"
-                    data-testid="button-view-cards"
-                  >
-                    <Grid3X3 className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Button 
+                  variant={viewMode === 'cards' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => updateLayout({ viewMode: 'cards' })}
+                  className="rounded-l-none"
+                  data-testid="button-view-cards"
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </Button>
               </div>
-            </div>
-          </div>
+            }
+            onDeleteSelected={() => setShowBulkDeleteDialog(true)}
+            hasSelection={selectedTimesheets.length > 0}
+          />
 
           {timesheets?.length === 0 ? (
             <div className="text-center py-12">

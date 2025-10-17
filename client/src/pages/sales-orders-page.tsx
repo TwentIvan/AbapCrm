@@ -6,7 +6,7 @@ import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LayoutManager } from "@/components/ui/layout-manager";
-import { LayoutControlBox } from "@/components/ui/layout-control-box";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
@@ -199,43 +199,41 @@ export default function SalesOrdersPage() {
         <Header 
           title="Ordini di Vendita"
           subtitle="Gestisci gli ordini di vendita"
-          onNewClick={handleAdd}
         />
         <main className="p-6 space-y-6">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-4">
-              <LayoutControlBox
-                currentLayoutName={currentLayoutName}
-                savedLayouts={savedLayouts}
-                onLoadLayout={loadLayout}
-                onRenameLayout={renameLayout}
-                onDeleteLayout={deleteLayout}
-                onConfigureTable={() => setShowConfigDialog(true)}
-              />
-            </div>
-
-            {/* View Toggle */}
-            <div className="flex bg-muted rounded-lg p-1">
-              <Button
-                variant={'ghost'}
-                size="sm"
-                onClick={() => updateLayout({})}
-                data-testid="button-view-cards"
-              >
-                <Grid3X3 className="mr-2 h-4 w-4" />
-                Cards
-              </Button>
-              <Button
-                variant={'default'}
-                size="sm"
-                onClick={() => updateLayout({})}
-                data-testid="button-view-list"
-              >
-                <List className="mr-2 h-4 w-4" />
-                List
-              </Button>
-            </div>
-          </div>
+          <ListViewToolbar
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onLoadLayout={loadLayout}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onConfigureTable={() => setShowConfigDialog(true)}
+            onCreateNew={handleAdd}
+            onDeleteSelected={() => setShowBulkDeleteDialog(true)}
+            hasSelection={selectedOrders.length > 0}
+            viewToggle={
+              <div className="flex bg-muted rounded-lg p-1">
+                <Button
+                  variant={'ghost'}
+                  size="sm"
+                  onClick={() => updateLayout({})}
+                  data-testid="button-view-cards"
+                >
+                  <Grid3X3 className="mr-2 h-4 w-4" />
+                  Cards
+                </Button>
+                <Button
+                  variant={'default'}
+                  size="sm"
+                  onClick={() => updateLayout({})}
+                  data-testid="button-view-list"
+                >
+                  <List className="mr-2 h-4 w-4" />
+                  List
+                </Button>
+              </div>
+            }
+          />
 
           <UniversalTable
             data={salesOrders}

@@ -15,7 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
-import { LayoutControlBox } from "@/components/ui/layout-control-box";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Server, Building, MoreHorizontal, Grid3X3, List, Edit, Trash2, Key, Wifi, Upload } from "lucide-react";
 import { SapSystem } from "@shared/schema";
@@ -318,55 +318,30 @@ export default function SapSystemsPage() {
         <Header 
           title="SAP Systems" 
           subtitle="Manage your SAP system configurations and connections"
-          onNewClick={() => setShowCreateDialog(true)}
         />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">SAP Systems</h1>
-                <p className="text-gray-600">Manage your SAP system configurations and connections</p>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                {selectedSystems.length > 0 && (
-                  <Button 
-                    variant="destructive" 
-                    onClick={() => setShowBulkDeleteDialog(true)}
-                    data-testid="button-bulk-delete"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Selected ({selectedSystems.length})
-                  </Button>
-                )}
-                
-                <LayoutControlBox
-                  currentLayoutName={currentLayoutName}
-                  savedLayouts={savedLayouts}
-                  onLoadLayout={loadLayout}
-                  onRenameLayout={renameLayout}
-                  onDeleteLayout={deleteLayout}
-                  onConfigureTable={() => setShowConfigDialog(true)}
-                />
-                
-                
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowImportDialog(true)} 
-                  data-testid="button-import-xml"
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Import from XML
-                </Button>
-                
-                <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-sap-system">
-                  <Server className="mr-2 h-4 w-4" />
-                  Add SAP System
-                </Button>
-              </div>
+            <div className="flex items-center gap-3">
+              <ListViewToolbar
+                currentLayoutName={currentLayoutName}
+                savedLayouts={savedLayouts}
+                onLoadLayout={loadLayout}
+                onRenameLayout={renameLayout}
+                onDeleteLayout={deleteLayout}
+                onConfigureTable={() => setShowConfigDialog(true)}
+                onCreateNew={() => setShowCreateDialog(true)}
+                onDeleteSelected={() => setShowBulkDeleteDialog(true)}
+                hasSelection={selectedSystems.length > 0}
+              />
+              <Button 
+                variant="outline" 
+                onClick={() => setShowImportDialog(true)} 
+                data-testid="button-import-xml"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Import from XML
+              </Button>
             </div>
-
-            {/* Layout Control Box now unified */}
 
             {renderTable()}
           </div>

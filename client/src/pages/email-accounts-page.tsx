@@ -16,7 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
-import { LayoutControlBox } from "@/components/ui/layout-control-box";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Mail, Server, MoreHorizontal, Grid3X3, List, Edit, Trash2, History, Shield, CheckCircle, XCircle, Plus, Send } from "lucide-react";
 import { EmailConfig } from "@shared/schema";
@@ -358,43 +358,22 @@ export default function EmailAccountsPage() {
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-muted/20 p-6">
           <div className="max-w-full mx-auto space-y-6">
-            {/* Header */}
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">Account Email</h1>
-                <p className="text-muted-foreground">
-                  Gestisci gli account email per la ricezione e l'elaborazione dei messaggi
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={() => setShowSendDialog(true)} data-testid="button-send-email" variant="outline">
-                  <Send className="mr-2 h-4 w-4" />
-                  Invia Email
-                </Button>
-                <Button onClick={handleAdd} data-testid="button-add-email-account">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Aggiungi Account
-                </Button>
-              </div>
-            </div>
-            
-            {/* Layout Manager */}
-            <div className="flex items-center justify-between">
-              <LayoutManager
+            <div className="flex items-center gap-3">
+              <ListViewToolbar
                 currentLayoutName={currentLayoutName}
                 savedLayouts={savedLayouts}
                 onLoadLayout={loadLayout}
                 onRenameLayout={renameLayout}
                 onDeleteLayout={deleteLayout}
-                onEditLayout={(layout) => {
-                  setEditingLayout(layout);
-                  setShowConfigDialog(true);
-                }}
-                onConfigureTable={() => {
-                  setEditingLayout(null);
-                  setShowConfigDialog(true);
-                }}
+                onConfigureTable={() => setShowConfigDialog(true)}
+                onCreateNew={handleAdd}
+                onDeleteSelected={() => setShowBulkDeleteDialog(true)}
+                hasSelection={selectedAccounts.length > 0}
               />
+              <Button onClick={() => setShowSendDialog(true)} data-testid="button-send-email" variant="outline">
+                <Send className="mr-2 h-4 w-4" />
+                Invia Email
+              </Button>
             </div>
 
             {/* Main Content */}

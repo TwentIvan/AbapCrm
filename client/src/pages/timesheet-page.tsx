@@ -15,7 +15,7 @@ import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endO
 import type { TimeEntry, Task, Project } from "@shared/schema";
 import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
-import { LayoutControlBox } from "@/components/ui/layout-control-box";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import type { ColumnDef } from "@tanstack/react-table";
 import Sidebar from "@/components/layout/sidebar";
@@ -466,39 +466,34 @@ export default function TimesheetPage() {
             </div>
           </div>
 
-          {/* Layout Management and View Toggle */}
-          <div className="flex justify-between items-center mb-4">
-            {/* Layout Manager */}
-            <LayoutControlBox
-              currentLayoutName={currentLayoutName}
-              savedLayouts={savedLayouts}
-              onLoadLayout={loadLayout}
-              onRenameLayout={renameLayout}
-              onDeleteLayout={deleteLayout}
-              onConfigureTable={() => setShowConfigDialog(true)}
-            />
-
-            {/* View Toggle */}
-            <div className="flex bg-muted rounded-lg p-1">
-              <Button
-                variant={"ghost"}
-                size="sm"
-                onClick={() => updateLayout({})}
-                data-testid="button-view-cards"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={"default"}
-                size="sm"
-                onClick={() => updateLayout({})}
-                data-testid="button-view-list"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
-            
-          </div>
+          <ListViewToolbar
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onLoadLayout={loadLayout}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onConfigureTable={() => setShowConfigDialog(true)}
+            viewToggle={
+              <div className="flex bg-muted rounded-lg p-1">
+                <Button
+                  variant={"ghost"}
+                  size="sm"
+                  onClick={() => updateLayout({})}
+                  data-testid="button-view-cards"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={"default"}
+                  size="sm"
+                  onClick={() => updateLayout({})}
+                  data-testid="button-view-list"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            }
+          />
 
       {/* Running Timer Alert */}
       {runningEntry && (

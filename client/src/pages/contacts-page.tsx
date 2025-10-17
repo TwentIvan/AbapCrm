@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DataTable, createTextColumn } from "@/components/ui/data-table";
-import { LayoutControlBox } from "@/components/ui/layout-control-box";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Contact as ContactIcon, Mail, Phone, Building, MoreHorizontal, Edit, Trash2, User } from "lucide-react";
 import { Contact } from "@shared/schema";
@@ -240,21 +240,20 @@ export default function ContactsPage() {
         <Header 
           title="Contatti" 
           subtitle="Gestisci i tuoi contatti di riferimento"
-          onNewClick={() => setShowCreateDialog(true)}
         />
         
         <div className="p-6">
-          {/* Layout Management */}
-          <div className="flex justify-between items-center mb-4">
-            <LayoutControlBox
-              currentLayoutName={currentLayoutName}
-              savedLayouts={savedLayouts}
-              onLoadLayout={loadLayout}
-              onRenameLayout={renameLayout}
-              onDeleteLayout={deleteLayout}
-              onConfigureTable={() => setShowConfigDialog(true)}
-            />
-          </div>
+          <ListViewToolbar
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onLoadLayout={loadLayout}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onConfigureTable={() => setShowConfigDialog(true)}
+            onCreateNew={() => setShowCreateDialog(true)}
+            onDeleteSelected={() => setShowBulkDeleteDialog(true)}
+            hasSelection={selectedContacts.length > 0}
+          />
           
           {isLoading && (!contacts || contacts.length === 0) ? (
             <div className="space-y-4">
