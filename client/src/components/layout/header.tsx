@@ -241,153 +241,143 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-4">
           <TooltipProvider delayDuration={300}>
-            {/* THU AI Button - Vetro blu individuale */}
-            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
-              <Link href="/proposals">
-                <Button 
-                  variant="ghost" 
-                  className="flex items-center bg-sidebar-accent relative"
-                  style={{
-                    ...getButtonStyle('proposals', hoveredButton)
-                  }}
-                  onMouseEnter={() => setHoveredButton('proposals')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                  data-testid="button-proposals"
-                >
-                  <div className="relative flex flex-col items-end">
-                    <div className="flex items-baseline space-x-0">
-                      <span className="text-lg font-black text-blue-600 dark:text-blue-400">T</span>
-                      <span className="text-2xl font-black text-blue-500 dark:text-blue-300">H</span>
-                      <span className="text-2xl font-black text-blue-600 dark:text-blue-400">U</span>
-                    </div>
-                    <span className="text-xs font-bold text-purple-500 dark:text-purple-400 -mt-1">AI</span>
-                    {(pendingProposals?.count ?? 0) > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                        {(pendingProposals?.count ?? 0) > 9 ? '9+' : pendingProposals?.count}
-                      </span>
-                    )}
-                  </div>
-                  {hoveredButton === 'proposals' && (
-                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
-                      Proposte AI
-                    </span>
-                  )}
-                </Button>
-              </Link>
-            </div>
-
-            {/* Messages Button - Vetro blu individuale */}
-            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
-              <Link href="/messages">
-                <Button 
-                  variant="ghost" 
-                  className="flex items-center bg-sidebar-accent relative"
-                  style={{
-                    ...getButtonStyle('messages', hoveredButton)
-                  }}
-                  onMouseEnter={() => setHoveredButton('messages')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                  data-testid="button-messages"
-                >
-                  <div className="relative">
-                    <Mail className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                    {(unreadMessages?.count ?? 0) > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                        {(unreadMessages?.count ?? 0) > 9 ? '9+' : unreadMessages?.count}
-                      </span>
-                    )}
-                  </div>
-                  {hoveredButton === 'messages' && (
-                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
-                      {t("nav.messages")}
-                    </span>
-                  )}
-                </Button>
-              </Link>
-            </div>
-            
-            {/* Calendar Button - Vetro blu individuale */}
-            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
-              <Link href="/calendar">
-                <Button 
-                  variant="ghost" 
-                  className="flex items-center bg-sidebar-accent"
-                  style={{
-                    ...getButtonStyle('calendar', hoveredButton)
-                  }}
-                  onMouseEnter={() => setHoveredButton('calendar')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                  data-testid="button-calendar"
-                >
-                  <Calendar className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                  {hoveredButton === 'calendar' && (
-                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
-                      Calendario Eventi
-                    </span>
-                  )}
-                </Button>
-              </Link>
-            </div>
-            
-            {/* Planning Calendar Button - Vetro blu individuale */}
-            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
-              <Link href="/planning-calendar">
-                <Button 
-                  variant="ghost" 
-                  className="flex items-center bg-sidebar-accent"
-                  style={{
-                    ...getButtonStyle('planning', hoveredButton)
-                  }}
-                  onMouseEnter={() => setHoveredButton('planning')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                  data-testid="button-planning-calendar"
-                >
-                  <FolderTree className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                  {hoveredButton === 'planning' && (
-                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
-                      Pianificazione Progetti
-                    </span>
-                  )}
-                </Button>
-              </Link>
-            </div>
-          </TooltipProvider>
-
-          {/* Contatti Button - Vetro blu individuale */}
-          <TooltipProvider delayDuration={300}>
-            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
-              <Link href="/partners">
-                <Button 
-                  variant="ghost" 
-                  className="flex items-center bg-sidebar-accent"
-                  style={{
-                    ...getButtonStyle('partners', hoveredButton)
-                  }}
-                  onMouseEnter={() => setHoveredButton('partners')}
-                  onMouseLeave={() => setHoveredButton(null)}
-                  data-testid="button-partners"
-                >
-                  <Users className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
-                  {hoveredButton === 'partners' && (
-                    <span className="ml-3 text-foreground font-medium whitespace-nowrap">
-                      Contatti
-                    </span>
-                  )}
-                </Button>
-              </Link>
-            </div>
-          </TooltipProvider>
-          
-          
-          {/* User & Organization Box - Vetro blu individuale (bandiera + user info) */}
-          {user && (
-            <>
-            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
-              <div 
-                className="relative rounded-lg px-4 py-2 flex items-center space-x-4 bg-sidebar-accent transition-all duration-200"
+            <Link href="/proposals">
+              <Button 
+                variant="ghost" 
+                className="flex items-center bg-sidebar-accent relative"
+                style={{
+                  ...getButtonStyle('proposals', hoveredButton),
+                  border: '2px solid rgba(30, 64, 175, 0.3)'
+                }}
+                onMouseEnter={() => setHoveredButton('proposals')}
+                onMouseLeave={() => setHoveredButton(null)}
+                data-testid="button-proposals"
               >
+                <div className="relative flex flex-col items-end">
+                  <div className="flex items-baseline space-x-0">
+                    <span className="text-lg font-black text-blue-600 dark:text-blue-400">T</span>
+                    <span className="text-2xl font-black text-blue-500 dark:text-blue-300">H</span>
+                    <span className="text-2xl font-black text-blue-600 dark:text-blue-400">U</span>
+                  </div>
+                  <span className="text-xs font-bold text-purple-500 dark:text-purple-400 -mt-1">AI</span>
+                  {(pendingProposals?.count ?? 0) > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                      {(pendingProposals?.count ?? 0) > 9 ? '9+' : pendingProposals?.count}
+                    </span>
+                  )}
+                </div>
+                {hoveredButton === 'proposals' && (
+                  <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                    Proposte AI
+                  </span>
+                )}
+              </Button>
+            </Link>
+
+            <Link href="/messages">
+              <Button 
+                variant="ghost" 
+                className="flex items-center bg-sidebar-accent relative"
+                style={{
+                  ...getButtonStyle('messages', hoveredButton),
+                  border: '2px solid rgba(30, 64, 175, 0.3)'
+                }}
+                onMouseEnter={() => setHoveredButton('messages')}
+                onMouseLeave={() => setHoveredButton(null)}
+                data-testid="button-messages"
+              >
+                <div className="relative">
+                  <Mail className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                  {(unreadMessages?.count ?? 0) > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                      {(unreadMessages?.count ?? 0) > 9 ? '9+' : unreadMessages?.count}
+                    </span>
+                  )}
+                </div>
+                {hoveredButton === 'messages' && (
+                  <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                    {t("nav.messages")}
+                  </span>
+                )}
+              </Button>
+            </Link>
+            
+            <Link href="/calendar">
+              <Button 
+                variant="ghost" 
+                className="flex items-center bg-sidebar-accent"
+                style={{
+                  ...getButtonStyle('calendar', hoveredButton),
+                  border: '2px solid rgba(30, 64, 175, 0.3)'
+                }}
+                onMouseEnter={() => setHoveredButton('calendar')}
+                onMouseLeave={() => setHoveredButton(null)}
+                data-testid="button-calendar"
+              >
+                <Calendar className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                {hoveredButton === 'calendar' && (
+                  <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                    Calendario Eventi
+                  </span>
+                )}
+              </Button>
+            </Link>
+            
+            <Link href="/planning-calendar">
+              <Button 
+                variant="ghost" 
+                className="flex items-center bg-sidebar-accent"
+                style={{
+                  ...getButtonStyle('planning', hoveredButton),
+                  border: '2px solid rgba(30, 64, 175, 0.3)'
+                }}
+                onMouseEnter={() => setHoveredButton('planning')}
+                onMouseLeave={() => setHoveredButton(null)}
+                data-testid="button-planning-calendar"
+              >
+                <FolderTree className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                {hoveredButton === 'planning' && (
+                  <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                    Pianificazione Progetti
+                  </span>
+                )}
+              </Button>
+            </Link>
+          </TooltipProvider>
+
+          <TooltipProvider delayDuration={300}>
+            <Link href="/partners">
+              <Button 
+                variant="ghost" 
+                className="flex items-center bg-sidebar-accent"
+                style={{
+                  ...getButtonStyle('partners', hoveredButton),
+                  border: '2px solid rgba(30, 64, 175, 0.3)'
+                }}
+                onMouseEnter={() => setHoveredButton('partners')}
+                onMouseLeave={() => setHoveredButton(null)}
+                data-testid="button-partners"
+              >
+                <Users className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
+                {hoveredButton === 'partners' && (
+                  <span className="ml-3 text-foreground font-medium whitespace-nowrap">
+                    Contatti
+                  </span>
+                )}
+              </Button>
+            </Link>
+          </TooltipProvider>
+          
+          
+          {user && (
+            <div 
+              className="relative rounded-lg px-4 py-2 flex items-center space-x-4 bg-sidebar-accent transition-all duration-200"
+              style={{
+                border: '2px solid rgba(30, 64, 175, 0.3)'
+              }}
+            >
               {/* Language Selector - Bandiera Flat */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -533,10 +523,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </span>
               </div>
               
-            </div>
-            </div>
-            
-            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="w-14 h-14 rounded-lg bg-primary hover:bg-primary/90">
@@ -563,7 +549,6 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            </>
           )}
         </div>
         </div>
