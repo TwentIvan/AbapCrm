@@ -269,7 +269,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-4 pt-6 pb-4 space-y-4">
+      <nav className="flex-1 px-4 pt-16 pb-4 space-y-4">
         {/* Anagrafiche Section (3 livelli: Anagrafiche > Partners/Risorse + Sistemi > SAP/VPN/Credenziali) */}
         <div>
           <ParentItem
