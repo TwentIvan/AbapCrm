@@ -241,10 +241,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           </div>
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
           <TooltipProvider delayDuration={300}>
             {/* THU AI Button - Vetro blu individuale */}
-            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
+            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <Link href="/proposals">
                 <Button 
                   variant="ghost" 
@@ -279,7 +279,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             </div>
 
             {/* Messages Button - Vetro blu individuale */}
-            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
+            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <Link href="/messages">
                 <Button 
                   variant="ghost" 
@@ -309,7 +309,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             </div>
             
             {/* Calendar Button - Vetro blu individuale */}
-            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
+            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <Link href="/calendar">
                 <Button 
                   variant="ghost" 
@@ -332,7 +332,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             </div>
             
             {/* Planning Calendar Button - Vetro blu individuale */}
-            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
+            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <Link href="/planning-calendar">
                 <Button 
                   variant="ghost" 
@@ -357,7 +357,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
 
           {/* Contatti Button - Vetro blu individuale */}
           <TooltipProvider delayDuration={300}>
-            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
+            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <Link href="/partners">
                 <Button 
                   variant="ghost" 
@@ -384,7 +384,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           {/* User & Organization Box - Vetro blu individuale (bandiera + user info) */}
           {user && (
             <>
-            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
+            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <div 
                 className="relative rounded-lg px-4 py-2 flex items-center space-x-4 bg-sidebar-accent transition-all duration-200"
               >
@@ -536,7 +536,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             </div>
             </div>
             
-            <div className="p-1 rounded-lg" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
+            <div className="p-0.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.45)' }}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="w-14 h-14 rounded-lg bg-primary hover:bg-primary/90">
