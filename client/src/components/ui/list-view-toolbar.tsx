@@ -4,6 +4,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Plus, Copy, Trash2, Table, Grid3X3, Calendar as CalendarIcon, BarChart3 } from "lucide-react";
 import type { SavedLayout } from "@/lib/user-preferences";
 
+import type { ReactNode } from "react";
+
 export type ViewMode = "table" | "grid" | "kanban" | "calendar" | "gantt" | "tree";
 
 interface ListViewToolbarProps {
@@ -19,6 +21,7 @@ interface ListViewToolbarProps {
   viewMode?: ViewMode;
   availableViews?: ViewMode[];
   onViewModeChange?: (mode: ViewMode) => void;
+  viewToggle?: ReactNode;  // Custom view toggle for special cases
   
   // Action buttons
   onCreateNew?: () => void;
@@ -58,6 +61,7 @@ export function ListViewToolbar({
   viewMode,
   availableViews = [],
   onViewModeChange,
+  viewToggle,
   onCreateNew,
   onCopySelected,
   onDeleteSelected,
@@ -65,11 +69,12 @@ export function ListViewToolbar({
   disableActions = false,
 }: ListViewToolbarProps) {
   const showViewToggle = availableViews.length > 1 && viewMode && onViewModeChange;
+  const hasViewToggle = viewToggle || showViewToggle;
   
   return (
-    <div className="flex items-center justify-between gap-4 mb-4">
+    <div className="grid grid-cols-3 items-center gap-4 mb-4">
       {/* Left: Layout Control Box */}
-      <div className="flex items-center gap-3">
+      <div className="flex justify-start">
         <LayoutControlBox
           currentLayoutName={currentLayoutName}
           savedLayouts={savedLayouts}
@@ -78,9 +83,13 @@ export function ListViewToolbar({
           onDeleteLayout={onDeleteLayout}
           onConfigureTable={onConfigureTable}
         />
-        
-        {/* View Mode Toggle (if multiple views) */}
-        {showViewToggle && (
+      </div>
+      
+      {/* Center: View Toggle (custom or built-in) */}
+      <div className="flex justify-center">
+        {viewToggle ? (
+          viewToggle
+        ) : showViewToggle ? (
           <ToggleGroup
             type="single"
             value={viewMode}
@@ -105,11 +114,11 @@ export function ListViewToolbar({
               );
             })}
           </ToggleGroup>
-        )}
+        ) : null}
       </div>
       
       {/* Right: Action Buttons */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 justify-end">
         {onCreateNew && (
           <Button
             variant="default"
