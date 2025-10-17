@@ -109,7 +109,7 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
       >
         <div 
           className={cn(
-            "flex items-center gap-3 min-h-[40px] px-4 py-1.5 rounded-md nav-box transition-all duration-200",
+            "flex items-center gap-3 h-10 px-4 rounded-md nav-box transition-all duration-200",
             "bg-sidebar-accent dark:bg-sidebar-accent",
             hasActiveChild && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
           )}
@@ -161,7 +161,7 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
       >
         <div 
           className={cn(
-            "flex items-center gap-3 min-h-[40px] px-4 py-1.5 rounded-md nav-box transition-all duration-200",
+            "flex items-center gap-3 h-10 px-4 rounded-md nav-box transition-all duration-200",
             "bg-sidebar-accent dark:bg-sidebar-accent",
             isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
           )}
