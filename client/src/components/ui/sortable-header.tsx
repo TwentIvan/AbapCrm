@@ -28,6 +28,8 @@ export function SortableHeader<TData>({ header, enableReordering = false }: Sort
     transition,
   };
 
+  const isSelectColumn = header.id === 'select';
+  
   return (
     <TableHead 
       ref={setNodeRef}
@@ -35,9 +37,10 @@ export function SortableHeader<TData>({ header, enableReordering = false }: Sort
       className={cn(
         "cursor-pointer select-none relative",
         isDragging && "opacity-50 z-50",
-        enableReordering && "group"
+        enableReordering && "group",
+        isSelectColumn && "w-12 px-3"
       )}
-      onClick={() => header.column.getCanSort() && header.column.toggleSorting()}
+      onClick={() => !isSelectColumn && header.column.getCanSort() && header.column.toggleSorting()}
       data-testid={`header-${header.id}`}
     >
       <div className="flex items-center gap-2">
