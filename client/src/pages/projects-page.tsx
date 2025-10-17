@@ -39,43 +39,76 @@ const statusColors = {
   on_hold: "bg-red-100 text-red-800",
 };
 
-// Component to display relationship badges for a project
-function ProjectRelationships({ project, currentOrganizationId }: { project: Project; currentOrganizationId: string | null }) {
-  const { data: relationships } = useQuery({
-    queryKey: [`/api/projects/${project.id}/relationships`, currentOrganizationId],
+// Type for project relationships response
+type ProjectRelationships = {
+  tasks: {
+    count: number;
+    items: Array<{id: string; title: string}>;
+  };
+  milestones: {
+    count: number;
+    items: Array<{id: string; name: string}>;
+  };
+};
+
+// Hook to fetch project relationships
+function useProjectRelationships(projectId: string, currentOrganizationId: string | null) {
+  return useQuery<ProjectRelationships>({
+    queryKey: [`/api/projects/${projectId}/relationships`, currentOrganizationId],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
   });
+}
 
-  if (!currentOrganizationId) {
+// Component to display Tasks count for a project
+function ProjectTasksCount({ projectId, currentOrganizationId }: { projectId: string; currentOrganizationId: string | null }) {
+  const { data: relationships, isLoading } = useProjectRelationships(projectId, currentOrganizationId);
+  
+  if (!currentOrganizationId || isLoading) {
+    return <span className="text-sm text-muted-foreground">...</span>;
+  }
+
+  const count = relationships?.tasks?.count || 0;
+  if (count === 0) {
     return <span className="text-sm text-muted-foreground">-</span>;
   }
 
-  if (!relationships) {
-    return <span className="text-sm text-muted-foreground">Loading...</span>;
+  return (
+    <RelationshipBadge
+      count={count}
+      label="Tasks"
+      items={(relationships?.tasks?.items || []).map(task => ({ id: task.id, name: task.title }))}
+      targetPath="/tasks"
+      filterParam="projectId"
+      sourceId={projectId}
+      variant="secondary"
+    />
+  );
+}
+
+// Component to display Milestones count for a project
+function ProjectMilestonesCount({ projectId, currentOrganizationId }: { projectId: string; currentOrganizationId: string | null }) {
+  const { data: relationships, isLoading } = useProjectRelationships(projectId, currentOrganizationId);
+  
+  if (!currentOrganizationId || isLoading) {
+    return <span className="text-sm text-muted-foreground">...</span>;
+  }
+
+  const count = relationships?.milestones?.count || 0;
+  if (count === 0) {
+    return <span className="text-sm text-muted-foreground">-</span>;
   }
 
   return (
-    <div className="flex flex-wrap gap-1">
-      <RelationshipBadge
-        count={relationships.tasks?.count || 0}
-        label="Tasks"
-        items={relationships.tasks?.items || []}
-        targetPath="/tasks"
-        filterParam="projectId"
-        sourceId={project.id}
-        variant="secondary"
-      />
-      <RelationshipBadge
-        count={relationships.milestones?.count || 0}
-        label="Milestones"
-        items={relationships.milestones?.items || []}
-        targetPath="/project-milestones"
-        filterParam="projectId"
-        sourceId={project.id}
-        variant="outline"
-      />
-    </div>
+    <RelationshipBadge
+      count={count}
+      label="Milestones"
+      items={relationships?.milestones?.items || []}
+      targetPath="/project-milestones"
+      filterParam="projectId"
+      sourceId={projectId}
+      variant="outline"
+    />
   );
 }
 
@@ -357,11 +390,22 @@ export default function ProjectsPage() {
       render: (project: Project) => `${project.progress}%`
     },
     {
-      key: "relationships",
-      label: "Relazioni", 
+      key: "tasks",
+      label: "Tasks", 
       sortable: false,
       searchable: false,
-      render: (project: Project) => <ProjectRelationships project={project} currentOrganizationId={currentOrganizationId} />
+      render: (project: Project) => (
+        <ProjectTasksCount projectId={project.id} currentOrganizationId={currentOrganizationId} />
+      )
+    },
+    {
+      key: "milestones",
+      label: "Milestones", 
+      sortable: false,
+      searchable: false,
+      render: (project: Project) => (
+        <ProjectMilestonesCount projectId={project.id} currentOrganizationId={currentOrganizationId} />
+      )
     },
     {
       key: "actions",
