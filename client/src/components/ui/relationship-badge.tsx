@@ -56,7 +56,7 @@ export function RelationshipBadge({
         className={`text-muted-foreground cursor-default ${className}`}
         data-testid={`badge-${label.toLowerCase()}-0`}
       >
-        {label}: 0
+        -
       </Badge>
     );
   }
@@ -73,7 +73,7 @@ export function RelationshipBadge({
             onMouseLeave={() => setIsTooltipOpen(false)}
             data-testid={`badge-${label.toLowerCase()}-${count}`}
           >
-            {label}: {count}
+            {count}
             <ChevronRight className="ml-1 h-3 w-3 opacity-60 group-hover:opacity-100 transition-opacity" />
           </Badge>
         </TooltipTrigger>

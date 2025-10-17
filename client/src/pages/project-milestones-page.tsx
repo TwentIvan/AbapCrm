@@ -32,6 +32,10 @@ export default function ProjectMilestonesPage() {
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Read URL query params for filtering
+  const urlParams = new URLSearchParams(window.location.search);
+  const filterProjectId = urlParams.get('projectId');
 
   const {
     layout, currentLayoutName, savedLayouts, updateLayout, 
@@ -306,7 +310,7 @@ export default function ProjectMilestonesPage() {
 
           {viewMode === "table" ? (
             <UniversalTable
-              data={milestones}
+              data={filterProjectId ? milestones.filter(m => m.projectId === filterProjectId) : milestones}
               columns={columns}
               enableSelection={true}
               onSelectionChange={(rows) => setSelectedMilestones(rows as ProjectMilestone[])}
@@ -315,7 +319,7 @@ export default function ProjectMilestonesPage() {
           ) : (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
               <GanttChart
-                milestones={milestones}
+                milestones={filterProjectId ? milestones.filter(m => m.projectId === filterProjectId) : milestones}
                 projects={projects || []}
                 tasks={tasks || []}
                 onMilestoneClick={handleEdit}

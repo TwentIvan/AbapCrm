@@ -298,6 +298,10 @@ export default function TasksPage() {
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   
   const { currentOrganizationId } = useOrganization();
+  
+  // Read URL query params for filtering
+  const urlParams = new URLSearchParams(window.location.search);
+  const filterProjectId = urlParams.get('projectId');
 
   // Debug dialog states when they change
   useEffect(() => {
@@ -741,7 +745,7 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
             </div>
           ) : (
             <UniversalTable
-              data={tasks || []}
+              data={filterProjectId ? (tasks || []).filter(t => t.projectId === filterProjectId) : (tasks || [])}
               columns={tableColumns}
               enableSelection={true}
               onSelectionChange={(rows) => setSelectedTasks(rows as Task[])}
