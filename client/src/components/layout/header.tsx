@@ -165,18 +165,18 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         <div className="flex items-stretch space-x-1">
           {/* Area Title with Icon */}
           <div 
-            className="flex items-center space-x-3 px-4 py-2 bg-sidebar-accent transition-all duration-200"
+            className="flex items-center space-x-3 px-4 py-2 bg-white/40 dark:bg-blue-950/40 transition-all duration-200"
             style={{ 
               borderRadius: '0.5rem 0 0 0.5rem',
               boxShadow: '-6px 0 0 0 rgba(30, 64, 175, 0.5), 0 -6px 0 0 rgba(30, 64, 175, 0.5), 0 6px 0 0 rgba(30, 64, 175, 0.5)'
             }}
           >
             <AreaIcon className="text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
-            <div className="min-w-0">
-              <h2 className="text-lg font-semibold truncate text-muted-foreground" data-testid="text-page-title">
+            <div className="flex flex-col">
+              <h2 className="text-lg font-semibold text-muted-foreground whitespace-nowrap" data-testid="text-page-title">
                 {title}
               </h2>
-              <p className="text-sm text-muted-foreground truncate" data-testid="text-page-subtitle">
+              <p className="text-sm text-muted-foreground whitespace-nowrap" data-testid="text-page-subtitle">
                 {subtitle}
               </p>
             </div>
@@ -184,7 +184,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           
           {/* Search Box - espandibile */}
           <div 
-            className="flex items-center px-4 py-2 bg-sidebar-accent cursor-pointer transition-all duration-300"
+            className="flex items-center px-4 py-2 bg-white/40 dark:bg-blue-950/40 cursor-pointer transition-all duration-300"
             style={{ 
               borderRadius: '0 0.5rem 0.5rem 0',
               width: isSearchOpen ? '300px' : 'auto',
@@ -246,7 +246,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <Link href="/proposals">
                 <Button 
                   variant="ghost" 
-                  className="flex items-center bg-sidebar-accent relative"
+                  className="flex items-center bg-white/40 dark:bg-blue-950/40 relative"
                   style={{
                     ...getButtonStyle('proposals', hoveredButton),
                     boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.5)'
@@ -280,7 +280,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <Link href="/messages">
                 <Button 
                   variant="ghost" 
-                  className="flex items-center bg-sidebar-accent relative"
+                  className="flex items-center bg-white/40 dark:bg-blue-950/40 relative"
                   style={{
                     ...getButtonStyle('messages', hoveredButton),
                     boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.5)'
@@ -309,7 +309,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <Link href="/calendar">
                 <Button 
                   variant="ghost" 
-                  className="flex items-center bg-blue-50/90 dark:bg-blue-900/60"
+                  className="flex items-center bg-white/40 dark:bg-blue-950/40"
                   style={{
                     ...getButtonStyle('calendar', hoveredButton),
                     boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.5)'
@@ -331,7 +331,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <Link href="/planning-calendar">
                 <Button 
                   variant="ghost" 
-                  className="flex items-center bg-blue-50/90 dark:bg-blue-900/60"
+                  className="flex items-center bg-white/40 dark:bg-blue-950/40"
                   style={{
                     ...getButtonStyle('planning', hoveredButton),
                     boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.5)'
@@ -357,7 +357,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             <Link href="/partners">
               <Button 
                 variant="ghost" 
-                className="flex items-center bg-blue-50/90 dark:bg-blue-900/60"
+                className="flex items-center bg-white/40 dark:bg-blue-950/40"
                 style={{
                   ...getButtonStyle('partners', hoveredButton),
                   boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.5)'
@@ -380,7 +380,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           {/* User & Organization Box with Switch */}
           {user && (
             <div 
-              className="relative rounded-lg px-4 py-2 flex items-center space-x-4 bg-sidebar-accent transition-all duration-200"
+              className="relative rounded-lg px-4 py-2 flex items-center space-x-4 bg-white/40 dark:bg-blue-950/40 transition-all duration-200"
               style={{
                 boxShadow: '0 0 0 6px rgba(30, 64, 175, 0.5)'
               }}
