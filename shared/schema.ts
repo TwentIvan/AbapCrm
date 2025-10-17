@@ -1914,6 +1914,8 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
   vpnConnections: many(vpnConnections),
   organizationDomains: many(organizationDomains),
   emailConfigs: many(emailConfigs),
+  sourceBusinessScenarios: many(businessScenarios, { relationName: "sourceBusinessScenarios" }),
+  targetBusinessScenarios: many(businessScenarios, { relationName: "targetBusinessScenarios" }),
 }));
 
 // Relations for organization domains
@@ -2092,6 +2094,40 @@ export const vendorInvoicesRelations = relations(vendorInvoices, ({ one }) => ({
   }),
 }));
 
+// Business Scenarios - Organization relationships for business flows
+export const relationshipTypeEnum = pgEnum("relationship_type", [
+  "cliente_fattura", // Cliente destinatario fattura
+  "cliente_servizio", // Cliente destinatario servizio
+  "cliente_timesheet", // Cliente destinatario timesheet
+  "fornitore", // Fornitore/vendor
+  "partner", // Partner commerciale
+  "subappaltatore", // Subcontractor
+]);
+
+export const businessScenarios = pgTable("business_scenarios", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  sourceOrganizationId: uuid("source_organization_id").references(() => organizations.id).notNull(),
+  targetOrganizationId: uuid("target_organization_id").references(() => organizations.id).notNull(),
+  relationshipType: relationshipTypeEnum("relationship_type").notNull(),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const businessScenariosRelations = relations(businessScenarios, ({ one }) => ({
+  sourceOrganization: one(organizations, {
+    fields: [businessScenarios.sourceOrganizationId],
+    references: [organizations.id],
+    relationName: "sourceBusinessScenarios",
+  }),
+  targetOrganization: one(organizations, {
+    fields: [businessScenarios.targetOrganizationId],
+    references: [organizations.id],
+    relationName: "targetBusinessScenarios",
+  }),
+}));
+
 // ========== Insert Schemas for New Tables ==========
 
 export const insertProjectAssignmentSchema = createInsertSchema(projectAssignments).omit({
@@ -2132,4 +2168,13 @@ export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
 export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
 export type VendorInvoice = typeof vendorInvoices.$inferSelect;
 export type InsertVendorInvoice = z.infer<typeof insertVendorInvoiceSchema>;
+
+export const insertBusinessScenarioSchema = createInsertSchema(businessScenarios).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type BusinessScenario = typeof businessScenarios.$inferSelect;
+export type InsertBusinessScenario = z.infer<typeof insertBusinessScenarioSchema>;
 
