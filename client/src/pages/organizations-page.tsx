@@ -9,10 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { getQueryFn, apiRequest } from "@/lib/queryClient";
 import { useStandardCrud } from "@/lib/cache-manager";
-import { Building, Trash2, Users, History, Edit, User } from "lucide-react";
+import { Building, Trash2, Users, History, Edit, User, Network } from "lucide-react";
 import { Plus } from "lucide-react";
 import OrganizationForm from "@/components/forms/organization-form";
 import AuditHistory from "@/components/ui/audit-history";
+import BusinessScenariosManager from "@/components/business-scenarios-manager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface OrganizationWithDetails {
@@ -254,14 +255,18 @@ export default function OrganizationsPage() {
               
               {editingItem ? (
                 <Tabs defaultValue="details" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="details" className="flex items-center space-x-2">
                       <Building className="h-4 w-4" />
                       <span>Dettagli</span>
                     </TabsTrigger>
+                    <TabsTrigger value="scenarios" className="flex items-center space-x-2">
+                      <Network className="h-4 w-4" />
+                      <span>Scenari</span>
+                    </TabsTrigger>
                     <TabsTrigger value="history" className="flex items-center space-x-2">
                       <History className="h-4 w-4" />
-                      <span>Storico Modifiche</span>
+                      <span>Storico</span>
                     </TabsTrigger>
                   </TabsList>
                   
@@ -276,6 +281,13 @@ export default function OrganizationsPage() {
                         setShowForm(false);
                         setEditingItem(null);
                       }}
+                    />
+                  </TabsContent>
+                  
+                  <TabsContent value="scenarios" className="mt-6">
+                    <BusinessScenariosManager 
+                      organizationId={editingItem.id}
+                      organizationName={editingItem.name}
                     />
                   </TabsContent>
                   
