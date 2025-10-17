@@ -27,6 +27,7 @@ const getDefaultProgettiItems = (t: any) => [
   { id: "prj2", name: "Milestones", href: "/project-milestones", icon: BarChart3, testId: "nav-project-milestones" },
   { id: "prj3", name: "Attività", href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
   { id: "prj4", name: "Assegnazioni", href: "/project-assignments", icon: Users, testId: "nav-project-assignments" },
+  { id: "prj5", name: "Gerarchia", href: "/project-hierarchy", icon: FolderTree, testId: "nav-project-hierarchy" },
 ];
 
 // Soluzioni group

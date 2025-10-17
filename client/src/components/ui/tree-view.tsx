@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +50,11 @@ interface TreeNodeItemProps {
 function TreeNodeItem({ node, level, defaultExpanded, renderNode }: TreeNodeItemProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const hasChildren = node.children && node.children.length > 0;
+
+  // Sync state when defaultExpanded changes (for expand/collapse all)
+  useEffect(() => {
+    setIsExpanded(defaultExpanded);
+  }, [defaultExpanded]);
 
   const toggleExpand = () => {
     if (hasChildren) {
