@@ -43,7 +43,7 @@ const statusColors = {
 type ProjectRelationships = {
   tasks: {
     count: number;
-    items: Array<{id: string; title: string}>;
+    items: Array<{id: string; name: string}>;
   };
   milestones: {
     count: number;
@@ -157,7 +157,6 @@ export default function ProjectsPage() {
     deleteLayout,
     updateExistingLayout,
   } = useTableLayout('projects');
-  const viewMode = layout.viewMode;
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -185,6 +184,13 @@ export default function ProjectsPage() {
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
+
+  // URL filtering for clientId
+  const urlParams = new URLSearchParams(window.location.search);
+  const clientIdFilter = urlParams.get('clientId');
+  const filteredProjects = clientIdFilter 
+    ? projects.filter(p => p.clientId === clientIdFilter)
+    : projects;
 
   const deleteMutation = useMutation({
     mutationFn: async (projectId: string) => {
@@ -513,11 +519,9 @@ export default function ProjectsPage() {
             </div>
           ) : (
             <UniversalTable
-              data={projects}
+              data={filteredProjects}
               columns={columns}
               enableSelection={true}
-              enableSearch={true}
-              searchPlaceholder="Cerca progetti..."
               onSelectionChange={(rows) => setSelectedProjects(rows as Project[])}
               onRowClick={handleEdit}
             />

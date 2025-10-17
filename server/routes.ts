@@ -809,7 +809,7 @@ export function registerRoutes(app: Express): Server {
       // Get tasks count and details
       const tasksList = await db.select({
         id: tasks.id,
-        title: tasks.title,
+        name: tasks.title,
       })
       .from(tasks)
       .where(and(

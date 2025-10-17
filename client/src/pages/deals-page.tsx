@@ -65,7 +65,6 @@ export default function DealsPage() {
     deleteLayout,
     updateExistingLayout,
   } = useTableLayout('deals');
-  const viewMode = layout.viewMode;
 
   const { data: deals = [], isLoading } = useQuery<Deal[]>({
     queryKey: ["/api/deals"],
@@ -75,6 +74,13 @@ export default function DealsPage() {
     refetchOnMount: false, // Use cache if available
     refetchOnWindowFocus: false,
   });
+
+  // URL filtering for partnerId
+  const urlParams = new URLSearchParams(window.location.search);
+  const partnerIdFilter = urlParams.get('partnerId');
+  const filteredDeals = partnerIdFilter 
+    ? deals.filter(d => d.partnerId === partnerIdFilter)
+    : deals;
 
   const deleteMutation = useMutation({
     mutationFn: async (dealId: string) => {
@@ -321,17 +327,14 @@ export default function DealsPage() {
             </div>
           ) : (
             <UniversalTable
-              data={deals}
+              data={filteredDeals}
               columns={columns}
               enableSelection={true}
-              enableSearch={true}
-              searchPlaceholder="Cerca deal..."
               onSelectionChange={(rows) => setSelectedDeals(rows as Deal[])}
               onRowClick={handleEdit}
             />
           )}
-            <div>
-              {activeDeals && activeDeals.length > 0 && (
+          {activeDeals && activeDeals.length > 0 && (
                 <div className="mb-8">
                   <h3 className="text-lg font-semibold text-foreground mb-4">Active Deals</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -451,8 +454,6 @@ export default function DealsPage() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
         </div>
       </main>
       {/* Table Configuration Dialog */}

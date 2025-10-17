@@ -54,6 +54,13 @@ export default function ContactsPage() {
     refetchOnWindowFocus: false,
   });
 
+  // URL filtering for partnerId
+  const urlParams = new URLSearchParams(window.location.search);
+  const partnerIdFilter = urlParams.get('partnerId');
+  const filteredContacts = partnerIdFilter 
+    ? contacts?.filter(c => c.partnerId === partnerIdFilter) || []
+    : contacts || [];
+
   const deleteMutation = useMutation({
     mutationFn: async (contactId: string) => {
       const response = await apiRequest("DELETE", `/api/contacts/${contactId}`);
@@ -248,13 +255,13 @@ export default function ContactsPage() {
             hasSelection={selectedContacts.length > 0}
           />
           
-          {isLoading && (!contacts || contacts.length === 0) ? (
+          {isLoading ? (
             <div className="space-y-4">
               {[...Array(6)].map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : contacts?.length === 0 ? (
+          ) : filteredContacts.length === 0 ? (
             <div className="text-center py-12">
               <ContactIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">Nessun contatto</h3>
@@ -267,7 +274,7 @@ export default function ContactsPage() {
             <DataTable
               key={`contacts-table-${currentLayoutName}-${JSON.stringify(layout.columns)}`}
               columns={tableColumns}
-              data={contacts || []}
+              data={filteredContacts}
               searchPlaceholder="Cerca contatti..."
               onRowClick={handleEdit}
               enableSelection={true}
