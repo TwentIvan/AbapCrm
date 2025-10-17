@@ -34,7 +34,7 @@ export function LayoutControlBox({
   };
 
   return (
-    <div className="flex items-center gap-3 bg-sidebar px-4 py-2 rounded-md">
+    <div className="flex items-center gap-3 bg-sidebar-accent px-4 py-2 rounded-md">
       {/* Nome Layout Attivo */}
       <span className="text-sm font-medium text-sidebar-foreground">
         {currentLayoutName}

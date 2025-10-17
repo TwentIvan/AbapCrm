@@ -49,9 +49,9 @@ export function ListViewToolbar({
   disableDelete = false,
 }: ListViewToolbarProps) {
   return (
-    <div className="grid grid-cols-3 items-center gap-4 mb-4">
-      {/* Left: Layout Control Box */}
-      <div className="flex justify-start">
+    <div className="flex items-center justify-between gap-4 mb-4">
+      {/* Left: Layout Control Box + View Toggle */}
+      <div className="flex items-center gap-3">
         <LayoutControlBox
           currentLayoutName={currentLayoutName}
           savedLayouts={savedLayouts}
@@ -60,15 +60,11 @@ export function ListViewToolbar({
           onDeleteLayout={onDeleteLayout}
           onConfigureTable={onConfigureTable}
         />
-      </div>
-      
-      {/* Center: View Toggle (optional) */}
-      <div className="flex justify-center">
-        {viewToggle}
+        {viewToggle && <div>{viewToggle}</div>}
       </div>
       
       {/* Right: Action Buttons (sempre presenti) */}
-      <div className="flex items-center gap-2 justify-end">
+      <div className="flex items-center gap-2">
         {/* Crea */}
         {onCreateNew && (
           <Button
@@ -76,11 +72,10 @@ export function ListViewToolbar({
             size="sm"
             onClick={onCreateNew}
             disabled={disableCreate}
-            className="h-9 gap-2"
+            className="h-9"
             data-testid="button-create-new"
           >
             <Plus className="h-4 w-4" />
-            Crea
           </Button>
         )}
         
@@ -91,7 +86,7 @@ export function ListViewToolbar({
             size="sm"
             onClick={onCopySelected}
             disabled={!hasSelection || disableCopy}
-            className="h-9 gap-2"
+            className={`h-9 ${hasSelection && !disableCopy ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800' : ''}`}
             data-testid="button-copy-selected"
           >
             <Copy className="h-4 w-4" />
@@ -105,7 +100,7 @@ export function ListViewToolbar({
             size="sm"
             onClick={onBulkEdit}
             disabled={!hasSelection || disableBulkEdit}
-            className="h-9 gap-2"
+            className={`h-9 ${hasSelection && !disableBulkEdit ? 'bg-yellow-50 text-yellow-700 border-yellow-300 hover:bg-yellow-100 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800' : ''}`}
             data-testid="button-bulk-edit"
           >
             <Edit className="h-4 w-4" />
@@ -119,7 +114,7 @@ export function ListViewToolbar({
             size="sm"
             onClick={onDeleteSelected}
             disabled={!hasSelection || disableDelete}
-            className="h-9 gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+            className={`h-9 ${hasSelection && !disableDelete ? 'bg-red-50 text-red-700 border-red-300 hover:bg-red-100 dark:bg-red-950 dark:text-red-400 dark:border-red-800' : ''}`}
             data-testid="button-delete-selected"
           >
             <Trash2 className="h-4 w-4" />
