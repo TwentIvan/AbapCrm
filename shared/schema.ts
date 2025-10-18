@@ -2128,6 +2128,245 @@ export const businessScenariosRelations = relations(businessScenarios, ({ one })
   }),
 }));
 
+// ========================================
+// METADATA SYSTEM - Custom Fields & Entities
+// ========================================
+
+export const fieldTypeEnum = pgEnum("field_type", [
+  "text", "number", "date", "boolean", "select", "relation"
+]);
+
+export const fieldStatusEnum = pgEnum("field_status", [
+  "active", "retired"
+]);
+
+// Custom Entities - User-defined or system entities with extensibility
+export const customEntities = pgTable("custom_entities", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  name: text("name").notNull(), // Display name
+  slug: text("slug").notNull(), // Unique identifier (projects, tasks, custom_inventory, etc.)
+  description: text("description"),
+  baseTable: text("base_table"), // If extending a system table (e.g., "projects", "tasks")
+  isSystem: boolean("is_system").default(false).notNull(), // True for core entities (non-deletable)
+  icon: text("icon"), // Lucide icon name
+  color: text("color"), // Hex color
+  config: jsonb("config"), // Additional entity configuration
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueSlugPerOrg: uniqueIndex("custom_entities_org_slug_idx").on(table.organizationId, table.slug),
+}));
+
+// Custom Fields - User-defined fields for entities
+export const customFields = pgTable("custom_fields", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  entityId: uuid("entity_id").references(() => customEntities.id).notNull(),
+  fieldKey: text("field_key").notNull(), // Unique identifier within entity
+  label: text("label").notNull(), // Display label
+  description: text("description"),
+  fieldType: fieldTypeEnum("field_type").notNull(),
+  isRequired: boolean("is_required").default(false).notNull(),
+  isUnique: boolean("is_unique").default(false).notNull(),
+  defaultValue: jsonb("default_value"), // Default value for new records
+  validationRules: jsonb("validation_rules"), // {min, max, pattern, minLength, maxLength, etc}
+  options: jsonb("options"), // For select type: [{value, label}]
+  relationTargetEntityId: uuid("relation_target_entity_id").references(() => customEntities.id), // For relation type
+  uiSchema: jsonb("ui_schema"), // {placeholder, helpText, width, order, section}
+  status: fieldStatusEnum("status").default("active").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueFieldKeyPerEntity: uniqueIndex("custom_fields_entity_key_idx").on(table.entityId, table.fieldKey),
+}));
+
+// Custom Field Mappings - Link custom fields to existing system table columns
+export const customFieldMappings = pgTable("custom_field_mappings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  customFieldId: uuid("custom_field_id").references(() => customFields.id).notNull(),
+  systemTable: text("system_table").notNull(), // e.g., "projects", "tasks"
+  systemColumn: text("system_column").notNull(), // e.g., "description", "status"
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Custom Records - Storage for fully custom entities (not extending system tables)
+export const customRecords = pgTable("custom_records", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  entityId: uuid("entity_id").references(() => customEntities.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  recordId: uuid("record_id").notNull(), // UUID for the custom record
+  data: jsonb("data").notNull(), // All field values in JSONB: {fieldKey: {value, display, metadata}}
+  version: integer("version").default(1).notNull(), // For optimistic locking
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  entityRecordIdx: index("custom_records_entity_record_idx").on(table.entityId, table.recordId),
+}));
+
+// Custom Record Relations - Storage for relation-type fields
+export const customRecordRelations = pgTable("custom_record_relations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  sourceEntityId: uuid("source_entity_id").references(() => customEntities.id).notNull(),
+  sourceRecordId: uuid("source_record_id").notNull(),
+  fieldId: uuid("field_id").references(() => customFields.id).notNull(),
+  targetEntityId: uuid("target_entity_id").references(() => customEntities.id).notNull(),
+  targetRecordId: uuid("target_record_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  sourceIdx: index("custom_record_relations_source_idx").on(table.sourceEntityId, table.sourceRecordId, table.fieldId),
+  targetIdx: index("custom_record_relations_target_idx").on(table.targetEntityId, table.targetRecordId),
+}));
+
+// Entity Custom Values - Storage for custom field values on core/system entities
+export const entityCustomValues = pgTable("entity_custom_values", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  entityKey: text("entity_key").notNull(), // "projects", "tasks", etc.
+  recordId: uuid("record_id").notNull(), // ID of the record in the entity table
+  fieldId: uuid("field_id").references(() => customFields.id).notNull(),
+  fieldKey: text("field_key").notNull(), // Denormalized for query performance
+  value: jsonb("value").notNull(), // {value, display, metadata}
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  entityRecordIdx: index("entity_custom_values_entity_record_idx").on(table.entityKey, table.recordId),
+  fieldIdx: index("entity_custom_values_field_idx").on(table.fieldId),
+}));
+
+// ========================================
+// WORKFLOW SYSTEM - Event-Driven Automations
+// ========================================
+
+export const triggerTypeEnum = pgEnum("trigger_type", [
+  "onCreate", "onUpdate", "onDelete", "onFieldChange"
+]);
+
+export const workflowStatusEnum = pgEnum("workflow_status", [
+  "draft", "active", "inactive", "error"
+]);
+
+export const workflowRunStatusEnum = pgEnum("workflow_run_status", [
+  "pending", "running", "completed", "failed", "cancelled"
+]);
+
+export const actionTypeEnum = pgEnum("action_type", [
+  "createRecord", "updateRecord", "deleteRecord", "sendEmail", "sendNotification", "callWebhook"
+]);
+
+// Workflow Definitions - User-configured automation rules
+export const workflowDefinitions = pgTable("workflow_definitions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  triggerType: triggerTypeEnum("trigger_type").notNull(),
+  triggerEntityId: uuid("trigger_entity_id").references(() => customEntities.id).notNull(),
+  conditions: jsonb("conditions").notNull(), // {operator: 'AND', rules: [{field, operator, value}]}
+  actions: jsonb("actions").notNull(), // [{type, config: {...}}]
+  status: workflowStatusEnum("status").default("draft").notNull(),
+  version: integer("version").default(1).notNull(),
+  executionOrder: integer("execution_order").default(0).notNull(), // For multiple workflows on same trigger
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  triggerEntityIdx: index("workflow_definitions_trigger_entity_idx").on(table.triggerEntityId, table.status),
+}));
+
+// Workflow Runs - Execution history
+export const workflowRuns = pgTable("workflow_runs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowDefinitionId: uuid("workflow_definition_id").references(() => workflowDefinitions.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  triggerRecordId: uuid("trigger_record_id").notNull(), // Record that triggered the workflow
+  status: workflowRunStatusEnum("status").default("pending").notNull(),
+  context: jsonb("context").notNull(), // {record, oldRecord, user, organization, trigger}
+  error: text("error"), // Error message if failed
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  finishedAt: timestamp("finished_at"),
+}, (table) => ({
+  workflowIdx: index("workflow_runs_workflow_idx").on(table.workflowDefinitionId, table.status),
+}));
+
+// Workflow Action Logs - Individual action execution logs
+export const workflowActionLogs = pgTable("workflow_action_logs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowRunId: uuid("workflow_run_id").references(() => workflowRuns.id).notNull(),
+  actionType: actionTypeEnum("action_type").notNull(),
+  actionConfig: jsonb("action_config").notNull(), // The action configuration
+  status: text("status").notNull(), // success, failed
+  result: jsonb("result"), // Result data
+  error: text("error"), // Error message if failed
+  executedAt: timestamp("executed_at").defaultNow().notNull(),
+});
+
+// ========================================
+// PERMISSION SYSTEM - Role-Based Access Control
+// ========================================
+
+// Custom Roles - User-defined roles with inheritance
+export const customRoles = pgTable("custom_roles", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  name: text("name").notNull(), // e.g., "Project Manager", "Accountant"
+  description: text("description"),
+  inheritsFromRoleId: uuid("inherits_from_role_id"), // Self-reference for role inheritance
+  systemRole: organizationRoleEnum("system_role"), // Link to system role (owner, admin, member, viewer)
+  priority: integer("priority").default(0).notNull(), // Higher priority = more permissions
+  isSystem: boolean("is_system").default(false).notNull(), // True for default roles (non-deletable)
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueNamePerOrg: uniqueIndex("custom_roles_org_name_idx").on(table.organizationId, table.name),
+}));
+
+// Role Entity Permissions - CRUD permissions per entity
+export const roleEntityPermissions = pgTable("role_entity_permissions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  roleId: uuid("role_id").references(() => customRoles.id).notNull(),
+  entityId: uuid("entity_id").references(() => customEntities.id).notNull(),
+  canCreate: boolean("can_create").default(false).notNull(),
+  canRead: boolean("can_read").default(false).notNull(),
+  canUpdate: boolean("can_update").default(false).notNull(),
+  canDelete: boolean("can_delete").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueRoleEntity: uniqueIndex("role_entity_permissions_role_entity_idx").on(table.roleId, table.entityId),
+}));
+
+// Role Field Permissions - Field-level view/edit permissions
+export const roleFieldPermissions = pgTable("role_field_permissions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  roleId: uuid("role_id").references(() => customRoles.id).notNull(),
+  entityId: uuid("entity_id").references(() => customEntities.id).notNull(),
+  fieldId: uuid("field_id").references(() => customFields.id).notNull(),
+  canViewField: boolean("can_view_field").default(false).notNull(),
+  canEditField: boolean("can_edit_field").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueRoleField: uniqueIndex("role_field_permissions_role_field_idx").on(table.roleId, table.fieldId),
+}));
+
+// User Custom Roles - Assignment of users to custom roles
+export const userCustomRoles = pgTable("user_custom_roles", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  roleId: uuid("role_id").references(() => customRoles.id).notNull(),
+  assignedBy: uuid("assigned_by").references(() => users.id).notNull(),
+  assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueUserOrgRole: uniqueIndex("user_custom_roles_user_org_role_idx").on(table.userId, table.organizationId, table.roleId),
+}));
+
 // ========== Insert Schemas for New Tables ==========
 
 export const insertProjectAssignmentSchema = createInsertSchema(projectAssignments).omit({
@@ -2177,4 +2416,112 @@ export const insertBusinessScenarioSchema = createInsertSchema(businessScenarios
 
 export type BusinessScenario = typeof businessScenarios.$inferSelect;
 export type InsertBusinessScenario = z.infer<typeof insertBusinessScenarioSchema>;
+
+// ========== Insert Schemas & Types for Metadata System ==========
+
+export const insertCustomEntitySchema = createInsertSchema(customEntities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCustomFieldSchema = createInsertSchema(customFields).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCustomFieldMappingSchema = createInsertSchema(customFieldMappings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCustomRecordSchema = createInsertSchema(customRecords).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCustomRecordRelationSchema = createInsertSchema(customRecordRelations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertEntityCustomValueSchema = createInsertSchema(entityCustomValues).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type CustomEntity = typeof customEntities.$inferSelect;
+export type InsertCustomEntity = z.infer<typeof insertCustomEntitySchema>;
+export type CustomField = typeof customFields.$inferSelect;
+export type InsertCustomField = z.infer<typeof insertCustomFieldSchema>;
+export type CustomFieldMapping = typeof customFieldMappings.$inferSelect;
+export type InsertCustomFieldMapping = z.infer<typeof insertCustomFieldMappingSchema>;
+export type CustomRecord = typeof customRecords.$inferSelect;
+export type InsertCustomRecord = z.infer<typeof insertCustomRecordSchema>;
+export type CustomRecordRelation = typeof customRecordRelations.$inferSelect;
+export type InsertCustomRecordRelation = z.infer<typeof insertCustomRecordRelationSchema>;
+export type EntityCustomValue = typeof entityCustomValues.$inferSelect;
+export type InsertEntityCustomValue = z.infer<typeof insertEntityCustomValueSchema>;
+
+// ========== Insert Schemas & Types for Workflow System ==========
+
+export const insertWorkflowDefinitionSchema = createInsertSchema(workflowDefinitions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWorkflowRunSchema = createInsertSchema(workflowRuns).omit({
+  id: true,
+  startedAt: true,
+});
+
+export const insertWorkflowActionLogSchema = createInsertSchema(workflowActionLogs).omit({
+  id: true,
+  executedAt: true,
+});
+
+export type WorkflowDefinition = typeof workflowDefinitions.$inferSelect;
+export type InsertWorkflowDefinition = z.infer<typeof insertWorkflowDefinitionSchema>;
+export type WorkflowRun = typeof workflowRuns.$inferSelect;
+export type InsertWorkflowRun = z.infer<typeof insertWorkflowRunSchema>;
+export type WorkflowActionLog = typeof workflowActionLogs.$inferSelect;
+export type InsertWorkflowActionLog = z.infer<typeof insertWorkflowActionLogSchema>;
+
+// ========== Insert Schemas & Types for Permission System ==========
+
+export const insertCustomRoleSchema = createInsertSchema(customRoles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRoleEntityPermissionSchema = createInsertSchema(roleEntityPermissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRoleFieldPermissionSchema = createInsertSchema(roleFieldPermissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserCustomRoleSchema = createInsertSchema(userCustomRoles).omit({
+  id: true,
+  assignedAt: true,
+});
+
+export type CustomRole = typeof customRoles.$inferSelect;
+export type InsertCustomRole = z.infer<typeof insertCustomRoleSchema>;
+export type RoleEntityPermission = typeof roleEntityPermissions.$inferSelect;
+export type InsertRoleEntityPermission = z.infer<typeof insertRoleEntityPermissionSchema>;
+export type RoleFieldPermission = typeof roleFieldPermissions.$inferSelect;
+export type InsertRoleFieldPermission = z.infer<typeof insertRoleFieldPermissionSchema>;
+export type UserCustomRole = typeof userCustomRoles.$inferSelect;
+export type InsertUserCustomRole = z.infer<typeof insertUserCustomRoleSchema>;
 
