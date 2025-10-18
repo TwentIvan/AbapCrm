@@ -24,6 +24,7 @@ import { Project, Partner, SapSystem } from "@shared/schema";
 import { RelationshipBadge } from "@/components/ui/relationship-badge";
 import { SapPasteJsonDialog } from "@/components/dialogs/sap-paste-json-dialog";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
+import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
 import { downloadZTHUDocumentationShortcut } from "@/lib/sap-shortcut";
 import ProjectForm from "@/components/forms/project-form";
 import ProjectFormContainer from "@/components/forms/project-form-container";
@@ -137,6 +138,7 @@ export default function ProjectsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
+  const [showBulkCopyDialog, setShowBulkCopyDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showPlanner, setShowPlanner] = useState(false);
@@ -239,6 +241,30 @@ export default function ProjectsPage() {
       toast({
         title: "Progetti aggiornati",
         description: "I progetti selezionati sono stati aggiornati con successo.",
+      });
+    },
+  });
+
+  const bulkCopyMutation = useMutation({
+    mutationFn: async ({ projects, addSuffix, suffix }: { projects: Project[], addSuffix: boolean, suffix: string }) => {
+      await Promise.all(
+        projects.map(project => {
+          const { id, createdAt, updatedAt, userId, organizationId, ...projectData } = project;
+          const newProject = {
+            ...projectData,
+            name: addSuffix ? `${project.name}${suffix}` : project.name,
+          };
+          return apiRequest("POST", "/api/projects", newProject);
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      setSelectedProjects([]);
+      setShowBulkCopyDialog(false);
+      toast({
+        title: "Progetti copiati",
+        description: "I progetti selezionati sono stati copiati con successo.",
       });
     },
   });
@@ -416,6 +442,10 @@ export default function ProjectsPage() {
     bulkEditMutation.mutate({ projects: selectedProjects, updates });
   };
 
+  const handleBulkCopy = ({ addSuffix, suffix }: { addSuffix: boolean; suffix: string }) => {
+    bulkCopyMutation.mutate({ projects: selectedProjects, addSuffix, suffix });
+  };
+
   const formatBudget = (budget: string | null) => {
     if (!budget) return "N/A";
     const amount = parseFloat(budget);
@@ -561,7 +591,7 @@ export default function ProjectsPage() {
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={handleAdd}
-            onCopySelected={() => {/* TODO: implement copy */}}
+            onCopySelected={() => setShowBulkCopyDialog(true)}
             onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => handleDelete(selectedProjects)}
             hasSelection={selectedProjects.length > 0}
@@ -689,6 +719,17 @@ export default function ProjectsPage() {
         open={showSapPasteDialog} 
         onOpenChange={setShowSapPasteDialog}
         projectId={selectedProjectForSap?.id}
+      />
+
+      {/* Bulk Copy Dialog */}
+      <BulkCopyDialog
+        open={showBulkCopyDialog}
+        onOpenChange={setShowBulkCopyDialog}
+        title="Copia Progetti"
+        description="Crea copie dei"
+        selectedCount={selectedProjects.length}
+        onCopy={handleBulkCopy}
+        isPending={bulkCopyMutation.isPending}
       />
 
       {/* Table Configuration Dialog */}
