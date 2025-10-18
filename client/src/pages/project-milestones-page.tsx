@@ -20,6 +20,7 @@ import { it } from "date-fns/locale";
 import { ProjectMilestone, Project, Task } from "@shared/schema";
 import ProjectMilestoneForm from "@/components/forms/project-milestone-form";
 import { GanttChart } from "@/components/ui/gantt-chart";
+import { RelationshipLink } from "@/components/ui/relationship-link";
 
 export default function ProjectMilestonesPage() {
   const [viewMode, setViewMode] = useState<"table" | "gantt">("table");
@@ -162,7 +163,19 @@ export default function ProjectMilestonesPage() {
       searchable: true,
       render: (milestone: ProjectMilestone) => {
         const project = projects.find(p => p.id === milestone.projectId);
-        return project?.name || "-";
+        return project ? (
+          <div className="flex items-center gap-2">
+            <span>{project.name}</span>
+            <RelationshipLink
+              entityType="project"
+              entityId={project.id}
+              targetPath="/projects"
+              label={`Vai a ${project.name}`}
+              variant="ghost"
+              size="icon"
+            />
+          </div>
+        ) : "-";
       }
     },
     {
