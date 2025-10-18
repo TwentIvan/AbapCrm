@@ -139,35 +139,30 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
       
       {/* Main Header with Logo Pattern Background */}
       <div className="px-6 py-4 flex items-center justify-between relative overflow-hidden">
-        {/* Pattern con loghi HTU sfumati - disposti senza sovrapposizioni */}
+        {/* Pattern con loghi HTU molto sfumati - ben distanziati senza sovrapposizioni */}
         <div className="absolute inset-0">
-          {/* Loghi molto grandi (sfumati) - posizionati per evitare sovrapposizioni */}
-          <img src={htuLogo} alt="" className="absolute opacity-7" style={{ width: '160px', top: '-25%', left: '2%', transform: 'rotate(-20deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-8" style={{ width: '140px', top: '45%', left: '18%', transform: 'rotate(15deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-9" style={{ width: '150px', top: '-20%', left: '38%', transform: 'rotate(-25deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-10" style={{ width: '130px', top: '50%', left: '55%', transform: 'rotate(30deg)' }} />
+          {/* Loghi molto grandi (molto sfumati) */}
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '160px', top: '-30%', left: '1%', transform: 'rotate(-20deg)', opacity: 0.05 }} />
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '150px', top: '-25%', left: '65%', transform: 'rotate(25deg)', opacity: 0.06 }} />
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '140px', top: '55%', left: '22%', transform: 'rotate(-15deg)', opacity: 0.07 }} />
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '155px', top: '50%', left: '82%', transform: 'rotate(18deg)', opacity: 0.08 }} />
           
-          {/* Loghi grandi - distanziati */}
-          <img src={htuLogo} alt="" className="absolute opacity-12" style={{ width: '100px', top: '15%', left: '24%', transform: 'rotate(-15deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-11" style={{ width: '110px', top: '-15%', left: '62%', transform: 'rotate(25deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-13" style={{ width: '95px', top: '25%', left: '78%', transform: 'rotate(-30deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-12" style={{ width: '105px', top: '60%', left: '88%', transform: 'rotate(10deg)' }} />
+          {/* Loghi grandi (sfumati) */}
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '110px', top: '5%', left: '30%', transform: 'rotate(-25deg)', opacity: 0.08 }} />
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '105px', top: '68%', left: '55%', transform: 'rotate(22deg)', opacity: 0.09 }} />
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '100px', top: '22%', left: '85%', transform: 'rotate(-12deg)', opacity: 0.10 }} />
           
-          {/* Loghi medi - riempimento spazi vuoti */}
-          <img src={htuLogo} alt="" className="absolute opacity-15" style={{ width: '70px', top: '5%', left: '12%', transform: 'rotate(-25deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-14" style={{ width: '75px', top: '72%', left: '8%', transform: 'rotate(15deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-16" style={{ width: '65px', top: '35%', left: '42%', transform: 'rotate(-35deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-15" style={{ width: '72px', top: '10%', left: '48%', transform: 'rotate(25deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-17" style={{ width: '68px', top: '75%', left: '70%', transform: 'rotate(-15deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-14" style={{ width: '74px', top: '45%', left: '95%', transform: 'rotate(30deg)' }} />
+          {/* Loghi medi (sfumati) */}
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '75px', top: '35%', left: '10%', transform: 'rotate(28deg)', opacity: 0.09 }} />
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '70px', top: '8%', left: '48%', transform: 'rotate(-18deg)', opacity: 0.10 }} />
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '72px', top: '75%', left: '8%', transform: 'rotate(15deg)', opacity: 0.11 }} />
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '68px', top: '42%', left: '70%', transform: 'rotate(-30deg)', opacity: 0.12 }} />
           
-          {/* Loghi piccoli - negli spazi rimanenti */}
-          <img src={htuLogo} alt="" className="absolute opacity-18" style={{ width: '50px', top: '55%', left: '5%', transform: 'rotate(-20deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-20" style={{ width: '45px', top: '25%', left: '32%', transform: 'rotate(18deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-19" style={{ width: '48px', top: '82%', left: '38%', transform: 'rotate(-28deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-18" style={{ width: '42px', top: '58%', left: '48%', transform: 'rotate(12deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-20" style={{ width: '46px', top: '8%', left: '85%', transform: 'rotate(-18deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-19" style={{ width: '44px', top: '32%', left: '68%', transform: 'rotate(22deg)' }} />
+          {/* Loghi piccoli (leggermente sfumati) */}
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '50px', top: '15%', left: '15%', transform: 'rotate(-22deg)', opacity: 0.12 }} />
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '48px', top: '58%', left: '45%', transform: 'rotate(20deg)', opacity: 0.13 }} />
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '52px', top: '28%', left: '60%', transform: 'rotate(-16deg)', opacity: 0.14 }} />
+          <img src={htuLogo} alt="" style={{ position: 'absolute', width: '46px', top: '82%', left: '72%', transform: 'rotate(25deg)', opacity: 0.15 }} />
         </div>
         
         {/* Content above background */}
