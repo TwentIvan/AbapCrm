@@ -247,13 +247,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 onMouseLeave={() => setHoveredButton(null)}
                 data-testid="button-proposals"
               >
-                <div className="relative flex flex-col items-end">
-                  <div className="flex items-baseline space-x-0">
-                    <span className="text-lg font-black text-blue-600 dark:text-blue-400">T</span>
-                    <span className="text-2xl font-black text-blue-500 dark:text-blue-300">H</span>
-                    <span className="text-2xl font-black text-blue-600 dark:text-blue-400">U</span>
+                <div className="relative flex items-center">
+                  <div className="flex items-baseline space-x-0.5">
+                    <span className="text-base font-black text-blue-600 dark:text-blue-400">THE</span>
+                    <span className="text-base font-black text-blue-800 dark:text-blue-600 ml-1">HUB</span>
+                    <span className="text-base font-black text-cyan-400 dark:text-cyan-300 ml-1">UP</span>
                   </div>
-                  <span className="text-xs font-bold text-purple-500 dark:text-purple-400 -mt-1">AI</span>
                   {(pendingProposals?.count ?? 0) > 0 && (
                     <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                       {(pendingProposals?.count ?? 0) > 9 ? '9+' : pendingProposals?.count}
