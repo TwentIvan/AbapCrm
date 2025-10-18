@@ -5,7 +5,7 @@ import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact } from "lucide-react";
 import { cn } from "@/lib/utils";
-import newLogo from "@assets/thu solo logo_1757017376100.jpg";
+import newLogo from "@assets/ChatGPT Image 17 ott 2025, 22_22_58_1760756212877.png";
 import ImageContainer from "@/components/ui/image-container";
 
 // Anagrafiche direct items
