@@ -229,7 +229,7 @@ export default function ProjectsPage() {
   const bulkEditMutation = useMutation({
     mutationFn: async ({ projects, updates }: { projects: Project[], updates: Record<string, any> }) => {
       await Promise.all(
-        projects.map(project => apiRequest("PATCH", `/api/projects/${project.id}`, updates))
+        projects.map(project => apiRequest("PUT", `/api/projects/${project.id}`, updates))
       );
     },
     onSuccess: () => {
