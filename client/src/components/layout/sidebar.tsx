@@ -5,7 +5,7 @@ import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact } from "lucide-react";
 import { cn } from "@/lib/utils";
-import newLogo from "@assets/generated_images/hub_up_logo.png";
+import newLogo from "@assets/generated_images/HTU_transparent_logo_clean_a1e7a44c.png";
 import ImageContainer from "@/components/ui/image-container";
 
 // Anagrafiche direct items
