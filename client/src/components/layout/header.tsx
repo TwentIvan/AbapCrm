@@ -132,7 +132,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           {' '}
           <span className="text-3xl text-blue-800 dark:text-blue-600">HUB</span>
           {' '}
-          <span className="text-3xl text-cyan-400 dark:text-cyan-300">UP</span>
+          <span className="text-3xl text-blue-400 dark:text-blue-300">UP</span>
         </h1>
       </div>
       
