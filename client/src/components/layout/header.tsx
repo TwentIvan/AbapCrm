@@ -139,48 +139,35 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
       
       {/* Main Header with Logo Pattern Background */}
       <div className="px-6 py-4 flex items-center justify-between relative overflow-hidden">
-        {/* Pattern con loghi HTU sfumati - molto fitti e disposti in modo irregolare */}
+        {/* Pattern con loghi HTU sfumati - disposti senza sovrapposizioni */}
         <div className="absolute inset-0">
-          {/* Loghi molto grandi (sfumati) */}
-          <img src={htuLogo} alt="" className="absolute opacity-8" style={{ width: '140px', top: '-10%', left: '15%', transform: 'rotate(-20deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-10" style={{ width: '160px', top: '30%', left: '45%', transform: 'rotate(15deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-7" style={{ width: '130px', top: '-15%', left: '70%', transform: 'rotate(-25deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-9" style={{ width: '150px', top: '40%', left: '85%', transform: 'rotate(30deg)' }} />
+          {/* Loghi molto grandi (sfumati) - posizionati per evitare sovrapposizioni */}
+          <img src={htuLogo} alt="" className="absolute opacity-7" style={{ width: '160px', top: '-25%', left: '2%', transform: 'rotate(-20deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-8" style={{ width: '140px', top: '45%', left: '18%', transform: 'rotate(15deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-9" style={{ width: '150px', top: '-20%', left: '38%', transform: 'rotate(-25deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-10" style={{ width: '130px', top: '50%', left: '55%', transform: 'rotate(30deg)' }} />
           
-          {/* Loghi grandi */}
-          <img src={htuLogo} alt="" className="absolute opacity-12" style={{ width: '100px', top: '8%', left: '3%', transform: 'rotate(-15deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-14" style={{ width: '110px', top: '55%', left: '8%', transform: 'rotate(25deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-11" style={{ width: '95px', top: '25%', left: '25%', transform: 'rotate(-30deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-13" style={{ width: '105px', top: '70%', left: '32%', transform: 'rotate(10deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-12" style={{ width: '100px', top: '15%', left: '52%', transform: 'rotate(-20deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-15" style={{ width: '115px', top: '60%', left: '58%', transform: 'rotate(35deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-11" style={{ width: '95px', top: '5%', left: '78%', transform: 'rotate(-10deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-13" style={{ width: '105px', top: '48%', left: '92%', transform: 'rotate(20deg)' }} />
+          {/* Loghi grandi - distanziati */}
+          <img src={htuLogo} alt="" className="absolute opacity-12" style={{ width: '100px', top: '15%', left: '24%', transform: 'rotate(-15deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-11" style={{ width: '110px', top: '-15%', left: '62%', transform: 'rotate(25deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-13" style={{ width: '95px', top: '25%', left: '78%', transform: 'rotate(-30deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-12" style={{ width: '105px', top: '60%', left: '88%', transform: 'rotate(10deg)' }} />
           
-          {/* Loghi medi */}
-          <img src={htuLogo} alt="" className="absolute opacity-15" style={{ width: '70px', top: '35%', left: '6%', transform: 'rotate(-25deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-18" style={{ width: '75px', top: '12%', left: '18%', transform: 'rotate(15deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-14" style={{ width: '65px', top: '62%', left: '22%', transform: 'rotate(-35deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-16" style={{ width: '72px', top: '42%', left: '35%', transform: 'rotate(25deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-15" style={{ width: '68px', top: '18%', left: '40%', transform: 'rotate(-15deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-17" style={{ width: '74px', top: '75%', left: '48%', transform: 'rotate(30deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-14" style={{ width: '66px', top: '32%', left: '62%', transform: 'rotate(-20deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-16" style={{ width: '71px', top: '8%', left: '68%', transform: 'rotate(18deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-15" style={{ width: '69px', top: '52%', left: '75%', transform: 'rotate(-28deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-17" style={{ width: '73px', top: '22%', left: '88%', transform: 'rotate(12deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-14" style={{ width: '67px', top: '68%', left: '95%', transform: 'rotate(-18deg)' }} />
+          {/* Loghi medi - riempimento spazi vuoti */}
+          <img src={htuLogo} alt="" className="absolute opacity-15" style={{ width: '70px', top: '5%', left: '12%', transform: 'rotate(-25deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-14" style={{ width: '75px', top: '72%', left: '8%', transform: 'rotate(15deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-16" style={{ width: '65px', top: '35%', left: '42%', transform: 'rotate(-35deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-15" style={{ width: '72px', top: '10%', left: '48%', transform: 'rotate(25deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-17" style={{ width: '68px', top: '75%', left: '70%', transform: 'rotate(-15deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-14" style={{ width: '74px', top: '45%', left: '95%', transform: 'rotate(30deg)' }} />
           
-          {/* Loghi piccoli (più fitti) */}
-          <img src={htuLogo} alt="" className="absolute opacity-20" style={{ width: '45px', top: '20%', left: '10%', transform: 'rotate(-32deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-18" style={{ width: '50px', top: '48%', left: '14%', transform: 'rotate(22deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-19" style={{ width: '42px', top: '78%', left: '19%', transform: 'rotate(-15deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-20" style={{ width: '48px', top: '5%', left: '28%', transform: 'rotate(28deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-18" style={{ width: '44px', top: '58%', left: '38%', transform: 'rotate(-22deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-19" style={{ width: '46px', top: '28%', left: '55%', transform: 'rotate(16deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-20" style={{ width: '43px', top: '82%', left: '65%', transform: 'rotate(-26deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-18" style={{ width: '49px', top: '38%', left: '72%', transform: 'rotate(24deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-19" style={{ width: '41px', top: '14%', left: '82%', transform: 'rotate(-12deg)' }} />
-          <img src={htuLogo} alt="" className="absolute opacity-20" style={{ width: '47px', top: '65%', left: '90%', transform: 'rotate(32deg)' }} />
+          {/* Loghi piccoli - negli spazi rimanenti */}
+          <img src={htuLogo} alt="" className="absolute opacity-18" style={{ width: '50px', top: '55%', left: '5%', transform: 'rotate(-20deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-20" style={{ width: '45px', top: '25%', left: '32%', transform: 'rotate(18deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-19" style={{ width: '48px', top: '82%', left: '38%', transform: 'rotate(-28deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-18" style={{ width: '42px', top: '58%', left: '48%', transform: 'rotate(12deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-20" style={{ width: '46px', top: '8%', left: '85%', transform: 'rotate(-18deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-19" style={{ width: '44px', top: '32%', left: '68%', transform: 'rotate(22deg)' }} />
         </div>
         
         {/* Content above background */}
