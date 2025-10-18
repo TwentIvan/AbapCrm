@@ -3,6 +3,7 @@ import { useParams } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
+import { useReadOnlyMode } from "@/hooks/use-readonly-mode";
 import FormContainer, { useFormRouting } from "./form-container";
 import ProjectForm from "./project-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,6 +34,9 @@ export default function ProjectFormContainer({
   
   // Form routing
   const { routes, navigation, currentRoute } = useFormRouting("/projects", params.id);
+  
+  // Read-only mode (from URL parameter)
+  const { isReadOnly, enableEdit } = useReadOnlyMode();
   
   // For full-page mode, fetch project data from route params
   const { data: fullPageProject } = useQuery({
@@ -88,6 +92,8 @@ export default function ProjectFormContainer({
       description={description}
       fullPageRoute={isEditing ? routes.edit((project as Project)?.id || "") : routes.create}
       maxWidth="max-w-4xl"
+      isReadOnly={isReadOnly}
+      onToggleReadOnly={isEditing ? enableEdit : undefined}
     >
       {isEditing ? (
         // Editing mode with tabs (details, messages, history)
@@ -111,6 +117,7 @@ export default function ProjectFormContainer({
             <ProjectForm 
               project={project as Project}
               onSuccess={handleSuccess}
+              isReadOnly={isReadOnly}
             />
           </TabsContent>
           

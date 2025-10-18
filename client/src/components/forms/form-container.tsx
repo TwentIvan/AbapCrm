@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Maximize2, Minimize2, X } from "lucide-react";
+import { ArrowLeft, Maximize2, Minimize2, X, Edit, Eye } from "lucide-react";
 
 interface FormContainerProps {
   // Dialog mode props
@@ -27,6 +27,10 @@ interface FormContainerProps {
   // Mode detection
   mode?: "dialog" | "page" | "auto"; // auto detects based on route
   
+  // Read-only mode
+  isReadOnly?: boolean;
+  onToggleReadOnly?: () => void;
+  
   // Additional props
   maxWidth?: string;
   showModeToggle?: boolean;
@@ -40,6 +44,8 @@ export default function FormContainer({
   children,
   fullPageRoute,
   mode = "auto",
+  isReadOnly = false,
+  onToggleReadOnly,
   maxWidth = "max-w-4xl",
   showModeToggle = true,
 }: FormContainerProps) {
@@ -87,15 +93,39 @@ export default function FormContainer({
               )}
             </div>
             
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={switchToDialog}
-              data-testid="button-close"
-              title="Chiudi"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {onToggleReadOnly && (
+                <Button 
+                  variant={isReadOnly ? "default" : "outline"} 
+                  size="sm"
+                  onClick={onToggleReadOnly}
+                  data-testid="button-toggle-readonly"
+                  title={isReadOnly ? "Attiva modifica" : "Visualizza senza modificare"}
+                >
+                  {isReadOnly ? (
+                    <>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Modifica
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Solo visualizzazione
+                    </>
+                  )}
+                </Button>
+              )}
+              
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={switchToDialog}
+                data-testid="button-close"
+                title="Chiudi"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           
           <Card className={`${maxWidth} mx-auto`}>
@@ -123,17 +153,41 @@ export default function FormContainer({
               )}
             </div>
             
-            {showModeToggle && fullPageRoute && (
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={switchToFullPage}
-                data-testid="button-maximize"
-                title="Apri a schermo intero"
-              >
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {onToggleReadOnly && (
+                <Button 
+                  variant={isReadOnly ? "default" : "outline"} 
+                  size="sm"
+                  onClick={onToggleReadOnly}
+                  data-testid="button-toggle-readonly"
+                  title={isReadOnly ? "Attiva modifica" : "Visualizza senza modificare"}
+                >
+                  {isReadOnly ? (
+                    <>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Modifica
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Solo visualizzazione
+                    </>
+                  )}
+                </Button>
+              )}
+              
+              {showModeToggle && fullPageRoute && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={switchToFullPage}
+                  data-testid="button-maximize"
+                  title="Apri a schermo intero"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </DialogHeader>
         
