@@ -32,9 +32,10 @@ type FormData = z.infer<typeof formSchema>;
 interface ProjectFormProps {
   project?: Project;
   onSuccess?: () => void;
+  isReadOnly?: boolean;
 }
 
-export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
+export default function ProjectForm({ project, onSuccess, isReadOnly = false }: ProjectFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -126,7 +127,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             <FormItem>
               <FormLabel>Nome Progetto</FormLabel>
               <FormControl>
-                <Input {...field} data-testid="input-project-name" placeholder="Inserisci nome progetto" />
+                <Input {...field} disabled={isReadOnly} data-testid="input-project-name" placeholder="Inserisci nome progetto" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -143,6 +144,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                 <Textarea 
                   {...field} 
                   value={field.value || ""}
+                  disabled={isReadOnly}
                   data-testid="input-project-description"
                   placeholder="Descrivi il progetto..."
                   rows={3}
@@ -160,7 +162,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Stato</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isReadOnly}>
                   <FormControl>
                     <SelectTrigger data-testid="select-project-status">
                       <SelectValue placeholder="Seleziona stato" />
@@ -185,7 +187,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Cliente (Opzionale)</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || "no-client"}>
+                <Select onValueChange={field.onChange} value={field.value || "no-client"} disabled={isReadOnly}>
                   <FormControl>
                     <SelectTrigger data-testid="select-project-client">
                       <SelectValue placeholder="Seleziona cliente" />
@@ -211,7 +213,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Progetto Padre (Opzionale)</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || "no-parent"}>
+                <Select onValueChange={field.onChange} value={field.value || "no-parent"} disabled={isReadOnly}>
                   <FormControl>
                     <SelectTrigger data-testid="select-parent-project">
                       <SelectValue placeholder="Seleziona progetto padre" />
@@ -237,7 +239,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Sistema SAP (Opzionale)</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || "no-sap-system"} disabled={isLoadingSapSystems}>
+                <Select onValueChange={field.onChange} value={field.value || "no-sap-system"} disabled={isReadOnly || isLoadingSapSystems}>
                   <FormControl>
                     <SelectTrigger data-testid="select-sap-system">
                       {isLoadingSapSystems ? (
@@ -276,6 +278,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                   <Input 
                     {...field} 
                     type="date"
+                    disabled={isReadOnly}
                     data-testid="input-project-start-date"
                   />
                 </FormControl>
@@ -294,6 +297,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                   <Input 
                     {...field} 
                     type="date"
+                    disabled={isReadOnly}
                     data-testid="input-project-end-date"
                   />
                 </FormControl>
@@ -315,6 +319,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                     {...field} 
                     type="number"
                     step="0.01"
+                    disabled={isReadOnly}
                     data-testid="input-project-budget"
                     placeholder="0.00"
                   />
@@ -334,6 +339,7 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                   <Input 
                     {...field} 
                     type="number"
+                    disabled={isReadOnly}
                     data-testid="input-project-effort"
                     placeholder="0"
                   />
@@ -344,18 +350,20 @@ export default function ProjectForm({ project, onSuccess }: ProjectFormProps) {
           />
         </div>
 
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button
-            type="submit"
-            disabled={saveProjectMutation.isPending}
-            data-testid="button-submit-project"
-          >
-            {saveProjectMutation.isPending && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            {project ? "Salva" : "Crea"}
-          </Button>
-        </div>
+        {!isReadOnly && (
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button
+              type="submit"
+              disabled={saveProjectMutation.isPending}
+              data-testid="button-submit-project"
+            >
+              {saveProjectMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {project ? "Salva" : "Crea"}
+            </Button>
+          </div>
+        )}
       </form>
     </Form>
   );
