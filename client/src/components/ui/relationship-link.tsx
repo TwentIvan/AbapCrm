@@ -40,7 +40,8 @@ export function RelationshipLink({
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setLocation(`${targetPath}/${entityId}/edit`);
+    // Naviga con parametro readonly=true per aprire in modalità visualizzazione
+    setLocation(`${targetPath}/${entityId}/edit?readonly=true`);
   };
 
   return (
