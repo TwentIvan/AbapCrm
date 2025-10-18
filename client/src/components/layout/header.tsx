@@ -24,6 +24,7 @@ import { useOrganization } from "@/contexts/organization-context";
 import { useTranslation, Language } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
+import headerPattern from "@assets/generated_images/HTU_logo_pattern_background_4bbe5d60.png";
 
 interface HeaderProps {
   title: string;
@@ -136,29 +137,17 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         </h1>
       </div>
       
-      {/* Main Header with Geometric Background */}
+      {/* Main Header with Logo Pattern Background */}
       <div className="px-6 py-4 flex items-center justify-between relative overflow-hidden">
-        {/* Pattern geometrico sovrapposto con triangoli - copre tutta la larghezza */}
-        <div className="absolute inset-0 opacity-20">
-          {/* Strato 1 - Forme base sovrapposte */}
-          <div className="absolute top-0 left-[0%] w-[7%] h-full bg-blue-300 dark:bg-blue-500" style={{ clipPath: 'polygon(0 0, 100% 15%, 85% 100%, 0 90%)', zIndex: 1 }}></div>
-          <div className="absolute top-0 left-[12%] w-[9%] h-full bg-gray-200 dark:bg-gray-600" style={{ clipPath: 'polygon(10% 0, 100% 0, 95% 100%, 0 100%)', zIndex: 2 }}></div>
-          <div className="absolute top-0 left-[25%] w-[8%] h-full bg-sky-300 dark:bg-sky-500" style={{ clipPath: 'polygon(0 20%, 100% 0, 100% 80%, 0 100%)', zIndex: 1 }}></div>
-          <div className="absolute top-0 left-[38%] w-[7%] h-full bg-blue-400 dark:bg-blue-500" style={{ clipPath: 'polygon(15% 0, 100% 10%, 90% 100%, 0 85%)', zIndex: 3 }}></div>
-          <div className="absolute top-0 left-[48%] w-[10%] h-full bg-cyan-300 dark:bg-cyan-500" style={{ clipPath: 'polygon(0 0, 100% 25%, 80% 100%, 5% 95%)', zIndex: 2 }}></div>
-          <div className="absolute top-0 left-[62%] w-[7%] h-full bg-gray-200 dark:bg-gray-600" style={{ clipPath: 'polygon(0 10%, 100% 0, 100% 90%, 0 100%)', zIndex: 1 }}></div>
-          <div className="absolute top-0 left-[73%] w-[9%] h-full bg-blue-300 dark:bg-blue-500" style={{ clipPath: 'polygon(20% 0, 100% 5%, 85% 100%, 0 95%)', zIndex: 2 }}></div>
-          <div className="absolute top-0 left-[85%] w-[7%] h-full bg-sky-400 dark:bg-sky-500" style={{ clipPath: 'polygon(0 0, 100% 15%, 100% 100%, 10% 100%)', zIndex: 3 }}></div>
-          
-          {/* Strato 2 - Triangoli per movimento */}
-          <div className="absolute top-0 left-[8%] w-[5%] h-full bg-cyan-300 dark:bg-cyan-500" style={{ clipPath: 'polygon(0 0, 100% 40%, 0 100%)', zIndex: 4 }}></div>
-          <div className="absolute top-0 left-[20%] w-[5%] h-full bg-blue-300 dark:bg-blue-400" style={{ clipPath: 'polygon(50% 0, 100% 100%, 0 100%)', zIndex: 5 }}></div>
-          <div className="absolute top-0 left-[35%] w-[7%] h-full bg-gray-200 dark:bg-gray-600" style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 60%)', zIndex: 4 }}></div>
-          <div className="absolute top-0 left-[55%] w-[5%] h-full bg-sky-300 dark:bg-sky-500" style={{ clipPath: 'polygon(0 30%, 100% 0, 100% 100%)', zIndex: 5 }}></div>
-          <div className="absolute top-0 left-[70%] w-[5%] h-full bg-blue-400 dark:bg-blue-500" style={{ clipPath: 'polygon(0 0, 100% 50%, 0 100%)', zIndex: 6 }}></div>
-          <div className="absolute top-0 left-[82%] w-[6%] h-full bg-cyan-300 dark:bg-cyan-400" style={{ clipPath: 'polygon(30% 0, 100% 100%, 0 100%)', zIndex: 4 }}></div>
-          <div className="absolute top-0 left-[92%] w-[5%] h-full bg-gray-200 dark:bg-gray-600" style={{ clipPath: 'polygon(0 0, 100% 0, 50% 100%)', zIndex: 5 }}></div>
-        </div>
+        {/* Pattern con loghi HTU sfumati */}
+        <div 
+          className="absolute inset-0 opacity-30 bg-cover bg-center"
+          style={{ 
+            backgroundImage: `url(${headerPattern})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        ></div>
         
         {/* Content above background */}
         <div className="relative z-10 flex items-center justify-between w-full">
