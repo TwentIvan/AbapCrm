@@ -16,6 +16,7 @@ import AuditHistory from "@/components/ui/audit-history";
 import BusinessScenariosManager from "@/components/business-scenarios-manager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
+import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
 
 interface OrganizationWithDetails {
   id: string;
@@ -35,6 +36,7 @@ export default function OrganizationsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
+  const [showBulkCopyDialog, setShowBulkCopyDialog] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { onDeleteSuccess } = useStandardCrud("organizations");
@@ -98,6 +100,30 @@ export default function OrganizationsPage() {
       setShowBulkEditDialog(false);
       toast({ title: "Modificati", description: "Organizzazioni modificate con successo" });
     }
+  });
+
+  const bulkCopyMutation = useMutation({
+    mutationFn: async ({ items, addSuffix, suffix }: { items: OrganizationWithDetails[], addSuffix: boolean, suffix: string }) => {
+      await Promise.all(
+        items.map(item => {
+          const { id, createdAt, updatedAt, userRole, ...itemData } = item;
+          const newItem = {
+            ...itemData,
+            name: addSuffix ? `${item.name}${suffix}` : item.name,
+          };
+          return apiRequest("POST", "/api/organizations", newItem);
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+      setSelectedItems([]);
+      setShowBulkCopyDialog(false);
+      toast({
+        title: "Organizzazioni copiate",
+        description: "Le organizzazioni selezionate sono state copiate con successo.",
+      });
+    },
   });
 
   const handleEdit = (item: OrganizationWithDetails) => {
@@ -176,6 +202,10 @@ export default function OrganizationsPage() {
       processedUpdates.isActive = updates.isActive === "true";
     }
     bulkEditMutation.mutate({ items: selectedItems, updates: processedUpdates });
+  };
+
+  const handleBulkCopy = ({ addSuffix, suffix }: { addSuffix: boolean; suffix: string }) => {
+    bulkCopyMutation.mutate({ items: selectedItems, addSuffix, suffix });
   };
 
   // Helper functions for theme
@@ -404,6 +434,17 @@ export default function OrganizationsPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Bulk Copy Dialog */}
+          <BulkCopyDialog
+            open={showBulkCopyDialog}
+            onOpenChange={setShowBulkCopyDialog}
+            title="Copia Organizzazioni"
+            description="Crea copie delle organizzazioni"
+            selectedCount={selectedItems.length}
+            onCopy={handleBulkCopy}
+            isPending={bulkCopyMutation.isPending}
+          />
 
           {/* Bulk Edit Dialog */}
           <BulkEditDialog

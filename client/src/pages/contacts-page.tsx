@@ -18,6 +18,7 @@ import { Contact as ContactIcon, Mail, Phone, Building, MoreHorizontal, Edit, Tr
 import { Contact, Partner } from "@shared/schema";
 import ContactForm from "@/components/forms/contact-form";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
+import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
 
 export default function ContactsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -27,6 +28,7 @@ export default function ContactsPage() {
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
+  const [showBulkCopyDialog, setShowBulkCopyDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   
@@ -134,6 +136,30 @@ export default function ContactsPage() {
     }
   });
 
+  const bulkCopyMutation = useMutation({
+    mutationFn: async ({ contacts, addSuffix, suffix }: { contacts: Contact[], addSuffix: boolean, suffix: string }) => {
+      await Promise.all(
+        contacts.map(contact => {
+          const { id, createdAt, updatedAt, userId, organizationId, ...contactData } = contact;
+          const newContact = {
+            ...contactData,
+            name: addSuffix ? `${contact.name}${suffix}` : contact.name,
+          };
+          return apiRequest("POST", "/api/contacts", newContact);
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      setSelectedContacts([]);
+      setShowBulkCopyDialog(false);
+      toast({
+        title: "Contatti copiati",
+        description: "I contatti selezionati sono stati copiati con successo.",
+      });
+    },
+  });
+
   const handleEdit = (contact: Contact) => {
     setSelectedContact(contact);
     setShowEditDialog(true);
@@ -179,6 +205,10 @@ export default function ContactsPage() {
 
   const handleBulkEditSave = (updates: Record<string, any>) => {
     bulkEditMutation.mutate({ contacts: selectedContacts, updates });
+  };
+
+  const handleBulkCopy = ({ addSuffix, suffix }: { addSuffix: boolean; suffix: string }) => {
+    bulkCopyMutation.mutate({ contacts: selectedContacts, addSuffix, suffix });
   };
 
   // Define filter columns for advanced filtering
@@ -296,7 +326,7 @@ export default function ContactsPage() {
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={() => setShowCreateDialog(true)}
-            onCopySelected={() => {/* TODO: implement copy */}}
+            onCopySelected={() => setShowBulkCopyDialog(true)}
             onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => setShowBulkDeleteDialog(true)}
             hasSelection={selectedContacts.length > 0}
@@ -424,6 +454,17 @@ export default function ContactsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Copy Dialog */}
+      <BulkCopyDialog
+        open={showBulkCopyDialog}
+        onOpenChange={setShowBulkCopyDialog}
+        title="Copia Contatti"
+        description="Crea copie dei contatti"
+        selectedCount={selectedContacts.length}
+        onCopy={handleBulkCopy}
+        isPending={bulkCopyMutation.isPending}
+      />
 
       {/* Table Configuration Dialog */}
       <TableConfiguration

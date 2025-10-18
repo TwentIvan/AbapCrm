@@ -30,6 +30,7 @@ import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
+import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
 
 const statusColors = {
   todo: "bg-gray-100 text-gray-800",
@@ -296,6 +297,7 @@ export default function TasksPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
+  const [showBulkCopyDialog, setShowBulkCopyDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   
@@ -405,6 +407,30 @@ export default function TasksPage() {
     }
   });
 
+  const bulkCopyMutation = useMutation({
+    mutationFn: async ({ tasks, addSuffix, suffix }: { tasks: Task[], addSuffix: boolean, suffix: string }) => {
+      await Promise.all(
+        tasks.map(task => {
+          const { id, createdAt, updatedAt, userId, organizationId, ...taskData } = task;
+          const newTask = {
+            ...taskData,
+            title: addSuffix ? `${task.title}${suffix}` : task.title,
+          };
+          return apiRequest("POST", "/api/tasks", newTask);
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      setSelectedTasks([]);
+      setShowBulkCopyDialog(false);
+      toast({
+        title: "Task copiati",
+        description: "I task selezionati sono stati copiati con successo.",
+      });
+    },
+  });
+
   const bulkEditFields: BulkEditField[] = [
     {
       key: "status",
@@ -455,6 +481,10 @@ export default function TasksPage() {
 
   const handleBulkEditSave = (updates: Record<string, any>) => {
     bulkEditMutation.mutate({ tasks: selectedTasks, updates });
+  };
+
+  const handleBulkCopy = ({ addSuffix, suffix }: { addSuffix: boolean; suffix: string }) => {
+    bulkCopyMutation.mutate({ tasks: selectedTasks, addSuffix, suffix });
   };
 
   const toggleTaskComplete = (task: Task) => {
@@ -802,7 +832,7 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={() => setShowCreateDialog(true)}
-            onCopySelected={() => {/* TODO: implement copy */}}
+            onCopySelected={() => setShowBulkCopyDialog(true)}
             onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => handleDelete(selectedTasks)}
             hasSelection={selectedTasks.length > 0}
@@ -888,6 +918,17 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Copy Dialog */}
+      <BulkCopyDialog
+        open={showBulkCopyDialog}
+        onOpenChange={setShowBulkCopyDialog}
+        title="Copia Task"
+        description="Crea copie dei task"
+        selectedCount={selectedTasks.length}
+        onCopy={handleBulkCopy}
+        isPending={bulkCopyMutation.isPending}
+      />
 
       {/* Table Configuration Dialog */}
       <TableConfiguration

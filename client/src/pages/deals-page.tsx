@@ -22,6 +22,7 @@ import DealForm from "@/components/forms/deal-form";
 import AuditHistory from "@/components/ui/audit-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
+import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
 
 const stageColors = {
   prospecting: "bg-blue-100 text-blue-800",
@@ -48,6 +49,7 @@ export default function DealsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
+  const [showBulkCopyDialog, setShowBulkCopyDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   
@@ -130,6 +132,30 @@ export default function DealsPage() {
     }
   });
 
+  const bulkCopyMutation = useMutation({
+    mutationFn: async ({ deals, addSuffix, suffix }: { deals: Deal[], addSuffix: boolean, suffix: string }) => {
+      await Promise.all(
+        deals.map(deal => {
+          const { id, createdAt, updatedAt, userId, organizationId, ...dealData } = deal;
+          const newDeal = {
+            ...dealData,
+            title: addSuffix ? `${deal.title}${suffix}` : deal.title,
+          };
+          return apiRequest("POST", "/api/deals", newDeal);
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      setSelectedDeals([]);
+      setShowBulkCopyDialog(false);
+      toast({
+        title: "Deal copiati",
+        description: "I deal selezionati sono stati copiati con successo.",
+      });
+    },
+  });
+
   const handleEdit = (deal: Deal) => {
     setEditingDeal(deal);
     setShowForm(true);
@@ -185,6 +211,10 @@ export default function DealsPage() {
 
   const handleBulkEditSave = (updates: Record<string, any>) => {
     bulkEditMutation.mutate({ deals: selectedDeals, updates });
+  };
+
+  const handleBulkCopy = ({ addSuffix, suffix }: { addSuffix: boolean; suffix: string }) => {
+    bulkCopyMutation.mutate({ deals: selectedDeals, addSuffix, suffix });
   };
 
   const activeDeals = deals?.filter(deal => !["won", "lost"].includes(deal.stage));
@@ -346,7 +376,7 @@ export default function DealsPage() {
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={handleAdd}
-            onCopySelected={() => {/* TODO: implement copy */}}
+            onCopySelected={() => setShowBulkCopyDialog(true)}
             onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => handleDelete(selectedDeals)}
             hasSelection={selectedDeals.length > 0}
@@ -498,6 +528,18 @@ export default function DealsPage() {
               )}
         </div>
       </main>
+
+      {/* Bulk Copy Dialog */}
+      <BulkCopyDialog
+        open={showBulkCopyDialog}
+        onOpenChange={setShowBulkCopyDialog}
+        title="Copia Deal"
+        description="Crea copie dei deal"
+        selectedCount={selectedDeals.length}
+        onCopy={handleBulkCopy}
+        isPending={bulkCopyMutation.isPending}
+      />
+
       {/* Table Configuration Dialog */}
       <TableConfiguration
         isOpen={showConfigDialog}

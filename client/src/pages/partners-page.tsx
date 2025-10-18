@@ -19,6 +19,7 @@ import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import ImageContainer from "@/components/ui/image-container";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
+import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
 import { Building, Mail, Phone, MapPin, MoreHorizontal, Grid3X3, List, Edit, Trash2, History, MessageSquare } from "lucide-react";
 import { Partner } from "@shared/schema";
 import AdvancedPartnerForm from "@/components/forms/advanced-partner-form";
@@ -133,6 +134,7 @@ export default function PartnersPage() {
   const [selectedPartners, setSelectedPartners] = useState<Partner[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
+  const [showBulkCopyDialog, setShowBulkCopyDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   
@@ -240,6 +242,30 @@ export default function PartnersPage() {
     }
   });
 
+  const bulkCopyMutation = useMutation({
+    mutationFn: async ({ partners, addSuffix, suffix }: { partners: Partner[], addSuffix: boolean, suffix: string }) => {
+      await Promise.all(
+        partners.map(partner => {
+          const { id, createdAt, updatedAt, userId, organizationId, ...partnerData } = partner;
+          const newPartner = {
+            ...partnerData,
+            name: addSuffix ? `${partner.name}${suffix}` : partner.name,
+          };
+          return apiRequest("POST", "/api/partners", newPartner);
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      setSelectedPartners([]);
+      setShowBulkCopyDialog(false);
+      toast({
+        title: "Partner copiati",
+        description: "I partner selezionati sono stati copiati con successo.",
+      });
+    },
+  });
+
   const bulkEditFields: BulkEditField[] = [
     {
       key: "type",
@@ -274,6 +300,10 @@ export default function PartnersPage() {
 
   const handleBulkEditSave = (updates: Record<string, any>) => {
     bulkEditMutation.mutate({ partners: selectedPartners, updates });
+  };
+
+  const handleBulkCopy = ({ addSuffix, suffix }: { addSuffix: boolean; suffix: string }) => {
+    bulkCopyMutation.mutate({ partners: selectedPartners, addSuffix, suffix });
   };
 
   const handleEdit = (partner: Partner) => {
@@ -444,7 +474,7 @@ export default function PartnersPage() {
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={() => setShowCreateDialog(true)}
-            onCopySelected={() => {/* TODO: implement copy */}}
+            onCopySelected={() => setShowBulkCopyDialog(true)}
             onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => setShowBulkDeleteDialog(true)}
             hasSelection={selectedPartners.length > 0}
@@ -551,6 +581,18 @@ export default function PartnersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Copy Dialog */}
+      <BulkCopyDialog
+        open={showBulkCopyDialog}
+        onOpenChange={setShowBulkCopyDialog}
+        title="Copia Partner"
+        description="Crea copie dei partner"
+        selectedCount={selectedPartners.length}
+        onCopy={handleBulkCopy}
+        isPending={bulkCopyMutation.isPending}
+      />
+
       {/* Table Configuration Dialog */}
       <TableConfiguration
         isOpen={showConfigDialog}

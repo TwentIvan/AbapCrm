@@ -17,6 +17,7 @@ import { Users, DollarSign, Calendar, User as UserIcon, MoreHorizontal, Edit, Tr
 import { HumanResource } from "@shared/schema";
 import { HumanResourceForm } from "@/components/forms/human-resource-form";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
+import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
 
 export default function HumanResourcesPage() {
   const [selectedResources, setSelectedResources] = useState<HumanResource[]>([]);
@@ -25,6 +26,7 @@ export default function HumanResourcesPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
+  const [showBulkCopyDialog, setShowBulkCopyDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const { toast } = useToast();
@@ -78,6 +80,30 @@ export default function HumanResourcesPage() {
       setShowBulkEditDialog(false);
       toast({ title: "Modificati", description: "Risorse modificate con successo" });
     }
+  });
+
+  const bulkCopyMutation = useMutation({
+    mutationFn: async ({ resources, addSuffix, suffix }: { resources: HumanResource[], addSuffix: boolean, suffix: string }) => {
+      await Promise.all(
+        resources.map(resource => {
+          const { id, createdAt, updatedAt, userId, organizationId, ...resourceData } = resource;
+          const newResource = {
+            ...resourceData,
+            firstName: addSuffix ? `${resource.firstName}${suffix}` : resource.firstName,
+          };
+          return apiRequest("POST", "/api/human-resources", newResource);
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/human-resources"] });
+      setSelectedResources([]);
+      setShowBulkCopyDialog(false);
+      toast({
+        title: "Risorse copiate",
+        description: "Le risorse selezionate sono state copiate con successo.",
+      });
+    },
   });
 
   const handleEdit = (resource: HumanResource) => {
@@ -153,6 +179,10 @@ export default function HumanResourcesPage() {
       processedUpdates.isActive = updates.isActive === "true";
     }
     bulkEditMutation.mutate({ resources: selectedResources, updates: processedUpdates });
+  };
+
+  const handleBulkCopy = ({ addSuffix, suffix }: { addSuffix: boolean; suffix: string }) => {
+    bulkCopyMutation.mutate({ resources: selectedResources, addSuffix, suffix });
   };
 
   const getSkillLevelColor = (level: string) => {
@@ -237,7 +267,7 @@ export default function HumanResourcesPage() {
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={handleAdd}
-            onCopySelected={() => {/* TODO: implement copy */}}
+            onCopySelected={() => setShowBulkCopyDialog(true)}
             onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => handleDelete(selectedResources)}
             hasSelection={selectedResources.length > 0}
@@ -310,6 +340,17 @@ export default function HumanResourcesPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Bulk Copy Dialog */}
+          <BulkCopyDialog
+            open={showBulkCopyDialog}
+            onOpenChange={setShowBulkCopyDialog}
+            title="Copia Risorse"
+            description="Crea copie delle risorse"
+            selectedCount={selectedResources.length}
+            onCopy={handleBulkCopy}
+            isPending={bulkCopyMutation.isPending}
+          />
 
           {/* Table Configuration Dialog */}
           <TableConfiguration
