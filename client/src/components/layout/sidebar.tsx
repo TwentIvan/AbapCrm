@@ -247,13 +247,10 @@ export default function Sidebar() {
       {/* Logo Box - Same total height as both headers combined: py-2 + py-4 = py-6 */}
       <div className="px-6 py-6">
         <div className="flex justify-center items-center">
-          <ImageContainer
+          <img
             src={newLogo}
             alt="App Logo"
-            fallbackType="logo"
-            size="custom"
-            containerClassName="w-48 h-32 bg-transparent"
-            className="object-contain"
+            className="w-48 h-32 object-contain"
             data-testid="img-app-logo"
           />
         </div>
