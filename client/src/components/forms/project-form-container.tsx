@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
@@ -29,30 +29,30 @@ export default function ProjectFormContainer({
   onSuccess,
 }: ProjectFormContainerProps) {
   const params = useParams();
+  const [location] = useLocation();
   const { currentOrganizationId } = useOrganization();
   const queryClient = useQueryClient();
   
-  // DEBUG
-  console.log("[ProjectFormContainer] params:", params);
-  console.log("[ProjectFormContainer] params.id:", params.id);
+  // Extract ID from URL when params is empty (happens in nested routes)
+  // URL format: /projects/{id}/edit or /projects/{id}/edit?readonly=true
+  const extractIdFromUrl = () => {
+    const match = location.match(/\/projects\/([a-f0-9-]+)\/edit/);
+    return match ? match[1] : undefined;
+  };
+  
+  const entityId = params.id || extractIdFromUrl();
   
   // Form routing
-  const { routes, navigation, currentRoute } = useFormRouting("/projects", params.id);
-  
-  // DEBUG
-  console.log("[ProjectFormContainer] currentRoute:", currentRoute);
+  const { routes, navigation, currentRoute } = useFormRouting("/projects", entityId);
   
   // Read-only mode (from URL parameter)
   const { isReadOnly, enableEdit, disableEdit } = useReadOnlyMode();
   
-  // DEBUG
-  console.log("[ProjectFormContainer] isReadOnly:", isReadOnly);
-  
   // For full-page mode, fetch project data from route params
   const { data: fullPageProject } = useQuery({
-    queryKey: ["/api/projects", params.id],
+    queryKey: ["/api/projects", entityId],
     queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!params.id && currentRoute.isEdit,
+    enabled: !!entityId && currentRoute.isEdit,
   });
   
   // Determine which project to use
