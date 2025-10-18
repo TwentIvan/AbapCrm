@@ -24,7 +24,7 @@ import { useOrganization } from "@/contexts/organization-context";
 import { useTranslation, Language } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
-import htuLogo from "@assets/thu solo logo_1757017376100.jpg";
+import htuLogo from "@assets/generated_images/hub_up_logo.png";
 
 interface HeaderProps {
   title: string;
