@@ -36,7 +36,7 @@ export default function ProjectFormContainer({
   const { routes, navigation, currentRoute } = useFormRouting("/projects", params.id);
   
   // Read-only mode (from URL parameter)
-  const { isReadOnly, enableEdit } = useReadOnlyMode();
+  const { isReadOnly, enableEdit, disableEdit } = useReadOnlyMode();
   
   // For full-page mode, fetch project data from route params
   const { data: fullPageProject } = useQuery({
@@ -84,6 +84,11 @@ export default function ProjectFormContainer({
     ? `Modifica i dettagli del progetto "${(project as Project)?.name}"` 
     : "Crea un nuovo progetto per la tua organizzazione";
   
+  // Toggle function: enable edit when readonly, disable edit when editing
+  const handleToggleReadOnly = isEditing 
+    ? () => isReadOnly ? enableEdit() : disableEdit()
+    : undefined;
+  
   return (
     <FormContainer
       open={open}
@@ -93,7 +98,7 @@ export default function ProjectFormContainer({
       fullPageRoute={isEditing ? routes.edit((project as Project)?.id || "") : routes.create}
       maxWidth="max-w-4xl"
       isReadOnly={isReadOnly}
-      onToggleReadOnly={isEditing ? enableEdit : undefined}
+      onToggleReadOnly={handleToggleReadOnly}
     >
       {isEditing ? (
         // Editing mode with tabs (details, messages, history)
