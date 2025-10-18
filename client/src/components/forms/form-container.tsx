@@ -51,9 +51,10 @@ export default function FormContainer({
 }: FormContainerProps) {
   const [location, setLocation] = useLocation();
   
-  // Auto-detect mode based on current route
+  // Auto-detect mode based on current route (ignore query parameters)
+  const locationWithoutQuery = location.split('?')[0];
   const currentMode = mode === "auto" 
-    ? (fullPageRoute && location === fullPageRoute ? "page" : "dialog")
+    ? (fullPageRoute && locationWithoutQuery === fullPageRoute ? "page" : "dialog")
     : mode;
   
   // Mode toggle handlers
@@ -201,6 +202,9 @@ export default function FormContainer({
 export function useFormRouting(basePath: string, entityId?: string) {
   const [location, setLocation] = useLocation();
   
+  // Remove query parameters from location for route matching
+  const locationWithoutQuery = location.split('?')[0];
+  
   const routes = {
     create: `${basePath}/new`,
     edit: (id: string) => `${basePath}/${id}/edit`,
@@ -215,10 +219,10 @@ export function useFormRouting(basePath: string, entityId?: string) {
   };
   
   const currentRoute = {
-    isCreate: location === routes.create,
-    isEdit: entityId ? location === routes.edit(entityId) : false,
-    isList: location === routes.list,
-    isFullPage: location === routes.create || (entityId && location === routes.edit(entityId)),
+    isCreate: locationWithoutQuery === routes.create,
+    isEdit: entityId ? locationWithoutQuery === routes.edit(entityId) : false,
+    isList: locationWithoutQuery === routes.list,
+    isFullPage: locationWithoutQuery === routes.create || (entityId && locationWithoutQuery === routes.edit(entityId)),
   };
   
   return {
