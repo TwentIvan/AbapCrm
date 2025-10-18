@@ -1,38 +1,6 @@
 # Overview
 
-This CRM application is designed for SAP ABAP freelancers to manage projects, tasks, business deals, partners, and calendar events. It provides a unified dashboard for essential business management tools, including project tracking, deal pipeline, partner relationship management, and task organization, built as a full-stack web application. The application incorporates an AI-powered project agent for intelligent message analysis and semi-automatic project creation, along with robust multi-organization data filtering capabilities.
-
-## Custom Fields & Metadata System (Backend Implemented - Oct 2025)
-
-The system now includes a comprehensive **metadata-driven extension layer** for custom fields, entities, workflows, and permissions:
-
-- **Custom Entities (13 DB tables)**: User-defined entities with extensible schemas stored in JSONB
-- **Custom Fields**: Dynamic field definitions with type validation (text, number, date, boolean, select, relation)
-- **Entity Custom Values**: Stores custom field values for core entities (projects, tasks, etc) in JSONB format `{value, display, metadata}`
-- **Workflow System**: Event-driven automations with triggers (onCreate, onUpdate, onDelete, onFieldChange) and actions
-- **Role-Based Permissions**: Granular CRUD permissions per entity and field
-- **CustomMetadataService**: Caching + runtime validation with Zod schema generation from JSONB metadata
-- **EventBus**: Type-safe pub/sub pattern for domain events (entity.created/updated/deleted, field.changed)
-
-**Backend Status:** ✅ Complete (15 storage methods, 11 API routes, database schemas, services)
-**Frontend Status:** 🚧 Pending (hooks, components, UI for metadata management)
-
-## SAP Transport Request Integration
-
-The system supports three methods for receiving Transport Requests from SAP systems:
-1. **Direct API** - ABAP reports can send JSON via POST to `/api/sap-transport` with API key authentication
-2. **Email Integration** - ABAP reports can send JSON attachments to a dedicated email folder, making the system completely independent from client IT infrastructure
-3. **Manual Paste** - Users can manually paste JSON via UI dialog, launched directly from project actions
-
-The email-based approach provides full autonomy: users configure a dedicated email folder (e.g., "SAP Transport"), and the IMAP service automatically processes JSON attachments to create Transport Requests with tasks and objects in the database.
-
-## SAP Shortcut Integration
-
-Projects with an associated SAP system can launch the **ZTHU_DOCUMENTATION** program directly:
-- The system generates a `.sap` shortcut file with connection parameters
-- Clicking the project action "Lancia ZTHU_DOCUMENTATION" downloads the shortcut and opens the paste JSON dialog
-- Users execute the ABAP program, copy the JSON output, and paste it directly into the dialog
-- The Transport Request is automatically created and linked to the project
+This CRM application for SAP ABAP freelancers provides a unified dashboard to manage projects, tasks, business deals, partners, and calendar events. It's a full-stack web application featuring an AI-powered project agent for intelligent message analysis and semi-automatic project creation. The system also includes robust multi-organization data filtering and a metadata-driven extension layer for custom fields, entities, workflows, and permissions. It supports receiving SAP Transport Requests via API, email, or manual input, and integrates with SAP shortcuts for direct program execution.
 
 # User Preferences
 
@@ -49,7 +17,7 @@ When creating any new table/CRUD area in the application ("Usa il template stand
 - ✅ **Funzioni di configurazione e salvataggio dei layout per la vista lista** - LayoutManager + TableConfiguration
 - ✅ **Selezione dei layout** - Dropdown per caricare layout salvati
 - ✅ **Box di selezione** - enableSelection=true + onSelectionChange
-- ✅ **Funzioni legate alla selezione** - Cancellazione multipla con AlertDialog elegante + modifica massiva (TODO)
+- ✅ **Funzioni legate alla selezione** - Cancellazione multipla con AlertDialog elegante + modifica massiva + copia massiva
 - ✅ **Sistema Audit Trail completo** - Tracking automatico di tutte le modifiche con AuditService + AuditHistory UI
 
 ### Critical API Pattern Rules
@@ -67,102 +35,48 @@ When creating any new table/CRUD area in the application ("Usa il template stand
 
 ## Frontend Architecture
 
-The client-side is built with React 18 and TypeScript, using a component-based architecture. It leverages `shadcn/ui` (built on Radix UI) for consistent and accessible design, `TailwindCSS` for styling, `TanStack Query` for server state management, `Wouter` for routing, and `React Hook Form` with `Zod` for form handling. Development and builds are managed with `Vite`.
+The client-side uses React 18, TypeScript, `shadcn/ui` (Radix UI), `TailwindCSS`, `TanStack Query`, `Wouter` for routing, and `React Hook Form` with `Zod` for forms. `Vite` manages development and builds.
 
 ## Backend Architecture
 
-The server follows a RESTful API pattern using `Express.js` with TypeScript. It implements `Passport.js` for local authentication with scrypt-based password hashing and `Express sessions` stored in PostgreSQL. API endpoints are resource-based with CRUD operations, supported by custom middleware for logging, JSON parsing, and authentication.
+The server uses `Express.js` with TypeScript, implementing a RESTful API pattern. `Passport.js` handles local authentication with scrypt hashing, and `Express sessions` are stored in PostgreSQL. Custom middleware supports logging, JSON parsing, and authentication.
 
 ## Data Storage
 
-`PostgreSQL` is the primary database, managed with `Drizzle ORM` for type-safe operations and schema management. `Drizzle Kit` is used for migrations. The schema is relational, defining foreign key relationships across entities like users, projects, tasks, partners, deals, and calendar events.
+`PostgreSQL` is the primary database, managed with `Drizzle ORM` for type-safe operations and `Drizzle Kit` for migrations.
 
 ## Authentication & Authorization
 
-Authentication is session-based, using a local strategy with username/password and scrypt for password hashing. Sessions are stored server-side in PostgreSQL. Authorization is enforced via route-level protection using authentication middleware.
+Authentication is session-based, using a local username/password strategy with scrypt hashing. Sessions are stored in PostgreSQL. Authorization is enforced via route-level middleware.
 
 ## Core Features & Design Patterns
 
+### Custom Fields & Metadata System
+A metadata-driven extension layer supports custom entities (JSONB schemas), dynamic custom fields with type validation, entity custom values, event-driven workflows, and role-based permissions. `CustomMetadataService` provides caching and Zod schema generation for runtime validation, integrated with a type-safe `EventBus`.
+
 ### Multi-Organization Filtering
-The system supports cross-organization data visibility with intelligent filtering. A `Personal Scope Toggle` allows users from the 'Personal' organization to view data across all their organizations or only their personal items. Other organizations are restricted to viewing only their own data. This is implemented with `X-Organization-Id` and `X-Organization-Scope` headers, and backend queries using `inArray(table.organizationId, organizationIds)`.
+The system provides intelligent cross-organization data visibility using `X-Organization-Id` and `X-Organization-Scope` headers. Users in the 'Personal' organization can view data across all their organizations, while others are restricted to their own.
 
 ### AI Project Agent & Background Proposal System
-An AI-powered agent integrates with `OpenAI` (gpt-5) to analyze messages and propose project, partner, and task creations. The system features **background asynchronous processing** to avoid blocking users during AI analysis:
-
-- **Asynchronous Analysis**: When users trigger message analysis, proposals are generated in the background and saved to a dedicated `proposals` table
-- **Proposals Table**: Stores AI-generated proposals with status tracking (pending, accepted, rejected, partially_accepted) and JSONB proposal data
-- **Proposals Management Page**: Dedicated `/proposals` page for viewing, filtering, and managing AI proposals with status-based tabs
-- **Visual Indicators**: Messages with pending proposals display a purple badge with Sparkles icon and proposal count in the messages list
-- **Sidebar Integration**: "Proposte AI" menu item provides quick access to proposal management
-
-The agent uses architecture-aware prompts and context-aware analysis (retrieving existing records) to intelligently match and decompose work into structured proposals. Users can accept or reject proposals from the dedicated proposals page.
+An AI-powered agent (integrating OpenAI gpt-5) analyzes messages and proposes project, partner, and task creations. This runs asynchronously, storing proposals in a dedicated `proposals` table with status tracking. A `/proposals` page allows management, with visual indicators in the UI for pending proposals.
 
 ### Multi-Message Chat Normalization
-The application includes a system for parsing and normalizing multi-message conversations from various platforms (Teams, WhatsApp, Google Meet) into a structured format stored in a `jsonb metadata` column. This enables a rich, structured display of chat conversations in the UI.
-
-### Modular Design
-A significant refactor transformed the email training system into a fully modular design, unifying logic for handling text selections and reducing code duplication. This improves maintainability and consistency for adding new selection types.
+Conversations from various platforms (Teams, WhatsApp, Google Meet) are parsed and normalized into a structured format stored in a `jsonb metadata` column for rich UI display.
 
 ### Freelance Engagement & Procurement System
-The system includes a complete freelance engagement management workflow with procurement capabilities:
-
-- **Project Assignments** (`project_assignments`): Tracks freelance engagements on projects with two compensation models:
-  - **Fixed Amount**: One-time project fee with defined scope
-  - **Hourly Rate**: Time & materials with hourly billing and estimated hours
-  - Automatic Purchase Order generation upon assignment creation
-  - Links freelances (from `human_resources`) to projects with start/end dates and status tracking
-
-- **Project Milestones** (`project_milestones`): Gantt chart and timeline visualization for project phases:
-  - Milestone dependencies (prerequisite milestones)
-  - Progress tracking (0-100%)
-  - Budget vs actual cost tracking
-  - Deliverables and completion date tracking
-  - Display order for visual organization
-  
-  **Gantt Chart Implementation (Timezone-Free Architecture)**:
-  - All milestone dates stored as YYYY-MM-DD strings (text columns) instead of timestamps
-  - Backend normalization function converts any incoming date format to YYYY-MM-DD strings
-  - Frontend uses Date.UTC for all date calculations (completely timezone-independent)
-  - Full-day precision with inclusive duration (+1 day for width calculation)
-  - Drag/resize with automatic clamping to prevent invalid date ranges (start > end)
-  - No locale-dependent Date constructors - eliminates ~8% gridline misalignment bug
-  - String-based date contract throughout entire stack ensures consistency
-
-- **Purchase Orders** (`purchase_orders`): Procurement workflow for vendor orders:
-  - Auto-generation from project assignments
-  - Vendor management (organization or partner-based)
-  - Order lifecycle: draft → approved → sent → received
-  - Tax calculations and currency support
-  - Terms & conditions tracking
-
-- **Vendor Invoices** (`vendor_invoices`): Invoice management for vendor payments:
-  - Links to purchase orders and projects
-  - Invoice lifecycle: received → approved → paid
-  - Subtotal, tax, and total amount tracking
-  - Attachment storage for invoice PDFs
-  - Due date and payment tracking
-
-The system supports seamless integration between timesheet entries (hourly engagements) and project assignments for automatic cost calculation and invoicing.
+Manages freelance engagements with project assignments (fixed amount/hourly rate, auto PO generation), project milestones (Gantt chart with timezone-free date handling, dependencies, progress, budget tracking), purchase orders (auto-generation, vendor management, lifecycle), and vendor invoices (linking to POs/projects, payment tracking).
 
 ### Business Scenarios - Organization Relationship Management
-The system includes a comprehensive business scenarios feature for defining and managing relationships between organizations:
+Defines and manages many-to-many relationships between organizations with typed business contexts (e.g., `cliente_fattura`, `fornitore`, `partner`). Relationships are directional, with status tracking and notes, managed via a dedicated UI.
 
-- **Business Scenarios** (`business_scenarios`): Many-to-many relationships between organizations with typed business contexts:
-  - **Relationship Types**: 
-    - `cliente_fattura` (Invoice Recipient) - Organization receives invoices
-    - `cliente_servizio` (Service Recipient) - Organization receives services
-    - `cliente_timesheet` (Timesheet Client) - Organization for timesheet billing
-    - `fornitore` (Vendor) - Organization provides goods/services
-    - `partner` (Partner) - Strategic partnership
-    - `subappaltatore` (Subcontractor) - Subcontracting relationship
-  - **Source/Target Organizations**: Defines directional relationships (e.g., Company A is invoice recipient for Company B)
-  - **Active/Inactive Status**: Track relationship lifecycle
-  - **Notes**: Additional context and relationship details
-  - **UI Integration**: Dedicated "Scenari" tab in organization edit dialog
-  - **Visual Management**: Card-based interface with color-coded relationship types
-  - **CRUD Operations**: Full create, read, update, delete with validation
+### Bulk Operations - Mass Edit & Copy
+Comprehensive bulk editing and copying capabilities across all main entities (Projects, Tasks, Partners, Deals, Contacts, Organizations, Human Resources). `BulkEditDialog` allows selective field updates via parallel PUT requests. `BulkCopyDialog` creates entity duplicates with customizable suffixes via parallel POST requests, automatically excluding auto-generated fields. Operations include cache invalidation, toast notifications, loading states, and selection reset.
 
-This feature enables users to model complex multi-organization business structures, track client-vendor relationships, and maintain clear visibility of inter-organizational dependencies for project and billing management.
+### SAP Transport Request Integration
+Supports receiving Transport Requests from SAP systems via three methods: direct API POST, email integration (processing JSON attachments from a dedicated IMAP folder), and manual JSON paste via UI. The email method offers full autonomy from client IT.
+
+### SAP Shortcut Integration
+Projects linked to an SAP system can launch the **ZTHU_DOCUMENTATION** program. The system generates a `.sap` shortcut file; users execute the ABAP program, copy its JSON output, and paste it into a dialog to automatically create and link the Transport Request.
 
 # External Dependencies
 
@@ -181,7 +95,6 @@ This feature enables users to model complex multi-organization business structur
 
 ## Authentication & Security
 - **Passport.js**: Authentication middleware.
-- **Session Management**: PostgreSQL-backed session storage.
 
 ## Form & Data Validation
 - **Zod**: Schema validation library.
