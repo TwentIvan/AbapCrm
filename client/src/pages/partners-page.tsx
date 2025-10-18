@@ -18,6 +18,7 @@ import { DataTable, createImageColumn, createBadgeColumn, createTextColumn } fro
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import ImageContainer from "@/components/ui/image-container";
+import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 import { Building, Mail, Phone, MapPin, MoreHorizontal, Grid3X3, List, Edit, Trash2, History, MessageSquare } from "lucide-react";
 import { Partner } from "@shared/schema";
 import AdvancedPartnerForm from "@/components/forms/advanced-partner-form";
@@ -131,6 +132,7 @@ export default function PartnersPage() {
   const isEditMode = location.includes("/edit");
   const [selectedPartners, setSelectedPartners] = useState<Partner[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   
@@ -223,6 +225,56 @@ export default function PartnersPage() {
       });
     },
   });
+
+  const bulkEditMutation = useMutation({
+    mutationFn: async ({ partners, updates }: { partners: Partner[], updates: Record<string, any> }) => {
+      await Promise.all(
+        partners.map(partner => apiRequest("PUT", `/api/partners/${partner.id}`, updates))
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      setSelectedPartners([]);
+      setShowBulkEditDialog(false);
+      toast({ title: "Modificati", description: "Partners modificati con successo" });
+    }
+  });
+
+  const bulkEditFields: BulkEditField[] = [
+    {
+      key: "type",
+      label: "Tipo",
+      type: "select",
+      options: [
+        { value: "client", label: "Client" },
+        { value: "vendor", label: "Vendor" },
+        { value: "consultant", label: "Consultant" },
+        { value: "other", label: "Other" },
+      ],
+    },
+    {
+      key: "company",
+      label: "Azienda",
+      type: "text",
+      placeholder: "Nome azienda",
+    },
+    {
+      key: "position",
+      label: "Posizione",
+      type: "text",
+      placeholder: "Es: CEO, Manager",
+    },
+    {
+      key: "country",
+      label: "Paese",
+      type: "text",
+      placeholder: "Es: IT, US",
+    },
+  ];
+
+  const handleBulkEditSave = (updates: Record<string, any>) => {
+    bulkEditMutation.mutate({ partners: selectedPartners, updates });
+  };
 
   const handleEdit = (partner: Partner) => {
     setSelectedPartner(partner);
@@ -393,7 +445,7 @@ export default function PartnersPage() {
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={() => setShowCreateDialog(true)}
             onCopySelected={() => {/* TODO: implement copy */}}
-            onBulkEdit={() => {/* TODO: implement bulk edit */}}
+            onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => setShowBulkDeleteDialog(true)}
             hasSelection={selectedPartners.length > 0}
           />
@@ -521,6 +573,18 @@ export default function PartnersPage() {
           setShowConfigDialog(false);
         }}
         onCancel={() => setShowConfigDialog(false)}
+      />
+
+      {/* Bulk Edit Dialog */}
+      <BulkEditDialog
+        open={showBulkEditDialog}
+        onOpenChange={setShowBulkEditDialog}
+        title="Modifica Massiva Partners"
+        description="Seleziona i campi da modificare e imposta i nuovi valori per"
+        fields={bulkEditFields}
+        selectedCount={selectedPartners.length}
+        onSave={handleBulkEditSave}
+        isPending={bulkEditMutation.isPending}
       />
     </div>
   );
