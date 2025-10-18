@@ -24,7 +24,7 @@ import { useOrganization } from "@/contexts/organization-context";
 import { useTranslation, Language } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
-import headerPattern from "@assets/generated_images/HTU_logo_pattern_background_4bbe5d60.png";
+import htuLogo from "@assets/ChatGPT Image 17 ott 2025, 22_22_58_1760756212877.png";
 
 interface HeaderProps {
   title: string;
@@ -139,15 +139,22 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
       
       {/* Main Header with Logo Pattern Background */}
       <div className="px-6 py-4 flex items-center justify-between relative overflow-hidden">
-        {/* Pattern con loghi HTU sfumati */}
-        <div 
-          className="absolute inset-0 opacity-30 bg-cover bg-center"
-          style={{ 
-            backgroundImage: `url(${headerPattern})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          }}
-        ></div>
+        {/* Pattern con loghi HTU sfumati - disposti in modo irregolare */}
+        <div className="absolute inset-0">
+          <img src={htuLogo} alt="" className="absolute opacity-10" style={{ width: '80px', top: '10%', left: '5%', transform: 'rotate(-15deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-15" style={{ width: '60px', top: '60%', left: '12%', transform: 'rotate(25deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-20" style={{ width: '70px', top: '30%', left: '18%', transform: 'rotate(-30deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-10" style={{ width: '90px', top: '5%', left: '28%', transform: 'rotate(10deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-15" style={{ width: '50px', top: '70%', left: '35%', transform: 'rotate(-20deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-12" style={{ width: '75px', top: '20%', left: '42%', transform: 'rotate(35deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-18" style={{ width: '65px', top: '50%', left: '50%', transform: 'rotate(-10deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-10" style={{ width: '85px', top: '15%', left: '58%', transform: 'rotate(20deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-14" style={{ width: '55px', top: '65%', left: '65%', transform: 'rotate(-25deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-20" style={{ width: '70px', top: '35%', left: '72%', transform: 'rotate(15deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-12" style={{ width: '80px', top: '8%', left: '82%', transform: 'rotate(-35deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-16" style={{ width: '60px', top: '55%', left: '88%', transform: 'rotate(30deg)' }} />
+          <img src={htuLogo} alt="" className="absolute opacity-11" style={{ width: '75px', top: '25%', left: '94%', transform: 'rotate(-18deg)' }} />
+        </div>
         
         {/* Content above background */}
         <div className="relative z-10 flex items-center justify-between w-full">
