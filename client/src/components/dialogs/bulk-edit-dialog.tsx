@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,13 @@ export function BulkEditDialog({
 }: BulkEditDialogProps) {
   const [enabledFields, setEnabledFields] = useState<Record<string, boolean>>({});
   const [values, setValues] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    if (!open) {
+      setEnabledFields({});
+      setValues({});
+    }
+  }, [open]);
 
   const handleToggleField = (fieldKey: string, enabled: boolean) => {
     setEnabledFields(prev => ({ ...prev, [fieldKey]: enabled }));
@@ -123,7 +130,11 @@ export function BulkEditDialog({
                       </SelectTrigger>
                       <SelectContent>
                         {field.options.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
+                          <SelectItem 
+                            key={option.value} 
+                            value={option.value}
+                            data-testid={`option-${field.key}-${option.value}`}
+                          >
                             {option.label}
                           </SelectItem>
                         ))}

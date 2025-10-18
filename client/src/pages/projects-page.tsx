@@ -23,6 +23,7 @@ import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3
 import { Project, Partner, SapSystem } from "@shared/schema";
 import { RelationshipBadge } from "@/components/ui/relationship-badge";
 import { SapPasteJsonDialog } from "@/components/dialogs/sap-paste-json-dialog";
+import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 import { downloadZTHUDocumentationShortcut } from "@/lib/sap-shortcut";
 import ProjectForm from "@/components/forms/project-form";
 import ProjectFormContainer from "@/components/forms/project-form-container";
@@ -135,6 +136,7 @@ export default function ProjectsPage() {
   const isEditMode = location.includes("/edit");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showPlanner, setShowPlanner] = useState(false);
@@ -223,6 +225,65 @@ export default function ProjectsPage() {
       });
     },
   });
+
+  const bulkEditMutation = useMutation({
+    mutationFn: async ({ projects, updates }: { projects: Project[], updates: Record<string, any> }) => {
+      await Promise.all(
+        projects.map(project => apiRequest("PATCH", `/api/projects/${project.id}`, updates))
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      setSelectedProjects([]);
+      setShowBulkEditDialog(false);
+      toast({
+        title: "Progetti aggiornati",
+        description: "I progetti selezionati sono stati aggiornati con successo.",
+      });
+    },
+  });
+
+  const bulkEditFields: BulkEditField[] = [
+    {
+      key: "status",
+      label: "Stato",
+      type: "select",
+      options: [
+        { value: "planning", label: "Pianificazione" },
+        { value: "in_progress", label: "In corso" },
+        { value: "review", label: "Revisione" },
+        { value: "completed", label: "Completato" },
+        { value: "on_hold", label: "In attesa" },
+      ],
+    },
+    {
+      key: "clientId",
+      label: "Cliente",
+      type: "select",
+      options: partners.map(p => ({ value: p.id, label: p.name })),
+    },
+    {
+      key: "sapSystemId",
+      label: "Sistema SAP",
+      type: "select",
+      options: [
+        { value: "", label: "Nessuno" },
+        ...sapSystems.map(s => ({ value: s.id, label: s.name })),
+      ],
+    },
+    {
+      key: "budget",
+      label: "Budget",
+      type: "number",
+      placeholder: "Es: 50000",
+    },
+    {
+      key: "progress",
+      label: "Progresso (%)",
+      type: "number",
+      placeholder: "0-100",
+    },
+  ];
 
   const handleEdit = (project: Project) => {
     setEditingProject(project);
@@ -349,6 +410,10 @@ export default function ProjectsPage() {
 
   const confirmBulkDelete = () => {
     bulkDeleteMutation.mutate(selectedProjects);
+  };
+
+  const handleBulkEditSave = (updates: Record<string, any>) => {
+    bulkEditMutation.mutate({ projects: selectedProjects, updates });
   };
 
   const formatBudget = (budget: string | null) => {
@@ -497,7 +562,7 @@ export default function ProjectsPage() {
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={handleAdd}
             onCopySelected={() => {/* TODO: implement copy */}}
-            onBulkEdit={() => {/* TODO: implement bulk edit */}}
+            onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => handleDelete(selectedProjects)}
             hasSelection={selectedProjects.length > 0}
           />
@@ -606,6 +671,18 @@ export default function ProjectsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Edit Dialog */}
+      <BulkEditDialog
+        open={showBulkEditDialog}
+        onOpenChange={setShowBulkEditDialog}
+        title="Modifica Massiva Progetti"
+        description="Seleziona i campi da modificare e imposta i nuovi valori per"
+        fields={bulkEditFields}
+        selectedCount={selectedProjects.length}
+        onSave={handleBulkEditSave}
+        isPending={bulkEditMutation.isPending}
+      />
 
       {/* SAP Paste JSON Dialog */}
       <SapPasteJsonDialog 
