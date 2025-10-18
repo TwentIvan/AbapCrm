@@ -22,6 +22,7 @@ import {
   insertBusinessScenarioSchema,
   insertSapTransportRequestSchema, insertSapTransportTaskSchema, insertSapTransportObjectSchema, insertSapObjectContentSchema,
   insertProjectAssignmentSchema, insertProjectMilestoneSchema, insertPurchaseOrderSchema, insertVendorInvoiceSchema,
+  insertCustomEntitySchema, insertCustomFieldSchema, insertEntityCustomValueSchema,
   type EmailConfig,
   projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals,
@@ -34,6 +35,7 @@ import { MessageLogService } from "./message-log-service";
 import { gmailService } from "./gmail-service";
 import { AttachmentsService } from "./attachments-service";
 import { EmailForwardCleaner } from './email-forward-cleaner';
+import { CustomMetadataService } from "./custom-metadata-service";
 
 // Helper function to extract organizationId from request header
 function getOrganizationId(req: any): string {
@@ -6129,6 +6131,355 @@ Format the response as professional documentation suitable for client delivery.`
     } catch (error) {
       console.error("Error deleting vendor invoice:", error);
       res.status(500).json({ error: "Failed to delete vendor invoice" });
+    }
+  });
+
+  // ==================== CUSTOM METADATA SYSTEM ====================
+  
+  // Entity Schema (with ETag support for caching)
+  app.get("/api/entity-schema/:entityKey", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const result = await CustomMetadataService.getEntitySchema(
+        organizationId,
+        req.params.entityKey
+      );
+      
+      if (!result) return res.sendStatus(404);
+      
+      const { schema, etag } = result;
+      
+      // Set ETag header
+      res.setHeader("ETag", `"${etag}"`);
+      res.setHeader("Cache-Control", "private, max-age=300"); // 5 minutes
+      
+      // Check If-None-Match for conditional GET (304 Not Modified)
+      const clientEtag = req.headers["if-none-match"];
+      if (clientEtag === `"${etag}"`) {
+        return res.sendStatus(304);
+      }
+      
+      res.json(schema);
+    } catch (error) {
+      console.error("Error getting entity schema:", error);
+      res.status(500).json({ error: "Failed to get entity schema" });
+    }
+  });
+  
+  // Custom Entities
+  app.get("/api/custom-entities", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const entities = await storage.getCustomEntities(organizationId);
+      res.json(entities);
+    } catch (error) {
+      console.error("Error getting custom entities:", error);
+      res.status(500).json({ error: "Failed to get custom entities" });
+    }
+  });
+
+  app.get("/api/custom-entities/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const entity = await storage.getCustomEntity(req.params.id, organizationId);
+      if (!entity) return res.sendStatus(404);
+      res.json(entity);
+    } catch (error) {
+      console.error("Error getting custom entity:", error);
+      res.status(500).json({ error: "Failed to get custom entity" });
+    }
+  });
+
+  app.get("/api/custom-entities/by-slug/:slug", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const entity = await storage.getCustomEntityBySlug(req.params.slug, organizationId);
+      if (!entity) return res.sendStatus(404);
+      res.json(entity);
+    } catch (error) {
+      console.error("Error getting custom entity by slug:", error);
+      res.status(500).json({ error: "Failed to get custom entity by slug" });
+    }
+  });
+
+  app.post("/api/custom-entities", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const validation = insertCustomEntitySchema.safeParse({
+        ...req.body,
+        organizationId
+      });
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const entity = await storage.createCustomEntity(validation.data);
+      
+      // Invalidate cache for this organization
+      CustomMetadataService.invalidateOrganizationCache(organizationId);
+      
+      res.status(201).json(entity);
+    } catch (error) {
+      console.error("Error creating custom entity:", error);
+      res.status(500).json({ error: "Failed to create custom entity" });
+    }
+  });
+
+  app.put("/api/custom-entities/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      
+      // Check If-Match header for optimistic locking
+      const ifMatch = req.headers["if-match"];
+      if (ifMatch) {
+        // Get current entity to check slug for ETag validation
+        const [currentEntity] = await db
+          .select()
+          .from(customEntities)
+          .where(and(
+            eq(customEntities.id, req.params.id),
+            eq(customEntities.organizationId, organizationId)
+          ))
+          .limit(1);
+        
+        if (!currentEntity) return res.sendStatus(404);
+        
+        const matches = await CustomMetadataService.checkETag(
+          organizationId,
+          currentEntity.slug,
+          ifMatch.replace(/"/g, "")
+        );
+        
+        if (!matches) {
+          return res.status(412).json({ 
+            error: "Precondition Failed", 
+            message: "Entity was modified by another request. Please reload and try again." 
+          });
+        }
+      }
+      
+      const validation = insertCustomEntitySchema.partial().safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const entity = await storage.updateCustomEntity(req.params.id, validation.data, organizationId);
+      if (!entity) return res.sendStatus(404);
+      
+      // Invalidate cache for this organization
+      CustomMetadataService.invalidateOrganizationCache(organizationId);
+      
+      res.json(entity);
+    } catch (error) {
+      console.error("Error updating custom entity:", error);
+      res.status(500).json({ error: "Failed to update custom entity" });
+    }
+  });
+
+  app.delete("/api/custom-entities/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const deleted = await storage.deleteCustomEntity(req.params.id, organizationId);
+      if (!deleted) return res.sendStatus(404);
+      
+      // Invalidate cache for this organization
+      CustomMetadataService.invalidateOrganizationCache(organizationId);
+      
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting custom entity:", error);
+      res.status(500).json({ error: "Failed to delete custom entity" });
+    }
+  });
+
+  // Custom Fields
+  app.get("/api/custom-fields/:entityId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const fields = await storage.getCustomFields(req.params.entityId, organizationId);
+      res.json(fields);
+    } catch (error) {
+      console.error("Error getting custom fields:", error);
+      res.status(500).json({ error: "Failed to get custom fields" });
+    }
+  });
+
+  app.post("/api/custom-fields", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const validation = insertCustomFieldSchema.safeParse({
+        ...req.body,
+        organizationId
+      });
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const field = await storage.createCustomField(validation.data);
+      
+      // Invalidate cache for this organization
+      CustomMetadataService.invalidateOrganizationCache(organizationId);
+      
+      res.status(201).json(field);
+    } catch (error) {
+      console.error("Error creating custom field:", error);
+      res.status(500).json({ error: "Failed to create custom field" });
+    }
+  });
+
+  app.put("/api/custom-fields/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      
+      // Check If-Match header for optimistic locking
+      const ifMatch = req.headers["if-match"];
+      if (ifMatch) {
+        // Get current field and its entity to check ETag
+        const [currentField] = await db
+          .select({
+            field: customFields,
+            entity: customEntities,
+          })
+          .from(customFields)
+          .innerJoin(customEntities, eq(customFields.entityId, customEntities.id))
+          .where(and(
+            eq(customFields.id, req.params.id),
+            eq(customFields.organizationId, organizationId)
+          ))
+          .limit(1);
+        
+        if (!currentField) return res.sendStatus(404);
+        
+        const matches = await CustomMetadataService.checkETag(
+          organizationId,
+          currentField.entity.slug,
+          ifMatch.replace(/"/g, "")
+        );
+        
+        if (!matches) {
+          return res.status(412).json({ 
+            error: "Precondition Failed", 
+            message: "Field schema was modified by another request. Please reload and try again." 
+          });
+        }
+      }
+      
+      const validation = insertCustomFieldSchema.partial().safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const field = await storage.updateCustomField(req.params.id, validation.data, organizationId);
+      if (!field) return res.sendStatus(404);
+      
+      // Invalidate cache for this organization
+      CustomMetadataService.invalidateOrganizationCache(organizationId);
+      
+      res.json(field);
+    } catch (error) {
+      console.error("Error updating custom field:", error);
+      res.status(500).json({ error: "Failed to update custom field" });
+    }
+  });
+
+  app.delete("/api/custom-fields/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const deleted = await storage.deleteCustomField(req.params.id, organizationId);
+      if (!deleted) return res.sendStatus(404);
+      
+      // Invalidate cache for this organization
+      CustomMetadataService.invalidateOrganizationCache(organizationId);
+      
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting custom field:", error);
+      res.status(500).json({ error: "Failed to delete custom field" });
+    }
+  });
+
+  // Entity Custom Values
+  app.get("/api/entity-custom-values/:entityKey/:recordId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const values = await storage.getEntityCustomValues(
+        req.params.entityKey,
+        req.params.recordId,
+        organizationId
+      );
+      res.json(values);
+    } catch (error) {
+      console.error("Error getting entity custom values:", error);
+      res.status(500).json({ error: "Failed to get entity custom values" });
+    }
+  });
+
+  app.post("/api/entity-custom-values", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const validation = insertEntityCustomValueSchema.safeParse({
+        ...req.body,
+        organizationId
+      });
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const value = await storage.setEntityCustomValue(validation.data);
+      res.status(201).json(value);
+    } catch (error) {
+      console.error("Error setting entity custom value:", error);
+      res.status(500).json({ error: "Failed to set entity custom value" });
+    }
+  });
+
+  app.delete("/api/entity-custom-values/:entityKey/:recordId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const deleted = await storage.deleteEntityCustomValues(
+        req.params.entityKey,
+        req.params.recordId,
+        organizationId
+      );
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting entity custom values:", error);
+      res.status(500).json({ error: "Failed to delete entity custom values" });
     }
   });
 

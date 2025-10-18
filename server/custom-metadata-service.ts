@@ -56,19 +56,19 @@ class CustomMetadataServiceClass {
   private cacheTTL = 5 * 60 * 1000; // 5 minutes
   
   /**
-   * Get complete entity schema (core + custom fields)
+   * Get complete entity schema (core + custom fields) with ETag
    */
   async getEntitySchema(
     organizationId: string,
     entityKey: string
-  ): Promise<EntitySchema | null> {
+  ): Promise<{ schema: EntitySchema; etag: string } | null> {
     // Check cache first
     const cacheKey = `${organizationId}:${entityKey}`;
     const cached = this.cache.get(cacheKey);
     
     if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
       console.log(`[Metadata] Cache hit for ${entityKey} (org: ${organizationId})`);
-      return cached.schema;
+      return { schema: cached.schema, etag: cached.etag };
     }
     
     console.log(`[Metadata] Loading schema for ${entityKey} (org: ${organizationId})`);
@@ -148,42 +148,46 @@ class CustomMetadataServiceClass {
       etag,
     });
     
-    return schema;
+    return { schema, etag };
   }
   
   /**
    * Build Zod schema for runtime validation
    */
   buildZodSchema(entitySchema: EntitySchema): z.ZodObject<any> {
-    const shape: Record<string, z.ZodTypeAny> = {};
+    const shape: Record<string, any> = {};
     
     for (const field of entitySchema.fields) {
-      let zodField: z.ZodTypeAny;
+      let zodField: any;
       
-      // Base type
+      // Base type with validations
       switch (field.fieldType) {
-        case "text":
-          zodField = z.string();
+        case "text": {
+          let textField = z.string();
           if (field.validationRules?.minLength) {
-            zodField = zodField.min(field.validationRules.minLength);
+            textField = textField.min(field.validationRules.minLength);
           }
           if (field.validationRules?.maxLength) {
-            zodField = zodField.max(field.validationRules.maxLength);
+            textField = textField.max(field.validationRules.maxLength);
           }
           if (field.validationRules?.pattern) {
-            zodField = zodField.regex(new RegExp(field.validationRules.pattern));
+            textField = textField.regex(new RegExp(field.validationRules.pattern));
           }
+          zodField = textField;
           break;
+        }
           
-        case "number":
-          zodField = z.number();
+        case "number": {
+          let numberField = z.number();
           if (field.validationRules?.min !== undefined) {
-            zodField = zodField.min(field.validationRules.min);
+            numberField = numberField.min(field.validationRules.min);
           }
           if (field.validationRules?.max !== undefined) {
-            zodField = zodField.max(field.validationRules.max);
+            numberField = numberField.max(field.validationRules.max);
           }
+          zodField = numberField;
           break;
+        }
           
         case "date":
           zodField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -235,31 +239,35 @@ class CustomMetadataServiceClass {
   ): { valid: boolean; error?: string } {
     try {
       // Build Zod schema for single field
-      let zodField: z.ZodTypeAny;
+      let zodField: any;
       
       switch (field.fieldType) {
-        case "text":
-          zodField = z.string();
+        case "text": {
+          let textField = z.string();
           if (field.validationRules?.minLength) {
-            zodField = zodField.min(field.validationRules.minLength);
+            textField = textField.min(field.validationRules.minLength);
           }
           if (field.validationRules?.maxLength) {
-            zodField = zodField.max(field.validationRules.maxLength);
+            textField = textField.max(field.validationRules.maxLength);
           }
           if (field.validationRules?.pattern) {
-            zodField = zodField.regex(new RegExp(field.validationRules.pattern));
+            textField = textField.regex(new RegExp(field.validationRules.pattern));
           }
+          zodField = textField;
           break;
+        }
           
-        case "number":
-          zodField = z.number();
+        case "number": {
+          let numberField = z.number();
           if (field.validationRules?.min !== undefined) {
-            zodField = zodField.min(field.validationRules.min);
+            numberField = numberField.min(field.validationRules.min);
           }
           if (field.validationRules?.max !== undefined) {
-            zodField = zodField.max(field.validationRules.max);
+            numberField = numberField.max(field.validationRules.max);
           }
+          zodField = numberField;
           break;
+        }
           
         case "date":
           zodField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -338,7 +346,7 @@ class CustomMetadataServiceClass {
    */
   invalidateOrganizationCache(organizationId: string): void {
     const keysToDelete: string[] = [];
-    for (const [key] of this.cache) {
+    for (const [key] of Array.from(this.cache.entries())) {
       if (key.startsWith(`${organizationId}:`)) {
         keysToDelete.push(key);
       }
@@ -356,15 +364,58 @@ class CustomMetadataServiceClass {
   }
   
   /**
+   * Check if provided ETag matches current schema ETag
+   * Used for conditional requests (If-None-Match, If-Match)
+   */
+  async checkETag(
+    organizationId: string,
+    entityKey: string,
+    clientEtag: string
+  ): Promise<boolean> {
+    const result = await this.getEntitySchema(organizationId, entityKey);
+    if (!result) return false;
+    return result.etag === clientEtag;
+  }
+  
+  /**
+   * Get current ETag without full schema load (cache-only)
+   */
+  getCurrentETag(organizationId: string, entityKey: string): string | null {
+    const cacheKey = `${organizationId}:${entityKey}`;
+    const cached = this.cache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
+      return cached.etag;
+    }
+    
+    return null;
+  }
+  
+  /**
    * Generate etag for schema
+   * IMPORTANT: Must hash ALL schema-relevant properties to ensure cache coherency
    */
   private generateEtag(schema: EntitySchema): string {
     const hash = JSON.stringify({
       entityKey: schema.entityKey,
+      name: schema.name,
+      description: schema.description,
+      isSystem: schema.isSystem,
+      icon: schema.icon,
+      color: schema.color,
       fields: schema.fields.map(f => ({
         key: f.fieldKey,
+        label: f.label,
+        description: f.description,
         type: f.fieldType,
         required: f.isRequired,
+        unique: f.isUnique,
+        isSystem: f.isSystem,
+        defaultValue: f.defaultValue,
+        validationRules: f.validationRules,
+        options: f.options,
+        relationTargetEntityId: f.relationTargetEntityId,
+        uiSchema: f.uiSchema,
       })),
     });
     

@@ -5,6 +5,7 @@ import {
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
   emailVerificationTokens, organizationDomains, emailFeedbacks, customFeedbackReasons, emailTrainingSelections, proposals,
   sapTransportRequests, sapTransportTasks, sapTransportObjects, sapObjectContent, businessScenarios,
+  customEntities, customFields, entityCustomValues,
   type User, type InsertUser,
   type Organization, type InsertOrganization,
   type UserOrganization, type InsertUserOrganization,
@@ -48,7 +49,10 @@ import {
   type SapTransportTask, type InsertSapTransportTask,
   type SapTransportObject, type InsertSapTransportObject,
   type SapObjectContent, type InsertSapObjectContent,
-  type BusinessScenario, type InsertBusinessScenario
+  type BusinessScenario, type InsertBusinessScenario,
+  type CustomEntity, type InsertCustomEntity,
+  type CustomField, type InsertCustomField,
+  type EntityCustomValue, type InsertEntityCustomValue
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull, inArray } from "drizzle-orm";
@@ -401,6 +405,26 @@ export interface IStorage {
   getSapTransportTasks(requestId: string, userId: string): Promise<SapTransportTask[]>;
   getSapTransportObjects(requestId: string, userId: string): Promise<SapTransportObject[]>;
   deleteSapTransportRequest(id: string, userId: string): Promise<boolean>;
+
+  // Custom Entities (Metadata System)
+  getCustomEntities(organizationId: string): Promise<CustomEntity[]>;
+  getCustomEntity(id: string, organizationId: string): Promise<CustomEntity | undefined>;
+  getCustomEntityBySlug(slug: string, organizationId: string): Promise<CustomEntity | undefined>;
+  createCustomEntity(entity: InsertCustomEntity): Promise<CustomEntity>;
+  updateCustomEntity(id: string, entity: Partial<InsertCustomEntity>, organizationId: string): Promise<CustomEntity | undefined>;
+  deleteCustomEntity(id: string, organizationId: string): Promise<boolean>;
+  
+  // Custom Fields (Metadata System)
+  getCustomFields(entityId: string, organizationId: string): Promise<CustomField[]>;
+  getCustomField(id: string, organizationId: string): Promise<CustomField | undefined>;
+  createCustomField(field: InsertCustomField): Promise<CustomField>;
+  updateCustomField(id: string, field: Partial<InsertCustomField>, organizationId: string): Promise<CustomField | undefined>;
+  deleteCustomField(id: string, organizationId: string): Promise<boolean>;
+  
+  // Entity Custom Values (Store custom field values for core entities)
+  getEntityCustomValues(entityKey: string, recordId: string, organizationId: string): Promise<EntityCustomValue[]>;
+  setEntityCustomValue(value: InsertEntityCustomValue): Promise<EntityCustomValue>;
+  deleteEntityCustomValues(entityKey: string, recordId: string, organizationId: string): Promise<boolean>;
 
   sessionStore: session.Store;
 }
@@ -3620,6 +3644,236 @@ export class DatabaseStorage implements IStorage {
     await db.delete(sapTransportRequests).where(eq(sapTransportRequests.id, id));
     
     return true;
+  }
+
+  // ==================== CUSTOM ENTITIES (METADATA SYSTEM) ====================
+  
+  async getCustomEntities(organizationId: string): Promise<CustomEntity[]> {
+    return await db.query.customEntities.findMany({
+      where: eq(customEntities.organizationId, organizationId),
+      orderBy: asc(customEntities.displayName),
+    });
+  }
+
+  async getCustomEntity(id: string, organizationId: string): Promise<CustomEntity | undefined> {
+    const entity = await db.query.customEntities.findFirst({
+      where: and(
+        eq(customEntities.id, id),
+        eq(customEntities.organizationId, organizationId)
+      ),
+    });
+    return entity || undefined;
+  }
+
+  async getCustomEntityBySlug(slug: string, organizationId: string): Promise<CustomEntity | undefined> {
+    const entity = await db.query.customEntities.findFirst({
+      where: and(
+        eq(customEntities.slug, slug),
+        eq(customEntities.organizationId, organizationId)
+      ),
+    });
+    return entity || undefined;
+  }
+
+  async createCustomEntity(entity: InsertCustomEntity): Promise<CustomEntity> {
+    const [created] = await db.insert(customEntities).values(entity).returning();
+    return created;
+  }
+
+  async updateCustomEntity(
+    id: string,
+    entity: Partial<InsertCustomEntity>,
+    organizationId: string
+  ): Promise<CustomEntity | undefined> {
+    // Validate existence first
+    const existing = await this.getCustomEntity(id, organizationId);
+    if (!existing) return undefined;
+
+    const [updated] = await db
+      .update(customEntities)
+      .set(entity)
+      .where(and(
+        eq(customEntities.id, id),
+        eq(customEntities.organizationId, organizationId)
+      ))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteCustomEntity(id: string, organizationId: string): Promise<boolean> {
+    // Validate existence first
+    const existing = await this.getCustomEntity(id, organizationId);
+    if (!existing) return false;
+
+    // Cascade delete in transaction: entity -> fields -> values
+    await db.transaction(async (tx) => {
+      // 1. Delete all custom field values for this entity
+      await tx.delete(entityCustomValues).where(
+        and(
+          eq(entityCustomValues.entityKey, existing.slug),
+          eq(entityCustomValues.organizationId, organizationId)
+        )
+      );
+
+      // 2. Delete all custom fields for this entity
+      await tx.delete(customFields).where(
+        and(
+          eq(customFields.entityId, id),
+          eq(customFields.organizationId, organizationId)
+        )
+      );
+
+      // 3. Delete the entity itself
+      await tx.delete(customEntities).where(
+        and(
+          eq(customEntities.id, id),
+          eq(customEntities.organizationId, organizationId)
+        )
+      );
+    });
+
+    return true;
+  }
+
+  // ==================== CUSTOM FIELDS (METADATA SYSTEM) ====================
+
+  async getCustomFields(entityId: string, organizationId: string): Promise<CustomField[]> {
+    return await db.query.customFields.findMany({
+      where: and(
+        eq(customFields.entityId, entityId),
+        eq(customFields.organizationId, organizationId)
+      ),
+      orderBy: asc(customFields.displayOrder),
+    });
+  }
+
+  async getCustomField(id: string, organizationId: string): Promise<CustomField | undefined> {
+    const field = await db.query.customFields.findFirst({
+      where: and(
+        eq(customFields.id, id),
+        eq(customFields.organizationId, organizationId)
+      ),
+    });
+    return field || undefined;
+  }
+
+  async createCustomField(field: InsertCustomField): Promise<CustomField> {
+    const [created] = await db.insert(customFields).values(field).returning();
+    return created;
+  }
+
+  async updateCustomField(
+    id: string,
+    field: Partial<InsertCustomField>,
+    organizationId: string
+  ): Promise<CustomField | undefined> {
+    // Validate existence first
+    const existing = await this.getCustomField(id, organizationId);
+    if (!existing) return undefined;
+
+    const [updated] = await db
+      .update(customFields)
+      .set(field)
+      .where(and(
+        eq(customFields.id, id),
+        eq(customFields.organizationId, organizationId)
+      ))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteCustomField(id: string, organizationId: string): Promise<boolean> {
+    // Validate existence first
+    const existing = await this.getCustomField(id, organizationId);
+    if (!existing) return false;
+
+    // Delete the field and its values in transaction
+    await db.transaction(async (tx) => {
+      // 1. Delete all values for this field
+      await tx.delete(entityCustomValues).where(
+        and(
+          eq(entityCustomValues.fieldId, id),
+          eq(entityCustomValues.organizationId, organizationId)
+        )
+      );
+
+      // 2. Delete the field itself
+      await tx.delete(customFields).where(
+        and(
+          eq(customFields.id, id),
+          eq(customFields.organizationId, organizationId)
+        )
+      );
+    });
+
+    return true;
+  }
+
+  // ==================== ENTITY CUSTOM VALUES (METADATA SYSTEM) ====================
+
+  async getEntityCustomValues(
+    entityKey: string,
+    recordId: string,
+    organizationId: string
+  ): Promise<EntityCustomValue[]> {
+    return await db.query.entityCustomValues.findMany({
+      where: and(
+        eq(entityCustomValues.entityKey, entityKey),
+        eq(entityCustomValues.recordId, recordId),
+        eq(entityCustomValues.organizationId, organizationId)
+      ),
+    });
+  }
+
+  async setEntityCustomValue(value: InsertEntityCustomValue): Promise<EntityCustomValue> {
+    // Normalize JSONB payload: remove undefined keys
+    const normalizedValue = {
+      ...value,
+      value: value.value === undefined ? null : value.value,
+    };
+
+    // Remove undefined keys from the value object
+    Object.keys(normalizedValue).forEach(key => {
+      if (normalizedValue[key as keyof typeof normalizedValue] === undefined) {
+        delete normalizedValue[key as keyof typeof normalizedValue];
+      }
+    });
+
+    // Upsert: INSERT ... ON CONFLICT DO UPDATE
+    const [result] = await db
+      .insert(entityCustomValues)
+      .values(normalizedValue)
+      .onConflictDoUpdate({
+        target: [
+          entityCustomValues.organizationId,
+          entityCustomValues.entityKey,
+          entityCustomValues.recordId,
+          entityCustomValues.fieldId,
+        ],
+        set: {
+          value: normalizedValue.value,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    return result;
+  }
+
+  async deleteEntityCustomValues(
+    entityKey: string,
+    recordId: string,
+    organizationId: string
+  ): Promise<boolean> {
+    const result = await db.delete(entityCustomValues).where(
+      and(
+        eq(entityCustomValues.entityKey, entityKey),
+        eq(entityCustomValues.recordId, recordId),
+        eq(entityCustomValues.organizationId, organizationId)
+      )
+    );
+
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 

@@ -2,6 +2,21 @@
 
 This CRM application is designed for SAP ABAP freelancers to manage projects, tasks, business deals, partners, and calendar events. It provides a unified dashboard for essential business management tools, including project tracking, deal pipeline, partner relationship management, and task organization, built as a full-stack web application. The application incorporates an AI-powered project agent for intelligent message analysis and semi-automatic project creation, along with robust multi-organization data filtering capabilities.
 
+## Custom Fields & Metadata System (Backend Implemented - Oct 2025)
+
+The system now includes a comprehensive **metadata-driven extension layer** for custom fields, entities, workflows, and permissions:
+
+- **Custom Entities (13 DB tables)**: User-defined entities with extensible schemas stored in JSONB
+- **Custom Fields**: Dynamic field definitions with type validation (text, number, date, boolean, select, relation)
+- **Entity Custom Values**: Stores custom field values for core entities (projects, tasks, etc) in JSONB format `{value, display, metadata}`
+- **Workflow System**: Event-driven automations with triggers (onCreate, onUpdate, onDelete, onFieldChange) and actions
+- **Role-Based Permissions**: Granular CRUD permissions per entity and field
+- **CustomMetadataService**: Caching + runtime validation with Zod schema generation from JSONB metadata
+- **EventBus**: Type-safe pub/sub pattern for domain events (entity.created/updated/deleted, field.changed)
+
+**Backend Status:** ✅ Complete (15 storage methods, 11 API routes, database schemas, services)
+**Frontend Status:** 🚧 Pending (hooks, components, UI for metadata management)
+
 ## SAP Transport Request Integration
 
 The system supports three methods for receiving Transport Requests from SAP systems:
