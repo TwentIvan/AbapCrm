@@ -15,6 +15,7 @@ import OrganizationForm from "@/components/forms/organization-form";
 import AuditHistory from "@/components/ui/audit-history";
 import BusinessScenariosManager from "@/components/business-scenarios-manager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 
 interface OrganizationWithDetails {
   id: string;
@@ -33,7 +34,9 @@ export default function OrganizationsPage() {
   const [showForm, setShowForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { onDeleteSuccess } = useStandardCrud("organizations");
 
   const { data: items, isLoading, isError } = useQuery<OrganizationWithDetails[]>({
@@ -83,6 +86,20 @@ export default function OrganizationsPage() {
     }
   });
 
+  const bulkEditMutation = useMutation({
+    mutationFn: async ({ items, updates }: { items: OrganizationWithDetails[], updates: Record<string, any> }) => {
+      await Promise.all(
+        items.map(item => apiRequest("PUT", `/api/organizations/${item.id}`, updates))
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations"] });
+      setSelectedItems([]);
+      setShowBulkEditDialog(false);
+      toast({ title: "Modificati", description: "Organizzazioni modificate con successo" });
+    }
+  });
+
   const handleEdit = (item: OrganizationWithDetails) => {
     setEditingItem(item);
     setShowForm(true);
@@ -122,6 +139,43 @@ export default function OrganizationsPage() {
 
   const confirmBulkDelete = () => {
     bulkDeleteMutation.mutate(selectedItems);
+  };
+
+  const bulkEditFields: BulkEditField[] = [
+    {
+      key: "isActive",
+      label: "Stato",
+      type: "select",
+      options: [
+        { value: "true", label: "Attiva" },
+        { value: "false", label: "Inattiva" },
+      ],
+    },
+    {
+      key: "theme",
+      label: "Tema",
+      type: "select",
+      options: [
+        { value: "blue", label: "Blu" },
+        { value: "green", label: "Verde" },
+        { value: "purple", label: "Viola" },
+        { value: "orange", label: "Arancione" },
+        { value: "red", label: "Rosso" },
+        { value: "pink", label: "Rosa" },
+        { value: "yellow", label: "Giallo" },
+        { value: "teal", label: "Teal" },
+        { value: "indigo", label: "Indaco" },
+        { value: "gray", label: "Grigio" },
+      ],
+    },
+  ];
+
+  const handleBulkEditSave = (updates: Record<string, any>) => {
+    const processedUpdates = { ...updates };
+    if (updates.isActive !== undefined) {
+      processedUpdates.isActive = updates.isActive === "true";
+    }
+    bulkEditMutation.mutate({ items: selectedItems, updates: processedUpdates });
   };
 
   // Helper functions for theme
@@ -350,6 +404,18 @@ export default function OrganizationsPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Bulk Edit Dialog */}
+          <BulkEditDialog
+            open={showBulkEditDialog}
+            onOpenChange={setShowBulkEditDialog}
+            title="Modifica Multipla Organizzazioni"
+            description={`Modifica ${selectedItems.length} organizzazioni selezionate`}
+            fields={bulkEditFields}
+            selectedCount={selectedItems.length}
+            onSave={handleBulkEditSave}
+            isPending={bulkEditMutation.isPending}
+          />
         </main>
       </div>
     </div>

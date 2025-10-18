@@ -21,6 +21,7 @@ import { Deal } from "@shared/schema";
 import DealForm from "@/components/forms/deal-form";
 import AuditHistory from "@/components/ui/audit-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 
 const stageColors = {
   prospecting: "bg-blue-100 text-blue-800",
@@ -46,6 +47,7 @@ export default function DealsPage() {
   const [showForm, setShowForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   
@@ -114,6 +116,20 @@ export default function DealsPage() {
     },
   });
 
+  const bulkEditMutation = useMutation({
+    mutationFn: async ({ deals, updates }: { deals: Deal[], updates: Record<string, any> }) => {
+      await Promise.all(
+        deals.map(deal => apiRequest("PUT", `/api/deals/${deal.id}`, updates))
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      setSelectedDeals([]);
+      setShowBulkEditDialog(false);
+      toast({ title: "Modificati", description: "Deals modificati con successo" });
+    }
+  });
+
   const handleEdit = (deal: Deal) => {
     setEditingDeal(deal);
     setShowForm(true);
@@ -143,6 +159,32 @@ export default function DealsPage() {
 
   const confirmBulkDelete = () => {
     bulkDeleteMutation.mutate(selectedDeals);
+  };
+
+  const bulkEditFields: BulkEditField[] = [
+    {
+      key: "stage",
+      label: "Fase",
+      type: "select",
+      options: [
+        { value: "prospecting", label: "Prospecting" },
+        { value: "proposal", label: "Proposal" },
+        { value: "negotiation", label: "Negotiation" },
+        { value: "closing", label: "Closing" },
+        { value: "won", label: "Won" },
+        { value: "lost", label: "Lost" },
+      ],
+    },
+    {
+      key: "probability",
+      label: "Probabilità (%)",
+      type: "number",
+      placeholder: "0-100",
+    },
+  ];
+
+  const handleBulkEditSave = (updates: Record<string, any>) => {
+    bulkEditMutation.mutate({ deals: selectedDeals, updates });
   };
 
   const activeDeals = deals?.filter(deal => !["won", "lost"].includes(deal.stage));
@@ -305,7 +347,7 @@ export default function DealsPage() {
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={handleAdd}
             onCopySelected={() => {/* TODO: implement copy */}}
-            onBulkEdit={() => {/* TODO: implement bulk edit */}}
+            onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => handleDelete(selectedDeals)}
             hasSelection={selectedDeals.length > 0}
           />
@@ -532,6 +574,54 @@ export default function DealsPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma Eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare questo deal? Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} data-testid="button-confirm-delete">
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Dialog */}
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma Eliminazione Multipla</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare {selectedDeals.length} deal? Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-bulk-delete">Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmBulkDelete} data-testid="button-confirm-bulk-delete">
+              Elimina Tutti
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Edit Dialog */}
+      <BulkEditDialog
+        open={showBulkEditDialog}
+        onOpenChange={setShowBulkEditDialog}
+        title="Modifica Multipla Deals"
+        description={`Modifica ${selectedDeals.length} deal selezionati`}
+        fields={bulkEditFields}
+        selectedCount={selectedDeals.length}
+        onSave={handleBulkEditSave}
+        isPending={bulkEditMutation.isPending}
+      />
     </div>
   );
 }

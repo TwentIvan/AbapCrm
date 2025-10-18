@@ -15,8 +15,9 @@ import { DataTable, createTextColumn } from "@/components/ui/data-table";
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Contact as ContactIcon, Mail, Phone, Building, MoreHorizontal, Edit, Trash2, User } from "lucide-react";
-import { Contact } from "@shared/schema";
+import { Contact, Partner } from "@shared/schema";
 import ContactForm from "@/components/forms/contact-form";
+import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 
 export default function ContactsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -25,6 +26,7 @@ export default function ContactsPage() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   
@@ -47,6 +49,15 @@ export default function ContactsPage() {
 
   const { data: contacts, isLoading } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+    staleTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: partners = [] } = useQuery<Partner[]>({
+    queryKey: ["/api/partners"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
     staleTime: 30 * 60 * 1000,
@@ -109,6 +120,20 @@ export default function ContactsPage() {
     },
   });
 
+  const bulkEditMutation = useMutation({
+    mutationFn: async ({ contacts, updates }: { contacts: Contact[], updates: Record<string, any> }) => {
+      await Promise.all(
+        contacts.map(contact => apiRequest("PUT", `/api/contacts/${contact.id}`, updates))
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      setSelectedContacts([]);
+      setShowBulkEditDialog(false);
+      toast({ title: "Modificati", description: "Contatti modificati con successo" });
+    }
+  });
+
   const handleEdit = (contact: Contact) => {
     setSelectedContact(contact);
     setShowEditDialog(true);
@@ -132,6 +157,28 @@ export default function ContactsPage() {
   const confirmBulkDelete = () => {
     const contactIds = selectedContacts.map(c => c.id);
     bulkDeleteMutation.mutate(contactIds);
+  };
+
+  const bulkEditFields: BulkEditField[] = [
+    {
+      key: "position",
+      label: "Ruolo",
+      type: "text",
+      placeholder: "Es: Manager, CEO",
+    },
+    {
+      key: "partnerId",
+      label: "Organizzazione",
+      type: "select",
+      options: [
+        { value: "", label: "Nessuna" },
+        ...partners.map(p => ({ value: p.id, label: p.name })),
+      ],
+    },
+  ];
+
+  const handleBulkEditSave = (updates: Record<string, any>) => {
+    bulkEditMutation.mutate({ contacts: selectedContacts, updates });
   };
 
   // Define filter columns for advanced filtering
@@ -250,7 +297,7 @@ export default function ContactsPage() {
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={() => setShowCreateDialog(true)}
             onCopySelected={() => {/* TODO: implement copy */}}
-            onBulkEdit={() => {/* TODO: implement bulk edit */}}
+            onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => setShowBulkDeleteDialog(true)}
             hasSelection={selectedContacts.length > 0}
           />
@@ -397,6 +444,18 @@ export default function ContactsPage() {
           setShowConfigDialog(false);
         }}
         onCancel={() => setShowConfigDialog(false)}
+      />
+
+      {/* Bulk Edit Dialog */}
+      <BulkEditDialog
+        open={showBulkEditDialog}
+        onOpenChange={setShowBulkEditDialog}
+        title="Modifica Multipla Contatti"
+        description={`Modifica ${selectedContacts.length} contatti selezionati`}
+        fields={bulkEditFields}
+        selectedCount={selectedContacts.length}
+        onSave={handleBulkEditSave}
+        isPending={bulkEditMutation.isPending}
       />
     </div>
   );

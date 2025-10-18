@@ -16,6 +16,7 @@ import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { Users, DollarSign, Calendar, User as UserIcon, MoreHorizontal, Edit, Trash2, Grid3X3, List } from "lucide-react";
 import { HumanResource } from "@shared/schema";
 import { HumanResourceForm } from "@/components/forms/human-resource-form";
+import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 
 export default function HumanResourcesPage() {
   const [selectedResources, setSelectedResources] = useState<HumanResource[]>([]);
@@ -23,6 +24,7 @@ export default function HumanResourcesPage() {
   const [showForm, setShowForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const { toast } = useToast();
@@ -64,6 +66,20 @@ export default function HumanResourcesPage() {
     }
   });
 
+  const bulkEditMutation = useMutation({
+    mutationFn: async ({ resources, updates }: { resources: HumanResource[], updates: Record<string, any> }) => {
+      await Promise.all(
+        resources.map(resource => apiRequest("PUT", `/api/human-resources/${resource.id}`, updates))
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/human-resources"] });
+      setSelectedResources([]);
+      setShowBulkEditDialog(false);
+      toast({ title: "Modificati", description: "Risorse modificate con successo" });
+    }
+  });
+
   const handleEdit = (resource: HumanResource) => {
     setEditingResource(resource);
     setShowForm(true);
@@ -93,6 +109,50 @@ export default function HumanResourcesPage() {
 
   const confirmBulkDelete = () => {
     bulkDeleteMutation.mutate(selectedResources);
+  };
+
+  const bulkEditFields: BulkEditField[] = [
+    {
+      key: "role",
+      label: "Ruolo",
+      type: "text",
+      placeholder: "Es: Developer, Analyst",
+    },
+    {
+      key: "department",
+      label: "Dipartimento",
+      type: "text",
+      placeholder: "Es: IT, Consulting",
+    },
+    {
+      key: "skillLevel",
+      label: "Livello",
+      type: "select",
+      options: [
+        { value: "junior", label: "Junior" },
+        { value: "mid", label: "Mid" },
+        { value: "senior", label: "Senior" },
+        { value: "lead", label: "Lead" },
+        { value: "principal", label: "Principal" },
+      ],
+    },
+    {
+      key: "isActive",
+      label: "Stato",
+      type: "select",
+      options: [
+        { value: "true", label: "Attiva" },
+        { value: "false", label: "Inattiva" },
+      ],
+    },
+  ];
+
+  const handleBulkEditSave = (updates: Record<string, any>) => {
+    const processedUpdates = { ...updates };
+    if (updates.isActive !== undefined) {
+      processedUpdates.isActive = updates.isActive === "true";
+    }
+    bulkEditMutation.mutate({ resources: selectedResources, updates: processedUpdates });
   };
 
   const getSkillLevelColor = (level: string) => {
@@ -178,7 +238,7 @@ export default function HumanResourcesPage() {
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={handleAdd}
             onCopySelected={() => {/* TODO: implement copy */}}
-            onBulkEdit={() => {/* TODO: implement bulk edit */}}
+            onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => handleDelete(selectedResources)}
             hasSelection={selectedResources.length > 0}
           />
@@ -270,6 +330,18 @@ export default function HumanResourcesPage() {
               setShowConfigDialog(false);
             }}
             onCancel={() => setShowConfigDialog(false)}
+          />
+
+          {/* Bulk Edit Dialog */}
+          <BulkEditDialog
+            open={showBulkEditDialog}
+            onOpenChange={setShowBulkEditDialog}
+            title="Modifica Multipla Risorse"
+            description={`Modifica ${selectedResources.length} risorse selezionate`}
+            fields={bulkEditFields}
+            selectedCount={selectedResources.length}
+            onSave={handleBulkEditSave}
+            isPending={bulkEditMutation.isPending}
           />
         </main>
       </div>
