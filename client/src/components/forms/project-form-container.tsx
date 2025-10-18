@@ -32,11 +32,21 @@ export default function ProjectFormContainer({
   const { currentOrganizationId } = useOrganization();
   const queryClient = useQueryClient();
   
+  // DEBUG
+  console.log("[ProjectFormContainer] params:", params);
+  console.log("[ProjectFormContainer] params.id:", params.id);
+  
   // Form routing
   const { routes, navigation, currentRoute } = useFormRouting("/projects", params.id);
   
+  // DEBUG
+  console.log("[ProjectFormContainer] currentRoute:", currentRoute);
+  
   // Read-only mode (from URL parameter)
   const { isReadOnly, enableEdit, disableEdit } = useReadOnlyMode();
+  
+  // DEBUG
+  console.log("[ProjectFormContainer] isReadOnly:", isReadOnly);
   
   // For full-page mode, fetch project data from route params
   const { data: fullPageProject } = useQuery({
