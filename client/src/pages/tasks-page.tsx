@@ -29,6 +29,7 @@ import { LayoutManager } from "@/components/ui/layout-manager";
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 
 const statusColors = {
   todo: "bg-gray-100 text-gray-800",
@@ -294,6 +295,7 @@ export default function TasksPage() {
   const [selectedTasks, setSelectedTasks] = useState<Task[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   
@@ -339,6 +341,18 @@ export default function TasksPage() {
     refetchOnWindowFocus: false,
   });
 
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+  });
+
+  const { data: users = [] } = useQuery<any[]>({
+    queryKey: ["/api/users"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+  });
+
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Task> }) => {
       const res = await apiRequest("PUT", `/api/tasks/${id}`, data);
@@ -376,6 +390,72 @@ export default function TasksPage() {
       toast({ title: "Eliminati", description: "Tasks eliminati con successo" });
     }
   });
+
+  const bulkEditMutation = useMutation({
+    mutationFn: async ({ tasks, updates }: { tasks: Task[], updates: Record<string, any> }) => {
+      await Promise.all(
+        tasks.map(task => apiRequest("PUT", `/api/tasks/${task.id}`, updates))
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      setSelectedTasks([]);
+      setShowBulkEditDialog(false);
+      toast({ title: "Modificati", description: "Tasks modificati con successo" });
+    }
+  });
+
+  const bulkEditFields: BulkEditField[] = [
+    {
+      key: "status",
+      label: "Stato",
+      type: "select",
+      options: [
+        { value: "todo", label: "To Do" },
+        { value: "in_progress", label: "In Progress" },
+        { value: "review", label: "Review" },
+        { value: "completed", label: "Completed" },
+      ],
+    },
+    {
+      key: "priority",
+      label: "Priorità",
+      type: "select",
+      options: [
+        { value: "low", label: "Bassa" },
+        { value: "medium", label: "Media" },
+        { value: "high", label: "Alta" },
+        { value: "urgent", label: "Urgente" },
+      ],
+    },
+    {
+      key: "projectId",
+      label: "Progetto",
+      type: "select",
+      options: [
+        { value: "", label: "Nessuno" },
+        ...projects.map(p => ({ value: p.id, label: p.name })),
+      ],
+    },
+    {
+      key: "assignedTo",
+      label: "Assegnato a",
+      type: "select",
+      options: [
+        { value: "", label: "Nessuno" },
+        ...users.map(u => ({ value: u.id, label: u.username })),
+      ],
+    },
+    {
+      key: "dueDate",
+      label: "Data Scadenza",
+      type: "date",
+    },
+  ];
+
+  const handleBulkEditSave = (updates: Record<string, any>) => {
+    bulkEditMutation.mutate({ tasks: selectedTasks, updates });
+  };
 
   const toggleTaskComplete = (task: Task) => {
     const newStatus = task.status === "completed" ? "todo" : "completed";
@@ -723,7 +803,7 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={() => setShowCreateDialog(true)}
             onCopySelected={() => {/* TODO: implement copy */}}
-            onBulkEdit={() => {/* TODO: implement bulk edit */}}
+            onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => handleDelete(selectedTasks)}
             hasSelection={selectedTasks.length > 0}
           />
@@ -829,6 +909,18 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
           setShowConfigDialog(false);
         }}
         onCancel={() => setShowConfigDialog(false)}
+      />
+
+      {/* Bulk Edit Dialog */}
+      <BulkEditDialog
+        open={showBulkEditDialog}
+        onOpenChange={setShowBulkEditDialog}
+        title="Modifica Massiva Tasks"
+        description="Seleziona i campi da modificare e imposta i nuovi valori per"
+        fields={bulkEditFields}
+        selectedCount={selectedTasks.length}
+        onSave={handleBulkEditSave}
+        isPending={bulkEditMutation.isPending}
       />
     </div>
   );
