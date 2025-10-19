@@ -23,6 +23,7 @@ import {
   insertSapTransportRequestSchema, insertSapTransportTaskSchema, insertSapTransportObjectSchema, insertSapObjectContentSchema,
   insertProjectAssignmentSchema, insertProjectMilestoneSchema, insertPurchaseOrderSchema, insertVendorInvoiceSchema,
   insertCustomEntitySchema, insertCustomFieldSchema, insertEntityCustomValueSchema,
+  insertTestExecutionSchema,
   type EmailConfig,
   projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals,
@@ -6615,6 +6616,134 @@ Format the response as professional documentation suitable for client delivery.`
     } catch (error) {
       console.error("Error deleting entity custom values:", error);
       res.status(500).json({ error: "Failed to delete entity custom values" });
+    }
+  });
+
+  // ========== Test Executions API ==========
+  
+  app.get("/api/test-executions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      const executions = await storage.getTestExecutions(userId, organizationId);
+      res.json(executions);
+    } catch (error) {
+      console.error("Error fetching test executions:", error);
+      res.status(500).json({ error: "Failed to fetch test executions" });
+    }
+  });
+
+  app.get("/api/test-executions/project/:projectId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      const executions = await storage.getTestExecutionsByProject(
+        req.params.projectId,
+        userId,
+        organizationId
+      );
+      res.json(executions);
+    } catch (error) {
+      console.error("Error fetching project test executions:", error);
+      res.status(500).json({ error: "Failed to fetch project test executions" });
+    }
+  });
+
+  app.get("/api/test-executions/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      const execution = await storage.getTestExecution(req.params.id, userId, organizationId);
+      if (!execution) return res.sendStatus(404);
+      res.json(execution);
+    } catch (error) {
+      console.error("Error fetching test execution:", error);
+      res.status(500).json({ error: "Failed to fetch test execution" });
+    }
+  });
+
+  app.post("/api/test-executions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      
+      const validation = insertTestExecutionSchema.safeParse({
+        ...req.body,
+        userId,
+        organizationId,
+        executedBy: userId,
+      });
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: validation.error.errors 
+        });
+      }
+
+      const execution = await storage.createTestExecution(validation.data);
+      res.status(201).json(execution);
+    } catch (error) {
+      console.error("Error creating test execution:", error);
+      res.status(500).json({ error: "Failed to create test execution" });
+    }
+  });
+
+  app.put("/api/test-executions/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      
+      const execution = await storage.updateTestExecution(
+        req.params.id,
+        req.body,
+        userId,
+        organizationId
+      );
+      
+      if (!execution) return res.sendStatus(404);
+      res.json(execution);
+    } catch (error) {
+      console.error("Error updating test execution:", error);
+      res.status(500).json({ error: "Failed to update test execution" });
+    }
+  });
+
+  app.delete("/api/test-executions/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      const deleted = await storage.deleteTestExecution(req.params.id, userId, organizationId);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting test execution:", error);
+      res.status(500).json({ error: "Failed to delete test execution" });
+    }
+  });
+
+  app.post("/api/test-executions/bulk-delete", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      const { ids } = req.body;
+      
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: "Invalid ids array" });
+      }
+      
+      const deletedCount = await storage.deleteTestExecutions(ids, userId, organizationId);
+      res.json({ deletedCount });
+    } catch (error) {
+      console.error("Error bulk deleting test executions:", error);
+      res.status(500).json({ error: "Failed to bulk delete test executions" });
     }
   });
 
