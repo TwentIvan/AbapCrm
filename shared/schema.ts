@@ -1503,8 +1503,8 @@ export const sapTransportRequests = pgTable("sap_transport_requests", {
   owner: text("owner").notNull(), // SAP username
   targetSystem: text("target_system"), // Sistema target (es. QAS, PRD)
   
-  // Project association
-  projectId: uuid("project_id").references(() => projects.id).notNull(),
+  // Project association (opzionale per TR importate da OData)
+  projectId: uuid("project_id").references(() => projects.id),
   
   // Organization context
   userId: uuid("user_id").references(() => users.id).notNull(),
