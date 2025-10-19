@@ -576,14 +576,7 @@ export default function ProjectsPage() {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <main 
-        className="flex-1 overflow-auto"
-        style={{ 
-          borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
-          borderRight: '2px solid rgba(30, 64, 175, 0.3)',
-          borderBottom: '2px solid rgba(30, 64, 175, 0.3)'
-        }}
-      >
+      <main className="flex-1 overflow-auto">
         <Header 
           title="Progetti" 
           subtitle="Gestione progetti SAP ABAP"
@@ -591,9 +584,7 @@ export default function ProjectsPage() {
         
         <div 
           className="p-6 rounded-t-lg"
-          style={{ 
-            borderTop: '2px solid rgba(30, 64, 175, 0.3)'
-          }}
+          style={{ border: '2px solid rgba(30, 64, 175, 0.3)' }}
         >
           <ListViewToolbar
             currentLayoutName={currentLayoutName}
