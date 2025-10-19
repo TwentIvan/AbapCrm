@@ -5698,20 +5698,26 @@ Format the response as professional documentation suitable for client delivery.`
             continue;
           }
           
+          console.log(`[SAP ODATA SYNC] Mapping TR: ${odataItem.Number} -> ${requestNumber}`);
+          
           // Crea la TR direttamente nel database (bypass validazione strict)
           // Il database gestirà i duplicati con constraint unique
-          const newTR = await storage.createSapTransportRequest({
+          const trData = {
             requestNumber: requestNumber,
             description: odataItem.Text || 'Importata da OData',
             owner: odataItem.Owner || '',
             targetSystem: odataItem.Target || '',
-            status: 'modifiable',
+            status: 'modifiable' as const,
             // projectId non obbligatorio per import OData
             projectId: null,
             sapSystemId: sapSystemId || null,
             userId: userId,
             organizationId: organizationId,
-          });
+          };
+          
+          console.log(`[SAP ODATA SYNC] TR Data:`, JSON.stringify(trData, null, 2));
+          
+          const newTR = await storage.createSapTransportRequest(trData);
           
           imported++;
           console.log(`[SAP ODATA SYNC] Imported TR: ${requestNumber}`);
