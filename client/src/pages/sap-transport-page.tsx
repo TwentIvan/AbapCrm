@@ -142,12 +142,84 @@ export default function SapTransportPage() {
 
   const syncOdataMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/sap-transport/sync-odata", {
-        odataUrl: syncOdataUrl,
-        username: syncUsername || undefined,
-        password: syncPassword || undefined,
-      });
-      return response;
+      // Chiamata client-side all'endpoint OData (funziona anche con VPN)
+      const fetchOptions: RequestInit = {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      };
+      
+      // Aggiungi Basic Auth se fornite le credenziali
+      if (syncUsername && syncPassword) {
+        const authString = btoa(`${syncUsername}:${syncPassword}`);
+        fetchOptions.headers = {
+          ...fetchOptions.headers,
+          'Authorization': `Basic ${authString}`,
+        };
+      }
+      
+      // Fetch diretto dall'endpoint OData (client-side, rispetta la VPN)
+      const odataResponse = await fetch(syncOdataUrl, fetchOptions);
+      
+      if (!odataResponse.ok) {
+        throw new Error(`Errore chiamata OData: ${odataResponse.status} ${odataResponse.statusText}`);
+      }
+      
+      const odataData = await odataResponse.json();
+      const results = odataData.d?.results || [];
+      
+      if (!Array.isArray(results) || results.length === 0) {
+        return {
+          success: true,
+          imported: 0,
+          skipped: 0,
+          total: 0,
+          message: "Nessuna Transport Request trovata nell'endpoint OData",
+        };
+      }
+      
+      // Invia i risultati al backend per processarli
+      let imported = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+      
+      for (const odataItem of results) {
+        try {
+          // Mappa i campi OData al formato interno
+          const mappedData = {
+            request_number: odataItem.Number,
+            description: odataItem.Text || '',
+            owner: odataItem.Owner || '',
+            target_system: odataItem.Target || null,
+          };
+          
+          // Invia al backend per salvare (usa endpoint paste esistente)
+          const jsonContent = JSON.stringify(mappedData);
+          const response = await apiRequest("POST", "/api/sap-transport/paste", {
+            jsonContent,
+          });
+          
+          if (response.success) {
+            imported++;
+          } else {
+            skipped++;
+            errors.push(`${odataItem.Number}: ${response.error || 'Errore sconosciuto'}`);
+          }
+        } catch (itemError: any) {
+          skipped++;
+          errors.push(`${odataItem.Number}: ${itemError.message || 'Errore processamento'}`);
+        }
+      }
+      
+      return {
+        success: true,
+        imported,
+        skipped,
+        total: results.length,
+        errors: errors.length > 0 ? errors : undefined,
+        message: `Sincronizzazione completata: ${imported} importate, ${skipped} saltate su ${results.length} totali`,
+      };
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/sap-transport-requests"] });
