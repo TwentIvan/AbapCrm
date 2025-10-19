@@ -5600,6 +5600,125 @@ Format the response as professional documentation suitable for client delivery.`
     }
   });
 
+  // SAP Transport Requests - Endpoint per sincronizzare da OData SAP
+  app.post("/api/sap-transport/sync-odata", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const { odataUrl, username, password, sapSystemId } = req.body;
+      
+      if (!odataUrl || typeof odataUrl !== 'string') {
+        return res.status(400).json({ error: "Campo 'odataUrl' mancante o non valido" });
+      }
+      
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      
+      console.log(`[SAP ODATA SYNC] Starting sync from ${odataUrl}`);
+      
+      // Prepara le opzioni per la chiamata HTTP
+      const fetchOptions: any = {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      };
+      
+      // Aggiungi Basic Auth se fornite le credenziali
+      if (username && password) {
+        const authString = Buffer.from(`${username}:${password}`).toString('base64');
+        fetchOptions.headers['Authorization'] = `Basic ${authString}`;
+      }
+      
+      // Chiama l'endpoint OData SAP
+      const response = await fetch(odataUrl, fetchOptions);
+      
+      if (!response.ok) {
+        throw new Error(`Errore chiamata OData: ${response.status} ${response.statusText}`);
+      }
+      
+      const odataResponse = await response.json();
+      
+      // Estrai i risultati dal formato OData standard
+      const results = odataResponse.d?.results || [];
+      
+      if (!Array.isArray(results) || results.length === 0) {
+        return res.json({
+          success: true,
+          message: "Nessuna Transport Request trovata nell'endpoint OData",
+          imported: 0,
+          skipped: 0,
+        });
+      }
+      
+      console.log(`[SAP ODATA SYNC] Found ${results.length} transport requests`);
+      
+      // Contatori per il report
+      let imported = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+      
+      // Processa ogni Transport Request
+      for (const odataItem of results) {
+        try {
+          // Mappa i campi OData al formato interno
+          // Usa solo i campi correttamente mappati
+          const mappedData = {
+            request_number: odataItem.Number,
+            description: odataItem.Text || '',
+            owner: odataItem.Owner || '',
+            target_system: odataItem.Target || null,
+            // Aggiungi anche il sapSystemId se fornito
+            sap_system_id: sapSystemId || null,
+          };
+          
+          // Converti in JSON string per usare il processor esistente
+          const jsonContent = JSON.stringify(mappedData);
+          
+          // Usa il processore per validare e salvare
+          const { SapTransportProcessor } = await import('./sap-transport-processor');
+          const result = await SapTransportProcessor.processTransportRequestJson(
+            jsonContent,
+            userId,
+            organizationId,
+            `odata-sync-${odataItem.Number}-${Date.now()}`
+          );
+          
+          if (result.success) {
+            imported++;
+            console.log(`[SAP ODATA SYNC] Imported TR: ${odataItem.Number}`);
+          } else {
+            skipped++;
+            errors.push(`${odataItem.Number}: ${result.error}`);
+            console.warn(`[SAP ODATA SYNC] Skipped TR ${odataItem.Number}: ${result.error}`);
+          }
+          
+        } catch (itemError) {
+          skipped++;
+          const errorMsg = itemError instanceof Error ? itemError.message : String(itemError);
+          errors.push(`${odataItem.Number}: ${errorMsg}`);
+          console.error(`[SAP ODATA SYNC] Error processing TR ${odataItem.Number}:`, itemError);
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: `Sincronizzazione completata: ${imported} importate, ${skipped} saltate`,
+        imported,
+        skipped,
+        total: results.length,
+        errors: errors.length > 0 ? errors : undefined,
+      });
+      
+    } catch (error) {
+      console.error("Errore sincronizzazione OData:", error);
+      res.status(500).json({ 
+        error: "Errore nella sincronizzazione OData",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // ========== Project Assignments API ==========
   app.get("/api/project-assignments", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
