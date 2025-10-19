@@ -322,7 +322,14 @@ export default function DealsPage() {
           onNewClick={handleAdd}
         />
         
-        <div className="p-6 space-y-6">
+        <div 
+          className="p-6 space-y-6 rounded-t-lg min-h-full"
+          style={{ 
+            borderTop: '2px solid rgba(30, 64, 175, 0.3)',
+            borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
+            borderRight: '2px solid rgba(30, 64, 175, 0.3)'
+          }}
+        >
           {/* Pipeline Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>

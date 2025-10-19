@@ -257,7 +257,14 @@ export default function OrganizationsPage() {
           subtitle="Gestisci le tue organizzazioni e le relative informazioni"
           onNewClick={handleAdd}
         />
-        <main className="p-6 space-y-6">
+        <main 
+          className="p-6 space-y-6 rounded-t-lg min-h-full"
+          style={{ 
+            borderTop: '2px solid rgba(30, 64, 175, 0.3)',
+            borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
+            borderRight: '2px solid rgba(30, 64, 175, 0.3)'
+          }}
+        >
           {/* Header con Crea nuova a sinistra */}
           <div className="flex justify-start items-center">
             <Button onClick={handleAdd} data-testid="button-add-organization">

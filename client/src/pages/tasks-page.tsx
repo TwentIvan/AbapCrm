@@ -823,7 +823,14 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
           subtitle="Manage your project tasks and deliverables"
         />
         
-        <div className="p-6">
+        <div 
+          className="p-6 rounded-t-lg min-h-full"
+          style={{ 
+            borderTop: '2px solid rgba(30, 64, 175, 0.3)',
+            borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
+            borderRight: '2px solid rgba(30, 64, 175, 0.3)'
+          }}
+        >
           <ListViewToolbar
             currentLayoutName={currentLayoutName}
             savedLayouts={savedLayouts}
