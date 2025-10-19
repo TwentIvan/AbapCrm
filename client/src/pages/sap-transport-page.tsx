@@ -143,27 +143,33 @@ export default function SapTransportPage() {
   const syncOdataMutation = useMutation({
     mutationFn: async () => {
       // Chiamata client-side all'endpoint OData (funziona anche con VPN)
-      const fetchOptions: RequestInit = {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
+      const headers: HeadersInit = {
+        'Accept': 'application/json',
       };
       
       // Aggiungi Basic Auth se fornite le credenziali
       if (syncUsername && syncPassword) {
         const authString = btoa(`${syncUsername}:${syncPassword}`);
-        fetchOptions.headers = {
-          ...fetchOptions.headers,
-          'Authorization': `Basic ${authString}`,
-        };
+        headers['Authorization'] = `Basic ${authString}`;
       }
       
+      console.log('[SAP Sync] Chiamata a:', syncOdataUrl);
+      console.log('[SAP Sync] Con autenticazione:', !!syncUsername);
+      
       // Fetch diretto dall'endpoint OData (client-side, rispetta la VPN)
-      const odataResponse = await fetch(syncOdataUrl, fetchOptions);
+      const odataResponse = await fetch(syncOdataUrl, {
+        method: 'GET',
+        headers,
+        credentials: 'include', // Necessario per autenticazione cross-origin
+        mode: 'cors', // Richiede che il server SAP supporti CORS
+      });
+      
+      console.log('[SAP Sync] Risposta HTTP:', odataResponse.status, odataResponse.statusText);
       
       if (!odataResponse.ok) {
-        throw new Error(`Errore chiamata OData: ${odataResponse.status} ${odataResponse.statusText}`);
+        const errorText = await odataResponse.text().catch(() => '');
+        console.error('[SAP Sync] Errore risposta:', errorText);
+        throw new Error(`Errore ${odataResponse.status}: ${odataResponse.statusText}${errorText ? ` - ${errorText.substring(0, 200)}` : ''}`);
       }
       
       const odataData = await odataResponse.json();
