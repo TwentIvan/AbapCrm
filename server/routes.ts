@@ -5691,37 +5691,30 @@ Format the response as professional documentation suitable for client delivery.`
       // Processa ogni Transport Request
       for (const odataItem of results) {
         try {
-          // Mappa i campi OData al formato interno
-          // Usa solo i campi correttamente mappati
-          const mappedData = {
-            request_number: odataItem.Number,
-            description: odataItem.Text || '',
-            owner: odataItem.Owner || '',
-            target_system: odataItem.Target || null,
-            // Aggiungi anche il sapSystemId se fornito
-            sap_system_id: sapSystemId || null,
-          };
-          
-          // Converti in JSON string per usare il processor esistente
-          const jsonContent = JSON.stringify(mappedData);
-          
-          // Usa il processore per validare e salvare
-          const { SapTransportProcessor } = await import('./sap-transport-processor');
-          const result = await SapTransportProcessor.processTransportRequestJson(
-            jsonContent,
-            userId,
-            organizationId,
-            `odata-sync-${odataItem.Number}-${Date.now()}`
-          );
-          
-          if (result.success) {
-            imported++;
-            console.log(`[SAP ODATA SYNC] Imported TR: ${odataItem.Number}`);
-          } else {
+          const requestNumber = odataItem.Number;
+          if (!requestNumber) {
             skipped++;
-            errors.push(`${odataItem.Number}: ${result.error}`);
-            console.warn(`[SAP ODATA SYNC] Skipped TR ${odataItem.Number}: ${result.error}`);
+            errors.push(`Nessun numero TR fornito`);
+            continue;
           }
+          
+          // Crea la TR direttamente nel database (bypass validazione strict)
+          // Il database gestirà i duplicati con constraint unique
+          const newTR = await storage.createSapTransportRequest({
+            request_number: requestNumber,
+            description: odataItem.Text || 'Importata da OData',
+            owner: odataItem.Owner || '',
+            target_system: odataItem.Target || '',
+            status: 'modifiable',
+            // project_id non obbligatorio per import OData
+            project_id: null,
+            sap_system_id: sapSystemId || null,
+            user_id: userId,
+            organization_id: organizationId,
+          });
+          
+          imported++;
+          console.log(`[SAP ODATA SYNC] Imported TR: ${requestNumber}`);
           
         } catch (itemError) {
           skipped++;
