@@ -5614,14 +5614,11 @@ Format the response as professional documentation suitable for client delivery.`
       const userId = req.user!.id;
       const organizationId = getOrganizationId(req);
       
-      console.log(`[SAP ODATA SYNC] Starting sync from ${odataUrl}`);
-      
       // Usa il bridge server se configurato, altrimenti prova chiamata diretta
       const bridgeUrl = process.env.SAP_BRIDGE_URL;
       let odataResponse;
       
       if (bridgeUrl) {
-        console.log(`[SAP ODATA SYNC] Usando bridge server: ${bridgeUrl}`);
         
         // Chiama il bridge server
         const bridgeResponse = await fetch(`${bridgeUrl}/sap-proxy`, {
@@ -5643,8 +5640,6 @@ Format the response as professional documentation suitable for client delivery.`
         
         odataResponse = await bridgeResponse.json();
       } else {
-        console.log(`[SAP ODATA SYNC] Bridge server non configurato, tentativo chiamata diretta...`);
-        
         // Prepara le opzioni per la chiamata HTTP diretta
         const fetchOptions: any = {
           method: 'GET',
@@ -5681,8 +5676,6 @@ Format the response as professional documentation suitable for client delivery.`
         });
       }
       
-      console.log(`[SAP ODATA SYNC] Found ${results.length} transport requests`);
-      
       // Contatori per il report
       let imported = 0;
       let skipped = 0;
@@ -5697,8 +5690,6 @@ Format the response as professional documentation suitable for client delivery.`
             errors.push(`Nessun numero TR fornito`);
             continue;
           }
-          
-          console.log(`[SAP ODATA SYNC] Mapping TR: ${odataItem.Number} -> ${requestNumber}`);
           
           // Crea la TR direttamente nel database (bypass validazione strict)
           // Il database gestirà i duplicati con constraint unique
@@ -5715,12 +5706,8 @@ Format the response as professional documentation suitable for client delivery.`
             organizationId: organizationId,
           };
           
-          console.log(`[SAP ODATA SYNC] TR Data:`, JSON.stringify(trData, null, 2));
-          
           const newTR = await storage.createSapTransportRequest(trData);
-          
           imported++;
-          console.log(`[SAP ODATA SYNC] Imported TR: ${requestNumber}`);
           
         } catch (itemError) {
           skipped++;
