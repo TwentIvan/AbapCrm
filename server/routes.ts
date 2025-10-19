@@ -5701,16 +5701,16 @@ Format the response as professional documentation suitable for client delivery.`
           // Crea la TR direttamente nel database (bypass validazione strict)
           // Il database gestirà i duplicati con constraint unique
           const newTR = await storage.createSapTransportRequest({
-            request_number: requestNumber,
+            requestNumber: requestNumber,
             description: odataItem.Text || 'Importata da OData',
             owner: odataItem.Owner || '',
-            target_system: odataItem.Target || '',
+            targetSystem: odataItem.Target || '',
             status: 'modifiable',
-            // project_id non obbligatorio per import OData
-            project_id: null,
-            sap_system_id: sapSystemId || null,
-            user_id: userId,
-            organization_id: organizationId,
+            // projectId non obbligatorio per import OData
+            projectId: null,
+            sapSystemId: sapSystemId || null,
+            userId: userId,
+            organizationId: organizationId,
           });
           
           imported++;
