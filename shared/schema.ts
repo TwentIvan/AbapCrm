@@ -2525,3 +2525,85 @@ export type InsertRoleFieldPermission = z.infer<typeof insertRoleFieldPermission
 export type UserCustomRole = typeof userCustomRoles.$inferSelect;
 export type InsertUserCustomRole = z.infer<typeof insertUserCustomRoleSchema>;
 
+// ========== Chat System Tables ==========
+
+export const chatRoomTypeEnum = pgEnum("chat_room_type", ["direct", "group"]);
+export const chatEntityTypeEnum = pgEnum("chat_entity_type", ["project", "partner", "deal", "contact", "task", "organization", "human_resource"]);
+
+// Chat Rooms - Both internal team chats and external client chats
+export const chatRooms = pgTable("chat_rooms", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name"), // Null for direct chats, required for groups
+  type: chatRoomTypeEnum("type").default("direct").notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  isExternal: boolean("is_external").default(false).notNull(), // True if includes external contacts
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Chat Messages
+export const chatMessages = pgTable("chat_messages", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  roomId: uuid("room_id").references(() => chatRooms.id).notNull(),
+  senderId: uuid("sender_id").references(() => users.id), // Internal user
+  senderContactId: uuid("sender_contact_id").references(() => contacts.id), // External contact
+  message: text("message").notNull(),
+  attachmentUrl: text("attachment_url"), // URL to uploaded file
+  attachmentName: text("attachment_name"), // Original filename
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Chat Participants - Links users/contacts to rooms
+export const chatParticipants = pgTable("chat_participants", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  roomId: uuid("room_id").references(() => chatRooms.id).notNull(),
+  userId: uuid("user_id").references(() => users.id), // Internal user
+  contactId: uuid("contact_id").references(() => contacts.id), // External contact
+  isActive: boolean("is_active").default(true).notNull(),
+  lastReadAt: timestamp("last_read_at"), // Track read status
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
+// Chat Room Entity Links - Connect chats to projects, partners, deals, etc.
+export const chatRoomEntities = pgTable("chat_room_entities", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  roomId: uuid("room_id").references(() => chatRooms.id).notNull(),
+  entityType: chatEntityTypeEnum("entity_type").notNull(),
+  entityId: uuid("entity_id").notNull(), // ID of the linked entity
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ========== Insert Schemas & Types for Chat System ==========
+
+export const insertChatRoomSchema = createInsertSchema(chatRooms).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertChatParticipantSchema = createInsertSchema(chatParticipants).omit({
+  id: true,
+  joinedAt: true,
+});
+
+export const insertChatRoomEntitySchema = createInsertSchema(chatRoomEntities).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type ChatRoom = typeof chatRooms.$inferSelect;
+export type InsertChatRoom = z.infer<typeof insertChatRoomSchema>;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+export type ChatParticipant = typeof chatParticipants.$inferSelect;
+export type InsertChatParticipant = z.infer<typeof insertChatParticipantSchema>;
+export type ChatRoomEntity = typeof chatRoomEntities.$inferSelect;
+export type InsertChatRoomEntity = z.infer<typeof insertChatRoomEntitySchema>;
+
