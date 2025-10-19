@@ -583,7 +583,7 @@ export default function ProjectsPage() {
         />
         
         <div 
-          className="p-6 rounded-t-lg"
+          className="p-6 rounded-t-lg min-h-full"
           style={{ 
             borderTop: '2px solid rgba(30, 64, 175, 0.3)',
             borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
