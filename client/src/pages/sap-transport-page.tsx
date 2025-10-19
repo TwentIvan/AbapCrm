@@ -13,7 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, FileCode, Calendar, User, Trash2, Info, ChevronDown, ChevronRight, ClipboardPaste } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Package, FileCode, Calendar, User, Trash2, Info, ChevronDown, ChevronRight, ClipboardPaste, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { SapPasteJsonDialog } from "@/components/dialogs/sap-paste-json-dialog";
 
@@ -96,6 +98,10 @@ export default function SapTransportPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
   const [showPasteDialog, setShowPasteDialog] = useState(false);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
+  const [syncOdataUrl, setSyncOdataUrl] = useState("https://vhgivds4ci.rise.givagroup.it:44300/sap/opu/odata/SAP/ZTHU_DOC_SRV/TransportSet?$top=5&$format=json");
+  const [syncUsername, setSyncUsername] = useState("");
+  const [syncPassword, setSyncPassword] = useState("");
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -130,6 +136,34 @@ export default function SapTransportPage() {
       toast({
         title: "Transport Request eliminata",
         description: "La transport request è stata eliminata con successo.",
+      });
+    },
+  });
+
+  const syncOdataMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/sap-transport/sync-odata", {
+        odataUrl: syncOdataUrl,
+        username: syncUsername || undefined,
+        password: syncPassword || undefined,
+      });
+      return response;
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sap-transport-requests"] });
+      setShowSyncDialog(false);
+      setSyncUsername("");
+      setSyncPassword("");
+      toast({
+        title: "Sincronizzazione completata",
+        description: `${data.imported} TR importate, ${data.skipped} saltate su ${data.total} totali`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore sincronizzazione",
+        description: error.message || "Errore nella sincronizzazione con l'endpoint OData SAP",
+        variant: "destructive",
       });
     },
   });
@@ -197,6 +231,14 @@ export default function SapTransportPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setShowSyncDialog(true)}
+                  className="bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900 dark:hover:bg-green-800 dark:text-green-100 shadow-md"
+                  data-testid="button-sync-odata"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Sincronizza da SAP
+                </Button>
                 <Button
                   onClick={() => setShowPasteDialog(true)}
                   className="bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-100 shadow-md"
@@ -509,6 +551,93 @@ export default function SapTransportPage() {
             open={showPasteDialog} 
             onOpenChange={setShowPasteDialog}
           />
+
+          {/* Sync OData Dialog */}
+          <Dialog open={showSyncDialog} onOpenChange={setShowSyncDialog}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Sincronizza da OData SAP</DialogTitle>
+                <DialogDescription>
+                  Importa le Transport Request direttamente dall'endpoint OData SAP.
+                  Le credenziali sono opzionali e necessarie solo se l'endpoint richiede autenticazione.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="odata-url">URL Endpoint OData</Label>
+                  <Input
+                    id="odata-url"
+                    type="url"
+                    value={syncOdataUrl}
+                    onChange={(e) => setSyncOdataUrl(e.target.value)}
+                    placeholder="https://server:port/sap/opu/odata/..."
+                    className="font-mono text-sm"
+                    data-testid="input-odata-url"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Esempio: https://vhgivds4ci.rise.givagroup.it:44300/sap/opu/odata/SAP/ZTHU_DOC_SRV/TransportSet?$format=json
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="sap-username">Username SAP (opzionale)</Label>
+                    <Input
+                      id="sap-username"
+                      type="text"
+                      value={syncUsername}
+                      onChange={(e) => setSyncUsername(e.target.value)}
+                      placeholder="Username"
+                      data-testid="input-sap-username"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sap-password">Password SAP (opzionale)</Label>
+                    <Input
+                      id="sap-password"
+                      type="password"
+                      value={syncPassword}
+                      onChange={(e) => setSyncPassword(e.target.value)}
+                      placeholder="Password"
+                      data-testid="input-sap-password"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowSyncDialog(false);
+                      setSyncUsername("");
+                      setSyncPassword("");
+                    }}
+                    data-testid="button-cancel-sync"
+                  >
+                    Annulla
+                  </Button>
+                  <Button
+                    onClick={() => syncOdataMutation.mutate()}
+                    disabled={syncOdataMutation.isPending || !syncOdataUrl.trim()}
+                    className="bg-green-600 hover:bg-green-700"
+                    data-testid="button-start-sync"
+                  >
+                    {syncOdataMutation.isPending ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Sincronizzazione...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Sincronizza
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
     </div>
