@@ -5616,28 +5616,58 @@ Format the response as professional documentation suitable for client delivery.`
       
       console.log(`[SAP ODATA SYNC] Starting sync from ${odataUrl}`);
       
-      // Prepara le opzioni per la chiamata HTTP
-      const fetchOptions: any = {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-      };
+      // Usa il bridge server se configurato, altrimenti prova chiamata diretta
+      const bridgeUrl = process.env.SAP_BRIDGE_URL;
+      let odataResponse;
       
-      // Aggiungi Basic Auth se fornite le credenziali
-      if (username && password) {
-        const authString = Buffer.from(`${username}:${password}`).toString('base64');
-        fetchOptions.headers['Authorization'] = `Basic ${authString}`;
+      if (bridgeUrl) {
+        console.log(`[SAP ODATA SYNC] Usando bridge server: ${bridgeUrl}`);
+        
+        // Chiama il bridge server
+        const bridgeResponse = await fetch(`${bridgeUrl}/sap-proxy`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            odataUrl,
+            username,
+            password,
+          }),
+        });
+        
+        if (!bridgeResponse.ok) {
+          const errorData = await bridgeResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || `Errore bridge: ${bridgeResponse.status} ${bridgeResponse.statusText}`);
+        }
+        
+        odataResponse = await bridgeResponse.json();
+      } else {
+        console.log(`[SAP ODATA SYNC] Bridge server non configurato, tentativo chiamata diretta...`);
+        
+        // Prepara le opzioni per la chiamata HTTP diretta
+        const fetchOptions: any = {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+        };
+        
+        // Aggiungi Basic Auth se fornite le credenziali
+        if (username && password) {
+          const authString = Buffer.from(`${username}:${password}`).toString('base64');
+          fetchOptions.headers['Authorization'] = `Basic ${authString}`;
+        }
+        
+        // Chiama l'endpoint OData SAP direttamente
+        const response = await fetch(odataUrl, fetchOptions);
+        
+        if (!response.ok) {
+          throw new Error(`Errore chiamata OData: ${response.status} ${response.statusText}`);
+        }
+        
+        odataResponse = await response.json();
       }
-      
-      // Chiama l'endpoint OData SAP
-      const response = await fetch(odataUrl, fetchOptions);
-      
-      if (!response.ok) {
-        throw new Error(`Errore chiamata OData: ${response.status} ${response.statusText}`);
-      }
-      
-      const odataResponse = await response.json();
       
       // Estrai i risultati dal formato OData standard
       const results = odataResponse.d?.results || [];
