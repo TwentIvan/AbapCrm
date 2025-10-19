@@ -57,7 +57,8 @@ import {
   type ChatRoom, type InsertChatRoom,
   type ChatMessage, type InsertChatMessage,
   type ChatParticipant, type InsertChatParticipant,
-  type ChatRoomEntity, type InsertChatRoomEntity
+  type ChatRoomEntity, type InsertChatRoomEntity,
+  testExecutions, type TestExecution, type InsertTestExecution
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull, inArray } from "drizzle-orm";
@@ -459,6 +460,15 @@ export interface IStorage {
   linkChatRoomEntity(link: InsertChatRoomEntity): Promise<ChatRoomEntity>;
   unlinkChatRoomEntity(roomId: string, entityType: string, entityId: string): Promise<boolean>;
   getChatRoomsByEntity(entityType: string, entityId: string, userId: string): Promise<ChatRoom[]>;
+
+  // Test Executions
+  getTestExecutions(userId: string, organizationId: string): Promise<TestExecution[]>;
+  getTestExecutionsByProject(projectId: string, userId: string, organizationId: string): Promise<TestExecution[]>;
+  getTestExecution(id: string, userId: string, organizationId: string): Promise<TestExecution | undefined>;
+  createTestExecution(execution: InsertTestExecution): Promise<TestExecution>;
+  updateTestExecution(id: string, execution: Partial<InsertTestExecution>, userId: string, organizationId: string): Promise<TestExecution | undefined>;
+  deleteTestExecution(id: string, userId: string, organizationId: string): Promise<boolean>;
+  deleteTestExecutions(ids: string[], userId: string, organizationId: string): Promise<number>;
 
   sessionStore: session.Store;
 }
@@ -4209,6 +4219,89 @@ export class DatabaseStorage implements IStorage {
     }
 
     return rooms;
+  }
+
+  // Test Executions
+  async getTestExecutions(userId: string, organizationId: string): Promise<TestExecution[]> {
+    return await db.query.testExecutions.findMany({
+      where: and(
+        eq(testExecutions.userId, userId),
+        eq(testExecutions.organizationId, organizationId)
+      ),
+      orderBy: desc(testExecutions.executedAt),
+    });
+  }
+
+  async getTestExecutionsByProject(projectId: string, userId: string, organizationId: string): Promise<TestExecution[]> {
+    return await db.query.testExecutions.findMany({
+      where: and(
+        eq(testExecutions.projectId, projectId),
+        eq(testExecutions.userId, userId),
+        eq(testExecutions.organizationId, organizationId)
+      ),
+      orderBy: desc(testExecutions.executedAt),
+    });
+  }
+
+  async getTestExecution(id: string, userId: string, organizationId: string): Promise<TestExecution | undefined> {
+    return await db.query.testExecutions.findFirst({
+      where: and(
+        eq(testExecutions.id, id),
+        eq(testExecutions.userId, userId),
+        eq(testExecutions.organizationId, organizationId)
+      ),
+    });
+  }
+
+  async createTestExecution(execution: InsertTestExecution): Promise<TestExecution> {
+    const [result] = await db.insert(testExecutions).values(execution).returning();
+    return result;
+  }
+
+  async updateTestExecution(
+    id: string,
+    execution: Partial<InsertTestExecution>,
+    userId: string,
+    organizationId: string
+  ): Promise<TestExecution | undefined> {
+    const [result] = await db
+      .update(testExecutions)
+      .set({ ...execution, updatedAt: new Date() })
+      .where(
+        and(
+          eq(testExecutions.id, id),
+          eq(testExecutions.userId, userId),
+          eq(testExecutions.organizationId, organizationId)
+        )
+      )
+      .returning();
+    return result;
+  }
+
+  async deleteTestExecution(id: string, userId: string, organizationId: string): Promise<boolean> {
+    const result = await db
+      .delete(testExecutions)
+      .where(
+        and(
+          eq(testExecutions.id, id),
+          eq(testExecutions.userId, userId),
+          eq(testExecutions.organizationId, organizationId)
+        )
+      );
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async deleteTestExecutions(ids: string[], userId: string, organizationId: string): Promise<number> {
+    const result = await db
+      .delete(testExecutions)
+      .where(
+        and(
+          inArray(testExecutions.id, ids),
+          eq(testExecutions.userId, userId),
+          eq(testExecutions.organizationId, organizationId)
+        )
+      );
+    return result.rowCount || 0;
   }
 }
 
