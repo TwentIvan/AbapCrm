@@ -576,16 +576,16 @@ export default function ProjectsPage() {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <main className="flex-1 overflow-auto">
+      <main 
+        className="flex-1 overflow-auto rounded-t-lg"
+        style={{ border: '2px solid rgba(30, 64, 175, 0.3)' }}
+      >
         <Header 
           title="Progetti" 
           subtitle="Gestione progetti SAP ABAP"
         />
         
-        <div 
-          className="p-6 rounded-t-lg"
-          style={{ border: '2px solid rgba(30, 64, 175, 0.3)' }}
-        >
+        <div className="p-6">
           <ListViewToolbar
             currentLayoutName={currentLayoutName}
             savedLayouts={savedLayouts}
