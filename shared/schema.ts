@@ -2607,3 +2607,35 @@ export type InsertChatParticipant = z.infer<typeof insertChatParticipantSchema>;
 export type ChatRoomEntity = typeof chatRoomEntities.$inferSelect;
 export type InsertChatRoomEntity = z.infer<typeof insertChatRoomEntitySchema>;
 
+// ========== Test Execution System ==========
+
+export const testResultEnum = pgEnum("test_result", ["success", "failed", "partial", "blocked"]);
+
+export const testExecutions = pgTable("test_executions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").references(() => projects.id).notNull(),
+  testName: text("test_name").notNull(),
+  testResult: testResultEnum("test_result").notNull(),
+  description: text("description"),
+  executionLog: text("execution_log"), // Log dettagliato dell'esecuzione
+  screenshotPaths: text("screenshot_paths").array().default([]), // Array di path per gli screenshot
+  executedBy: uuid("executed_by").references(() => users.id).notNull(),
+  executedAt: timestamp("executed_at").defaultNow().notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(), // Owner
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ========== Insert Schemas & Types for Test Executions ==========
+
+export const insertTestExecutionSchema = createInsertSchema(testExecutions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  executedAt: true,
+});
+
+export type TestExecution = typeof testExecutions.$inferSelect;
+export type InsertTestExecution = z.infer<typeof insertTestExecutionSchema>;
+
