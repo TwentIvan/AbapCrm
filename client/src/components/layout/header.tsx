@@ -127,7 +127,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   return (
     <header className="bg-card sticky top-0 z-10">
       {/* Unified Header with Logo Pattern Background */}
-      <div className="px-6 pt-2 pb-10 relative overflow-hidden">
+      <div className="px-6 pt-2 pb-8 relative overflow-hidden">
         {/* Pattern con loghi HTU molto sfumati - estesi fino in alto */}
         <div className="absolute inset-0" style={{ top: 0, left: 0, right: 0, bottom: 0 }}>
           {/* Loghi molto grandi (molto sfumati) */}
