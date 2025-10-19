@@ -6,6 +6,7 @@ import {
   emailVerificationTokens, organizationDomains, emailFeedbacks, customFeedbackReasons, emailTrainingSelections, proposals,
   sapTransportRequests, sapTransportTasks, sapTransportObjects, sapObjectContent, businessScenarios,
   customEntities, customFields, entityCustomValues,
+  chatRooms, chatMessages, chatParticipants, chatRoomEntities,
   type User, type InsertUser,
   type Organization, type InsertOrganization,
   type UserOrganization, type InsertUserOrganization,
@@ -52,7 +53,11 @@ import {
   type BusinessScenario, type InsertBusinessScenario,
   type CustomEntity, type InsertCustomEntity,
   type CustomField, type InsertCustomField,
-  type EntityCustomValue, type InsertEntityCustomValue
+  type EntityCustomValue, type InsertEntityCustomValue,
+  type ChatRoom, type InsertChatRoom,
+  type ChatMessage, type InsertChatMessage,
+  type ChatParticipant, type InsertChatParticipant,
+  type ChatRoomEntity, type InsertChatRoomEntity
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull, inArray } from "drizzle-orm";
@@ -425,6 +430,35 @@ export interface IStorage {
   getEntityCustomValues(entityKey: string, recordId: string, organizationId: string): Promise<EntityCustomValue[]>;
   setEntityCustomValue(value: InsertEntityCustomValue): Promise<EntityCustomValue>;
   deleteEntityCustomValues(entityKey: string, recordId: string, organizationId: string): Promise<boolean>;
+
+  // Chat System
+  // Chat Rooms
+  getChatRooms(userId: string, organizationId: string): Promise<ChatRoom[]>;
+  getChatRoom(id: string, userId: string): Promise<ChatRoom | undefined>;
+  createChatRoom(room: InsertChatRoom): Promise<ChatRoom>;
+  updateChatRoom(id: string, room: Partial<InsertChatRoom>): Promise<ChatRoom | undefined>;
+  deleteChatRoom(id: string): Promise<boolean>;
+  findOrCreateDirectRoom(userId: string, targetUserId: string | null, targetContactId: string | null, organizationId: string): Promise<ChatRoom>;
+  
+  // Chat Messages
+  getChatMessages(roomId: string, userId: string, limit?: number, offset?: number): Promise<ChatMessage[]>;
+  getChatMessage(id: string, userId: string): Promise<ChatMessage | undefined>;
+  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  markMessagesAsRead(roomId: string, userId: string): Promise<boolean>;
+  getUnreadMessageCount(userId: string, organizationId: string): Promise<number>;
+  
+  // Chat Participants
+  getChatParticipants(roomId: string): Promise<ChatParticipant[]>;
+  addChatParticipant(participant: InsertChatParticipant): Promise<ChatParticipant>;
+  removeChatParticipant(roomId: string, userId: string | null, contactId: string | null): Promise<boolean>;
+  isUserInRoom(roomId: string, userId: string): Promise<boolean>;
+  updateParticipantLastRead(roomId: string, userId: string): Promise<boolean>;
+  
+  // Chat Room Entities
+  getChatRoomEntities(roomId: string): Promise<ChatRoomEntity[]>;
+  linkChatRoomEntity(link: InsertChatRoomEntity): Promise<ChatRoomEntity>;
+  unlinkChatRoomEntity(roomId: string, entityType: string, entityId: string): Promise<boolean>;
+  getChatRoomsByEntity(entityType: string, entityId: string, userId: string): Promise<ChatRoom[]>;
 
   sessionStore: session.Store;
 }
@@ -3874,6 +3908,307 @@ export class DatabaseStorage implements IStorage {
     );
 
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // ==================== CHAT SYSTEM ====================
+
+  // Chat Rooms
+  async getChatRooms(userId: string, organizationId: string): Promise<ChatRoom[]> {
+    // Get rooms where user is a participant
+    const participantRooms = await db.query.chatParticipants.findMany({
+      where: eq(chatParticipants.userId, userId),
+      with: {
+        room: true,
+      },
+    });
+
+    // Filter by organization and return rooms
+    return participantRooms
+      .map(p => p.room)
+      .filter(room => room && room.organizationId === organizationId);
+  }
+
+  async getChatRoom(id: string, userId: string): Promise<ChatRoom | undefined> {
+    const room = await db.query.chatRooms.findFirst({
+      where: eq(chatRooms.id, id),
+    });
+
+    if (!room) return undefined;
+
+    // Verify user is participant
+    const isParticipant = await this.isUserInRoom(id, userId);
+    return isParticipant ? room : undefined;
+  }
+
+  async createChatRoom(room: InsertChatRoom): Promise<ChatRoom> {
+    const [result] = await db.insert(chatRooms).values(room).returning();
+    return result;
+  }
+
+  async updateChatRoom(id: string, room: Partial<InsertChatRoom>): Promise<ChatRoom | undefined> {
+    const [result] = await db
+      .update(chatRooms)
+      .set({ ...room, updatedAt: new Date() })
+      .where(eq(chatRooms.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteChatRoom(id: string): Promise<boolean> {
+    const result = await db.delete(chatRooms).where(eq(chatRooms.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async findOrCreateDirectRoom(
+    userId: string,
+    targetUserId: string | null,
+    targetContactId: string | null,
+    organizationId: string
+  ): Promise<ChatRoom> {
+    // Find existing direct room between these two users/contacts
+    const existingRooms = await db.query.chatRooms.findMany({
+      where: and(
+        eq(chatRooms.type, 'direct'),
+        eq(chatRooms.organizationId, organizationId)
+      ),
+      with: {
+        participants: true,
+      },
+    });
+
+    // Check if room exists with these exact participants
+    for (const room of existingRooms) {
+      const participantUserIds = room.participants
+        .filter(p => p.userId)
+        .map(p => p.userId);
+      const participantContactIds = room.participants
+        .filter(p => p.contactId)
+        .map(p => p.contactId);
+
+      const hasCurrentUser = participantUserIds.includes(userId);
+      const hasTarget = targetUserId
+        ? participantUserIds.includes(targetUserId)
+        : targetContactId
+        ? participantContactIds.includes(targetContactId)
+        : false;
+
+      if (hasCurrentUser && hasTarget && room.participants.length === 2) {
+        return room;
+      }
+    }
+
+    // Create new room
+    const newRoom = await this.createChatRoom({
+      type: 'direct',
+      organizationId,
+      createdBy: userId,
+      isExternal: !!targetContactId,
+    });
+
+    // Add participants
+    await this.addChatParticipant({
+      roomId: newRoom.id,
+      userId,
+      isActive: true,
+    });
+
+    await this.addChatParticipant({
+      roomId: newRoom.id,
+      userId: targetUserId,
+      contactId: targetContactId,
+      isActive: true,
+    });
+
+    return newRoom;
+  }
+
+  // Chat Messages
+  async getChatMessages(
+    roomId: string,
+    userId: string,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<ChatMessage[]> {
+    // Verify user is in room
+    const isParticipant = await this.isUserInRoom(roomId, userId);
+    if (!isParticipant) return [];
+
+    return await db.query.chatMessages.findMany({
+      where: eq(chatMessages.roomId, roomId),
+      orderBy: desc(chatMessages.createdAt),
+      limit,
+      offset,
+    });
+  }
+
+  async getChatMessage(id: string, userId: string): Promise<ChatMessage | undefined> {
+    const message = await db.query.chatMessages.findFirst({
+      where: eq(chatMessages.id, id),
+    });
+
+    if (!message) return undefined;
+
+    // Verify user is in room
+    const isParticipant = await this.isUserInRoom(message.roomId, userId);
+    return isParticipant ? message : undefined;
+  }
+
+  async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
+    const [result] = await db.insert(chatMessages).values(message).returning();
+    return result;
+  }
+
+  async markMessagesAsRead(roomId: string, userId: string): Promise<boolean> {
+    await this.updateParticipantLastRead(roomId, userId);
+    return true;
+  }
+
+  async getUnreadMessageCount(userId: string, organizationId: string): Promise<number> {
+    // Get all rooms user is in
+    const rooms = await this.getChatRooms(userId, organizationId);
+    
+    let totalUnread = 0;
+    for (const room of rooms) {
+      // Get participant's last read timestamp
+      const participant = await db.query.chatParticipants.findFirst({
+        where: and(
+          eq(chatParticipants.roomId, room.id),
+          eq(chatParticipants.userId, userId)
+        ),
+      });
+
+      if (participant) {
+        // Count messages after last read
+        const unreadMessages = await db.query.chatMessages.findMany({
+          where: and(
+            eq(chatMessages.roomId, room.id),
+            participant.lastReadAt
+              ? sql`${chatMessages.createdAt} > ${participant.lastReadAt}`
+              : sql`1=1` // If never read, count all messages
+          ),
+        });
+        totalUnread += unreadMessages.length;
+      }
+    }
+
+    return totalUnread;
+  }
+
+  // Chat Participants
+  async getChatParticipants(roomId: string): Promise<ChatParticipant[]> {
+    return await db.query.chatParticipants.findMany({
+      where: eq(chatParticipants.roomId, roomId),
+    });
+  }
+
+  async addChatParticipant(participant: InsertChatParticipant): Promise<ChatParticipant> {
+    const [result] = await db.insert(chatParticipants).values(participant).returning();
+    return result;
+  }
+
+  async removeChatParticipant(
+    roomId: string,
+    userId: string | null,
+    contactId: string | null
+  ): Promise<boolean> {
+    const conditions = [eq(chatParticipants.roomId, roomId)];
+    
+    if (userId) {
+      conditions.push(eq(chatParticipants.userId, userId));
+    }
+    if (contactId) {
+      conditions.push(eq(chatParticipants.contactId, contactId));
+    }
+
+    const result = await db
+      .delete(chatParticipants)
+      .where(and(...conditions));
+    
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async isUserInRoom(roomId: string, userId: string): Promise<boolean> {
+    const participant = await db.query.chatParticipants.findFirst({
+      where: and(
+        eq(chatParticipants.roomId, roomId),
+        eq(chatParticipants.userId, userId)
+      ),
+    });
+    return !!participant;
+  }
+
+  async updateParticipantLastRead(roomId: string, userId: string): Promise<boolean> {
+    const [result] = await db
+      .update(chatParticipants)
+      .set({ lastReadAt: new Date() })
+      .where(
+        and(
+          eq(chatParticipants.roomId, roomId),
+          eq(chatParticipants.userId, userId)
+        )
+      )
+      .returning();
+    
+    return !!result;
+  }
+
+  // Chat Room Entities
+  async getChatRoomEntities(roomId: string): Promise<ChatRoomEntity[]> {
+    return await db.query.chatRoomEntities.findMany({
+      where: eq(chatRoomEntities.roomId, roomId),
+    });
+  }
+
+  async linkChatRoomEntity(link: InsertChatRoomEntity): Promise<ChatRoomEntity> {
+    const [result] = await db.insert(chatRoomEntities).values(link).returning();
+    return result;
+  }
+
+  async unlinkChatRoomEntity(
+    roomId: string,
+    entityType: string,
+    entityId: string
+  ): Promise<boolean> {
+    const result = await db
+      .delete(chatRoomEntities)
+      .where(
+        and(
+          eq(chatRoomEntities.roomId, roomId),
+          eq(chatRoomEntities.entityType, entityType as any),
+          eq(chatRoomEntities.entityId, entityId)
+        )
+      );
+    
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getChatRoomsByEntity(
+    entityType: string,
+    entityId: string,
+    userId: string
+  ): Promise<ChatRoom[]> {
+    const links = await db.query.chatRoomEntities.findMany({
+      where: and(
+        eq(chatRoomEntities.entityType, entityType as any),
+        eq(chatRoomEntities.entityId, entityId)
+      ),
+      with: {
+        room: true,
+      },
+    });
+
+    // Filter rooms where user is participant
+    const rooms: ChatRoom[] = [];
+    for (const link of links) {
+      if (link.room) {
+        const isParticipant = await this.isUserInRoom(link.room.id, userId);
+        if (isParticipant) {
+          rooms.push(link.room);
+        }
+      }
+    }
+
+    return rooms;
   }
 }
 
