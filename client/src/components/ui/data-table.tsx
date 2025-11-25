@@ -450,6 +450,7 @@ export function DataTable<TData, TValue>({
                     // Check if clicked element is inside a timer button or other interactive element
                     if (target.closest('[role="checkbox"]') || 
                         target.closest('[data-timer-button="true"]') ||
+                        target.closest('[data-relationship-badge="true"]') ||
                         target.closest('button') || 
                         target.closest('[role="button"]') ||
                         target.closest('input') ||

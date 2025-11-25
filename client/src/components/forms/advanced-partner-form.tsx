@@ -505,6 +505,36 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
                 />
               </div>
 
+              {/* Logo field - prominently placed */}
+              <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+                {logoPreview ? (
+                  <ImageContainer
+                    src={logoPreview}
+                    alt="Logo preview"
+                    fallbackType="logo"
+                    size="lg"
+                    data-testid="img-logo-preview-inline"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                    <Camera className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <label className="text-sm font-medium mb-1 block">Logo Aziendale</label>
+                  <ObjectUploader
+                    maxNumberOfFiles={1}
+                    maxFileSize={5242880}
+                    onGetUploadParameters={handleGetLogoUploadParameters}
+                    onComplete={handleLogoUploadComplete}
+                    buttonClassName="w-full"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {logoPreview ? 'Cambia Logo' : 'Carica Logo'}
+                  </ObjectUploader>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
