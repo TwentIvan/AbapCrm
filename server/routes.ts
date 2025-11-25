@@ -27,7 +27,8 @@ import {
   type EmailConfig,
   projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals,
-  projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users
+  projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users,
+  customEntities, customFields
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -836,7 +837,7 @@ export function registerRoutes(app: Express): Server {
       res.json({
         tasks: {
           count: tasksList.length,
-          items: tasksList.map(t => ({ id: t.id, name: t.title }))
+          items: tasksList.map(t => ({ id: t.id, name: t.name }))
         },
         milestones: {
           count: milestonesList.length,
