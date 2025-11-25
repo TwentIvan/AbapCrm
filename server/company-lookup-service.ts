@@ -350,9 +350,9 @@ const MOCK_COMPANIES: CompanyInfo[] = [
     fiscalCode: "02345678901",
     vatNumber: "IT02345678901",
     website: "https://www.derga.it",
-    logoUrl: "https://via.placeholder.com/200x100/2563eb/ffffff?text=DERGA",
-    description: "Società di consulenza informatica e servizi digitali",
-    sector: "IT Services",
+    logoUrl: "https://logo.clearbit.com/derga.it",
+    description: "Società di consulenza informatica specializzata in SAP e soluzioni digitali",
+    sector: "IT Services & SAP Consulting",
     employees: "50-100",
     founded: 2010
   }
@@ -501,9 +501,9 @@ export class CompanyLookupService {
             postalCode: this.extractPostalCodeFromAddress(place.formattedAddress || ''),
             country: this.extractCountryFromAddress(place.formattedAddress || ''),
             website: place.websiteUri,
+            logoUrl: this.getLogoFromWebsite(place.websiteUri),
             description: this.generateBusinessDescription(place),
             sector: this.extractSectorFromTypes(place.types || []),
-            // Note: Google Places doesn't provide fiscal codes or VAT numbers
           } as CompanyInfo));
           
           return results;
@@ -622,6 +622,22 @@ export class CompanyLookupService {
     }
     
     return undefined;
+  }
+
+  /**
+   * Get logo URL from website using Clearbit Logo API
+   * Clearbit provides free logos for most companies based on their domain
+   */
+  private static getLogoFromWebsite(website: string | undefined): string | undefined {
+    if (!website) return undefined;
+    
+    try {
+      const url = new URL(website);
+      const domain = url.hostname.replace(/^www\./, '');
+      return `https://logo.clearbit.com/${domain}`;
+    } catch {
+      return undefined;
+    }
   }
 
   /**
