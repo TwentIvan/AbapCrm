@@ -1,10 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, lazy, Suspense } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { insertPartnerSchema, Partner } from "@shared/schema";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Separator } from "@/components/ui/separator";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import ImageContainer from "@/components/ui/image-container";
-import { Loader2, Upload, MapPin, Building2, Globe, CreditCard, FileText, Camera, Search } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AddressSearch, AddressResult } from "@/components/ui/address-search";
+import { Loader2, Upload, MapPin, Building2, Globe, CreditCard, FileText, Camera, Search, Map } from "lucide-react";
 import type { UploadResult } from "@uppy/core";
+
+const MapPicker = lazy(() => import("@/components/ui/map-picker").then(m => ({ default: m.MapPicker })));
 
 // Extended schema with validation for Italian CF and VAT
 const advancedPartnerSchema = insertPartnerSchema.extend({
@@ -29,9 +33,16 @@ const advancedPartnerSchema = insertPartnerSchema.extend({
   company: z.string().optional(),
   position: z.string().optional(),
   address: z.string().optional(),
+  street: z.string().optional(),
+  streetNumber: z.string().optional(),
   city: z.string().optional(),
+  province: z.string().optional(),
   postalCode: z.string().optional(),
   country: z.string().optional(),
+  latitude: z.string().optional(),
+  longitude: z.string().optional(),
+  isLegalAddress: z.boolean().optional(),
+  parentPartnerId: z.string().optional().nullable(),
   fiscalCode: z.string().optional().refine(
     (val) => !val || val.length === 11 || val.length === 16,
     "Codice fiscale non valido (11 caratteri per aziende, 16 per persone fisiche)"
@@ -105,9 +116,16 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
       company: existingPartner?.company || "",
       position: existingPartner?.position || "",
       address: existingPartner?.address || "",
+      street: existingPartner?.street || "",
+      streetNumber: existingPartner?.streetNumber || "",
       city: existingPartner?.city || "",
+      province: existingPartner?.province || "",
       postalCode: existingPartner?.postalCode || "",
       country: existingPartner?.country || "IT",
+      latitude: existingPartner?.latitude || "",
+      longitude: existingPartner?.longitude || "",
+      isLegalAddress: existingPartner?.isLegalAddress ?? true,
+      parentPartnerId: existingPartner?.parentPartnerId || null,
       fiscalCode: existingPartner?.fiscalCode || "",
       vatNumber: existingPartner?.vatNumber || "",
       logoUrl: existingPartner?.logoUrl || "",
@@ -151,6 +169,24 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
     if (suggestion.country) form.setValue('country', suggestion.country === 'Italy' ? 'IT' : suggestion.country);
     setShowAddressSuggestions(false);
     setAddressSuggestions([]);
+  };
+
+  const handleAddressSelect = (address: AddressResult, isLegalAddress: boolean) => {
+    form.setValue('address', address.displayName);
+    form.setValue('street', address.street);
+    form.setValue('streetNumber', address.streetNumber);
+    form.setValue('city', address.city);
+    form.setValue('province', address.province);
+    form.setValue('postalCode', address.postalCode);
+    form.setValue('country', address.country);
+    form.setValue('latitude', address.latitude.toString());
+    form.setValue('longitude', address.longitude.toString());
+    form.setValue('isLegalAddress', isLegalAddress);
+  };
+
+  const handleMapLocationChange = (lat: number, lng: number) => {
+    form.setValue('latitude', lat.toString());
+    form.setValue('longitude', lng.toString());
   };
 
   // Ref per mantenere l'ultimo valore di ricerca senza causare re-render
@@ -374,9 +410,16 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
         company: data.company?.trim() || null,
         position: data.position?.trim() || null,
         address: data.address?.trim() || null,
+        street: data.street?.trim() || null,
+        streetNumber: data.streetNumber?.trim() || null,
         city: data.city?.trim() || null,
+        province: data.province?.trim() || null,
         postalCode: data.postalCode?.trim() || null,
         country: data.country || "IT",
+        latitude: data.latitude || null,
+        longitude: data.longitude || null,
+        isLegalAddress: data.isLegalAddress ?? true,
+        parentPartnerId: data.parentPartnerId || null,
         fiscalCode: data.fiscalCode?.trim() || null,
         vatNumber: data.vatNumber?.trim() || null,
         logoUrl: data.logoUrl?.trim() || null,
@@ -633,46 +676,59 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Indirizzo</FormLabel>
-                    <FormControl>
-                      <div className="relative">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Cerca Indirizzo</label>
+                <AddressSearch
+                  onSelect={handleAddressSelect}
+                  placeholder="Cerca indirizzo (es. Via Roma 1, Milano)..."
+                  showAddressTypeSelector={true}
+                  defaultAddressType={form.watch('isLegalAddress') ? "legal" : "operational"}
+                />
+              </div>
+
+              <Separator />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="street"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Via/Piazza</FormLabel>
+                      <FormControl>
                         <Input 
                           {...field}
-                          value={field.value || ""}
-                          placeholder="Via Roma 123, Milano"
-                          onChange={(e) => {
-                            field.onChange(e);
-                          }}
-                          data-testid="input-partner-address"
+                          value={field.value || ""} 
+                          placeholder="Via Roma"
+                          data-testid="input-partner-street"
                         />
-                        {showAddressSuggestions && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                            {addressSuggestions.map((suggestion, index) => (
-                              <button
-                                key={index}
-                                type="button"
-                                className="w-full px-3 py-2 text-left hover:bg-gray-100 text-sm"
-                                onClick={() => selectAddressSuggestion(suggestion)}
-                                data-testid={`suggestion-${index}`}
-                              >
-                                {suggestion.formatted}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="streetNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Numero Civico</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          value={field.value || ""} 
+                          placeholder="123"
+                          data-testid="input-partner-street-number"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <FormField
                   control={form.control}
                   name="city"
@@ -685,6 +741,25 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
                           value={field.value || ""} 
                           placeholder="Milano"
                           data-testid="input-partner-city"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="province"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Provincia</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          value={field.value || ""} 
+                          placeholder="MI"
+                          data-testid="input-partner-province"
                         />
                       </FormControl>
                       <FormMessage />
@@ -729,6 +804,46 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
                     </FormItem>
                   )}
                 />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="isLegalAddress"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value ?? true}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-is-legal-address"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Sede Legale
+                      </FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Spunta se questo è l'indirizzo della sede legale del partner
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Map className="h-4 w-4" />
+                  Posizione sulla Mappa
+                </label>
+                <Suspense fallback={<div className="h-64 bg-muted rounded-lg flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
+                  <MapPicker
+                    latitude={form.watch('latitude') ? parseFloat(form.watch('latitude') as string) : undefined}
+                    longitude={form.watch('longitude') ? parseFloat(form.watch('longitude') as string) : undefined}
+                    onLocationChange={handleMapLocationChange}
+                    className="h-64"
+                  />
+                </Suspense>
               </div>
             </CardContent>
           </Card>
