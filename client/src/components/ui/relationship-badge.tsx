@@ -63,6 +63,7 @@ export const RelationshipBadge = memo(function RelationshipBadge({
       className={`flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm cursor-pointer hover:opacity-80 transition-opacity ${className}`}
       onClick={handleClick}
       data-testid={`badge-${label.toLowerCase()}-${count}`}
+      data-relationship-badge="true"
     >
       {count}
     </button>
