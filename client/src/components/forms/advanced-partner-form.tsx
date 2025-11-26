@@ -20,7 +20,7 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import ImageContainer from "@/components/ui/image-container";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AddressSearch, AddressResult } from "@/components/ui/address-search";
-import { Loader2, Upload, MapPin, Building2, Globe, CreditCard, FileText, Camera, Search, Map } from "lucide-react";
+import { Loader2, Upload, MapPin, Building2, Globe, CreditCard, FileText, Camera, Search, Map, Link } from "lucide-react";
 import type { UploadResult } from "@uppy/core";
 
 const MapPicker = lazy(() => import("@/components/ui/map-picker").then(m => ({ default: m.MapPicker })));
@@ -95,6 +95,11 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  const { data: allPartners } = useQuery<Partner[]>({
+    queryKey: ['/api/partners'],
+    queryFn: getQueryFn({ on401: "throw" }),
+  });
   
   const [logoPreview, setLogoPreview] = useState<string>("");
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
@@ -830,6 +835,52 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
                   </FormItem>
                 )}
               />
+
+              {!form.watch('isLegalAddress') && (
+                <FormField
+                  control={form.control}
+                  name="parentPartnerId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Link className="h-4 w-4" />
+                        Collega a Partner (Sede Legale)
+                      </FormLabel>
+                      <Select
+                        value={field.value || ""}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-parent-partner">
+                            <SelectValue placeholder="Seleziona la sede legale di riferimento..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {allPartners
+                            ?.filter(p => (p.isLegalAddress === true || p.isLegalAddress === null || p.isLegalAddress === undefined) && p.id !== existingPartner?.id)
+                            .map(partner => (
+                              <SelectItem key={partner.id} value={partner.id}>
+                                <div className="flex items-center gap-2">
+                                  {partner.logoUrl ? (
+                                    <img src={partner.logoUrl} alt="" className="w-4 h-4 rounded" />
+                                  ) : (
+                                    <Building2 className="w-4 h-4 text-muted-foreground" />
+                                  )}
+                                  <span>{partner.name}</span>
+                                  {partner.city && <span className="text-muted-foreground text-xs">({partner.city})</span>}
+                                </div>
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground">
+                        Questa sede operativa sarà collegata alla sede legale selezionata
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
