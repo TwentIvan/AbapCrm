@@ -375,7 +375,14 @@ export default function PartnersPage() {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }: any) => (
-        <div className="font-medium" data-testid={`text-partner-name-${row.original.id}`}>
+        <div 
+          className="font-medium text-primary hover:underline cursor-pointer" 
+          data-testid={`text-partner-name-${row.original.id}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEdit(row.original);
+          }}
+        >
           {row.original.name}
         </div>
       ),
@@ -424,34 +431,39 @@ export default function PartnersPage() {
     createTextColumn('vatNumber', 'P.IVA', 16),
     {
       id: 'actions',
-      header: 'Actions',
+      header: 'Azioni',
       cell: ({ row }: any) => {
         const partner = row.original;
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid={`button-partner-menu-${partner.id}`}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem 
-                onClick={() => handleEdit(partner)}
-                data-testid={`menu-edit-partner-${partner.id}`}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Modifica
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => handleDelete(partner)}
-                className="text-destructive"
-                data-testid={`menu-delete-partner-${partner.id}`}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Elimina
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => handleEdit(partner)}
+              data-testid={`button-edit-partner-${partner.id}`}
+              className="h-8"
+            >
+              <Edit className="mr-1 h-3 w-3" />
+              Modifica
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-partner-menu-${partner.id}`}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={() => handleDelete(partner)}
+                  className="text-destructive"
+                  data-testid={`menu-delete-partner-${partner.id}`}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Elimina
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
