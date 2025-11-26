@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useOrganization } from "@/contexts/organization-context";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { insertPartnerSchema, Partner } from "@shared/schema";
 import { z } from "zod";
@@ -95,6 +96,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { currentOrganizationId } = useOrganization();
   
   const { data: allPartners } = useQuery<Partner[]>({
     queryKey: ['/api/partners'],
@@ -227,7 +229,8 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
           organizationId: currentOrganizationId,
         };
 
-        const newPartner = await apiRequest("POST", "/api/partners", partnerData);
+        const response = await apiRequest("POST", "/api/partners", partnerData);
+        const newPartner = await response.json();
         createdCount++;
 
         if (address.isLegalAddress && newPartner?.id) {
