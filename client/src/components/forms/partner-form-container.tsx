@@ -18,6 +18,7 @@ interface PartnerFormContainerProps {
   
   // Callbacks
   onSuccess?: () => void;
+  onEditLocation?: (location: Partner) => void;
 }
 
 export default function PartnerFormContainer({
@@ -25,6 +26,7 @@ export default function PartnerFormContainer({
   onOpenChange,
   editingPartner,
   onSuccess,
+  onEditLocation,
 }: PartnerFormContainerProps) {
   const params = useParams();
   const { currentOrganizationId } = useOrganization();
@@ -110,6 +112,7 @@ export default function PartnerFormContainer({
             <AdvancedPartnerForm 
               existingPartner={partner as Partner}
               onSuccess={handleSuccess}
+              onEditLocation={onEditLocation}
             />
           </TabsContent>
           

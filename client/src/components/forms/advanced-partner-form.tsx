@@ -97,9 +97,10 @@ interface CompanyInfo {
 interface AdvancedPartnerFormProps {
   onSuccess?: () => void;
   existingPartner?: Partner;
+  onEditLocation?: (location: Partner) => void;
 }
 
-export default function AdvancedPartnerForm({ onSuccess, existingPartner }: AdvancedPartnerFormProps) {
+export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEditLocation }: AdvancedPartnerFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1361,7 +1362,11 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
                     {operativeLocations.map((location) => (
                       <div 
                         key={location.id}
-                        className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200"
+                        className={cn(
+                          "flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200 transition-all",
+                          onEditLocation && "cursor-pointer hover:bg-blue-100 hover:border-blue-400 hover:shadow-sm"
+                        )}
+                        onClick={() => onEditLocation?.(location)}
                         data-testid={`location-${location.id}`}
                       >
                         <div className="w-3 h-3 rounded-full bg-blue-500 mt-1.5 shrink-0" />
@@ -1371,6 +1376,11 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
                             <Badge className="bg-blue-100 text-blue-800 text-xs shrink-0">
                               Sede Operativa
                             </Badge>
+                            {onEditLocation && (
+                              <Badge variant="outline" className="text-xs shrink-0 ml-auto">
+                                Clicca per modificare
+                              </Badge>
+                            )}
                           </div>
                           {location.address && (
                             <p className="text-sm text-muted-foreground mt-1">

@@ -137,6 +137,8 @@ export default function PartnersPage() {
   const [showCascadeDialog, setShowCascadeDialog] = useState(false);
   const [cascadeRelatedData, setCascadeRelatedData] = useState<RelatedData | null>(null);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  const [showLocationEditDialog, setShowLocationEditDialog] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<Partner | null>(null);
   
   // Route detection for full-page mode
   const isFullPageMode = location.startsWith("/partners/");
@@ -410,6 +412,11 @@ export default function PartnersPage() {
     setSelectedPartner(partner);
     setShowEditDialog(true);
   };
+
+  const handleEditLocation = (locationPartner: Partner) => {
+    setSelectedLocation(locationPartner);
+    setShowLocationEditDialog(true);
+  };
   
   // Handle full-page mode: when user navigates directly to /partners/new or /partners/:id/edit
   if (isFullPageMode) {
@@ -421,6 +428,7 @@ export default function PartnersPage() {
         onSuccess={() => {
           setSelectedPartner(null);
         }}
+        onEditLocation={handleEditLocation}
       />
     );
   }
@@ -688,6 +696,24 @@ export default function PartnersPage() {
           setShowCreateDialog(false);
           setShowEditDialog(false);
           setSelectedPartner(null);
+        }}
+        onEditLocation={handleEditLocation}
+      />
+
+      {/* Operative Location Edit Dialog */}
+      <PartnerFormContainer
+        open={showLocationEditDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowLocationEditDialog(false);
+            setSelectedLocation(null);
+          }
+        }}
+        editingPartner={selectedLocation}
+        onSuccess={() => {
+          setShowLocationEditDialog(false);
+          setSelectedLocation(null);
+          queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
         }}
       />
 
