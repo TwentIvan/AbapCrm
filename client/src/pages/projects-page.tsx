@@ -22,6 +22,7 @@ import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2, History, MessageSquare, Workflow } from "lucide-react";
 import { Project, Partner, SapSystem } from "@shared/schema";
 import { RelationshipBadge } from "@/components/ui/relationship-badge";
+import { RelationshipPreviewProvider } from "@/components/ui/relationship-preview-context";
 import { SapPasteJsonDialog } from "@/components/dialogs/sap-paste-json-dialog";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
@@ -574,6 +575,7 @@ export default function ProjectsPage() {
   ];
 
   return (
+    <RelationshipPreviewProvider>
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <main className="flex-1 overflow-auto">
@@ -761,5 +763,6 @@ export default function ProjectsPage() {
         onCancel={() => setShowConfigDialog(false)}
       />
     </div>
+    </RelationshipPreviewProvider>
   );
 }
