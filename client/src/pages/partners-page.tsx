@@ -48,7 +48,6 @@ function PartnerProjectsCount({ partnerId, currentOrganizationId }: { partnerId:
     <RelationshipBadge
       count={count}
       label="Progetti"
-      items={relationships?.projects?.items || []}
       targetPath="/projects"
       filterParam="clientId"
       sourceId={partnerId}
@@ -73,7 +72,6 @@ function PartnerContactsCount({ partnerId, currentOrganizationId }: { partnerId:
     <RelationshipBadge
       count={count}
       label="Contatti"
-      items={relationships?.contacts?.items || []}
       targetPath="/contacts"
       filterParam="partnerId"
       sourceId={partnerId}
@@ -98,7 +96,6 @@ function PartnerDealsCount({ partnerId, currentOrganizationId }: { partnerId: st
     <RelationshipBadge
       count={count}
       label="Deals"
-      items={relationships?.deals?.items || []}
       targetPath="/deals"
       filterParam="partnerId"
       sourceId={partnerId}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ImageIcon, Building, User } from "lucide-react";
 
@@ -19,7 +19,7 @@ const sizeClasses = {
   md: "w-12 h-12", 
   lg: "w-16 h-16",
   xl: "w-24 h-24",
-  custom: "" // Usa className per dimensioni personalizzate
+  custom: ""
 };
 
 const fallbackIcons = {
@@ -39,33 +39,7 @@ export default function ImageContainer({
   onClick,
   'data-testid': testId
 }: ImageContainerProps) {
-  const [imageState, setImageState] = useState<'loading' | 'loaded' | 'error'>('loading');
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!src) {
-      setImageState('error');
-      return;
-    }
-
-    setImageState('loading');
-    setImageSrc(null);
-
-    const img = new Image();
-    img.onload = () => {
-      setImageSrc(src);
-      setImageState('loaded');
-    };
-    img.onerror = () => {
-      setImageState('error');
-    };
-    img.src = src;
-
-    return () => {
-      img.onload = null;
-      img.onerror = null;
-    };
-  }, [src]);
+  const [hasError, setHasError] = useState(false);
 
   const FallbackIcon = fallbackIcons[fallbackType];
   
@@ -78,40 +52,28 @@ export default function ImageContainer({
   );
 
   const imageClasses = cn(
-    "w-full h-full object-cover transition-opacity duration-200",
-    imageState === 'loaded' ? "opacity-100" : "opacity-0",
+    "w-full h-full object-cover",
     className
   );
 
-  return (
-    <div 
-      className={containerClasses} 
-      onClick={onClick}
-      data-testid={testId}
-    >
-      {/* Actual Image */}
-      {imageSrc && (
-        <img
-          src={imageSrc}
-          alt={alt}
-          className={imageClasses}
-          draggable={false}
-        />
-      )}
-      
-      {/* Loading/Error Fallback */}
-      <div 
-        className={cn(
-          "absolute inset-0 flex items-center justify-center transition-opacity duration-200",
-          imageState === 'loaded' ? "opacity-0" : "opacity-100"
-        )}
-      >
-        {imageState === 'loading' ? (
-          <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
-        ) : (
-          <FallbackIcon className="w-1/2 h-1/2 text-muted-foreground" />
-        )}
+  // Se non c'è src o c'è errore, mostra fallback
+  if (!src || hasError) {
+    return (
+      <div className={containerClasses} onClick={onClick} data-testid={testId}>
+        <FallbackIcon className="w-1/2 h-1/2 text-muted-foreground" />
       </div>
+    );
+  }
+
+  return (
+    <div className={containerClasses} onClick={onClick} data-testid={testId}>
+      <img
+        src={src}
+        alt={alt}
+        className={imageClasses}
+        draggable={false}
+        onError={() => setHasError(true)}
+      />
     </div>
   );
 }
