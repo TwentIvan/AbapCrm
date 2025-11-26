@@ -1410,12 +1410,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePartner(id: string, userId: string, organizationId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<boolean> {
-    // Get old values for audit trail
-    const oldPartner = auditContext ? await this.getPartner(id, userId, organizationId) : null;
+    // Get old values for audit trail - don't filter by userId for multi-org support
+    const [oldPartner] = auditContext ? await db.select().from(partners).where(and(eq(partners.id, id), eq(partners.organizationId, organizationId))) : [null];
     
+    // Delete by id and organizationId only (not userId) to support multi-org access
     const result = await db
       .delete(partners)
-      .where(and(eq(partners.id, id), eq(partners.userId, userId), eq(partners.organizationId, organizationId)));
+      .where(and(eq(partners.id, id), eq(partners.organizationId, organizationId)));
     
     // Log audit trail for partner deletion
     if (auditContext && oldPartner && (result.rowCount || 0) > 0) {
