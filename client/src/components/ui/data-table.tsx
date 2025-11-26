@@ -116,7 +116,7 @@ export function DataTable<TData, TValue>({
     })
   );
 
-  // Selection columns setup  
+  // Selection columns setup - using onMouseUp instead of onChange/onClick due to event blocking  
   const selectionColumn = enableSelection ? [{
     id: "select",
     header: ({ table }: any) => (
@@ -127,11 +127,12 @@ export function DataTable<TData, TValue>({
         <input
           type="checkbox"
           checked={table.getIsAllPageRowsSelected()}
-          onChange={(e) => {
+          onMouseUp={(e) => {
             e.stopPropagation();
-            table.toggleAllPageRowsSelected(e.target.checked);
+            e.preventDefault();
+            table.toggleAllPageRowsSelected(!table.getIsAllPageRowsSelected());
           }}
-          onClick={(e) => e.stopPropagation()}
+          onChange={() => {}}
           aria-label="Select all"
           data-testid="checkbox-select-all"
           className="h-4 w-4 cursor-pointer accent-primary"
@@ -146,11 +147,12 @@ export function DataTable<TData, TValue>({
         <input
           type="checkbox"
           checked={row.getIsSelected()}
-          onChange={(e) => {
+          onMouseUp={(e) => {
             e.stopPropagation();
-            row.toggleSelected(e.target.checked);
+            e.preventDefault();
+            row.toggleSelected(!row.getIsSelected());
           }}
-          onClick={(e) => e.stopPropagation()}
+          onChange={() => {}}
           aria-label="Select row"
           data-testid={`checkbox-select-${row.id}`}
           className="h-4 w-4 cursor-pointer accent-primary"
