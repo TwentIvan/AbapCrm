@@ -430,27 +430,17 @@ export function DataTable<TData, TValue>({
 
       {/* Table */}
       <div className="rounded-md border">
-        <DndContext 
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
-                  <SortableContext 
-                    items={headerGroup.headers.map(h => h.id)}
-                    strategy={horizontalListSortingStrategy}
-                  >
                     {headerGroup.headers.map((header) => (
                       <SortableHeader
                         key={header.id}
                         header={header}
-                        enableReordering={enableColumnReordering}
+                        enableReordering={false}
                       />
                     ))}
-                  </SortableContext>
                 </TableRow>
               ))}
             </TableHeader>
@@ -505,7 +495,6 @@ export function DataTable<TData, TValue>({
             )}
           </TableBody>
         </Table>
-        </DndContext>
       </div>
 
       {/* Aggregations Row - Bottom */}
