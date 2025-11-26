@@ -335,17 +335,15 @@ export function AddressSearch({
                       </div>
                     )}
 
-                    {!enableMultiSelect && (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="mt-2 w-full"
-                        onClick={() => handleSelect(result)}
-                        data-testid={`button-select-address-${result.place_id}`}
-                      >
-                        Seleziona questo indirizzo
-                      </Button>
-                    )}
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="mt-2 w-full"
+                      onClick={() => handleSelect(result)}
+                      data-testid={`button-select-address-${result.place_id}`}
+                    >
+                      Seleziona questo indirizzo
+                    </Button>
                   </div>
                 </div>
               </div>
