@@ -193,9 +193,18 @@ export default function PartnersPage() {
     onError: async (error: any, partnerId: string) => {
       if (error?.message?.includes('409') || error?.message?.includes('needsCascade')) {
         setShowDeleteDialog(false);
-        const relatedData = await apiRequest("GET", `/api/partners/${partnerId}/related-data`) as RelatedData;
-        setCascadeRelatedData(relatedData);
-        setShowCascadeDialog(true);
+        try {
+          const response = await apiRequest("GET", `/api/partners/${partnerId}/related-data`);
+          const relatedData = await response.json() as RelatedData;
+          setCascadeRelatedData(relatedData);
+          setShowCascadeDialog(true);
+        } catch {
+          toast({
+            title: "Errore",
+            description: "Non è stato possibile recuperare i dati collegati.",
+            variant: "destructive",
+          });
+        }
       } else {
         toast({
           title: "Errore",
@@ -628,7 +637,7 @@ export default function PartnersPage() {
             onCreateNew={() => setShowCreateDialog(true)}
             onCopySelected={() => setShowBulkCopyDialog(true)}
             onBulkEdit={() => setShowBulkEditDialog(true)}
-            onDeleteSelected={() => setShowBulkDeleteDialog(true)}
+            onDeleteSelected={handleBulkDelete}
             hasSelection={selectedPartners.length > 0}
           />
           {isLoading && (!partners || partners.length === 0) ? (
