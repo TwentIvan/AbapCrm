@@ -33,7 +33,9 @@ export const RelationshipBadge = memo(function RelationshipBadge({
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
+    console.log("[RelationshipBadge] Click detected!", { label, count, items, openPreview: typeof openPreview });
     if (count > 0) {
+      console.log("[RelationshipBadge] Opening preview...");
       openPreview({
         label,
         count,
