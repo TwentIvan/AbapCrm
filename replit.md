@@ -78,6 +78,14 @@ Supports receiving Transport Requests from SAP systems via three methods: direct
 ### SAP Shortcut Integration
 Projects linked to an SAP system can launch the **ZTHU_DOCUMENTATION** program. The system generates a `.sap` shortcut file; users execute the ABAP program, copy its JSON output, and paste it into a dialog to automatically create and link the Transport Request.
 
+### Address Management System
+Comprehensive address handling for partner entities with:
+- **AddressSearch Component** (`client/src/components/ui/address-search.tsx`): Autocomplete search using Nominatim API (OpenStreetMap geocoding), Italian province code extraction (100+ mappings), radio buttons for legal/operational address type selection
+- **MapPicker Component** (`client/src/components/ui/map-picker.tsx`): Interactive Leaflet map for visual location selection with draggable markers and reverse geocoding
+- **Structured Address Fields**: street, streetNumber, city, province, postalCode, country, latitude, longitude
+- **Legal/Operational Address Distinction**: `isLegalAddress` boolean with `parentPartnerId` for linking operational sites to their parent legal headquarters
+- **Database Fields**: Partners table extended with structured address columns and hierarchical relationship support
+
 # External Dependencies
 
 ## Database Services
