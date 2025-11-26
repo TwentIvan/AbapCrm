@@ -465,6 +465,11 @@ export function DataTable<TData, TValue>({
                     // Don't trigger row click if clicking on interactive elements
                     const target = e.target as HTMLElement;
                     
+                    console.log('[DataTable] Row click - target:', target.tagName, target.className);
+                    console.log('[DataTable] Has button parent:', !!target.closest('button'));
+                    console.log('[DataTable] Has input parent:', !!target.closest('input'));
+                    console.log('[DataTable] Has selection-cell parent:', !!target.closest('[data-selection-cell="true"]'));
+                    
                     // Check if clicked element is inside a selection cell or other interactive element
                     if (target.closest('[data-selection-cell="true"]') ||
                         target.closest('[role="checkbox"]') || 
@@ -476,8 +481,10 @@ export function DataTable<TData, TValue>({
                         target.closest('select') ||
                         target.closest('.progress-root') ||
                         target.closest('[data-radix-progress-root]')) {
+                      console.log('[DataTable] Blocked - returning early');
                       return;
                     }
+                    console.log('[DataTable] Calling onRowClick');
                     onRowClick?.(row.original);
                   }}
                   data-testid={`row-${row.id}`}
