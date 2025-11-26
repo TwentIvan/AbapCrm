@@ -416,9 +416,20 @@ export default function PartnersPage() {
     );
   }
 
-  const handleDelete = (partner: Partner) => {
+  const handleDelete = async (partner: Partner) => {
     setSelectedPartner(partner);
-    setShowDeleteDialog(true);
+    try {
+      const relatedData = await apiRequest("GET", `/api/partners/${partner.id}/related-data`);
+      const data = await relatedData.json() as RelatedData;
+      if (data.hasRelations) {
+        setCascadeRelatedData(data);
+        setShowCascadeDialog(true);
+      } else {
+        setShowDeleteDialog(true);
+      }
+    } catch {
+      setShowDeleteDialog(true);
+    }
   };
 
   const confirmDelete = () => {
@@ -427,8 +438,38 @@ export default function PartnersPage() {
     }
   };
 
-  const handleBulkDelete = () => {
-    setShowBulkDeleteDialog(true);
+  const handleBulkDelete = async () => {
+    try {
+      const relatedDataPromises = selectedPartners.map(p => 
+        apiRequest("GET", `/api/partners/${p.id}/related-data`)
+          .then(res => res.json())
+          .catch(() => ({ contacts: 0, projects: 0, deals: 0, childPartners: 0, hasRelations: false }))
+      );
+      const relatedDataResults = await Promise.all(relatedDataPromises) as RelatedData[];
+      
+      const totalRelations: RelatedData = { contacts: 0, projects: 0, deals: 0, childPartners: 0, hasRelations: false };
+      const partnersWithRelations: Partner[] = [];
+      
+      relatedDataResults.forEach((data, idx) => {
+        if (data?.hasRelations) {
+          partnersWithRelations.push(selectedPartners[idx]);
+          totalRelations.contacts += data.contacts;
+          totalRelations.projects += data.projects;
+          totalRelations.deals += data.deals;
+          totalRelations.childPartners += data.childPartners;
+          totalRelations.hasRelations = true;
+        }
+      });
+      
+      if (totalRelations.hasRelations) {
+        setBulkCascadeData({ partnersWithRelations, totalRelations });
+        setShowBulkCascadeDialog(true);
+      } else {
+        setShowBulkDeleteDialog(true);
+      }
+    } catch {
+      setShowBulkDeleteDialog(true);
+    }
   };
 
   const confirmBulkDelete = () => {
