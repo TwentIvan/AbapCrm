@@ -375,16 +375,18 @@ export default function PartnersPage() {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }: any) => (
-        <div 
-          className="font-medium text-primary hover:underline cursor-pointer" 
+        <button 
+          type="button"
+          className="font-medium text-primary hover:underline cursor-pointer bg-transparent border-none p-0 text-left" 
           data-testid={`text-partner-name-${row.original.id}`}
           onClick={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             handleEdit(row.original);
           }}
         >
           {row.original.name}
-        </div>
+        </button>
       ),
     },
     createBadgeColumn('type', 'Type', {

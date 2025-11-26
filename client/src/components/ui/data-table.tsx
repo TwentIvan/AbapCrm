@@ -121,43 +121,39 @@ export function DataTable<TData, TValue>({
     id: "select",
     header: ({ table }: any) => (
       <div 
-        className="flex items-center justify-center px-2 py-1" 
+        className="flex items-center justify-center px-3 py-2" 
         data-selection-cell="true"
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-        }}
       >
-        <Checkbox
+        <input
+          type="checkbox"
           checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => {
-            table.toggleAllPageRowsSelected(!!value);
+          onChange={(e) => {
+            e.stopPropagation();
+            table.toggleAllPageRowsSelected(e.target.checked);
           }}
           onClick={(e) => e.stopPropagation()}
           aria-label="Select all"
           data-testid="checkbox-select-all"
-          className="cursor-pointer"
+          className="h-4 w-4 cursor-pointer accent-primary"
         />
       </div>
     ),
     cell: ({ row }: any) => (
       <div 
-        className="flex items-center justify-center px-2 py-1" 
+        className="flex items-center justify-center px-3 py-2" 
         data-selection-cell="true"
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-        }}
       >
-        <Checkbox
+        <input
+          type="checkbox"
           checked={row.getIsSelected()}
-          onCheckedChange={(value) => {
-            row.toggleSelected(!!value);
+          onChange={(e) => {
+            e.stopPropagation();
+            row.toggleSelected(e.target.checked);
           }}
           onClick={(e) => e.stopPropagation()}
           aria-label="Select row"
           data-testid={`checkbox-select-${row.id}`}
-          className="cursor-pointer"
+          className="h-4 w-4 cursor-pointer accent-primary"
         />
       </div>
     ),
