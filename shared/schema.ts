@@ -141,10 +141,17 @@ export const partners = pgTable("partners", {
   phone: text("phone"),
   company: text("company"),
   position: text("position"),
-  address: text("address"),
+  address: text("address"), // Indirizzo completo (retrocompatibilità)
+  street: text("street"), // Via/Piazza
+  streetNumber: text("street_number"), // Numero civico
   city: text("city"),
+  province: text("province"), // Provincia (es. MI, RM)
   postalCode: text("postal_code"),
   country: text("country").default("IT"),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }), // Coordinate per mappa
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  isLegalAddress: boolean("is_legal_address").default(true), // true = sede legale, false = sede operativa
+  parentPartnerId: uuid("parent_partner_id").references((): any => partners.id), // Riferimento al partner principale (per sedi operative)
   fiscalCode: text("fiscal_code"), // Codice fiscale
   vatNumber: text("vat_number"), // Partita IVA
   logoUrl: text("logo_url"), // URL del logo
@@ -933,6 +940,8 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
 export const partnersRelations = relations(partners, ({ one, many }) => ({
   user: one(users, { fields: [partners.userId], references: [users.id] }),
   organization: one(organizations, { fields: [partners.organizationId], references: [organizations.id], relationName: "organizationPartners" }),
+  parentPartner: one(partners, { fields: [partners.parentPartnerId], references: [partners.id], relationName: "parentPartner" }),
+  operationalAddresses: many(partners, { relationName: "parentPartner" }), // Sedi operative collegate
   projects: many(projects),
   deals: many(deals),
   calendarEvents: many(calendarEvents),
