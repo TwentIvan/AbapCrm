@@ -285,6 +285,8 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
     }
 
     setIsSearchingCompany(true);
+    // Reset selection when new search is performed
+    setSelectedCompanyIndices(new Set());
     
     try {
       const response = await fetch(`/api/companies/search?q=${encodeURIComponent(searchQuery)}`);
@@ -410,12 +412,16 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
 
   // Create multiple partners from selected companies
   const createMultiplePartners = async () => {
-    if (!currentOrganizationId || !user?.id) {
-      toast({ title: "Errore: organizzazione o utente non valido", variant: "destructive" });
+    if (!user?.id) {
+      toast({ title: "Errore: utente non autenticato", variant: "destructive" });
       return;
     }
 
-    const selectedCompanies = Array.from(selectedCompanyIndices).map(i => companySuggestions[i]);
+    // Filter out undefined entries (guard against stale indices)
+    const selectedCompanies = Array.from(selectedCompanyIndices)
+      .map(i => companySuggestions[i])
+      .filter((company): company is NonNullable<typeof company> => company !== undefined);
+    
     if (selectedCompanies.length === 0) {
       toast({ title: "Seleziona almeno un'azienda", variant: "destructive" });
       return;
@@ -443,23 +449,31 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
           // Ignore enrichment errors
         }
 
+        // Use same field structure as savePartnerMutation
         const partnerData = {
           name: enrichedCompany.legalName || enrichedCompany.name,
-          company: enrichedCompany.name,
-          email: "",
-          phone: "",
-          address: enrichedCompany.address || "",
-          city: enrichedCompany.city || "",
-          postalCode: enrichedCompany.postalCode || "",
+          type: "client", // Required field - default to client for batch creation
+          userId: user.id, // Required field (not createdBy)
+          company: enrichedCompany.name || null,
+          email: null,
+          phone: null,
+          position: null,
+          address: enrichedCompany.address?.trim() || null,
+          street: null,
+          streetNumber: null,
+          city: enrichedCompany.city?.trim() || null,
+          province: null,
+          postalCode: enrichedCompany.postalCode?.trim() || null,
           country: enrichedCompany.country || "IT",
-          fiscalCode: enrichedCompany.fiscalCode || "",
-          vatNumber: enrichedCompany.vatNumber?.replace('IT', '') || "",
-          website: enrichedCompany.website || "",
-          logoUrl: enrichedCompany.logoUrl || "",
+          latitude: null,
+          longitude: null,
           isLegalAddress: createdCount === 0, // First one is legal address
           parentPartnerId: parentId,
-          organizationId: currentOrganizationId,
-          createdBy: user.id,
+          fiscalCode: enrichedCompany.fiscalCode?.trim() || null,
+          vatNumber: enrichedCompany.vatNumber?.replace('IT', '')?.trim() || null,
+          website: enrichedCompany.website?.trim() || null,
+          logoUrl: enrichedCompany.logoUrl?.trim() || null,
+          notes: null,
         };
 
         const response = await apiRequest("POST", "/api/partners", partnerData);
