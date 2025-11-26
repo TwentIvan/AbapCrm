@@ -111,6 +111,8 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
   const [isSearchingCompany, setIsSearchingCompany] = useState(false);
   const [showSearchDialog, setShowSearchDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCompanyIndices, setSelectedCompanyIndices] = useState<Set<number>>(new Set());
+  const [isCreatingMultiple, setIsCreatingMultiple] = useState(false);
   const [isValidatingFiscalCode, setIsValidatingFiscalCode] = useState(false);
   const [isValidatingVatNumber, setIsValidatingVatNumber] = useState(false);
 
