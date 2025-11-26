@@ -2,8 +2,9 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Search, MapPin, Building2, Loader2 } from "lucide-react";
+import { Search, MapPin, Building2, Loader2, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface AddressResult {
@@ -18,12 +19,19 @@ export interface AddressResult {
   longitude: number;
 }
 
+export interface SelectedAddress extends AddressResult {
+  placeId: number;
+  isLegalAddress: boolean;
+}
+
 interface AddressSearchProps {
   onSelect: (address: AddressResult, isLegalAddress: boolean) => void;
+  onMultiSelect?: (addresses: SelectedAddress[]) => void;
   placeholder?: string;
   className?: string;
   showAddressTypeSelector?: boolean;
   defaultAddressType?: "legal" | "operational";
+  enableMultiSelect?: boolean;
 }
 
 interface NominatimResult {
@@ -48,16 +56,19 @@ interface NominatimResult {
 
 export function AddressSearch({
   onSelect,
+  onMultiSelect,
   placeholder = "Cerca indirizzo...",
   className,
   showAddressTypeSelector = true,
   defaultAddressType = "legal",
+  enableMultiSelect = false,
 }: AddressSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<NominatimResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedAddressTypes, setSelectedAddressTypes] = useState<Record<number, "legal" | "operational">>({});
+  const [selectedPlaceIds, setSelectedPlaceIds] = useState<Set<number>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
 
@@ -185,6 +196,39 @@ export function AddressSearch({
     }));
   };
 
+  const handleCheckboxChange = (placeId: number, checked: boolean) => {
+    setSelectedPlaceIds((prev) => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(placeId);
+      } else {
+        newSet.delete(placeId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleMultiSelectConfirm = () => {
+    if (!onMultiSelect || selectedPlaceIds.size === 0) return;
+    
+    const selectedAddresses: SelectedAddress[] = [];
+    results.forEach((result) => {
+      if (selectedPlaceIds.has(result.place_id)) {
+        const parsed = parseResult(result);
+        selectedAddresses.push({
+          ...parsed,
+          placeId: result.place_id,
+          isLegalAddress: selectedAddressTypes[result.place_id] === "legal",
+        });
+      }
+    });
+    
+    onMultiSelect(selectedAddresses);
+    setSelectedPlaceIds(new Set());
+    setIsOpen(false);
+    setQuery("");
+  };
+
   return (
     <div ref={containerRef} className={cn("relative", className)}>
       <div className="relative">
@@ -202,14 +246,43 @@ export function AddressSearch({
       </div>
 
       {isOpen && results.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full bg-background border rounded-md shadow-lg max-h-96 overflow-auto">
+        <div className="absolute z-50 mt-1 w-full bg-background border rounded-md shadow-lg max-h-[500px] overflow-auto">
+          {enableMultiSelect && selectedPlaceIds.size > 0 && (
+            <div className="sticky top-0 z-10 p-3 bg-primary/10 border-b flex items-center justify-between">
+              <span className="text-sm font-medium">
+                {selectedPlaceIds.size} {selectedPlaceIds.size === 1 ? 'indirizzo selezionato' : 'indirizzi selezionati'}
+              </span>
+              <Button
+                size="sm"
+                variant="default"
+                onClick={handleMultiSelectConfirm}
+                data-testid="button-create-selected-locations"
+              >
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Crea sedi selezionate
+              </Button>
+            </div>
+          )}
           {results.map((result) => (
             <div
               key={result.place_id}
-              className="border-b last:border-b-0"
+              className={cn(
+                "border-b last:border-b-0",
+                enableMultiSelect && selectedPlaceIds.has(result.place_id) && "bg-primary/5"
+              )}
             >
               <div className="p-3 hover:bg-muted/50">
                 <div className="flex items-start gap-2">
+                  {enableMultiSelect && (
+                    <div className="flex items-center pt-1" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        id={`checkbox-${result.place_id}`}
+                        checked={selectedPlaceIds.has(result.place_id)}
+                        onCheckedChange={(checked) => handleCheckboxChange(result.place_id, checked === true)}
+                        data-testid={`checkbox-address-${result.place_id}`}
+                      />
+                    </div>
+                  )}
                   <MapPin className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{result.display_name}</p>
@@ -262,15 +335,17 @@ export function AddressSearch({
                       </div>
                     )}
 
-                    <Button
-                      size="sm"
-                      variant="default"
-                      className="mt-2 w-full"
-                      onClick={() => handleSelect(result)}
-                      data-testid={`button-select-address-${result.place_id}`}
-                    >
-                      Seleziona questo indirizzo
-                    </Button>
+                    {!enableMultiSelect && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="mt-2 w-full"
+                        onClick={() => handleSelect(result)}
+                        data-testid={`button-select-address-${result.place_id}`}
+                      >
+                        Seleziona questo indirizzo
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

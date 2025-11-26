@@ -19,7 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import ImageContainer from "@/components/ui/image-container";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AddressSearch, AddressResult } from "@/components/ui/address-search";
+import { AddressSearch, AddressResult, SelectedAddress } from "@/components/ui/address-search";
 import { Loader2, Upload, MapPin, Building2, Globe, CreditCard, FileText, Camera, Search, Map, Link } from "lucide-react";
 import type { UploadResult } from "@uppy/core";
 
@@ -187,6 +187,69 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
     form.setValue('latitude', address.latitude.toString());
     form.setValue('longitude', address.longitude.toString());
     form.setValue('isLegalAddress', isLegalAddress);
+  };
+
+  const handleMultiAddressSelect = async (addresses: SelectedAddress[]) => {
+    if (!currentOrganizationId || !user?.id) {
+      toast({ title: "Errore: organizzazione o utente non valido", variant: "destructive" });
+      return;
+    }
+
+    const currentFormData = form.getValues();
+    let createdCount = 0;
+    let parentId: string | null = null;
+
+    for (const address of addresses) {
+      try {
+        const partnerData = {
+          name: currentFormData.name || `Sede ${address.city || address.street}`,
+          email: currentFormData.email || "",
+          phone: currentFormData.phone || "",
+          company: currentFormData.company || "",
+          position: currentFormData.position || "",
+          address: address.displayName,
+          street: address.street,
+          streetNumber: address.streetNumber,
+          city: address.city,
+          province: address.province,
+          postalCode: address.postalCode,
+          country: address.country,
+          latitude: address.latitude.toString(),
+          longitude: address.longitude.toString(),
+          isLegalAddress: address.isLegalAddress,
+          parentPartnerId: address.isLegalAddress ? null : parentId,
+          fiscalCode: currentFormData.fiscalCode || "",
+          vatNumber: currentFormData.vatNumber || "",
+          logoUrl: currentFormData.logoUrl || "",
+          website: currentFormData.website || "",
+          notes: currentFormData.notes || "",
+          userId: user.id,
+          organizationId: currentOrganizationId,
+        };
+
+        const newPartner = await apiRequest("POST", "/api/partners", partnerData);
+        createdCount++;
+
+        if (address.isLegalAddress && newPartner?.id) {
+          parentId = newPartner.id;
+        }
+      } catch (error) {
+        console.error("Errore creazione sede:", error);
+        toast({ 
+          title: `Errore nella creazione della sede ${address.city || address.street}`, 
+          variant: "destructive" 
+        });
+      }
+    }
+
+    if (createdCount > 0) {
+      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      toast({ 
+        title: `${createdCount} ${createdCount === 1 ? 'sede creata' : 'sedi create'} con successo!`,
+        description: parentId ? "La prima sede legale è stata impostata come sede principale" : undefined
+      });
+      onSuccess?.();
+    }
   };
 
   const handleMapLocationChange = (lat: number, lng: number) => {
@@ -683,11 +746,16 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Cerca Indirizzo</label>
+                <p className="text-xs text-muted-foreground">
+                  Seleziona uno o più indirizzi per creare le sedi. Usa i checkbox per selezione multipla.
+                </p>
                 <AddressSearch
                   onSelect={handleAddressSelect}
+                  onMultiSelect={handleMultiAddressSelect}
                   placeholder="Cerca indirizzo (es. Via Roma 1, Milano)..."
                   showAddressTypeSelector={true}
                   defaultAddressType={form.watch('isLegalAddress') ? "legal" : "operational"}
+                  enableMultiSelect={true}
                 />
               </div>
 
