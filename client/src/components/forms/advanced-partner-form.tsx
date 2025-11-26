@@ -109,6 +109,13 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
     queryKey: ['/api/partners'],
     queryFn: getQueryFn({ on401: "throw" }),
   });
+
+  // Query for operative locations when editing existing partner
+  const { data: operativeLocations } = useQuery<Partner[]>({
+    queryKey: ['/api/partners', existingPartner?.id, 'locations'],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!existingPartner?.id && existingPartner?.isLegalAddress === true,
+  });
   
   const [logoPreview, setLogoPreview] = useState<string>("");
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
@@ -1327,6 +1334,62 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
               />
             </CardContent>
           </Card>
+
+          {/* Operative Locations Card - only visible when editing a legal headquarters */}
+          {existingPartner?.id && existingPartner?.isLegalAddress && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Sedi Operative Collegate
+                  {operativeLocations && operativeLocations.length > 0 && (
+                    <Badge className="ml-2 bg-blue-100 text-blue-800">
+                      {operativeLocations.length}
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!operativeLocations || operativeLocations.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Nessuna sede operativa collegata</p>
+                    <p className="text-xs mt-1">Le sedi operative vengono create dalla ricerca aziende multi-selezione</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {operativeLocations.map((location) => (
+                      <div 
+                        key={location.id}
+                        className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200"
+                        data-testid={`location-${location.id}`}
+                      >
+                        <div className="w-3 h-3 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">{location.name}</span>
+                            <Badge className="bg-blue-100 text-blue-800 text-xs shrink-0">
+                              Sede Operativa
+                            </Badge>
+                          </div>
+                          {location.address && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              📍 {location.address}
+                            </p>
+                          )}
+                          {(location.city || location.province) && (
+                            <p className="text-xs text-muted-foreground">
+                              {[location.city, location.province].filter(Boolean).join(', ')}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Submit Button */}
           <div className="flex justify-end">
