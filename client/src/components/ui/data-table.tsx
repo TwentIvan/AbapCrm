@@ -120,22 +120,44 @@ export function DataTable<TData, TValue>({
   const selectionColumn = enableSelection ? [{
     id: "select",
     header: ({ table }: any) => (
-      <div className="flex items-center justify-start" onClick={(e) => e.stopPropagation()}>
+      <div 
+        className="flex items-center justify-center px-2 py-1" 
+        data-selection-cell="true"
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+      >
         <Checkbox
           checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          onCheckedChange={(value) => {
+            table.toggleAllPageRowsSelected(!!value);
+          }}
+          onClick={(e) => e.stopPropagation()}
           aria-label="Select all"
           data-testid="checkbox-select-all"
+          className="cursor-pointer"
         />
       </div>
     ),
     cell: ({ row }: any) => (
-      <div className="flex items-center justify-start" onClick={(e) => e.stopPropagation()}>
+      <div 
+        className="flex items-center justify-center px-2 py-1" 
+        data-selection-cell="true"
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+      >
         <Checkbox
           checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          onCheckedChange={(value) => {
+            row.toggleSelected(!!value);
+          }}
+          onClick={(e) => e.stopPropagation()}
           aria-label="Select row"
           data-testid={`checkbox-select-${row.id}`}
+          className="cursor-pointer"
         />
       </div>
     ),
@@ -143,7 +165,7 @@ export function DataTable<TData, TValue>({
     enableHiding: false,
     enableColumnFilter: false,
     enableResizing: false,
-    size: 40,
+    size: 50,
   }] : [];
 
   // Apply column ordering - SIMPLIFIED since we now use layout.columns positions
@@ -447,8 +469,9 @@ export function DataTable<TData, TValue>({
                     // Don't trigger row click if clicking on interactive elements
                     const target = e.target as HTMLElement;
                     
-                    // Check if clicked element is inside a timer button or other interactive element
-                    if (target.closest('[role="checkbox"]') || 
+                    // Check if clicked element is inside a selection cell or other interactive element
+                    if (target.closest('[data-selection-cell="true"]') ||
+                        target.closest('[role="checkbox"]') || 
                         target.closest('[data-timer-button="true"]') ||
                         target.closest('[data-relationship-badge="true"]') ||
                         target.closest('button') || 
