@@ -167,14 +167,7 @@ export default function PartnersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (partnerId: string) => {
-      const response = await fetch(`/api/partners/${partnerId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete partner');
-      }
-      return response;
+      await apiRequest("DELETE", `/api/partners/${partnerId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
@@ -196,20 +189,9 @@ export default function PartnersPage() {
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (partnerIds: string[]) => {
-      const promises = partnerIds.map(id => 
-        fetch(`/api/partners/${id}`, {
-          method: 'DELETE',
-          credentials: 'include'
-        })
+      await Promise.all(
+        partnerIds.map(id => apiRequest("DELETE", `/api/partners/${id}`))
       );
-      const responses = await Promise.all(promises);
-      
-      // Check if all deletions were successful
-      const failed = responses.filter(res => !res.ok);
-      if (failed.length > 0) {
-        throw new Error(`Failed to delete ${failed.length} partner(s)`);
-      }
-      return responses;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
