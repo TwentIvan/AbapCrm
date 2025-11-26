@@ -72,6 +72,9 @@ export function AddressSearch({
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
 
+  console.log("[AddressSearch] Mounted with props:", { enableMultiSelect, showAddressTypeSelector, defaultAddressType });
+  console.log("[AddressSearch] State:", { query, resultsCount: results.length, isLoading, isOpen, selectedPlaceIds: Array.from(selectedPlaceIds) });
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -83,12 +86,15 @@ export function AddressSearch({
   }, []);
 
   const searchAddress = useCallback(async (searchQuery: string) => {
+    console.log("[AddressSearch] searchAddress called with:", searchQuery);
     if (searchQuery.length < 3) {
+      console.log("[AddressSearch] Query too short, clearing results");
       setResults([]);
       return;
     }
 
     setIsLoading(true);
+    console.log("[AddressSearch] Fetching from Nominatim...");
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(searchQuery)}&countrycodes=it`,
@@ -99,6 +105,7 @@ export function AddressSearch({
         }
       );
       const data: NominatimResult[] = await response.json();
+      console.log("[AddressSearch] Got results:", data.length, data);
       setResults(data);
       setIsOpen(true);
       
@@ -182,8 +189,11 @@ export function AddressSearch({
   };
 
   const handleSelect = (result: NominatimResult) => {
+    console.log("[AddressSearch] handleSelect called for:", result.display_name);
     const addressType = selectedAddressTypes[result.place_id] || defaultAddressType;
     const parsed = parseResult(result);
+    console.log("[AddressSearch] Parsed address:", parsed);
+    console.log("[AddressSearch] Address type:", addressType);
     onSelect(parsed, addressType === "legal");
     setQuery(parsed.displayName);
     setIsOpen(false);
