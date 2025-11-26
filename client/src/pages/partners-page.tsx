@@ -379,7 +379,9 @@ export default function PartnersPage() {
           type="button"
           className="font-medium text-primary hover:underline cursor-pointer bg-transparent border-none p-0 text-left" 
           data-testid={`text-partner-name-${row.original.id}`}
+          onMouseDown={() => console.log('[PartnersPage] Name mousedown:', row.original.name)}
           onClick={(e) => {
+            console.log('[PartnersPage] Name click:', row.original.name);
             e.stopPropagation();
             e.preventDefault();
             handleEdit(row.original);
