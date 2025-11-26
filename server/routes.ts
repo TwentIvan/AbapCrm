@@ -1632,8 +1632,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOrganizationId(req);
+      console.log("[DELETE PARTNER] partnerId:", req.params.id, "organizationId:", organizationId);
       const auditContext = AuditService.createContext(req);
       const deleted = await storage.deletePartner(req.params.id, req.user!.id, organizationId, auditContext);
+      console.log("[DELETE PARTNER] deleted:", deleted);
       if (!deleted) return res.sendStatus(404);
       res.sendStatus(204);
     } catch (error) {
