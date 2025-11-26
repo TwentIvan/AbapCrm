@@ -1,10 +1,16 @@
 import { memo } from "react";
-import { useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import { useRelationshipPreview } from "@/components/ui/relationship-preview-context";
+
+interface RelationshipItem {
+  id: string;
+  name: string;
+}
 
 interface RelationshipBadgeProps {
   count: number;
   label: string;
+  items?: RelationshipItem[];
   targetPath: string;
   filterParam?: string;
   sourceId?: string;
@@ -15,19 +21,27 @@ interface RelationshipBadgeProps {
 export const RelationshipBadge = memo(function RelationshipBadge({
   count,
   label,
+  items = [],
   targetPath,
   filterParam,
   sourceId,
   variant = "secondary",
   className = "",
 }: RelationshipBadgeProps) {
-  const [, setLocation] = useLocation();
+  const { openPreview } = useRelationshipPreview();
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (count > 0 && filterParam && sourceId) {
-      setLocation(`${targetPath}?${filterParam}=${sourceId}`);
+    if (count > 0) {
+      openPreview({
+        label,
+        count,
+        items,
+        targetPath,
+        filterParam,
+        sourceId,
+      });
     }
   };
 
@@ -49,7 +63,6 @@ export const RelationshipBadge = memo(function RelationshipBadge({
       className={`flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm cursor-pointer hover:opacity-80 transition-opacity ${className}`}
       onClick={handleClick}
       data-testid={`badge-${label.toLowerCase()}-${count}`}
-      title={`${label}: ${count}`}
     >
       {count}
     </button>

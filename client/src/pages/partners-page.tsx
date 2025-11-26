@@ -29,6 +29,7 @@ import AuditHistory from "@/components/ui/audit-history";
 import { MessageHistory } from "@/components/ui/message-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RelationshipBadge } from "@/components/ui/relationship-badge";
+import { RelationshipPreviewProvider } from "@/components/ui/relationship-preview-context";
 import { useEntityRelationships } from "@/hooks/use-entity-relationships";
 
 // Component to display Projects count for a partner
@@ -48,6 +49,7 @@ function PartnerProjectsCount({ partnerId, currentOrganizationId }: { partnerId:
     <RelationshipBadge
       count={count}
       label="Progetti"
+      items={relationships?.projects?.items || []}
       targetPath="/projects"
       filterParam="clientId"
       sourceId={partnerId}
@@ -72,6 +74,7 @@ function PartnerContactsCount({ partnerId, currentOrganizationId }: { partnerId:
     <RelationshipBadge
       count={count}
       label="Contatti"
+      items={relationships?.contacts?.items || []}
       targetPath="/contacts"
       filterParam="partnerId"
       sourceId={partnerId}
@@ -96,6 +99,7 @@ function PartnerDealsCount({ partnerId, currentOrganizationId }: { partnerId: st
     <RelationshipBadge
       count={count}
       label="Deals"
+      items={relationships?.deals?.items || []}
       targetPath="/deals"
       filterParam="partnerId"
       sourceId={partnerId}
@@ -454,6 +458,7 @@ export default function PartnersPage() {
   ];
 
   return (
+    <RelationshipPreviewProvider>
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <main className="flex-1 overflow-auto">
@@ -633,5 +638,6 @@ export default function PartnersPage() {
         isPending={bulkEditMutation.isPending}
       />
     </div>
+    </RelationshipPreviewProvider>
   );
 }
