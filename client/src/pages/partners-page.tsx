@@ -121,11 +121,21 @@ const typeLabels = {
   other: "Other",
 };
 
+interface RelatedData {
+  contacts: number;
+  projects: number;
+  deals: number;
+  childPartners: number;
+  hasRelations: boolean;
+}
+
 export default function PartnersPage() {
   const [location] = useLocation();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showCascadeDialog, setShowCascadeDialog] = useState(false);
+  const [cascadeRelatedData, setCascadeRelatedData] = useState<RelatedData | null>(null);
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   
   // Route detection for full-page mode
@@ -134,6 +144,8 @@ export default function PartnersPage() {
   const isEditMode = location.includes("/edit");
   const [selectedPartners, setSelectedPartners] = useState<Partner[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showBulkCascadeDialog, setShowBulkCascadeDialog] = useState(false);
+  const [bulkCascadeData, setBulkCascadeData] = useState<{partnersWithRelations: Partner[], totalRelations: RelatedData}>({ partnersWithRelations: [], totalRelations: { contacts: 0, projects: 0, deals: 0, childPartners: 0, hasRelations: false }});
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
   const [showBulkCopyDialog, setShowBulkCopyDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
@@ -178,6 +190,36 @@ export default function PartnersPage() {
       setShowDeleteDialog(false);
       setSelectedPartner(null);
     },
+    onError: async (error: any, partnerId: string) => {
+      if (error?.message?.includes('409') || error?.message?.includes('needsCascade')) {
+        setShowDeleteDialog(false);
+        const relatedData = await apiRequest("GET", `/api/partners/${partnerId}/related-data`) as RelatedData;
+        setCascadeRelatedData(relatedData);
+        setShowCascadeDialog(true);
+      } else {
+        toast({
+          title: "Errore",
+          description: "Non è stato possibile eliminare il partner.",
+          variant: "destructive",
+        });
+      }
+    },
+  });
+
+  const cascadeDeleteMutation = useMutation({
+    mutationFn: async (partnerId: string) => {
+      await apiRequest("DELETE", `/api/partners/${partnerId}?cascade=true`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      toast({
+        title: "Partner eliminato",
+        description: "Il partner e tutti i dati collegati sono stati eliminati.",
+      });
+      setShowCascadeDialog(false);
+      setSelectedPartner(null);
+      setCascadeRelatedData(null);
+    },
     onError: () => {
       toast({
         title: "Errore",
@@ -194,8 +236,7 @@ export default function PartnersPage() {
       );
       const failures = results.filter(r => r.status === 'rejected');
       if (failures.length > 0) {
-        const firstError = (failures[0] as PromiseRejectedResult).reason;
-        throw new Error(firstError?.message || `${failures.length} partner non eliminati (dati collegati)`);
+        throw { failures, partnerIds };
       }
     },
     onSuccess: () => {
@@ -207,15 +248,74 @@ export default function PartnersPage() {
       setSelectedPartners([]);
       setShowBulkDeleteDialog(false);
     },
-    onError: (error: Error) => {
+    onError: async (error: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      setShowBulkDeleteDialog(false);
+      
+      if (error?.failures?.length > 0) {
+        const failedIds = error.partnerIds;
+        const relatedDataPromises = failedIds.map((id: string) => 
+          apiRequest("GET", `/api/partners/${id}/related-data`).catch(() => null)
+        );
+        const relatedDataResults = await Promise.all(relatedDataPromises);
+        
+        const totalRelations: RelatedData = { contacts: 0, projects: 0, deals: 0, childPartners: 0, hasRelations: false };
+        const partnersWithRelations: Partner[] = [];
+        
+        relatedDataResults.forEach((data: RelatedData | null, idx: number) => {
+          if (data?.hasRelations) {
+            const partner = selectedPartners.find(p => p.id === failedIds[idx]);
+            if (partner) partnersWithRelations.push(partner);
+            totalRelations.contacts += data.contacts;
+            totalRelations.projects += data.projects;
+            totalRelations.deals += data.deals;
+            totalRelations.childPartners += data.childPartners;
+            totalRelations.hasRelations = true;
+          }
+        });
+        
+        if (totalRelations.hasRelations) {
+          setBulkCascadeData({ partnersWithRelations, totalRelations });
+          setShowBulkCascadeDialog(true);
+        } else {
+          toast({
+            title: "Errore",
+            description: "Non è stato possibile eliminare alcuni partner.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Errore",
+          description: "Non è stato possibile eliminare i partner.",
+          variant: "destructive",
+        });
+      }
+    },
+  });
+
+  const bulkCascadeDeleteMutation = useMutation({
+    mutationFn: async (partnerIds: string[]) => {
+      await Promise.all(
+        partnerIds.map(id => apiRequest("DELETE", `/api/partners/${id}?cascade=true`))
+      );
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
       toast({
-        title: "Alcuni partner non eliminati",
-        description: error.message,
-        variant: "destructive",
+        title: "Partners eliminati",
+        description: "Tutti i partner e i dati collegati sono stati eliminati.",
       });
       setSelectedPartners([]);
-      setShowBulkDeleteDialog(false);
+      setShowBulkCascadeDialog(false);
+      setBulkCascadeData({ partnersWithRelations: [], totalRelations: { contacts: 0, projects: 0, deals: 0, childPartners: 0, hasRelations: false }});
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Non è stato possibile eliminare i partner.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -588,6 +688,78 @@ export default function PartnersPage() {
               data-testid="button-confirm-bulk-delete"
             >
               {bulkDeleteMutation.isPending ? "Eliminando..." : `Elimina ${selectedPartners.length} Partner`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Single Partner Cascade Delete Dialog */}
+      <AlertDialog open={showCascadeDialog} onOpenChange={setShowCascadeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Attenzione: Dati Collegati</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>Il partner <strong>{selectedPartner?.name}</strong> ha i seguenti dati collegati:</p>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  {cascadeRelatedData?.contacts ? <li><strong>{cascadeRelatedData.contacts}</strong> contatti</li> : null}
+                  {cascadeRelatedData?.projects ? <li><strong>{cascadeRelatedData.projects}</strong> progetti (verranno scollegati)</li> : null}
+                  {cascadeRelatedData?.deals ? <li><strong>{cascadeRelatedData.deals}</strong> trattative (verranno scollegate)</li> : null}
+                  {cascadeRelatedData?.childPartners ? <li><strong>{cascadeRelatedData.childPartners}</strong> sedi operative</li> : null}
+                </ul>
+                <p className="text-destructive font-medium">
+                  Procedere con l'eliminazione cancellerà anche tutti i dati collegati.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setShowCascadeDialog(false); setCascadeRelatedData(null); }} data-testid="button-cancel-cascade">
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => selectedPartner && cascadeDeleteMutation.mutate(selectedPartner.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={cascadeDeleteMutation.isPending}
+              data-testid="button-confirm-cascade"
+            >
+              {cascadeDeleteMutation.isPending ? "Eliminando..." : "Elimina Tutto"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Cascade Delete Dialog */}
+      <AlertDialog open={showBulkCascadeDialog} onOpenChange={setShowBulkCascadeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Attenzione: Dati Collegati</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p><strong>{bulkCascadeData.partnersWithRelations.length}</strong> partner hanno dati collegati:</p>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  {bulkCascadeData.totalRelations.contacts ? <li><strong>{bulkCascadeData.totalRelations.contacts}</strong> contatti totali</li> : null}
+                  {bulkCascadeData.totalRelations.projects ? <li><strong>{bulkCascadeData.totalRelations.projects}</strong> progetti (verranno scollegati)</li> : null}
+                  {bulkCascadeData.totalRelations.deals ? <li><strong>{bulkCascadeData.totalRelations.deals}</strong> trattative (verranno scollegate)</li> : null}
+                  {bulkCascadeData.totalRelations.childPartners ? <li><strong>{bulkCascadeData.totalRelations.childPartners}</strong> sedi operative</li> : null}
+                </ul>
+                <p className="text-destructive font-medium">
+                  Procedere con l'eliminazione cancellerà anche tutti i dati collegati.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setShowBulkCascadeDialog(false); setBulkCascadeData({ partnersWithRelations: [], totalRelations: { contacts: 0, projects: 0, deals: 0, childPartners: 0, hasRelations: false }}); }} data-testid="button-cancel-bulk-cascade">
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => bulkCascadeDeleteMutation.mutate(bulkCascadeData.partnersWithRelations.map(p => p.id))}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkCascadeDeleteMutation.isPending}
+              data-testid="button-confirm-bulk-cascade"
+            >
+              {bulkCascadeDeleteMutation.isPending ? "Eliminando..." : `Elimina ${bulkCascadeData.partnersWithRelations.length} Partner e Dati`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

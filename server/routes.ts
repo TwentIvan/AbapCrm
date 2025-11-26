@@ -1628,14 +1628,34 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  app.get("/api/partners/:id/related-data", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const relatedData = await storage.getPartnerRelatedData(req.params.id, organizationId);
+      res.json(relatedData);
+    } catch (error) {
+      console.error("[GET PARTNER RELATED DATA] Error:", error);
+      res.sendStatus(500);
+    }
+  });
+
   app.delete("/api/partners/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOrganizationId(req);
       const auditContext = AuditService.createContext(req);
-      const deleted = await storage.deletePartner(req.params.id, req.user!.id, organizationId, auditContext);
-      if (!deleted) return res.sendStatus(404);
-      res.sendStatus(204);
+      const cascade = req.query.cascade === 'true';
+      
+      if (cascade) {
+        const deleted = await storage.deletePartnerCascade(req.params.id, req.user!.id, organizationId, auditContext);
+        if (!deleted) return res.sendStatus(404);
+        res.sendStatus(204);
+      } else {
+        const deleted = await storage.deletePartner(req.params.id, req.user!.id, organizationId, auditContext);
+        if (!deleted) return res.sendStatus(404);
+        res.sendStatus(204);
+      }
     } catch (error: any) {
       console.error("[DELETE PARTNER] Error:", error);
       if (error?.code === '23503') {
@@ -1650,7 +1670,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         } else if (constraint.includes('deals')) {
           message = "Impossibile eliminare: il partner ha trattative associate";
         }
-        return res.status(409).json({ error: message, constraint });
+        return res.status(409).json({ error: message, constraint, needsCascade: true });
       }
       res.sendStatus(500);
     }

@@ -1436,6 +1436,88 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
+  async getPartnerRelatedData(partnerId: string, organizationId: string): Promise<{
+    contacts: number;
+    projects: number;
+    deals: number;
+    childPartners: number;
+    hasRelations: boolean;
+  }> {
+    const [contactCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(contacts)
+      .where(eq(contacts.partnerId, partnerId));
+    
+    const [projectCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(projects)
+      .where(eq(projects.clientId, partnerId));
+    
+    const [dealCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(deals)
+      .where(eq(deals.partnerId, partnerId));
+    
+    const [childCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(partners)
+      .where(eq(partners.parentPartnerId, partnerId));
+    
+    const contactsNum = contactCount?.count || 0;
+    const projectsNum = projectCount?.count || 0;
+    const dealsNum = dealCount?.count || 0;
+    const childrenNum = childCount?.count || 0;
+    
+    return {
+      contacts: contactsNum,
+      projects: projectsNum,
+      deals: dealsNum,
+      childPartners: childrenNum,
+      hasRelations: contactsNum + projectsNum + dealsNum + childrenNum > 0,
+    };
+  }
+
+  async deletePartnerCascade(id: string, userId: string, organizationId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<boolean> {
+    // Get partner for audit
+    const [oldPartner] = await db.select().from(partners).where(and(eq(partners.id, id), eq(partners.organizationId, organizationId)));
+    if (!oldPartner) return false;
+
+    // Delete child partners first (recursive - they might have their own relations)
+    const childPartnersList = await db.select().from(partners).where(eq(partners.parentPartnerId, id));
+    for (const child of childPartnersList) {
+      await this.deletePartnerCascade(child.id, userId, organizationId, auditContext);
+    }
+
+    // Delete contacts associated with this partner
+    await db.delete(contacts).where(eq(contacts.partnerId, id));
+
+    // Update projects to remove client reference (set to null instead of deleting)
+    await db.update(projects).set({ clientId: null }).where(eq(projects.clientId, id));
+
+    // Update deals to remove partner reference
+    await db.update(deals).set({ partnerId: null }).where(eq(deals.partnerId, id));
+
+    // Now delete the partner
+    const result = await db.delete(partners).where(and(eq(partners.id, id), eq(partners.organizationId, organizationId)));
+
+    // Log audit trail
+    if (auditContext && (result.rowCount || 0) > 0) {
+      await AuditService.logDelete(
+        'partners',
+        oldPartner.id,
+        oldPartner,
+        {
+          userId: auditContext.userId,
+          organizationId: organizationId,
+          userAgent: auditContext.userAgent,
+          ipAddress: auditContext.ipAddress,
+        }
+      );
+    }
+
+    return (result.rowCount || 0) > 0;
+  }
+
   // Contacts
   async getContacts(userId: string, organizationId: string): Promise<Contact[]> {
     return await db.select().from(contacts)
