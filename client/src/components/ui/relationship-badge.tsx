@@ -62,8 +62,16 @@ export const RelationshipBadge = memo(function RelationshipBadge({
   return (
     <button
       type="button"
-      className={`flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm cursor-pointer hover:opacity-80 transition-opacity ${className}`}
+      className={`flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm cursor-pointer hover:opacity-80 transition-opacity z-50 relative ${className}`}
       onClick={handleClick}
+      onMouseDown={(e) => {
+        console.log("[RelationshipBadge] MOUSE DOWN!", { label, count });
+        e.stopPropagation();
+      }}
+      onPointerDown={(e) => {
+        console.log("[RelationshipBadge] POINTER DOWN!", { label, count });
+        e.stopPropagation();
+      }}
       data-testid={`badge-${label.toLowerCase()}-${count}`}
       data-relationship-badge="true"
     >
