@@ -4,10 +4,16 @@
 export interface CompanyInfo {
   name: string;
   legalName?: string;
-  address?: string;
+  address?: string;  // Full formatted address
+  street?: string;   // Via/strada
+  streetNumber?: string; // Numero civico
   city?: string;
+  province?: string; // Provincia (sigla)
   postalCode?: string;
   country?: string;
+  latitude?: string;
+  longitude?: string;
+  placeId?: string;  // Google Places ID for deduplication
   fiscalCode?: string;
   vatNumber?: string;
   website?: string;
@@ -467,7 +473,7 @@ export class CompanyLookupService {
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': apiKey,
-            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.websiteUri,places.nationalPhoneNumber,places.types,places.businessStatus'
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.addressComponents,places.location,places.websiteUri,places.nationalPhoneNumber,places.types,places.businessStatus'
           },
           body: JSON.stringify(requestBody)
         });
@@ -492,19 +498,30 @@ export class CompanyLookupService {
           console.log(`[GOOGLE-PLACES] SUCCESS! Found ${data.places.length} results for "${searchQuery}"`);
           console.log(`[GOOGLE-PLACES] First result: ${data.places[0].displayName?.text}`);
           
-          // Transform NEW API results to our format
-          const results = data.places.slice(0, 10).map((place: any) => ({
-            name: place.displayName?.text || 'Nome non disponibile',
-            legalName: place.displayName?.text || 'Nome non disponibile',
-            address: place.formattedAddress || '',
-            city: this.extractCityFromAddress(place.formattedAddress || ''),
-            postalCode: this.extractPostalCodeFromAddress(place.formattedAddress || ''),
-            country: this.extractCountryFromAddress(place.formattedAddress || ''),
-            website: place.websiteUri,
-            logoUrl: this.getLogoFromWebsite(place.websiteUri),
-            description: this.generateBusinessDescription(place),
-            sector: this.extractSectorFromTypes(place.types || []),
-          } as CompanyInfo));
+          // Transform NEW API results to our format with structured address fields
+          const results = data.places.slice(0, 10).map((place: any) => {
+            const addressComponents = place.addressComponents || [];
+            const structuredAddress = this.parseAddressComponents(addressComponents);
+            
+            return {
+              name: place.displayName?.text || 'Nome non disponibile',
+              legalName: place.displayName?.text || 'Nome non disponibile',
+              address: place.formattedAddress || '',
+              street: structuredAddress.street || this.extractStreetFromAddress(place.formattedAddress || ''),
+              streetNumber: structuredAddress.streetNumber,
+              city: structuredAddress.city || this.extractCityFromAddress(place.formattedAddress || ''),
+              province: structuredAddress.province,
+              postalCode: structuredAddress.postalCode || this.extractPostalCodeFromAddress(place.formattedAddress || ''),
+              country: structuredAddress.country || this.extractCountryFromAddress(place.formattedAddress || ''),
+              latitude: place.location?.latitude?.toString(),
+              longitude: place.location?.longitude?.toString(),
+              placeId: place.id,
+              website: place.websiteUri,
+              logoUrl: this.getLogoFromWebsite(place.websiteUri),
+              description: this.generateBusinessDescription(place),
+              sector: this.extractSectorFromTypes(place.types || []),
+            } as CompanyInfo;
+          });
           
           return results;
         } else {
@@ -574,6 +591,106 @@ export class CompanyLookupService {
     if (address.includes('Italy') || address.includes('Italia')) return 'IT';
     // Default to Italy for now
     return 'IT';
+  }
+
+  /**
+   * Parse Google Places addressComponents into structured fields
+   */
+  private static parseAddressComponents(components: any[]): {
+    street?: string;
+    streetNumber?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+    country?: string;
+  } {
+    const result: any = {};
+    
+    for (const component of components) {
+      const types = component.types || [];
+      const text = component.longText || component.shortText || '';
+      const shortText = component.shortText || '';
+      
+      if (types.includes('route') || types.includes('street_address')) {
+        result.street = text;
+      }
+      if (types.includes('street_number')) {
+        result.streetNumber = text;
+      }
+      if (types.includes('locality') || types.includes('administrative_area_level_3')) {
+        result.city = text;
+      }
+      if (types.includes('administrative_area_level_2')) {
+        // Province - use short text (e.g., "BZ" instead of "Provincia autonoma di Bolzano")
+        result.province = shortText.length <= 3 ? shortText : this.extractProvinceCode(text);
+      }
+      if (types.includes('postal_code')) {
+        result.postalCode = text;
+      }
+      if (types.includes('country')) {
+        result.country = shortText || 'IT';
+      }
+    }
+    
+    return result;
+  }
+
+  /**
+   * Extract province code from province name
+   */
+  private static extractProvinceCode(provinceName: string): string | undefined {
+    const provinceMap: { [key: string]: string } = {
+      'agrigento': 'AG', 'alessandria': 'AL', 'ancona': 'AN', 'aosta': 'AO',
+      'arezzo': 'AR', 'ascoli piceno': 'AP', 'asti': 'AT', 'avellino': 'AV',
+      'bari': 'BA', 'barletta-andria-trani': 'BT', 'belluno': 'BL', 'benevento': 'BN',
+      'bergamo': 'BG', 'biella': 'BI', 'bologna': 'BO', 'bolzano': 'BZ',
+      'brescia': 'BS', 'brindisi': 'BR', 'cagliari': 'CA', 'caltanissetta': 'CL',
+      'campobasso': 'CB', 'caserta': 'CE', 'catania': 'CT', 'catanzaro': 'CZ',
+      'chieti': 'CH', 'como': 'CO', 'cosenza': 'CS', 'cremona': 'CR',
+      'crotone': 'KR', 'cuneo': 'CN', 'enna': 'EN', 'fermo': 'FM',
+      'ferrara': 'FE', 'firenze': 'FI', 'foggia': 'FG', 'forlì-cesena': 'FC',
+      'frosinone': 'FR', 'genova': 'GE', 'gorizia': 'GO', 'grosseto': 'GR',
+      'imperia': 'IM', 'isernia': 'IS', 'la spezia': 'SP', 'aquila': 'AQ',
+      'latina': 'LT', 'lecce': 'LE', 'lecco': 'LC', 'livorno': 'LI',
+      'lodi': 'LO', 'lucca': 'LU', 'macerata': 'MC', 'mantova': 'MN',
+      'massa-carrara': 'MS', 'matera': 'MT', 'messina': 'ME', 'milano': 'MI',
+      'modena': 'MO', 'monza': 'MB', 'napoli': 'NA', 'novara': 'NO',
+      'nuoro': 'NU', 'oristano': 'OR', 'padova': 'PD', 'palermo': 'PA',
+      'parma': 'PR', 'pavia': 'PV', 'perugia': 'PG', 'pesaro': 'PU',
+      'pescara': 'PE', 'piacenza': 'PC', 'pisa': 'PI', 'pistoia': 'PT',
+      'pordenone': 'PN', 'potenza': 'PZ', 'prato': 'PO', 'ragusa': 'RG',
+      'ravenna': 'RA', 'reggio calabria': 'RC', 'reggio emilia': 'RE', 'rieti': 'RI',
+      'rimini': 'RN', 'roma': 'RM', 'rovigo': 'RO', 'salerno': 'SA',
+      'sassari': 'SS', 'savona': 'SV', 'siena': 'SI', 'siracusa': 'SR',
+      'sondrio': 'SO', 'sud sardegna': 'SU', 'taranto': 'TA', 'teramo': 'TE',
+      'terni': 'TR', 'torino': 'TO', 'trapani': 'TP', 'trento': 'TN',
+      'treviso': 'TV', 'trieste': 'TS', 'udine': 'UD', 'varese': 'VA',
+      'venezia': 'VE', 'verbano': 'VB', 'vercelli': 'VC', 'verona': 'VR',
+      'vibo valentia': 'VV', 'vicenza': 'VI', 'viterbo': 'VT'
+    };
+    
+    const normalized = provinceName.toLowerCase()
+      .replace('provincia di ', '')
+      .replace('provincia autonoma di ', '')
+      .replace('città metropolitana di ', '')
+      .trim();
+    
+    return provinceMap[normalized];
+  }
+
+  /**
+   * Extract street name from formatted address
+   */
+  private static extractStreetFromAddress(address: string): string | undefined {
+    if (!address) return undefined;
+    // Italian address often starts with street name before comma
+    const match = address.match(/^([^,]+)/);
+    if (match) {
+      const street = match[1].trim();
+      // Remove street number if present at the end
+      return street.replace(/\s*\d+[a-zA-Z]?$/, '').trim() || undefined;
+    }
+    return undefined;
   }
 
   /**
