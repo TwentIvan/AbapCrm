@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { db } from "./db";
-import { sql, inArray, eq, and, desc, asc } from "drizzle-orm";
+import { sql, inArray, eq, and, desc, asc, isNull } from "drizzle-orm";
 import { generateVPNAutomationScript, discoverVPNConnections, discoverAvailableVPNSoftware, testVPNConnection } from "./vpn-automation";
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
@@ -1400,9 +1400,29 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const partnersList = await db.select().from(partners)
         .where(and(
           eq(partners.userId, req.user!.id),
-          inArray(partners.organizationId, organizationIds)
+          inArray(partners.organizationId, organizationIds),
+          isNull(partners.parentPartnerId)
         ));
       res.json(partnersList);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // Partner locations (operative sites)
+  app.get("/api/partners/:id/locations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const partnerId = req.params.id;
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      const locations = await db.select().from(partners)
+        .where(and(
+          eq(partners.parentPartnerId, partnerId),
+          eq(partners.userId, req.user!.id),
+          inArray(partners.organizationId, organizationIds)
+        ))
+        .orderBy(partners.createdAt);
+      res.json(locations);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }
