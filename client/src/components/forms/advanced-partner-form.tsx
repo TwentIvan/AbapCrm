@@ -21,7 +21,8 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import ImageContainer from "@/components/ui/image-container";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AddressSearch, AddressResult, SelectedAddress } from "@/components/ui/address-search";
-import { Loader2, Upload, MapPin, Building2, Globe, CreditCard, FileText, Camera, Search, Map, Link } from "lucide-react";
+import { Loader2, Upload, MapPin, Building2, Globe, CreditCard, FileText, Camera, Search, Map, Link, CheckSquare } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { UploadResult } from "@uppy/core";
 
 const MapPicker = lazy(() => import("@/components/ui/map-picker").then(m => ({ default: m.MapPicker })));
@@ -382,6 +383,114 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
         title: "Informazioni azienda caricate!", 
         description: `Dati di ${company.name} inseriti automaticamente` 
       });
+    }
+  };
+
+  // Toggle company selection for multi-select
+  const toggleCompanySelection = (index: number) => {
+    setSelectedCompanyIndices(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  // Select all companies
+  const selectAllCompanies = () => {
+    if (selectedCompanyIndices.size === companySuggestions.length) {
+      setSelectedCompanyIndices(new Set());
+    } else {
+      setSelectedCompanyIndices(new Set(companySuggestions.map((_, i) => i)));
+    }
+  };
+
+  // Create multiple partners from selected companies
+  const createMultiplePartners = async () => {
+    if (!currentOrganizationId || !user?.id) {
+      toast({ title: "Errore: organizzazione o utente non valido", variant: "destructive" });
+      return;
+    }
+
+    const selectedCompanies = Array.from(selectedCompanyIndices).map(i => companySuggestions[i]);
+    if (selectedCompanies.length === 0) {
+      toast({ title: "Seleziona almeno un'azienda", variant: "destructive" });
+      return;
+    }
+
+    setIsCreatingMultiple(true);
+    let createdCount = 0;
+    let parentId: string | null = null;
+
+    for (const company of selectedCompanies) {
+      try {
+        // Try to enrich the company data first
+        let enrichedCompany = { ...company };
+        try {
+          const enrichResponse = await fetch('/api/companies/enrich', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(company),
+          });
+          if (enrichResponse.ok) {
+            const enrichedData = await enrichResponse.json();
+            enrichedCompany = { ...company, ...enrichedData };
+          }
+        } catch (e) {
+          // Ignore enrichment errors
+        }
+
+        const partnerData = {
+          name: enrichedCompany.legalName || enrichedCompany.name,
+          company: enrichedCompany.name,
+          email: "",
+          phone: "",
+          address: enrichedCompany.address || "",
+          city: enrichedCompany.city || "",
+          postalCode: enrichedCompany.postalCode || "",
+          country: enrichedCompany.country || "IT",
+          fiscalCode: enrichedCompany.fiscalCode || "",
+          vatNumber: enrichedCompany.vatNumber?.replace('IT', '') || "",
+          website: enrichedCompany.website || "",
+          logoUrl: enrichedCompany.logoUrl || "",
+          isLegalAddress: createdCount === 0, // First one is legal address
+          parentPartnerId: parentId,
+          organizationId: currentOrganizationId,
+          createdBy: user.id,
+        };
+
+        const response = await apiRequest("POST", "/api/partners", partnerData);
+        const newPartner = await response.json();
+        
+        if (createdCount === 0) {
+          parentId = newPartner.id; // First partner becomes parent for subsequent ones
+        }
+        createdCount++;
+      } catch (error) {
+        console.error('Error creating partner:', error);
+        toast({ 
+          title: `Errore creazione ${company.name}`, 
+          variant: "destructive" 
+        });
+      }
+    }
+
+    setIsCreatingMultiple(false);
+    setShowSearchDialog(false);
+    setSelectedCompanyIndices(new Set());
+    setCompanySuggestions([]);
+    setSearchQuery("");
+
+    if (createdCount > 0) {
+      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      toast({ 
+        title: `${createdCount} ${createdCount === 1 ? 'partner creato' : 'partner creati'} con successo!`,
+        description: parentId && createdCount > 1 ? "Il primo è stato impostato come sede legale principale" : undefined
+      });
+      onSuccess?.();
     }
   };
 
@@ -1199,43 +1308,99 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner }: Adva
 
             {/* Risultati ricerca */}
             {companySuggestions.length > 0 && (
-              <div className="border border-gray-200 rounded-lg max-h-80 overflow-y-auto">
-                {companySuggestions.map((company, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    className="w-full px-4 py-4 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
-                    onClick={() => selectCompanySuggestion(company)}
-                    data-testid={`dialog-suggestion-${index}`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="font-medium text-base mb-1">{company.name}</div>
-                        {company.legalName && company.legalName !== company.name && (
-                          <div className="text-sm text-gray-600 mb-1">{company.legalName}</div>
-                        )}
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          {company.address && <span>📍 {company.address}</span>}
-                          {company.sector && <span>🏢 {company.sector}</span>}
-                        </div>
-                        {company.description && (
-                          <div className="text-sm text-gray-600 mt-2 line-clamp-2">
-                            {company.description}
-                          </div>
-                        )}
-                      </div>
-                      {company.logoUrl && (
-                        <div className="w-12 h-12 bg-gray-100 rounded-lg p-1 ml-4">
-                          <img 
-                            src={company.logoUrl} 
-                            alt={`Logo ${company.name}`}
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
+              <div className="space-y-3">
+                {/* Header con selezione multipla */}
+                <div className="flex items-center justify-between px-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedCompanyIndices.size === companySuggestions.length && companySuggestions.length > 0}
+                      onCheckedChange={selectAllCompanies}
+                      data-testid="checkbox-select-all-companies"
+                    />
+                    <span className="text-sm font-medium">
+                      Seleziona tutto ({selectedCompanyIndices.size}/{companySuggestions.length})
+                    </span>
+                  </div>
+                  {selectedCompanyIndices.size > 0 && (
+                    <Button
+                      type="button"
+                      onClick={createMultiplePartners}
+                      disabled={isCreatingMultiple}
+                      className="bg-green-600 hover:bg-green-700"
+                      data-testid="button-create-multiple-partners"
+                    >
+                      {isCreatingMultiple ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckSquare className="mr-2 h-4 w-4" />
                       )}
+                      Crea {selectedCompanyIndices.size} partner
+                    </Button>
+                  )}
+                </div>
+
+                {/* Lista risultati */}
+                <div className="border border-gray-200 rounded-lg max-h-80 overflow-y-auto">
+                  {companySuggestions.map((company, index) => (
+                    <div
+                      key={index}
+                      className={cn(
+                        "w-full px-4 py-4 text-left border-b border-gray-100 last:border-b-0 transition-colors",
+                        selectedCompanyIndices.has(index) ? "bg-blue-50" : "hover:bg-gray-50"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Checkbox */}
+                        <Checkbox
+                          checked={selectedCompanyIndices.has(index)}
+                          onCheckedChange={() => toggleCompanySelection(index)}
+                          className="mt-1"
+                          data-testid={`checkbox-company-${index}`}
+                        />
+                        
+                        {/* Info azienda - cliccabile per selezione singola */}
+                        <button
+                          type="button"
+                          className="flex-1 text-left"
+                          onClick={() => selectCompanySuggestion(company)}
+                          data-testid={`dialog-suggestion-${index}`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="font-medium text-base mb-1">{company.name}</div>
+                              {company.legalName && company.legalName !== company.name && (
+                                <div className="text-sm text-gray-600 mb-1">{company.legalName}</div>
+                              )}
+                              <div className="flex items-center gap-4 text-sm text-gray-500">
+                                {company.address && <span>📍 {company.address}</span>}
+                                {company.sector && <span>🏢 {company.sector}</span>}
+                              </div>
+                              {company.description && (
+                                <div className="text-sm text-gray-600 mt-2 line-clamp-2">
+                                  {company.description}
+                                </div>
+                              )}
+                            </div>
+                            {company.logoUrl && (
+                              <div className="w-12 h-12 bg-gray-100 rounded-lg p-1 ml-4">
+                                <img 
+                                  src={company.logoUrl} 
+                                  alt={`Logo ${company.name}`}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      </div>
                     </div>
-                  </button>
-                ))}
+                  ))}
+                </div>
+                
+                {/* Info selezione */}
+                <p className="text-xs text-gray-500 text-center">
+                  Clicca sul checkbox per selezione multipla, o clicca sull'azienda per popolare il form
+                </p>
               </div>
             )}
 
