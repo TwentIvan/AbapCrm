@@ -120,7 +120,7 @@ export function DataTable<TData, TValue>({
   const selectionColumn = enableSelection ? [{
     id: "select",
     header: ({ table }: any) => (
-      <div className="flex items-center justify-start">
+      <div className="flex items-center justify-start" onClick={(e) => e.stopPropagation()}>
         <Checkbox
           checked={table.getIsAllPageRowsSelected()}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
@@ -130,7 +130,7 @@ export function DataTable<TData, TValue>({
       </div>
     ),
     cell: ({ row }: any) => (
-      <div className="flex items-center justify-start">
+      <div className="flex items-center justify-start" onClick={(e) => e.stopPropagation()}>
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
