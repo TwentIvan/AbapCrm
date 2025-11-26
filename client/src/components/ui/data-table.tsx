@@ -610,7 +610,7 @@ export function createImageColumn<T>(accessor: keyof T, header: string, fallback
     accessorKey: accessor as string,
     header,
     cell: ({ row }: any) => {
-      const value = row.getValue(accessor as string) as string;
+      const value = row.original[accessor as string] as string;
       return (
         <ImageContainer
           src={value}

@@ -1,12 +1,11 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface RelationshipItem {
   id: string;
@@ -35,10 +34,12 @@ export const RelationshipBadge = memo(function RelationshipBadge({
   className = "",
 }: RelationshipBadgeProps) {
   const [, setLocation] = useLocation();
+  const [isOpen, setIsOpen] = useState(false);
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleNavigate = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
+    setIsOpen(false);
     
     if (count > 0) {
       const path = filterParam && sourceId 
@@ -61,44 +62,55 @@ export const RelationshipBadge = memo(function RelationshipBadge({
   }
 
   return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={`flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm cursor-pointer hover:opacity-80 transition-opacity ${className}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+          data-testid={`badge-${label.toLowerCase()}-${count}`}
+        >
+          {count}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent 
+        side="bottom" 
+        align="center"
+        sideOffset={8} 
+        className="w-64 p-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="space-y-2">
+          <div className="font-semibold text-sm">{label} ({count})</div>
+          {items.length > 0 ? (
+            <div className="space-y-1 max-h-32 overflow-y-auto">
+              {items.slice(0, 5).map((item) => (
+                <div key={item.id} className="text-muted-foreground truncate text-xs">
+                  • {item.name}
+                </div>
+              ))}
+              {items.length > 5 && (
+                <div className="text-muted-foreground italic text-xs">
+                  ... e altri {items.length - 5}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-muted-foreground text-xs">{count} elementi</div>
+          )}
           <button
             type="button"
-            className={`flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm cursor-pointer hover:opacity-80 transition-opacity ${className}`}
-            onClick={handleClick}
-            data-testid={`badge-${label.toLowerCase()}-${count}`}
-            data-relationship-badge="true"
+            className="w-full mt-2 px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
+            onClick={handleNavigate}
+            data-testid={`btn-view-all-${label.toLowerCase()}`}
           >
-            {count}
+            Vedi tutti →
           </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" sideOffset={8} className="max-w-[280px]">
-          <div className="space-y-2">
-            <div className="font-semibold">{label} ({count})</div>
-            {items.length > 0 ? (
-              <div className="space-y-1">
-                {items.slice(0, 5).map((item) => (
-                  <div key={item.id} className="text-muted-foreground truncate text-xs">
-                    • {item.name}
-                  </div>
-                ))}
-                {items.length > 5 && (
-                  <div className="text-muted-foreground italic text-xs">
-                    ... e altri {items.length - 5}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-muted-foreground text-xs">{count} elementi</div>
-            )}
-            <div className="text-xs text-muted-foreground pt-1 border-t border-border">
-              Click per vedere tutti
-            </div>
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 });
