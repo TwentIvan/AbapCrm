@@ -616,7 +616,8 @@ export function createImageColumn<T>(accessor: keyof T, header: string, fallback
           src={value}
           alt={`${header} for ${row.original.name || 'item'}`}
           fallbackType={fallbackType}
-          size="sm"
+          size="md"
+          containerClassName="border-2 border-primary"
           data-testid={`img-${accessor as string}-${row.id}`}
         />
       );
