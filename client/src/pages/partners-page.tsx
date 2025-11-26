@@ -189,9 +189,14 @@ export default function PartnersPage() {
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (partnerIds: string[]) => {
-      await Promise.all(
+      const results = await Promise.allSettled(
         partnerIds.map(id => apiRequest("DELETE", `/api/partners/${id}`))
       );
+      const failures = results.filter(r => r.status === 'rejected');
+      if (failures.length > 0) {
+        const firstError = (failures[0] as PromiseRejectedResult).reason;
+        throw new Error(firstError?.message || `${failures.length} partner non eliminati (dati collegati)`);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
@@ -203,11 +208,14 @@ export default function PartnersPage() {
       setShowBulkDeleteDialog(false);
     },
     onError: (error: Error) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
       toast({
-        title: "Errore",
+        title: "Alcuni partner non eliminati",
         description: error.message,
         variant: "destructive",
       });
+      setSelectedPartners([]);
+      setShowBulkDeleteDialog(false);
     },
   });
 

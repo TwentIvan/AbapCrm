@@ -1632,14 +1632,26 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOrganizationId(req);
-      console.log("[DELETE PARTNER] partnerId:", req.params.id, "organizationId:", organizationId);
       const auditContext = AuditService.createContext(req);
       const deleted = await storage.deletePartner(req.params.id, req.user!.id, organizationId, auditContext);
-      console.log("[DELETE PARTNER] deleted:", deleted);
       if (!deleted) return res.sendStatus(404);
       res.sendStatus(204);
-    } catch (error) {
+    } catch (error: any) {
       console.error("[DELETE PARTNER] Error:", error);
+      if (error?.code === '23503') {
+        const constraint = error?.constraint || '';
+        let message = "Impossibile eliminare: il partner ha dati collegati";
+        if (constraint.includes('contacts')) {
+          message = "Impossibile eliminare: il partner ha contatti associati";
+        } else if (constraint.includes('parent_partner')) {
+          message = "Impossibile eliminare: il partner ha sedi operative collegate";
+        } else if (constraint.includes('projects') || constraint.includes('client_id')) {
+          message = "Impossibile eliminare: il partner ha progetti associati";
+        } else if (constraint.includes('deals')) {
+          message = "Impossibile eliminare: il partner ha trattative associate";
+        }
+        return res.status(409).json({ error: message, constraint });
+      }
       res.sendStatus(500);
     }
   });
