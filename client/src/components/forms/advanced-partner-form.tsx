@@ -58,6 +58,7 @@ const advancedPartnerSchema = insertPartnerSchema.extend({
     (val) => !val || val.startsWith('http'),
     "Il sito web deve iniziare con http:// o https://"
   ),
+  domain: z.string().optional(),
   notes: z.string().optional(),
   // Rendi userId opzionale nel form dato che lo aggiungiamo programmaticamente
   userId: z.string().optional(),
@@ -185,10 +186,30 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
       vatNumber: existingPartner?.vatNumber || "",
       logoUrl: existingPartner?.logoUrl || "",
       website: existingPartner?.website || "",
+      domain: existingPartner?.domain || "",
       type: existingPartner?.type || "client",
       notes: existingPartner?.notes || "",
     },
   });
+
+  // Auto-populate domain from website only when domain is empty
+  const websiteValue = form.watch('website');
+  const domainValue = form.watch('domain');
+  
+  useEffect(() => {
+    // Only auto-populate if domain is empty and website has a value
+    if (!domainValue && websiteValue) {
+      try {
+        const url = new URL(websiteValue);
+        const extractedDomain = url.hostname.replace('www.', '');
+        if (extractedDomain) {
+          form.setValue('domain', extractedDomain);
+        }
+      } catch {
+        // Invalid URL, don't update domain
+      }
+    }
+  }, [websiteValue, domainValue, form]);
 
   // Update logo preview when editing existing partner
   useEffect(() => {
@@ -331,9 +352,10 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
       const tempEmail: PartnerEmail = {
         id: `temp-${Date.now()}`,
         partnerId: '',
-        value: newEmailValue,
-        label: newEmailLabel || null,
+        email: newEmailValue,
+        label: (newEmailLabel as "work" | "home" | "billing" | "support" | "other") || "other",
         isPrimary: partnerEmails.length === 0,
+        notes: null,
         createdAt: new Date(),
       };
       setPartnerEmails([...partnerEmails, tempEmail]);
@@ -343,8 +365,8 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
     }
     try {
       await apiRequest("POST", `/api/partners/${existingPartner.id}/emails`, {
-        value: newEmailValue,
-        label: newEmailLabel || null,
+        email: newEmailValue,
+        label: newEmailLabel || "other",
         isPrimary: partnerEmails.length === 0,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'emails'] });
@@ -399,9 +421,10 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
       const tempPhone: PartnerPhone = {
         id: `temp-${Date.now()}`,
         partnerId: '',
-        value: newPhoneValue,
-        label: newPhoneLabel || null,
+        phone: newPhoneValue,
+        label: (newPhoneLabel as "work" | "mobile" | "home" | "fax" | "other") || "other",
         isPrimary: partnerPhones.length === 0,
+        notes: null,
         createdAt: new Date(),
       };
       setPartnerPhones([...partnerPhones, tempPhone]);
@@ -411,8 +434,8 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
     }
     try {
       await apiRequest("POST", `/api/partners/${existingPartner.id}/phones`, {
-        value: newPhoneValue,
-        label: newPhoneLabel || null,
+        phone: newPhoneValue,
+        label: newPhoneLabel || "other",
         isPrimary: partnerPhones.length === 0,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'phones'] });
@@ -1037,29 +1060,26 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                   )}
                 />
 
-                {/* Domain field - auto-calculated from website */}
-                <FormItem>
-                  <FormLabel>Dominio</FormLabel>
-                  <FormControl>
-                    <Input 
-                      value={(() => {
-                        const website = form.watch('website');
-                        if (!website) return '';
-                        try {
-                          const url = new URL(website);
-                          return url.hostname.replace('www.', '');
-                        } catch {
-                          return '';
-                        }
-                      })()}
-                      placeholder="esempio.com"
-                      readOnly
-                      className="bg-muted"
-                      data-testid="input-partner-domain"
-                    />
-                  </FormControl>
-                  <p className="text-xs text-muted-foreground mt-1">Calcolato automaticamente dal sito web</p>
-                </FormItem>
+                {/* Domain field - auto-calculated from website on first insert, then editable */}
+                <FormField
+                  control={form.control}
+                  name="domain"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dominio</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          value={field.value || ""}
+                          placeholder="esempio.com"
+                          data-testid="input-partner-domain"
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground mt-1">Valorizzato automaticamente dal sito web, poi modificabile</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               {/* Multiple emails section */}
@@ -1079,7 +1099,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                       <div key={email.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg" data-testid={`email-item-${email.id}`}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium truncate">{email.value}</span>
+                            <span className="text-sm font-medium truncate">{email.email}</span>
                             {email.isPrimary && (
                               <Badge variant="default" className="text-xs bg-yellow-500">Principale</Badge>
                             )}
@@ -1163,7 +1183,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                       <div key={phone.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg" data-testid={`phone-item-${phone.id}`}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium truncate">{phone.value}</span>
+                            <span className="text-sm font-medium truncate">{phone.phone}</span>
                             {phone.isPrimary && (
                               <Badge variant="default" className="text-xs bg-yellow-500">Principale</Badge>
                             )}

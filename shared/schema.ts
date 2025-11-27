@@ -156,6 +156,7 @@ export const partners = pgTable("partners", {
   vatNumber: text("vat_number"), // Partita IVA
   logoUrl: text("logo_url"), // URL del logo
   website: text("website"),
+  domain: text("domain"), // Dominio estratto dal sito web, poi modificabile
   type: partnerTypeEnum("type").default("client").notNull(),
   userId: uuid("user_id").references(() => users.id).notNull(),
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
