@@ -2690,3 +2690,49 @@ export const insertTestExecutionSchema = createInsertSchema(testExecutions).omit
 export type TestExecution = typeof testExecutions.$inferSelect;
 export type InsertTestExecution = z.infer<typeof insertTestExecutionSchema>;
 
+// ========== Entity Field Metadata System ==========
+// Metadati dinamici per configurazione layout tabelle
+
+export const metadataFieldTypeEnum = pgEnum("metadata_field_type", [
+  "text", "number", "boolean", "date", "datetime", "email", "url", "phone",
+  "select", "multiselect", "relation", "image", "currency", "percentage", "json"
+]);
+
+export const entityFieldMetadata = pgTable("entity_field_metadata", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  entity: text("entity").notNull(), // Nome entità: "partners", "projects", "tasks", etc.
+  fieldKey: text("field_key").notNull(), // Nome campo nel DB/oggetto: "name", "email", "type"
+  label: text("label").notNull(), // Etichetta visualizzata: "Nome", "Email", "Tipo"
+  fieldType: metadataFieldTypeEnum("metadata_field_type").default("text").notNull(), // Tipo campo per rendering
+  defaultVisible: boolean("default_visible").default(true).notNull(), // Visibile di default
+  sortable: boolean("sortable").default(true).notNull(), // Può essere ordinato
+  filterable: boolean("filterable").default(true).notNull(), // Può essere filtrato
+  searchable: boolean("searchable").default(false).notNull(), // Incluso nella ricerca globale
+  displayOrder: integer("display_order").default(0).notNull(), // Ordine di visualizzazione
+  width: integer("width"), // Larghezza colonna in px (null = auto)
+  minWidth: integer("min_width").default(80), // Larghezza minima
+  // Configurazione per tipi speciali
+  relationEntity: text("relation_entity"), // Per type=relation: entità collegata
+  relationDisplayField: text("relation_display_field"), // Campo da mostrare nella relazione
+  selectOptions: jsonb("select_options"), // Per type=select/multiselect: [{value, label}]
+  formatPattern: text("format_pattern"), // Pattern di formattazione (es. per date, currency)
+  // Metadati aggiuntivi
+  description: text("description"), // Descrizione per tooltip
+  isSystemField: boolean("is_system_field").default(false).notNull(), // Campo di sistema non modificabile
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  entityFieldIdx: uniqueIndex("entity_field_idx").on(table.entity, table.fieldKey),
+}));
+
+// ========== Insert Schemas & Types for Entity Field Metadata ==========
+
+export const insertEntityFieldMetadataSchema = createInsertSchema(entityFieldMetadata).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type EntityFieldMetadata = typeof entityFieldMetadata.$inferSelect;
+export type InsertEntityFieldMetadata = z.infer<typeof insertEntityFieldMetadataSchema>;
+
