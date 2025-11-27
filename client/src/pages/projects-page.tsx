@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -578,6 +578,38 @@ export default function ProjectsPage() {
     },
   ];
 
+  // Apply layout configuration: filter visible columns and sort by position
+  const visibleColumns = useMemo(() => {
+    // Always show actions column
+    const actionsColumn = columns.find(c => c.key === 'actions');
+    
+    // If no layout configuration or empty columns config, show all columns
+    if (!layout.columns || Object.keys(layout.columns).length === 0) {
+      return columns;
+    }
+    
+    // Filter and sort columns based on layout
+    const configuredColumns = columns
+      .filter(col => {
+        if (col.key === 'actions') return false; // Handle separately
+        const config = layout.columns[col.key];
+        // If no config for this column, show it by default
+        return config?.visible !== false;
+      })
+      .sort((a, b) => {
+        const posA = layout.columns[a.key]?.position ?? 999;
+        const posB = layout.columns[b.key]?.position ?? 999;
+        return posA - posB;
+      });
+    
+    // Add actions column at the end
+    if (actionsColumn) {
+      configuredColumns.push(actionsColumn);
+    }
+    
+    return configuredColumns;
+  }, [columns, layout.columns]);
+
   return (
     <RelationshipPreviewProvider>
     <div className="flex h-screen overflow-hidden">
@@ -628,7 +660,7 @@ export default function ProjectsPage() {
           ) : (
             <UniversalTable
               data={filteredProjects}
-              columns={columns}
+              columns={visibleColumns}
               enableSelection={true}
               onSelectionChange={(rows) => setSelectedProjects(rows as Project[])}
               onRowClick={handleEdit}

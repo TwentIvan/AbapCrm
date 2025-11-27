@@ -268,15 +268,11 @@ export function TableConfiguration({
   };
 
   const handleSaveConfiguration = () => {
-    console.log('🔥 SAVE BUTTON CLICKED! Layout name:', layoutName);
-    
     if (!layoutName.trim()) {
-      console.log('❌ Layout name is empty');
       return;
     }
 
     const layout = userPreferences.getTableLayout(tableId);
-    console.log('📄 Current layout:', layout);
     
     // Build sorting from columns with sortDirection
     const sortedColumn = columns.find(col => col.sortDirection);
@@ -310,23 +306,17 @@ export function TableConfiguration({
       },
     };
 
-    // Save layout using new simplified interface
-    console.log('💾 About to save layout...');
-    
     if (onSave) {
       // Use new simplified onSave callback
       onSave(updatedLayout);
-      console.log('✅ Layout saved via onSave callback');
     } else {
       // Fallback to old interface for compatibility
       const layoutId = onSaveLayout ? 
         onSaveLayout(layoutName, saveAsDefault) : 
         userPreferences.saveLayoutAs(tableId, layoutName, saveAsDefault);
-      console.log('✅ Layout saved with ID:', layoutId);
       
       // Update current layout with new configuration
       userPreferences.saveTableLayout(tableId, updatedLayout);
-      console.log('🔄 Layout updated');
       
       onConfigurationChange?.(updatedLayout);
       
@@ -334,7 +324,6 @@ export function TableConfiguration({
       setLayoutName('');
       setSaveAsDefault(false);
       setIsOpen(false);
-      console.log('✨ Form reset, dialog closed');
     }
   };
 
