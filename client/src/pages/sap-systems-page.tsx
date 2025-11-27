@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -196,6 +196,42 @@ export default function SapSystemsPage() {
     ])
   ];
 
+  // Apply layout configuration: filter visible columns and sort by position
+  const visibleColumns = useMemo(() => {
+    // Get column key - DataTable uses accessorKey or id, UniversalTable uses key
+    const getColumnKey = (col: any) => col.accessorKey || col.id || col.key;
+    
+    // Always show actions column
+    const actionsColumn = columns.find(c => getColumnKey(c) === 'actions');
+    
+    // If no layout configuration or empty columns config, show all columns
+    if (!layout.columns || Object.keys(layout.columns).length === 0) {
+      return columns;
+    }
+    
+    // Filter and sort columns based on layout
+    const configuredColumns = columns
+      .filter(col => {
+        const key = getColumnKey(col);
+        if (key === 'actions') return false; // Handle separately
+        const config = layout.columns[key];
+        // If no config for this column, show it by default
+        return config?.visible !== false;
+      })
+      .sort((a, b) => {
+        const posA = layout.columns[getColumnKey(a)]?.position ?? 999;
+        const posB = layout.columns[getColumnKey(b)]?.position ?? 999;
+        return posA - posB;
+      });
+    
+    // Add actions column at the end
+    if (actionsColumn) {
+      configuredColumns.push(actionsColumn);
+    }
+    
+    return configuredColumns;
+  }, [columns, layout.columns]);
+
   // Grid view for card layout
   const renderGrid = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -266,7 +302,7 @@ export default function SapSystemsPage() {
   const renderTable = () => (
     <UniversalTable
       data={systems || []}
-      columns={columns}
+      columns={visibleColumns}
       enableSelection={true}
       onSelectionChange={(rows) => setSelectedSystems(rows as SapSystem[])}
       onRowClick={handleEdit}

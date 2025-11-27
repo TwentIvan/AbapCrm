@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -622,6 +622,42 @@ export default function PartnersPage() {
     },
   ];
 
+  // Apply layout configuration: filter visible columns and sort by position
+  const visibleColumns = useMemo(() => {
+    // Get column key - DataTable uses accessorKey or id
+    const getColumnKey = (col: any) => col.accessorKey || col.id;
+    
+    // Always show actions column
+    const actionsColumn = tableColumns.find(c => getColumnKey(c) === 'actions');
+    
+    // If no layout configuration or empty columns config, show all columns
+    if (!layout.columns || Object.keys(layout.columns).length === 0) {
+      return tableColumns;
+    }
+    
+    // Filter and sort columns based on layout
+    const configuredColumns = tableColumns
+      .filter(col => {
+        const key = getColumnKey(col);
+        if (key === 'actions') return false; // Handle separately
+        const config = layout.columns[key];
+        // If no config for this column, show it by default
+        return config?.visible !== false;
+      })
+      .sort((a, b) => {
+        const posA = layout.columns[getColumnKey(a)]?.position ?? 999;
+        const posB = layout.columns[getColumnKey(b)]?.position ?? 999;
+        return posA - posB;
+      });
+    
+    // Add actions column at the end
+    if (actionsColumn) {
+      configuredColumns.push(actionsColumn);
+    }
+    
+    return configuredColumns;
+  }, [tableColumns, layout.columns]);
+
   return (
     <RelationshipPreviewProvider>
     <div className="flex h-screen overflow-hidden">
@@ -671,7 +707,7 @@ export default function PartnersPage() {
           ) : (
             <DataTable
               key={`partners-table-${currentLayoutName}-${JSON.stringify(layout.columns)}`}
-              columns={tableColumns}
+              columns={visibleColumns}
               data={partners || []}
               onRowClick={handleEdit}
               enableSelection={true}

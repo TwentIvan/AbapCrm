@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
@@ -798,6 +798,42 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
     },
   ];
 
+  // Apply layout configuration: filter visible columns and sort by position
+  const visibleColumns = useMemo(() => {
+    // Get column key - DataTable uses accessorKey or id, UniversalTable uses key
+    const getColumnKey = (col: any) => col.accessorKey || col.id || col.key;
+    
+    // Always show actions column
+    const actionsColumn = tableColumns.find(c => getColumnKey(c) === 'actions');
+    
+    // If no layout configuration or empty columns config, show all columns
+    if (!layout.columns || Object.keys(layout.columns).length === 0) {
+      return tableColumns;
+    }
+    
+    // Filter and sort columns based on layout
+    const configuredColumns = tableColumns
+      .filter(col => {
+        const key = getColumnKey(col);
+        if (key === 'actions') return false; // Handle separately
+        const config = layout.columns[key];
+        // If no config for this column, show it by default
+        return config?.visible !== false;
+      })
+      .sort((a, b) => {
+        const posA = layout.columns[getColumnKey(a)]?.position ?? 999;
+        const posB = layout.columns[getColumnKey(b)]?.position ?? 999;
+        return posA - posB;
+      });
+    
+    // Add actions column at the end
+    if (actionsColumn) {
+      configuredColumns.push(actionsColumn);
+    }
+    
+    return configuredColumns;
+  }, [tableColumns, layout.columns]);
+
   const isOverdue = (dueDate: string | Date | null) => {
     if (!dueDate) return false;
     const date = dueDate instanceof Date ? dueDate : new Date(dueDate);
@@ -863,7 +899,7 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
           ) : (
             <UniversalTable
               data={filterProjectId ? (tasks || []).filter(t => t.projectId === filterProjectId) : (tasks || [])}
-              columns={tableColumns}
+              columns={visibleColumns}
               enableSelection={true}
               onSelectionChange={(rows) => setSelectedTasks(rows as Task[])}
               onRowClick={handleEdit}

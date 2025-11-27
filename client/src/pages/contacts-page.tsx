@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
@@ -312,6 +312,42 @@ export default function ContactsPage() {
     },
   ];
 
+  // Apply layout configuration: filter visible columns and sort by position
+  const visibleColumns = useMemo(() => {
+    // Get column key - DataTable uses accessorKey or id, UniversalTable uses key
+    const getColumnKey = (col: any) => col.accessorKey || col.id || col.key;
+    
+    // Always show actions column
+    const actionsColumn = tableColumns.find(c => getColumnKey(c) === 'actions');
+    
+    // If no layout configuration or empty columns config, show all columns
+    if (!layout.columns || Object.keys(layout.columns).length === 0) {
+      return tableColumns;
+    }
+    
+    // Filter and sort columns based on layout
+    const configuredColumns = tableColumns
+      .filter(col => {
+        const key = getColumnKey(col);
+        if (key === 'actions') return false; // Handle separately
+        const config = layout.columns[key];
+        // If no config for this column, show it by default
+        return config?.visible !== false;
+      })
+      .sort((a, b) => {
+        const posA = layout.columns[getColumnKey(a)]?.position ?? 999;
+        const posB = layout.columns[getColumnKey(b)]?.position ?? 999;
+        return posA - posB;
+      });
+    
+    // Add actions column at the end
+    if (actionsColumn) {
+      configuredColumns.push(actionsColumn);
+    }
+    
+    return configuredColumns;
+  }, [tableColumns, layout.columns]);
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
@@ -361,7 +397,7 @@ export default function ContactsPage() {
           ) : (
             <DataTable
               key={`contacts-table-${currentLayoutName}-${JSON.stringify(layout.columns)}`}
-              columns={tableColumns}
+              columns={visibleColumns}
               data={filteredContacts}
               searchPlaceholder="Cerca contatti..."
               onRowClick={handleEdit}
