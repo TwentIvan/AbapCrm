@@ -192,25 +192,6 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
     },
   });
 
-  // Auto-populate domain from website only when domain is empty
-  const websiteValue = form.watch('website');
-  const domainValue = form.watch('domain');
-  
-  useEffect(() => {
-    // Only auto-populate if domain is empty and website has a value
-    if (!domainValue && websiteValue) {
-      try {
-        const url = new URL(websiteValue);
-        const extractedDomain = url.hostname.replace('www.', '');
-        if (extractedDomain) {
-          form.setValue('domain', extractedDomain);
-        }
-      } catch {
-        // Invalid URL, don't update domain
-      }
-    }
-  }, [websiteValue, domainValue, form]);
-
   // Update logo preview when editing existing partner
   useEffect(() => {
     if (existingPartner?.logoUrl) {
@@ -530,7 +511,19 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
     if (company.country) form.setValue('country', company.country);
     if (company.fiscalCode) form.setValue('fiscalCode', company.fiscalCode);
     if (company.vatNumber) form.setValue('vatNumber', company.vatNumber.replace('IT', ''));
-    if (company.website) form.setValue('website', company.website);
+    if (company.website) {
+      form.setValue('website', company.website);
+      // Auto-populate domain from website only on first selection
+      try {
+        const url = new URL(company.website);
+        const extractedDomain = url.hostname.replace('www.', '');
+        if (extractedDomain) {
+          form.setValue('domain', extractedDomain);
+        }
+      } catch {
+        // Invalid URL, skip domain extraction
+      }
+    }
     
     // Set logo preview immediately if available
     if (company.logoUrl) {
