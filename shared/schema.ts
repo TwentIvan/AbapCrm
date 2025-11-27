@@ -165,6 +165,32 @@ export const partners = pgTable("partners", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Partner Emails - Supporto per email multiple con flag principale
+export const partnerEmailLabelEnum = pgEnum("partner_email_label", ["work", "home", "billing", "support", "other"]);
+
+export const partnerEmails = pgTable("partner_emails", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  partnerId: uuid("partner_id").references(() => partners.id, { onDelete: "cascade" }).notNull(),
+  email: text("email").notNull(),
+  label: partnerEmailLabelEnum("label").default("work").notNull(),
+  isPrimary: boolean("is_primary").default(false).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Partner Phones - Supporto per telefoni multipli con flag principale
+export const partnerPhoneLabelEnum = pgEnum("partner_phone_label", ["work", "mobile", "home", "fax", "other"]);
+
+export const partnerPhones = pgTable("partner_phones", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  partnerId: uuid("partner_id").references(() => partners.id, { onDelete: "cascade" }).notNull(),
+  phone: text("phone").notNull(),
+  label: partnerPhoneLabelEnum("label").default("work").notNull(),
+  isPrimary: boolean("is_primary").default(false).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Contacts - Contatti di riferimento (persone individuali)
 export const contacts = pgTable("contacts", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1160,6 +1186,21 @@ export const insertPartnerSchema = createInsertSchema(partners).omit({
   updatedAt: true,
   organizationId: true, // Auto-filled from user session
 });
+
+// Partner Email/Phone schemas for 1:N relationships
+export const insertPartnerEmailSchema = createInsertSchema(partnerEmails).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPartnerEmail = z.infer<typeof insertPartnerEmailSchema>;
+export type PartnerEmail = typeof partnerEmails.$inferSelect;
+
+export const insertPartnerPhoneSchema = createInsertSchema(partnerPhones).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPartnerPhone = z.infer<typeof insertPartnerPhoneSchema>;
+export type PartnerPhone = typeof partnerPhones.$inferSelect;
 
 export const insertContactSchema = createInsertSchema(contacts).omit({
   id: true,
