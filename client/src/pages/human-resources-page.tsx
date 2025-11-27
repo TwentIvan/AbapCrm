@@ -18,6 +18,7 @@ import { HumanResource } from "@shared/schema";
 import { HumanResourceForm } from "@/components/forms/human-resource-form";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
+import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 
 export default function HumanResourcesPage() {
   const [selectedResources, setSelectedResources] = useState<HumanResource[]>([]);
@@ -43,6 +44,9 @@ export default function HumanResourcesPage() {
     queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: fieldMetadata } = useEntityFieldMetadata("human-resources");
+  const availableColumns = fieldMetadata ? metadataToAvailableColumns(fieldMetadata) : [];
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/human-resources/${id}`),
@@ -364,7 +368,7 @@ export default function HumanResourcesPage() {
             isOpen={showConfigDialog}
             onOpenChange={setShowConfigDialog}
             tableId="human-resources"
-            availableColumns={[
+            availableColumns={availableColumns.length > 0 ? availableColumns : [
               { id: 'firstName', label: 'Nome' },
               { id: 'lastName', label: 'Cognome' },
               { id: 'email', label: 'Email' },

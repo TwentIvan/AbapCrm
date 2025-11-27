@@ -19,6 +19,7 @@ import { Contact, Partner } from "@shared/schema";
 import ContactForm from "@/components/forms/contact-form";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
+import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 
 export default function ContactsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -66,6 +67,9 @@ export default function ContactsPage() {
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
+
+  const { data: fieldMetadata } = useEntityFieldMetadata("contacts");
+  const availableColumns = fieldMetadata ? metadataToAvailableColumns(fieldMetadata) : [];
 
   // URL filtering for partnerId
   const urlParams = new URLSearchParams(window.location.search);
@@ -478,7 +482,7 @@ export default function ContactsPage() {
         isOpen={showConfigDialog}
         onOpenChange={setShowConfigDialog}
         tableId="contacts"
-        availableColumns={[
+        availableColumns={availableColumns.length > 0 ? availableColumns : [
           { id: 'name', label: 'Nome' },
           { id: 'email', label: 'Email' },
           { id: 'phone', label: 'Telefono' },

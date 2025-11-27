@@ -18,6 +18,7 @@ import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { RateAgreement, Partner, Project } from "@shared/schema";
 import RateAgreementForm from "@/components/forms/rate-agreement-form";
+import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 
 export default function RateAgreementsPage() {
   const [selectedAgreements, setSelectedAgreements] = useState<RateAgreement[]>([]);
@@ -53,6 +54,9 @@ export default function RateAgreementsPage() {
     queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: fieldMetadata } = useEntityFieldMetadata("rate-agreements");
+  const availableColumns = fieldMetadata ? metadataToAvailableColumns(fieldMetadata) : [];
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/rate-agreements/${id}`),
@@ -288,7 +292,7 @@ export default function RateAgreementsPage() {
             isOpen={showConfigDialog}
             onOpenChange={setShowConfigDialog}
             tableId="rate-agreements"
-            availableColumns={[
+            availableColumns={availableColumns.length > 0 ? availableColumns : [
               { id: 'name', label: 'Nome' },
               { id: 'hourlyRate', label: 'Tariffa/h' },
               { id: 'currency', label: 'Valuta' },

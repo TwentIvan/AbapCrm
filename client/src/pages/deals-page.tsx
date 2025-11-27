@@ -23,6 +23,7 @@ import AuditHistory from "@/components/ui/audit-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
+import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 
 const stageColors = {
   prospecting: "bg-blue-100 text-blue-800",
@@ -78,6 +79,9 @@ export default function DealsPage() {
     refetchOnMount: false, // Use cache if available
     refetchOnWindowFocus: false,
   });
+
+  const { data: fieldMetadata } = useEntityFieldMetadata("deals");
+  const availableColumns = fieldMetadata ? metadataToAvailableColumns(fieldMetadata) : [];
 
   // URL filtering for partnerId
   const urlParams = new URLSearchParams(window.location.search);
@@ -552,7 +556,7 @@ export default function DealsPage() {
         isOpen={showConfigDialog}
         onOpenChange={setShowConfigDialog}
         tableId="deals"
-        availableColumns={[
+        availableColumns={availableColumns.length > 0 ? availableColumns : [
           { id: 'title', label: 'Titolo' },
           { id: 'stage', label: 'Stage' },
           { id: 'value', label: 'Valore' },

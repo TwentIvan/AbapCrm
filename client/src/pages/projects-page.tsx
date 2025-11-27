@@ -33,6 +33,7 @@ import ProjectPlanner from "@/components/planning/project-planner";
 import AuditHistory from "@/components/ui/audit-history";
 import { MessageHistory } from "@/components/ui/message-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 
 const statusColors = {
   planning: "bg-blue-100 text-blue-800",
@@ -189,6 +190,9 @@ export default function ProjectsPage() {
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
+
+  const { data: fieldMetadata } = useEntityFieldMetadata("projects");
+  const availableColumns = fieldMetadata ? metadataToAvailableColumns(fieldMetadata) : [];
 
   // URL filtering for clientId
   const urlParams = new URLSearchParams(window.location.search);
@@ -746,7 +750,7 @@ export default function ProjectsPage() {
         isOpen={showConfigDialog}
         onOpenChange={setShowConfigDialog}
         tableId="projects"
-        availableColumns={[
+        availableColumns={availableColumns.length > 0 ? availableColumns : [
           { id: 'name', label: 'Nome' },
           { id: 'status', label: 'Status' },
           { id: 'client', label: 'Cliente' },

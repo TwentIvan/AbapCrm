@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
+import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -124,6 +125,9 @@ export default function SapTransportPage() {
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!selectedRequest?.id,
   });
+
+  const { data: fieldMetadata } = useEntityFieldMetadata("sap-transport");
+  const availableColumns = fieldMetadata ? metadataToAvailableColumns(fieldMetadata) : [];
 
   const deleteMutation = useMutation({
     mutationFn: async (requestId: string) => {

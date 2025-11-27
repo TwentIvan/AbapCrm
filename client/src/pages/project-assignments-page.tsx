@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
+import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -52,6 +53,9 @@ export default function ProjectAssignmentsPage() {
     queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: fieldMetadata } = useEntityFieldMetadata("project-assignments");
+  const availableColumns = fieldMetadata ? metadataToAvailableColumns(fieldMetadata) : [];
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/project-assignments/${id}`),
@@ -288,7 +292,7 @@ export default function ProjectAssignmentsPage() {
             isOpen={showConfigDialog}
             onOpenChange={setShowConfigDialog}
             tableId="project-assignments"
-            availableColumns={[
+            availableColumns={availableColumns.length > 0 ? availableColumns : [
               { id: 'title', label: 'Titolo' },
               { id: 'resource', label: 'Risorsa' },
               { id: 'project', label: 'Progetto' },

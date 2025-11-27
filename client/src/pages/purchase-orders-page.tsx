@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { PurchaseOrder, Project } from "@shared/schema";
 import PurchaseOrderForm from "@/components/forms/purchase-order-form";
+import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 
 export default function PurchaseOrdersPage() {
   const [selectedOrders, setSelectedOrders] = useState<PurchaseOrder[]>([]);
@@ -46,6 +47,9 @@ export default function PurchaseOrdersPage() {
     queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: fieldMetadata } = useEntityFieldMetadata("purchase-orders");
+  const availableColumns = fieldMetadata ? metadataToAvailableColumns(fieldMetadata) : [];
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/purchase-orders/${id}`),
@@ -299,7 +303,7 @@ export default function PurchaseOrdersPage() {
             isOpen={showConfigDialog}
             onOpenChange={setShowConfigDialog}
             tableId="purchase-orders"
-            availableColumns={[
+            availableColumns={availableColumns.length > 0 ? availableColumns : [
               { id: 'orderNumber', label: 'Numero Ordine' },
               { id: 'vendorName', label: 'Fornitore' },
               { id: 'project', label: 'Progetto' },

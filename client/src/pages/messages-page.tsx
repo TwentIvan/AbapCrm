@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DOMPurify from 'dompurify';
+import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -226,6 +227,9 @@ export default function MessagesPage() {
     refetchOnMount: 'always',
     refetchOnWindowFocus: 'always',
   });
+
+  const { data: fieldMetadata } = useEntityFieldMetadata("messages");
+  const availableColumns = fieldMetadata ? metadataToAvailableColumns(fieldMetadata) : [];
 
   // 🔍 DEBUG: Log what we actually receive from backend
   useEffect(() => {

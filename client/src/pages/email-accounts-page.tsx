@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useTableLayout } from "@/lib/user-preferences";
 import { useOrganization } from "@/contexts/organization-context";
+import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,6 +79,9 @@ export default function EmailAccountsPage() {
     refetchOnMount: false, // Use cache if available
     refetchOnWindowFocus: false,
   });
+
+  const { data: fieldMetadata } = useEntityFieldMetadata("email-accounts");
+  const availableColumns = fieldMetadata ? metadataToAvailableColumns(fieldMetadata) : [];
 
   const deleteMutation = useMutation({
     mutationFn: async (accountId: string) => {
@@ -463,7 +467,7 @@ export default function EmailAccountsPage() {
       {/* Table Configuration Dialog */}
       <TableConfiguration
         tableId="email-accounts"
-        availableColumns={[
+        availableColumns={availableColumns.length > 0 ? availableColumns : [
           { id: 'email', label: 'Email Account' },
           { id: 'imapHost', label: 'Server IMAP' },
           { id: 'isActive', label: 'Stato' },

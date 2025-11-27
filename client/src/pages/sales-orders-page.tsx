@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { FileText, Euro, Calendar, Building, MoreHorizontal, Edit, Trash2, Grid3X3, List } from "lucide-react";
 import { SalesOrder, Partner } from "@shared/schema";
+import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 // import SalesOrderForm from "@/components/forms/sales-order-form";
 
 const statusColors = {
@@ -59,6 +60,9 @@ export default function SalesOrdersPage() {
       return res.json();
     },
   });
+
+  const { data: fieldMetadata } = useEntityFieldMetadata("sales-orders");
+  const availableColumns = fieldMetadata ? metadataToAvailableColumns(fieldMetadata) : [];
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/sales-orders/${id}`),
@@ -326,7 +330,7 @@ export default function SalesOrdersPage() {
             isOpen={showConfigDialog}
             onOpenChange={setShowConfigDialog}
             tableId="sales-orders"
-            availableColumns={[
+            availableColumns={availableColumns.length > 0 ? availableColumns : [
               { id: 'orderNumber', label: 'N. Ordine' },
               { id: 'status', label: 'Status' },
               { id: 'partnerId', label: 'Cliente' },
