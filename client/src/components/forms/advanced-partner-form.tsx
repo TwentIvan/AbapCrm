@@ -348,6 +348,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
         isPrimary: partnerEmails.length === 0,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'emails'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/partners'] });
       setNewEmailValue("");
       setNewEmailLabel("");
       toast({ title: "Email aggiunta" });
@@ -365,6 +366,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
     try {
       await apiRequest("DELETE", `/api/partners/${existingPartner.id}/emails/${emailId}`);
       queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'emails'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/partners'] });
       toast({ title: "Email rimossa" });
     } catch (error) {
       toast({ title: "Errore nella rimozione dell'email", variant: "destructive" });
@@ -380,6 +382,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
     try {
       await apiRequest("PUT", `/api/partners/${existingPartner.id}/emails/${emailId}/primary`);
       queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'emails'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/partners'] });
       toast({ title: "Email principale impostata" });
     } catch (error) {
       toast({ title: "Errore nell'impostare l'email principale", variant: "destructive" });
@@ -413,6 +416,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
         isPrimary: partnerPhones.length === 0,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'phones'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/partners'] });
       setNewPhoneValue("");
       setNewPhoneLabel("");
       toast({ title: "Telefono aggiunto" });
@@ -430,6 +434,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
     try {
       await apiRequest("DELETE", `/api/partners/${existingPartner.id}/phones/${phoneId}`);
       queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'phones'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/partners'] });
       toast({ title: "Telefono rimosso" });
     } catch (error) {
       toast({ title: "Errore nella rimozione del telefono", variant: "destructive" });
@@ -445,6 +450,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
     try {
       await apiRequest("PUT", `/api/partners/${existingPartner.id}/phones/${phoneId}/primary`);
       queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'phones'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/partners'] });
       toast({ title: "Telefono principale impostato" });
     } catch (error) {
       toast({ title: "Errore nell'impostare il telefono principale", variant: "destructive" });

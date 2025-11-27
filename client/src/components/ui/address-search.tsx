@@ -54,6 +54,58 @@ interface NominatimResult {
   };
 }
 
+// Fuzzy search utilities
+const normalizeQuery = (query: string): string => {
+  // Remove accents
+  let normalized = query.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  
+  // Common Italian address abbreviations
+  const abbreviations: Record<string, string> = {
+    "v.": "via",
+    "v ": "via ",
+    "p.zza": "piazza",
+    "p.za": "piazza",
+    "pza": "piazza",
+    "c.so": "corso",
+    "l.go": "largo",
+    "vic.": "vicolo",
+    "str.": "strada",
+    "s.s.": "strada statale",
+    "sp": "strada provinciale",
+    "ss": "strada statale",
+  };
+  
+  // Apply abbreviations (case insensitive)
+  Object.entries(abbreviations).forEach(([abbr, full]) => {
+    normalized = normalized.replace(new RegExp(`\\b${abbr}\\b`, "gi"), full);
+  });
+  
+  return normalized.trim();
+};
+
+const generateFuzzyVariants = (query: string): string[] => {
+  const normalized = normalizeQuery(query);
+  const variants = [query]; // Original query first
+  
+  if (normalized !== query) {
+    variants.push(normalized);
+  }
+  
+  // Try without numbers at the end (in case street number is wrong)
+  const withoutNumbers = normalized.replace(/\s*\d+[a-z]?\s*$/i, "").trim();
+  if (withoutNumbers && withoutNumbers !== normalized) {
+    variants.push(withoutNumbers);
+  }
+  
+  // Try splitting by comma and searching just the first part (street name)
+  const parts = normalized.split(",");
+  if (parts.length > 1 && parts[0].trim().length >= 3) {
+    variants.push(parts[0].trim());
+  }
+  
+  return Array.from(new Set(variants)); // Remove duplicates
+};
+
 export function AddressSearch({
   onSelect,
   onMultiSelect,
@@ -69,6 +121,7 @@ export function AddressSearch({
   const [isOpen, setIsOpen] = useState(false);
   const [selectedAddressTypes, setSelectedAddressTypes] = useState<Record<number, "legal" | "operational">>({});
   const [selectedPlaceIds, setSelectedPlaceIds] = useState<Set<number>>(new Set());
+  const [searchAttempts, setSearchAttempts] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
 
@@ -90,27 +143,78 @@ export function AddressSearch({
     if (searchQuery.length < 3) {
       console.log("[AddressSearch] Query too short, clearing results");
       setResults([]);
+      setSearchAttempts(0);
       return;
     }
 
     setIsLoading(true);
-    console.log("[AddressSearch] Fetching from Nominatim...");
+    console.log("[AddressSearch] Starting fuzzy search...");
+    
+    // Generate fuzzy variants of the query
+    const variants = generateFuzzyVariants(searchQuery);
+    console.log("[AddressSearch] Search variants:", variants);
+    
+    let allResults: NominatimResult[] = [];
+    const seenPlaceIds = new Set<number>();
+    
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(searchQuery)}&countrycodes=it`,
-        {
-          headers: {
-            "Accept-Language": "it",
-          },
+      // Try each variant until we get results or exhaust all options
+      for (const variant of variants) {
+        if (allResults.length >= 5) break; // Stop if we have enough results
+        
+        console.log("[AddressSearch] Trying variant:", variant);
+        
+        // First try with Italy country code
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(variant)}&countrycodes=it`,
+          {
+            headers: {
+              "Accept-Language": "it",
+            },
+          }
+        );
+        const data: NominatimResult[] = await response.json();
+        console.log("[AddressSearch] Variant results:", data.length);
+        
+        // Add unique results
+        for (const result of data) {
+          if (!seenPlaceIds.has(result.place_id)) {
+            seenPlaceIds.add(result.place_id);
+            allResults.push(result);
+          }
         }
-      );
-      const data: NominatimResult[] = await response.json();
-      console.log("[AddressSearch] Got results:", data.length, data);
-      setResults(data);
+        
+        // If no results with Italy, try without country restriction
+        if (data.length === 0 && variant === variants[0]) {
+          console.log("[AddressSearch] No Italian results, trying without country restriction...");
+          const fallbackResponse = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(variant)}`,
+            {
+              headers: {
+                "Accept-Language": "it",
+              },
+            }
+          );
+          const fallbackData: NominatimResult[] = await fallbackResponse.json();
+          for (const result of fallbackData) {
+            if (!seenPlaceIds.has(result.place_id)) {
+              seenPlaceIds.add(result.place_id);
+              allResults.push(result);
+            }
+          }
+        }
+      }
+      
+      // Limit to 10 results max
+      allResults = allResults.slice(0, 10);
+      setSearchAttempts(variants.length);
+      
+      console.log("[AddressSearch] Final results:", allResults.length);
+      setResults(allResults);
       setIsOpen(true);
       
       const initialTypes: Record<number, "legal" | "operational"> = {};
-      data.forEach((result) => {
+      allResults.forEach((result) => {
         initialTypes[result.place_id] = defaultAddressType;
       });
       setSelectedAddressTypes(initialTypes);
