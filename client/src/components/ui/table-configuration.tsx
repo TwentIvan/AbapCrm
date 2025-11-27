@@ -190,6 +190,47 @@ export function TableConfiguration({
     }
   }, [editingLayout]);
 
+  // Sync columns when availableColumns changes (e.g., when metadata loads from server)
+  // Use functional update to avoid depending on columns state directly
+  useEffect(() => {
+    if (availableColumns.length === 0) return;
+    
+    const layout = userPreferences.getTableLayout(tableId);
+    const availableColumnIds = availableColumns.map(c => c.id).join(',');
+    
+    setColumns(prevColumns => {
+      const currentColumnIds = new Set(prevColumns.map(c => c.id));
+      const newColumnIds = new Set(availableColumns.map(c => c.id));
+      
+      // Check if there are new columns that weren't in the previous list
+      const hasNewColumns = availableColumns.some(col => !currentColumnIds.has(col.id));
+      const hasRemovedColumns = prevColumns.some(col => !newColumnIds.has(col.id));
+      
+      if (!hasNewColumns && !hasRemovedColumns) {
+        return prevColumns; // No changes needed
+      }
+      
+      // Merge: keep existing column configs for columns that still exist, add new ones
+      const existingConfigMap = new Map(prevColumns.map(c => [c.id, c]));
+      
+      return availableColumns.map(col => {
+        const existing = existingConfigMap.get(col.id);
+        if (existing) {
+          return { ...existing, label: col.label }; // Update label from metadata
+        }
+        // New column from metadata
+        return {
+          id: col.id,
+          label: col.label,
+          visible: layout.columns?.[col.id]?.visible ?? true,
+          sortDirection: layout.sorting?.find(s => s.id === col.id)?.desc === false ? 'asc' : 
+                        layout.sorting?.find(s => s.id === col.id)?.desc === true ? 'desc' : null,
+          enableSubtotal: layout.aggregations?.subtotals?.groupBy?.includes(col.id) || false,
+        } as ColumnConfig;
+      });
+    });
+  }, [availableColumns, tableId]);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
