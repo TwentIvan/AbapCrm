@@ -58,7 +58,9 @@ import {
   type ChatMessage, type InsertChatMessage,
   type ChatParticipant, type InsertChatParticipant,
   type ChatRoomEntity, type InsertChatRoomEntity,
-  testExecutions, type TestExecution, type InsertTestExecution
+  testExecutions, type TestExecution, type InsertTestExecution,
+  partnerEmails, type PartnerEmail, type InsertPartnerEmail,
+  partnerPhones, type PartnerPhone, type InsertPartnerPhone
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull, inArray } from "drizzle-orm";
@@ -135,6 +137,20 @@ export interface IStorage {
   createPartner(partner: InsertPartner & { organizationId: string }): Promise<Partner>;
   updatePartner(id: string, partner: Partial<InsertPartner>, userId: string, organizationId: string): Promise<Partner | undefined>;
   deletePartner(id: string, userId: string, organizationId: string): Promise<boolean>;
+
+  // Partner Emails (1:N)
+  getPartnerEmails(partnerId: string): Promise<PartnerEmail[]>;
+  createPartnerEmail(email: InsertPartnerEmail): Promise<PartnerEmail>;
+  updatePartnerEmail(id: string, email: Partial<InsertPartnerEmail>): Promise<PartnerEmail | undefined>;
+  deletePartnerEmail(id: string): Promise<boolean>;
+  setPartnerEmailPrimary(id: string, partnerId: string): Promise<boolean>;
+
+  // Partner Phones (1:N)
+  getPartnerPhones(partnerId: string): Promise<PartnerPhone[]>;
+  createPartnerPhone(phone: InsertPartnerPhone): Promise<PartnerPhone>;
+  updatePartnerPhone(id: string, phone: Partial<InsertPartnerPhone>): Promise<PartnerPhone | undefined>;
+  deletePartnerPhone(id: string): Promise<boolean>;
+  setPartnerPhonePrimary(id: string, partnerId: string): Promise<boolean>;
 
   // Contacts
   getContacts(userId: string, organizationId: string): Promise<Contact[]>;
@@ -1515,6 +1531,92 @@ export class DatabaseStorage implements IStorage {
       );
     }
 
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Partner Emails (1:N)
+  async getPartnerEmails(partnerId: string): Promise<PartnerEmail[]> {
+    return await db.select().from(partnerEmails)
+      .where(eq(partnerEmails.partnerId, partnerId))
+      .orderBy(desc(partnerEmails.isPrimary), asc(partnerEmails.createdAt));
+  }
+
+  async createPartnerEmail(email: InsertPartnerEmail): Promise<PartnerEmail> {
+    // If this is the first email or marked as primary, reset other primaries
+    if (email.isPrimary) {
+      await db.update(partnerEmails)
+        .set({ isPrimary: false })
+        .where(eq(partnerEmails.partnerId, email.partnerId));
+    }
+    const [newEmail] = await db.insert(partnerEmails).values(email).returning();
+    return newEmail;
+  }
+
+  async updatePartnerEmail(id: string, email: Partial<InsertPartnerEmail>): Promise<PartnerEmail | undefined> {
+    const [updatedEmail] = await db.update(partnerEmails)
+      .set(email)
+      .where(eq(partnerEmails.id, id))
+      .returning();
+    return updatedEmail || undefined;
+  }
+
+  async deletePartnerEmail(id: string): Promise<boolean> {
+    const result = await db.delete(partnerEmails).where(eq(partnerEmails.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async setPartnerEmailPrimary(id: string, partnerId: string): Promise<boolean> {
+    // Reset all to non-primary
+    await db.update(partnerEmails)
+      .set({ isPrimary: false })
+      .where(eq(partnerEmails.partnerId, partnerId));
+    // Set the selected one as primary
+    const result = await db.update(partnerEmails)
+      .set({ isPrimary: true })
+      .where(eq(partnerEmails.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Partner Phones (1:N)
+  async getPartnerPhones(partnerId: string): Promise<PartnerPhone[]> {
+    return await db.select().from(partnerPhones)
+      .where(eq(partnerPhones.partnerId, partnerId))
+      .orderBy(desc(partnerPhones.isPrimary), asc(partnerPhones.createdAt));
+  }
+
+  async createPartnerPhone(phone: InsertPartnerPhone): Promise<PartnerPhone> {
+    // If marked as primary, reset other primaries
+    if (phone.isPrimary) {
+      await db.update(partnerPhones)
+        .set({ isPrimary: false })
+        .where(eq(partnerPhones.partnerId, phone.partnerId));
+    }
+    const [newPhone] = await db.insert(partnerPhones).values(phone).returning();
+    return newPhone;
+  }
+
+  async updatePartnerPhone(id: string, phone: Partial<InsertPartnerPhone>): Promise<PartnerPhone | undefined> {
+    const [updatedPhone] = await db.update(partnerPhones)
+      .set(phone)
+      .where(eq(partnerPhones.id, id))
+      .returning();
+    return updatedPhone || undefined;
+  }
+
+  async deletePartnerPhone(id: string): Promise<boolean> {
+    const result = await db.delete(partnerPhones).where(eq(partnerPhones.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async setPartnerPhonePrimary(id: string, partnerId: string): Promise<boolean> {
+    // Reset all to non-primary
+    await db.update(partnerPhones)
+      .set({ isPrimary: false })
+      .where(eq(partnerPhones.partnerId, partnerId));
+    // Set the selected one as primary
+    const result = await db.update(partnerPhones)
+      .set({ isPrimary: true })
+      .where(eq(partnerPhones.id, id));
     return (result.rowCount || 0) > 0;
   }
 

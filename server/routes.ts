@@ -1895,6 +1895,120 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Partner Emails (1:N)
+  app.get("/api/partners/:partnerId/emails", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const emails = await storage.getPartnerEmails(req.params.partnerId);
+      res.json(emails);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.post("/api/partners/:partnerId/emails", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const email = await storage.createPartnerEmail({
+        ...req.body,
+        partnerId: req.params.partnerId,
+      });
+      res.status(201).json(email);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.put("/api/partners/:partnerId/emails/:emailId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const email = await storage.updatePartnerEmail(req.params.emailId, req.body);
+      if (!email) return res.sendStatus(404);
+      res.json(email);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.delete("/api/partners/:partnerId/emails/:emailId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const deleted = await storage.deletePartnerEmail(req.params.emailId);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.put("/api/partners/:partnerId/emails/:emailId/primary", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const success = await storage.setPartnerEmailPrimary(req.params.emailId, req.params.partnerId);
+      if (!success) return res.sendStatus(404);
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // Partner Phones (1:N)
+  app.get("/api/partners/:partnerId/phones", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const phones = await storage.getPartnerPhones(req.params.partnerId);
+      res.json(phones);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.post("/api/partners/:partnerId/phones", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const phone = await storage.createPartnerPhone({
+        ...req.body,
+        partnerId: req.params.partnerId,
+      });
+      res.status(201).json(phone);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.put("/api/partners/:partnerId/phones/:phoneId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const phone = await storage.updatePartnerPhone(req.params.phoneId, req.body);
+      if (!phone) return res.sendStatus(404);
+      res.json(phone);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.delete("/api/partners/:partnerId/phones/:phoneId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const deleted = await storage.deletePartnerPhone(req.params.phoneId);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.put("/api/partners/:partnerId/phones/:phoneId/primary", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const success = await storage.setPartnerPhonePrimary(req.params.phoneId, req.params.partnerId);
+      if (!success) return res.sendStatus(404);
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
   // Contacts
   app.get("/api/contacts", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
