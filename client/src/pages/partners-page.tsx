@@ -31,6 +31,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RelationshipBadge } from "@/components/ui/relationship-badge";
 import { RelationshipPreviewProvider } from "@/components/ui/relationship-preview-context";
 import { useEntityRelationships } from "@/hooks/use-entity-relationships";
+import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 
 // Component to display Projects count for a partner
 function PartnerProjectsCount({ partnerId, currentOrganizationId }: { partnerId: string; currentOrganizationId: string | null }) {
@@ -178,6 +179,10 @@ export default function PartnersPage() {
     refetchOnMount: false, // Use cache if available
     refetchOnWindowFocus: false,
   });
+
+  // Dynamic field metadata for table configuration
+  const { data: fieldMetadata } = useEntityFieldMetadata("partners");
+  const availableColumns = fieldMetadata ? metadataToAvailableColumns(fieldMetadata) : [];
 
   const deleteMutation = useMutation({
     mutationFn: async (partnerId: string) => {
@@ -852,12 +857,12 @@ export default function PartnersPage() {
         isPending={bulkCopyMutation.isPending}
       />
 
-      {/* Table Configuration Dialog */}
+      {/* Table Configuration Dialog - Uses dynamic metadata from API */}
       <TableConfiguration
         isOpen={showConfigDialog}
         onOpenChange={setShowConfigDialog}
         tableId="partners"
-        availableColumns={[
+        availableColumns={availableColumns.length > 0 ? availableColumns : [
           { id: 'logoUrl', label: 'Logo' },
           { id: 'name', label: 'Nome' },
           { id: 'type', label: 'Tipo' },
