@@ -60,7 +60,8 @@ import {
   type ChatRoomEntity, type InsertChatRoomEntity,
   testExecutions, type TestExecution, type InsertTestExecution,
   partnerEmails, type PartnerEmail, type InsertPartnerEmail,
-  partnerPhones, type PartnerPhone, type InsertPartnerPhone
+  partnerPhones, type PartnerPhone, type InsertPartnerPhone,
+  entityFieldMetadata, type EntityFieldMetadata, type InsertEntityFieldMetadata
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull, inArray } from "drizzle-orm";
@@ -447,6 +448,11 @@ export interface IStorage {
   getEntityCustomValues(entityKey: string, recordId: string, organizationId: string): Promise<EntityCustomValue[]>;
   setEntityCustomValue(value: InsertEntityCustomValue): Promise<EntityCustomValue>;
   deleteEntityCustomValues(entityKey: string, recordId: string, organizationId: string): Promise<boolean>;
+
+  // Entity Field Metadata (Dynamic Table Configuration)
+  getEntityFieldMetadata(entity: string): Promise<EntityFieldMetadata[]>;
+  upsertEntityFieldMetadata(metadata: InsertEntityFieldMetadata): Promise<EntityFieldMetadata>;
+  deleteEntityFieldMetadata(entity: string, fieldKey: string): Promise<boolean>;
 
   // Chat System
   // Chat Rooms
@@ -4102,6 +4108,54 @@ export class DatabaseStorage implements IStorage {
       )
     );
 
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // ==================== ENTITY FIELD METADATA ====================
+
+  async getEntityFieldMetadata(entity: string): Promise<EntityFieldMetadata[]> {
+    return await db.query.entityFieldMetadata.findMany({
+      where: eq(entityFieldMetadata.entity, entity),
+      orderBy: asc(entityFieldMetadata.displayOrder),
+    });
+  }
+
+  async upsertEntityFieldMetadata(metadata: InsertEntityFieldMetadata): Promise<EntityFieldMetadata> {
+    const [result] = await db
+      .insert(entityFieldMetadata)
+      .values(metadata)
+      .onConflictDoUpdate({
+        target: [entityFieldMetadata.entity, entityFieldMetadata.fieldKey],
+        set: {
+          label: metadata.label,
+          fieldType: metadata.fieldType,
+          defaultVisible: metadata.defaultVisible,
+          sortable: metadata.sortable,
+          filterable: metadata.filterable,
+          searchable: metadata.searchable,
+          displayOrder: metadata.displayOrder,
+          width: metadata.width,
+          minWidth: metadata.minWidth,
+          relationEntity: metadata.relationEntity,
+          relationDisplayField: metadata.relationDisplayField,
+          selectOptions: metadata.selectOptions,
+          formatPattern: metadata.formatPattern,
+          description: metadata.description,
+          isSystemField: metadata.isSystemField,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  async deleteEntityFieldMetadata(entity: string, fieldKey: string): Promise<boolean> {
+    const result = await db.delete(entityFieldMetadata).where(
+      and(
+        eq(entityFieldMetadata.entity, entity),
+        eq(entityFieldMetadata.fieldKey, fieldKey)
+      )
+    );
     return result.rowCount ? result.rowCount > 0 : false;
   }
 

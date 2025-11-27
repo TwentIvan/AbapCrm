@@ -6923,6 +6923,75 @@ Format the response as professional documentation suitable for client delivery.`
     }
   });
 
+  // ========== Entity Field Metadata API (Dynamic Table Configuration) ==========
+
+  app.get("/api/metadata/:entity", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { entity } = req.params;
+      const metadata = await storage.getEntityFieldMetadata(entity);
+      res.json(metadata);
+    } catch (error) {
+      console.error("Error fetching entity field metadata:", error);
+      res.status(500).json({ error: "Failed to fetch entity field metadata" });
+    }
+  });
+
+  app.post("/api/metadata/:entity/seed", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { entity } = req.params;
+      const { fields } = req.body;
+      
+      if (!Array.isArray(fields)) {
+        return res.status(400).json({ error: "fields must be an array" });
+      }
+
+      const results = [];
+      for (const field of fields) {
+        const result = await storage.upsertEntityFieldMetadata({
+          entity,
+          ...field
+        });
+        results.push(result);
+      }
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Error seeding entity field metadata:", error);
+      res.status(500).json({ error: "Failed to seed entity field metadata" });
+    }
+  });
+
+  app.put("/api/metadata/:entity/:fieldKey", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { entity, fieldKey } = req.params;
+      const result = await storage.upsertEntityFieldMetadata({
+        entity,
+        fieldKey,
+        ...req.body
+      });
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating entity field metadata:", error);
+      res.status(500).json({ error: "Failed to update entity field metadata" });
+    }
+  });
+
+  app.delete("/api/metadata/:entity/:fieldKey", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { entity, fieldKey } = req.params;
+      const deleted = await storage.deleteEntityFieldMetadata(entity, fieldKey);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting entity field metadata:", error);
+      res.status(500).json({ error: "Failed to delete entity field metadata" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

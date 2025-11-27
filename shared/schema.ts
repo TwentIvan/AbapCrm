@@ -2736,3 +2736,6 @@ export const insertEntityFieldMetadataSchema = createInsertSchema(entityFieldMet
 export type EntityFieldMetadata = typeof entityFieldMetadata.$inferSelect;
 export type InsertEntityFieldMetadata = z.infer<typeof insertEntityFieldMetadataSchema>;
 
+// Relations for entityFieldMetadata (empty relations - standalone table)
+export const entityFieldMetadataRelations = relations(entityFieldMetadata, ({}) => ({}));
+
