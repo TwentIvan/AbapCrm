@@ -1033,6 +1033,22 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                               placeholder="https://www.example.com"
                               className="pl-9"
                               data-testid="input-partner-website"
+                              onBlur={(e) => {
+                                field.onBlur();
+                                // Auto-populate domain on first entry (only if domain is empty)
+                                const currentDomain = form.getValues('domain');
+                                if (!currentDomain && e.target.value) {
+                                  try {
+                                    const url = new URL(e.target.value);
+                                    const extractedDomain = url.hostname.replace('www.', '');
+                                    if (extractedDomain) {
+                                      form.setValue('domain', extractedDomain);
+                                    }
+                                  } catch {
+                                    // Invalid URL, skip domain extraction
+                                  }
+                                }
+                              }}
                             />
                           </div>
                           {field.value && (
