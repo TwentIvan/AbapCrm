@@ -32,7 +32,10 @@ export function useEntityFieldMetadata(entity: string) {
 }
 
 export function metadataToAvailableColumns(metadata: EntityFieldMetadata[]) {
-  return metadata.map(field => ({
+  // Sort by displayOrder to maintain consistent column ordering
+  const sortedMetadata = [...metadata].sort((a, b) => a.displayOrder - b.displayOrder);
+  
+  return sortedMetadata.map(field => ({
     id: field.fieldKey,
     label: field.label,
     defaultVisible: field.defaultVisible,
