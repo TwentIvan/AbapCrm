@@ -196,9 +196,20 @@ export function TableConfiguration({
     if (availableColumns.length === 0) return;
     
     const layout = userPreferences.getTableLayout(tableId);
-    const availableColumnIds = availableColumns.map(c => c.id).join(',');
     
     setColumns(prevColumns => {
+      // If previous columns are empty, do a full initialization from metadata
+      if (prevColumns.length === 0) {
+        return availableColumns.map(col => ({
+          id: col.id,
+          label: col.label,
+          visible: layout.columns?.[col.id]?.visible ?? true,
+          sortDirection: layout.sorting?.find(s => s.id === col.id)?.desc === false ? 'asc' : 
+                        layout.sorting?.find(s => s.id === col.id)?.desc === true ? 'desc' : null,
+          enableSubtotal: layout.aggregations?.subtotals?.groupBy?.includes(col.id) || false,
+        }));
+      }
+      
       const currentColumnIds = new Set(prevColumns.map(c => c.id));
       const newColumnIds = new Set(availableColumns.map(c => c.id));
       
@@ -307,8 +318,12 @@ export function TableConfiguration({
     };
 
     if (onSave) {
-      // Use new simplified onSave callback
-      onSave(updatedLayout);
+      // Use new simplified onSave callback - include layout name for creating new layouts
+      onSave({ ...updatedLayout, layoutName: layoutName.trim(), saveAsDefault });
+      // Reset form
+      setLayoutName('');
+      setSaveAsDefault(false);
+      setIsOpen(false);
     } else {
       // Fallback to old interface for compatibility
       const layoutId = onSaveLayout ? 

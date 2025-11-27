@@ -793,7 +793,11 @@ export default function ProjectsPage() {
         ]}
         editingLayout={editingLayout}
         onSave={(layoutData) => {
-          updateLayout(layoutData);
+          const { layoutName, saveAsDefault, ...config } = layoutData;
+          if (layoutName && layoutName !== 'Default' && layoutName !== 'default') {
+            saveLayoutAs(layoutName);
+          }
+          updateLayout(config);
           setShowConfigDialog(false);
         }}
         onCancel={() => setShowConfigDialog(false)}
