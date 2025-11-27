@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useOrganization } from "@/contexts/organization-context";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { insertPartnerSchema, Partner } from "@shared/schema";
+import { insertPartnerSchema, Partner, PartnerEmail, PartnerPhone } from "@shared/schema";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -21,7 +21,7 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import ImageContainer from "@/components/ui/image-container";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AddressSearch, AddressResult, SelectedAddress } from "@/components/ui/address-search";
-import { Loader2, Upload, MapPin, Building2, Globe, CreditCard, FileText, Camera, Search, Map, Link, CheckSquare } from "lucide-react";
+import { Loader2, Upload, MapPin, Building2, Globe, CreditCard, FileText, Camera, Search, Map, Link, CheckSquare, Plus, Trash2, Star, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UploadResult } from "@uppy/core";
 
@@ -131,6 +131,36 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
   const [isCreatingMultiple, setIsCreatingMultiple] = useState(false);
   const [isValidatingFiscalCode, setIsValidatingFiscalCode] = useState(false);
   const [isValidatingVatNumber, setIsValidatingVatNumber] = useState(false);
+
+  // Multiple emails and phones management
+  const [partnerEmails, setPartnerEmails] = useState<PartnerEmail[]>([]);
+  const [partnerPhones, setPartnerPhones] = useState<PartnerPhone[]>([]);
+  const [newEmailValue, setNewEmailValue] = useState("");
+  const [newEmailLabel, setNewEmailLabel] = useState("");
+  const [newPhoneValue, setNewPhoneValue] = useState("");
+  const [newPhoneLabel, setNewPhoneLabel] = useState("");
+
+  // Queries for partner emails and phones when editing
+  const { data: fetchedEmails } = useQuery<PartnerEmail[]>({
+    queryKey: ['/api/partners', existingPartner?.id, 'emails'],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!existingPartner?.id,
+  });
+
+  const { data: fetchedPhones } = useQuery<PartnerPhone[]>({
+    queryKey: ['/api/partners', existingPartner?.id, 'phones'],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!existingPartner?.id,
+  });
+
+  // Sync fetched emails and phones with local state
+  useEffect(() => {
+    if (fetchedEmails) setPartnerEmails(fetchedEmails);
+  }, [fetchedEmails]);
+
+  useEffect(() => {
+    if (fetchedPhones) setPartnerPhones(fetchedPhones);
+  }, [fetchedPhones]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(advancedPartnerSchema),
@@ -281,12 +311,144 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
   // Ref per mantenere l'ultimo valore di ricerca senza causare re-render
   const lastSearchValueRef = useRef<string>('');
 
-  // Apri dialog di ricerca
+  // Apri dialog di ricerca con pre-fill del nome esistente
   const openSearchDialog = () => {
+    const currentName = form.getValues('name');
     setShowSearchDialog(true);
-    setSearchQuery("");
+    setSearchQuery(currentName || "");
     setCompanySuggestions([]);
     setShowCompanySuggestions(false);
+  };
+
+  // Email management functions
+  const addEmail = async () => {
+    if (!newEmailValue) {
+      toast({ title: "Inserisci un indirizzo email", variant: "destructive" });
+      return;
+    }
+    if (!existingPartner?.id) {
+      // For new partners, add to local state (will be saved with partner)
+      const tempEmail: PartnerEmail = {
+        id: `temp-${Date.now()}`,
+        partnerId: '',
+        value: newEmailValue,
+        label: newEmailLabel || null,
+        isPrimary: partnerEmails.length === 0,
+        createdAt: new Date(),
+      };
+      setPartnerEmails([...partnerEmails, tempEmail]);
+      setNewEmailValue("");
+      setNewEmailLabel("");
+      return;
+    }
+    try {
+      await apiRequest("POST", `/api/partners/${existingPartner.id}/emails`, {
+        value: newEmailValue,
+        label: newEmailLabel || null,
+        isPrimary: partnerEmails.length === 0,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'emails'] });
+      setNewEmailValue("");
+      setNewEmailLabel("");
+      toast({ title: "Email aggiunta" });
+    } catch (error) {
+      toast({ title: "Errore nell'aggiungere l'email", variant: "destructive" });
+    }
+  };
+
+  const removeEmail = async (emailId: string) => {
+    if (emailId.startsWith('temp-')) {
+      setPartnerEmails(partnerEmails.filter(e => e.id !== emailId));
+      return;
+    }
+    if (!existingPartner?.id) return;
+    try {
+      await apiRequest("DELETE", `/api/partners/${existingPartner.id}/emails/${emailId}`);
+      queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'emails'] });
+      toast({ title: "Email rimossa" });
+    } catch (error) {
+      toast({ title: "Errore nella rimozione dell'email", variant: "destructive" });
+    }
+  };
+
+  const setPrimaryEmail = async (emailId: string) => {
+    if (emailId.startsWith('temp-')) {
+      setPartnerEmails(partnerEmails.map(e => ({ ...e, isPrimary: e.id === emailId })));
+      return;
+    }
+    if (!existingPartner?.id) return;
+    try {
+      await apiRequest("PUT", `/api/partners/${existingPartner.id}/emails/${emailId}/primary`);
+      queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'emails'] });
+      toast({ title: "Email principale impostata" });
+    } catch (error) {
+      toast({ title: "Errore nell'impostare l'email principale", variant: "destructive" });
+    }
+  };
+
+  // Phone management functions
+  const addPhone = async () => {
+    if (!newPhoneValue) {
+      toast({ title: "Inserisci un numero di telefono", variant: "destructive" });
+      return;
+    }
+    if (!existingPartner?.id) {
+      const tempPhone: PartnerPhone = {
+        id: `temp-${Date.now()}`,
+        partnerId: '',
+        value: newPhoneValue,
+        label: newPhoneLabel || null,
+        isPrimary: partnerPhones.length === 0,
+        createdAt: new Date(),
+      };
+      setPartnerPhones([...partnerPhones, tempPhone]);
+      setNewPhoneValue("");
+      setNewPhoneLabel("");
+      return;
+    }
+    try {
+      await apiRequest("POST", `/api/partners/${existingPartner.id}/phones`, {
+        value: newPhoneValue,
+        label: newPhoneLabel || null,
+        isPrimary: partnerPhones.length === 0,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'phones'] });
+      setNewPhoneValue("");
+      setNewPhoneLabel("");
+      toast({ title: "Telefono aggiunto" });
+    } catch (error) {
+      toast({ title: "Errore nell'aggiungere il telefono", variant: "destructive" });
+    }
+  };
+
+  const removePhone = async (phoneId: string) => {
+    if (phoneId.startsWith('temp-')) {
+      setPartnerPhones(partnerPhones.filter(p => p.id !== phoneId));
+      return;
+    }
+    if (!existingPartner?.id) return;
+    try {
+      await apiRequest("DELETE", `/api/partners/${existingPartner.id}/phones/${phoneId}`);
+      queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'phones'] });
+      toast({ title: "Telefono rimosso" });
+    } catch (error) {
+      toast({ title: "Errore nella rimozione del telefono", variant: "destructive" });
+    }
+  };
+
+  const setPrimaryPhone = async (phoneId: string) => {
+    if (phoneId.startsWith('temp-')) {
+      setPartnerPhones(partnerPhones.map(p => ({ ...p, isPrimary: p.id === phoneId })));
+      return;
+    }
+    if (!existingPartner?.id) return;
+    try {
+      await apiRequest("PUT", `/api/partners/${existingPartner.id}/phones/${phoneId}/primary`);
+      queryClient.invalidateQueries({ queryKey: ['/api/partners', existingPartner.id, 'phones'] });
+      toast({ title: "Telefono principale impostato" });
+    } catch (error) {
+      toast({ title: "Errore nell'impostare il telefono principale", variant: "destructive" });
+    }
   };
 
   // Company search dal dialog
@@ -799,29 +961,6 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tipologia</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-partner-type">
-                            <SelectValue placeholder="Seleziona tipologia" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="client">Cliente</SelectItem>
-                          <SelectItem value="vendor">Fornitore</SelectItem>
-                          <SelectItem value="consultant">Consulente</SelectItem>
-                          <SelectItem value="other">Altro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
               {/* Logo field - prominently placed */}
@@ -854,66 +993,37 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                 </div>
               </div>
 
+              {/* Website and Domain fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="email"
+                  name="website"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>Sito Web</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field}
-                          value={field.value || ""} 
-                          type="email" 
-                          placeholder="mario@example.com"
-                          data-testid="input-partner-email"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefono</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field}
-                          value={field.value || ""} 
-                          placeholder="+39 333 123 4567"
-                          data-testid="input-partner-phone"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="company"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Azienda</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input 
-                            {...field}
-                            value={field.value || ""}
-                            placeholder="Nome commerciale dell'azienda"
-                            onChange={(e) => {
-                              field.onChange(e);
-                            }}
-                            autoComplete="off"
-                            data-testid="input-partner-company"
-                          />
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              {...field}
+                              value={field.value || ""}
+                              placeholder="https://www.example.com"
+                              className="pl-9"
+                              data-testid="input-partner-website"
+                            />
+                          </div>
+                          {field.value && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => window.open(field.value!, '_blank')}
+                              title="Apri sito web"
+                            >
+                              <Link className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -921,25 +1031,224 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                   )}
                 />
 
+                {/* Domain field - auto-calculated from website */}
+                <FormItem>
+                  <FormLabel>Dominio</FormLabel>
+                  <FormControl>
+                    <Input 
+                      value={(() => {
+                        const website = form.watch('website');
+                        if (!website) return '';
+                        try {
+                          const url = new URL(website);
+                          return url.hostname.replace('www.', '');
+                        } catch {
+                          return '';
+                        }
+                      })()}
+                      placeholder="esempio.com"
+                      readOnly
+                      className="bg-muted"
+                      data-testid="input-partner-domain"
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground mt-1">Calcolato automaticamente dal sito web</p>
+                </FormItem>
+              </div>
+
+              {/* Multiple emails section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <label className="text-sm font-medium">Email</label>
+                  {partnerEmails.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">{partnerEmails.length}</Badge>
+                  )}
+                </div>
+                
+                {/* Existing emails list */}
+                {partnerEmails.length > 0 && (
+                  <div className="space-y-2">
+                    {partnerEmails.map((email) => (
+                      <div key={email.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg" data-testid={`email-item-${email.id}`}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium truncate">{email.value}</span>
+                            {email.isPrimary && (
+                              <Badge variant="default" className="text-xs bg-yellow-500">Principale</Badge>
+                            )}
+                          </div>
+                          {email.label && <span className="text-xs text-muted-foreground">{email.label}</span>}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {!email.isPrimary && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => setPrimaryEmail(email.id)}
+                              title="Imposta come principale"
+                              data-testid={`btn-primary-email-${email.id}`}
+                            >
+                              <Star className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive"
+                            onClick={() => removeEmail(email.id)}
+                            title="Rimuovi email"
+                            data-testid={`btn-remove-email-${email.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Add new email */}
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="email"
+                    value={newEmailValue}
+                    onChange={(e) => setNewEmailValue(e.target.value)}
+                    placeholder="Aggiungi email..."
+                    className="flex-1"
+                    data-testid="input-new-email"
+                  />
+                  <Input
+                    value={newEmailLabel}
+                    onChange={(e) => setNewEmailLabel(e.target.value)}
+                    placeholder="Etichetta"
+                    className="w-24"
+                    data-testid="input-new-email-label"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={addEmail}
+                    data-testid="btn-add-email"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Multiple phones section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <label className="text-sm font-medium">Telefoni</label>
+                  {partnerPhones.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">{partnerPhones.length}</Badge>
+                  )}
+                </div>
+                
+                {/* Existing phones list */}
+                {partnerPhones.length > 0 && (
+                  <div className="space-y-2">
+                    {partnerPhones.map((phone) => (
+                      <div key={phone.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg" data-testid={`phone-item-${phone.id}`}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium truncate">{phone.value}</span>
+                            {phone.isPrimary && (
+                              <Badge variant="default" className="text-xs bg-yellow-500">Principale</Badge>
+                            )}
+                          </div>
+                          {phone.label && <span className="text-xs text-muted-foreground">{phone.label}</span>}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {!phone.isPrimary && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => setPrimaryPhone(phone.id)}
+                              title="Imposta come principale"
+                              data-testid={`btn-primary-phone-${phone.id}`}
+                            >
+                              <Star className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive"
+                            onClick={() => removePhone(phone.id)}
+                            title="Rimuovi telefono"
+                            data-testid={`btn-remove-phone-${phone.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Add new phone */}
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newPhoneValue}
+                    onChange={(e) => setNewPhoneValue(e.target.value)}
+                    placeholder="Aggiungi telefono..."
+                    className="flex-1"
+                    data-testid="input-new-phone"
+                  />
+                  <Input
+                    value={newPhoneLabel}
+                    onChange={(e) => setNewPhoneLabel(e.target.value)}
+                    placeholder="Etichetta"
+                    className="w-24"
+                    data-testid="input-new-phone-label"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={addPhone}
+                    data-testid="btn-add-phone"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Legacy email/phone fields (hidden, for form compatibility) */}
+              <div className="hidden">
                 <FormField
                   control={form.control}
-                  name="position"
+                  name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Ruolo / Posizione</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field}
-                          value={field.value || ""} 
-                          placeholder="CTO, Project Manager..."
-                          data-testid="input-partner-position"
-                        />
+                        <Input {...field} value={field.value || ""} />
                       </FormControl>
-                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
               </div>
+
             </CardContent>
           </Card>
 
@@ -1233,69 +1542,6 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                             <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin" />
                           )}
                         </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Logo and Website Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Logo e Sito Web
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Logo Aziendale</label>
-                  <div className="flex items-center gap-4">
-                    {logoPreview && (
-                      <ImageContainer
-                        src={logoPreview}
-                        alt="Logo preview"
-                        fallbackType="logo"
-                        size="lg"
-                        data-testid="img-logo-preview"
-                      />
-                    )}
-                    <div className="flex-1">
-                      <ObjectUploader
-                        maxNumberOfFiles={1}
-                        maxFileSize={5242880} // 5MB
-                        onGetUploadParameters={handleGetLogoUploadParameters}
-                        onComplete={handleLogoUploadComplete}
-                        buttonClassName="w-full"
-                      >
-                        <Camera className="mr-2 h-4 w-4" />
-                        {logoPreview ? 'Cambia Logo' : 'Carica Logo'}
-                      </ObjectUploader>
-                    </div>
-                  </div>
-                  {(form.getValues('logoUrl') || logoPreview) && (
-                    <p className="text-xs text-gray-500">
-                      Logo: {form.getValues('logoUrl')?.split('/').pop() || 'Logo caricato'}
-                    </p>
-                  )}
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="website"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Sito Web</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder="https://www.example.com"
-                          data-testid="input-partner-website"
-                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
