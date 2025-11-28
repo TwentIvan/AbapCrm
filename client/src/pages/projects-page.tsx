@@ -223,7 +223,12 @@ export default function ProjectsPage() {
       });
     },
     onError: async (error: any, projectId: string) => {
+      console.log('Delete error:', error);
+      console.log('Error status:', error?.status);
+      console.log('Error message:', error?.message);
+      console.log('ProjectId:', projectId);
       const isConflict = error?.status === 409 || error?.message?.includes('409') || error?.message?.includes('needsCascade');
+      console.log('Is conflict:', isConflict);
       if (isConflict) {
         setShowDeleteDialog(false);
         try {
