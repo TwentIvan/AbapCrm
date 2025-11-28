@@ -28,7 +28,7 @@ import {
   projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users,
-  customEntities, customFields, sapTransportRequests
+  customEntities, customFields, sapTransportRequests, timeEntries
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -944,6 +944,10 @@ export function registerRoutes(app: Express): Server {
       const projectId = req.params.id;
       
       const relatedTasks = await db.select({ id: tasks.id, name: tasks.title }).from(tasks).where(eq(tasks.projectId, projectId)).limit(10);
+      const taskIds = relatedTasks.map(t => t.id);
+      const relatedTimeEntries = taskIds.length > 0 
+        ? await db.select({ id: timeEntries.id }).from(timeEntries).where(inArray(timeEntries.taskId, taskIds)).limit(10)
+        : [];
       const relatedMilestones = await db.select({ id: projectMilestones.id, name: projectMilestones.name }).from(projectMilestones).where(eq(projectMilestones.projectId, projectId)).limit(10);
       const relatedEvents = await db.select({ id: calendarEvents.id, name: calendarEvents.title }).from(calendarEvents).where(eq(calendarEvents.projectId, projectId)).limit(10);
       const relatedComments = await db.select({ id: comments.id }).from(comments).where(eq(comments.projectId, projectId)).limit(10);
@@ -951,6 +955,7 @@ export function registerRoutes(app: Express): Server {
       
       res.json({
         tasks: { count: relatedTasks.length, items: relatedTasks },
+        timeEntries: { count: relatedTimeEntries.length, items: relatedTimeEntries },
         milestones: { count: relatedMilestones.length, items: relatedMilestones },
         events: { count: relatedEvents.length, items: relatedEvents },
         comments: { count: relatedComments.length, items: relatedComments },
@@ -968,11 +973,24 @@ export function registerRoutes(app: Express): Server {
       const projectId = req.params.id;
       const organizationId = getOrganizationId(req);
       
+      // Get task IDs first (needed for time_entries deletion)
+      const projectTasks = await db.select({ id: tasks.id }).from(tasks).where(eq(tasks.projectId, projectId));
+      const taskIds = projectTasks.map(t => t.id);
+      
       // Delete related data in correct order (respecting foreign keys)
+      // 1. Delete time entries (references tasks)
+      if (taskIds.length > 0) {
+        await db.delete(timeEntries).where(inArray(timeEntries.taskId, taskIds));
+      }
+      // 2. Delete comments (references project)
       await db.delete(comments).where(eq(comments.projectId, projectId));
+      // 3. Delete SAP transport requests (references project)
       await db.delete(sapTransportRequests).where(eq(sapTransportRequests.projectId, projectId));
+      // 4. Delete calendar events (references project)
       await db.delete(calendarEvents).where(eq(calendarEvents.projectId, projectId));
+      // 5. Delete tasks (references project)
       await db.delete(tasks).where(eq(tasks.projectId, projectId));
+      // 6. Delete project milestones (references project)
       await db.delete(projectMilestones).where(eq(projectMilestones.projectId, projectId));
       
       // Finally delete the project
