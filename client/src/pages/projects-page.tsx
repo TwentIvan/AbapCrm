@@ -223,7 +223,8 @@ export default function ProjectsPage() {
       });
     },
     onError: async (error: any, projectId: string) => {
-      if (error?.message?.includes('409') || error?.message?.includes('needsCascade')) {
+      const isConflict = error?.status === 409 || error?.message?.includes('409') || error?.message?.includes('needsCascade');
+      if (isConflict) {
         setShowDeleteDialog(false);
         try {
           const response = await apiRequest("GET", `/api/projects/${projectId}/related-data`);
