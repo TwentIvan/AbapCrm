@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { LayoutManager } from "@/components/ui/layout-manager";
@@ -26,6 +25,8 @@ import { RelationshipPreviewProvider } from "@/components/ui/relationship-previe
 import { SapPasteJsonDialog } from "@/components/dialogs/sap-paste-json-dialog";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
+import { CascadeDeleteDialog, SimpleDeleteDialog } from "@/components/dialogs/cascade-delete-dialog";
+import { useCascadeDelete } from "@/hooks/use-cascade-delete";
 import { downloadZTHUDocumentationShortcut } from "@/lib/sap-shortcut";
 import ProjectForm from "@/components/forms/project-form";
 import ProjectFormContainer from "@/components/forms/project-form-container";
@@ -137,8 +138,6 @@ export default function ProjectsPage() {
   const isFullPageMode = location.startsWith("/projects/");
   const isCreateMode = location === "/projects/new";
   const isEditMode = location.includes("/edit");
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
   const [showBulkCopyDialog, setShowBulkCopyDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
@@ -147,15 +146,6 @@ export default function ProjectsPage() {
   const [selectedProjectForPlanner, setSelectedProjectForPlanner] = useState<Project | null>(null);
   const [showSapPasteDialog, setShowSapPasteDialog] = useState(false);
   const [selectedProjectForSap, setSelectedProjectForSap] = useState<Project | null>(null);
-  const [showCascadeDialog, setShowCascadeDialog] = useState(false);
-  const [cascadeRelatedData, setCascadeRelatedData] = useState<{
-    tasks: { count: number; items: Array<{id: string; name: string}> };
-    timeEntries: { count: number; items: Array<{id: string}> };
-    milestones: { count: number; items: Array<{id: string; name: string}> };
-    events: { count: number; items: Array<{id: string; name: string}> };
-    comments: { count: number; items: Array<{id: string}> };
-    transports: { count: number; items: Array<{id: string; name: string}> };
-  } | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -210,85 +200,20 @@ export default function ProjectsPage() {
     ? projects.filter(p => p.clientId === clientIdFilter)
     : projects;
 
-  const deleteMutation = useMutation({
-    mutationFn: async (projectId: string) => {
-      await apiRequest("DELETE", `/api/projects/${projectId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      setShowDeleteDialog(false);
-      setEditingProject(null);
-      toast({
-        title: "Progetto eliminato",
-        description: "Il progetto è stato eliminato con successo.",
-      });
-    },
-    onError: async (error: any, projectId: string) => {
-      const isConflict = error?.status === 409 || error?.message?.includes('409') || error?.message?.includes('needsCascade');
-      if (isConflict) {
-        setShowDeleteDialog(false);
-        try {
-          const response = await apiRequest("GET", `/api/projects/${projectId}/related-data`);
-          const relatedData = await response.json();
-          setCascadeRelatedData(relatedData);
-          setShowCascadeDialog(true);
-        } catch {
-          toast({
-            title: "Errore",
-            description: "Non è stato possibile recuperare i dati collegati.",
-            variant: "destructive",
-          });
-        }
-      } else {
-        toast({
-          title: "Errore",
-          description: "Non è stato possibile eliminare il progetto.",
-          variant: "destructive",
-        });
-      }
-    },
-  });
-
-  const cascadeDeleteMutation = useMutation({
-    mutationFn: async (projectId: string) => {
-      await apiRequest("DELETE", `/api/projects/${projectId}/cascade`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/project-milestones"] });
-      setShowCascadeDialog(false);
-      setEditingProject(null);
-      setCascadeRelatedData(null);
-      toast({
-        title: "Progetto eliminato",
-        description: "Il progetto e tutti i dati collegati sono stati eliminati.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Errore",
-        description: "Non è stato possibile eliminare il progetto.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const bulkDeleteMutation = useMutation({
-    mutationFn: async (projects: Project[]) => {
-      for (const project of projects) {
-        await apiRequest("DELETE", `/api/projects/${project.id}/cascade`);
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      setSelectedProjects([]);
-      setShowBulkDeleteDialog(false);
-      toast({
-        title: "Progetti eliminati",
-        description: "I progetti selezionati sono stati eliminati con successo.",
-      });
-    },
+  const cascadeDelete = useCascadeDelete<Project>({
+    entityName: "Progetto",
+    entityNamePlural: "Progetti",
+    apiBasePath: "/api/projects",
+    queryKey: "/api/projects",
+    relationConfigs: [
+      { key: "tasks", label: "task" },
+      { key: "timeEntries", label: "registrazioni tempo" },
+      { key: "milestones", label: "milestone" },
+      { key: "events", label: "eventi calendario" },
+      { key: "comments", label: "commenti" },
+      { key: "transports", label: "transport request SAP" },
+    ],
+    getEntityName: (project: Project) => project.name,
   });
 
   const bulkEditMutation = useMutation({
@@ -398,33 +323,8 @@ export default function ProjectsPage() {
     );
   }
 
-  const handleDelete = async (projects: Project[]) => {
-    if (projects.length === 0) return;
-    setSelectedProjects(projects);
-    
-    // Se è un singolo progetto, verifica prima i dati correlati
-    if (projects.length === 1) {
-      try {
-        const response = await apiRequest("GET", `/api/projects/${projects[0].id}/related-data`);
-        const relatedData = await response.json();
-        const hasRelations = Object.values(relatedData).some((item: any) => item?.count > 0);
-        
-        if (hasRelations) {
-          setEditingProject(projects[0]);
-          setCascadeRelatedData(relatedData);
-          setShowCascadeDialog(true);
-        } else {
-          setEditingProject(projects[0]);
-          setShowDeleteDialog(true);
-        }
-      } catch {
-        setEditingProject(projects[0]);
-        setShowDeleteDialog(true);
-      }
-    } else {
-      // Per eliminazione multipla, mostra direttamente il dialogo
-      setShowBulkDeleteDialog(true);
-    }
+  const handleDelete = (projects: Project[]) => {
+    cascadeDelete.handleDelete(projects);
   };
 
   const handleOpenPlanner = (project: Project) => {
@@ -507,16 +407,6 @@ export default function ProjectsPage() {
         variant: "destructive",
       });
     }
-  };
-
-  const confirmDelete = () => {
-    if (editingProject) {
-      deleteMutation.mutate(editingProject.id);
-    }
-  };
-
-  const confirmBulkDelete = () => {
-    bulkDeleteMutation.mutate(selectedProjects);
   };
 
   const handleBulkEditSave = (updates: Record<string, any>) => {
@@ -708,103 +598,33 @@ export default function ProjectsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Single Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Elimina Progetto</AlertDialogTitle>
-            <AlertDialogDescription>
-              Sei sicuro di voler eliminare il progetto "{editingProject?.name}"? 
-              Questa azione non può essere annullata.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete">
-              Annulla
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteMutation.isPending}
-              data-testid="button-confirm-delete"
-            >
-              {deleteMutation.isPending ? "Eliminando..." : "Elimina"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Simple Delete Dialog (no related data) */}
+      <SimpleDeleteDialog
+        open={cascadeDelete.showDeleteDialog}
+        onOpenChange={cascadeDelete.setShowDeleteDialog}
+        itemCount={cascadeDelete.selectedItems.length}
+        itemNames={cascadeDelete.selectedItems.map(p => cascadeDelete.getEntityName(p))}
+        onConfirm={cascadeDelete.confirmDelete}
+        onCancel={cascadeDelete.cancelDelete}
+        isDeleting={cascadeDelete.isDeleting}
+        entityName={cascadeDelete.entityName}
+        entityNamePlural={cascadeDelete.entityNamePlural}
+      />
 
-      {/* Bulk Delete Confirmation Dialog */}
-      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Conferma Eliminazione Multipla</AlertDialogTitle>
-            <AlertDialogDescription>
-              Sei sicuro di voler eliminare {selectedProjects.length} progetti selezionati? 
-              Questa azione non può essere annullata.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-bulk-delete">
-              Annulla
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmBulkDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={bulkDeleteMutation.isPending}
-              data-testid="button-confirm-bulk-delete"
-            >
-              {bulkDeleteMutation.isPending ? "Eliminando..." : `Elimina ${selectedProjects.length} Progetti`}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Cascade Delete Confirmation Dialog */}
-      <AlertDialog open={showCascadeDialog} onOpenChange={setShowCascadeDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">Attenzione: Dati Collegati</AlertDialogTitle>
-            <AlertDialogDescription>
-              Il progetto "{editingProject?.name}" ha i seguenti dati collegati che verranno eliminati:
-              <div className="list-disc list-inside mt-2 space-y-1">
-                {cascadeRelatedData?.tasks?.count ? (
-                  <div>- {cascadeRelatedData.tasks.count} task</div>
-                ) : null}
-                {cascadeRelatedData?.timeEntries?.count ? (
-                  <div>- {cascadeRelatedData.timeEntries.count} registrazioni tempo</div>
-                ) : null}
-                {cascadeRelatedData?.milestones?.count ? (
-                  <div>- {cascadeRelatedData.milestones.count} milestone</div>
-                ) : null}
-                {cascadeRelatedData?.events?.count ? (
-                  <div>- {cascadeRelatedData.events.count} eventi calendario</div>
-                ) : null}
-                {cascadeRelatedData?.comments?.count ? (
-                  <div>- {cascadeRelatedData.comments.count} commenti</div>
-                ) : null}
-                {cascadeRelatedData?.transports?.count ? (
-                  <div>- {cascadeRelatedData.transports.count} transport request SAP</div>
-                ) : null}
-              </div>
-              <p className="mt-2 font-medium">Vuoi eliminare tutto?</p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setShowCascadeDialog(false); setCascadeRelatedData(null); }} data-testid="button-cancel-cascade">
-              Annulla
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => editingProject && cascadeDeleteMutation.mutate(editingProject.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={cascadeDeleteMutation.isPending}
-              data-testid="button-confirm-cascade"
-            >
-              {cascadeDeleteMutation.isPending ? "Eliminando..." : "Elimina Tutto"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Cascade Delete Dialog (with related data) */}
+      <CascadeDeleteDialog
+        open={cascadeDelete.showCascadeDialog}
+        onOpenChange={cascadeDelete.setShowCascadeDialog}
+        title="Attenzione: Dati Collegati"
+        itemCount={cascadeDelete.selectedItems.length}
+        itemNames={cascadeDelete.selectedItems.map(p => cascadeDelete.getEntityName(p))}
+        relationLabels={cascadeDelete.getRelationLabels()}
+        onConfirm={cascadeDelete.confirmDelete}
+        onCancel={cascadeDelete.cancelDelete}
+        isDeleting={cascadeDelete.isDeleting}
+        entityName={cascadeDelete.entityName}
+        entityNamePlural={cascadeDelete.entityNamePlural}
+      />
 
       {/* Bulk Edit Dialog */}
       <BulkEditDialog
