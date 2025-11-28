@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { Users, DollarSign, Calendar, User as UserIcon, MoreHorizontal, Edit, Trash2, Grid3X3, List } from "lucide-react";
+import { Users, DollarSign, Calendar, User as UserIcon } from "lucide-react";
 import { HumanResource } from "@shared/schema";
 import { HumanResourceForm } from "@/components/forms/human-resource-form";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
@@ -219,47 +219,11 @@ export default function HumanResourcesPage() {
       searchable: false,
       render: (resource: HumanResource) => resource.baseHourlyRate ? `€${resource.baseHourlyRate}/h` : "N/A"
     },
-    {
-      key: "actions",
-      label: "Azioni", 
-      sortable: false,
-      searchable: false,
-      render: (resource: HumanResource) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" data-testid={`button-resource-menu-${resource.id}`}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={() => handleEdit(resource)}
-              data-testid={`menu-edit-resource-${resource.id}`}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Modifica
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => handleSingleDelete(resource)}
-              className="text-destructive"
-              data-testid={`menu-delete-resource-${resource.id}`}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Elimina
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    },
   ];
 
   // Apply layout configuration: filter visible columns and sort by position
   const visibleColumns = useMemo(() => {
-    // Get column key - DataTable uses accessorKey or id, UniversalTable uses key
     const getColumnKey = (col: any) => col.accessorKey || col.id || col.key;
-    
-    // Always show actions column
-    const actionsColumn = columns.find(c => getColumnKey(c) === 'actions');
     
     // If no layout configuration or empty columns config, show all columns
     if (!layout.columns || Object.keys(layout.columns).length === 0) {
@@ -267,12 +231,10 @@ export default function HumanResourcesPage() {
     }
     
     // Filter and sort columns based on layout
-    const configuredColumns = columns
+    return columns
       .filter(col => {
         const key = getColumnKey(col);
-        if (key === 'actions') return false; // Handle separately
         const config = layout.columns[key];
-        // If no config for this column, show it by default
         return config?.visible !== false;
       })
       .sort((a, b) => {
@@ -280,13 +242,6 @@ export default function HumanResourcesPage() {
         const posB = layout.columns[getColumnKey(b)]?.position ?? 999;
         return posA - posB;
       });
-    
-    // Add actions column at the end
-    if (actionsColumn) {
-      configuredColumns.push(actionsColumn);
-    }
-    
-    return configuredColumns;
   }, [columns, layout.columns]);
 
   return (

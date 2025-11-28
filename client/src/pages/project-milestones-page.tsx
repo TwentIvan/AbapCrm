@@ -11,10 +11,9 @@ import { UniversalTable, createStandardColumns } from "@/components/ui/universal
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { Target, MoreHorizontal, Edit, Trash2, Table as TableIcon, Calendar, Plus } from "lucide-react";
+import { Target, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { ProjectMilestone, Project, Task } from "@shared/schema";
@@ -243,44 +242,11 @@ export default function ProjectMilestonesPage() {
         </Badge>
       )
     },
-    {
-      key: "actions",
-      label: "Azioni",
-      sortable: false,
-      searchable: false,
-      render: (milestone: ProjectMilestone) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" data-testid={`button-actions-${milestone.id}`}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleEdit(milestone)} data-testid={`action-edit-${milestone.id}`}>
-              <Edit className="mr-2 h-4 w-4" />
-              Modifica
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => handleSingleDelete(milestone)} 
-              className="text-red-600"
-              data-testid={`action-delete-${milestone.id}`}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Elimina
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-    },
   ];
 
   // Apply layout configuration: filter visible columns and sort by position
   const visibleColumns = useMemo(() => {
-    // Get column key - DataTable uses accessorKey or id, UniversalTable uses key
     const getColumnKey = (col: any) => col.accessorKey || col.id || col.key;
-    
-    // Always show actions column
-    const actionsColumn = columns.find(c => getColumnKey(c) === 'actions');
     
     // If no layout configuration or empty columns config, show all columns
     if (!layout.columns || Object.keys(layout.columns).length === 0) {
@@ -288,12 +254,10 @@ export default function ProjectMilestonesPage() {
     }
     
     // Filter and sort columns based on layout
-    const configuredColumns = columns
+    return columns
       .filter(col => {
         const key = getColumnKey(col);
-        if (key === 'actions') return false; // Handle separately
         const config = layout.columns[key];
-        // If no config for this column, show it by default
         return config?.visible !== false;
       })
       .sort((a, b) => {
@@ -301,13 +265,6 @@ export default function ProjectMilestonesPage() {
         const posB = layout.columns[getColumnKey(b)]?.position ?? 999;
         return posA - posB;
       });
-    
-    // Add actions column at the end
-    if (actionsColumn) {
-      configuredColumns.push(actionsColumn);
-    }
-    
-    return configuredColumns;
   }, [columns, layout.columns]);
 
   return (

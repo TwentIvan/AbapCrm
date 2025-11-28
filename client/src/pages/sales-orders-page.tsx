@@ -10,10 +10,9 @@ import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { FileText, Euro, Calendar, Building, MoreHorizontal, Edit, Trash2, Grid3X3, List } from "lucide-react";
+import { FileText, Grid3X3, List } from "lucide-react";
 import { SalesOrder, Partner } from "@shared/schema";
 import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 // import SalesOrderForm from "@/components/forms/sales-order-form";
@@ -161,38 +160,6 @@ export default function SalesOrdersPage() {
       sortable: true,
       searchable: false,
       render: (order: SalesOrder) => formatDate(order.dueDate)
-    },
-    {
-      key: "actions",
-      label: "Azioni", 
-      sortable: false,
-      searchable: false,
-      render: (order: SalesOrder) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" data-testid={`button-order-menu-${order.id}`}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={() => handleEdit(order)}
-              data-testid={`menu-edit-order-${order.id}`}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Modifica
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => handleSingleDelete(order)}
-              className="text-destructive"
-              data-testid={`menu-delete-order-${order.id}`}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Elimina
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
     },
   ];
 

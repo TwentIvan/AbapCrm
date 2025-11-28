@@ -282,47 +282,11 @@ export default function DealsPage() {
       searchable: false,
       render: (deal: Deal) => formatDate(deal.actualCloseDate)
     },
-    {
-      key: "actions",
-      label: "Azioni", 
-      sortable: false,
-      searchable: false,
-      render: (deal: Deal) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" data-testid={`button-deal-menu-${deal.id}`}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={() => handleEdit(deal)}
-              data-testid={`menu-edit-deal-${deal.id}`}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Modifica
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => handleSingleDelete(deal)}
-              className="text-destructive"
-              data-testid={`menu-delete-deal-${deal.id}`}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Elimina
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    },
   ];
 
   // Apply layout configuration: filter visible columns and sort by position
   const visibleColumns = useMemo(() => {
-    // Get column key - DataTable uses accessorKey or id, UniversalTable uses key
     const getColumnKey = (col: any) => col.accessorKey || col.id || col.key;
-    
-    // Always show actions column
-    const actionsColumn = columns.find(c => getColumnKey(c) === 'actions');
     
     // If no layout configuration or empty columns config, show all columns
     if (!layout.columns || Object.keys(layout.columns).length === 0) {
@@ -330,12 +294,10 @@ export default function DealsPage() {
     }
     
     // Filter and sort columns based on layout
-    const configuredColumns = columns
+    return columns
       .filter(col => {
         const key = getColumnKey(col);
-        if (key === 'actions') return false; // Handle separately
         const config = layout.columns[key];
-        // If no config for this column, show it by default
         return config?.visible !== false;
       })
       .sort((a, b) => {
@@ -343,13 +305,6 @@ export default function DealsPage() {
         const posB = layout.columns[getColumnKey(b)]?.position ?? 999;
         return posA - posB;
       });
-    
-    // Add actions column at the end
-    if (actionsColumn) {
-      configuredColumns.push(actionsColumn);
-    }
-    
-    return configuredColumns;
   }, [columns, layout.columns]);
 
   return (

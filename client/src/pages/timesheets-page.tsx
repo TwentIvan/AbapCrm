@@ -11,9 +11,8 @@ import { TableConfiguration } from "@/components/ui/table-configuration";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Clock, Calendar, Eye, MoreHorizontal, Grid3X3, List, Edit } from "lucide-react";
+import { Trash2, Clock, Calendar, Eye } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import type { Timesheet, Project, Deal, Partner } from "@shared/schema";
@@ -385,51 +384,6 @@ export default function TimesheetsPage() {
         );
       },
     },
-    {
-      id: "actions",
-      header: "Azioni",
-      cell: ({ row }: { row: any }) => {
-        const timesheet = row.original;
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" data-testid={`button-timesheet-menu-${timesheet.id}`}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem 
-                onClick={() => handleView(timesheet)}
-                data-testid={`menu-view-timesheet-${timesheet.id}`}
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                Visualizza
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={async () => {
-                  await handleConvertToSalesOrder(timesheet);
-                }}
-                disabled={convertingToSalesOrder === timesheet.id || timesheet.status !== "to_send"}
-                data-testid={`menu-convert-timesheet-${timesheet.id}`}
-              >
-                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Crea Ordine Vendita
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => handleDelete(timesheet)}
-                className="text-destructive"
-                data-testid={`menu-delete-timesheet-${timesheet.id}`}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Elimina
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
-    },
   ];
 
   const filterColumns = [
@@ -457,11 +411,7 @@ export default function TimesheetsPage() {
 
   // Apply layout configuration: filter visible columns and sort by position
   const visibleColumns = useMemo(() => {
-    // Get column key - DataTable uses accessorKey or id, UniversalTable uses key
     const getColumnKey = (col: any) => col.accessorKey || col.id || col.key;
-    
-    // Always show actions column
-    const actionsColumn = tableColumns.find(c => getColumnKey(c) === 'actions');
     
     // If no layout configuration or empty columns config, show all columns
     if (!layout.columns || Object.keys(layout.columns).length === 0) {
@@ -469,12 +419,10 @@ export default function TimesheetsPage() {
     }
     
     // Filter and sort columns based on layout
-    const configuredColumns = tableColumns
+    return tableColumns
       .filter(col => {
         const key = getColumnKey(col);
-        if (key === 'actions') return false; // Handle separately
         const config = layout.columns[key];
-        // If no config for this column, show it by default
         return config?.visible !== false;
       })
       .sort((a, b) => {
@@ -482,13 +430,6 @@ export default function TimesheetsPage() {
         const posB = layout.columns[getColumnKey(b)]?.position ?? 999;
         return posA - posB;
       });
-    
-    // Add actions column at the end
-    if (actionsColumn) {
-      configuredColumns.push(actionsColumn);
-    }
-    
-    return configuredColumns;
   }, [tableColumns, layout.columns]);
 
   if (isLoading) {
@@ -571,6 +512,7 @@ export default function TimesheetsPage() {
               searchPlaceholder="Cerca timesheets..."
               enableSelection={true}
               onSelectionChange={setSelectedTimesheets}
+              onRowClick={handleView}
               tableId="timesheets"
               configurableColumns={false}
               enableAdvancedFilters={false}

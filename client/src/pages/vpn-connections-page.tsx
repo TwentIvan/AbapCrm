@@ -16,7 +16,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { VpnConnection, Partner } from "@shared/schema";
 import SimpleVPNForm from "@/components/forms/simple-vpn-form";
 import VpnConnectionFormContainer from "@/components/forms/vpn-connection-form-container";
-import { Trash2, Settings, CheckCircle, XCircle, Play, Loader2 } from "lucide-react";
+import { Trash2, CheckCircle, XCircle, Play, Loader2 } from "lucide-react";
 
 export default function VPNConnectionsPage() {
   const [location] = useLocation();
@@ -238,43 +238,6 @@ export default function VPNConnectionsPage() {
         );
       },
     },
-    {
-      key: "actions",
-      label: "Azioni", 
-      sortable: false,
-      searchable: false,
-      render: (connection: VpnConnection) => {
-        const isTestingThis = testingConnection === connection.id;
-        
-        return (
-          <div className="flex items-center gap-2">
-            <Button
-              data-testid={`button-test-${connection.id}`}
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                console.log("🧪 Test button clicked for connection:", connection.name, connection.id);
-                testConnectionMutation.mutate(connection.id);
-              }}
-              disabled={isTestingThis || testingConnection !== null}
-            >
-              {isTestingThis ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Testing...
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4 mr-2" />
-                  Test
-                </>
-              )}
-            </Button>
-          </div>
-        );
-      },
-    },
   ];
 
   return (
@@ -299,6 +262,29 @@ export default function VPNConnectionsPage() {
             onBulkEdit={() => {/* TODO: implement bulk edit */}}
             onDeleteSelected={() => handleDelete(selectedConnections)}
             hasSelection={selectedConnections.length > 0}
+            viewToggle={
+              selectedConnections.length === 1 && (
+                <Button
+                  data-testid="button-test-vpn"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => testConnectionMutation.mutate(selectedConnections[0].id)}
+                  disabled={testingConnection !== null}
+                >
+                  {testingConnection === selectedConnections[0].id ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Testing...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      Test Connessione
+                    </>
+                  )}
+                </Button>
+              )
+            }
           />
 
           <UniversalTable

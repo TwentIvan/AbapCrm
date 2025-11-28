@@ -12,11 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
-import { Plus, Edit, Trash2, Key, Grid3X3, List, MoreHorizontal } from "lucide-react";
+import { Key } from "lucide-react";
 import { SystemCredentials } from "@shared/schema";
 import { SystemCredentialsForm } from "@/components/forms/system-credentials-form";
 import SystemCredentialsFormContainer from "@/components/forms/system-credentials-form-container";
@@ -182,38 +181,6 @@ export function SystemCredentialsPage() {
         <span className={credential.isActive ? "text-green-600" : "text-red-600"}>
           {credential.isActive ? "Attivo" : "Inattivo"}
         </span>
-      )
-    },
-    {
-      key: "actions",
-      label: "Azioni", 
-      sortable: false,
-      searchable: false,
-      render: (credential: SystemCredentials) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" data-testid={`button-credential-menu-${credential.id}`}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={() => handleEdit(credential)}
-              data-testid={`menu-edit-credential-${credential.id}`}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Modifica
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => handleSingleDelete(credential)}
-              className="text-destructive"
-              data-testid={`menu-delete-credential-${credential.id}`}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Elimina
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       )
     },
   ];

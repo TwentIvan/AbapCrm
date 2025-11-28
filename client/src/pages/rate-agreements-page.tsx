@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { DollarSign, MoreHorizontal, Edit, Trash2, CheckCircle, XCircle, Settings, Grid3X3, List } from "lucide-react";
+import { DollarSign } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { RateAgreement, Partner, Project } from "@shared/schema";
@@ -197,38 +197,6 @@ export default function RateAgreementsPage() {
       render: (agreement: RateAgreement) => `€${agreement.hourlyRate}/h`
     },
     createStandardColumns.badge("status", "Stato", statusColors, (agreement: RateAgreement) => getValidityStatus(agreement)),
-    {
-      key: "actions",
-      label: "Azioni", 
-      sortable: false,
-      searchable: false,
-      render: (agreement: RateAgreement) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" data-testid={`button-agreement-menu-${agreement.id}`}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={() => handleEdit(agreement)}
-              data-testid={`menu-edit-agreement-${agreement.id}`}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Modifica
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => handleSingleDelete(agreement)}
-              className="text-destructive"
-              data-testid={`menu-delete-agreement-${agreement.id}`}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Elimina
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    },
   ];
 
   return (

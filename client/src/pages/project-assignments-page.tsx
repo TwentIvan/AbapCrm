@@ -11,10 +11,9 @@ import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { Users, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { Users } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { ProjectAssignment, Project, HumanResource } from "@shared/schema";
@@ -198,38 +197,6 @@ export default function ProjectAssignmentsPage() {
         const end = assignment.endDate ? format(new Date(assignment.endDate), "dd/MM/yyyy", { locale: it }) : "-";
         return `${start} - ${end}`;
       }
-    },
-    {
-      key: "actions",
-      label: "Azioni", 
-      sortable: false,
-      searchable: false,
-      render: (assignment: ProjectAssignment) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" data-testid={`button-assignment-menu-${assignment.id}`}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={() => handleEdit(assignment)}
-              data-testid={`menu-edit-assignment-${assignment.id}`}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Modifica
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => handleSingleDelete(assignment)}
-              className="text-destructive"
-              data-testid={`menu-delete-assignment-${assignment.id}`}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Elimina
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
     },
   ];
 
