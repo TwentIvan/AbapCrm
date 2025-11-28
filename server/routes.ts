@@ -903,10 +903,85 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOrganizationId(req);
+      
+      // Check for related data first
+      const projectId = req.params.id;
+      const relatedTasks = await db.select({ id: tasks.id }).from(tasks).where(eq(tasks.projectId, projectId));
+      const relatedMilestones = await db.select({ id: projectMilestones.id }).from(projectMilestones).where(eq(projectMilestones.projectId, projectId));
+      const relatedEvents = await db.select({ id: calendarEvents.id }).from(calendarEvents).where(eq(calendarEvents.projectId, projectId));
+      const relatedComments = await db.select({ id: comments.id }).from(comments).where(eq(comments.projectId, projectId));
+      const relatedTransports = await db.select({ id: sapTransportRequests.id }).from(sapTransportRequests).where(eq(sapTransportRequests.projectId, projectId));
+      
+      const hasRelatedData = relatedTasks.length > 0 || relatedMilestones.length > 0 || 
+                            relatedEvents.length > 0 || relatedComments.length > 0 || relatedTransports.length > 0;
+      
+      if (hasRelatedData) {
+        return res.status(409).json({ 
+          error: 'Project has related data',
+          needsCascade: true,
+          relatedCounts: {
+            tasks: relatedTasks.length,
+            milestones: relatedMilestones.length,
+            events: relatedEvents.length,
+            comments: relatedComments.length,
+            transports: relatedTransports.length
+          }
+        });
+      }
+      
       const deleted = await storage.deleteProject(req.params.id, req.user!.id, organizationId);
       if (!deleted) return res.sendStatus(404);
       res.sendStatus(204);
     } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // Get related data for a project (for cascade delete dialog)
+  app.get("/api/projects/:id/related-data", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const projectId = req.params.id;
+      
+      const relatedTasks = await db.select({ id: tasks.id, name: tasks.title }).from(tasks).where(eq(tasks.projectId, projectId)).limit(10);
+      const relatedMilestones = await db.select({ id: projectMilestones.id, name: projectMilestones.name }).from(projectMilestones).where(eq(projectMilestones.projectId, projectId)).limit(10);
+      const relatedEvents = await db.select({ id: calendarEvents.id, name: calendarEvents.title }).from(calendarEvents).where(eq(calendarEvents.projectId, projectId)).limit(10);
+      const relatedComments = await db.select({ id: comments.id }).from(comments).where(eq(comments.projectId, projectId)).limit(10);
+      const relatedTransports = await db.select({ id: sapTransportRequests.id, name: sapTransportRequests.requestNumber }).from(sapTransportRequests).where(eq(sapTransportRequests.projectId, projectId)).limit(10);
+      
+      res.json({
+        tasks: { count: relatedTasks.length, items: relatedTasks },
+        milestones: { count: relatedMilestones.length, items: relatedMilestones },
+        events: { count: relatedEvents.length, items: relatedEvents },
+        comments: { count: relatedComments.length, items: relatedComments },
+        transports: { count: relatedTransports.length, items: relatedTransports }
+      });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // Cascade delete a project and all related data
+  app.delete("/api/projects/:id/cascade", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const projectId = req.params.id;
+      const organizationId = getOrganizationId(req);
+      
+      // Delete related data in correct order (respecting foreign keys)
+      await db.delete(comments).where(eq(comments.projectId, projectId));
+      await db.delete(sapTransportRequests).where(eq(sapTransportRequests.projectId, projectId));
+      await db.delete(calendarEvents).where(eq(calendarEvents.projectId, projectId));
+      await db.delete(tasks).where(eq(tasks.projectId, projectId));
+      await db.delete(projectMilestones).where(eq(projectMilestones.projectId, projectId));
+      
+      // Finally delete the project
+      const deleted = await storage.deleteProject(projectId, req.user!.id, organizationId);
+      if (!deleted) return res.sendStatus(404);
+      
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Cascade delete error:", error);
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }
   });
