@@ -147,6 +147,14 @@ export default function ProjectsPage() {
   const [selectedProjectForPlanner, setSelectedProjectForPlanner] = useState<Project | null>(null);
   const [showSapPasteDialog, setShowSapPasteDialog] = useState(false);
   const [selectedProjectForSap, setSelectedProjectForSap] = useState<Project | null>(null);
+  const [showCascadeDialog, setShowCascadeDialog] = useState(false);
+  const [cascadeRelatedData, setCascadeRelatedData] = useState<{
+    tasks: { count: number; items: Array<{id: string; name: string}> };
+    milestones: { count: number; items: Array<{id: string; name: string}> };
+    events: { count: number; items: Array<{id: string; name: string}> };
+    comments: { count: number; items: Array<{id: string}> };
+    transports: { count: number; items: Array<{id: string; name: string}> };
+  } | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -212,6 +220,54 @@ export default function ProjectsPage() {
       toast({
         title: "Progetto eliminato",
         description: "Il progetto è stato eliminato con successo.",
+      });
+    },
+    onError: async (error: any, projectId: string) => {
+      if (error?.message?.includes('409') || error?.message?.includes('needsCascade')) {
+        setShowDeleteDialog(false);
+        try {
+          const response = await apiRequest("GET", `/api/projects/${projectId}/related-data`);
+          const relatedData = await response.json();
+          setCascadeRelatedData(relatedData);
+          setShowCascadeDialog(true);
+        } catch {
+          toast({
+            title: "Errore",
+            description: "Non è stato possibile recuperare i dati collegati.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Errore",
+          description: "Non è stato possibile eliminare il progetto.",
+          variant: "destructive",
+        });
+      }
+    },
+  });
+
+  const cascadeDeleteMutation = useMutation({
+    mutationFn: async (projectId: string) => {
+      await apiRequest("DELETE", `/api/projects/${projectId}/cascade`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/project-milestones"] });
+      setShowCascadeDialog(false);
+      setEditingProject(null);
+      setCascadeRelatedData(null);
+      toast({
+        title: "Progetto eliminato",
+        description: "Il progetto e tutti i dati collegati sono stati eliminati.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Non è stato possibile eliminare il progetto.",
+        variant: "destructive",
       });
     },
   });
@@ -742,6 +798,49 @@ export default function ProjectsPage() {
               data-testid="button-confirm-bulk-delete"
             >
               {bulkDeleteMutation.isPending ? "Eliminando..." : `Elimina ${selectedProjects.length} Progetti`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cascade Delete Confirmation Dialog */}
+      <AlertDialog open={showCascadeDialog} onOpenChange={setShowCascadeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Attenzione: Dati Collegati</AlertDialogTitle>
+            <AlertDialogDescription>
+              Il progetto "{editingProject?.name}" ha i seguenti dati collegati che verranno eliminati:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                {cascadeRelatedData?.tasks?.count ? (
+                  <li>{cascadeRelatedData.tasks.count} task</li>
+                ) : null}
+                {cascadeRelatedData?.milestones?.count ? (
+                  <li>{cascadeRelatedData.milestones.count} milestone</li>
+                ) : null}
+                {cascadeRelatedData?.events?.count ? (
+                  <li>{cascadeRelatedData.events.count} eventi calendario</li>
+                ) : null}
+                {cascadeRelatedData?.comments?.count ? (
+                  <li>{cascadeRelatedData.comments.count} commenti</li>
+                ) : null}
+                {cascadeRelatedData?.transports?.count ? (
+                  <li>{cascadeRelatedData.transports.count} transport request SAP</li>
+                ) : null}
+              </ul>
+              <p className="mt-2 font-medium">Vuoi eliminare tutto?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setShowCascadeDialog(false); setCascadeRelatedData(null); }} data-testid="button-cancel-cascade">
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => editingProject && cascadeDeleteMutation.mutate(editingProject.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={cascadeDeleteMutation.isPending}
+              data-testid="button-confirm-cascade"
+            >
+              {cascadeDeleteMutation.isPending ? "Eliminando..." : "Elimina Tutto"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

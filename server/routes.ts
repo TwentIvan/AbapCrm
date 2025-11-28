@@ -28,7 +28,7 @@ import {
   projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users,
-  customEntities, customFields
+  customEntities, customFields, sapTransportRequests
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
