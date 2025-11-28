@@ -277,7 +277,7 @@ export default function ProjectsPage() {
   const bulkDeleteMutation = useMutation({
     mutationFn: async (projects: Project[]) => {
       for (const project of projects) {
-        await apiRequest("DELETE", `/api/projects/${project.id}`);
+        await apiRequest("DELETE", `/api/projects/${project.id}/cascade`);
       }
     },
     onSuccess: () => {
