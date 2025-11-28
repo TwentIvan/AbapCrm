@@ -72,6 +72,14 @@ Defines and manages many-to-many relationships between organizations with typed 
 ### Bulk Operations - Mass Edit & Copy
 Comprehensive bulk editing and copying capabilities across all main entities (Projects, Tasks, Partners, Deals, Contacts, Organizations, Human Resources). `BulkEditDialog` allows selective field updates via parallel PUT requests. `BulkCopyDialog` creates entity duplicates with customizable suffixes via parallel POST requests, automatically excluding auto-generated fields. Operations include cache invalidation, toast notifications, loading states, and selection reset.
 
+### Modular Cascade Delete System
+A reusable deletion system with related data aggregation for both single and bulk deletes:
+- **useCascadeDelete Hook** (`client/src/hooks/use-cascade-delete.ts`): Manages delete state, fetches related data in parallel for all selected items, aggregates counts, and handles the delete mutation
+- **CascadeDeleteDialog Component** (`client/src/components/dialogs/cascade-delete-dialog.tsx`): Displays aggregated related data counts before deletion with proper warnings
+- **SimpleDeleteDialog Component**: For items without related data, shows simple confirmation
+- **Configuration-driven**: Each entity defines its `relationConfigs` (key/label pairs) to map backend related-data response to UI labels
+- **Backend Pattern**: `GET /api/:entity/:id/related-data` returns counts per relation type, `DELETE /api/:entity/:id/cascade` performs cascade deletion
+
 ### SAP Transport Request Integration
 Supports receiving Transport Requests from SAP systems via three methods: direct API POST, email integration (processing JSON attachments from a dedicated IMAP folder), and manual JSON paste via UI. The email method offers full autonomy from client IT.
 
