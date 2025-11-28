@@ -19,7 +19,7 @@ import { UniversalTable, createStandardColumns } from "@/components/ui/universal
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
-import { Code, Calendar, DollarSign, User, MoreHorizontal, Edit, Target, Grid3X3, List, Trash2, History, MessageSquare, Workflow } from "lucide-react";
+import { Code, Calendar, DollarSign, User, Edit, Target, Grid3X3, List, Trash2, History, MessageSquare, Workflow } from "lucide-react";
 import { Project, Partner, SapSystem } from "@shared/schema";
 import { RelationshipBadge } from "@/components/ui/relationship-badge";
 import { RelationshipPreviewProvider } from "@/components/ui/relationship-preview-context";
@@ -150,6 +150,7 @@ export default function ProjectsPage() {
   const [showCascadeDialog, setShowCascadeDialog] = useState(false);
   const [cascadeRelatedData, setCascadeRelatedData] = useState<{
     tasks: { count: number; items: Array<{id: string; name: string}> };
+    timeEntries: { count: number; items: Array<{id: string}> };
     milestones: { count: number; items: Array<{id: string; name: string}> };
     events: { count: number; items: Array<{id: string; name: string}> };
     comments: { count: number; items: Array<{id: string}> };
@@ -223,12 +224,7 @@ export default function ProjectsPage() {
       });
     },
     onError: async (error: any, projectId: string) => {
-      console.log('Delete error:', error);
-      console.log('Error status:', error?.status);
-      console.log('Error message:', error?.message);
-      console.log('ProjectId:', projectId);
       const isConflict = error?.status === 409 || error?.message?.includes('409') || error?.message?.includes('needsCascade');
-      console.log('Is conflict:', isConflict);
       if (isConflict) {
         setShowDeleteDialog(false);
         try {
@@ -402,15 +398,33 @@ export default function ProjectsPage() {
     );
   }
 
-  const handleSingleDelete = (project: Project) => {
-    setEditingProject(project);
-    setShowDeleteDialog(true);
-  };
-
-  const handleDelete = (projects: Project[]) => {
+  const handleDelete = async (projects: Project[]) => {
     if (projects.length === 0) return;
     setSelectedProjects(projects);
-    setShowBulkDeleteDialog(true);
+    
+    // Se è un singolo progetto, verifica prima i dati correlati
+    if (projects.length === 1) {
+      try {
+        const response = await apiRequest("GET", `/api/projects/${projects[0].id}/related-data`);
+        const relatedData = await response.json();
+        const hasRelations = Object.values(relatedData).some((item: any) => item?.count > 0);
+        
+        if (hasRelations) {
+          setEditingProject(projects[0]);
+          setCascadeRelatedData(relatedData);
+          setShowCascadeDialog(true);
+        } else {
+          setEditingProject(projects[0]);
+          setShowDeleteDialog(true);
+        }
+      } catch {
+        setEditingProject(projects[0]);
+        setShowDeleteDialog(true);
+      }
+    } else {
+      // Per eliminazione multipla, mostra direttamente il dialogo
+      setShowBulkDeleteDialog(true);
+    }
   };
 
   const handleOpenPlanner = (project: Project) => {
@@ -586,74 +600,18 @@ export default function ProjectsPage() {
         <ProjectMilestonesCount projectId={project.id} currentOrganizationId={currentOrganizationId} />
       )
     },
-    {
-      key: "actions",
-      label: "Azioni", 
-      sortable: false,
-      searchable: false,
-      render: (project: Project) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" data-testid={`button-project-menu-${project.id}`}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={() => handleEdit(project)}
-              data-testid={`menu-edit-project-${project.id}`}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Modifica
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => handleOpenPlanner(project)}
-              data-testid={`menu-planner-project-${project.id}`}
-            >
-              <Target className="mr-2 h-4 w-4" />
-              Planner
-            </DropdownMenuItem>
-            {project.sapSystemId && (
-              <DropdownMenuItem 
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleLaunchSapDocumentation(project);
-                }}
-                data-testid={`menu-sap-zthu-${project.id}`}
-              >
-                <Workflow className="mr-2 h-4 w-4" />
-                Lancia ZTHU_DOCUMENTATION
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem 
-              onClick={() => handleSingleDelete(project)}
-              className="text-destructive"
-              data-testid={`menu-delete-project-${project.id}`}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Elimina
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    },
   ];
 
   // Apply layout configuration: filter visible columns and sort by position
   const visibleColumns = useMemo(() => {
-    // Always show actions column
-    const actionsColumn = columns.find(c => c.key === 'actions');
-    
     // If no layout configuration or empty columns config, show all columns
     if (!layout.columns || Object.keys(layout.columns).length === 0) {
       return columns;
     }
     
     // Filter and sort columns based on layout
-    const configuredColumns = columns
+    return columns
       .filter(col => {
-        if (col.key === 'actions') return false; // Handle separately
         const config = layout.columns[col.key];
         // If no config for this column, show it by default
         return config?.visible !== false;
@@ -663,13 +621,6 @@ export default function ProjectsPage() {
         const posB = layout.columns[b.key]?.position ?? 999;
         return posA - posB;
       });
-    
-    // Add actions column at the end
-    if (actionsColumn) {
-      configuredColumns.push(actionsColumn);
-    }
-    
-    return configuredColumns;
   }, [columns, layout.columns]);
 
   return (
@@ -816,23 +767,26 @@ export default function ProjectsPage() {
             <AlertDialogTitle className="text-destructive">Attenzione: Dati Collegati</AlertDialogTitle>
             <AlertDialogDescription>
               Il progetto "{editingProject?.name}" ha i seguenti dati collegati che verranno eliminati:
-              <ul className="list-disc list-inside mt-2 space-y-1">
+              <div className="list-disc list-inside mt-2 space-y-1">
                 {cascadeRelatedData?.tasks?.count ? (
-                  <li>{cascadeRelatedData.tasks.count} task</li>
+                  <div>- {cascadeRelatedData.tasks.count} task</div>
+                ) : null}
+                {cascadeRelatedData?.timeEntries?.count ? (
+                  <div>- {cascadeRelatedData.timeEntries.count} registrazioni tempo</div>
                 ) : null}
                 {cascadeRelatedData?.milestones?.count ? (
-                  <li>{cascadeRelatedData.milestones.count} milestone</li>
+                  <div>- {cascadeRelatedData.milestones.count} milestone</div>
                 ) : null}
                 {cascadeRelatedData?.events?.count ? (
-                  <li>{cascadeRelatedData.events.count} eventi calendario</li>
+                  <div>- {cascadeRelatedData.events.count} eventi calendario</div>
                 ) : null}
                 {cascadeRelatedData?.comments?.count ? (
-                  <li>{cascadeRelatedData.comments.count} commenti</li>
+                  <div>- {cascadeRelatedData.comments.count} commenti</div>
                 ) : null}
                 {cascadeRelatedData?.transports?.count ? (
-                  <li>{cascadeRelatedData.transports.count} transport request SAP</li>
+                  <div>- {cascadeRelatedData.transports.count} transport request SAP</div>
                 ) : null}
-              </ul>
+              </div>
               <p className="mt-2 font-medium">Vuoi eliminare tutto?</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
