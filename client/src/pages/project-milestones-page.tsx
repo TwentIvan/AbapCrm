@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { Target, Calendar } from "lucide-react";
+import { Target, Calendar, Table as TableIcon } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { ProjectMilestone, Project, Task } from "@shared/schema";
