@@ -300,9 +300,27 @@ export function AddressSearch({
         "campobasso": "CB", "l'aquila": "AQ", "rieti": "RI", "frosinone": "FR",
         "siena": "SI", "pistoia": "PT", "prato": "PO", "rovigo": "RO",
         "belluno": "BL", "fermo": "FM", "ascoli piceno": "AP", "macerata": "MC",
-        "south sardinia": "SU"
+        "south sardinia": "SU",
+        "provincia autonoma di trento": "TN",
+        "provincia autonoma di bolzano": "BZ",
+        "trentino-alto adige": "TN",
+        "trentino alto adige": "TN",
+        "südtirol": "BZ",
+        "alto adige": "BZ"
       };
-      provinceCode = italianProvinces[province.toLowerCase()] || province.substring(0, 2).toUpperCase();
+      const provinceLower = province.toLowerCase();
+      provinceCode = italianProvinces[provinceLower];
+      if (!provinceCode) {
+        for (const [key, code] of Object.entries(italianProvinces)) {
+          if (provinceLower.includes(key) || key.includes(provinceLower)) {
+            provinceCode = code;
+            break;
+          }
+        }
+      }
+      if (!provinceCode) {
+        provinceCode = city ? italianProvinces[city.toLowerCase()] || "" : "";
+      }
     }
 
     const street = addr.road || "";
