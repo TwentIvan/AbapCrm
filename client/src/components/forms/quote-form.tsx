@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { insertQuoteSchema, Quote, Partner, RateAgreement, Project } from "@shared/schema";
+import { insertQuoteSchema, Quote, Partner } from "@shared/schema";
 import QuoteItemsEditor, { ItemForm } from "./quote-items-editor";
 import { useState } from "react";
 
@@ -32,8 +32,6 @@ const formSchema = z.object({
   specialConditions: z.string().optional().nullable(),
   internalNotes: z.string().optional().nullable(),
   externalNotes: z.string().optional().nullable(),
-  rateAgreementId: z.string().optional().nullable(),
-  projectId: z.string().optional().nullable(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -50,16 +48,6 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
 
   const { data: partners = [] } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
-    queryFn: getQueryFn({ on401: "throw" }),
-  });
-
-  const { data: rateAgreements = [] } = useQuery<RateAgreement[]>({
-    queryKey: ["/api/rate-agreements"],
-    queryFn: getQueryFn({ on401: "throw" }),
-  });
-
-  const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
     queryFn: getQueryFn({ on401: "throw" }),
   });
 
@@ -86,14 +74,32 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
       specialConditions: quote?.specialConditions || "",
       internalNotes: quote?.internalNotes || "",
       externalNotes: quote?.externalNotes || "",
-      rateAgreementId: quote?.rateAgreementId || null,
-      projectId: quote?.projectId || null,
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: FormData) => apiRequest("POST", "/api/quotes", data),
-    onSuccess: () => {
+    mutationFn: async (data: FormData): Promise<Quote> => {
+      const response = await apiRequest("POST", "/api/quotes", data);
+      return response as Quote;
+    },
+    onSuccess: async (createdQuote: Quote) => {
+      // Salva le righe temporanee se presenti
+      if (tempItems.length > 0 && createdQuote?.id) {
+        try {
+          for (const item of tempItems) {
+            await apiRequest("POST", `/api/quotes/${createdQuote.id}/items`, {
+              lineNumber: item.lineNumber,
+              description: item.description,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              lineTotal: item.lineTotal,
+              itemType: "service",
+            });
+          }
+        } catch (error) {
+          console.error("Errore nel salvataggio delle righe:", error);
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
       toast({ title: "Creata", description: "Offerta creata con successo" });
       onSuccess();
@@ -248,60 +254,6 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
                     <FormControl>
                       <Input type="date" {...field} value={field.value || ""} data-testid="input-valid-to" />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="rateAgreementId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Accordo Tariffario</FormLabel>
-                    <Select onValueChange={(val) => field.onChange(val === "none" ? null : val)} value={field.value || "none"}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-rate-agreement">
-                          <SelectValue placeholder="Seleziona accordo" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">Nessuno</SelectItem>
-                        {rateAgreements.map((agreement) => (
-                          <SelectItem key={agreement.id} value={agreement.id}>
-                            {agreement.name} - €{agreement.hourlyRate}/h
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="projectId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Progetto Collegato</FormLabel>
-                    <Select onValueChange={(val) => field.onChange(val === "none" ? null : val)} value={field.value || "none"}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-project">
-                          <SelectValue placeholder="Seleziona progetto" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">Nessuno</SelectItem>
-                        {projects.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
