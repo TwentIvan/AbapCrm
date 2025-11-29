@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { insertQuoteSchema, Quote, Partner } from "@shared/schema";
+import { Quote, Partner } from "@shared/schema";
 import QuoteItemsEditor, { ItemForm } from "./quote-items-editor";
 import { useState } from "react";
 
@@ -80,20 +80,23 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
   const createMutation = useMutation({
     mutationFn: async (data: FormData): Promise<Quote> => {
       const response = await apiRequest("POST", "/api/quotes", data);
-      return response as Quote;
+      return response as unknown as Quote;
     },
     onSuccess: async (createdQuote: Quote) => {
-      // Salva le righe temporanee se presenti
       if (tempItems.length > 0 && createdQuote?.id) {
         try {
           for (const item of tempItems) {
             await apiRequest("POST", `/api/quotes/${createdQuote.id}/items`, {
               lineNumber: item.lineNumber,
+              itemType: item.itemType,
               description: item.description,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               lineTotal: item.lineTotal,
-              itemType: "service",
+              unitOfMeasure: "giorni",
+              discountPercent: "0",
+              rateAgreementId: item.itemType === "rate_agreement" ? item.referenceId : null,
+              projectId: item.itemType === "project" ? item.referenceId : null,
             });
           }
         } catch (error) {
@@ -132,7 +135,6 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   const onSubmit = (data: FormData) => {
-    // Previene doppio submit
     if (isPending) return;
     
     if (quote) {
@@ -142,23 +144,23 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
     }
   };
 
-  const calculateTotal = () => {
-    const subtotal = parseFloat(form.getValues("subtotal") || "0");
-    const taxRate = 0.22; // 22% IVA
-    const taxes = subtotal * taxRate;
-    const total = subtotal + taxes;
-    form.setValue("taxes", taxes.toFixed(2));
+  const handleTotalsChange = (subtotal: number, tax: number, total: number) => {
+    form.setValue("subtotal", subtotal.toFixed(2));
+    form.setValue("taxes", tax.toFixed(2));
     form.setValue("total", total.toFixed(2));
   };
+
+  const subtotal = parseFloat(form.watch("subtotal") || "0");
+  const taxes = parseFloat(form.watch("taxes") || "0");
+  const total = parseFloat(form.watch("total") || "0");
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="details" data-testid="tab-details">Dettagli</TabsTrigger>
             <TabsTrigger value="items" data-testid="tab-items">Righe</TabsTrigger>
-            <TabsTrigger value="amounts" data-testid="tab-amounts">Importi</TabsTrigger>
             <TabsTrigger value="notes" data-testid="tab-notes">Note</TabsTrigger>
           </TabsList>
 
@@ -260,7 +262,7 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="paymentTerms"
@@ -288,110 +290,64 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="currency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valuta</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-currency">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="GBP">GBP</SelectItem>
+                        <SelectItem value="CHF">CHF</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {quote && (
+              <div className="p-3 bg-blue-50 rounded-lg text-sm">
+                <span className="font-medium">Offerta #{quote.quoteNumber}</span>
+                <span className="ml-4 text-gray-500">v{quote.version}</span>
+              </div>
+            )}
+
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-500">Imponibile:</span>
+                  <span className="ml-2 font-medium">€{subtotal.toFixed(2)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">IVA:</span>
+                  <span className="ml-2 font-medium">€{taxes.toFixed(2)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Totale:</span>
+                  <span className="ml-2 font-bold text-lg">€{total.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="items" className="space-y-4 mt-4">
+          <TabsContent value="items" className="mt-4">
             <QuoteItemsEditor 
               quoteId={quote?.id} 
-              onTotalChange={(subtotal) => {
-                form.setValue("subtotal", subtotal.toFixed(2));
-                calculateTotal();
-              }}
+              onTotalsChange={handleTotalsChange}
               tempItems={!quote ? tempItems : undefined}
               onTempItemsChange={!quote ? setTempItems : undefined}
             />
-          </TabsContent>
-
-          <TabsContent value="amounts" className="space-y-4 mt-4">
-            <div className="grid grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="subtotal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Imponibile</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.01" 
-                        {...field} 
-                        value={field.value || ""} 
-                        onChange={(e) => {
-                          field.onChange(e);
-                          setTimeout(calculateTotal, 0);
-                        }}
-                        data-testid="input-subtotal" 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="taxes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>IVA (22%)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" {...field} value={field.value || ""} readOnly className="bg-gray-50" data-testid="input-taxes" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="total"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Totale</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" {...field} value={field.value || ""} readOnly className="bg-gray-50 font-bold" data-testid="input-total" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="currency"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Valuta</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-currency">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="EUR">EUR - Euro</SelectItem>
-                      <SelectItem value="USD">USD - Dollaro USA</SelectItem>
-                      <SelectItem value="GBP">GBP - Sterlina</SelectItem>
-                      <SelectItem value="CHF">CHF - Franco Svizzero</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {quote && (
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">
-                  <strong>Numero Offerta:</strong> {quote.quoteNumber}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <strong>Versione:</strong> v{quote.version}
-                </p>
-              </div>
-            )}
           </TabsContent>
 
           <TabsContent value="notes" className="space-y-4 mt-4">

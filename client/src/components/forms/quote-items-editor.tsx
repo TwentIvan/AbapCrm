@@ -11,7 +11,7 @@ import { Plus, Trash2, Save } from "lucide-react";
 
 interface QuoteItemsEditorProps {
   quoteId?: string;
-  onTotalChange: (subtotal: number) => void;
+  onTotalsChange: (subtotal: number, tax: number, total: number) => void;
   tempItems?: ItemForm[];
   onTempItemsChange?: (items: ItemForm[]) => void;
 }
@@ -19,9 +19,13 @@ interface QuoteItemsEditorProps {
 export interface ItemForm {
   id?: string;
   lineNumber: number;
+  itemType: "manual" | "rate_agreement" | "project";
+  referenceId?: string;
   description: string;
   quantity: string;
   unitPrice: string;
+  vatPercent: string;
+  vatAmount: string;
   lineTotal: string;
   isNew?: boolean;
   isModified?: boolean;
@@ -29,7 +33,7 @@ export interface ItemForm {
 
 export default function QuoteItemsEditor({ 
   quoteId, 
-  onTotalChange, 
+  onTotalsChange, 
   tempItems, 
   onTempItemsChange 
 }: QuoteItemsEditorProps) {
@@ -65,9 +69,13 @@ export default function QuoteItemsEditor({
       setItems(quoteItems.map(item => ({
         id: item.id,
         lineNumber: item.lineNumber,
+        itemType: (item.itemType as "manual" | "rate_agreement" | "project") || "manual",
+        referenceId: item.rateAgreementId || item.projectId || undefined,
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        vatPercent: "22",
+        vatAmount: (parseFloat(item.lineTotal) * 0.22).toFixed(2),
         lineTotal: item.lineTotal,
         isNew: false,
         isModified: false,
@@ -104,16 +112,25 @@ export default function QuoteItemsEditor({
     },
   });
 
-  const calculateLineTotal = (quantity: string, unitPrice: string): string => {
+  const calculateLineAmounts = (quantity: string, unitPrice: string, vatPercent: string) => {
     const qty = parseFloat(quantity) || 0;
     const price = parseFloat(unitPrice) || 0;
-    return (qty * price).toFixed(2);
+    const vat = parseFloat(vatPercent) || 22;
+    const lineTotal = qty * price;
+    const vatAmount = lineTotal * (vat / 100);
+    return { lineTotal: lineTotal.toFixed(2), vatAmount: vatAmount.toFixed(2) };
+  };
+
+  const recalculateTotals = (itemsList: ItemForm[]) => {
+    const subtotal = itemsList.reduce((sum, item) => sum + parseFloat(item.lineTotal || "0"), 0);
+    const tax = itemsList.reduce((sum, item) => sum + parseFloat(item.vatAmount || "0"), 0);
+    const total = subtotal + tax;
+    onTotalsChange(subtotal, tax, total);
   };
 
   const updateItemsState = (newItems: ItemForm[]) => {
     setItems(newItems);
-    const subtotal = newItems.reduce((sum, item) => sum + parseFloat(item.lineTotal || "0"), 0);
-    onTotalChange(subtotal);
+    recalculateTotals(newItems);
     if (onTempItemsChange && !quoteId) {
       onTempItemsChange(newItems);
     }
@@ -122,9 +139,12 @@ export default function QuoteItemsEditor({
   const addNewItem = () => {
     const newItem: ItemForm = {
       lineNumber: items.length + 1,
+      itemType: "manual",
       description: "",
       quantity: "1",
       unitPrice: "0",
+      vatPercent: "22",
+      vatAmount: "0.00",
       lineTotal: "0.00",
       isNew: true,
       isModified: false,
@@ -132,55 +152,53 @@ export default function QuoteItemsEditor({
     updateItemsState([...items, newItem]);
   };
 
-  const addFromRateAgreement = (agreementId: string) => {
-    const agreement = rateAgreements.find(a => a.id === agreementId);
-    if (!agreement) return;
-
-    const dailyRate = (parseFloat(agreement.hourlyRate) * 8).toFixed(2);
-    const newItem: ItemForm = {
-      lineNumber: items.length + 1,
-      description: `Consulenza: ${agreement.name}`,
-      quantity: "1",
-      unitPrice: dailyRate,
-      lineTotal: dailyRate,
-      isNew: true,
-      isModified: false,
-    };
-    updateItemsState([...items, newItem]);
-    toast({ title: "Aggiunto", description: `Tariffa giornaliera: €${dailyRate}` });
-  };
-
-  const addFromProject = (projectId: string) => {
-    const project = projects.find(p => p.id === projectId);
-    if (!project) return;
-
-    const estimatedDays = project.estimatedEffort ? Math.ceil(project.estimatedEffort / 8) : 1;
-    const budget = project.budget ? parseFloat(project.budget) : 0;
-    const unitPrice = budget > 0 && estimatedDays > 0 ? (budget / estimatedDays).toFixed(2) : "0";
-    const lineTotal = budget > 0 ? budget.toFixed(2) : "0.00";
-
-    const newItem: ItemForm = {
-      lineNumber: items.length + 1,
-      description: `Progetto: ${project.name}`,
-      quantity: estimatedDays.toString(),
-      unitPrice,
-      lineTotal,
-      isNew: true,
-      isModified: false,
-    };
-    updateItemsState([...items, newItem]);
-    toast({ title: "Aggiunto", description: `${estimatedDays} giornate` });
-  };
-
   const updateItem = (index: number, field: keyof ItemForm, value: string) => {
     const newItems = [...items];
     const item = { ...newItems[index], [field]: value, isModified: true };
     
-    if (field === "quantity" || field === "unitPrice") {
-      item.lineTotal = calculateLineTotal(
+    if (field === "quantity" || field === "unitPrice" || field === "vatPercent") {
+      const amounts = calculateLineAmounts(
         field === "quantity" ? value : item.quantity,
-        field === "unitPrice" ? value : item.unitPrice
+        field === "unitPrice" ? value : item.unitPrice,
+        field === "vatPercent" ? value : item.vatPercent
       );
+      item.lineTotal = amounts.lineTotal;
+      item.vatAmount = amounts.vatAmount;
+    }
+
+    if (field === "itemType") {
+      item.referenceId = undefined;
+      if (value === "manual") {
+        item.description = "";
+        item.unitPrice = "0";
+      }
+    }
+
+    if (field === "referenceId") {
+      if (item.itemType === "rate_agreement") {
+        const agreement = rateAgreements.find(a => a.id === value);
+        if (agreement) {
+          const dailyRate = (parseFloat(agreement.hourlyRate) * 8).toFixed(2);
+          item.description = `Consulenza: ${agreement.name}`;
+          item.unitPrice = dailyRate;
+          const amounts = calculateLineAmounts(item.quantity, dailyRate, item.vatPercent);
+          item.lineTotal = amounts.lineTotal;
+          item.vatAmount = amounts.vatAmount;
+        }
+      } else if (item.itemType === "project") {
+        const project = projects.find(p => p.id === value);
+        if (project) {
+          const estimatedDays = project.estimatedEffort ? Math.ceil(project.estimatedEffort / 8) : 1;
+          const budget = project.budget ? parseFloat(project.budget) : 0;
+          const unitPrice = budget > 0 && estimatedDays > 0 ? (budget / estimatedDays).toFixed(2) : "0";
+          item.description = `Progetto: ${project.name}`;
+          item.quantity = estimatedDays.toString();
+          item.unitPrice = unitPrice;
+          const amounts = calculateLineAmounts(item.quantity, unitPrice, item.vatPercent);
+          item.lineTotal = amounts.lineTotal;
+          item.vatAmount = amounts.vatAmount;
+        }
+      }
     }
     
     newItems[index] = item;
@@ -208,13 +226,15 @@ export default function QuoteItemsEditor({
 
     const itemData = {
       lineNumber: item.lineNumber,
-      itemType: "service",
+      itemType: item.itemType,
       description: item.description,
       quantity: item.quantity,
       unitOfMeasure: "giorni",
       unitPrice: item.unitPrice,
       discountPercent: "0",
       lineTotal: item.lineTotal,
+      rateAgreementId: item.itemType === "rate_agreement" ? item.referenceId : null,
+      projectId: item.itemType === "project" ? item.referenceId : null,
     };
 
     try {
@@ -237,125 +257,192 @@ export default function QuoteItemsEditor({
     return <div className="p-4 text-center text-gray-500">Caricamento...</div>;
   }
 
+  const subtotal = items.reduce((sum, item) => sum + parseFloat(item.lineTotal || "0"), 0);
+  const totalVat = items.reduce((sum, item) => sum + parseFloat(item.vatAmount || "0"), 0);
+  const grandTotal = subtotal + totalVat;
+
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex justify-between items-center">
         <Button type="button" variant="outline" size="sm" onClick={addNewItem} data-testid="button-add-item">
           <Plus className="h-4 w-4 mr-1" /> Nuova Riga
         </Button>
-        
-        <Select onValueChange={addFromRateAgreement}>
-          <SelectTrigger className="w-[200px]" data-testid="select-rate-agreement">
-            <SelectValue placeholder="+ Da Accordo Tariffario" />
-          </SelectTrigger>
-          <SelectContent>
-            {rateAgreements.map((agreement) => (
-              <SelectItem key={agreement.id} value={agreement.id}>
-                {agreement.name} (€{(parseFloat(agreement.hourlyRate) * 8).toFixed(0)}/gg)
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select onValueChange={addFromProject}>
-          <SelectTrigger className="w-[200px]" data-testid="select-project">
-            <SelectValue placeholder="+ Da Progetto" />
-          </SelectTrigger>
-          <SelectContent>
-            {projects.map((project) => (
-              <SelectItem key={project.id} value={project.id}>
-                {project.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {items.length === 0 ? (
         <div className="p-8 text-center text-gray-500 border-2 border-dashed rounded-lg">
-          Nessuna riga. Usa i pulsanti sopra per aggiungere righe.
+          Nessuna riga. Clicca "Nuova Riga" per iniziare.
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">#</TableHead>
-              <TableHead>Descrizione</TableHead>
-              <TableHead className="w-24">Qtà</TableHead>
-              <TableHead className="w-32">Prezzo Unit.</TableHead>
-              <TableHead className="w-32">Totale</TableHead>
-              <TableHead className="w-24"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item, index) => (
-              <TableRow key={index} className={item.isModified || item.isNew ? "bg-yellow-50" : ""}>
-                <TableCell className="font-medium">{item.lineNumber}</TableCell>
-                <TableCell>
-                  <Input
-                    value={item.description}
-                    onChange={(e) => updateItem(index, "description", e.target.value)}
-                    placeholder="Descrizione"
-                    className="border-0 p-0 h-auto focus-visible:ring-0"
-                    data-testid={`input-description-${index}`}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Input
-                    type="number"
-                    value={item.quantity}
-                    onChange={(e) => updateItem(index, "quantity", e.target.value)}
-                    className="border-0 p-0 h-auto w-full focus-visible:ring-0"
-                    data-testid={`input-quantity-${index}`}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Input
-                    type="number"
-                    value={item.unitPrice}
-                    onChange={(e) => updateItem(index, "unitPrice", e.target.value)}
-                    className="border-0 p-0 h-auto w-full focus-visible:ring-0"
-                    data-testid={`input-unit-price-${index}`}
-                  />
-                </TableCell>
-                <TableCell className="font-medium">
-                  €{parseFloat(item.lineTotal).toFixed(2)}
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-1">
-                    {(item.isNew || item.isModified) && quoteId && (
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead className="w-10">#</TableHead>
+                <TableHead className="w-32">Tipo</TableHead>
+                <TableHead className="w-40">Riferimento</TableHead>
+                <TableHead>Descrizione</TableHead>
+                <TableHead className="w-20 text-right">Qtà</TableHead>
+                <TableHead className="w-28 text-right">Prezzo</TableHead>
+                <TableHead className="w-20 text-right">IVA %</TableHead>
+                <TableHead className="w-28 text-right">IVA €</TableHead>
+                <TableHead className="w-28 text-right">Totale</TableHead>
+                <TableHead className="w-20"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item, index) => (
+                <TableRow key={index} className={item.isModified || item.isNew ? "bg-yellow-50" : ""}>
+                  <TableCell className="font-medium text-gray-500">{item.lineNumber}</TableCell>
+                  <TableCell>
+                    <Select 
+                      value={item.itemType} 
+                      onValueChange={(val) => updateItem(index, "itemType", val)}
+                    >
+                      <SelectTrigger className="h-8 text-xs" data-testid={`select-type-${index}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">Manuale</SelectItem>
+                        <SelectItem value="rate_agreement">Accordo</SelectItem>
+                        <SelectItem value="project">Progetto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    {item.itemType === "rate_agreement" ? (
+                      <Select 
+                        value={item.referenceId || ""} 
+                        onValueChange={(val) => updateItem(index, "referenceId", val)}
+                      >
+                        <SelectTrigger className="h-8 text-xs" data-testid={`select-ref-${index}`}>
+                          <SelectValue placeholder="Seleziona..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {rateAgreements.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : item.itemType === "project" ? (
+                      <Select 
+                        value={item.referenceId || ""} 
+                        onValueChange={(val) => updateItem(index, "referenceId", val)}
+                      >
+                        <SelectTrigger className="h-8 text-xs" data-testid={`select-ref-${index}`}>
+                          <SelectValue placeholder="Seleziona..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {projects.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span className="text-xs text-gray-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      value={item.description}
+                      onChange={(e) => updateItem(index, "description", e.target.value)}
+                      placeholder="Descrizione"
+                      className="h-8 text-sm"
+                      data-testid={`input-description-${index}`}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => updateItem(index, "quantity", e.target.value)}
+                      className="h-8 text-sm text-right"
+                      data-testid={`input-quantity-${index}`}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={item.unitPrice}
+                      onChange={(e) => updateItem(index, "unitPrice", e.target.value)}
+                      className="h-8 text-sm text-right"
+                      data-testid={`input-unit-price-${index}`}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Select 
+                      value={item.vatPercent} 
+                      onValueChange={(val) => updateItem(index, "vatPercent", val)}
+                    >
+                      <SelectTrigger className="h-8 text-xs" data-testid={`select-vat-${index}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">0%</SelectItem>
+                        <SelectItem value="4">4%</SelectItem>
+                        <SelectItem value="10">10%</SelectItem>
+                        <SelectItem value="22">22%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-right text-sm">
+                    €{parseFloat(item.vatAmount).toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    €{parseFloat(item.lineTotal).toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      {(item.isNew || item.isModified) && quoteId && (
+                        <Button 
+                          type="button"
+                          size="icon" 
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={() => saveItem(index)}
+                          data-testid={`button-save-${index}`}
+                        >
+                          <Save className="h-3.5 w-3.5 text-green-600" />
+                        </Button>
+                      )}
                       <Button 
                         type="button"
                         size="icon" 
-                        variant="ghost" 
-                        onClick={() => saveItem(index)}
-                        data-testid={`button-save-${index}`}
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={() => deleteItem(index)}
+                        data-testid={`button-delete-${index}`}
                       >
-                        <Save className="h-4 w-4 text-green-600" />
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
                       </Button>
-                    )}
-                    <Button 
-                      type="button"
-                      size="icon" 
-                      variant="ghost" 
-                      onClick={() => deleteItem(index)}
-                      data-testid={`button-delete-${index}`}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
-      <div className="flex justify-end pt-4 border-t">
-        <div className="text-lg font-semibold">
-          Subtotale: €{items.reduce((sum, item) => sum + parseFloat(item.lineTotal || "0"), 0).toFixed(2)}
+      {items.length > 0 && (
+        <div className="flex justify-end">
+          <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm min-w-[200px]">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Imponibile:</span>
+              <span className="font-medium">€{subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">IVA:</span>
+              <span className="font-medium">€{totalVat.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between border-t pt-1 mt-1">
+              <span className="font-semibold">Totale:</span>
+              <span className="font-bold text-lg">€{grandTotal.toFixed(2)}</span>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
