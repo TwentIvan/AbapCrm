@@ -38,6 +38,7 @@ import { gmailService } from "./gmail-service";
 import { AttachmentsService } from "./attachments-service";
 import { EmailForwardCleaner } from './email-forward-cleaner';
 import { CustomMetadataService } from "./custom-metadata-service";
+import { PdfService } from "./pdf-service";
 
 // Helper function to extract organizationId from request header
 function getOrganizationId(req: any): string {
@@ -2369,6 +2370,46 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("[CONVERT QUOTE] Error:", error);
       res.status(500).json({ error: "Failed to convert quote to sales order" });
+    }
+  });
+
+  // Generate Quote PDF
+  app.get("/api/quotes/:id/pdf", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const quote = await storage.getQuote(req.params.id, req.user!.id, organizationId);
+      if (!quote) return res.sendStatus(404);
+
+      const items = await storage.getQuoteItems(req.params.id, req.user!.id, organizationId);
+      const partner = await storage.getPartner(quote.partnerId, req.user!.id, organizationId);
+      if (!partner) return res.status(400).json({ error: "Partner not found" });
+
+      const organizations = await storage.getUserOrganizations(req.user!.id);
+      const organization = organizations.find(org => org.id === organizationId);
+      if (!organization) return res.status(400).json({ error: "Organization not found" });
+
+      let issuerPartner = null;
+      if (organization.partnerId) {
+        issuerPartner = await storage.getPartner(organization.partnerId, req.user!.id, organizationId);
+      }
+
+      const doc = PdfService.generateQuotePdf({
+        quote,
+        items,
+        partner,
+        organization,
+        issuerPartner
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${quote.quoteNumber}.pdf"`);
+      
+      doc.pipe(res);
+      doc.end();
+    } catch (error) {
+      console.error("[QUOTE PDF] Error generating PDF:", error);
+      res.status(500).json({ error: "Failed to generate PDF" });
     }
   });
 

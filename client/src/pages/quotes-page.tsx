@@ -5,7 +5,7 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { X } from "lucide-react";
+import { X, FileDown } from "lucide-react";
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
@@ -124,6 +124,39 @@ export default function QuotesPage() {
   const handleConvert = (quote: Quote) => {
     setEditingQuote(quote);
     setShowConvertDialog(true);
+  };
+
+  const handleDownloadPdf = async (quote: Quote) => {
+    try {
+      const response = await fetch(`/api/quotes/${quote.id}/pdf`, {
+        credentials: 'include',
+        headers: {
+          'X-Organization-Id': localStorage.getItem('currentOrganizationId') || '',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Errore nel download del PDF');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${quote.quoteNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({ title: "PDF scaricato", description: `Offerta ${quote.quoteNumber} esportata in PDF` });
+    } catch (error) {
+      toast({ 
+        title: "Errore", 
+        description: "Impossibile generare il PDF",
+        variant: "destructive"
+      });
+    }
   };
 
   const confirmDelete = () => {
@@ -311,17 +344,30 @@ export default function QuotesPage() {
                 <CardTitle className="text-lg">
                   {editingQuote ? `Modifica Offerta ${editingQuote.quoteNumber}` : "Nuova Offerta"}
                 </CardTitle>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingQuote(undefined);
-                  }}
-                  data-testid="button-close-form"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {editingQuote && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDownloadPdf(editingQuote)}
+                      data-testid="button-download-pdf"
+                    >
+                      <FileDown className="h-4 w-4 mr-2" />
+                      Scarica PDF
+                    </Button>
+                  )}
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingQuote(undefined);
+                    }}
+                    data-testid="button-close-form"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="pt-4">
                 <QuoteForm
