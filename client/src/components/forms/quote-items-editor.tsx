@@ -39,7 +39,7 @@ export default function QuoteItemsEditor({
   const [initialized, setInitialized] = useState(false);
 
   const { data: quoteItems = [], isLoading } = useQuery<QuoteItem[]>({
-    queryKey: ["/api/quotes", quoteId, "items"],
+    queryKey: [`/api/quotes/${quoteId}/items`],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!quoteId,
   });
@@ -85,7 +85,7 @@ export default function QuoteItemsEditor({
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", `/api/quotes/${quoteId}/items`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes", quoteId, "items"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/quotes/${quoteId}/items`] });
     },
   });
 
@@ -93,14 +93,14 @@ export default function QuoteItemsEditor({
     mutationFn: ({ id, data }: { id: string; data: any }) => 
       apiRequest("PUT", `/api/quotes/${quoteId}/items/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes", quoteId, "items"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/quotes/${quoteId}/items`] });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/quotes/${quoteId}/items/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes", quoteId, "items"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/quotes/${quoteId}/items`] });
     },
   });
 
