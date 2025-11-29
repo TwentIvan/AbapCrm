@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
@@ -8,13 +8,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { DollarSign } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { RateAgreement, Partner, Project } from "@shared/schema";
 import RateAgreementForm from "@/components/forms/rate-agreement-form";
@@ -35,7 +32,6 @@ export default function RateAgreementsPage() {
     layout, currentLayoutName, savedLayouts, updateLayout, 
     saveLayoutAs, loadLayout, renameLayout, deleteLayout, updateExistingLayout
   } = useTableLayout('rate-agreements');
-  const viewMode = layout.viewMode;
 
   const { data: agreements = [], isLoading } = useQuery<RateAgreement[]>({
     queryKey: ["/api/rate-agreements"],
@@ -63,7 +59,7 @@ export default function RateAgreementsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rate-agreements"] });
       setShowDeleteDialog(false);
-      setEditingAgreement(null);
+      setEditingAgreement(undefined);
       toast({ title: "Eliminato", description: "Accordo eliminato con successo" });
     }
   });
@@ -88,7 +84,7 @@ export default function RateAgreementsPage() {
   };
 
   const handleAdd = () => {
-    setEditingAgreement(null);
+    setEditingAgreement(undefined);
     setShowForm(true);
   };
 
@@ -130,8 +126,11 @@ export default function RateAgreementsPage() {
     }
     
     try {
+      const groupingValuesObj: Record<string, unknown> = typeof agreement.groupingValues === 'string' 
+        ? JSON.parse(agreement.groupingValues) 
+        : agreement.groupingValues as Record<string, unknown>;
       const parts = agreement.groupingFields.map(fieldId => {
-        const groupValue = agreement.groupingValues && agreement.groupingValues[fieldId];
+        const groupValue = groupingValuesObj && groupingValuesObj[fieldId];
         if (!groupValue) return null;
         
         const values = Array.isArray(groupValue) ? groupValue : [groupValue];
@@ -169,15 +168,29 @@ export default function RateAgreementsPage() {
     }
   };
 
-  const statusColors = {
+  const statusColors: Record<string, string> = {
     active: "bg-green-100 text-green-800",
     inactive: "bg-gray-100 text-gray-800",
     future: "bg-blue-100 text-blue-800",
     expired: "bg-red-100 text-red-800"
   };
 
+  const statusLabels: Record<string, string> = {
+    active: "Attivo",
+    inactive: "Inattivo",
+    future: "Futuro",
+    expired: "Scaduto"
+  };
+
   const columns = [
     createStandardColumns.text("name", "Nome"),
+    {
+      key: "description",
+      label: "Descrizione", 
+      sortable: true,
+      searchable: true,
+      render: (agreement: RateAgreement) => agreement.description || "-"
+    },
     {
       key: "criteria",
       label: "Criteri", 
@@ -196,8 +209,82 @@ export default function RateAgreementsPage() {
       searchable: false,
       render: (agreement: RateAgreement) => `€${agreement.hourlyRate}/h`
     },
-    createStandardColumns.badge("status", "Stato", statusColors, (agreement: RateAgreement) => getValidityStatus(agreement)),
+    {
+      key: "currency",
+      label: "Valuta", 
+      sortable: true,
+      searchable: false,
+      render: (agreement: RateAgreement) => agreement.currency || "EUR"
+    },
+    {
+      key: "priority",
+      label: "Priorità", 
+      sortable: true,
+      searchable: false,
+      render: (agreement: RateAgreement) => agreement.priority
+    },
+    {
+      key: "validFrom",
+      label: "Valido Da", 
+      sortable: true,
+      searchable: false,
+      render: (agreement: RateAgreement) => 
+        agreement.validFrom ? format(new Date(agreement.validFrom), "dd/MM/yyyy", { locale: it }) : "-"
+    },
+    {
+      key: "validTo",
+      label: "Valido Fino", 
+      sortable: true,
+      searchable: false,
+      render: (agreement: RateAgreement) => 
+        agreement.validTo ? format(new Date(agreement.validTo), "dd/MM/yyyy", { locale: it }) : "∞"
+    },
+    {
+      key: "minimumHours",
+      label: "Ore Minime", 
+      sortable: true,
+      searchable: false,
+      render: (agreement: RateAgreement) => 
+        agreement.minimumHours ? `${agreement.minimumHours}h` : "-"
+    },
+    {
+      key: "status",
+      label: "Stato", 
+      sortable: true,
+      searchable: false,
+      render: (agreement: RateAgreement) => {
+        const status = getValidityStatus(agreement);
+        return (
+          <Badge className={statusColors[status]}>
+            {statusLabels[status]}
+          </Badge>
+        );
+      }
+    },
   ];
+
+  // Apply layout configuration: filter visible columns and sort by position
+  const visibleColumns = useMemo(() => {
+    const getColumnKey = (col: any) => col.accessorKey || col.id || col.key;
+    
+    // If no layout configuration or empty columns config, show all columns
+    if (!layout.columns || Object.keys(layout.columns).length === 0) {
+      return columns;
+    }
+    
+    // Filter and sort columns based on layout
+    return columns
+      .filter(col => {
+        const key = getColumnKey(col);
+        const config = layout.columns[key];
+        return config?.visible !== false;
+      })
+      .sort((a, b) => {
+        const posA = layout.columns[getColumnKey(a)]?.position ?? 999;
+        const posB = layout.columns[getColumnKey(b)]?.position ?? 999;
+        return posA - posB;
+      });
+  }, [columns, layout.columns]);
 
   return (
     <div className="flex h-screen">
@@ -225,10 +312,8 @@ export default function RateAgreementsPage() {
 
           <UniversalTable
             data={agreements}
-            columns={columns}
+            columns={visibleColumns}
             enableSelection={true}
-            enableSearch={true}
-            searchPlaceholder="Cerca accordi..."
             onSelectionChange={(rows) => setSelectedAgreements(rows as RateAgreement[])}
             onRowClick={handleEdit}
           />
@@ -248,7 +333,7 @@ export default function RateAgreementsPage() {
                 rateAgreement={editingAgreement || undefined}
                 onSuccess={() => {
                   setShowForm(false);
-                  setEditingAgreement(null);
+                  setEditingAgreement(undefined);
                   queryClient.invalidateQueries({ queryKey: ["/api/rate-agreements"] });
                 }}
               />
@@ -262,11 +347,15 @@ export default function RateAgreementsPage() {
             tableId="rate-agreements"
             availableColumns={availableColumns.length > 0 ? availableColumns : [
               { id: 'name', label: 'Nome' },
-              { id: 'hourlyRate', label: 'Tariffa/h' },
+              { id: 'description', label: 'Descrizione' },
+              { id: 'criteria', label: 'Criteri' },
+              { id: 'hourlyRate', label: 'Tariffa' },
               { id: 'currency', label: 'Valuta' },
-              { id: 'startDate', label: 'Data Inizio' },
-              { id: 'endDate', label: 'Data Fine' },
-              { id: 'isActive', label: 'Stato' },
+              { id: 'priority', label: 'Priorità' },
+              { id: 'validFrom', label: 'Valido Da' },
+              { id: 'validTo', label: 'Valido Fino' },
+              { id: 'minimumHours', label: 'Ore Minime' },
+              { id: 'status', label: 'Stato' },
             ]}
             editingLayout={editingLayout}
             onSave={(layoutData) => {
