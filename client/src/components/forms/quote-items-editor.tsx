@@ -72,10 +72,16 @@ export default function QuoteItemsEditor({
           const lineTotal = parseFloat(item.lineTotal) || 0;
           const vatPercent = "22";
           const vatAmount = (lineTotal * 0.22).toFixed(2);
+          let uiItemType: "manual" | "rate_agreement" | "project" = "manual";
+          if (item.rateAgreementId) {
+            uiItemType = "rate_agreement";
+          } else if (item.projectId) {
+            uiItemType = "project";
+          }
           return {
             id: item.id,
             lineNumber: item.lineNumber,
-            itemType: (item.itemType as "manual" | "rate_agreement" | "project") || "manual",
+            itemType: uiItemType,
             referenceId: item.rateAgreementId || item.projectId || undefined,
             description: item.description,
             quantity: item.quantity,
@@ -229,9 +235,10 @@ export default function QuoteItemsEditor({
       return;
     }
 
+    const dbItemType = item.itemType === "project" ? "package" : "service";
     const itemData = {
       lineNumber: item.lineNumber,
-      itemType: item.itemType,
+      itemType: dbItemType,
       description: item.description,
       quantity: item.quantity,
       unitOfMeasure: "giorni",

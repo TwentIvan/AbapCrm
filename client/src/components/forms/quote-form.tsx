@@ -80,15 +80,17 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
   const createMutation = useMutation({
     mutationFn: async (data: FormData): Promise<Quote> => {
       const response = await apiRequest("POST", "/api/quotes", data);
-      return response as unknown as Quote;
+      const createdQuote = await response.json();
+      return createdQuote as Quote;
     },
     onSuccess: async (createdQuote: Quote) => {
       if (tempItems.length > 0 && createdQuote?.id) {
         try {
           for (const item of tempItems) {
+            const dbItemType = item.itemType === "project" ? "package" : "service";
             await apiRequest("POST", `/api/quotes/${createdQuote.id}/items`, {
               lineNumber: item.lineNumber,
-              itemType: item.itemType,
+              itemType: dbItemType,
               description: item.description,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
