@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -8,18 +8,15 @@ import { useOrganization } from "@/contexts/organization-context";
 import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { DataTable, createBadgeColumn, createTextColumn } from "@/components/ui/data-table";
-import { LayoutManager } from "@/components/ui/layout-manager";
+import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
-import { Mail, Server, MoreHorizontal, Grid3X3, List, Edit, Trash2, History, Shield, CheckCircle, XCircle, Plus, Send } from "lucide-react";
+import { Mail, Server, History, Shield, CheckCircle, XCircle, Send } from "lucide-react";
 import { EmailConfig } from "@shared/schema";
 import AuditHistory from "@/components/ui/audit-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -229,55 +226,39 @@ export default function EmailAccountsPage() {
     bulkDeleteMutation.mutate(accountIds);
   };
 
-  // Define filter columns for advanced filtering
-  const filterColumns = [
-    { id: 'email', label: 'Email', type: 'text' as const },
-    { id: 'imapHost', label: 'Server IMAP', type: 'text' as const },
-    { id: 'isActive', label: 'Stato', type: 'select' as const, options: [
-      { value: 'true', label: 'Attivo' },
-      { value: 'false', label: 'Inattivo' },
-    ]},
-    { id: 'isForwarder', label: 'Forwarding', type: 'select' as const, options: [
-      { value: 'true', label: 'Abilitato' },
-      { value: 'false', label: 'Disabilitato' },
-    ]},
-  ];
-
-  // Define aggregation columns (example for counting)
-  const aggregationColumns = [
-    { id: 'email', type: 'count' as const, label: 'Totale Account' },
-  ];
-
-  // Define table columns for list view
-  const tableColumns = [
+  // Define table columns for UniversalTable (senza colonna Actions)
+  const columns = [
     {
-      accessorKey: 'email',
-      header: 'Email Account',
-      cell: ({ row }: any) => (
-        <div className="font-medium" data-testid={`text-email-${row.original.id}`}>
-          <div className="flex items-center space-x-2">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            <span>{row.original.email}</span>
-          </div>
+      key: 'email',
+      label: 'Email Account',
+      sortable: true,
+      searchable: true,
+      render: (account: EmailConfig) => (
+        <div className="font-medium flex items-center space-x-2" data-testid={`text-email-${account.id}`}>
+          <Mail className="h-4 w-4 text-muted-foreground" />
+          <span>{account.email}</span>
         </div>
       ),
     },
     {
-      accessorKey: 'imapHost',
-      header: 'Server IMAP',
-      cell: ({ row }: any) => (
-        <div className="flex items-center space-x-2" data-testid={`text-imap-host-${row.original.id}`}>
+      key: 'host',
+      label: 'Server IMAP',
+      sortable: true,
+      searchable: true,
+      render: (account: EmailConfig) => (
+        <div className="flex items-center space-x-2" data-testid={`text-host-${account.id}`}>
           <Server className="h-4 w-4 text-muted-foreground" />
-          <span>{row.original.imapHost}:{row.original.imapPort}</span>
+          <span>{account.host}:{account.port}</span>
         </div>
       ),
     },
     {
-      accessorKey: 'isActive',
-      header: 'Stato',
-      cell: ({ row }: any) => (
-        <Badge variant={row.original.isActive ? 'default' : 'secondary'} data-testid={`badge-status-${row.original.id}`}>
-          {row.original.isActive ? (
+      key: 'isActive',
+      label: 'Stato',
+      sortable: true,
+      render: (account: EmailConfig) => (
+        <Badge variant={account.isActive ? 'default' : 'secondary'} data-testid={`badge-status-${account.id}`}>
+          {account.isActive ? (
             <><CheckCircle className="h-3 w-3 mr-1" />Attivo</>
           ) : (
             <><XCircle className="h-3 w-3 mr-1" />Inattivo</>
@@ -286,11 +267,12 @@ export default function EmailAccountsPage() {
       ),
     },
     {
-      accessorKey: 'isForwarder',
-      header: 'Forwarding',
-      cell: ({ row }: any) => (
-        <Badge variant={row.original.isForwarder ? 'outline' : 'secondary'} data-testid={`badge-forwarder-${row.original.id}`}>
-          {row.original.isForwarder ? (
+      key: 'isForwarder',
+      label: 'Forwarding',
+      sortable: true,
+      render: (account: EmailConfig) => (
+        <Badge variant={account.isForwarder ? 'outline' : 'secondary'} data-testid={`badge-forwarder-${account.id}`}>
+          {account.isForwarder ? (
             <><Shield className="h-3 w-3 mr-1" />Abilitato</>
           ) : (
             <><XCircle className="h-3 w-3 mr-1" />Disabilitato</>
@@ -299,46 +281,52 @@ export default function EmailAccountsPage() {
       ),
     },
     {
-      accessorKey: 'customSignature',
-      header: 'Firma Personalizzata',
-      cell: ({ row }: any) => (
-        <div className="max-w-[200px] truncate" data-testid={`text-signature-${row.original.id}`}>
-          {row.original.customSignature || '-'}
+      key: 'customSignature',
+      label: 'Firma Personalizzata',
+      sortable: true,
+      render: (account: EmailConfig) => (
+        <div className="max-w-[200px] truncate" data-testid={`text-signature-${account.id}`}>
+          {account.customSignature || '-'}
         </div>
       ),
     },
     {
-      id: 'actions',
-      header: 'Actions',
-      cell: ({ row }: any) => {
-        const account = row.original;
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0" data-testid={`button-actions-${account.id}`}>
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleEdit(account)} data-testid={`button-edit-${account.id}`}>
-                <Edit className="mr-2 h-4 w-4" />
-                Modifica
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => handleDelete(account)} 
-                className="text-red-600"
-                data-testid={`button-delete-${account.id}`}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Elimina
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
+      key: 'folders',
+      label: 'Cartelle',
+      sortable: false,
+      render: (account: EmailConfig) => 
+        account.folders?.length > 0 ? account.folders.join(', ') : 'INBOX',
+    },
+    {
+      key: 'tls',
+      label: 'TLS',
+      sortable: true,
+      render: (account: EmailConfig) => account.tls ? 'Sì' : 'No',
     },
   ];
+
+  // Apply layout configuration: filter visible columns and sort by position
+  const visibleColumns = useMemo(() => {
+    const getColumnKey = (col: any) => col.accessorKey || col.id || col.key;
+    
+    // If no layout configuration or empty columns config, show all columns
+    if (!layout.columns || Object.keys(layout.columns).length === 0) {
+      return columns;
+    }
+    
+    // Filter and sort columns based on layout
+    return columns
+      .filter(col => {
+        const key = getColumnKey(col);
+        const config = layout.columns[key];
+        return config?.visible !== false;
+      })
+      .sort((a, b) => {
+        const posA = layout.columns[getColumnKey(a)]?.position ?? 999;
+        const posB = layout.columns[getColumnKey(b)]?.position ?? 999;
+        return posA - posB;
+      });
+  }, [columns, layout.columns]);
 
   const handleAdd = () => {
     setSelectedAccount(null);
@@ -390,23 +378,13 @@ export default function EmailAccountsPage() {
                 </Button>
               </div>
             ) : (
-              <DataTable
-                key={`email-accounts-table-${currentLayoutName}-${JSON.stringify(layout.columns)}`}
-                columns={tableColumns}
+              <UniversalTable
                 data={emailAccounts || []}
-                searchPlaceholder="Cerca account email..."
-                onRowClick={handleEdit}
+                columns={visibleColumns}
                 enableSelection={true}
-                onSelectionChange={setSelectedAccounts}
-                tableId="email-accounts"
-                configurableColumns={true}
-                enableAdvancedFilters={true}
-                filterColumns={filterColumns}
-                enableAggregation={true}
-                aggregationColumns={aggregationColumns}
-                enableColumnReordering={true}
-                enableClipboardCopy={true}
-                editingLayout={editingLayout}
+                onSelectionChange={(rows) => setSelectedAccounts(rows as EmailConfig[])}
+                onRowClick={handleEdit}
+                emptyMessage="Nessun account email trovato"
               />
             )}
           </div>

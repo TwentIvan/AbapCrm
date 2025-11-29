@@ -16,7 +16,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
-import { Server, Building, MoreHorizontal, Grid3X3, List, Edit, Trash2, Key, Wifi, Upload } from "lucide-react";
+import { Server, MoreHorizontal, Edit, Trash2, Upload } from "lucide-react";
+import { format } from "date-fns";
+import { it } from "date-fns/locale";
 import { SapSystem } from "@shared/schema";
 import SapSystemForm from "../components/forms/sap-system-form";
 import SapLandscapeImport from "../components/forms/sap-landscape-import";
@@ -170,7 +172,7 @@ export default function SapSystemsPage() {
     );
   }
 
-  // SISTEMA UNIVERSALE: Configurazione colonne standardizzata
+  // SISTEMA UNIVERSALE: Configurazione colonne standardizzata (senza colonna Actions)
   const columns = [
     createStandardColumns.text("name", "System Name"),
     createStandardColumns.text("systemNumber", "System Number"),
@@ -182,27 +184,30 @@ export default function SapSystemsPage() {
     }),
     createStandardColumns.partner("Partner"),
     createStandardColumns.text("description", "Description"),
-    createStandardColumns.actions([
-      {
-        label: "Edit",
-        icon: Edit,
-        onClick: handleEdit
-      },
-      {
-        label: "Delete", 
-        icon: Trash2,
-        onClick: handleDelete
-      }
-    ])
+    {
+      key: "systemId",
+      label: "System ID",
+      sortable: true,
+      render: (system: SapSystem) => system.systemId || "-"
+    },
+    {
+      key: "systemType",
+      label: "Tipo",
+      sortable: true,
+      render: (system: SapSystem) => system.systemType || "-"
+    },
+    {
+      key: "createdAt",
+      label: "Creato",
+      sortable: true,
+      render: (system: SapSystem) => 
+        system.createdAt ? format(new Date(system.createdAt), "dd/MM/yyyy", { locale: it }) : "-"
+    },
   ];
 
   // Apply layout configuration: filter visible columns and sort by position
   const visibleColumns = useMemo(() => {
-    // Get column key - DataTable uses accessorKey or id, UniversalTable uses key
     const getColumnKey = (col: any) => col.accessorKey || col.id || col.key;
-    
-    // Always show actions column
-    const actionsColumn = columns.find(c => getColumnKey(c) === 'actions');
     
     // If no layout configuration or empty columns config, show all columns
     if (!layout.columns || Object.keys(layout.columns).length === 0) {
@@ -210,12 +215,10 @@ export default function SapSystemsPage() {
     }
     
     // Filter and sort columns based on layout
-    const configuredColumns = columns
+    return columns
       .filter(col => {
         const key = getColumnKey(col);
-        if (key === 'actions') return false; // Handle separately
         const config = layout.columns[key];
-        // If no config for this column, show it by default
         return config?.visible !== false;
       })
       .sort((a, b) => {
@@ -223,13 +226,6 @@ export default function SapSystemsPage() {
         const posB = layout.columns[getColumnKey(b)]?.position ?? 999;
         return posA - posB;
       });
-    
-    // Add actions column at the end
-    if (actionsColumn) {
-      configuredColumns.push(actionsColumn);
-    }
-    
-    return configuredColumns;
   }, [columns, layout.columns]);
 
   // Grid view for card layout
