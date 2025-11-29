@@ -23,6 +23,7 @@ import TimesheetsPage from "@/pages/timesheets-page";
 import MessagesPage from "@/pages/messages-page";
 import ProposalsPage from "@/pages/proposals-page";
 import RateAgreementsPage from "@/pages/rate-agreements-page";
+import QuotesPage from "@/pages/quotes-page";
 import HumanResourcesPage from "@/pages/human-resources-page";
 import SalesOrdersPage from "@/pages/sales-orders-page";
 import ProjectAssignmentsPage from "@/pages/project-assignments-page";
@@ -61,6 +62,7 @@ function Router() {
       <ProtectedRoute path="/messages" component={MessagesPage} />
       <ProtectedRoute path="/proposals" component={ProposalsPage} />
       <ProtectedRoute path="/rate-agreements" component={RateAgreementsPage} />
+      <ProtectedRoute path="/quotes" component={QuotesPage} />
       <ProtectedRoute path="/human-resources" component={HumanResourcesPage} />
       <ProtectedRoute path="/sales-orders" component={SalesOrdersPage} />
       <ProtectedRoute path="/project-assignments" component={ProjectAssignmentsPage} />

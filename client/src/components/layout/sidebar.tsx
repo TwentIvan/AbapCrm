@@ -39,8 +39,9 @@ const getDefaultSoluzioniItems = (t: any) => [
 // Vendita group
 const getDefaultVenditaItems = (t: any) => [
   { id: "v1", name: t("nav.rateAgreements"), href: "/rate-agreements", icon: DollarSign, testId: "nav-rate-agreements" },
-  { id: "v2", name: "Ordini di vendita", href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
-  { id: "v3", name: "Fatture", href: "/invoices", icon: FileText, testId: "nav-invoices" },
+  { id: "v2", name: "Offerte", href: "/quotes", icon: FileText, testId: "nav-quotes" },
+  { id: "v3", name: "Ordini di vendita", href: "/sales-orders", icon: FileText, testId: "nav-sales-orders" },
+  { id: "v4", name: "Fatture", href: "/invoices", icon: FileText, testId: "nav-invoices" },
 ];
 
 // Acquisti group
