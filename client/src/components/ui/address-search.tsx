@@ -438,7 +438,19 @@ export function AddressSearch({
                   )}
                   <MapPin className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{result.display_name}</p>
+                    {(() => {
+                      const addr = result.address;
+                      const street = addr.road || "";
+                      const streetNumber = addr.house_number || "";
+                      const city = addr.city || addr.town || addr.village || addr.municipality || "";
+                      const postalCode = addr.postcode || "";
+                      const cleanAddress = [
+                        street && streetNumber ? `${street} ${streetNumber}` : street,
+                        postalCode,
+                        city
+                      ].filter(Boolean).join(", ");
+                      return <p className="text-sm font-medium truncate">{cleanAddress || result.display_name}</p>;
+                    })()}
                     <div className="flex flex-wrap gap-2 mt-1 text-xs text-muted-foreground">
                       {result.address.road && (
                         <span>{result.address.road} {result.address.house_number || ""}</span>

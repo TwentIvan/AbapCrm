@@ -1,11 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ReactNode } from "react";
-import Uppy from "@uppy/core";
-import { DashboardModal } from "@uppy/react";
-// CSS imports removed to fix build issue - will be added later
-import AwsS3 from "@uppy/aws-s3";
-import type { UploadResult } from "@uppy/core";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
@@ -14,75 +10,95 @@ interface ObjectUploaderProps {
     method: "PUT";
     url: string;
   }>;
-  onComplete?: (
-    result: UploadResult<Record<string, unknown>, Record<string, unknown>>
-  ) => void;
+  onComplete?: (result: { successful: Array<{ uploadURL?: string }> }) => void;
   buttonClassName?: string;
   children: ReactNode;
 }
 
-/**
- * A file upload component that renders as a button and provides a modal interface for
- * file management.
- * 
- * Features:
- * - Renders as a customizable button that opens a file upload modal
- * - Provides a modal interface for:
- *   - File selection
- *   - File preview
- *   - Upload progress tracking
- *   - Upload status display
- * 
- * The component uses Uppy under the hood to handle all file upload functionality.
- * All file management features are automatically handled by the Uppy dashboard modal.
- */
 export function ObjectUploader({
-  maxNumberOfFiles = 1,
-  maxFileSize = 10485760, // 10MB default
+  maxFileSize = 10485760,
   onGetUploadParameters,
   onComplete,
   buttonClassName,
   children,
 }: ObjectUploaderProps) {
-  const [showModal, setShowModal] = useState(false);
-  const [uppy] = useState(() =>
-    new Uppy({
-      restrictions: {
-        maxNumberOfFiles,
-        maxFileSize,
-        allowedFileTypes: maxNumberOfFiles === 1 ? ['image/*'] : undefined, // Solo immagini per logo
-      },
-      autoProceed: false,
-    })
-      .use(AwsS3, {
-        shouldUseMultipart: false,
-        getUploadParameters: onGetUploadParameters,
-      })
-      .on("complete", (result) => {
-        onComplete?.(result);
-        setShowModal(false);
-      })
-  );
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > maxFileSize) {
+      alert(`File troppo grande. Massimo ${Math.round(maxFileSize / 1024 / 1024)}MB`);
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      alert('Solo immagini sono permesse');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const { url } = await onGetUploadParameters();
+      
+      const response = await fetch(url, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+
+      if (response.ok) {
+        const uploadURL = url.split('?')[0];
+        onComplete?.({ successful: [{ uploadURL }] });
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Errore durante il caricamento');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   return (
     <div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+        data-testid="input-file-upload"
+      />
       <Button 
         type="button"
-        onClick={() => setShowModal(true)} 
+        onClick={handleButtonClick}
+        disabled={isUploading}
         className={buttonClassName}
         data-testid="button-upload-logo"
       >
-        {children}
+        {isUploading ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Caricamento...
+          </>
+        ) : (
+          children
+        )}
       </Button>
-
-      <DashboardModal
-        uppy={uppy}
-        open={showModal}
-        onRequestClose={() => setShowModal(false)}
-        proudlyDisplayPoweredByUppy={false}
-        note="Trascina file qui o clicca per selezionare"
-        showLinkToFileUploadResult={false}
-      />
     </div>
   );
 }
