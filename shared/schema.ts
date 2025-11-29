@@ -539,6 +539,7 @@ export const quoteItems = pgTable("quote_items", {
   // Link opzionali
   projectId: uuid("project_id").references(() => projects.id),
   humanResourceId: uuid("human_resource_id").references(() => humanResources.id),
+  rateAgreementId: uuid("rate_agreement_id").references(() => rateAgreements.id),
   
   // Note riga
   notes: text("notes"),
