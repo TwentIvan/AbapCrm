@@ -40,10 +40,10 @@ export default function QuoteItemsEditor({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [items, setItems] = useState<ItemForm[]>(tempItems || []);
-  const [initialized, setInitialized] = useState(false);
+  const [lastQuoteId, setLastQuoteId] = useState<string | undefined>(undefined);
 
   const { data: quoteItems = [], isLoading } = useQuery<QuoteItem[]>({
-    queryKey: [`/api/quotes/${quoteId}/items`],
+    queryKey: ["/api/quotes", quoteId, "items"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!quoteId,
   });
@@ -59,41 +59,46 @@ export default function QuoteItemsEditor({
   });
 
   useEffect(() => {
-    if (tempItems) {
+    if (tempItems && !quoteId) {
       setItems(tempItems);
     }
-  }, [tempItems]);
+  }, [tempItems, quoteId]);
 
   useEffect(() => {
-    if (!initialized && quoteId && quoteItems.length > 0) {
-      setItems(quoteItems.map(item => ({
-        id: item.id,
-        lineNumber: item.lineNumber,
-        itemType: (item.itemType as "manual" | "rate_agreement" | "project") || "manual",
-        referenceId: item.rateAgreementId || item.projectId || undefined,
-        description: item.description,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        vatPercent: "22",
-        vatAmount: (parseFloat(item.lineTotal) * 0.22).toFixed(2),
-        lineTotal: item.lineTotal,
-        isNew: false,
-        isModified: false,
-      })));
-      setInitialized(true);
+    if (quoteId && quoteId !== lastQuoteId && !isLoading) {
+      setLastQuoteId(quoteId);
+      if (quoteItems.length > 0) {
+        const loadedItems = quoteItems.map(item => {
+          const lineTotal = parseFloat(item.lineTotal) || 0;
+          const vatPercent = "22";
+          const vatAmount = (lineTotal * 0.22).toFixed(2);
+          return {
+            id: item.id,
+            lineNumber: item.lineNumber,
+            itemType: (item.itemType as "manual" | "rate_agreement" | "project") || "manual",
+            referenceId: item.rateAgreementId || item.projectId || undefined,
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            vatPercent,
+            vatAmount,
+            lineTotal: item.lineTotal,
+            isNew: false,
+            isModified: false,
+          };
+        });
+        setItems(loadedItems);
+        recalculateTotals(loadedItems);
+      } else {
+        setItems([]);
+      }
     }
-  }, [quoteItems, quoteId, initialized]);
-
-  useEffect(() => {
-    if (!initialized && quoteId && quoteItems.length === 0 && !isLoading) {
-      setInitialized(true);
-    }
-  }, [quoteItems, quoteId, isLoading, initialized]);
+  }, [quoteItems, quoteId, lastQuoteId, isLoading]);
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", `/api/quotes/${quoteId}/items`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/quotes/${quoteId}/items`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes", quoteId, "items"] });
     },
   });
 
@@ -101,14 +106,14 @@ export default function QuoteItemsEditor({
     mutationFn: ({ id, data }: { id: string; data: any }) => 
       apiRequest("PUT", `/api/quotes/${quoteId}/items/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/quotes/${quoteId}/items`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes", quoteId, "items"] });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/quotes/${quoteId}/items/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/quotes/${quoteId}/items`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes", quoteId, "items"] });
     },
   });
 
