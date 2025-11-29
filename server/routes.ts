@@ -2394,7 +2394,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         issuerPartner = await storage.getPartner(organization.partnerId, req.user!.id, organizationId);
       }
 
-      const doc = PdfService.generateQuotePdf({
+      const doc = await PdfService.generateQuotePdf({
         quote,
         items,
         partner,

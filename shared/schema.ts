@@ -31,6 +31,7 @@ export const organizations = pgTable("organizations", {
   name: text("name").notNull(),
   isActive: boolean("is_active").default(true).notNull(), // Status field
   theme: text("theme").default("blue").notNull(), // Theme color
+  logoUrl: text("logo_url"), // Organization logo URL
   partnerId: uuid("partner_id"), // Optional partner reference
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

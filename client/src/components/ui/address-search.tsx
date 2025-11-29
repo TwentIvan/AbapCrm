@@ -91,6 +91,32 @@ const generateFuzzyVariants = (query: string): string[] => {
     variants.push(normalized);
   }
   
+  // Try different format: "street number, city" -> "city, street number"
+  const commaMatch = normalized.match(/^([^,]+),\s*(.+)$/);
+  if (commaMatch) {
+    variants.push(`${commaMatch[2].trim()}, ${commaMatch[1].trim()}`);
+    variants.push(commaMatch[2].trim()); // Just second part
+    variants.push(commaMatch[1].trim()); // Just first part
+  }
+  
+  // Try street + city format for Italian addresses
+  const streetCityMatch = normalized.match(/^(via|viale|corso|piazza|largo|vicolo)\s+(.+?)\s+(\d+[a-z]?)\s*,?\s*(.+)?$/i);
+  if (streetCityMatch) {
+    const streetType = streetCityMatch[1];
+    const streetName = streetCityMatch[2];
+    const number = streetCityMatch[3];
+    const city = streetCityMatch[4] || "";
+    
+    // Try: "street number, city"
+    if (city) {
+      variants.push(`${streetType} ${streetName} ${number}, ${city}`);
+      variants.push(`${city}, ${streetType} ${streetName} ${number}`);
+      variants.push(`${streetType} ${streetName}, ${city}`);
+    }
+    // Try without number
+    variants.push(`${streetType} ${streetName}`);
+  }
+  
   // Try without numbers at the end (in case street number is wrong)
   const withoutNumbers = normalized.replace(/\s*\d+[a-z]?\s*$/i, "").trim();
   if (withoutNumbers && withoutNumbers !== normalized) {
@@ -103,7 +129,7 @@ const generateFuzzyVariants = (query: string): string[] => {
     variants.push(parts[0].trim());
   }
   
-  return Array.from(new Set(variants)); // Remove duplicates
+  return Array.from(new Set(variants)).slice(0, 6); // Max 6 variants
 };
 
 export function AddressSearch({

@@ -5,10 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { Building } from "lucide-react";
+import { Building, Upload, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "@/contexts/organization-context";
 import { useStandardCrud } from "@/lib/cache-manager";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 import {
   Select,
   SelectContent,
@@ -23,6 +25,7 @@ interface OrganizationFormProps {
     name: string;
     isActive: boolean;
     theme: string;
+    logoUrl?: string | null;
     partnerId?: string | null;
   } | null;
   onSuccess: () => void;
@@ -34,20 +37,21 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
     name: organization?.name || "",
     isActive: organization?.isActive ?? true,
     theme: organization?.theme || "blue",
+    logoUrl: organization?.logoUrl || null,
     partnerId: organization?.partnerId || null,
   });
 
+  const [logoPreview, setLogoPreview] = useState<string | null>(organization?.logoUrl || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { currentOrganizationId } = useOrganization();
   const { onCreateSuccess, onUpdateSuccess } = useStandardCrud("organizations");
 
-  // Load available partners for selection
   const { data: partners = [] } = useQuery<any[]>({
     queryKey: ["/api/partners"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
   const getThemeColor = (theme: string) => {
@@ -66,13 +70,49 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
     return themeColors[theme] || themeColors.blue;
   };
 
+  const handleGetLogoUploadParameters = async () => {
+    const response = await apiRequest("POST", "/api/partners/logo/upload");
+    const data = await response.json();
+    return {
+      method: "PUT" as const,
+      url: data.uploadURL,
+    };
+  };
+
+  const handleLogoUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    if (result.successful && result.successful.length > 0) {
+      const uploadURL = result.successful[0].uploadURL;
+      if (uploadURL) {
+        try {
+          const response = await apiRequest("POST", "/api/partners/logo/normalize", { 
+            uploadURL: uploadURL 
+          });
+          const { normalizedPath } = await response.json();
+          
+          setFormData(prev => ({ ...prev, logoUrl: normalizedPath }));
+          setLogoPreview(normalizedPath);
+          toast({ title: "Logo caricato con successo!" });
+        } catch (error) {
+          console.error('Error normalizing logo URL:', error);
+          setFormData(prev => ({ ...prev, logoUrl: uploadURL }));
+          setLogoPreview(uploadURL);
+          toast({ title: "Logo caricato" });
+        }
+      }
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setFormData(prev => ({ ...prev, logoUrl: null }));
+    setLogoPreview(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
       if (organization) {
-        // Update existing organization
         await apiRequest("PUT", `/api/organizations/${organization.id}`, formData);
         await onUpdateSuccess();
         toast({
@@ -80,7 +120,6 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
           description: "Organizzazione aggiornata con successo",
         });
       } else {
-        // Create new organization
         await apiRequest("POST", "/api/organizations", formData);
         await onCreateSuccess();
         toast({
@@ -110,6 +149,49 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 gap-4">
+        {/* Logo */}
+        <div>
+          <Label>Logo Organizzazione</Label>
+          <div className="flex items-center gap-4 mt-2">
+            {logoPreview ? (
+              <div className="relative">
+                <img 
+                  src={logoPreview} 
+                  alt="Logo" 
+                  className="w-20 h-20 object-contain border rounded-lg bg-white"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-2 -right-2 h-6 w-6"
+                  onClick={handleRemoveLogo}
+                  data-testid="button-remove-logo"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <div className="w-20 h-20 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
+                <Building className="h-8 w-8" />
+              </div>
+            )}
+            <ObjectUploader
+              maxNumberOfFiles={1}
+              maxFileSize={5242880}
+              onGetUploadParameters={handleGetLogoUploadParameters}
+              onComplete={handleLogoUploadComplete}
+              buttonClassName="gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              {logoPreview ? "Cambia" : "Carica"} Logo
+            </ObjectUploader>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            Il logo verrà mostrato nei documenti PDF (offerte, fatture, ecc.)
+          </p>
+        </div>
+
         {/* Nome */}
         <div>
           <Label htmlFor="name">Nome Organizzazione *</Label>
@@ -211,7 +293,7 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
           </Select>
         </div>
 
-        {/* Partner - Se non è Personal può avere partner associato */}
+        {/* Partner */}
         <div>
           <Label htmlFor="partnerId">Partner Associato</Label>
           <Select value={formData.partnerId || "none"} onValueChange={(value) => handleChange("partnerId", value === "none" ? null : value)}>
@@ -235,11 +317,11 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
             </SelectContent>
           </Select>
           <p className="text-sm text-muted-foreground mt-1">
-            Partner associato a questa organizzazione (anagrafica contatto)
+            Partner associato a questa organizzazione (per dati intestazione documenti)
           </p>
         </div>
 
-        {/* Stato Attivo - Solo se non è Personal */}
+        {/* Stato Attivo */}
         {!isPersonalOrg && (
           <div className="flex items-center justify-between">
             <Label htmlFor="isActive">Organizzazione Attiva</Label>

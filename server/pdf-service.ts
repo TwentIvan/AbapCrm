@@ -1,21 +1,43 @@
 import PDFDocument from "pdfkit";
 import type { Quote, QuoteItem, Partner, Organization } from "@shared/schema";
+import https from "https";
+import http from "http";
 
 interface QuotePdfData {
   quote: Quote;
   items: QuoteItem[];
   partner: Partner;
-  organization: Organization;
+  organization: Organization & { logoUrl?: string | null };
   issuerPartner?: Partner | null;
 }
 
+async function fetchImage(url: string): Promise<Buffer | null> {
+  return new Promise((resolve) => {
+    try {
+      const protocol = url.startsWith('https') ? https : http;
+      protocol.get(url, (response) => {
+        if (response.statusCode !== 200) {
+          resolve(null);
+          return;
+        }
+        const chunks: Buffer[] = [];
+        response.on('data', (chunk) => chunks.push(chunk));
+        response.on('end', () => resolve(Buffer.concat(chunks)));
+        response.on('error', () => resolve(null));
+      }).on('error', () => resolve(null));
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 export class PdfService {
-  static generateQuotePdf(data: QuotePdfData): PDFKit.PDFDocument {
+  static async generateQuotePdf(data: QuotePdfData): Promise<PDFKit.PDFDocument> {
     const { quote, items, partner, organization, issuerPartner } = data;
     
     const doc = new PDFDocument({
       size: "A4",
-      margin: 50,
+      margin: 40,
       info: {
         Title: `Offerta ${quote.quoteNumber}`,
         Author: organization.name,
@@ -27,25 +49,42 @@ export class PdfService {
     const grayColor = "#6b7280";
     const lightGray = "#f3f4f6";
 
-    let y = 50;
+    let y = 40;
+    let logoHeight = 0;
 
-    doc.fontSize(24)
+    if (organization.logoUrl) {
+      try {
+        const logoBuffer = await fetchImage(organization.logoUrl);
+        if (logoBuffer) {
+          doc.image(logoBuffer, 40, y, { width: 80 });
+          logoHeight = 60;
+        }
+      } catch (e) {
+        console.error("Error loading logo:", e);
+      }
+    }
+
+    doc.fontSize(20)
        .fillColor(primaryColor)
-       .text("OFFERTA", 50, y, { align: "right" });
+       .text("OFFERTA", 40, y, { align: "right" });
     
-    y += 35;
-    doc.fontSize(14)
+    y += 28;
+    doc.fontSize(11)
        .fillColor(accentColor)
-       .text(quote.quoteNumber, 50, y, { align: "right" });
+       .text(quote.quoteNumber, 40, y, { align: "right" });
 
-    y = 50;
-    doc.fontSize(16)
-       .fillColor(primaryColor)
-       .text(organization.name, 50, y);
+    const headerX = logoHeight > 0 ? 130 : 40;
+    y = 40;
     
-    y += 20;
+    doc.fontSize(12)
+       .fillColor(primaryColor)
+       .font("Helvetica-Bold")
+       .text(organization.name, headerX, y);
+    doc.font("Helvetica");
+    
+    y += 16;
     if (issuerPartner) {
-      doc.fontSize(9)
+      doc.fontSize(8)
          .fillColor(grayColor);
       
       if (issuerPartner.street) {
@@ -53,8 +92,8 @@ export class PdfService {
           issuerPartner.street,
           issuerPartner.streetNumber,
         ].filter(Boolean).join(" ");
-        doc.text(address, 50, y);
-        y += 12;
+        doc.text(address, headerX, y);
+        y += 10;
       }
       
       if (issuerPartner.city || issuerPartner.postalCode) {
@@ -63,59 +102,57 @@ export class PdfService {
           issuerPartner.city,
           issuerPartner.province ? `(${issuerPartner.province})` : null
         ].filter(Boolean).join(" ");
-        doc.text(cityLine, 50, y);
-        y += 12;
+        doc.text(cityLine, headerX, y);
+        y += 10;
       }
       
       if (issuerPartner.vatNumber) {
-        doc.text(`P.IVA: ${issuerPartner.vatNumber}`, 50, y);
-        y += 12;
+        doc.text(`P.IVA: ${issuerPartner.vatNumber}`, headerX, y);
+        y += 10;
       }
       
       if (issuerPartner.fiscalCode) {
-        doc.text(`C.F.: ${issuerPartner.fiscalCode}`, 50, y);
-        y += 12;
+        doc.text(`C.F.: ${issuerPartner.fiscalCode}`, headerX, y);
+        y += 10;
       }
       
-      if (issuerPartner.email) {
-        doc.text(issuerPartner.email, 50, y);
-        y += 12;
-      }
-      
-      if (issuerPartner.phone) {
-        doc.text(issuerPartner.phone, 50, y);
-        y += 12;
+      const contactLine = [issuerPartner.email, issuerPartner.phone].filter(Boolean).join(" | ");
+      if (contactLine) {
+        doc.text(contactLine, headerX, y);
+        y += 10;
       }
     }
 
-    y = Math.max(y, 130);
-    doc.moveTo(50, y).lineTo(545, y).strokeColor("#e5e7eb").stroke();
-    y += 20;
-
-    doc.fontSize(10)
-       .fillColor(primaryColor)
-       .text("DESTINATARIO", 50, y);
-    
+    y = Math.max(y, 40 + logoHeight, 115);
+    doc.moveTo(40, y).lineTo(555, y).strokeColor("#e5e7eb").stroke();
     y += 15;
-    doc.fontSize(11)
+
+    doc.fontSize(8)
        .fillColor(primaryColor)
        .font("Helvetica-Bold")
-       .text(partner.company || partner.name, 50, y);
+       .text("DESTINATARIO", 40, y);
+    doc.font("Helvetica");
     
-    y += 15;
+    y += 12;
+    doc.fontSize(10)
+       .fillColor(primaryColor)
+       .font("Helvetica-Bold")
+       .text(partner.company || partner.name, 40, y);
+    
+    y += 12;
     doc.font("Helvetica")
-       .fontSize(9)
+       .fontSize(8)
        .fillColor(grayColor);
     
     if (partner.name && partner.company) {
-      doc.text(`Att.ne: ${partner.name}`, 50, y);
-      y += 12;
+      doc.text(`Att.ne: ${partner.name}`, 40, y);
+      y += 10;
     }
     
     if (partner.street) {
       const address = [partner.street, partner.streetNumber].filter(Boolean).join(" ");
-      doc.text(address, 50, y);
-      y += 12;
+      doc.text(address, 40, y);
+      y += 10;
     }
     
     if (partner.city || partner.postalCode) {
@@ -124,148 +161,151 @@ export class PdfService {
         partner.city,
         partner.province ? `(${partner.province})` : null
       ].filter(Boolean).join(" ");
-      doc.text(cityLine, 50, y);
-      y += 12;
+      doc.text(cityLine, 40, y);
+      y += 10;
     }
     
     if (partner.vatNumber) {
-      doc.text(`P.IVA: ${partner.vatNumber}`, 50, y);
-      y += 12;
+      doc.text(`P.IVA: ${partner.vatNumber}`, 40, y);
+      y += 10;
     }
 
-    const infoBoxY = 130;
-    const infoBoxX = 350;
+    const infoBoxY = 115;
+    const infoBoxX = 380;
     
-    doc.rect(infoBoxX, infoBoxY, 195, 80)
+    doc.rect(infoBoxX, infoBoxY, 175, 70)
        .fillColor(lightGray)
        .fill();
     
-    doc.fontSize(8)
+    doc.fontSize(7)
        .fillColor(grayColor)
-       .text("Data emissione", infoBoxX + 10, infoBoxY + 10);
-    doc.fontSize(10)
+       .text("Data emissione", infoBoxX + 8, infoBoxY + 8);
+    doc.fontSize(9)
        .fillColor(primaryColor)
-       .text(formatDate(quote.issueDate), infoBoxX + 10, infoBoxY + 22);
+       .text(formatDate(quote.issueDate), infoBoxX + 8, infoBoxY + 18);
     
-    doc.fontSize(8)
+    doc.fontSize(7)
        .fillColor(grayColor)
-       .text("Valida fino al", infoBoxX + 10, infoBoxY + 42);
-    doc.fontSize(10)
+       .text("Valida fino al", infoBoxX + 8, infoBoxY + 35);
+    doc.fontSize(9)
        .fillColor(primaryColor)
-       .text(formatDate(quote.validTo), infoBoxX + 10, infoBoxY + 54);
+       .text(formatDate(quote.validTo), infoBoxX + 8, infoBoxY + 45);
     
-    doc.fontSize(8)
+    doc.fontSize(7)
        .fillColor(grayColor)
-       .text("Versione", infoBoxX + 110, infoBoxY + 10);
-    doc.fontSize(10)
+       .text("Versione", infoBoxX + 100, infoBoxY + 8);
+    doc.fontSize(9)
        .fillColor(primaryColor)
-       .text(String(quote.version || 1), infoBoxX + 110, infoBoxY + 22);
+       .text(String(quote.version || 1), infoBoxX + 100, infoBoxY + 18);
 
-    y = Math.max(y + 20, 240);
+    y = Math.max(y + 15, 200);
 
     const tableTop = y;
-    const colWidths = [30, 200, 50, 70, 70, 75];
-    const colX = [50, 80, 280, 330, 400, 470];
+    const colX = [40, 60, 240, 290, 355, 415, 475];
     
-    doc.rect(50, tableTop, 495, 22)
+    doc.rect(40, tableTop, 515, 18)
        .fillColor(primaryColor)
        .fill();
     
-    doc.fontSize(8)
+    doc.fontSize(7)
        .fillColor("#ffffff")
-       .text("#", colX[0] + 5, tableTop + 7)
-       .text("Descrizione", colX[1] + 5, tableTop + 7)
-       .text("Qtà", colX[2] + 5, tableTop + 7)
-       .text("Prezzo Unit.", colX[3] + 5, tableTop + 7)
-       .text("Sconto", colX[4] + 5, tableTop + 7)
-       .text("Totale", colX[5] + 5, tableTop + 7);
+       .text("#", colX[0] + 3, tableTop + 5)
+       .text("Descrizione", colX[1] + 3, tableTop + 5)
+       .text("Qtà", colX[2] + 3, tableTop + 5)
+       .text("U.M.", colX[3] + 3, tableTop + 5)
+       .text("Prezzo", colX[4] + 3, tableTop + 5)
+       .text("Sconto", colX[5] + 3, tableTop + 5)
+       .text("Totale", colX[6] + 3, tableTop + 5);
     
-    y = tableTop + 22;
+    y = tableTop + 18;
     
     const sortedItems = [...items].sort((a, b) => a.lineNumber - b.lineNumber);
     
     for (let i = 0; i < sortedItems.length; i++) {
       const item = sortedItems[i];
-      const rowHeight = 25;
+      const rowHeight = 20;
       
       if (i % 2 === 0) {
-        doc.rect(50, y, 495, rowHeight)
+        doc.rect(40, y, 515, rowHeight)
            .fillColor("#fafafa")
            .fill();
       }
       
-      doc.fontSize(9)
+      const descText = item.description.length > 35 
+        ? item.description.substring(0, 35) + "..." 
+        : item.description;
+      
+      doc.fontSize(7)
          .fillColor(primaryColor)
-         .text(String(item.lineNumber), colX[0] + 5, y + 8)
-         .text(item.description.substring(0, 40), colX[1] + 5, y + 8)
-         .text(`${item.quantity} ${item.unitOfMeasure || ""}`, colX[2] + 5, y + 8)
-         .text(formatCurrency(parseFloat(item.unitPrice)), colX[3] + 5, y + 8)
-         .text(item.discountPercent ? `${item.discountPercent}%` : "-", colX[4] + 5, y + 8)
-         .text(formatCurrency(parseFloat(item.lineTotal)), colX[5] + 5, y + 8);
+         .text(String(item.lineNumber), colX[0] + 3, y + 6)
+         .text(descText, colX[1] + 3, y + 6)
+         .text(String(item.quantity), colX[2] + 3, y + 6)
+         .text((item.unitOfMeasure || "").substring(0, 6), colX[3] + 3, y + 6)
+         .text(formatCurrencyShort(parseFloat(item.unitPrice)), colX[4] + 3, y + 6)
+         .text(item.discountPercent && parseFloat(item.discountPercent) > 0 ? `${item.discountPercent}%` : "-", colX[5] + 3, y + 6)
+         .text(formatCurrencyShort(parseFloat(item.lineTotal)), colX[6] + 3, y + 6);
       
       y += rowHeight;
       
-      if (y > 700) {
+      if (y > 750) {
         doc.addPage();
-        y = 50;
+        y = 40;
       }
     }
 
-    doc.moveTo(50, y).lineTo(545, y).strokeColor("#e5e7eb").stroke();
-    y += 15;
+    doc.moveTo(40, y).lineTo(555, y).strokeColor("#e5e7eb").stroke();
+    y += 12;
 
-    const totalsX = 380;
-    const totalsWidth = 165;
+    const totalsX = 400;
     
-    doc.fontSize(9)
+    doc.fontSize(8)
        .fillColor(grayColor)
        .text("Subtotale:", totalsX, y)
        .fillColor(primaryColor)
-       .text(formatCurrency(parseFloat(quote.subtotal)), totalsX + 80, y, { align: "right", width: 85 });
-    y += 18;
+       .text(formatCurrency(parseFloat(quote.subtotal)), totalsX + 70, y, { align: "right", width: 85 });
+    y += 14;
     
     if (quote.discountPercent && parseFloat(quote.discountPercent) > 0) {
       doc.fillColor(grayColor)
          .text(`Sconto (${quote.discountPercent}%):`, totalsX, y)
          .fillColor("#dc2626")
-         .text(`-${formatCurrency(parseFloat(quote.discountAmount || "0"))}`, totalsX + 80, y, { align: "right", width: 85 });
-      y += 18;
+         .text(`-${formatCurrency(parseFloat(quote.discountAmount || "0"))}`, totalsX + 70, y, { align: "right", width: 85 });
+      y += 14;
     }
     
     doc.fillColor(grayColor)
        .text("IVA (22%):", totalsX, y)
        .fillColor(primaryColor)
-       .text(formatCurrency(parseFloat(quote.taxes)), totalsX + 80, y, { align: "right", width: 85 });
-    y += 20;
+       .text(formatCurrency(parseFloat(quote.taxes)), totalsX + 70, y, { align: "right", width: 85 });
+    y += 16;
     
-    doc.rect(totalsX - 5, y - 3, totalsWidth, 25)
+    doc.rect(totalsX - 5, y - 3, 160, 22)
        .fillColor(primaryColor)
        .fill();
     
-    doc.fontSize(11)
+    doc.fontSize(10)
        .fillColor("#ffffff")
        .font("Helvetica-Bold")
        .text("TOTALE:", totalsX, y + 3)
-       .text(formatCurrency(parseFloat(quote.total)), totalsX + 80, y + 3, { align: "right", width: 85 });
+       .text(formatCurrency(parseFloat(quote.total)), totalsX + 70, y + 3, { align: "right", width: 85 });
     
     doc.font("Helvetica");
-    y += 40;
+    y += 35;
 
     if (quote.paymentTerms || quote.deliveryMode || quote.specialConditions) {
-      y += 10;
-      doc.fontSize(10)
+      doc.fontSize(9)
          .fillColor(primaryColor)
          .font("Helvetica-Bold")
-         .text("Condizioni", 50, y);
+         .text("Condizioni", 40, y);
       doc.font("Helvetica");
-      y += 18;
+      y += 14;
       
-      doc.fontSize(9)
+      doc.fontSize(8)
          .fillColor(grayColor);
       
       if (quote.paymentTerms) {
-        doc.text(`Termini di pagamento: ${quote.paymentTerms}`, 50, y);
-        y += 14;
+        doc.text(`Pagamento: ${quote.paymentTerms}`, 40, y);
+        y += 12;
       }
       
       if (quote.deliveryMode) {
@@ -274,41 +314,41 @@ export class PdfService {
           "on-site": "Presso il cliente",
           "hybrid": "Ibrido"
         };
-        doc.text(`Modalità: ${deliveryModes[quote.deliveryMode] || quote.deliveryMode}`, 50, y);
-        y += 14;
+        doc.text(`Modalità: ${deliveryModes[quote.deliveryMode] || quote.deliveryMode}`, 40, y);
+        y += 12;
       }
       
       if (quote.specialConditions) {
-        doc.text(`Note: ${quote.specialConditions}`, 50, y, { width: 495 });
-        y += 14;
+        doc.text(`Note: ${quote.specialConditions}`, 40, y, { width: 515 });
+        y += 12;
       }
     }
 
     if (quote.externalNotes) {
-      y += 10;
-      doc.fontSize(10)
+      y += 8;
+      doc.fontSize(9)
          .fillColor(primaryColor)
          .font("Helvetica-Bold")
-         .text("Note", 50, y);
+         .text("Note", 40, y);
       doc.font("Helvetica");
-      y += 18;
+      y += 14;
       
-      doc.fontSize(9)
+      doc.fontSize(8)
          .fillColor(grayColor)
-         .text(quote.externalNotes, 50, y, { width: 495 });
+         .text(quote.externalNotes, 40, y, { width: 515 });
     }
 
     const pageCount = doc.bufferedPageRange().count;
     for (let i = 0; i < pageCount; i++) {
       doc.switchToPage(i);
       
-      doc.fontSize(8)
+      doc.fontSize(7)
          .fillColor(grayColor)
          .text(
            `Pagina ${i + 1} di ${pageCount}`,
-           50,
-           doc.page.height - 40,
-           { align: "center", width: doc.page.width - 100 }
+           40,
+           doc.page.height - 30,
+           { align: "center", width: doc.page.width - 80 }
          );
     }
 
@@ -331,4 +371,13 @@ function formatCurrency(amount: number): string {
     style: "currency",
     currency: "EUR"
   }).format(amount);
+}
+
+function formatCurrencyShort(amount: number): string {
+  return new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount).replace("€", "").trim() + " €";
 }
