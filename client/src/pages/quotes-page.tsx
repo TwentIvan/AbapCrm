@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { X } from "lucide-react";
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
@@ -302,50 +303,62 @@ export default function QuotesPage() {
           subtitle="Gestisci le offerte commerciali"
           onNewClick={handleAdd}
         />
-        <main className="p-6 space-y-6">
-          <ListViewToolbar
-            currentLayoutName={currentLayoutName}
-            savedLayouts={savedLayouts}
-            onLoadLayout={loadLayout}
-            onRenameLayout={renameLayout}
-            onDeleteLayout={deleteLayout}
-            onConfigureTable={() => setShowConfigDialog(true)}
-            onCreateNew={handleAdd}
-            onCopySelected={() => {/* TODO: implement copy */}}
-            onBulkEdit={() => {/* TODO: implement bulk edit */}}
-            onDeleteSelected={() => handleDelete(selectedQuotes)}
-            hasSelection={selectedQuotes.length > 0}
-          />
-
-          <UniversalTable
-            data={quotes}
-            columns={visibleColumns}
-            enableSelection={true}
-            onSelectionChange={(rows) => setSelectedQuotes(rows as Quote[])}
-            onRowClick={handleEdit}
-          />
-
-          {/* Create/Edit Dialog */}
-          <Dialog open={showForm} onOpenChange={setShowForm}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingQuote ? "Modifica Offerta" : "Nuova Offerta"}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingQuote ? "Aggiorna" : "Crea"} un'offerta commerciale
-                </DialogDescription>
-              </DialogHeader>
-              <QuoteForm
-                quote={editingQuote || undefined}
-                onSuccess={() => {
-                  setShowForm(false);
-                  setEditingQuote(undefined);
-                  qc.invalidateQueries({ queryKey: ["/api/quotes"] });
-                }}
+        <main className="p-6 space-y-6 overflow-y-auto" style={{ height: 'calc(100vh - 80px)' }}>
+          {/* Inline Form Panel - Full Width */}
+          {showForm ? (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
+                <CardTitle className="text-lg">
+                  {editingQuote ? `Modifica Offerta ${editingQuote.quoteNumber}` : "Nuova Offerta"}
+                </CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingQuote(undefined);
+                  }}
+                  data-testid="button-close-form"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <QuoteForm
+                  quote={editingQuote || undefined}
+                  onSuccess={() => {
+                    setShowForm(false);
+                    setEditingQuote(undefined);
+                    qc.invalidateQueries({ queryKey: ["/api/quotes"] });
+                  }}
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <ListViewToolbar
+                currentLayoutName={currentLayoutName}
+                savedLayouts={savedLayouts}
+                onLoadLayout={loadLayout}
+                onRenameLayout={renameLayout}
+                onDeleteLayout={deleteLayout}
+                onConfigureTable={() => setShowConfigDialog(true)}
+                onCreateNew={handleAdd}
+                onCopySelected={() => {/* TODO: implement copy */}}
+                onBulkEdit={() => {/* TODO: implement bulk edit */}}
+                onDeleteSelected={() => handleDelete(selectedQuotes)}
+                hasSelection={selectedQuotes.length > 0}
               />
-            </DialogContent>
-          </Dialog>
+
+              <UniversalTable
+                data={quotes}
+                columns={visibleColumns}
+                enableSelection={true}
+                onSelectionChange={(rows) => setSelectedQuotes(rows as Quote[])}
+                onRowClick={handleEdit}
+              />
+            </>
+          )}
 
           {/* Table Configuration Dialog */}
           <TableConfiguration
