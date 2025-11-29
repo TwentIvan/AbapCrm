@@ -11,7 +11,7 @@ import {
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, insertContactSchema,
   insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema,
   insertMessageSchema, insertCommentSchema, insertMessageLinkSchema, insertEmailConfigSchema, insertTimesheetSchema,
-  insertSalesOrderSchema, insertSalesOrderItemSchema, insertRateAgreementSchema,
+  insertSalesOrderSchema, insertSalesOrderItemSchema, insertRateAgreementSchema, insertQuoteSchema, insertQuoteItemSchema,
   insertHumanResourceSchema, insertSapSystemSchema, insertSapSystemCredentialsSchema,
   insertVpnConnectionSchema, insertVpnCredentialsSchema, insertTransportRequestSchema,
   insertInterventionDocumentSchema, insertSystemCredentialsSchema,
@@ -25,7 +25,7 @@ import {
   insertCustomEntitySchema, insertCustomFieldSchema, insertEntityCustomValueSchema,
   insertTestExecutionSchema,
   type EmailConfig,
-  projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements,
+  projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users,
   customEntities, customFields, sapTransportRequests, timeEntries
@@ -2250,6 +2250,159 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       res.sendStatus(204);
     } catch (error) {
       console.error("[DELETE DEAL] Error:", error);
+      res.sendStatus(500);
+    }
+  });
+
+  // Quotes (Offerte/Preventivi)
+  app.get("/api/quotes", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      const quotesList = await db.select().from(quotes)
+        .where(and(
+          eq(quotes.userId, req.user!.id),
+          inArray(quotes.organizationId, organizationIds)
+        ))
+        .orderBy(desc(quotes.issueDate));
+      res.json(quotesList);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.get("/api/quotes/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const organizationId = getOrganizationId(req);
+    const quote = await storage.getQuote(req.params.id, req.user!.id, organizationId);
+    if (!quote) return res.sendStatus(404);
+    res.json(quote);
+  });
+
+  app.post("/api/quotes", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const quoteData = insertQuoteSchema.parse({
+        ...req.body,
+        userId: req.user!.id,
+        organizationId
+      });
+      const quote = await storage.createQuote(quoteData);
+      res.status(201).json(quote);
+    } catch (error) {
+      console.error("Quote creation error:", error);
+      res.status(400).json({ error: "Invalid quote data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.put("/api/quotes/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const quote = await storage.updateQuote(req.params.id, req.body, req.user!.id, organizationId);
+      if (!quote) return res.sendStatus(404);
+      res.json(quote);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid quote data" });
+    }
+  });
+
+  app.delete("/api/quotes/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const deleted = await storage.deleteQuote(req.params.id, req.user!.id, organizationId);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("[DELETE QUOTE] Error:", error);
+      res.sendStatus(500);
+    }
+  });
+
+  // Bulk delete quotes
+  app.delete("/api/quotes", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const ids = req.body.ids as string[];
+      if (!ids || !Array.isArray(ids)) {
+        return res.status(400).json({ error: "Invalid ids array" });
+      }
+      const deletedCount = await storage.deleteQuotes(ids, req.user!.id, organizationId);
+      res.json({ deletedCount });
+    } catch (error) {
+      console.error("[BULK DELETE QUOTES] Error:", error);
+      res.sendStatus(500);
+    }
+  });
+
+  // Convert quote to sales order
+  app.post("/api/quotes/:id/convert", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const salesOrder = await storage.convertQuoteToSalesOrder(req.params.id, req.user!.id, organizationId);
+      if (!salesOrder) {
+        return res.status(400).json({ error: "Quote must be in 'accepted' status to convert" });
+      }
+      res.status(201).json(salesOrder);
+    } catch (error) {
+      console.error("[CONVERT QUOTE] Error:", error);
+      res.status(500).json({ error: "Failed to convert quote to sales order" });
+    }
+  });
+
+  // Quote Items
+  app.get("/api/quotes/:quoteId/items", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const organizationId = getOrganizationId(req);
+    const items = await storage.getQuoteItems(req.params.quoteId, req.user!.id, organizationId);
+    res.json(items);
+  });
+
+  app.post("/api/quotes/:quoteId/items", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      // Verify quote ownership
+      const quote = await storage.getQuote(req.params.quoteId, req.user!.id, organizationId);
+      if (!quote) return res.sendStatus(404);
+
+      const itemData = insertQuoteItemSchema.parse({
+        ...req.body,
+        quoteId: req.params.quoteId
+      });
+      const item = await storage.createQuoteItem(itemData);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Quote item creation error:", error);
+      res.status(400).json({ error: "Invalid quote item data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.put("/api/quotes/:quoteId/items/:itemId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const item = await storage.updateQuoteItem(req.params.itemId, req.body, req.user!.id, organizationId);
+      if (!item) return res.sendStatus(404);
+      res.json(item);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid quote item data" });
+    }
+  });
+
+  app.delete("/api/quotes/:quoteId/items/:itemId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const deleted = await storage.deleteQuoteItem(req.params.itemId, req.user!.id, organizationId);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("[DELETE QUOTE ITEM] Error:", error);
       res.sendStatus(500);
     }
   });
