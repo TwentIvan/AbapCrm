@@ -2283,11 +2283,19 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOrganizationId(req);
-      const quoteData = insertQuoteSchema.parse({
+      // Convert date strings to Date objects
+      const bodyWithDates = {
         ...req.body,
         userId: req.user!.id,
-        organizationId
-      });
+        organizationId,
+        issueDate: req.body.issueDate ? new Date(req.body.issueDate) : new Date(),
+        validFrom: req.body.validFrom ? new Date(req.body.validFrom) : new Date(),
+        validTo: req.body.validTo ? new Date(req.body.validTo) : undefined,
+        sentAt: req.body.sentAt ? new Date(req.body.sentAt) : undefined,
+        acceptedAt: req.body.acceptedAt ? new Date(req.body.acceptedAt) : undefined,
+        rejectedAt: req.body.rejectedAt ? new Date(req.body.rejectedAt) : undefined,
+      };
+      const quoteData = insertQuoteSchema.parse(bodyWithDates);
       const quote = await storage.createQuote(quoteData);
       res.status(201).json(quote);
     } catch (error) {
@@ -2300,7 +2308,17 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOrganizationId(req);
-      const quote = await storage.updateQuote(req.params.id, req.body, req.user!.id, organizationId);
+      // Convert date strings to Date objects
+      const bodyWithDates = {
+        ...req.body,
+        issueDate: req.body.issueDate ? new Date(req.body.issueDate) : undefined,
+        validFrom: req.body.validFrom ? new Date(req.body.validFrom) : undefined,
+        validTo: req.body.validTo ? new Date(req.body.validTo) : undefined,
+        sentAt: req.body.sentAt ? new Date(req.body.sentAt) : undefined,
+        acceptedAt: req.body.acceptedAt ? new Date(req.body.acceptedAt) : undefined,
+        rejectedAt: req.body.rejectedAt ? new Date(req.body.rejectedAt) : undefined,
+      };
+      const quote = await storage.updateQuote(req.params.id, bodyWithDates, req.user!.id, organizationId);
       if (!quote) return res.sendStatus(404);
       res.json(quote);
     } catch (error) {
