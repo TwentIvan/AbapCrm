@@ -305,14 +305,27 @@ export function AddressSearch({
       provinceCode = italianProvinces[province.toLowerCase()] || province.substring(0, 2).toUpperCase();
     }
 
+    const street = addr.road || "";
+    const streetNumber = addr.house_number || "";
+    const postalCode = addr.postcode || "";
+    const country = addr.country_code?.toUpperCase() || "IT";
+    
+    const cleanDisplayName = [
+      street && streetNumber ? `${street} ${streetNumber}` : street,
+      postalCode,
+      city,
+      provinceCode,
+      country === "IT" ? "Italia" : country
+    ].filter(Boolean).join(", ");
+
     return {
-      displayName: result.display_name,
-      street: addr.road || "",
-      streetNumber: addr.house_number || "",
+      displayName: cleanDisplayName || result.display_name,
+      street,
+      streetNumber,
       city,
       province: provinceCode,
-      postalCode: addr.postcode || "",
-      country: addr.country_code?.toUpperCase() || "IT",
+      postalCode,
+      country,
       latitude: parseFloat(result.lat),
       longitude: parseFloat(result.lon),
     };

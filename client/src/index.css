@@ -100,13 +100,9 @@
   }
 }
 
-/* Hide Uppy dashboard browse button */
-.uppy-Dashboard-browse {
-  display: none !important;
-}
-
-.uppy-Dashboard-AddFiles-title {
-  display: none !important;
+/* Uppy dashboard styling */
+.uppy-Dashboard-inner {
+  z-index: 10000 !important;
 }
 
 /* Sidebar hover effects - only on box */
