@@ -123,15 +123,18 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
     },
   });
 
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
   const onSubmit = (data: FormData) => {
+    // Previene doppio submit
+    if (isPending) return;
+    
     if (quote) {
       updateMutation.mutate(data);
     } else {
       createMutation.mutate(data);
     }
   };
-
-  const isPending = createMutation.isPending || updateMutation.isPending;
 
   const calculateTotal = () => {
     const subtotal = parseFloat(form.getValues("subtotal") || "0");
