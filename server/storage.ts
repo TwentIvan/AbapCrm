@@ -2269,17 +2269,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createQuote(quote: InsertQuote): Promise<Quote> {
-    // Generate quote number: OFF-YYYY-NNN
+    // Generate quote number: OFF-YYYY-NNN using MAX to avoid duplicates
     const year = new Date().getFullYear();
-    const [countResult] = await db
-      .select({ count: sql<number>`count(*)` })
+    const prefix = `OFF-${year}-`;
+    
+    // Get the max quote number for this year
+    const [maxResult] = await db
+      .select({ maxNum: sql<string>`MAX(${quotes.quoteNumber})` })
       .from(quotes)
-      .where(and(
-        eq(quotes.userId, quote.userId),
-        sql`EXTRACT(YEAR FROM ${quotes.createdAt}) = ${year}`
-      ));
-    const count = Number(countResult?.count || 0) + 1;
-    const quoteNumber = `OFF-${year}-${String(count).padStart(3, '0')}`;
+      .where(sql`${quotes.quoteNumber} LIKE ${prefix + '%'}`);
+    
+    let nextNum = 1;
+    if (maxResult?.maxNum) {
+      // Extract the numeric part from OFF-YYYY-NNN
+      const match = maxResult.maxNum.match(/OFF-\d{4}-(\d+)/);
+      if (match) {
+        nextNum = parseInt(match[1], 10) + 1;
+      }
+    }
+    
+    const quoteNumber = `${prefix}${String(nextNum).padStart(3, '0')}`;
 
     const [newQuote] = await db
       .insert(quotes)

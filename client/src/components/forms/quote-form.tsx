@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { insertQuoteSchema, Quote, Partner, RateAgreement, Project } from "@shared/schema";
+import QuoteItemsEditor from "./quote-items-editor";
 
 const formSchema = z.object({
   partnerId: z.string().min(1, "Seleziona un cliente"),
@@ -143,8 +144,9 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="details" data-testid="tab-details">Dettagli</TabsTrigger>
+            <TabsTrigger value="items" data-testid="tab-items" disabled={!quote}>Righe</TabsTrigger>
             <TabsTrigger value="amounts" data-testid="tab-amounts">Importi</TabsTrigger>
             <TabsTrigger value="notes" data-testid="tab-notes">Note</TabsTrigger>
           </TabsList>
@@ -330,6 +332,22 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
                 )}
               />
             </div>
+          </TabsContent>
+
+          <TabsContent value="items" className="space-y-4 mt-4">
+            {quote ? (
+              <QuoteItemsEditor 
+                quoteId={quote.id} 
+                onTotalChange={(subtotal) => {
+                  form.setValue("subtotal", subtotal.toFixed(2));
+                  calculateTotal();
+                }}
+              />
+            ) : (
+              <div className="p-8 text-center text-gray-500 border-2 border-dashed rounded-lg">
+                Salva prima l'offerta per aggiungere le righe
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="amounts" className="space-y-4 mt-4">
