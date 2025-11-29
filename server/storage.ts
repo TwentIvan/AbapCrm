@@ -926,6 +926,10 @@ export class DatabaseStorage implements IStorage {
         name: organizations.name,
         userRole: userOrganizations.role,
         createdAt: userOrganizations.createdAt,
+        logoUrl: organizations.logoUrl,
+        partnerId: organizations.partnerId,
+        theme: organizations.theme,
+        isActive: organizations.isActive,
       })
       .from(userOrganizations)
       .leftJoin(organizations, eq(userOrganizations.organizationId, organizations.id))

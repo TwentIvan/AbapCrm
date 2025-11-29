@@ -59,6 +59,13 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
     enabled: !!currentOrganization,
   });
 
+  // Query per partner associato all'organizzazione corrente
+  const { data: orgPartner } = useQuery<{ id: string; name: string; logoUrl?: string | null }>({
+    queryKey: ['/api/partners', currentOrganization?.partnerId],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganization?.partnerId,
+  });
+
   // Mappatura route -> icona per l'area corrente
   const getAreaIcon = (path: string) => {
     const routeIconMap: { [key: string]: any } = {
@@ -470,10 +477,18 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                           : 'bg-background border border-border hover:bg-accent'
                       }`}
                     >
-                      <User 
-                        className="text-blue-600 dark:text-blue-400"
-                        style={{ width: '2rem', height: '2rem' }} 
-                      />
+                      {orgPartner?.logoUrl ? (
+                        <img 
+                          src={orgPartner.logoUrl} 
+                          alt={orgPartner.name || "Logo"} 
+                          className="w-10 h-10 object-contain rounded"
+                        />
+                      ) : (
+                        <User 
+                          className="text-blue-600 dark:text-blue-400"
+                          style={{ width: '2rem', height: '2rem' }} 
+                        />
+                      )}
                     </Button>
                   </div>
                 </DropdownMenuTrigger>
