@@ -1,6 +1,6 @@
 import { 
   users, projects, tasks, partners, contacts, deals, calendarEvents, timeEntries, planningWindows, messages, comments, messageLinks, emailConfigs,
-  timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources,
+  timeNormalizationConfigs, salesOrders, salesOrderItems, timesheets, rateAgreements, humanResources, quotes, quoteItems,
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
   emailVerificationTokens, organizationDomains, emailFeedbacks, customFeedbackReasons, emailTrainingSelections, proposals,
@@ -26,6 +26,8 @@ import {
   type TimeNormalizationConfig, type InsertTimeNormalizationConfig,
   type SalesOrder, type InsertSalesOrder,
   type SalesOrderItem, type InsertSalesOrderItem,
+  type Quote, type InsertQuote,
+  type QuoteItem, type InsertQuoteItem,
   type Timesheet, type InsertTimesheet,
   type RateAgreement, type InsertRateAgreement,
   type HumanResource, type InsertHumanResource,
@@ -215,6 +217,22 @@ export interface IStorage {
   updateSalesOrderItem(id: string, item: Partial<InsertSalesOrderItem>, userId: string): Promise<SalesOrderItem | undefined>;
   deleteSalesOrderItem(id: string, userId: string): Promise<boolean>;
   getAllRunningTimeEntries(userId: string): Promise<TimeEntry[]>;
+  
+  // Quotes (Offerte/Preventivi)
+  getQuotes(userId: string, organizationId: string): Promise<Quote[]>;
+  getQuote(id: string, userId: string, organizationId: string): Promise<Quote | undefined>;
+  createQuote(quote: InsertQuote): Promise<Quote>;
+  updateQuote(id: string, quote: Partial<InsertQuote>, userId: string, organizationId: string): Promise<Quote | undefined>;
+  deleteQuote(id: string, userId: string, organizationId: string): Promise<boolean>;
+  deleteQuotes(ids: string[], userId: string, organizationId: string): Promise<number>;
+  convertQuoteToSalesOrder(quoteId: string, userId: string, organizationId: string): Promise<SalesOrder | undefined>;
+  
+  // Quote Items (Righe offerta)
+  getQuoteItems(quoteId: string, userId: string, organizationId: string): Promise<QuoteItem[]>;
+  getQuoteItem(id: string, userId: string, organizationId: string): Promise<QuoteItem | undefined>;
+  createQuoteItem(item: InsertQuoteItem): Promise<QuoteItem>;
+  updateQuoteItem(id: string, item: Partial<InsertQuoteItem>, userId: string, organizationId: string): Promise<QuoteItem | undefined>;
+  deleteQuoteItem(id: string, userId: string, organizationId: string): Promise<boolean>;
 
   // Timesheets
   getTimesheets(userId: string): Promise<Timesheet[]>;
@@ -2226,6 +2244,180 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(salesOrderItems)
       .where(eq(salesOrderItems.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Quotes (Offerte/Preventivi)
+  async getQuotes(userId: string, organizationId: string): Promise<Quote[]> {
+    return await db
+      .select()
+      .from(quotes)
+      .where(and(eq(quotes.userId, userId), eq(quotes.organizationId, organizationId)))
+      .orderBy(desc(quotes.issueDate));
+  }
+
+  async getQuote(id: string, userId: string, organizationId: string): Promise<Quote | undefined> {
+    const [quote] = await db
+      .select()
+      .from(quotes)
+      .where(and(
+        eq(quotes.id, id),
+        eq(quotes.userId, userId),
+        eq(quotes.organizationId, organizationId)
+      ));
+    return quote || undefined;
+  }
+
+  async createQuote(quote: InsertQuote): Promise<Quote> {
+    // Generate quote number: OFF-YYYY-NNN
+    const year = new Date().getFullYear();
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(quotes)
+      .where(and(
+        eq(quotes.userId, quote.userId),
+        sql`EXTRACT(YEAR FROM ${quotes.createdAt}) = ${year}`
+      ));
+    const count = Number(countResult?.count || 0) + 1;
+    const quoteNumber = `OFF-${year}-${String(count).padStart(3, '0')}`;
+
+    const [newQuote] = await db
+      .insert(quotes)
+      .values({ ...quote, quoteNumber })
+      .returning();
+    return newQuote;
+  }
+
+  async updateQuote(id: string, quote: Partial<InsertQuote>, userId: string, organizationId: string): Promise<Quote | undefined> {
+    const [updated] = await db
+      .update(quotes)
+      .set({ ...quote, updatedAt: new Date() })
+      .where(and(
+        eq(quotes.id, id),
+        eq(quotes.userId, userId),
+        eq(quotes.organizationId, organizationId)
+      ))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteQuote(id: string, userId: string, organizationId: string): Promise<boolean> {
+    // First delete all quote items
+    await db.delete(quoteItems).where(eq(quoteItems.quoteId, id));
+    
+    const result = await db
+      .delete(quotes)
+      .where(and(
+        eq(quotes.id, id),
+        eq(quotes.userId, userId),
+        eq(quotes.organizationId, organizationId)
+      ));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async deleteQuotes(ids: string[], userId: string, organizationId: string): Promise<number> {
+    let deletedCount = 0;
+    for (const id of ids) {
+      const deleted = await this.deleteQuote(id, userId, organizationId);
+      if (deleted) deletedCount++;
+    }
+    return deletedCount;
+  }
+
+  async convertQuoteToSalesOrder(quoteId: string, userId: string, organizationId: string): Promise<SalesOrder | undefined> {
+    const quote = await this.getQuote(quoteId, userId, organizationId);
+    if (!quote || quote.status !== 'accepted') return undefined;
+
+    // Create sales order from quote
+    const salesOrder = await this.createSalesOrder({
+      userId: quote.userId,
+      partnerId: quote.partnerId,
+      description: `Ordine da offerta ${quote.quoteNumber}`,
+      subtotal: quote.subtotal,
+      taxes: quote.taxes,
+      total: quote.total,
+      currency: quote.currency,
+      notes: quote.externalNotes,
+    });
+
+    // Copy quote items to sales order items
+    const items = await this.getQuoteItems(quoteId, userId, organizationId);
+    for (const item of items) {
+      await this.createSalesOrderItem({
+        salesOrderId: salesOrder.id,
+        projectId: item.projectId,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        lineTotal: item.lineTotal,
+        timeEntryIds: [],
+      });
+    }
+
+    // Update quote with conversion reference
+    await this.updateQuote(quoteId, {
+      convertedToOrderId: salesOrder.id,
+      convertedAt: new Date(),
+    } as any, userId, organizationId);
+
+    return salesOrder;
+  }
+
+  // Quote Items (Righe offerta)
+  async getQuoteItems(quoteId: string, userId: string, organizationId: string): Promise<QuoteItem[]> {
+    // Verify quote ownership
+    const quote = await this.getQuote(quoteId, userId, organizationId);
+    if (!quote) return [];
+
+    return await db
+      .select()
+      .from(quoteItems)
+      .where(eq(quoteItems.quoteId, quoteId))
+      .orderBy(asc(quoteItems.lineNumber));
+  }
+
+  async getQuoteItem(id: string, userId: string, organizationId: string): Promise<QuoteItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(quoteItems)
+      .innerJoin(quotes, eq(quotes.id, quoteItems.quoteId))
+      .where(and(
+        eq(quoteItems.id, id),
+        eq(quotes.userId, userId),
+        eq(quotes.organizationId, organizationId)
+      ));
+    return item?.quote_items || undefined;
+  }
+
+  async createQuoteItem(item: InsertQuoteItem): Promise<QuoteItem> {
+    const [newItem] = await db
+      .insert(quoteItems)
+      .values(item)
+      .returning();
+    return newItem;
+  }
+
+  async updateQuoteItem(id: string, item: Partial<InsertQuoteItem>, userId: string, organizationId: string): Promise<QuoteItem | undefined> {
+    // Verify ownership through quote
+    const existingItem = await this.getQuoteItem(id, userId, organizationId);
+    if (!existingItem) return undefined;
+
+    const [updated] = await db
+      .update(quoteItems)
+      .set({ ...item, updatedAt: new Date() })
+      .where(eq(quoteItems.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteQuoteItem(id: string, userId: string, organizationId: string): Promise<boolean> {
+    // Verify ownership through quote
+    const existingItem = await this.getQuoteItem(id, userId, organizationId);
+    if (!existingItem) return false;
+
+    const result = await db
+      .delete(quoteItems)
+      .where(eq(quoteItems.id, id));
     return (result.rowCount || 0) > 0;
   }
 

@@ -453,6 +453,100 @@ export const salesOrderItems = pgTable("sales_order_items", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Offerte/Preventivi - Quote management
+export const quoteStatusEnum = pgEnum("quote_status", ["draft", "sent", "accepted", "rejected", "expired"]);
+export const quoteItemTypeEnum = pgEnum("quote_item_type", ["service", "package", "expense"]);
+
+export const quotes = pgTable("quotes", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  
+  // Cliente e contatto
+  partnerId: uuid("partner_id").references(() => partners.id).notNull(),
+  contactId: uuid("contact_id").references(() => contacts.id),
+  
+  // Numero e versione
+  quoteNumber: text("quote_number").notNull().unique(), // OFF-2025-001
+  version: integer("version").default(1).notNull(),
+  parentQuoteId: uuid("parent_quote_id").references((): any => quotes.id), // Riferimento alla versione precedente
+  
+  // Riferimenti
+  rateAgreementId: uuid("rate_agreement_id").references(() => rateAgreements.id), // Accordo tariffario di base
+  projectId: uuid("project_id").references(() => projects.id), // Progetto/Engagement collegato
+  
+  // Stato e date
+  status: quoteStatusEnum("status").default("draft").notNull(),
+  issueDate: timestamp("issue_date").defaultNow().notNull(),
+  validFrom: timestamp("valid_from").defaultNow().notNull(),
+  validTo: timestamp("valid_to").notNull(), // Data scadenza offerta
+  
+  // Totali
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  discountPercent: decimal("discount_percent", { precision: 5, scale: 2 }).default("0.00"),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0.00"),
+  taxes: decimal("taxes", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  currency: text("currency").default("EUR").notNull(),
+  
+  // Condizioni commerciali
+  paymentTerms: text("payment_terms"), // "30gg FM", "50% anticipo, 50% consegna"
+  deliveryMode: text("delivery_mode"), // "remote", "on-site", "hybrid"
+  specialConditions: text("special_conditions"), // Clausole particolari
+  
+  // Note
+  internalNotes: text("internal_notes"), // Note interne (non visibili al cliente)
+  externalNotes: text("external_notes"), // Note esterne (nel documento offerta)
+  
+  // Tracking invio e accettazione
+  sentAt: timestamp("sent_at"),
+  sentChannel: text("sent_channel"), // "email", "portal", "other"
+  acceptedAt: timestamp("accepted_at"),
+  acceptedBy: text("accepted_by"), // Nome e ruolo di chi ha accettato
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
+  
+  // Conversione in ordine
+  convertedToOrderId: uuid("converted_to_order_id").references(() => salesOrders.id),
+  convertedAt: timestamp("converted_at"),
+  
+  // Metadati
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const quoteItems = pgTable("quote_items", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  quoteId: uuid("quote_id").references(() => quotes.id).notNull(),
+  
+  // Ordinamento
+  lineNumber: integer("line_number").notNull(),
+  
+  // Tipo e descrizione
+  itemType: quoteItemTypeEnum("item_type").default("service").notNull(),
+  description: text("description").notNull(),
+  
+  // Quantità e prezzo
+  quantity: decimal("quantity", { precision: 8, scale: 2 }).notNull(),
+  unitOfMeasure: text("unit_of_measure").default("ore").notNull(), // "ore", "giorni", "mese", "pacchetto"
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  discountPercent: decimal("discount_percent", { precision: 5, scale: 2 }).default("0.00"),
+  lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
+  
+  // Flag fuori listino
+  isOffList: boolean("is_off_list").default(false), // Indica se il prezzo è diverso dall'accordo tariffario
+  
+  // Link opzionali
+  projectId: uuid("project_id").references(() => projects.id),
+  humanResourceId: uuid("human_resource_id").references(() => humanResources.id),
+  
+  // Note riga
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Accordi tariffari dinamici - sistema flessibile per definire tariffe per combinazioni specifiche
 export const rateAgreements = pgTable("rate_agreements", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1313,6 +1407,21 @@ export const insertRateAgreementSchema = createInsertSchema(rateAgreements).omit
   groupingValues: z.string(), // JSON string
 });
 
+export const insertQuoteSchema = createInsertSchema(quotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  quoteNumber: true,
+  convertedToOrderId: true,
+  convertedAt: true,
+});
+
+export const insertQuoteItemSchema = createInsertSchema(quoteItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -1364,6 +1473,10 @@ export type SalesOrderItem = typeof salesOrderItems.$inferSelect;
 export type InsertSalesOrderItem = z.infer<typeof insertSalesOrderItemSchema>;
 export type RateAgreement = typeof rateAgreements.$inferSelect;
 export type InsertRateAgreement = z.infer<typeof insertRateAgreementSchema>;
+export type Quote = typeof quotes.$inferSelect;
+export type InsertQuote = z.infer<typeof insertQuoteSchema>;
+export type QuoteItem = typeof quoteItems.$inferSelect;
+export type InsertQuoteItem = z.infer<typeof insertQuoteItemSchema>;
 
 export const insertHumanResourceSchema = createInsertSchema(humanResources).omit({
   id: true,

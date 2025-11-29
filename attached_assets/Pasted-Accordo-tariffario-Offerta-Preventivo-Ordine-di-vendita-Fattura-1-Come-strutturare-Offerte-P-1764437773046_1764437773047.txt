@@ -1,0 +1,240 @@
+Accordo tariffario → Offerta/Preventivo → Ordine di vendita → Fattura
+
+1. Come strutturare Offerte/Preventivi
+
+A. Testata (header)
+Campi minimi che ti consiglio:
+
+Cliente / Business Partner
+
+Contatto di riferimento
+
+Data offerta
+
+Validità (dal / al)
+
+Valuta
+
+Riferimento a:
+
+Accordo tariffario (da cui erediti le tariffe di base)
+
+Opportunity (se la introduci, vedi dopo)
+
+Stato:
+
+Draft / Bozza
+
+Inviata
+
+Accettata
+
+Rifiutata
+
+Scaduta
+
+Versione:
+
+Numero versione (es. Q-2025-001 v1, v2, …)
+
+Riferimento alla “offerta madre” per avere la storia delle revisioni
+
+Condizioni:
+
+Termini di pagamento (es. 30gg FM)
+
+Modalità di erogazione (remote/on-site, fte/part-time)
+
+Clausole particolari (es. travel & expenses esclusi, giornate minime, ecc.)
+
+B. Righe (item)
+Io farei una struttura semplice ma già “SAP-like”:
+
+Tipo riga:
+
+SERVIZIO (es. “Sviluppo ABAP senior”)
+
+PACCHETTO (es. “Workshop fit-gap 3 giorni”)
+
+SPESE (se vuoi già quotare travel o altro)
+
+Descrizione riga
+
+Quantità (ore/giornate/mese) + UoM
+
+Prezzo unitario (proposto)
+
+Sconto % (se esce dall’accordo tariffario)
+
+Totale riga (calcolato)
+
+Eventuale link:
+
+a un progetto/“engagement”
+
+a un work package (se introduci questa granularità)
+
+C. Allegati & note
+
+Allegati:
+
+SOW / Offerta formale in PDF
+
+NDA, MSA, ecc.
+
+Note:
+
+Note interne (tuo uso, non visibile al cliente: es. margini, rischi)
+
+Note esterne (che confluiscono nel documento offerta)
+
+D. Log & audit
+
+Data invio (prima volta)
+
+Canale di invio (mail, portale, altro)
+
+Data accettazione
+
+Chi ha accettato (nome, ruolo)
+
+Eventuale link alla mail di accettazione o al file firmato
+
+E. Conversione in Ordine
+
+Funzione chiave: “Conferma come ordine di vendita”
+
+Copia testata e righe dell’offerta nell’ordine di vendita
+
+Congela prezzi e condizioni dell’offerta accettata
+
+Tiene il link “Ordine originato da offerta X vY”
+
+2. Collegamento con gli accordi tariffari
+
+Gli accordi tariffari diventano la base “listino”:
+
+Nell’offerta scegli:
+
+Accordo tariffario standard (es. “Cliente ACME – 2025”)
+
+In riga:
+
+Quando selezioni la “figura” (ABAP senior, architetto, funzionale MM, ecc.) ti propone automaticamente:
+
+tariffa giornaliera
+
+UoM
+
+Puoi sovrascrivere prezzo o aggiungere sconto:
+
+tracciando se è “fuori da listino” (flag utile per analisi dopo: quante offerte sono “sotto tariffa”).
+
+3. Serve altro nel modulo vendite?
+
+Dipende quanto vuoi spingerti verso un vero mini-CRM. Ti metto una scaletta per priorità.
+
+Must-have (per completare davvero il ciclo vendite)
+
+Offerte/Preventivi
+→ quello di cui sopra.
+
+Progetto/Engagement commerciale (anche leggero)
+
+Un contenitore per collegare:
+
+offerta
+
+ordine
+
+fatture
+
+timesheet (se li gestisci)
+
+E magari un campo “Stato progetto” (pre-vendita, attivo, chiuso).
+
+Note attività commerciali
+
+Semplici “interazioni”:
+
+call, meeting, mail rilevanti
+
+Linkate a cliente / offerta / opportunity.
+
+Fortemente consigliato (ma puoi introdurlo dopo)
+
+Lead / Prospect
+
+Contatti che ancora non sono clienti veri.
+
+Ti permettono di vedere quante cose hai “in serbo” prima ancora di quotare.
+
+Opportunità (Opportunity)
+
+Stadi tipo:
+
+Identificata
+
+Qualificata
+
+Offerta inviata
+
+Negoziazione
+
+Vinta / Persa
+
+Campi:
+
+valore stimato
+
+probabilità %
+
+data chiusura prevista
+
+Le offerte si agganciano all’opportunità.
+
+Timesheet & consuntivazione
+
+Già nel tuo mondo “Mentore / gestione task” hai il concetto di play/stop.
+
+Qui puoi:
+
+agganciare le ore effettive all’ordine di vendita/progetto,
+
+usarle come base di fatturazione (per time & material).
+
+Nice-to-have
+
+Note di credito / rettifiche
+
+Entità “Nota di credito” collegata alla fattura originaria.
+
+Fatture ricorrenti
+
+Per contratti a canone (retainer mensile, AMS, ecc).
+
+Dashboard commerciale
+
+Pipeline (per stadio dell’opportunità)
+
+Valore offerte inviate/accettate/rifiutate
+
+Conversion rate offerte → ordini.
+
+4. Riassunto operativo per te
+
+Se dovessi indicarti il prossimo step concreto per The Hub Up:
+
+Crea l’entità OFFERTA con:
+
+Header (cliente, contatto, date, stato, versione, tariffario di riferimento, termini pagamento).
+
+Righe (tipo servizio, quantità, UoM, prezzo, sconto, totale).
+
+Allegati + note interne/esterne.
+
+Implementa la conversione automatica da Offerta accettata → Ordine di vendita.
+
+Aggancia Offerta e Ordine a un “Engagement/Progetto” (anche minimale: solo codice, nome, stato).
+
+Dopo, se ti va di salire di livello CRM, aggiungi Opportunità e un mini funnel.
