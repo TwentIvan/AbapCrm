@@ -52,9 +52,11 @@ export class PdfService {
     let y = 40;
     let logoHeight = 0;
 
-    if (organization.logoUrl) {
+    // Use partner logo if available, otherwise organization logo
+    const logoUrl = issuerPartner?.logoUrl || organization.logoUrl;
+    if (logoUrl) {
       try {
-        const logoBuffer = await fetchImage(organization.logoUrl);
+        const logoBuffer = await fetchImage(logoUrl);
         if (logoBuffer) {
           doc.image(logoBuffer, 40, y, { width: 80 });
           logoHeight = 60;
@@ -76,10 +78,12 @@ export class PdfService {
     const headerX = logoHeight > 0 ? 130 : 40;
     y = 40;
     
+    // Use partner name/company if available, otherwise organization name
+    const issuerName = issuerPartner?.company || issuerPartner?.name || organization.name;
     doc.fontSize(12)
        .fillColor(primaryColor)
        .font("Helvetica-Bold")
-       .text(organization.name, headerX, y);
+       .text(issuerName, headerX, y);
     doc.font("Helvetica");
     
     y += 16;

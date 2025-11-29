@@ -10,7 +10,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "@/contexts/organization-context";
 import { useStandardCrud } from "@/lib/cache-manager";
 import { ObjectUploader } from "@/components/ObjectUploader";
-import type { UploadResult } from "@uppy/core";
 import {
   Select,
   SelectContent,
@@ -79,7 +78,7 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
     };
   };
 
-  const handleLogoUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+  const handleLogoUploadComplete = async (result: { successful: { uploadURL?: string }[] }) => {
     if (result.successful && result.successful.length > 0) {
       const uploadURL = result.successful[0].uploadURL;
       if (uploadURL) {
