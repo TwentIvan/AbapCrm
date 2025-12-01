@@ -17,6 +17,7 @@ interface OrganizationContextValue {
   organizations: Organization[];
   currentOrganization: Organization | undefined;
   currentOrganizationId: string | null;
+  isPersonalOrg: boolean;
   personalScope: PersonalScope;
   switchOrganization: (organizationId: string) => void;
   setPersonalScope: (scope: PersonalScope) => void;
@@ -55,6 +56,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
   // Get current organization details
   const currentOrganization = organizations?.find(org => org.id === currentOrganizationId);
+  
+  // Check if current organization is the Personal org
+  const isPersonalOrg = currentOrganization?.name === "Personal";
 
   // Set default organization on load (only if not already set)
   useEffect(() => {
@@ -116,6 +120,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         organizations,
         currentOrganization,
         currentOrganizationId,
+        isPersonalOrg: isPersonalOrg ?? false,
         personalScope,
         switchOrganization,
         setPersonalScope,

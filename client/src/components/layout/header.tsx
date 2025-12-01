@@ -38,7 +38,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
-  const { organizations, currentOrganization, switchOrganization, personalScope, setPersonalScope } = useOrganization();
+  const { organizations, currentOrganization, switchOrganization, personalScope, setPersonalScope, isPersonalOrg } = useOrganization();
   const { language, setLanguage, t } = useTranslation();
 
   const userInitials = user?.firstName && user?.lastName 
@@ -511,7 +511,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     </DropdownMenuItem>
                   ))}
                   <DropdownMenuSeparator />
-                  {currentOrganization?.name === "Personal" && (
+                  {isPersonalOrg && (
                     <>
                       <div className="px-2 py-2">
                         <div className="flex items-center justify-between">
@@ -527,13 +527,11 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                         </div>
                       </div>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => window.location.href = "/organizations"}>
+                        <Building className="h-4 w-4 mr-2" style={{ color: '#6b7280' }} />
+                        Gestisci Organizzazioni
+                      </DropdownMenuItem>
                     </>
-                  )}
-                  {currentOrganization?.name === "Personal" && (
-                    <DropdownMenuItem onClick={() => window.location.href = "/organizations"}>
-                      <Building className="h-4 w-4 mr-2" style={{ color: '#6b7280' }} />
-                      Gestisci Organizzazioni
-                    </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
