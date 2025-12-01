@@ -1491,12 +1491,40 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
-      const partnersList = await db.select().from(partners)
+      const organizationId = getOrganizationId(req);
+      
+      // Get partners filtered by organization
+      let partnersList = await db.select().from(partners)
         .where(and(
           eq(partners.userId, req.user!.id),
           inArray(partners.organizationId, organizationIds),
           isNull(partners.parentPartnerId)
         ));
+      
+      // Also include the partner associated with the current organization (if any)
+      // This ensures the organization's own partner is always visible
+      const currentOrg = await db.select().from(organizations)
+        .where(eq(organizations.id, organizationId))
+        .limit(1);
+      
+      if (currentOrg.length > 0 && currentOrg[0].partnerId) {
+        const orgPartnerId = currentOrg[0].partnerId;
+        // Check if this partner is already in the list
+        const alreadyIncluded = partnersList.some(p => p.id === orgPartnerId);
+        if (!alreadyIncluded) {
+          // Fetch and add the organization's partner
+          const orgPartner = await db.select().from(partners)
+            .where(and(
+              eq(partners.id, orgPartnerId),
+              eq(partners.userId, req.user!.id)
+            ))
+            .limit(1);
+          if (orgPartner.length > 0) {
+            partnersList = [...partnersList, orgPartner[0]];
+          }
+        }
+      }
+      
       res.json(partnersList);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
