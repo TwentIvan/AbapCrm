@@ -51,10 +51,10 @@ export default function OrganizationsPage() {
   const { isPersonalOrg, currentOrganization } = useOrganization();
   const [, setLocation] = useLocation();
 
-  // Redirect to /projects if user is not in Personal organization
+  // Redirect to dashboard if user is not in Personal organization
   useEffect(() => {
     if (currentOrganization && !isPersonalOrg) {
-      setLocation("/projects");
+      setLocation("/dashboard");
     }
   }, [currentOrganization, isPersonalOrg, setLocation]);
 

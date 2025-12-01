@@ -10,6 +10,7 @@ import { OrganizationProvider } from "@/contexts/organization-context";
 import { ProtectedRoute } from "./lib/protected-route";
 
 import AuthPage from "@/pages/auth-page";
+import DashboardPage from "@/pages/dashboard-page";
 import OrganizationsPage from "@/pages/organizations-page";
 import ProjectsPage from "@/pages/projects-page";
 import TasksPage from "@/pages/tasks-page";
@@ -42,7 +43,8 @@ import NotFound from "@/pages/not-found";
 function Router() {
   return (
     <Switch>
-      <ProtectedRoute path="/" component={OrganizationsPage} />
+      <ProtectedRoute path="/" component={DashboardPage} />
+      <ProtectedRoute path="/dashboard" component={DashboardPage} />
       <ProtectedRoute path="/organizations" component={OrganizationsPage} />
       <ProtectedRoute path="/projects" component={ProjectsPage} />
       <ProtectedRoute path="/projects/new" component={ProjectsPage} />
