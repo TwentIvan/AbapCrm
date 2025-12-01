@@ -648,7 +648,8 @@ export function registerRoutes(app: Express): Server {
   // Business Scenarios
   app.get("/api/business-scenarios", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const scenarios = await storage.getAllBusinessScenarios();
+    const organizationId = getOrganizationId(req);
+    const scenarios = await storage.getBusinessScenariosByOrganization(organizationId);
     res.json(scenarios);
   });
 
