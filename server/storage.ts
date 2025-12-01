@@ -1485,6 +1485,7 @@ export class DatabaseStorage implements IStorage {
     projects: number;
     deals: number;
     childPartners: number;
+    messages: number;
     hasRelations: boolean;
   }> {
     const [contactCount] = await db
@@ -1507,17 +1508,24 @@ export class DatabaseStorage implements IStorage {
       .from(partners)
       .where(eq(partners.parentPartnerId, partnerId));
     
+    const [messageCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(messages)
+      .where(eq(messages.partnerId, partnerId));
+    
     const contactsNum = contactCount?.count || 0;
     const projectsNum = projectCount?.count || 0;
     const dealsNum = dealCount?.count || 0;
     const childrenNum = childCount?.count || 0;
+    const messagesNum = messageCount?.count || 0;
     
     return {
       contacts: contactsNum,
       projects: projectsNum,
       deals: dealsNum,
       childPartners: childrenNum,
-      hasRelations: contactsNum + projectsNum + dealsNum + childrenNum > 0,
+      messages: messagesNum,
+      hasRelations: contactsNum + projectsNum + dealsNum + childrenNum + messagesNum > 0,
     };
   }
 
@@ -1534,6 +1542,9 @@ export class DatabaseStorage implements IStorage {
 
     // Delete contacts associated with this partner
     await db.delete(contacts).where(eq(contacts.partnerId, id));
+
+    // Update messages to remove partner reference (set to null instead of deleting)
+    await db.update(messages).set({ partnerId: null }).where(eq(messages.partnerId, id));
 
     // Update projects to remove client reference (set to null instead of deleting)
     await db.update(projects).set({ clientId: null }).where(eq(projects.clientId, id));

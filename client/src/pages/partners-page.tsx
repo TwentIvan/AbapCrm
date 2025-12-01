@@ -127,6 +127,7 @@ interface RelatedData {
   projects: number;
   deals: number;
   childPartners: number;
+  messages: number;
   hasRelations: boolean;
 }
 
@@ -148,7 +149,7 @@ export default function PartnersPage() {
   const [selectedPartners, setSelectedPartners] = useState<Partner[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkCascadeDialog, setShowBulkCascadeDialog] = useState(false);
-  const [bulkCascadeData, setBulkCascadeData] = useState<{partnersWithRelations: Partner[], totalRelations: RelatedData}>({ partnersWithRelations: [], totalRelations: { contacts: 0, projects: 0, deals: 0, childPartners: 0, hasRelations: false }});
+  const [bulkCascadeData, setBulkCascadeData] = useState<{partnersWithRelations: Partner[], totalRelations: RelatedData}>({ partnersWithRelations: [], totalRelations: { contacts: 0, projects: 0, deals: 0, childPartners: 0, messages: 0, hasRelations: false }});
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
   const [showBulkCopyDialog, setShowBulkCopyDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
@@ -843,6 +844,7 @@ export default function PartnersPage() {
                   {cascadeRelatedData?.projects ? <li><strong>{cascadeRelatedData.projects}</strong> progetti (verranno scollegati)</li> : null}
                   {cascadeRelatedData?.deals ? <li><strong>{cascadeRelatedData.deals}</strong> trattative (verranno scollegate)</li> : null}
                   {cascadeRelatedData?.childPartners ? <li><strong>{cascadeRelatedData.childPartners}</strong> sedi operative</li> : null}
+                  {cascadeRelatedData?.messages ? <li><strong>{cascadeRelatedData.messages}</strong> messaggi (verranno scollegati)</li> : null}
                 </ul>
                 <p className="text-destructive font-medium">
                   Procedere con l'eliminazione cancellerà anche tutti i dati collegati.
@@ -879,6 +881,7 @@ export default function PartnersPage() {
                   {bulkCascadeData.totalRelations.projects ? <li><strong>{bulkCascadeData.totalRelations.projects}</strong> progetti (verranno scollegati)</li> : null}
                   {bulkCascadeData.totalRelations.deals ? <li><strong>{bulkCascadeData.totalRelations.deals}</strong> trattative (verranno scollegate)</li> : null}
                   {bulkCascadeData.totalRelations.childPartners ? <li><strong>{bulkCascadeData.totalRelations.childPartners}</strong> sedi operative</li> : null}
+                  {bulkCascadeData.totalRelations.messages ? <li><strong>{bulkCascadeData.totalRelations.messages}</strong> messaggi (verranno scollegati)</li> : null}
                 </ul>
                 <p className="text-destructive font-medium">
                   Procedere con l'eliminazione cancellerà anche tutti i dati collegati.
@@ -887,7 +890,7 @@ export default function PartnersPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setShowBulkCascadeDialog(false); setBulkCascadeData({ partnersWithRelations: [], totalRelations: { contacts: 0, projects: 0, deals: 0, childPartners: 0, hasRelations: false }}); }} data-testid="button-cancel-bulk-cascade">
+            <AlertDialogCancel onClick={() => { setShowBulkCascadeDialog(false); setBulkCascadeData({ partnersWithRelations: [], totalRelations: { contacts: 0, projects: 0, deals: 0, childPartners: 0, messages: 0, hasRelations: false }}); }} data-testid="button-cancel-bulk-cascade">
               Annulla
             </AlertDialogCancel>
             <AlertDialogAction 
