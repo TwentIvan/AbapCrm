@@ -493,24 +493,33 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-64">
-                  {organizations?.map((org) => (
-                    <DropdownMenuItem
-                      key={org.id}
-                      className={`flex items-center justify-between cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground ${
-                        currentOrganization?.id === org.id ? "bg-muted" : ""
-                      }`}
-                      onClick={() => switchOrganization(org.id)}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <User className="h-4 w-4" style={{ color: '#6b7280' }} />
-                        <span className="font-medium">{org.name}</span>
-                        {currentOrganization?.id === org.id && (
-                          <Check className="h-3 w-3 text-primary" />
-                        )}
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
+                  {isPersonalOrg ? (
+                    <>
+                      {organizations?.map((org) => (
+                        <DropdownMenuItem
+                          key={org.id}
+                          className={`flex items-center justify-between cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground ${
+                            currentOrganization?.id === org.id ? "bg-muted" : ""
+                          }`}
+                          onClick={() => switchOrganization(org.id)}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <User className="h-4 w-4" style={{ color: '#6b7280' }} />
+                            <span className="font-medium">{org.name}</span>
+                            {currentOrganization?.id === org.id && (
+                              <Check className="h-3 w-3 text-primary" />
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                    </>
+                  ) : (
+                    <div className="px-2 py-3 text-center text-sm text-muted-foreground">
+                      <span className="font-medium">{currentOrganization?.name}</span>
+                      <p className="text-xs mt-1">Per cambiare organizzazione, torna alla Personal</p>
+                    </div>
+                  )}
                   {isPersonalOrg && (
                     <>
                       <div className="px-2 py-2">

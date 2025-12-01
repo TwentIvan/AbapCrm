@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -9,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { getQueryFn, apiRequest } from "@/lib/queryClient";
 import { useStandardCrud } from "@/lib/cache-manager";
+import { useOrganization } from "@/contexts/organization-context";
 import { Building, Trash2, Users, History, Edit, User, Network } from "lucide-react";
 import { Plus } from "lucide-react";
 import OrganizationForm from "@/components/forms/organization-form";
@@ -46,6 +48,14 @@ export default function OrganizationsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { onDeleteSuccess } = useStandardCrud("organizations");
+  const { isPersonalOrg } = useOrganization();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isPersonalOrg) {
+      setLocation("/");
+    }
+  }, [isPersonalOrg, setLocation]);
 
   const { data: items, isLoading, isError } = useQuery<OrganizationWithDetails[]>({
     queryKey: ["/api/organizations"],
@@ -163,7 +173,7 @@ export default function OrganizationsPage() {
   const handleDelete = (items: OrganizationWithDetails[]) => {
     if (items.length === 0) return;
     // Filter out Personal organizations (cannot be deleted)
-    const deletableItems = items.filter(item => !isPersonalOrg(item));
+    const deletableItems = items.filter(item => !isPersonalOrgItem(item));
     if (deletableItems.length === 0) {
       toast({ 
         title: "Impossibile eliminare", 
@@ -261,7 +271,7 @@ export default function OrganizationsPage() {
   };
 
   // Check if organization is Personal (cannot be deleted)
-  const isPersonalOrg = (org: OrganizationWithDetails) => {
+  const isPersonalOrgItem = (org: OrganizationWithDetails) => {
     return org.name === "Personal";
   };
 
@@ -317,7 +327,7 @@ export default function OrganizationsPage() {
                       <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEdit(item); }}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      {!isPersonalOrg(item) && (
+                      {!isPersonalOrgItem(item) && (
                         <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDelete([item]); }}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
