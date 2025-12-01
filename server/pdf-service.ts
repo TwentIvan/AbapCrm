@@ -231,7 +231,7 @@ export class PdfService {
     y = Math.max(y + 15, 200);
 
     const tableTop = y;
-    const colX = [40, 60, 220, 265, 310, 360, 405, 455];
+    const colX = [40, 60, 230, 280, 330, 390, 455];
     
     doc.rect(40, tableTop, 515, 18)
        .fillColor(primaryColor)
@@ -245,8 +245,7 @@ export class PdfService {
        .text("U.M.", colX[3] + 3, tableTop + 5)
        .text("Prezzo", colX[4] + 3, tableTop + 5)
        .text("Sconto", colX[5] + 3, tableTop + 5)
-       .text("IVA", colX[6] + 3, tableTop + 5)
-       .text("Totale", colX[7] + 3, tableTop + 5);
+       .text("Importo", colX[6] + 3, tableTop + 5);
     
     y = tableTop + 18;
     
@@ -262,11 +261,9 @@ export class PdfService {
            .fill();
       }
       
-      const descText = item.description.length > 35 
-        ? item.description.substring(0, 35) + "..." 
+      const descText = item.description.length > 40 
+        ? item.description.substring(0, 40) + "..." 
         : item.description;
-      
-      const vatPercent = "22%"; // Default IVA
       
       doc.fontSize(7)
          .fillColor(primaryColor)
@@ -276,8 +273,7 @@ export class PdfService {
          .text((item.unitOfMeasure || "").substring(0, 6), colX[3] + 3, y + 6)
          .text(formatCurrencyShort(parseFloat(item.unitPrice)), colX[4] + 3, y + 6)
          .text(item.discountPercent && parseFloat(item.discountPercent) > 0 ? `${item.discountPercent}%` : "-", colX[5] + 3, y + 6)
-         .text(vatPercent, colX[6] + 3, y + 6)
-         .text(formatCurrencyShort(parseFloat(item.lineTotal)), colX[7] + 3, y + 6);
+         .text(formatCurrencyShort(parseFloat(item.lineTotal)), colX[6] + 3, y + 6);
       
       y += rowHeight;
       
@@ -294,7 +290,7 @@ export class PdfService {
     
     doc.fontSize(8)
        .fillColor(grayColor)
-       .text("Subtotale:", totalsX, y)
+       .text("Totale imponibile:", totalsX, y)
        .fillColor(primaryColor)
        .text(formatCurrency(parseFloat(quote.subtotal)), totalsX + 70, y, { align: "right", width: 85 });
     y += 14;
@@ -306,6 +302,7 @@ export class PdfService {
          .text(`-${formatCurrency(parseFloat(quote.discountAmount || "0"))}`, totalsX + 70, y, { align: "right", width: 85 });
       y += 14;
     }
+    y += 2;
     
     doc.fillColor(grayColor)
        .text("IVA (22%):", totalsX, y)

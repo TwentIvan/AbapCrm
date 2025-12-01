@@ -11,6 +11,7 @@ import { Plus, Trash2, Save } from "lucide-react";
 
 interface QuoteItemsEditorProps {
   quoteId?: string;
+  quoteStatus?: string;
   onTotalsChange: (subtotal: number, tax: number, total: number) => void;
   tempItems?: ItemForm[];
   onTempItemsChange?: (items: ItemForm[]) => void;
@@ -33,6 +34,7 @@ export interface ItemForm {
 
 export default function QuoteItemsEditor({ 
   quoteId, 
+  quoteStatus,
   onTotalsChange, 
   tempItems, 
   onTempItemsChange 
@@ -41,6 +43,8 @@ export default function QuoteItemsEditor({
   const queryClient = useQueryClient();
   const [items, setItems] = useState<ItemForm[]>(tempItems || []);
   const [lastQuoteId, setLastQuoteId] = useState<string | undefined>(undefined);
+  
+  const isReadOnly = !!(quoteStatus && quoteStatus !== "draft");
 
   const { data: quoteItems = [], isLoading } = useQuery<QuoteItem[]>({
     queryKey: ["/api/quotes", quoteId, "items"],
@@ -275,8 +279,21 @@ export default function QuoteItemsEditor({
 
   return (
     <div className="space-y-4">
+      {isReadOnly && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+          <strong>Attenzione:</strong> Questa offerta è in stato "{quoteStatus}" e non può essere modificata. 
+          Per modificare le righe, riporta l'offerta in stato "Bozza".
+        </div>
+      )}
       <div className="flex justify-between items-center">
-        <Button type="button" variant="outline" size="sm" onClick={addNewItem} data-testid="button-add-item">
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="sm" 
+          onClick={addNewItem} 
+          disabled={isReadOnly}
+          data-testid="button-add-item"
+        >
           <Plus className="h-4 w-4 mr-1" /> Nuova Riga
         </Button>
       </div>
@@ -310,6 +327,7 @@ export default function QuoteItemsEditor({
                     <Select 
                       value={item.itemType} 
                       onValueChange={(val) => updateItem(index, "itemType", val)}
+                      disabled={isReadOnly}
                     >
                       <SelectTrigger className="h-8 text-xs" data-testid={`select-type-${index}`}>
                         <SelectValue />
@@ -326,6 +344,7 @@ export default function QuoteItemsEditor({
                       <Select 
                         value={item.referenceId || ""} 
                         onValueChange={(val) => updateItem(index, "referenceId", val)}
+                        disabled={isReadOnly}
                       >
                         <SelectTrigger className="h-8 text-xs" data-testid={`select-ref-${index}`}>
                           <SelectValue placeholder="Seleziona..." />
@@ -340,6 +359,7 @@ export default function QuoteItemsEditor({
                       <Select 
                         value={item.referenceId || ""} 
                         onValueChange={(val) => updateItem(index, "referenceId", val)}
+                        disabled={isReadOnly}
                       >
                         <SelectTrigger className="h-8 text-xs" data-testid={`select-ref-${index}`}>
                           <SelectValue placeholder="Seleziona..." />
@@ -360,6 +380,7 @@ export default function QuoteItemsEditor({
                       onChange={(e) => updateItem(index, "description", e.target.value)}
                       placeholder="Descrizione"
                       className="h-8 text-sm"
+                      disabled={isReadOnly}
                       data-testid={`input-description-${index}`}
                     />
                   </TableCell>
@@ -369,6 +390,7 @@ export default function QuoteItemsEditor({
                       value={item.quantity}
                       onChange={(e) => updateItem(index, "quantity", e.target.value)}
                       className="h-8 text-sm text-right"
+                      disabled={isReadOnly}
                       data-testid={`input-quantity-${index}`}
                     />
                   </TableCell>
@@ -379,6 +401,7 @@ export default function QuoteItemsEditor({
                       value={item.unitPrice}
                       onChange={(e) => updateItem(index, "unitPrice", e.target.value)}
                       className="h-8 text-sm text-right"
+                      disabled={isReadOnly}
                       data-testid={`input-unit-price-${index}`}
                     />
                   </TableCell>
@@ -386,6 +409,7 @@ export default function QuoteItemsEditor({
                     <Select 
                       value={item.vatPercent} 
                       onValueChange={(val) => updateItem(index, "vatPercent", val)}
+                      disabled={isReadOnly}
                     >
                       <SelectTrigger className="h-8 text-xs" data-testid={`select-vat-${index}`}>
                         <SelectValue />
@@ -405,30 +429,32 @@ export default function QuoteItemsEditor({
                     €{parseFloat(item.lineTotal).toFixed(2)}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      {(item.isNew || item.isModified) && quoteId && (
+                    {!isReadOnly && (
+                      <div className="flex gap-1">
+                        {(item.isNew || item.isModified) && quoteId && (
+                          <Button 
+                            type="button"
+                            size="icon" 
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => saveItem(index)}
+                            data-testid={`button-save-${index}`}
+                          >
+                            <Save className="h-3.5 w-3.5 text-green-600" />
+                          </Button>
+                        )}
                         <Button 
                           type="button"
                           size="icon" 
                           variant="ghost"
                           className="h-7 w-7"
-                          onClick={() => saveItem(index)}
-                          data-testid={`button-save-${index}`}
+                          onClick={() => deleteItem(index)}
+                          data-testid={`button-delete-${index}`}
                         >
-                          <Save className="h-3.5 w-3.5 text-green-600" />
+                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
                         </Button>
-                      )}
-                      <Button 
-                        type="button"
-                        size="icon" 
-                        variant="ghost"
-                        className="h-7 w-7"
-                        onClick={() => deleteItem(index)}
-                        data-testid={`button-delete-${index}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                      </Button>
-                    </div>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

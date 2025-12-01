@@ -346,6 +346,7 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
           <TabsContent value="items" className="mt-4">
             <QuoteItemsEditor 
               quoteId={quote?.id} 
+              quoteStatus={quote?.status}
               onTotalsChange={handleTotalsChange}
               tempItems={!quote ? tempItems : undefined}
               onTempItemsChange={!quote ? setTempItems : undefined}
