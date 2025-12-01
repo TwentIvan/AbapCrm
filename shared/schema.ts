@@ -2315,6 +2315,7 @@ export const relationshipTypeEnum = pgEnum("relationship_type", [
   "fornitore", // Fornitore/vendor
   "partner", // Partner commerciale
   "subappaltatore", // Subcontractor
+  "gestisce", // Org sorgente vede i dati dell'org target
 ]);
 
 export const businessScenarios = pgTable("business_scenarios", {
