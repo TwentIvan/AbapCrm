@@ -529,10 +529,12 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                       <DropdownMenuSeparator />
                     </>
                   )}
-                  <DropdownMenuItem onClick={() => window.location.href = "/organizations"}>
-                    <Building className="h-4 w-4 mr-2" style={{ color: '#6b7280' }} />
-                    Gestisci Organizzazioni
-                  </DropdownMenuItem>
+                  {currentOrganization?.name === "Personal" && (
+                    <DropdownMenuItem onClick={() => window.location.href = "/organizations"}>
+                      <Building className="h-4 w-4 mr-2" style={{ color: '#6b7280' }} />
+                      Gestisci Organizzazioni
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
               
