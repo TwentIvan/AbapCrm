@@ -516,29 +516,37 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                       </div>
                     </DropdownMenuItem>
                   ))}
-                  {isPersonalOrg && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <div className="px-2 py-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Eye className="h-4 w-4" style={{ color: '#6b7280' }} />
-                            <span className="text-sm font-medium">Vedi tutte le org</span>
-                          </div>
-                          <Switch
-                            checked={personalScope === 'all'}
-                            onCheckedChange={(checked) => setPersonalScope(checked ? 'all' : 'personal')}
-                            data-testid="switch-personal-scope"
-                          />
-                        </div>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Eye className="h-4 w-4" style={{ color: isPersonalOrg ? '#6b7280' : '#d1d5db' }} />
+                        <span className={`text-sm font-medium ${!isPersonalOrg ? 'text-muted-foreground' : ''}`}>
+                          Vedi tutte le org
+                        </span>
                       </div>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => window.location.href = "/organizations"}>
-                        <Building className="h-4 w-4 mr-2" style={{ color: '#6b7280' }} />
-                        Gestisci Organizzazioni
-                      </DropdownMenuItem>
-                    </>
-                  )}
+                      <Switch
+                        checked={personalScope === 'all'}
+                        onCheckedChange={(checked) => {
+                          if (isPersonalOrg) {
+                            setPersonalScope(checked ? 'all' : 'personal');
+                          }
+                        }}
+                        disabled={!isPersonalOrg}
+                        data-testid="switch-personal-scope"
+                      />
+                    </div>
+                    {!isPersonalOrg && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Disponibile solo in Personal
+                      </p>
+                    )}
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => window.location.href = "/organizations"}>
+                    <Building className="h-4 w-4 mr-2" style={{ color: '#6b7280' }} />
+                    Gestisci Organizzazioni
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               
