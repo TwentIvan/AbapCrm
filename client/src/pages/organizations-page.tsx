@@ -29,6 +29,12 @@ interface OrganizationWithDetails {
   updatedAt: string;
 }
 
+interface Partner {
+  id: string;
+  name: string;
+  logoUrl?: string | null;
+}
+
 export default function OrganizationsPage() {
   const [selectedItems, setSelectedItems] = useState<OrganizationWithDetails[]>([]);
   const [editingItem, setEditingItem] = useState<OrganizationWithDetails | null>(null);
@@ -48,6 +54,19 @@ export default function OrganizationsPage() {
     refetchOnMount: false, // Non serve refetch automatico - gestito da cache manager
     refetchOnWindowFocus: false, // Non serve refetch automatico
   });
+
+  // Query per caricare i dati dei partner (incluso logo)
+  const { data: partners } = useQuery<Partner[]>({
+    queryKey: ["/api/partners"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Crea un lookup map per accesso veloce ai partner per id
+  const partnerMap = new Map<string, Partner>();
+  if (partners) {
+    partners.forEach(p => partnerMap.set(p.id, p));
+  }
 
   // Ensure items is always an array, never null
   const safeItems = items || [];
@@ -322,8 +341,26 @@ export default function OrganizationsPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Partner:</span>
                       <div className="flex items-center">
-                        <User className="h-4 w-4 mr-1 text-muted-foreground" />
-                        <span className="text-sm">{item.partnerId ? "Associato" : "Nessuno"}</span>
+                        {item.partnerId && partnerMap.get(item.partnerId) ? (
+                          <>
+                            {partnerMap.get(item.partnerId)?.logoUrl ? (
+                              <img 
+                                src={partnerMap.get(item.partnerId)!.logoUrl!} 
+                                alt={partnerMap.get(item.partnerId)!.name}
+                                className="h-6 w-6 rounded-full object-cover mr-2"
+                                data-testid={`img-partner-logo-${item.id}`}
+                              />
+                            ) : (
+                              <User className="h-4 w-4 mr-1 text-muted-foreground" />
+                            )}
+                            <span className="text-sm">{partnerMap.get(item.partnerId)!.name}</span>
+                          </>
+                        ) : (
+                          <>
+                            <User className="h-4 w-4 mr-1 text-muted-foreground" />
+                            <span className="text-sm">Nessuno</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
