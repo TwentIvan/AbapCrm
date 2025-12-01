@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -48,6 +49,14 @@ export default function OrganizationsPage() {
   const queryClient = useQueryClient();
   const { onDeleteSuccess } = useStandardCrud("organizations");
   const { isPersonalOrg, currentOrganization } = useOrganization();
+  const [, setLocation] = useLocation();
+
+  // Redirect to /projects if user is not in Personal organization
+  useEffect(() => {
+    if (currentOrganization && !isPersonalOrg) {
+      setLocation("/projects");
+    }
+  }, [currentOrganization, isPersonalOrg, setLocation]);
 
   const { data: items, isLoading, isError } = useQuery<OrganizationWithDetails[]>({
     queryKey: ["/api/organizations"],
@@ -267,6 +276,11 @@ export default function OrganizationsPage() {
   };
 
   // Cards view only - no table columns needed
+
+  // Block rendering if not in Personal organization (redirect handles navigation)
+  if (currentOrganization && !isPersonalOrg) {
+    return null;
+  }
 
   return (
     <div className="flex h-screen">
