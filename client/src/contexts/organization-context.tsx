@@ -58,7 +58,14 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const currentOrganization = organizations?.find(org => org.id === currentOrganizationId);
   
   // Check if current organization is the Personal org
-  const isPersonalOrg = currentOrganization?.name === "Personal";
+  // Use localStorage as fallback to prevent flickering during loading
+  const isPersonalOrg = currentOrganization?.name === "Personal" || 
+    (isLoading && localStorage.getItem('isPersonalOrg') === 'true');
+  
+  // Persist isPersonalOrg state for stability during loading
+  if (currentOrganization && !isLoading) {
+    localStorage.setItem('isPersonalOrg', currentOrganization.name === "Personal" ? 'true' : 'false');
+  }
 
   // Set default organization on load (only if not already set)
   useEffect(() => {
@@ -95,18 +102,29 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
   // Switch organization
   const switchOrganization = (organizationId: string) => {
-    setCurrentOrganizationId(organizationId);
+    // IMPORTANT: Update global header FIRST before invalidating queries
+    // This ensures new API calls use the correct organization header
+    setGlobalOrganizationId(organizationId);
     localStorage.setItem(ORG_STORAGE_KEY, organizationId);
-    // Invalidate all queries that depend on organization context
-    queryClient.invalidateQueries();
+    setCurrentOrganizationId(organizationId);
+    
+    // Small delay to ensure header is set before queries refetch
+    setTimeout(() => {
+      queryClient.invalidateQueries();
+    }, 0);
   };
 
   // Set personal scope
   const setPersonalScope = (scope: PersonalScope) => {
-    setPersonalScopeState(scope);
+    // IMPORTANT: Update global header FIRST before invalidating queries
+    setGlobalPersonalScope(scope);
     localStorage.setItem(SCOPE_STORAGE_KEY, scope);
-    // Invalidate all queries when scope changes
-    queryClient.invalidateQueries();
+    setPersonalScopeState(scope);
+    
+    // Small delay to ensure header is set before queries refetch
+    setTimeout(() => {
+      queryClient.invalidateQueries();
+    }, 0);
   };
 
   // Force reload organizations
