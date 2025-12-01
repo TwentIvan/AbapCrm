@@ -75,13 +75,46 @@ async function getOrganizationIdsForFilter(req: any): Promise<string[]> {
   const currentOrg = orgs.find(org => org.id === organizationId);
   const isPersonal = currentOrg?.name === 'Personal';
   
+  let baseOrgIds: string[];
+  
   // If Personal + scope 'all', return ALL user's organization IDs
   if (isPersonal && scope === 'all') {
-    return orgs.map(org => org.id);
+    baseOrgIds = orgs.map(org => org.id);
+  } else {
+    baseOrgIds = [organizationId];
   }
   
-  // Otherwise, return just the current organization ID
-  return [organizationId];
+  // Now check for "gestisce" scenarios - add managed organizations
+  const managedOrgIds = await getManagedOrganizationIds(baseOrgIds, orgs);
+  
+  // Combine and deduplicate
+  const allOrgIds = [...new Set([...baseOrgIds, ...managedOrgIds])];
+  
+  return allOrgIds;
+}
+
+// Helper function to find organizations managed via "gestisce" business scenarios
+async function getManagedOrganizationIds(orgIds: string[], userOrgs: any[]): Promise<string[]> {
+  const managedOrgIds: string[] = [];
+  
+  for (const orgId of orgIds) {
+    const org = userOrgs.find(o => o.id === orgId);
+    if (!org?.partnerId) continue;
+    
+    // Find "gestisce" scenarios where this org's partner is the source
+    const scenarios = await storage.getBusinessScenariosBySourcePartner(org.partnerId);
+    const gestisceScenarios = scenarios.filter(s => s.relationshipType === 'gestisce' && s.isActive);
+    
+    for (const scenario of gestisceScenarios) {
+      // Find organizations that have the targetPartner as their associated partner
+      const targetOrg = userOrgs.find(o => o.partnerId === scenario.targetPartnerId);
+      if (targetOrg && !managedOrgIds.includes(targetOrg.id)) {
+        managedOrgIds.push(targetOrg.id);
+      }
+    }
+  }
+  
+  return managedOrgIds;
 }
 
 // Chat content parser - normalizes different platform formats into structured conversation data

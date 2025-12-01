@@ -29,6 +29,7 @@ const businessScenarioSchema = z.object({
     "fornitore",
     "partner",
     "subappaltatore",
+    "gestisce",
   ], { required_error: "Tipo relazione richiesto" }),
   notes: z.string().optional(),
   isActive: z.boolean().default(true),
@@ -60,6 +61,7 @@ const relationshipTypeLabels: Record<string, string> = {
   fornitore: "Fornitore",
   partner: "Partner",
   subappaltatore: "Subappaltatore",
+  gestisce: "Gestisce",
 };
 
 const relationshipTypeColors: Record<string, string> = {
@@ -69,6 +71,7 @@ const relationshipTypeColors: Record<string, string> = {
   fornitore: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100",
   partner: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-100",
   subappaltatore: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-100",
+  gestisce: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-100",
 };
 
 export default function BusinessScenariosPage() {
