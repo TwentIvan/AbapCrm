@@ -172,7 +172,7 @@ export default function PartnersPage() {
   } = useTableLayout('partners');
 
   const { data: partners, isLoading } = useQuery<Partner[]>({
-    queryKey: ["/api/partners"],
+    queryKey: ["/api/partners", { orgId: currentOrganizationId }],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId, // Wait for organization context
     staleTime: 30 * 60 * 1000, // 30 minutes
@@ -189,7 +189,7 @@ export default function PartnersPage() {
       await apiRequest("DELETE", `/api/partners/${partnerId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/partners", { orgId: currentOrganizationId }] });
       toast({
         title: "Partner eliminato",
         description: "Il partner è stato eliminato con successo.",
@@ -227,7 +227,7 @@ export default function PartnersPage() {
       await apiRequest("DELETE", `/api/partners/${partnerId}?cascade=true`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/partners", { orgId: currentOrganizationId }] });
       toast({
         title: "Partner eliminato",
         description: "Il partner e tutti i dati collegati sono stati eliminati.",
@@ -256,7 +256,7 @@ export default function PartnersPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/partners", { orgId: currentOrganizationId }] });
       toast({
         title: "Partners eliminati",
         description: `${selectedPartners.length} partner eliminati con successo.`,
@@ -265,7 +265,7 @@ export default function PartnersPage() {
       setShowBulkDeleteDialog(false);
     },
     onError: async (error: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/partners", { orgId: currentOrganizationId }] });
       setShowBulkDeleteDialog(false);
       
       if (error?.failures?.length > 0) {
@@ -317,7 +317,7 @@ export default function PartnersPage() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/partners", { orgId: currentOrganizationId }] });
       toast({
         title: "Partners eliminati",
         description: "Tutti i partner e i dati collegati sono stati eliminati.",
@@ -342,7 +342,7 @@ export default function PartnersPage() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/partners", { orgId: currentOrganizationId }] });
       setSelectedPartners([]);
       setShowBulkEditDialog(false);
       toast({ title: "Modificati", description: "Partners modificati con successo" });
@@ -363,7 +363,7 @@ export default function PartnersPage() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/partners", { orgId: currentOrganizationId }] });
       setSelectedPartners([]);
       setShowBulkCopyDialog(false);
       toast({
@@ -774,7 +774,7 @@ export default function PartnersPage() {
         onSuccess={() => {
           setShowLocationEditDialog(false);
           setSelectedLocation(null);
-          queryClient.invalidateQueries({ queryKey: ["/api/partners"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/partners", { orgId: currentOrganizationId }] });
         }}
       />
 
