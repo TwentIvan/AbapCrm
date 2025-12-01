@@ -653,9 +653,9 @@ export function registerRoutes(app: Express): Server {
     res.json(scenarios);
   });
 
-  app.get("/api/business-scenarios/by-source/:sourceOrganizationId", async (req, res) => {
+  app.get("/api/business-scenarios/by-source-partner/:sourcePartnerId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const scenarios = await storage.getBusinessScenarios(req.params.sourceOrganizationId);
+    const scenarios = await storage.getBusinessScenariosBySourcePartner(req.params.sourcePartnerId);
     res.json(scenarios);
   });
 

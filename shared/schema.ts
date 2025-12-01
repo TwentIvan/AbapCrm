@@ -2319,8 +2319,9 @@ export const relationshipTypeEnum = pgEnum("relationship_type", [
 
 export const businessScenarios = pgTable("business_scenarios", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  sourceOrganizationId: uuid("source_organization_id").references(() => organizations.id).notNull(),
-  targetOrganizationId: uuid("target_organization_id").references(() => organizations.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  sourcePartnerId: uuid("source_partner_id").references(() => partners.id).notNull(),
+  targetPartnerId: uuid("target_partner_id").references(() => partners.id).notNull(),
   relationshipType: relationshipTypeEnum("relationship_type").notNull(),
   notes: text("notes"),
   isActive: boolean("is_active").default(true).notNull(),
@@ -2329,14 +2330,18 @@ export const businessScenarios = pgTable("business_scenarios", {
 });
 
 export const businessScenariosRelations = relations(businessScenarios, ({ one }) => ({
-  sourceOrganization: one(organizations, {
-    fields: [businessScenarios.sourceOrganizationId],
+  organization: one(organizations, {
+    fields: [businessScenarios.organizationId],
     references: [organizations.id],
+  }),
+  sourcePartner: one(partners, {
+    fields: [businessScenarios.sourcePartnerId],
+    references: [partners.id],
     relationName: "sourceBusinessScenarios",
   }),
-  targetOrganization: one(organizations, {
-    fields: [businessScenarios.targetOrganizationId],
-    references: [organizations.id],
+  targetPartner: one(partners, {
+    fields: [businessScenarios.targetPartnerId],
+    references: [partners.id],
     relationName: "targetBusinessScenarios",
   }),
 }));

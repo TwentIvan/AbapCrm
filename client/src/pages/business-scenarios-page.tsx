@@ -20,8 +20,8 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
 const businessScenarioSchema = z.object({
-  sourceOrganizationId: z.string().min(1, "Organizzazione sorgente richiesta"),
-  targetOrganizationId: z.string().min(1, "Organizzazione target richiesta"),
+  sourcePartnerId: z.string().min(1, "Partner sorgente richiesto"),
+  targetPartnerId: z.string().min(1, "Partner target richiesto"),
   relationshipType: z.enum([
     "cliente_fattura",
     "cliente_servizio",
@@ -38,8 +38,9 @@ type BusinessScenarioFormData = z.infer<typeof businessScenarioSchema>;
 
 interface BusinessScenario {
   id: string;
-  sourceOrganizationId: string;
-  targetOrganizationId: string;
+  organizationId: string;
+  sourcePartnerId: string;
+  targetPartnerId: string;
   relationshipType: string;
   notes?: string | null;
   isActive: boolean;
@@ -47,7 +48,7 @@ interface BusinessScenario {
   updatedAt: string;
 }
 
-interface Organization {
+interface Partner {
   id: string;
   name: string;
 }
@@ -84,16 +85,17 @@ export default function BusinessScenariosPage() {
     enabled: !!currentOrganizationId,
   });
 
-  const { data: organizations } = useQuery<Organization[]>({
-    queryKey: ["/api/organizations"],
+  const { data: partners } = useQuery<Partner[]>({
+    queryKey: ["/api/partners"],
     queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
   });
 
   const form = useForm<BusinessScenarioFormData>({
     resolver: zodResolver(businessScenarioSchema),
     defaultValues: {
-      sourceOrganizationId: "",
-      targetOrganizationId: "",
+      sourcePartnerId: "",
+      targetPartnerId: "",
       relationshipType: "cliente_fattura",
       notes: "",
       isActive: true,
@@ -153,8 +155,8 @@ export default function BusinessScenariosPage() {
   const handleEdit = (scenario: BusinessScenario) => {
     setEditingScenario(scenario);
     form.reset({
-      sourceOrganizationId: scenario.sourceOrganizationId,
-      targetOrganizationId: scenario.targetOrganizationId,
+      sourcePartnerId: scenario.sourcePartnerId,
+      targetPartnerId: scenario.targetPartnerId,
       relationshipType: scenario.relationshipType as any,
       notes: scenario.notes || "",
       isActive: scenario.isActive,
@@ -170,8 +172,8 @@ export default function BusinessScenariosPage() {
   const handleOpenForm = () => {
     setEditingScenario(null);
     form.reset({
-      sourceOrganizationId: currentOrganizationId || "",
-      targetOrganizationId: "",
+      sourcePartnerId: "",
+      targetPartnerId: "",
       relationshipType: "cliente_fattura",
       notes: "",
       isActive: true,
@@ -179,14 +181,14 @@ export default function BusinessScenariosPage() {
     setShowForm(true);
   };
 
-  const getOrgName = (id: string) => organizations?.find(o => o.id === id)?.name || id;
+  const getPartnerName = (id: string) => partners?.find(p => p.id === id)?.name || id;
 
   const groupedScenarios = scenarios?.reduce((acc, scenario) => {
-    const sourceOrg = getOrgName(scenario.sourceOrganizationId);
-    if (!acc[sourceOrg]) {
-      acc[sourceOrg] = [];
+    const sourcePartner = getPartnerName(scenario.sourcePartnerId);
+    if (!acc[sourcePartner]) {
+      acc[sourcePartner] = [];
     }
-    acc[sourceOrg].push(scenario);
+    acc[sourcePartner].push(scenario);
     return acc;
   }, {} as Record<string, BusinessScenario[]>) || {};
 
@@ -194,14 +196,14 @@ export default function BusinessScenariosPage() {
     <div className="flex min-h-screen">
       <Sidebar />
       <div className="flex-1 flex flex-col">
-        <Header title="Scenari di Business" subtitle="Gestisci le relazioni tra le tue organizzazioni" />
+        <Header title="Scenari di Business" subtitle="Gestisci le relazioni tra i tuoi partner" />
         <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-6xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold" data-testid="text-page-title">Scenari di Business</h1>
                 <p className="text-muted-foreground">
-                  Gestisci le relazioni tra le tue organizzazioni
+                  Gestisci le relazioni tra i tuoi partner
                 </p>
               </div>
               <Button onClick={handleOpenForm} data-testid="button-new-scenario">
@@ -218,7 +220,7 @@ export default function BusinessScenariosPage() {
                   <Building className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <h3 className="text-lg font-medium mb-2">Nessuno scenario di business</h3>
                   <p className="text-muted-foreground mb-4">
-                    Crea uno scenario per definire le relazioni tra le tue organizzazioni
+                    Crea uno scenario per definire le relazioni tra i tuoi partner
                   </p>
                   <Button onClick={handleOpenForm} data-testid="button-new-scenario-empty">
                     <Plus className="h-4 w-4 mr-2" />
@@ -259,7 +261,7 @@ export default function BusinessScenariosPage() {
                                 )}
                               </div>
                               <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{getOrgName(scenario.targetOrganizationId)}</span>
+                              <span className="font-medium">{getPartnerName(scenario.targetPartnerId)}</span>
                               {scenario.notes && (
                                 <span className="text-sm text-muted-foreground ml-2">
                                   ({scenario.notes})
@@ -310,27 +312,27 @@ export default function BusinessScenariosPage() {
               {editingScenario ? "Modifica Scenario" : "Nuovo Scenario di Business"}
             </DialogTitle>
             <DialogDescription>
-              Definisci una relazione tra due organizzazioni
+              Definisci una relazione tra due partner
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="sourceOrganizationId"
+                name="sourcePartnerId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Organizzazione Sorgente</FormLabel>
+                    <FormLabel>Partner Sorgente</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger data-testid="select-source-org">
-                          <SelectValue placeholder="Seleziona organizzazione" />
+                        <SelectTrigger data-testid="select-source-partner">
+                          <SelectValue placeholder="Seleziona partner" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {organizations?.map((org) => (
-                          <SelectItem key={org.id} value={org.id}>
-                            {org.name}
+                        {partners?.map((partner) => (
+                          <SelectItem key={partner.id} value={partner.id}>
+                            {partner.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -342,22 +344,22 @@ export default function BusinessScenariosPage() {
 
               <FormField
                 control={form.control}
-                name="targetOrganizationId"
+                name="targetPartnerId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Organizzazione Target</FormLabel>
+                    <FormLabel>Partner Target</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger data-testid="select-target-org">
-                          <SelectValue placeholder="Seleziona organizzazione" />
+                        <SelectTrigger data-testid="select-target-partner">
+                          <SelectValue placeholder="Seleziona partner" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {organizations
-                          ?.filter(org => org.id !== form.watch("sourceOrganizationId"))
-                          .map((org) => (
-                            <SelectItem key={org.id} value={org.id}>
-                              {org.name}
+                        {partners
+                          ?.filter(p => p.id !== form.watch("sourcePartnerId"))
+                          .map((partner) => (
+                            <SelectItem key={partner.id} value={partner.id}>
+                              {partner.name}
                             </SelectItem>
                           ))}
                       </SelectContent>
@@ -466,7 +468,7 @@ export default function BusinessScenariosPage() {
               Sei sicuro di voler eliminare questo scenario di business?
               {scenarioToDelete && (
                 <span className="block mt-2 font-medium">
-                  {getOrgName(scenarioToDelete.sourceOrganizationId)} → {getOrgName(scenarioToDelete.targetOrganizationId)}
+                  {getPartnerName(scenarioToDelete.sourcePartnerId)} → {getPartnerName(scenarioToDelete.targetPartnerId)}
                   <br />
                   <Badge className={relationshipTypeColors[scenarioToDelete.relationshipType]}>
                     {relationshipTypeLabels[scenarioToDelete.relationshipType]}
