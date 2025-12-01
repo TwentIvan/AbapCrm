@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock, Settings, LogOut, Globe, Eye, Sparkles, Plus } from "lucide-react";
 import { ThemeSelector } from "@/components/theme/theme-selector";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -477,7 +477,13 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                           : 'bg-background border border-border hover:bg-accent'
                       }`}
                     >
-                      {orgPartner?.logoUrl ? (
+                      {isPersonalOrg ? (
+                        <img 
+                          src={htuLogo} 
+                          alt="THE HUB UP" 
+                          className="w-10 h-10 object-contain rounded"
+                        />
+                      ) : orgPartner?.logoUrl ? (
                         <img 
                           src={orgPartner.logoUrl} 
                           alt={orgPartner.name || "Logo"} 
@@ -550,8 +556,15 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-14 h-14 rounded-lg bg-primary hover:bg-primary/90">
+                  <Button variant="ghost" size="icon" className="w-14 h-14 rounded-lg bg-primary hover:bg-primary/90 p-0 overflow-hidden">
                     <Avatar className="w-14 h-14 rounded-lg">
+                      {user?.profileImageUrl && (
+                        <AvatarImage 
+                          src={user.profileImageUrl} 
+                          alt={user.firstName || user.username || "User"} 
+                          className="object-cover"
+                        />
+                      )}
                       <AvatarFallback className="text-lg font-medium text-primary-foreground bg-primary rounded-lg">
                         {userInitials}
                       </AvatarFallback>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
@@ -13,7 +13,8 @@ import { apiRequest } from "@/lib/queryClient";
 import EmailConfig from "@/components/email-config";
 import { EmailSendDialog } from "@/components/email-send-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Send } from "lucide-react";
+import { Send, Upload, Trash2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function AccountPage() {
   const [location] = useLocation();
@@ -21,12 +22,113 @@ export default function AccountPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showSendDialog, setShowSendDialog] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     firstName: user?.firstName || "",
     lastName: user?.lastName || "",
     email: user?.email || "",
   });
+
+  const userInitials = user?.firstName && user?.lastName 
+    ? `${user.firstName[0]}${user.lastName[0]}` 
+    : user?.username?.[0]?.toUpperCase() || "U";
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Errore",
+        description: "Per favore seleziona un'immagine valida",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Errore",
+        description: "L'immagine non può superare i 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    try {
+      // Get the upload URL
+      const response = await fetch('/api/users/profile-image-upload-url');
+      if (!response.ok) {
+        throw new Error('Could not get upload URL');
+      }
+      
+      const { uploadUrl, objectPath } = await response.json();
+
+      // Upload the file directly to the storage
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Upload failed');
+      }
+
+      // Update user with new profile image URL
+      await apiRequest("PUT", `/api/users/${user?.id}`, {
+        profileImageUrl: objectPath,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
+      toast({
+        title: "Successo",
+        description: "Immagine profilo aggiornata",
+      });
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile caricare l'immagine",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    try {
+      await apiRequest("PUT", `/api/users/${user?.id}`, {
+        profileImageUrl: null,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
+      toast({
+        title: "Successo",
+        description: "Immagine profilo rimossa",
+      });
+    } catch (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile rimuovere l'immagine",
+        variant: "destructive",
+      });
+    }
+  };
 
   const updateUserMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -85,6 +187,66 @@ export default function AccountPage() {
                   </TabsList>
                   
                   <TabsContent value="account" className="space-y-4">
+                    {/* Profile Image Section */}
+                    <Card className="mb-6">
+                      <CardHeader>
+                        <CardTitle>Immagine Profilo</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center gap-6">
+                          <Avatar className="w-24 h-24 rounded-lg">
+                            {user?.profileImageUrl && (
+                              <AvatarImage 
+                                src={user.profileImageUrl.startsWith('/objects/') 
+                                  ? user.profileImageUrl 
+                                  : user.profileImageUrl} 
+                                alt="Profile" 
+                                className="object-cover"
+                              />
+                            )}
+                            <AvatarFallback className="text-2xl font-medium bg-primary text-primary-foreground rounded-lg">
+                              {userInitials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col gap-2">
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              onChange={handleImageUpload}
+                              accept="image/*"
+                              className="hidden"
+                              data-testid="input-profile-image"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={isUploadingImage}
+                              data-testid="button-upload-image"
+                            >
+                              <Upload className="mr-2 h-4 w-4" />
+                              {isUploadingImage ? "Caricamento..." : "Carica immagine"}
+                            </Button>
+                            {user?.profileImageUrl && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="text-destructive"
+                                onClick={handleRemoveImage}
+                                data-testid="button-remove-image"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Rimuovi
+                              </Button>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              JPG, PNG o GIF. Max 5MB.
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
                     <form onSubmit={handleSubmit} className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="firstName">Nome</Label>

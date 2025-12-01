@@ -39,6 +39,7 @@ import { AttachmentsService } from "./attachments-service";
 import { EmailForwardCleaner } from './email-forward-cleaner';
 import { CustomMetadataService } from "./custom-metadata-service";
 import { PdfService } from "./pdf-service";
+import { ObjectStorageService } from "./objectStorage";
 
 // Helper function to extract organizationId from request header
 function getOrganizationId(req: any): string {
@@ -545,6 +546,48 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const usersList = await storage.getUsers();
     res.json(usersList);
+  });
+
+  app.put("/api/users/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      // Users can only update their own profile
+      if (req.params.id !== req.user!.id) {
+        return res.status(403).json({ error: "Cannot update other users" });
+      }
+      
+      const { firstName, lastName, email, profileImageUrl } = req.body;
+      const updatedUser = await storage.updateUser(req.params.id, {
+        firstName,
+        lastName,
+        email,
+        profileImageUrl
+      });
+      
+      if (!updatedUser) return res.sendStatus(404);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("[UPDATE USER] Error:", error);
+      res.status(400).json({ error: "Invalid user data" });
+    }
+  });
+
+  // Get profile image upload URL
+  app.get("/api/users/profile-image-upload-url", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const objectStorage = new ObjectStorageService();
+      const uploadUrl = await objectStorage.getLogoUploadURL();
+      
+      // Extract the object path for storing in the database
+      const url = new URL(uploadUrl);
+      const objectPath = objectStorage.normalizeLogoPath(uploadUrl);
+      
+      res.json({ uploadUrl, objectPath });
+    } catch (error) {
+      console.error("[PROFILE IMAGE URL] Error:", error);
+      res.status(500).json({ error: "Could not generate upload URL" });
+    }
   });
 
   // Organizations
