@@ -882,9 +882,7 @@ export class DatabaseStorage implements IStorage {
     const scenarios = await db
       .select()
       .from(businessScenarios)
-      .where(
-        sql`${businessScenarios.sourceOrganizationId} = ${organizationId} OR ${businessScenarios.targetOrganizationId} = ${organizationId}`
-      )
+      .where(eq(businessScenarios.sourceOrganizationId, organizationId))
       .orderBy(desc(businessScenarios.createdAt));
     return scenarios;
   }
