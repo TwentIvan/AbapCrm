@@ -669,10 +669,15 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/business-scenarios", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const data = insertBusinessScenarioSchema.parse(req.body);
+      const organizationId = getOrganizationId(req);
+      const data = insertBusinessScenarioSchema.parse({
+        ...req.body,
+        organizationId,
+      });
       const scenario = await storage.createBusinessScenario(data);
       res.json(scenario);
     } catch (error) {
+      console.error("Business scenario creation error:", error);
       res.status(400).json({ error: "Invalid business scenario data" });
     }
   });
