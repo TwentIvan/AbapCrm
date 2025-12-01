@@ -1568,7 +1568,25 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.get("/api/partners/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const organizationId = getOrganizationId(req);
-    const partner = await storage.getPartner(req.params.id, req.user!.id, organizationId);
+    let partner = await storage.getPartner(req.params.id, req.user!.id, organizationId);
+    
+    // If not found, check if this is the partner associated with the current organization
+    if (!partner) {
+      const currentOrg = await db.select().from(organizations)
+        .where(eq(organizations.id, organizationId))
+        .limit(1);
+      
+      if (currentOrg.length > 0 && currentOrg[0].partnerId === req.params.id) {
+        // Fetch the partner without organization filter since it's the org's own partner
+        const [orgPartner] = await db.select().from(partners)
+          .where(and(
+            eq(partners.id, req.params.id),
+            eq(partners.userId, req.user!.id)
+          ));
+        partner = orgPartner;
+      }
+    }
+    
     if (!partner) return res.sendStatus(404);
     res.json(partner);
   });
@@ -1757,7 +1775,34 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     try {
       const organizationId = getOrganizationId(req);
       const auditContext = AuditService.createContext(req);
-      const partner = await storage.updatePartner(req.params.id, req.body, req.user!.id, organizationId, auditContext);
+      let partner = await storage.updatePartner(req.params.id, req.body, req.user!.id, organizationId, auditContext);
+      
+      // If not found, check if this is the partner associated with the current organization
+      if (!partner) {
+        const currentOrg = await db.select().from(organizations)
+          .where(eq(organizations.id, organizationId))
+          .limit(1);
+        
+        if (currentOrg.length > 0 && currentOrg[0].partnerId === req.params.id) {
+          // Get the partner's actual organizationId and update with that
+          const [existingPartner] = await db.select().from(partners)
+            .where(and(
+              eq(partners.id, req.params.id),
+              eq(partners.userId, req.user!.id)
+            ));
+          
+          if (existingPartner) {
+            partner = await storage.updatePartner(
+              req.params.id, 
+              req.body, 
+              req.user!.id, 
+              existingPartner.organizationId, 
+              auditContext
+            );
+          }
+        }
+      }
+      
       if (!partner) return res.sendStatus(404);
       res.json(partner);
     } catch (error) {
