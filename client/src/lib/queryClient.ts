@@ -71,7 +71,12 @@ export const getQueryFn: <T>(options: {
     // Add personal scope header
     headers["X-Organization-Scope"] = currentPersonalScope;
 
-    const res = await fetch(queryKey.join("/") as string, {
+    // Build URL: only use string elements from queryKey
+    // This allows metadata objects to be included in key for cache differentiation
+    const urlParts = queryKey.filter((part): part is string => typeof part === "string");
+    const url = urlParts.join("/");
+
+    const res = await fetch(url, {
       credentials: "include",
       headers,
     });

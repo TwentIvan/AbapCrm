@@ -255,44 +255,79 @@ export default function SalesOrderItemsEditor({
     return `€ ${num.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const getItemTypeLabel = (type: string) => {
+    switch (type) {
+      case "service": return "Servizio";
+      case "package": return "Pacchetto";
+      case "expense": return "Spesa";
+      default: return type;
+    }
+  };
+
+  const getProjectName = (projectId?: string) => {
+    if (!projectId) return "-";
+    const project = projects.find(p => p.id === projectId);
+    return project?.name || "-";
+  };
+
   if (isReadOnly) {
     return (
       <div className="space-y-4">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-yellow-800 text-sm">
-          L'ordine non è in stato "Bozza" - le righe sono in sola lettura
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-800 text-sm">
+          <strong>Attenzione:</strong> L'ordine non è in stato "Bozza" - le righe sono in sola lettura.
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">#</TableHead>
-              <TableHead>Descrizione</TableHead>
-              <TableHead className="w-20">Qtà</TableHead>
-              <TableHead className="w-20">U.M.</TableHead>
-              <TableHead className="w-24">Prezzo</TableHead>
-              <TableHead className="w-20">Sconto %</TableHead>
-              <TableHead className="w-24">Importo</TableHead>
-              <TableHead className="w-20">IVA %</TableHead>
-              <TableHead className="w-32">Rif. Ord. Cliente</TableHead>
-              <TableHead className="w-32">Rif. Pos. Ordine</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item, index) => (
-              <TableRow key={item.id || index}>
-                <TableCell>{item.lineNumber}</TableCell>
-                <TableCell>{item.description}</TableCell>
-                <TableCell>{item.quantity}</TableCell>
-                <TableCell>{item.unitOfMeasure}</TableCell>
-                <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
-                <TableCell>{item.discountPercent}%</TableCell>
-                <TableCell className="font-medium">{formatCurrency(item.lineTotal)}</TableCell>
-                <TableCell>{item.vatPercent}%</TableCell>
-                <TableCell>{item.customerOrderReference || "-"}</TableCell>
-                <TableCell>{item.customerOrderLineReference || "-"}</TableCell>
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead className="w-10">#</TableHead>
+                <TableHead className="w-28">Tipo</TableHead>
+                <TableHead className="w-40">Progetto</TableHead>
+                <TableHead>Descrizione</TableHead>
+                <TableHead className="w-20 text-right">Qtà</TableHead>
+                <TableHead className="w-28 text-right">Prezzo</TableHead>
+                <TableHead className="w-20 text-right">IVA %</TableHead>
+                <TableHead className="w-28 text-right">IVA €</TableHead>
+                <TableHead className="w-28 text-right">Totale</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {items.map((item, index) => (
+                <TableRow key={item.id || index}>
+                  <TableCell className="font-medium text-gray-500">{item.lineNumber}</TableCell>
+                  <TableCell>{getItemTypeLabel(item.itemType)}</TableCell>
+                  <TableCell>{getProjectName(item.projectId)}</TableCell>
+                  <TableCell>{item.description}</TableCell>
+                  <TableCell className="text-right">{item.quantity}</TableCell>
+                  <TableCell className="text-right">€{parseFloat(item.unitPrice).toFixed(2)}</TableCell>
+                  <TableCell className="text-right">{item.vatPercent}%</TableCell>
+                  <TableCell className="text-right">€{parseFloat(item.vatAmount).toFixed(2)}</TableCell>
+                  <TableCell className="text-right font-medium">€{parseFloat(item.lineTotal).toFixed(2)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="flex justify-end">
+          <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm min-w-[200px]">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Imponibile:</span>
+              <span className="font-medium">€{items.reduce((sum, item) => sum + parseFloat(item.lineTotal || "0"), 0).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">IVA:</span>
+              <span className="font-medium">€{items.reduce((sum, item) => sum + parseFloat(item.vatAmount || "0"), 0).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between pt-2 border-t">
+              <span className="font-bold">Totale:</span>
+              <span className="font-bold">€{(
+                items.reduce((sum, item) => sum + parseFloat(item.lineTotal || "0"), 0) +
+                items.reduce((sum, item) => sum + parseFloat(item.vatAmount || "0"), 0)
+              ).toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -315,11 +350,11 @@ export default function SalesOrderItemsEditor({
             <TableHeader>
               <TableRow className="bg-gray-50">
                 <TableHead className="w-10">#</TableHead>
+                <TableHead className="w-28">Tipo</TableHead>
+                <TableHead className="w-40">Progetto</TableHead>
                 <TableHead>Descrizione</TableHead>
                 <TableHead className="w-20 text-right">Qtà</TableHead>
-                <TableHead className="w-24">U.M.</TableHead>
                 <TableHead className="w-28 text-right">Prezzo</TableHead>
-                <TableHead className="w-20 text-right">Sc. %</TableHead>
                 <TableHead className="w-20 text-right">IVA %</TableHead>
                 <TableHead className="w-28 text-right">IVA €</TableHead>
                 <TableHead className="w-28 text-right">Totale</TableHead>
@@ -333,6 +368,37 @@ export default function SalesOrderItemsEditor({
                   className={item.isModified || item.isNew ? "bg-yellow-50" : ""}
                 >
                   <TableCell className="font-medium text-gray-500">{item.lineNumber}</TableCell>
+                  <TableCell>
+                    <Select 
+                      value={item.itemType} 
+                      onValueChange={(val) => updateItem(index, "itemType", val)}
+                    >
+                      <SelectTrigger className="h-8 text-xs" data-testid={`select-type-${index}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="service">Servizio</SelectItem>
+                        <SelectItem value="package">Pacchetto</SelectItem>
+                        <SelectItem value="expense">Spesa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Select 
+                      value={item.projectId || "__none__"} 
+                      onValueChange={(val) => updateItem(index, "projectId", val === "__none__" ? "" : val)}
+                    >
+                      <SelectTrigger className="h-8 text-xs" data-testid={`select-project-${index}`}>
+                        <SelectValue placeholder="Seleziona..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Nessuno</SelectItem>
+                        {projects.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
                   <TableCell>
                     <Input
                       value={item.description}
@@ -352,23 +418,6 @@ export default function SalesOrderItemsEditor({
                     />
                   </TableCell>
                   <TableCell>
-                    <Select
-                      value={item.unitOfMeasure}
-                      onValueChange={(value) => updateItem(index, "unitOfMeasure", value)}
-                    >
-                      <SelectTrigger className="h-8 text-xs" data-testid={`select-uom-${index}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ore">Ore</SelectItem>
-                        <SelectItem value="giorni">Giorni</SelectItem>
-                        <SelectItem value="mese">Mese</SelectItem>
-                        <SelectItem value="pz">Pz</SelectItem>
-                        <SelectItem value="pacchetto">Pacchetto</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
                     <Input
                       type="number"
                       step="0.01"
@@ -376,15 +425,6 @@ export default function SalesOrderItemsEditor({
                       onChange={(e) => updateItem(index, "unitPrice", e.target.value)}
                       className="h-8 text-sm text-right"
                       data-testid={`input-price-${index}`}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      value={item.discountPercent}
-                      onChange={(e) => updateItem(index, "discountPercent", e.target.value)}
-                      className="h-8 text-sm text-right"
-                      data-testid={`input-discount-${index}`}
                     />
                   </TableCell>
                   <TableCell>
