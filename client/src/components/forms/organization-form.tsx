@@ -46,10 +46,11 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
   const { currentOrganizationId } = useOrganization();
   const { onCreateSuccess, onUpdateSuccess } = useStandardCrud("organizations");
 
+  // Use /api/partners/all to get ALL user's partners (no organization filter)
+  // This allows associating any partner to any organization
   const { data: partners = [] } = useQuery<any[]>({
-    queryKey: ["/api/partners"],
+    queryKey: ["/api/partners/all"],
     queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!currentOrganizationId,
     staleTime: 5 * 60 * 1000,
   });
 

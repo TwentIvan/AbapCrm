@@ -1503,6 +1503,21 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // All partners for user (no organization filter) - used for organization-partner association
+  app.get("/api/partners/all", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const partnersList = await db.select().from(partners)
+        .where(and(
+          eq(partners.userId, req.user!.id),
+          isNull(partners.parentPartnerId)
+        ));
+      res.json(partnersList);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
   // Partner locations (operative sites)
   app.get("/api/partners/:id/locations", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
