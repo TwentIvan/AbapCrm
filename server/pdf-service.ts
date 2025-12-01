@@ -231,7 +231,7 @@ export class PdfService {
     y = Math.max(y + 15, 200);
 
     const tableTop = y;
-    const colX = [40, 60, 220, 265, 310, 360, 410, 470];
+    const colX = [40, 60, 230, 280, 330, 385, 445, 510];
     
     doc.rect(40, tableTop, 515, 18)
        .fillColor(primaryColor)
