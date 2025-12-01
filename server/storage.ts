@@ -88,6 +88,7 @@ export interface IStorage {
   deleteOrganization(id: string): Promise<boolean>;
   
   // Business Scenarios
+  getAllBusinessScenarios(): Promise<BusinessScenario[]>;
   getBusinessScenarios(sourceOrganizationId: string): Promise<BusinessScenario[]>;
   getBusinessScenario(id: string): Promise<BusinessScenario | undefined>;
   createBusinessScenario(scenario: InsertBusinessScenario): Promise<BusinessScenario>;
@@ -868,6 +869,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Business Scenarios
+  async getAllBusinessScenarios(): Promise<BusinessScenario[]> {
+    const scenarios = await db
+      .select()
+      .from(businessScenarios)
+      .orderBy(desc(businessScenarios.createdAt));
+    return scenarios;
+  }
+
   async getBusinessScenarios(sourceOrganizationId: string): Promise<BusinessScenario[]> {
     const scenarios = await db
       .select()
