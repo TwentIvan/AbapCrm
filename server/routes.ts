@@ -4579,6 +4579,64 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     res.sendStatus(204);
   });
 
+  // Sales Order Items (nested under sales orders)
+  app.get("/api/sales-orders/:salesOrderId/items", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const items = await storage.getSalesOrderItems(req.params.salesOrderId, req.user!.id);
+    res.json(items);
+  });
+
+  app.post("/api/sales-orders/:salesOrderId/items", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      // Verify sales order ownership
+      const order = await storage.getSalesOrder(req.params.salesOrderId, req.user!.id);
+      if (!order) return res.sendStatus(404);
+
+      const itemData = insertSalesOrderItemSchema.parse({
+        ...req.body,
+        salesOrderId: req.params.salesOrderId
+      });
+      const item = await storage.createSalesOrderItem(itemData);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Sales order item creation error:", error);
+      res.status(400).json({ error: "Invalid sales order item data" });
+    }
+  });
+
+  app.put("/api/sales-orders/:salesOrderId/items/:itemId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      // Verify sales order ownership first
+      const order = await storage.getSalesOrder(req.params.salesOrderId, req.user!.id);
+      if (!order) return res.sendStatus(404);
+
+      // Validate update data - only allow safe fields, prevent salesOrderId manipulation
+      const { salesOrderId: _, id: __, ...updateData } = req.body;
+      const item = await storage.updateSalesOrderItem(req.params.itemId, updateData, req.user!.id);
+      if (!item) return res.sendStatus(404);
+      res.json(item);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid sales order item data" });
+    }
+  });
+
+  app.delete("/api/sales-orders/:salesOrderId/items/:itemId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      // Verify sales order ownership first
+      const order = await storage.getSalesOrder(req.params.salesOrderId, req.user!.id);
+      if (!order) return res.sendStatus(404);
+
+      const deleted = await storage.deleteSalesOrderItem(req.params.itemId, req.user!.id);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to delete item" });
+    }
+  });
+
   // Convert timesheet entries to sales order
   app.post("/api/sales-orders/from-timesheet", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -4611,9 +4669,12 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const taxes = Number((subtotal * 0.22).toFixed(2)); // 22% VAT
       const total = Number((subtotal + taxes).toFixed(2));
 
+      const organizationId = getOrganizationId(req);
+      
       // Create sales order
       const salesOrder = await storage.createSalesOrder({
         userId: req.user!.id,
+        organizationId,
         partnerId,
         description: description || "Time tracking services",
         subtotal: subtotal.toString(),
@@ -4622,15 +4683,20 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         currency: "EUR",
         issueDate: new Date(),
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        status: "draft"
+        status: "draft",
+        isBillable: true,
       });
 
       // Create sales order item
       await storage.createSalesOrderItem({
         salesOrderId: salesOrder.id,
+        lineNumber: 1,
+        itemType: "service",
         description: `Time tracking - ${totalHours}h @ €${rate}/h`,
         quantity: totalHours.toString(),
+        unitOfMeasure: "ore",
         unitPrice: rate.toString(),
+        discountPercent: "0",
         lineTotal: subtotal.toString(),
         workDate: new Date(validEntries[0].startTime),
         timeEntryIds: timeEntryIds

@@ -419,44 +419,91 @@ export const timeNormalizationConfigs = pgTable("time_normalization_configs", {
 
 // Ordini di vendita generati da timesheet
 export const salesOrderStatusEnum = pgEnum("sales_order_status", ["draft", "sent", "accepted", "invoiced", "paid", "cancelled"]);
+export const quoteItemTypeEnum = pgEnum("quote_item_type", ["service", "package", "expense"]);
 
 export const salesOrders = pgTable("sales_orders", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
   partnerId: uuid("partner_id").references(() => partners.id).notNull(), // Cliente
+  contactId: uuid("contact_id").references(() => contacts.id),
   orderNumber: text("order_number").notNull().unique(), // OV-2025-001
   status: salesOrderStatusEnum("status").default("draft").notNull(),
+  
+  // Riferimento all'offerta di origine
+  quoteId: uuid("quote_id").references(() => quotes.id),
+  quoteVersion: integer("quote_version"), // Versione dell'offerta al momento della conversione
+  
+  // Riferimenti ordine cliente (in testata)
+  customerOrderReference: text("customer_order_reference"), // Numero ordine cliente
+  
+  // Fatturabilità
+  isBillable: boolean("is_billable").default(true).notNull(),
+  
   description: text("description"),
-  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  discountPercent: decimal("discount_percent", { precision: 5, scale: 2 }).default("0.00"),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0.00"),
   taxes: decimal("taxes", { precision: 10, scale: 2 }).default("0.00").notNull(),
-  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }).default("0.00").notNull(),
   currency: text("currency").default("EUR").notNull(),
   issueDate: timestamp("issue_date").defaultNow().notNull(),
   dueDate: timestamp("due_date"),
-  notes: text("notes"),
+  
+  // Condizioni commerciali
+  paymentTerms: text("payment_terms"),
+  deliveryMode: text("delivery_mode"),
+  
+  // Note
+  internalNotes: text("internal_notes"),
+  externalNotes: text("external_notes"),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Righe degli ordini di vendita (time entries raggruppate)
+// Righe degli ordini di vendita
 export const salesOrderItems = pgTable("sales_order_items", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   salesOrderId: uuid("sales_order_id").references(() => salesOrders.id).notNull(),
+  
+  // Ordinamento
+  lineNumber: integer("line_number").notNull(),
+  
+  // Tipo e descrizione
+  itemType: quoteItemTypeEnum("item_type").default("service").notNull(),
+  description: text("description").notNull(),
+  
+  // Quantità e prezzo
+  quantity: decimal("quantity", { precision: 8, scale: 2 }).notNull(),
+  unitOfMeasure: text("unit_of_measure").default("ore").notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  discountPercent: decimal("discount_percent", { precision: 5, scale: 2 }).default("0.00"),
+  lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
+  
+  // Riferimenti ordine cliente (per riga)
+  customerOrderReference: text("customer_order_reference"), // Rif. ordine cliente
+  customerOrderLineReference: text("customer_order_line_reference"), // Rif. posizione ordine cliente
+  
+  // Link opzionali
   projectId: uuid("project_id").references(() => projects.id),
   taskId: uuid("task_id").references(() => tasks.id),
-  description: text("description").notNull(),
-  quantity: decimal("quantity", { precision: 8, scale: 2 }).notNull(), // Ore
-  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(), // €/ora
-  lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
-  workDate: timestamp("work_date"), // Data del lavoro
-  timeEntryIds: text("time_entry_ids").array().notNull(), // Array degli ID time_entries raggruppate
+  humanResourceId: uuid("human_resource_id").references(() => humanResources.id),
+  quoteItemId: uuid("quote_item_id").references(() => quoteItems.id), // Riga offerta di origine
+  
+  // Dati lavoro (per ordini da timesheet)
+  workDate: timestamp("work_date"),
+  timeEntryIds: text("time_entry_ids").array().default([]),
+  
+  // Note riga
+  notes: text("notes"),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Offerte/Preventivi - Quote management
 export const quoteStatusEnum = pgEnum("quote_status", ["draft", "sent", "accepted", "rejected", "expired"]);
-export const quoteItemTypeEnum = pgEnum("quote_item_type", ["service", "package", "expense"]);
 
 export const quotes = pgTable("quotes", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),

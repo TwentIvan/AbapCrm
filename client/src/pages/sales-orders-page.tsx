@@ -10,20 +10,30 @@ import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { FileText, Grid3X3, List } from "lucide-react";
-import { SalesOrder, Partner } from "@shared/schema";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
+import { FileText, Grid3X3, List, AlertCircle } from "lucide-react";
+import { SalesOrder, Partner, Quote } from "@shared/schema";
 import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
-// import SalesOrderForm from "@/components/forms/sales-order-form";
+import SalesOrderForm from "@/components/forms/sales-order-form";
 
-const statusColors = {
+const statusColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-800",
   sent: "bg-blue-100 text-blue-800", 
   accepted: "bg-green-100 text-green-800",
   invoiced: "bg-purple-100 text-purple-800",
   paid: "bg-emerald-100 text-emerald-800",
   cancelled: "bg-red-100 text-red-800",
+};
+
+const statusLabels: Record<string, string> = {
+  draft: "Bozza",
+  sent: "Inviato",
+  accepted: "Confermato",
+  invoiced: "Fatturato",
+  paid: "Pagato",
+  cancelled: "Annullato",
 };
 
 export default function SalesOrdersPage() {
@@ -44,20 +54,17 @@ export default function SalesOrdersPage() {
 
   const { data: salesOrders = [], isLoading } = useQuery<SalesOrder[]>({
     queryKey: ["/api/sales-orders"],
-    queryFn: async () => {
-      const res = await fetch("/api/sales-orders", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch');
-      return res.json();
-    },
+    queryFn: getQueryFn({ on401: "throw" }),
   });
 
   const { data: partners = [] } = useQuery<Partner[]>({
     queryKey: ["/api/partners"],
-    queryFn: async () => {
-      const res = await fetch("/api/partners", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch');
-      return res.json();
-    },
+    queryFn: getQueryFn({ on401: "throw" }),
+  });
+
+  const { data: quotes = [] } = useQuery<Quote[]>({
+    queryKey: ["/api/quotes"],
+    queryFn: getQueryFn({ on401: "throw" }),
   });
 
   const { data: fieldMetadata } = useEntityFieldMetadata("sales-orders");
@@ -118,48 +125,90 @@ export default function SalesOrdersPage() {
     bulkDeleteMutation.mutate(selectedOrders);
   };
 
-  const clients = partners?.filter(partner => partner.type === "client") || [];
-  
-  const getClientName = (partnerId: string | null) => {
+  const getPartnerName = (partnerId: string | null) => {
     if (!partnerId) return "N/A";
-    const client = clients.find(c => c.id === partnerId);
-    return client?.name || "N/A";
+    const partner = partners.find(p => p.id === partnerId);
+    return partner?.name || "N/A";
   };
 
-  const formatAmount = (amount: string | null) => {
-    if (!amount) return "N/A";
+  const getQuoteNumber = (quoteId: string | null) => {
+    if (!quoteId) return null;
+    const quote = quotes.find(q => q.id === quoteId);
+    return quote?.quoteNumber || null;
+  };
+
+  const formatCurrency = (amount: string | null) => {
+    if (!amount) return "€ 0,00";
     const value = parseFloat(amount);
-    return `€${value.toLocaleString()}`;
+    return `€ ${value.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`;
   };
 
   const formatDate = (date: Date | string | null) => {
-    if (!date) return "N/A";
+    if (!date) return "-";
     return new Date(date).toLocaleDateString("it-IT");
   };
 
   const columns = [
     createStandardColumns.text("orderNumber", "N. Ordine"),
-    createStandardColumns.badge("status", "Status", statusColors),
     {
-      key: "clientId",
+      key: "status",
+      label: "Stato",
+      sortable: true,
+      searchable: true,
+      render: (order: SalesOrder) => (
+        <div className="flex items-center gap-2">
+          <Badge className={statusColors[order.status] || "bg-gray-100"}>
+            {statusLabels[order.status] || order.status}
+          </Badge>
+          {!order.isBillable && (
+            <span title="Non fatturabile">
+              <AlertCircle className="h-4 w-4 text-red-500" />
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
+      key: "partnerId",
       label: "Cliente", 
       sortable: true,
       searchable: true,
-      render: (order: SalesOrder) => getClientName(order.partnerId)
+      render: (order: SalesOrder) => getPartnerName(order.partnerId)
     },
     {
-      key: "totalAmount",
+      key: "quoteId",
+      label: "Offerta",
+      sortable: true,
+      searchable: true,
+      render: (order: SalesOrder) => {
+        const quoteNum = getQuoteNumber(order.quoteId);
+        return quoteNum ? (
+          <span className="text-sm">
+            {quoteNum} {order.quoteVersion && <span className="text-muted-foreground">v{order.quoteVersion}</span>}
+          </span>
+        ) : "-";
+      }
+    },
+    {
+      key: "customerOrderReference",
+      label: "Rif. Ordine Cl.",
+      sortable: true,
+      searchable: true,
+      render: (order: SalesOrder) => order.customerOrderReference || "-"
+    },
+    {
+      key: "total",
       label: "Importo", 
       sortable: true,
       searchable: false,
-      render: (order: SalesOrder) => `€${order.total || '0'}`
+      render: (order: SalesOrder) => formatCurrency(order.total)
     },
     {
-      key: "orderDate",
+      key: "issueDate",
       label: "Data Ordine", 
       sortable: true,
       searchable: false,
-      render: (order: SalesOrder) => formatDate(order.dueDate)
+      render: (order: SalesOrder) => formatDate(order.issueDate)
     },
   ];
 
@@ -171,7 +220,7 @@ export default function SalesOrdersPage() {
           title="Ordini di Vendita"
           subtitle="Gestisci gli ordini di vendita"
         />
-        <main className="p-6 space-y-6">
+        <main className="p-6 space-y-6 overflow-auto h-[calc(100vh-80px)]">
           <ListViewToolbar
             currentLayoutName={currentLayoutName}
             savedLayouts={savedLayouts}
@@ -180,9 +229,9 @@ export default function SalesOrdersPage() {
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
             onCreateNew={handleAdd}
-            onCopySelected={() => {/* TODO: implement copy */}}
-            onBulkEdit={() => {/* TODO: implement bulk edit */}}
-            onDeleteSelected={() => setShowBulkDeleteDialog(true)}
+            onCopySelected={() => {}}
+            onBulkEdit={() => {}}
+            onDeleteSelected={() => handleDelete(selectedOrders)}
             hasSelection={selectedOrders.length > 0}
             viewToggle={
               <div className="flex bg-muted rounded-lg p-1">
@@ -218,41 +267,22 @@ export default function SalesOrdersPage() {
 
           {/* Create/Edit Dialog */}
           <Dialog open={showForm} onOpenChange={setShowForm}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
-                  {editingOrder ? "Modifica Ordine" : "Nuovo Ordine"}
+                  {editingOrder ? `Modifica Ordine ${editingOrder.orderNumber}` : "Nuovo Ordine di Vendita"}
                 </DialogTitle>
                 <DialogDescription>
-                  {editingOrder ? "Aggiorna" : "Crea"} un ordine di vendita
+                  {editingOrder ? "Modifica i dettagli dell'ordine" : "Crea un nuovo ordine di vendita"}
                 </DialogDescription>
               </DialogHeader>
-              <div className="p-4">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Form per {editingOrder ? "modificare" : "creare"} ordine di vendita
-                </p>
-                <div className="flex justify-end gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditingOrder(null);
-                    }}
-                  >
-                    Annulla
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditingOrder(null);
-                      queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
-                      toast({ title: "Salvato", description: "Ordine salvato con successo" });
-                    }}
-                  >
-                    Salva
-                  </Button>
-                </div>
-              </div>
+              <SalesOrderForm
+                salesOrder={editingOrder || undefined}
+                onSuccess={() => {
+                  setShowForm(false);
+                  setEditingOrder(null);
+                }}
+              />
             </DialogContent>
           </Dialog>
 
@@ -299,10 +329,12 @@ export default function SalesOrdersPage() {
             tableId="sales-orders"
             availableColumns={availableColumns.length > 0 ? availableColumns : [
               { id: 'orderNumber', label: 'N. Ordine' },
-              { id: 'status', label: 'Status' },
+              { id: 'status', label: 'Stato' },
               { id: 'partnerId', label: 'Cliente' },
+              { id: 'quoteId', label: 'Offerta' },
+              { id: 'customerOrderReference', label: 'Rif. Ordine Cl.' },
               { id: 'total', label: 'Importo' },
-              { id: 'dueDate', label: 'Data Scadenza' },
+              { id: 'issueDate', label: 'Data Ordine' },
             ]}
             editingLayout={editingLayout}
             onSave={(layoutData) => {

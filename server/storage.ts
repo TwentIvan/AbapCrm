@@ -2344,13 +2344,23 @@ export class DatabaseStorage implements IStorage {
     // Create sales order from quote
     const salesOrder = await this.createSalesOrder({
       userId: quote.userId,
+      organizationId: quote.organizationId,
       partnerId: quote.partnerId,
+      contactId: quote.contactId,
+      quoteId: quote.id,
+      quoteVersion: quote.version,
       description: `Ordine da offerta ${quote.quoteNumber}`,
       subtotal: quote.subtotal,
+      discountPercent: quote.discountPercent,
+      discountAmount: quote.discountAmount,
       taxes: quote.taxes,
       total: quote.total,
       currency: quote.currency,
-      notes: quote.externalNotes,
+      paymentTerms: quote.paymentTerms,
+      deliveryMode: quote.deliveryMode,
+      internalNotes: quote.internalNotes,
+      externalNotes: quote.externalNotes,
+      isBillable: true,
     });
 
     // Copy quote items to sales order items
@@ -2358,11 +2368,18 @@ export class DatabaseStorage implements IStorage {
     for (const item of items) {
       await this.createSalesOrderItem({
         salesOrderId: salesOrder.id,
-        projectId: item.projectId,
+        lineNumber: item.lineNumber,
+        itemType: item.itemType,
         description: item.description,
         quantity: item.quantity,
+        unitOfMeasure: item.unitOfMeasure,
         unitPrice: item.unitPrice,
+        discountPercent: item.discountPercent,
         lineTotal: item.lineTotal,
+        projectId: item.projectId,
+        humanResourceId: item.humanResourceId,
+        quoteItemId: item.id,
+        notes: item.notes,
         timeEntryIds: [],
       });
     }
