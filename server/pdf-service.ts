@@ -44,8 +44,24 @@ export class PdfService {
       }
     });
 
-    const primaryColor = "#1a365d";
-    const accentColor = "#2563eb";
+    // Map organization theme to colors
+    const themeColors: { [key: string]: { primary: string; accent: string } } = {
+      blue: { primary: "#1e40af", accent: "#2563eb" },
+      green: { primary: "#166534", accent: "#22c55e" },
+      purple: { primary: "#6b21a8", accent: "#a855f7" },
+      orange: { primary: "#c2410c", accent: "#f97316" },
+      red: { primary: "#b91c1c", accent: "#ef4444" },
+      pink: { primary: "#be185d", accent: "#ec4899" },
+      yellow: { primary: "#a16207", accent: "#eab308" },
+      teal: { primary: "#0f766e", accent: "#14b8a6" },
+      indigo: { primary: "#4338ca", accent: "#6366f1" },
+      gray: { primary: "#374151", accent: "#6b7280" },
+    };
+    const orgTheme = organization.theme || "blue";
+    const colors = themeColors[orgTheme] || themeColors.blue;
+    
+    const primaryColor = colors.primary;
+    const accentColor = colors.accent;
     const grayColor = "#6b7280";
     const lightGray = "#f3f4f6";
 
@@ -65,8 +81,8 @@ export class PdfService {
         
         const logoBuffer = await fetchImage(logoUrl);
         if (logoBuffer) {
-          doc.image(logoBuffer, 40, y, { width: 80 });
-          logoHeight = 60;
+          doc.image(logoBuffer, 40, y, { width: 40 });
+          logoHeight = 30;
           console.log("[PDF] Logo loaded successfully");
         } else {
           console.log("[PDF] Logo buffer is null");
@@ -85,7 +101,7 @@ export class PdfService {
        .fillColor(accentColor)
        .text(quote.quoteNumber, 40, y, { align: "right" });
 
-    const headerX = logoHeight > 0 ? 130 : 40;
+    const headerX = logoHeight > 0 ? 90 : 40;
     y = 40;
     
     // Use partner name/company if available, otherwise organization name
@@ -215,7 +231,7 @@ export class PdfService {
     y = Math.max(y + 15, 200);
 
     const tableTop = y;
-    const colX = [40, 60, 240, 290, 355, 415, 475];
+    const colX = [40, 60, 220, 265, 310, 360, 405, 455];
     
     doc.rect(40, tableTop, 515, 18)
        .fillColor(primaryColor)
@@ -229,7 +245,8 @@ export class PdfService {
        .text("U.M.", colX[3] + 3, tableTop + 5)
        .text("Prezzo", colX[4] + 3, tableTop + 5)
        .text("Sconto", colX[5] + 3, tableTop + 5)
-       .text("Totale", colX[6] + 3, tableTop + 5);
+       .text("IVA", colX[6] + 3, tableTop + 5)
+       .text("Totale", colX[7] + 3, tableTop + 5);
     
     y = tableTop + 18;
     
@@ -249,6 +266,8 @@ export class PdfService {
         ? item.description.substring(0, 35) + "..." 
         : item.description;
       
+      const vatPercent = "22%"; // Default IVA
+      
       doc.fontSize(7)
          .fillColor(primaryColor)
          .text(String(item.lineNumber), colX[0] + 3, y + 6)
@@ -257,7 +276,8 @@ export class PdfService {
          .text((item.unitOfMeasure || "").substring(0, 6), colX[3] + 3, y + 6)
          .text(formatCurrencyShort(parseFloat(item.unitPrice)), colX[4] + 3, y + 6)
          .text(item.discountPercent && parseFloat(item.discountPercent) > 0 ? `${item.discountPercent}%` : "-", colX[5] + 3, y + 6)
-         .text(formatCurrencyShort(parseFloat(item.lineTotal)), colX[6] + 3, y + 6);
+         .text(vatPercent, colX[6] + 3, y + 6)
+         .text(formatCurrencyShort(parseFloat(item.lineTotal)), colX[7] + 3, y + 6);
       
       y += rowHeight;
       
@@ -293,7 +313,7 @@ export class PdfService {
        .text(formatCurrency(parseFloat(quote.taxes)), totalsX + 70, y, { align: "right", width: 85 });
     y += 16;
     
-    doc.rect(totalsX - 5, y - 3, 160, 22)
+    doc.rect(totalsX - 5, y - 3, 175, 22)
        .fillColor(primaryColor)
        .fill();
     
@@ -301,7 +321,7 @@ export class PdfService {
        .fillColor("#ffffff")
        .font("Helvetica-Bold")
        .text("TOTALE:", totalsX, y + 3)
-       .text(formatCurrency(parseFloat(quote.total)), totalsX + 70, y + 3, { align: "right", width: 85 });
+       .text(formatCurrency(parseFloat(quote.total)), totalsX + 70, y + 3, { align: "right", width: 95 });
     
     doc.font("Helvetica");
     y += 35;
