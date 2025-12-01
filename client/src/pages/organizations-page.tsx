@@ -48,14 +48,16 @@ export default function OrganizationsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { onDeleteSuccess } = useStandardCrud("organizations");
-  const { isPersonalOrg } = useOrganization();
+  const { isPersonalOrg, currentOrganization } = useOrganization();
   const [, setLocation] = useLocation();
 
+  // Redirect to home if user is not in Personal organization
   useEffect(() => {
-    if (!isPersonalOrg) {
+    // Only redirect after organization is loaded AND it's not Personal
+    if (currentOrganization && !isPersonalOrg) {
       setLocation("/");
     }
-  }, [isPersonalOrg, setLocation]);
+  }, [currentOrganization, isPersonalOrg, setLocation]);
 
   const { data: items, isLoading, isError } = useQuery<OrganizationWithDetails[]>({
     queryKey: ["/api/organizations"],
