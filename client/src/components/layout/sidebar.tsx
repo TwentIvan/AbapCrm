@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network } from "lucide-react";
 import { cn } from "@/lib/utils";
 import newLogo from "@assets/ChatGPT Image 18 ott 2025, 19_07_46_1760807285076.png";
 import ImageContainer from "@/components/ui/image-container";
@@ -206,7 +206,8 @@ export default function Sidebar() {
   // Auto-open parent menus when child is active
   const hasActiveAnagraficheDirectChild = anagraficheDirectItems.some((item: any) => location === item.href);
   const hasActiveSystemsChild = systemsItems.some((item: any) => location === item.href);
-  const hasActiveAnagraficheChild = hasActiveAnagraficheDirectChild || hasActiveSystemsChild;
+  const hasActiveBusinessScenariosChild = location === "/business-scenarios";
+  const hasActiveAnagraficheChild = hasActiveAnagraficheDirectChild || hasActiveSystemsChild || hasActiveBusinessScenariosChild;
   const hasActiveProgettiChild = progettiItems.some((item: any) => location === item.href);
   const hasActiveSoluzioniChild = soluzioniItems.some((item: any) => location === item.href);
   const hasActiveVenditaChild = venditaItems.some((item: any) => location === item.href);
@@ -300,6 +301,13 @@ export default function Sidebar() {
                 })}
               </ParentItem>
             </div>
+            
+            {/* Scenari di Business - allo stesso livello di Sistemi */}
+            <SubNavItem 
+              item={{ id: "bs1", name: "Scenari di Business", href: "/business-scenarios", icon: Network, testId: "nav-business-scenarios" }} 
+              isActive={location === "/business-scenarios"}
+              onChildClick={() => {}}
+            />
           </ParentItem>
         
         {/* Altri Parent Sections (Progetti, Soluzioni, Vendite, Acquisti, Time Management) */}
