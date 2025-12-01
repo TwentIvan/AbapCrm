@@ -300,157 +300,147 @@ export default function SalesOrderItemsEditor({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h4 className="font-medium">Righe Ordine</h4>
-        <Button type="button" size="sm" onClick={addNewItem} data-testid="button-add-order-item">
-          <Plus className="h-4 w-4 mr-1" /> Aggiungi Riga
+        <Button type="button" variant="outline" size="sm" onClick={addNewItem} data-testid="button-add-order-item">
+          <Plus className="h-4 w-4 mr-1" /> Nuova Riga
         </Button>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">#</TableHead>
-              <TableHead className="min-w-[200px]">Descrizione</TableHead>
-              <TableHead className="w-20">Qtà</TableHead>
-              <TableHead className="w-24">U.M.</TableHead>
-              <TableHead className="w-24">Prezzo</TableHead>
-              <TableHead className="w-20">Sc. %</TableHead>
-              <TableHead className="w-24">Importo</TableHead>
-              <TableHead className="w-20">IVA %</TableHead>
-              <TableHead className="w-32">Rif. Ord. Cl.</TableHead>
-              <TableHead className="w-32">Rif. Pos.</TableHead>
-              <TableHead className="w-24">Azioni</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item, index) => (
-              <TableRow 
-                key={item.id || index}
-                className={item.isModified || item.isNew ? "bg-yellow-50" : ""}
-              >
-                <TableCell>{item.lineNumber}</TableCell>
-                <TableCell>
-                  <Input
-                    value={item.description}
-                    onChange={(e) => updateItem(index, "description", e.target.value)}
-                    placeholder="Descrizione..."
-                    className="min-w-[180px]"
-                    data-testid={`input-description-${index}`}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Input
-                    type="number"
-                    value={item.quantity}
-                    onChange={(e) => updateItem(index, "quantity", e.target.value)}
-                    className="w-20"
-                    data-testid={`input-quantity-${index}`}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Select
-                    value={item.unitOfMeasure}
-                    onValueChange={(value) => updateItem(index, "unitOfMeasure", value)}
-                  >
-                    <SelectTrigger className="w-24" data-testid={`select-uom-${index}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ore">Ore</SelectItem>
-                      <SelectItem value="giorni">Giorni</SelectItem>
-                      <SelectItem value="mese">Mese</SelectItem>
-                      <SelectItem value="pz">Pz</SelectItem>
-                      <SelectItem value="pacchetto">Pacchetto</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  <Input
-                    type="number"
-                    value={item.unitPrice}
-                    onChange={(e) => updateItem(index, "unitPrice", e.target.value)}
-                    className="w-24"
-                    data-testid={`input-price-${index}`}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Input
-                    type="number"
-                    value={item.discountPercent}
-                    onChange={(e) => updateItem(index, "discountPercent", e.target.value)}
-                    className="w-20"
-                    data-testid={`input-discount-${index}`}
-                  />
-                </TableCell>
-                <TableCell className="font-medium">
-                  {formatCurrency(item.lineTotal)}
-                </TableCell>
-                <TableCell>
-                  <Input
-                    type="number"
-                    value={item.vatPercent}
-                    onChange={(e) => updateItem(index, "vatPercent", e.target.value)}
-                    className="w-20"
-                    data-testid={`input-vat-${index}`}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Input
-                    value={item.customerOrderReference}
-                    onChange={(e) => updateItem(index, "customerOrderReference", e.target.value)}
-                    placeholder="Rif. ordine"
-                    className="w-32"
-                    data-testid={`input-cust-order-ref-${index}`}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Input
-                    value={item.customerOrderLineReference}
-                    onChange={(e) => updateItem(index, "customerOrderLineReference", e.target.value)}
-                    placeholder="Rif. posizione"
-                    className="w-32"
-                    data-testid={`input-cust-line-ref-${index}`}
-                  />
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-1">
-                    {(item.isModified || item.isNew) && (
+      {items.length === 0 ? (
+        <div className="p-8 text-center text-gray-500 border-2 border-dashed rounded-lg">
+          Nessuna riga. Clicca "Nuova Riga" per iniziare.
+        </div>
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead className="w-10">#</TableHead>
+                <TableHead>Descrizione</TableHead>
+                <TableHead className="w-20 text-right">Qtà</TableHead>
+                <TableHead className="w-24">U.M.</TableHead>
+                <TableHead className="w-28 text-right">Prezzo</TableHead>
+                <TableHead className="w-20 text-right">Sc. %</TableHead>
+                <TableHead className="w-20 text-right">IVA %</TableHead>
+                <TableHead className="w-28 text-right">IVA €</TableHead>
+                <TableHead className="w-28 text-right">Totale</TableHead>
+                <TableHead className="w-20"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item, index) => (
+                <TableRow 
+                  key={item.id || index}
+                  className={item.isModified || item.isNew ? "bg-yellow-50" : ""}
+                >
+                  <TableCell className="font-medium text-gray-500">{item.lineNumber}</TableCell>
+                  <TableCell>
+                    <Input
+                      value={item.description}
+                      onChange={(e) => updateItem(index, "description", e.target.value)}
+                      placeholder="Descrizione..."
+                      className="h-8 text-sm"
+                      data-testid={`input-description-${index}`}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => updateItem(index, "quantity", e.target.value)}
+                      className="h-8 text-sm text-right"
+                      data-testid={`input-quantity-${index}`}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={item.unitOfMeasure}
+                      onValueChange={(value) => updateItem(index, "unitOfMeasure", value)}
+                    >
+                      <SelectTrigger className="h-8 text-xs" data-testid={`select-uom-${index}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ore">Ore</SelectItem>
+                        <SelectItem value="giorni">Giorni</SelectItem>
+                        <SelectItem value="mese">Mese</SelectItem>
+                        <SelectItem value="pz">Pz</SelectItem>
+                        <SelectItem value="pacchetto">Pacchetto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={item.unitPrice}
+                      onChange={(e) => updateItem(index, "unitPrice", e.target.value)}
+                      className="h-8 text-sm text-right"
+                      data-testid={`input-price-${index}`}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      value={item.discountPercent}
+                      onChange={(e) => updateItem(index, "discountPercent", e.target.value)}
+                      className="h-8 text-sm text-right"
+                      data-testid={`input-discount-${index}`}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Select 
+                      value={item.vatPercent} 
+                      onValueChange={(val) => updateItem(index, "vatPercent", val)}
+                    >
+                      <SelectTrigger className="h-8 text-xs" data-testid={`select-vat-${index}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">0%</SelectItem>
+                        <SelectItem value="4">4%</SelectItem>
+                        <SelectItem value="10">10%</SelectItem>
+                        <SelectItem value="22">22%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-right text-sm">
+                    €{parseFloat(item.vatAmount).toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    €{parseFloat(item.lineTotal).toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      {(item.isModified || item.isNew) && salesOrderId && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => saveItem(index)}
+                          className="h-7 w-7"
+                          data-testid={`button-save-item-${index}`}
+                        >
+                          <Save className="h-3.5 w-3.5 text-green-600" />
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         size="icon"
                         variant="ghost"
-                        onClick={() => saveItem(index)}
-                        className="h-8 w-8 text-green-600"
-                        data-testid={`button-save-item-${index}`}
+                        onClick={() => deleteItem(index)}
+                        className="h-7 w-7"
+                        data-testid={`button-delete-item-${index}`}
                       >
-                        <Save className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
                       </Button>
-                    )}
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => deleteItem(index)}
-                      className="h-8 w-8 text-red-600"
-                      data-testid={`button-delete-item-${index}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-            {items.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
-                  Nessuna riga. Clicca "Aggiungi Riga" per iniziare.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       <div className="flex justify-end">
         <div className="bg-muted p-4 rounded-lg min-w-[300px]">

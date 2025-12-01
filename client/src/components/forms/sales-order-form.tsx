@@ -53,19 +53,19 @@ export default function SalesOrderForm({ salesOrder, onSuccess }: SalesOrderForm
   const { currentOrganizationId } = useOrganization();
 
   const { data: partners = [] } = useQuery<Partner[]>({
-    queryKey: ["/api/partners"],
+    queryKey: ["/api/partners", { orgId: currentOrganizationId }],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
   });
 
   const { data: quotes = [] } = useQuery<Quote[]>({
-    queryKey: ["/api/quotes"],
+    queryKey: ["/api/quotes", { orgId: currentOrganizationId }],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
   });
 
   const { data: contacts = [] } = useQuery<Contact[]>({
-    queryKey: ["/api/contacts"],
+    queryKey: ["/api/contacts", { orgId: currentOrganizationId }],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
   });
