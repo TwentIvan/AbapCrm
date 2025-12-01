@@ -231,7 +231,7 @@ export class PdfService {
     y = Math.max(y + 15, 200);
 
     const tableTop = y;
-    const colX = [40, 60, 220, 265, 310, 360, 400, 455];
+    const colX = [40, 60, 220, 265, 310, 360, 410, 470];
     
     doc.rect(40, tableTop, 515, 18)
        .fillColor(primaryColor)
@@ -245,8 +245,8 @@ export class PdfService {
        .text("U.M.", colX[3] + 3, tableTop + 5)
        .text("Prezzo", colX[4] + 3, tableTop + 5)
        .text("Sconto", colX[5] + 3, tableTop + 5)
-       .text("IVA %", colX[6] + 3, tableTop + 5)
-       .text("Importo", colX[7] + 3, tableTop + 5);
+       .text("Importo", colX[6] + 3, tableTop + 5)
+       .text("IVA %", colX[7] + 3, tableTop + 5);
     
     y = tableTop + 18;
     
@@ -274,8 +274,8 @@ export class PdfService {
          .text((item.unitOfMeasure || "").substring(0, 6), colX[3] + 3, y + 6)
          .text(formatCurrencyShort(parseFloat(item.unitPrice)), colX[4] + 3, y + 6)
          .text(item.discountPercent && parseFloat(item.discountPercent) > 0 ? `${item.discountPercent}%` : "-", colX[5] + 3, y + 6)
-         .text("22%", colX[6] + 3, y + 6)
-         .text(formatCurrencyShort(parseFloat(item.lineTotal)), colX[7] + 3, y + 6);
+         .text(formatCurrencyShort(parseFloat(item.lineTotal)), colX[6] + 3, y + 6)
+         .text("22%", colX[7] + 3, y + 6);
       
       y += rowHeight;
       
