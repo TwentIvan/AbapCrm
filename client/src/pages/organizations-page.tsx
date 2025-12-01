@@ -74,16 +74,6 @@ export default function OrganizationsPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Crea un lookup map per accesso veloce ai partner per id
-  const partnerMap = new Map<string, Partner>();
-  if (partners) {
-    partners.forEach(p => partnerMap.set(p.id, p));
-  }
-
-  // Ensure items is always an array, never null
-  const safeItems = items || [];
-
-
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/organizations/${id}`),
     onSuccess: async () => {
@@ -156,6 +146,15 @@ export default function OrganizationsPage() {
       });
     },
   });
+
+  // Crea un lookup map per accesso veloce ai partner per id
+  const partnerMap = new Map<string, Partner>();
+  if (partners) {
+    partners.forEach(p => partnerMap.set(p.id, p));
+  }
+
+  // Ensure items is always an array, never null
+  const safeItems = items || [];
 
   const handleEdit = (item: OrganizationWithDetails) => {
     setEditingItem(item);
@@ -278,6 +277,11 @@ export default function OrganizationsPage() {
   };
 
   // Cards view only - no table columns needed
+
+  // Block access if not in Personal organization (redirect already handles navigation)
+  if (currentOrganization && !isPersonalOrg) {
+    return null;
+  }
 
   return (
     <div className="flex h-screen">
