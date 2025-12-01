@@ -299,9 +299,18 @@ export default function OrganizationsPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white text-lg font-semibold">
-                        {item.name.charAt(0).toUpperCase()}
-                      </div>
+                      {item.partnerId && partnerMap.get(item.partnerId)?.logoUrl ? (
+                        <img 
+                          src={partnerMap.get(item.partnerId)!.logoUrl!} 
+                          alt={partnerMap.get(item.partnerId)!.name}
+                          className="w-10 h-10 rounded-lg object-cover"
+                          data-testid={`img-org-badge-${item.id}`}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center text-white text-lg font-semibold">
+                          {item.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <CardTitle className="text-lg">{item.name}</CardTitle>
                     </div>
                     <div className="flex space-x-2">

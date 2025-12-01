@@ -53,13 +53,23 @@ export class PdfService {
     let logoHeight = 0;
 
     // Use partner logo if available, otherwise organization logo
-    const logoUrl = issuerPartner?.logoUrl || organization.logoUrl;
-    if (logoUrl) {
+    const logoPath = issuerPartner?.logoUrl || organization.logoUrl;
+    if (logoPath) {
       try {
+        // Build full URL for relative paths
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : `http://localhost:${process.env.PORT || 5000}`;
+        const logoUrl = logoPath.startsWith('http') ? logoPath : `${baseUrl}${logoPath}`;
+        console.log("[PDF] Loading logo from:", logoUrl);
+        
         const logoBuffer = await fetchImage(logoUrl);
         if (logoBuffer) {
           doc.image(logoBuffer, 40, y, { width: 80 });
           logoHeight = 60;
+          console.log("[PDF] Logo loaded successfully");
+        } else {
+          console.log("[PDF] Logo buffer is null");
         }
       } catch (e) {
         console.error("Error loading logo:", e);
