@@ -31,6 +31,8 @@ const OrganizationContext = createContext<OrganizationContextValue | undefined>(
 const ORG_STORAGE_KEY = 'currentOrganizationId';
 const SCOPE_STORAGE_KEY = 'personalScope';
 
+const IS_PERSONAL_ORG_KEY = 'isPersonalOrg';
+
 export function OrganizationProvider({ children }: { children: ReactNode }) {
   // Initialize from localStorage ONCE
   const [currentOrganizationId, setCurrentOrganizationId] = useState<string | null>(() => {
@@ -42,14 +44,19 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     return (saved === 'all' || saved === 'personal') ? saved : 'personal';
   });
 
+  // Stable state for isPersonalOrg - initialized from localStorage
+  const [isPersonalOrgState, setIsPersonalOrgState] = useState<boolean>(() => {
+    return localStorage.getItem(IS_PERSONAL_ORG_KEY) === 'true';
+  });
+
   const queryClient = useQueryClient();
 
-  // Fetch user's organizations
+  // Fetch user's organizations - use staleTime to prevent refetching during switch
   const { data: organizations = [], isLoading, error } = useQuery<Organization[]>({
     queryKey: ["/api/organizations"],
     queryFn: getQueryFn({ on401: "returnNull" }),
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 5 * 60 * 1000, // 5 minutes - organizations rarely change
+    refetchOnMount: false, // Use cached data
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -57,15 +64,14 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   // Get current organization details
   const currentOrganization = organizations?.find(org => org.id === currentOrganizationId);
   
-  // Check if current organization is the Personal org
-  // Use localStorage as fallback to prevent flickering during loading
-  const isPersonalOrg = currentOrganization?.name === "Personal" || 
-    (isLoading && localStorage.getItem('isPersonalOrg') === 'true');
-  
-  // Persist isPersonalOrg state for stability during loading
-  if (currentOrganization && !isLoading) {
-    localStorage.setItem('isPersonalOrg', currentOrganization.name === "Personal" ? 'true' : 'false');
-  }
+  // Update isPersonalOrg state ONLY when we have confirmed data
+  useEffect(() => {
+    if (currentOrganization) {
+      const isPersonal = currentOrganization.name === "Personal";
+      setIsPersonalOrgState(isPersonal);
+      localStorage.setItem(IS_PERSONAL_ORG_KEY, isPersonal ? 'true' : 'false');
+    }
+  }, [currentOrganization]);
 
   // Set default organization on load (only if not already set)
   useEffect(() => {
@@ -108,9 +114,23 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(ORG_STORAGE_KEY, organizationId);
     setCurrentOrganizationId(organizationId);
     
+    // Immediately update isPersonalOrg based on cached organizations
+    const targetOrg = organizations.find(org => org.id === organizationId);
+    if (targetOrg) {
+      const isPersonal = targetOrg.name === "Personal";
+      setIsPersonalOrgState(isPersonal);
+      localStorage.setItem(IS_PERSONAL_ORG_KEY, isPersonal ? 'true' : 'false');
+    }
+    
     // Small delay to ensure header is set before queries refetch
     setTimeout(() => {
-      queryClient.invalidateQueries();
+      // Don't invalidate organizations query - it rarely changes
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return key !== '/api/organizations';
+        }
+      });
     }, 0);
   };
 
@@ -138,7 +158,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         organizations,
         currentOrganization,
         currentOrganizationId,
-        isPersonalOrg: isPersonalOrg ?? false,
+        isPersonalOrg: isPersonalOrgState,
         personalScope,
         switchOrganization,
         setPersonalScope,
