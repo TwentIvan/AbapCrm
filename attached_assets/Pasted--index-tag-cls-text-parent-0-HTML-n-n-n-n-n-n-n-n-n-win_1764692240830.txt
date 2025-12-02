@@ -1,0 +1,188 @@
+(index)
+tag
+cls
+text
+parent
+0	'HTML'	''	'\n \n \n \n \n \n \n \n \n window.__IS_REACT_18_ENABLED = fals'	''
+1	'SCRIPT'	''	'{"data":{"ms.vss-web.component-data":{"page":[{"componentId":"ms.vss-tfs-web.tfs'	''
+2	'DIV'	'full-size'	'Skip to main contentAzure DevOpsTeamTECHDerga/Planning Team di Sviluppo/Boards/W'	'lwp fluent-icons-enabled dnd-behaviors-o'
+3	'DIV'	'full-size region-page'	'Skip to main contentAzure DevOpsTeamTECHDerga/Planning Team di Sviluppo/Boards/W'	'full-size'
+4	'DIV'	'flex-row flex-grow scroll-hidden'	'Planning Team di SviluppoOverviewBoardsWork itemsBoardsBacklogsSprintsQueriesDel'	'flex-column full-size vertical-layout wi'
+5	'DIV'	'v-scroll-auto flex flex-grow relative p region-con'	'Assigned to me Back to Work Items1 of 16USER STORY 627627SaveFollow 12 CommentsT'	'flex-column flex-grow scroll-hidden'
+6	'DIV'	'file-drop-zone-container full-width full-height v-'	'Assigned to me Back to Work Items1 of 16USER STORY 627627SaveFollow 12 CommentsT'	'v-scroll-auto flex flex-grow relative p '
+7	'DIV'	'full-height'	'Assigned to me Back to Work Items1 of 16USER STORY 627627SaveFollow 12 CommentsT'	'file-drop-zone-container full-width full'
+8	'DIV'	'work-item-form-expanded-section-container v-scroll'	'StateReasonAreaIterationUpdated by Marco Sauro: YesterdayDetailsTime Log Free02D'	'work-item-form-page flex-grow flex-colum'
+9	'DIV'	'scroll-hidden full-width'	'StateReasonAreaIterationUpdated by Marco Sauro: YesterdayDetailsTime Log Free02D'	'work-item-form-expanded-section-containe'
+10	'DIV'	'full-height flex-column'	'StateReasonAreaIterationUpdated by Marco Sauro: YesterdayDetailsTime Log Free02D'	'scroll-hidden full-width'
+11	'DIV'	'work-item-form-page-content page-content page-cont'	'DescriptionCiao tra gli allegati analisi tecnico funzionale per lo sviluppo di u'	'full-height flex-column'
+12	'DIV'	'work-item-form-first-section'	'DescriptionCiao tra gli allegati analisi tecnico funzionale per lo sviluppo di u'	'work-item-grid work-item-form-tab full-w'
+13	'DIV'	'flex-column work-item-form-group'	'Dati per rapportino SAPN. Ticket Rapportino SAPWBS Rapportino SAPTipo Ticket'	'work-item-form-section'
+14	'DIV'	'work-item-form-collapsible-section'	'Dati per rapportino SAPN. Ticket Rapportino SAPWBS Rapportino SAPTipo Ticket'	'flex-column work-item-form-group'
+15	'DIV'	'work-item-form-control-wrapper'	'N. Ticket Rapportino SAP'	'work-item-form-collapsible-section-conte'
+16	'DIV'	'flex-column'	'N. Ticket Rapportino SAP'	'work-item-form-control-wrapper'
+17	'DIV'	'flex-row'	'N. Ticket Rapportino SAP'	'flex-column'
+18	'LABEL'	'workitemcontrol-label'	'N. Ticket Rapportino SAP'	'flex-row'
+19	'DIV'	'work-item-form-control-wrapper'	'WBS Rapportino SAP'	'work-item-form-collapsible-section-conte'
+20	'DIV'	'flex-column'	'WBS Rapportino SAP'	'work-item-form-control-wrapper'
+21	'DIV'	'flex-row'	'WBS Rapportino SAP'	'flex-column'
+22	'LABEL'	'workitemcontrol-label'	'WBS Rapportino SAP'	'flex-row'
+23	'DIV'	'work-item-form-control-wrapper'	'Tipo Ticket'	'work-item-form-collapsible-section-conte'
+24	'DIV'	'flex-column'	'Tipo Ticket'	'work-item-form-control-wrapper'
+25	'DIV'	'flex-row'	'Tipo Ticket'	'flex-column'
+26	'LABEL'	'workitemcontrol-label'	'Tipo Ticket'	'flex-row'
+27	'DIV'	'flex-column work-item-form-group'	'Commessa ticket ORIGINALIWBEN. Ticket'	'work-item-form-section'
+28	'DIV'	'work-item-form-collapsible-section'	'Commessa ticket ORIGINALIWBEN. Ticket'	'flex-column work-item-form-group'
+29	'DIV'	'work-item-form-collapsible-header margin-bottom-4 '	'Commessa ticket ORIGINALI'	'work-item-form-collapsible-section'
+30	'SPAN'	'font-size-ml font-weight-semibold'	'Commessa ticket ORIGINALI'	'work-item-form-collapsible-header margin'
+31	'DIV'	'work-item-form-collapsible-section-content'	'WBEN. Ticket'	'work-item-form-collapsible-section'
+32	'DIV'	'work-item-form-control-wrapper'	'N. Ticket'	'work-item-form-collapsible-section-conte'
+33	'DIV'	'flex-column'	'N. Ticket'	'work-item-form-control-wrapper'
+34	'DIV'	'flex-row'	'N. Ticket'	'flex-column'
+35	'LABEL'	'workitemcontrol-label'	'N. Ticket'	'flex-row'
+36	'DIV'	'work-item-form-discussion'	'Discussionswitch to Markdown editorGiovan'	'work-item-grid work-item-form-tab full-w'
+37	'DIV'	'wit-discussion-group'	'Discussionswitch to Markdown editorGiovan'	'work-item-form-discussion'
+38	'DIV'	'work-item-form-collapsible-section'	'Discussionswitch to Markdown editorGiovan'	'wit-discussion-group'
+39	'DIV'	'comment-item flex-row displayed-comment depth-8 ma'	'Marco Saurocommented 23 set@Andrea Silvestri ciao, che commessa e ticket inseria'	'work-item-form-collapsible-section-conte'
+40	'DIV'	'comment-item-right flex-grow'	'Marco Saurocommented 23 set@Andrea Silvestri ciao, che commessa e ticket inseria'	'comment-item flex-row displayed-comment '
+41	'DIV'	'comment-viewer'	'Marco Saurocommented 23 set@Andrea Silvestri ciao, che commessa e ticket inseria'	'comment-item-right flex-grow'
+42	'DIV'	'comment-content h-scroll-auto'	'@Andrea Silvestri ciao, che commessa e ticket inseriamo? grazie'	'comment-viewer'
+43	'DIV'	''	'@Andrea Silvestri ciao, che commessa e ticket inseriamo? grazie'	'comment-content h-scroll-auto'
+Array(44)
+0
+: 
+{tag: 'HTML', cls: '', text: '\n    \n    \n    \n    \n    \n    \n    \n    \n    window.__IS_REACT_18_ENABLED = fals', parent: ''}
+1
+: 
+{tag: 'SCRIPT', cls: '', text: '{"data":{"ms.vss-web.component-data":{"page":[{"componentId":"ms.vss-tfs-web.tfs', parent: ''}
+2
+: 
+{tag: 'DIV', cls: 'full-size', text: 'Skip to main contentAzure DevOpsTeamTECHDerga/Planning Team di Sviluppo/Boards/W', parent: 'lwp fluent-icons-enabled dnd-behaviors-o'}
+3
+: 
+{tag: 'DIV', cls: 'full-size region-page', text: 'Skip to main contentAzure DevOpsTeamTECHDerga/Planning Team di Sviluppo/Boards/W', parent: 'full-size'}
+4
+: 
+{tag: 'DIV', cls: 'flex-row flex-grow scroll-hidden', text: 'Planning Team di SviluppoOverviewBoardsWork itemsBoardsBacklogsSprintsQueriesDel', parent: 'flex-column full-size vertical-layout wi'}
+5
+: 
+{tag: 'DIV', cls: 'v-scroll-auto flex flex-grow relative p region-con', text: 'Assigned to me Back to Work Items1 of 16USER STORY 627627SaveFollow 12 CommentsT', parent: 'flex-column flex-grow scroll-hidden'}
+6
+: 
+{tag: 'DIV', cls: 'file-drop-zone-container full-width full-height v-', text: 'Assigned to me Back to Work Items1 of 16USER STORY 627627SaveFollow 12 CommentsT', parent: 'v-scroll-auto flex flex-grow relative p '}
+7
+: 
+{tag: 'DIV', cls: 'full-height', text: 'Assigned to me Back to Work Items1 of 16USER STORY 627627SaveFollow 12 CommentsT', parent: 'file-drop-zone-container full-width full'}
+8
+: 
+{tag: 'DIV', cls: 'work-item-form-expanded-section-container v-scroll', text: 'StateReasonAreaIterationUpdated by Marco Sauro: YesterdayDetailsTime Log Free02D', parent: 'work-item-form-page flex-grow flex-colum'}
+9
+: 
+{tag: 'DIV', cls: 'scroll-hidden full-width', text: 'StateReasonAreaIterationUpdated by Marco Sauro: YesterdayDetailsTime Log Free02D', parent: 'work-item-form-expanded-section-containe'}
+10
+: 
+{tag: 'DIV', cls: 'full-height flex-column', text: 'StateReasonAreaIterationUpdated by Marco Sauro: YesterdayDetailsTime Log Free02D', parent: 'scroll-hidden full-width'}
+11
+: 
+{tag: 'DIV', cls: 'work-item-form-page-content page-content page-cont', text: 'DescriptionCiao tra gli allegati analisi tecnico funzionale per lo sviluppo di u', parent: 'full-height flex-column'}
+12
+: 
+{tag: 'DIV', cls: 'work-item-form-first-section', text: 'DescriptionCiao tra gli allegati analisi tecnico funzionale per lo sviluppo di u', parent: 'work-item-grid work-item-form-tab full-w'}
+13
+: 
+{tag: 'DIV', cls: 'flex-column work-item-form-group', text: 'Dati per rapportino SAPN. Ticket Rapportino SAPWBS Rapportino SAPTipo Ticket', parent: 'work-item-form-section'}
+14
+: 
+{tag: 'DIV', cls: 'work-item-form-collapsible-section', text: 'Dati per rapportino SAPN. Ticket Rapportino SAPWBS Rapportino SAPTipo Ticket', parent: 'flex-column work-item-form-group'}
+15
+: 
+{tag: 'DIV', cls: 'work-item-form-control-wrapper', text: 'N. Ticket Rapportino SAP', parent: 'work-item-form-collapsible-section-conte'}
+16
+: 
+{tag: 'DIV', cls: 'flex-column', text: 'N. Ticket Rapportino SAP', parent: 'work-item-form-control-wrapper'}
+17
+: 
+{tag: 'DIV', cls: 'flex-row', text: 'N. Ticket Rapportino SAP', parent: 'flex-column'}
+18
+: 
+{tag: 'LABEL', cls: 'workitemcontrol-label', text: 'N. Ticket Rapportino SAP', parent: 'flex-row'}
+19
+: 
+{tag: 'DIV', cls: 'work-item-form-control-wrapper', text: 'WBS Rapportino SAP', parent: 'work-item-form-collapsible-section-conte'}
+20
+: 
+{tag: 'DIV', cls: 'flex-column', text: 'WBS Rapportino SAP', parent: 'work-item-form-control-wrapper'}
+21
+: 
+{tag: 'DIV', cls: 'flex-row', text: 'WBS Rapportino SAP', parent: 'flex-column'}
+22
+: 
+{tag: 'LABEL', cls: 'workitemcontrol-label', text: 'WBS Rapportino SAP', parent: 'flex-row'}
+23
+: 
+{tag: 'DIV', cls: 'work-item-form-control-wrapper', text: 'Tipo Ticket', parent: 'work-item-form-collapsible-section-conte'}
+24
+: 
+{tag: 'DIV', cls: 'flex-column', text: 'Tipo Ticket', parent: 'work-item-form-control-wrapper'}
+25
+: 
+{tag: 'DIV', cls: 'flex-row', text: 'Tipo Ticket', parent: 'flex-column'}
+26
+: 
+{tag: 'LABEL', cls: 'workitemcontrol-label', text: 'Tipo Ticket', parent: 'flex-row'}
+27
+: 
+{tag: 'DIV', cls: 'flex-column work-item-form-group', text: 'Commessa ticket ORIGINALIWBEN. Ticket', parent: 'work-item-form-section'}
+28
+: 
+{tag: 'DIV', cls: 'work-item-form-collapsible-section', text: 'Commessa ticket ORIGINALIWBEN. Ticket', parent: 'flex-column work-item-form-group'}
+29
+: 
+{tag: 'DIV', cls: 'work-item-form-collapsible-header margin-bottom-4 ', text: 'Commessa ticket ORIGINALI', parent: 'work-item-form-collapsible-section'}
+30
+: 
+{tag: 'SPAN', cls: 'font-size-ml font-weight-semibold', text: 'Commessa ticket ORIGINALI', parent: 'work-item-form-collapsible-header margin'}
+31
+: 
+{tag: 'DIV', cls: 'work-item-form-collapsible-section-content', text: 'WBEN. Ticket', parent: 'work-item-form-collapsible-section'}
+32
+: 
+{tag: 'DIV', cls: 'work-item-form-control-wrapper', text: 'N. Ticket', parent: 'work-item-form-collapsible-section-conte'}
+33
+: 
+{tag: 'DIV', cls: 'flex-column', text: 'N. Ticket', parent: 'work-item-form-control-wrapper'}
+34
+: 
+{tag: 'DIV', cls: 'flex-row', text: 'N. Ticket', parent: 'flex-column'}
+35
+: 
+{tag: 'LABEL', cls: 'workitemcontrol-label', text: 'N. Ticket', parent: 'flex-row'}
+36
+: 
+{tag: 'DIV', cls: 'work-item-form-discussion', text: 'Discussionswitch to Markdown editorGiovan', parent: 'work-item-grid work-item-form-tab full-w'}
+37
+: 
+{tag: 'DIV', cls: 'wit-discussion-group', text: 'Discussionswitch to Markdown editorGiovan', parent: 'work-item-form-discussion'}
+38
+: 
+{tag: 'DIV', cls: 'work-item-form-collapsible-section', text: 'Discussionswitch to Markdown editorGiovan', parent: 'wit-discussion-group'}
+39
+: 
+{tag: 'DIV', cls: 'comment-item flex-row displayed-comment depth-8 ma', text: 'Marco Saurocommented 23 set@Andrea Silvestri ciao, che commessa e ticket inseria', parent: 'work-item-form-collapsible-section-conte'}
+40
+: 
+{tag: 'DIV', cls: 'comment-item-right flex-grow', text: 'Marco Saurocommented 23 set@Andrea Silvestri ciao, che commessa e ticket inseria', parent: 'comment-item flex-row displayed-comment '}
+41
+: 
+{tag: 'DIV', cls: 'comment-viewer', text: 'Marco Saurocommented 23 set@Andrea Silvestri ciao, che commessa e ticket inseria', parent: 'comment-item-right flex-grow'}
+42
+: 
+{tag: 'DIV', cls: 'comment-content h-scroll-auto', text: '@Andrea Silvestri ciao, che commessa e ticket inseriamo? grazie', parent: 'comment-viewer'}
+43
+: 
+{tag: 'DIV', cls: '', text: '@Andrea Silvestri ciao, che commessa e ticket inseriamo? grazie', parent: 'comment-content h-scroll-auto'}
+length
+: 
+44
+[[Prototype]]
+: 
+Array(0)

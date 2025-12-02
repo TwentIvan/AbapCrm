@@ -352,11 +352,25 @@ export const bookmarkletCode = `
     if (Object.keys(customFields).length > 0) {
       data.customFields = customFields;
       // Map known custom fields to specific properties
-      if (customFields['Codice_Ticket'] || customFields['codice_ticket'] || customFields['Ticket']) {
-        data.ticketCode = customFields['Codice_Ticket'] || customFields['codice_ticket'] || customFields['Ticket'];
+      // Ticket codes (multiple possible names)
+      var ticketKeys = ['Codice_Ticket', 'codice_ticket', 'Ticket', 'N. Ticket', 'N. Ticket Rapportino SAP'];
+      for (var tk = 0; tk < ticketKeys.length; tk++) {
+        if (customFields[ticketKeys[tk]]) {
+          data.ticketCode = customFields[ticketKeys[tk]];
+          break;
+        }
       }
-      if (customFields['WBS'] || customFields['wbs'] || customFields['Codice WBS'] || customFields['WBE']) {
-        data.wbsCode = customFields['WBS'] || customFields['wbs'] || customFields['Codice WBS'] || customFields['WBE'];
+      // WBS codes (multiple possible names)
+      var wbsKeys = ['WBS', 'wbs', 'Codice WBS', 'WBE', 'WBS Rapportino SAP'];
+      for (var wk = 0; wk < wbsKeys.length; wk++) {
+        if (customFields[wbsKeys[wk]]) {
+          data.wbsCode = customFields[wbsKeys[wk]];
+          break;
+        }
+      }
+      // Ticket type
+      if (customFields['Tipo Ticket']) {
+        data.ticketType = customFields['Tipo Ticket'];
       }
     }
     
