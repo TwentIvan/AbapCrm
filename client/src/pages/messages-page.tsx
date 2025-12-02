@@ -1443,6 +1443,19 @@ export default function MessagesPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            {externalMeta.workItemState && (
+                              <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50">
+                                {externalMeta.workItemState}
+                              </Badge>
+                            )}
+                            {externalMeta.workItemAssignedTo && (
+                              <Badge variant="outline" className="text-purple-700 border-purple-300 bg-purple-50">
+                                <User className="h-3 w-3 mr-1" />
+                                {externalMeta.workItemAssignedTo}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
                             {displayUrl && (
                               <Button
                                 variant="outline"
@@ -1549,6 +1562,39 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                             </Button>
                           </div>
                         </div>
+                        
+                        {/* Dettagli arricchiti */}
+                        {externalMeta.enrichedAt && (
+                          <div className="mt-3 pt-3 border-t border-blue-200 space-y-2">
+                            <div className="flex items-center gap-2 text-xs text-blue-600">
+                              <CheckCircle className="h-3 w-3" />
+                              Arricchito il {new Date(externalMeta.enrichedAt).toLocaleString('it-IT')}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              {externalMeta.workItemOrganization && (
+                                <div>
+                                  <span className="text-muted-foreground">Organizzazione:</span>{' '}
+                                  <span className="font-medium">{externalMeta.workItemOrganization}</span>
+                                </div>
+                              )}
+                              {externalMeta.workItemProject && (
+                                <div>
+                                  <span className="text-muted-foreground">Progetto:</span>{' '}
+                                  <span className="font-medium">{externalMeta.workItemProject}</span>
+                                </div>
+                              )}
+                            </div>
+                            {externalMeta.workItemDescription && (
+                              <div className="text-sm">
+                                <span className="text-muted-foreground">Descrizione:</span>
+                                <p className="mt-1 text-xs bg-white/50 rounded p-2 max-h-20 overflow-y-auto">
+                                  {externalMeta.workItemDescription.substring(0, 300)}
+                                  {externalMeta.workItemDescription.length > 300 && '...'}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
