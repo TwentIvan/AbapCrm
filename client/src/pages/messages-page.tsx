@@ -157,6 +157,8 @@ export default function MessagesPage() {
   });
   const [isResizing, setIsResizing] = useState(false);
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
+  const [showEnrichPanel, setShowEnrichPanel] = useState(false);
+  const [enrichJsonInput, setEnrichJsonInput] = useState("");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -337,6 +339,30 @@ export default function MessagesPage() {
         variant: "destructive",
       });
     },
+  });
+
+  const enrichDevOpsMutation = useMutation({
+    mutationFn: async ({ messageId, enrichData }: { messageId: string; enrichData: any }) => {
+      return apiRequest("PATCH", `/api/messages/${messageId}`, {
+        externalMetadata: enrichData
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      setShowEnrichPanel(false);
+      setEnrichJsonInput("");
+      toast({
+        title: "Dati arricchiti!",
+        description: "I dati del Work Item sono stati salvati nel messaggio.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile salvare i dati.",
+        variant: "destructive"
+      });
+    }
   });
 
   const feedbackMutation = useMutation({
@@ -1455,7 +1481,71 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                               data-testid="button-copy-bookmarklet"
                             >
                               <Clipboard className="h-4 w-4 mr-1" />
-                              Bookmarklet
+                              Istruzioni
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  const clipboardText = await navigator.clipboard.readText();
+                                  if (!clipboardText.trim()) {
+                                    toast({
+                                      title: "Appunti vuoti",
+                                      description: "Non ci sono dati negli appunti. Usa prima il bookmarklet sulla pagina Azure DevOps.",
+                                      variant: "destructive"
+                                    });
+                                    return;
+                                  }
+                                  const data = JSON.parse(clipboardText);
+                                  if (!data.workItemId) {
+                                    toast({
+                                      title: "Formato non valido",
+                                      description: "I dati negli appunti non contengono un Work Item ID valido.",
+                                      variant: "destructive"
+                                    });
+                                    return;
+                                  }
+                                  const enrichData = {
+                                    ...externalMeta,
+                                    workItemId: data.workItemId,
+                                    workItemTitle: data.title || externalMeta.workItemTitle,
+                                    workItemType: data.workItemType || externalMeta.workItemType,
+                                    workItemUrl: data.url || externalMeta.workItemUrl,
+                                    workItemState: data.state,
+                                    workItemAssignedTo: data.assignedTo,
+                                    workItemDescription: data.descriptionText,
+                                    workItemOrganization: data.organization,
+                                    workItemProject: data.project,
+                                    enrichedAt: new Date().toISOString(),
+                                    enrichedFrom: 'bookmarklet'
+                                  };
+                                  enrichDevOpsMutation.mutate({
+                                    messageId: selectedMessage.id,
+                                    enrichData
+                                  });
+                                } catch (err: any) {
+                                  if (err.name === 'NotAllowedError') {
+                                    toast({
+                                      title: "Permesso negato",
+                                      description: "Il browser ha negato l'accesso agli appunti. Riprova cliccando direttamente sul pulsante.",
+                                      variant: "destructive"
+                                    });
+                                  } else {
+                                    toast({
+                                      title: "Errore parsing",
+                                      description: "I dati negli appunti non sono in formato JSON valido. Usa il bookmarklet sulla pagina Azure DevOps.",
+                                      variant: "destructive"
+                                    });
+                                  }
+                                }
+                              }}
+                              disabled={enrichDevOpsMutation.isPending}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              data-testid="button-paste-workitem"
+                            >
+                              <Clipboard className="h-4 w-4 mr-1" />
+                              {enrichDevOpsMutation.isPending ? 'Salvataggio...' : 'Incolla dati'}
                             </Button>
                           </div>
                         </div>
