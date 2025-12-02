@@ -117,6 +117,36 @@ async function getManagedOrganizationIds(orgIds: string[], userOrgs: any[]): Pro
   return managedOrgIds;
 }
 
+// DevOps Work Item Helper - Map priority from DevOps (1-4) to CRM priority
+function mapDevOpsPriority(devOpsPriority: number | string | undefined): 'low' | 'medium' | 'high' | 'urgent' {
+  const priority = typeof devOpsPriority === 'string' ? parseInt(devOpsPriority, 10) : devOpsPriority;
+  if (!priority || isNaN(priority)) return 'medium';
+  
+  switch (priority) {
+    case 1: return 'urgent';
+    case 2: return 'high';
+    case 3: return 'medium';
+    case 4: return 'low';
+    default: return 'medium';
+  }
+}
+
+// DevOps Work Item Helper - Map work item type to CRM task type
+function mapDevOpsWorkItemType(workItemType: string | undefined): 'development' | 'analysis' | 'design' | 'testing' | 'consulting' | 'meeting' | 'documentation' | 'maintenance' | 'support' | 'other' {
+  if (!workItemType) return 'other';
+  
+  const type = workItemType.toLowerCase();
+  if (type.includes('bug')) return 'maintenance';
+  if (type.includes('task')) return 'development';
+  if (type.includes('user story') || type.includes('story')) return 'development';
+  if (type.includes('feature')) return 'development';
+  if (type.includes('epic')) return 'analysis';
+  if (type.includes('test')) return 'testing';
+  if (type.includes('doc')) return 'documentation';
+  
+  return 'other';
+}
+
 // Chat content parser - normalizes different platform formats into structured conversation data
 function parseChatContent(content: string, platform: string): {
   participants: Array<{id: string, name: string}>;
@@ -2957,6 +2987,191 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Error fetching messages:", error);
       res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  // Azure DevOps Work Items - Messages filtered by sourceType
+  app.get("/api/messages/devops-workitems", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+    
+    try {
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      const workItemMessages = await db.select().from(messages)
+        .where(and(
+          eq(messages.userId, req.user!.id),
+          eq(messages.sourceType, 'email_devops_workitem'),
+          inArray(messages.organizationId, organizationIds)
+        ))
+        .limit(limit)
+        .offset(offset)
+        .orderBy(sql`${messages.receivedAt} DESC`);
+      res.json(workItemMessages);
+    } catch (error) {
+      console.error("Error fetching DevOps work item messages:", error);
+      res.status(500).json({ error: "Failed to fetch DevOps work items" });
+    }
+  });
+
+  // Enrich DevOps Work Item with bookmarklet data
+  app.post("/api/messages/:id/enrich-devops", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const message = await storage.getMessage(req.params.id, req.user!.id);
+      if (!message) return res.sendStatus(404);
+      
+      const { bookmarkletData } = req.body;
+      if (!bookmarkletData) {
+        return res.status(400).json({ error: "bookmarkletData is required" });
+      }
+      
+      // Merge existing externalMetadata with enriched data
+      const existingMetadata = (message.externalMetadata as any) || {};
+      const enrichedMetadata = {
+        ...existingMetadata,
+        enrichedData: bookmarkletData,
+        enrichedAt: new Date().toISOString(),
+        // Override with bookmarklet values if present
+        workItemTitle: bookmarkletData.title || existingMetadata.workItemTitle,
+        workItemType: bookmarkletData.workItemType || existingMetadata.workItemType,
+        state: bookmarkletData.state || existingMetadata.state,
+        assignedTo: bookmarkletData.assignedTo || existingMetadata.assignedTo,
+        description: bookmarkletData.description || existingMetadata.description,
+        priority: bookmarkletData.priority,
+        iterationPath: bookmarkletData.iterationPath,
+        areaPath: bookmarkletData.areaPath,
+        tags: bookmarkletData.tags,
+      };
+      
+      // Update the message with enriched metadata
+      const updatedMessage = await storage.updateMessage(req.params.id, {
+        externalMetadata: enrichedMetadata,
+        sourceType: 'email_devops_workitem' // Ensure it's marked correctly
+      }, req.user!.id);
+      
+      console.log(`[DevOps] Enriched Work Item #${enrichedMetadata.workItemId} with bookmarklet data`);
+      
+      res.json(updatedMessage);
+    } catch (error) {
+      console.error("Error enriching DevOps work item:", error);
+      res.status(500).json({ error: "Failed to enrich work item" });
+    }
+  });
+
+  // Create or link task from DevOps Work Item
+  app.post("/api/messages/:id/create-task-from-workitem", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const organizationId = getOrganizationId(req);
+      const message = await storage.getMessage(req.params.id, req.user!.id);
+      if (!message) return res.sendStatus(404);
+      
+      const metadata = message.externalMetadata as any;
+      if (!metadata?.workItemId) {
+        return res.status(400).json({ error: "Message has no Work Item metadata" });
+      }
+      
+      const { projectId, linkToExistingTaskId } = req.body;
+      
+      // Check if task already linked to this work item
+      const existingTask = await db.select().from(tasks)
+        .where(and(
+          eq(tasks.externalWorkItemId, String(metadata.workItemId)),
+          eq(tasks.organizationId, organizationId)
+        ))
+        .limit(1);
+      
+      if (existingTask.length > 0) {
+        // Task already exists - just link the message
+        const task = existingTask[0];
+        const updatedSourceMessageIds = [...(task.sourceMessageIds || [])];
+        if (!updatedSourceMessageIds.includes(message.id)) {
+          updatedSourceMessageIds.push(message.id);
+        }
+        
+        await storage.updateTask(task.id, {
+          sourceMessageIds: updatedSourceMessageIds
+        }, req.user!.id, organizationId);
+        
+        // Update message to link to task
+        await storage.updateMessage(message.id, {
+          taskId: task.id,
+          matchingReason: `Linked to existing task from Work Item #${metadata.workItemId}`
+        }, req.user!.id);
+        
+        return res.json({
+          action: 'linked',
+          task,
+          message: `Messaggio collegato al task esistente "${task.title}"`
+        });
+      }
+      
+      if (linkToExistingTaskId) {
+        // Link to a manually selected existing task
+        const taskToLink = await storage.getTask(linkToExistingTaskId, req.user!.id, organizationId);
+        if (!taskToLink) {
+          return res.status(404).json({ error: "Task not found" });
+        }
+        
+        await storage.updateTask(linkToExistingTaskId, {
+          externalWorkItemId: String(metadata.workItemId),
+          externalWorkItemUrl: metadata.workItemUrl,
+          externalSystem: 'azure_devops',
+          sourceMessageIds: [...(taskToLink.sourceMessageIds || []), message.id]
+        }, req.user!.id, organizationId);
+        
+        await storage.updateMessage(message.id, {
+          taskId: linkToExistingTaskId,
+          matchingReason: `Manually linked to task from Work Item #${metadata.workItemId}`
+        }, req.user!.id);
+        
+        return res.json({
+          action: 'linked',
+          task: taskToLink,
+          message: `Work Item #${metadata.workItemId} collegato al task "${taskToLink.title}"`
+        });
+      }
+      
+      // Create new task from Work Item
+      const enrichedData = metadata.enrichedData || {};
+      const taskData = {
+        title: metadata.workItemTitle || `Work Item #${metadata.workItemId}`,
+        description: enrichedData.description || metadata.description || `Imported from Azure DevOps Work Item #${metadata.workItemId}`,
+        status: 'todo' as const,
+        priority: mapDevOpsPriority(enrichedData.priority),
+        taskType: mapDevOpsWorkItemType(metadata.workItemType),
+        projectId: projectId || null,
+        userId: req.user!.id,
+        organizationId,
+        externalWorkItemId: String(metadata.workItemId),
+        externalWorkItemUrl: metadata.workItemUrl,
+        externalSystem: 'azure_devops',
+        sourceMessageIds: [message.id],
+      };
+      
+      const newTask = await storage.createTask(taskData, { userId: req.user!.id });
+      
+      // Update message to link to new task
+      await storage.updateMessage(message.id, {
+        taskId: newTask.id,
+        status: 'processed',
+        matchingReason: `Created task from Work Item #${metadata.workItemId}`
+      }, req.user!.id);
+      
+      console.log(`[DevOps] Created task "${newTask.title}" from Work Item #${metadata.workItemId}`);
+      
+      res.json({
+        action: 'created',
+        task: newTask,
+        message: `Creato nuovo task "${newTask.title}" da Work Item #${metadata.workItemId}`
+      });
+    } catch (error) {
+      console.error("Error creating task from work item:", error);
+      res.status(500).json({ error: "Failed to create task from work item" });
     }
   });
 
