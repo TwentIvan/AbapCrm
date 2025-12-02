@@ -343,7 +343,7 @@ export default function MessagesPage() {
 
   const enrichDevOpsMutation = useMutation({
     mutationFn: async ({ messageId, enrichData }: { messageId: string; enrichData: any }) => {
-      return apiRequest("PATCH", `/api/messages/${messageId}`, {
+      return apiRequest("PUT", `/api/messages/${messageId}`, {
         externalMetadata: enrichData
       });
     },
