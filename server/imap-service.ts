@@ -429,7 +429,18 @@ export class ImapEmailService {
       };
 
       console.log(`[IMAP] Saving email from: ${messageData.fromEmail}`);
-      const savedMessage = await storage.createMessage(messageData);
+      
+      let savedMessage;
+      try {
+        savedMessage = await storage.createMessage(messageData);
+      } catch (createError: any) {
+        // Handle race condition: if another process already created this message
+        if (createError.code === '23505' || createError.message?.includes('duplicate key') || createError.message?.includes('unique constraint')) {
+          console.log(`[IMAP] Email already exists (race condition), skipping: ${messageId}`);
+          return;
+        }
+        throw createError; // Re-throw other errors
+      }
 
       // Run AI analysis in background - with error handling for quota limits
       if (process.env.OPENAI_API_KEY) {
