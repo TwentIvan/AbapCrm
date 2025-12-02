@@ -5,6 +5,7 @@ import { aiService } from "./ai-service";
 import { EmailForwardCleaner } from "./email-forward-cleaner";
 import { AttachmentsService } from "./attachments-service";
 import { ThreadingService } from "./threading-service";
+import { DevOpsEmailParser } from "./devops-email-parser";
 import crypto from "crypto";
 import type { InsertMessage } from "@shared/schema";
 
@@ -367,9 +368,27 @@ export class ImapEmailService {
         }
       }
 
+      // 🔧 Azure DevOps Work Item Detection
+      const devOpsResult = DevOpsEmailParser.parseDevOpsEmail(
+        fromAddr?.address || '',
+        cleanedEmail.originalSubject || parsed.subject || '',
+        cleanedEmail.originalBody || parsed.text || '',
+        cleanedEmail.originalHtmlBody || parsed.html || null
+      );
+      
+      let sourceType: 'email_standard' | 'email_devops_workitem' | 'email_transport_request' = 'email_standard';
+      let externalMetadata: any = null;
+      
+      if (devOpsResult.isDevOpsEmail && devOpsResult.metadata) {
+        sourceType = 'email_devops_workitem';
+        externalMetadata = devOpsResult.metadata;
+        console.log(`[IMAP] 🔵 Azure DevOps Work Item detected: #${devOpsResult.metadata.workItemId} - ${devOpsResult.metadata.workItemTitle}`);
+      }
+
       const messageData: InsertMessage = {
         messageId,
         type: 'email',
+        sourceType,
         status: 'unread',
         // Use original sender if it's a forwarded email, otherwise use parsed sender
         fromEmail: cleanedEmail.originalFromEmail || fromAddr?.address || 'unknown@unknown.com',
@@ -379,6 +398,7 @@ export class ImapEmailService {
         subject: cleanedEmail.originalSubject || null,
         body: cleanedEmail.originalBody || null,
         htmlBody: cleanedEmail.originalHtmlBody || cleanedEmail.preservedHtmlFormatting || null,
+        externalMetadata,
         // Per email inoltrate usa i destinatari estratti dal contenuto,
         // per email non inoltrate usa gli header originali della mail
         originalToEmails: cleanedEmail.isForwarded 
