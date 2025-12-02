@@ -24,6 +24,7 @@ export interface DevOpsParseResult {
   isDevOpsEmail: boolean;
   metadata?: DevOpsWorkItemMetadata;
   confidence: number; // 0-1
+  sourceType?: 'email_devops_workitem'; // The sourceType to use for the message
 }
 
 // Pattern per riconoscere email Azure DevOps
@@ -207,7 +208,8 @@ export class DevOpsEmailParser {
     return {
       isDevOpsEmail: true,
       metadata,
-      confidence
+      confidence,
+      sourceType: 'email_devops_workitem' as const
     };
   }
   

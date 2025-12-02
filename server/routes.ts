@@ -3015,6 +3015,30 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Bookmarklet data validation schema
+  const bookmarkletDataSchema = z.object({
+    extractedAt: z.string().optional(),
+    source: z.literal('bookmarklet').optional(),
+    url: z.string().url().optional(),
+    workItemId: z.number().int().positive().optional(),
+    workItemType: z.string().max(100).optional(),
+    title: z.string().max(500).optional(),
+    state: z.string().max(50).optional(),
+    assignedTo: z.string().max(200).optional(),
+    priority: z.number().int().min(1).max(4).optional(),
+    description: z.string().max(50000).optional(), // Allow long descriptions
+    descriptionText: z.string().max(50000).optional(),
+    iterationPath: z.string().max(500).optional(),
+    areaPath: z.string().max(500).optional(),
+    tags: z.array(z.string().max(100)).max(50).optional(),
+    organization: z.string().max(200).optional(),
+    project: z.string().max(200).optional(),
+    sprint: z.string().max(200).optional(),
+    storypoints: z.number().optional(),
+    effort: z.number().optional(),
+    createdDate: z.string().optional(),
+  }).passthrough();
+
   // Enrich DevOps Work Item with bookmarklet data
   app.post("/api/messages/:id/enrich-devops", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -3027,23 +3051,53 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       if (!bookmarkletData) {
         return res.status(400).json({ error: "bookmarkletData is required" });
       }
+
+      // Validate bookmarklet data
+      const validationResult = bookmarkletDataSchema.safeParse(bookmarkletData);
+      if (!validationResult.success) {
+        console.error("[DevOps] Invalid bookmarklet data:", validationResult.error.errors);
+        return res.status(400).json({ 
+          error: "Invalid bookmarklet data", 
+          details: validationResult.error.errors 
+        });
+      }
+      
+      const validatedData = validationResult.data;
+
+      // Verify source is from bookmarklet
+      if (validatedData.source && validatedData.source !== 'bookmarklet') {
+        return res.status(400).json({ error: "Data source must be 'bookmarklet'" });
+      }
+
+      // Sanitize HTML in description (remove script tags and dangerous attributes)
+      let sanitizedDescription = validatedData.description;
+      if (sanitizedDescription) {
+        // Basic sanitization - remove script tags and event handlers
+        sanitizedDescription = sanitizedDescription
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+          .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+          .replace(/javascript:/gi, '');
+      }
       
       // Merge existing externalMetadata with enriched data
       const existingMetadata = (message.externalMetadata as any) || {};
       const enrichedMetadata = {
         ...existingMetadata,
-        enrichedData: bookmarkletData,
+        enrichedData: { ...validatedData, description: sanitizedDescription },
         enrichedAt: new Date().toISOString(),
         // Override with bookmarklet values if present
-        workItemTitle: bookmarkletData.title || existingMetadata.workItemTitle,
-        workItemType: bookmarkletData.workItemType || existingMetadata.workItemType,
-        state: bookmarkletData.state || existingMetadata.state,
-        assignedTo: bookmarkletData.assignedTo || existingMetadata.assignedTo,
-        description: bookmarkletData.description || existingMetadata.description,
-        priority: bookmarkletData.priority,
-        iterationPath: bookmarkletData.iterationPath,
-        areaPath: bookmarkletData.areaPath,
-        tags: bookmarkletData.tags,
+        workItemTitle: validatedData.title || existingMetadata.workItemTitle,
+        workItemType: validatedData.workItemType || existingMetadata.workItemType,
+        state: validatedData.state || existingMetadata.state,
+        assignedTo: validatedData.assignedTo || existingMetadata.assignedTo,
+        description: sanitizedDescription || existingMetadata.description,
+        priority: validatedData.priority,
+        iterationPath: validatedData.iterationPath,
+        areaPath: validatedData.areaPath,
+        tags: validatedData.tags,
+        // Add work item URL if present
+        workItemUrl: validatedData.url || existingMetadata.workItemUrl,
+        workItemId: validatedData.workItemId || existingMetadata.workItemId,
       };
       
       // Update the message with enriched metadata
