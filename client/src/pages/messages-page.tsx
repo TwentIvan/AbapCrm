@@ -344,8 +344,8 @@ export default function MessagesPage() {
 
   const enrichDevOpsMutation = useMutation({
     mutationFn: async ({ messageId, enrichData }: { messageId: string; enrichData: any }) => {
-      const response = await apiRequest("PUT", `/api/messages/${messageId}`, {
-        externalMetadata: enrichData
+      const response = await apiRequest("POST", `/api/messages/${messageId}/enrich-devops`, {
+        bookmarkletData: enrichData
       });
       return response;
     },

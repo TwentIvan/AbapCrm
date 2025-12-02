@@ -3019,6 +3019,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   const bookmarkletDataSchema = z.object({
     extractedAt: z.string().optional(),
     source: z.literal('bookmarklet').optional(),
+    version: z.string().max(20).optional(), // Bookmarklet version
     url: z.string().url().optional(),
     workItemId: z.number().int().positive().optional(),
     workItemType: z.string().max(100).optional(),
@@ -3028,6 +3029,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     priority: z.number().int().min(1).max(4).optional(),
     description: z.string().max(50000).optional(), // Allow long descriptions
     descriptionText: z.string().max(50000).optional(),
+    descriptionHtml: z.string().max(100000).optional(), // HTML description
     iterationPath: z.string().max(500).optional(),
     areaPath: z.string().max(500).optional(),
     tags: z.array(z.string().max(100)).max(50).optional(),
@@ -3037,6 +3039,18 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     storypoints: z.number().optional(),
     effort: z.number().optional(),
     createdDate: z.string().optional(),
+    // SAP Custom Fields
+    customFields: z.record(z.string(), z.any()).optional(), // All custom fields as key-value
+    ticketCode: z.string().max(100).optional(), // N. Ticket Rapportino SAP
+    wbsCode: z.string().max(100).optional(), // WBS Rapportino SAP
+    ticketType: z.string().max(100).optional(), // Tipo Ticket
+    // Comments
+    comments: z.array(z.object({
+      author: z.string().optional(),
+      content: z.string().optional(),
+      contentHtml: z.string().optional(),
+      date: z.string().optional(),
+    })).optional(),
   }).passthrough();
 
   // Enrich DevOps Work Item with bookmarklet data
@@ -3085,6 +3099,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         ...existingMetadata,
         enrichedData: { ...validatedData, description: sanitizedDescription },
         enrichedAt: new Date().toISOString(),
+        bookmarkletVersion: validatedData.version || existingMetadata.bookmarkletVersion,
         // Override with bookmarklet values if present
         workItemTitle: validatedData.title || existingMetadata.workItemTitle,
         workItemType: validatedData.workItemType || existingMetadata.workItemType,
@@ -3098,6 +3113,17 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         // Add work item URL if present
         workItemUrl: validatedData.url || existingMetadata.workItemUrl,
         workItemId: validatedData.workItemId || existingMetadata.workItemId,
+        workItemOrganization: validatedData.organization || existingMetadata.workItemOrganization,
+        workItemProject: validatedData.project || existingMetadata.workItemProject,
+        // SAP Custom Fields
+        customFields: validatedData.customFields || existingMetadata.customFields,
+        ticketCode: validatedData.ticketCode || existingMetadata.ticketCode,
+        wbsCode: validatedData.wbsCode || existingMetadata.wbsCode,
+        ticketType: validatedData.ticketType || existingMetadata.ticketType,
+        // HTML Description
+        workItemDescriptionHtml: validatedData.descriptionHtml || existingMetadata.workItemDescriptionHtml,
+        // Comments
+        workItemComments: validatedData.comments || existingMetadata.workItemComments,
       };
       
       // Update the message with enriched metadata
