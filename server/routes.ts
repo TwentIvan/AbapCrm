@@ -3016,41 +3016,42 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   });
 
   // Bookmarklet data validation schema
+  // Using .nullish() to accept both null and undefined (bookmarklet sends null for missing fields)
   const bookmarkletDataSchema = z.object({
-    extractedAt: z.string().optional(),
-    source: z.literal('bookmarklet').optional(),
-    version: z.string().max(20).optional(), // Bookmarklet version
-    url: z.string().url().optional(),
-    workItemId: z.number().int().positive().optional(),
-    workItemType: z.string().max(100).optional(),
-    title: z.string().max(500).optional(),
-    state: z.string().max(50).optional(),
-    assignedTo: z.string().max(200).optional(),
-    priority: z.number().int().min(1).max(4).optional(),
-    description: z.string().max(50000).optional(), // Allow long descriptions
-    descriptionText: z.string().max(50000).optional(),
-    descriptionHtml: z.string().max(100000).optional(), // HTML description
-    iterationPath: z.string().max(500).optional(),
-    areaPath: z.string().max(500).optional(),
-    tags: z.array(z.string().max(100)).max(50).optional(),
-    organization: z.string().max(200).optional(),
-    project: z.string().max(200).optional(),
-    sprint: z.string().max(200).optional(),
-    storypoints: z.number().optional(),
-    effort: z.number().optional(),
-    createdDate: z.string().optional(),
+    extractedAt: z.string().nullish(),
+    source: z.literal('bookmarklet').nullish(),
+    version: z.string().max(20).nullish(), // Bookmarklet version
+    url: z.string().url().nullish(),
+    workItemId: z.number().int().positive().nullish(),
+    workItemType: z.string().max(100).nullish(),
+    title: z.string().max(500).nullish(),
+    state: z.string().max(50).nullish(),
+    assignedTo: z.string().max(200).nullish(),
+    priority: z.number().int().min(1).max(4).nullish(),
+    description: z.string().max(50000).nullish(), // Allow long descriptions
+    descriptionText: z.string().max(50000).nullish(),
+    descriptionHtml: z.string().max(100000).nullish(), // HTML description
+    iterationPath: z.string().max(500).nullish(),
+    areaPath: z.string().max(500).nullish(),
+    tags: z.array(z.string().max(100)).max(50).nullish(),
+    organization: z.string().max(200).nullish(),
+    project: z.string().max(200).nullish(),
+    sprint: z.string().max(200).nullish(),
+    storypoints: z.number().nullish(),
+    effort: z.number().nullish(),
+    createdDate: z.string().nullish(),
     // SAP Custom Fields
-    customFields: z.record(z.string(), z.any()).optional(), // All custom fields as key-value
-    ticketCode: z.string().max(100).optional(), // N. Ticket Rapportino SAP
-    wbsCode: z.string().max(100).optional(), // WBS Rapportino SAP
-    ticketType: z.string().max(100).optional(), // Tipo Ticket
+    customFields: z.record(z.string(), z.any()).nullish(), // All custom fields as key-value
+    ticketCode: z.string().max(100).nullish(), // N. Ticket Rapportino SAP
+    wbsCode: z.string().max(100).nullish(), // WBS Rapportino SAP
+    ticketType: z.string().max(100).nullish(), // Tipo Ticket
     // Comments
     comments: z.array(z.object({
-      author: z.string().optional(),
-      content: z.string().optional(),
-      contentHtml: z.string().optional(),
-      date: z.string().optional(),
-    })).optional(),
+      author: z.string().nullish(),
+      content: z.string().nullish(),
+      contentHtml: z.string().nullish(),
+      date: z.string().nullish(),
+    })).nullish(),
   }).passthrough();
 
   // Enrich DevOps Work Item with bookmarklet data
