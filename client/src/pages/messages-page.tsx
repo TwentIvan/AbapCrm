@@ -1626,11 +1626,34 @@ export default function MessagesPage() {
                               </div>
                             )}
                             
-                            {/* Campi Custom SAP */}
+                            {/* Descrizione - mostrata prima dei campi custom */}
+                            {(externalMeta.workItemDescriptionHtml || externalMeta.description) && (
+                              <Collapsible defaultOpen>
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
+                                    <span className="text-muted-foreground text-sm">📝 Descrizione</span>
+                                    <ChevronDown className="h-4 w-4" />
+                                  </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div 
+                                    className="mt-1 text-sm bg-white dark:bg-gray-800 rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(externalMeta.workItemDescriptionHtml || externalMeta.description || '', {
+                                      ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody'],
+                                      ALLOWED_ATTR: ['href', 'src', 'alt', 'class'],
+                                      FORBID_TAGS: ['style', 'script'],
+                                      FORBID_ATTR: ['style']
+                                    }) }}
+                                  />
+                                </CollapsibleContent>
+                              </Collapsible>
+                            )}
+                            
+                            {/* Altri dati */}
                             {(externalMeta.ticketCode || externalMeta.wbsCode || externalMeta.ticketType || (externalMeta.customFields && Object.keys(externalMeta.customFields).length > 0)) && (
                               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-amber-700 dark:text-amber-400 font-medium text-sm">🏷️ Campi Custom SAP</span>
+                                  <span className="text-amber-700 dark:text-amber-400 font-medium text-sm">🏷️ Altri dati</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                   {externalMeta.ticketCode && (
@@ -1648,7 +1671,7 @@ export default function MessagesPage() {
                                   {externalMeta.ticketType && (
                                     <div>
                                       <span className="text-muted-foreground">Tipo Ticket:</span>{' '}
-                                      <Badge variant="outline" className="ml-1 border-amber-300 text-amber-700">{externalMeta.ticketType}</Badge>
+                                      <span className="font-medium text-amber-800 dark:text-amber-300">{externalMeta.ticketType}</span>
                                     </div>
                                   )}
                                 </div>
@@ -1676,29 +1699,6 @@ export default function MessagesPage() {
                                   </Collapsible>
                                 )}
                               </div>
-                            )}
-                            
-                            {/* Descrizione HTML */}
-                            {externalMeta.workItemDescriptionHtml && (
-                              <Collapsible>
-                                <CollapsibleTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
-                                    <span className="text-muted-foreground text-sm">📝 Descrizione</span>
-                                    <ChevronDown className="h-4 w-4" />
-                                  </Button>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent>
-                                  <div 
-                                    className="mt-1 text-sm bg-white dark:bg-gray-800 rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
-                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(externalMeta.workItemDescriptionHtml, {
-                                      ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody'],
-                                      ALLOWED_ATTR: ['href', 'src', 'alt', 'class'],
-                                      FORBID_TAGS: ['style', 'script'],
-                                      FORBID_ATTR: ['style']
-                                    }) }}
-                                  />
-                                </CollapsibleContent>
-                              </Collapsible>
                             )}
                             
                             {/* Acceptance Criteria */}
@@ -2543,8 +2543,8 @@ export default function MessagesPage() {
                 </div>
                 )}
 
-                {/* Attachments Section */}
-                {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (() => {
+                {/* Attachments Section - Hidden for DevOps messages (they only have work item attachments) */}
+                {selectedMessage.attachments && selectedMessage.attachments.length > 0 && !selectedMessage.externalSystem && (() => {
                   // Deduplicazione degli allegati - raggruppa per nome file originale (senza messageId prefix)
                   const uniqueAttachments = selectedMessage.attachments.reduce((acc: { originalFilename: string; fullFilename: string; count: number }[], fullFilename: string) => {
                     // Estrai il filename originale rimuovendo il prefisso messageId_
