@@ -1770,10 +1770,10 @@ export default function MessagesPage() {
                                         </div>
                                         {comment.contentHtml ? (
                                           <div 
-                                            className="prose prose-sm max-w-none text-sm"
+                                            className="prose prose-sm max-w-none text-sm [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded"
                                             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.contentHtml, {
-                                              ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a'],
-                                              ALLOWED_ATTR: ['href', 'class'],
+                                              ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a', 'img'],
+                                              ALLOWED_ATTR: ['href', 'class', 'src', 'alt', 'width', 'height'],
                                               FORBID_TAGS: ['style', 'script'],
                                               FORBID_ATTR: ['style']
                                             }) }}
@@ -2544,7 +2544,7 @@ export default function MessagesPage() {
                 )}
 
                 {/* Attachments Section - Hidden for DevOps messages (they only have work item attachments) */}
-                {selectedMessage.attachments && selectedMessage.attachments.length > 0 && !selectedMessage.externalSystem && (() => {
+                {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (selectedMessage as any)?.sourceType !== 'email_devops_workitem' && (() => {
                   // Deduplicazione degli allegati - raggruppa per nome file originale (senza messageId prefix)
                   const uniqueAttachments = selectedMessage.attachments.reduce((acc: { originalFilename: string; fullFilename: string; count: number }[], fullFilename: string) => {
                     // Estrai il filename originale rimuovendo il prefisso messageId_
