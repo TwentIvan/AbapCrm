@@ -1,0 +1,31 @@
+index)
+tag
+cls
+text
+parent
+0	'SCRIPT'	''	'{"data":{"ms.vss-web.component-data":{"page":[{"componentId":"ms.vss-tfs-web.tfs'	''
+1	'DIV'	'full-size'	'Skip to main contentAzure DevOpsITALCUSCINETTI/Italcuscinetti - AMS/Boards/Work '	'lwp fluent-icons-enabled dnd-behaviors-o'
+2	'DIV'	'full-size region-page'	'Skip to main contentAzure DevOpsITALCUSCINETTI/Italcuscinetti - AMS/Boards/Work '	'full-size'
+3	'DIV'	'flex-row flex-grow scroll-hidden'	'Italcuscinetti - AMSOverviewBoardsWork itemsBoardsBacklogsSprintsQueriesDelivery'	'flex-column full-size vertical-layout wi'
+4	'DIV'	'v-scroll-auto flex flex-grow relative p region-con'	'Recently updated Back to Work Items2 of 4USER STORY 120120SaveFollow 3 CommentsA'	'flex-column flex-grow scroll-hidden'
+5	'DIV'	'file-drop-zone-container full-width full-height v-'	'Recently updated Back to Work Items2 of 4USER STORY 120120SaveFollow 3 CommentsA'	'v-scroll-auto flex flex-grow relative p '
+6	'DIV'	'full-height'	'Recently updated Back to Work Items2 of 4USER STORY 120120SaveFollow 3 CommentsA'	'file-drop-zone-container full-width full'
+7	'DIV'	'work-item-form-expanded-section-container v-scroll'	'StateReasonAreaIterationUpdated by Marco Sauro: YesterdayDetailsContract21Descri'	'work-item-form-page flex-grow flex-colum'
+8	'DIV'	'scroll-hidden full-width'	'StateReasonAreaIterationUpdated by Marco Sauro: YesterdayDetailsContract21Descri'	'work-item-form-expanded-section-containe'
+9	'DIV'	'full-height flex-column'	'StateReasonAreaIterationUpdated by Marco Sauro: YesterdayDetailsContract21Descri'	'scroll-hidden full-width'
+10	'DIV'	'work-item-form-page-content page-content page-cont'	'DescriptionBuon pomeriggio, vi riporto altri errori che ci hanno segnalato i col'	'full-height flex-column'
+11	'DIV'	'work-item-form-first-section'	'DescriptionBuon pomeriggio, vi riporto altri errori che ci hanno segnalato i col'	'work-item-grid work-item-form-tab full-w'
+12	'DIV'	'flex-column work-item-form-group'	'Custom fieldsCodice_TicketWBE'	'work-item-form-section'
+13	'DIV'	'work-item-form-collapsible-section'	'Custom fieldsCodice_TicketWBE'	'flex-column work-item-form-group'
+14	'DIV'	'work-item-form-collapsible-section-content'	'Codice_TicketWBE'	'work-item-form-collapsible-section'
+15	'DIV'	'work-item-form-control-wrapper'	'Codice_Ticket'	'work-item-form-collapsible-section-conte'
+16	'DIV'	'flex-column'	'Codice_Ticket'	'work-item-form-control-wrapper'
+17	'DIV'	'flex-row'	'Codice_Ticket'	'flex-column'
+18	'LABEL'	'workitemcontrol-label'	'Codice_Ticket'	'flex-row'
+Array(19)
+undefined
+ms.vss-features.sign…es6.wiP9ho.min.js:9 SignalR: moved from disconnected to connecting for /_signalr/ITALCUSCINETTI/
+ms.vss-features.sign…es6.wiP9ho.min.js:9 SignalR: disconnected from /_signalr/ITALCUSCINETTI/
+ms.vss-features.sign…es6.wiP9ho.min.js:9 SignalR: Cannot start connection...hard reconnect attempt 1
+﻿
+

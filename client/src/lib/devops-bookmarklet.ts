@@ -112,6 +112,68 @@ export const bookmarkletCode = `
       return fields;
     }
     
+    // STRATEGY 4: Extract CUSTOM FIELDS from Custom fields section
+    function extractCustomFields() {
+      var customFields = {};
+      
+      // Method 1: Find all workitemcontrol-label elements (Azure DevOps custom field labels)
+      document.querySelectorAll('.workitemcontrol-label, [class*="workitemcontrol-label"]').forEach(function(labelEl) {
+        var labelText = labelEl.textContent.trim();
+        if (labelText && labelText.length > 0 && labelText.length < 100) {
+          // Find the value - look in sibling or parent container
+          var container = labelEl.closest('.work-item-form-control-wrapper, .flex-column, [class*="control-wrapper"]');
+          if (container) {
+            var valueEl = container.querySelector('input, textarea, select, .text, [class*="value"], [class*="combo-input"], .bolt-textfield-input');
+            if (valueEl) {
+              var val = valueEl.value || valueEl.textContent.trim();
+              if (val && val !== labelText && val.length > 0 && val.length < 500) {
+                customFields[labelText] = val;
+              }
+            }
+          }
+        }
+      });
+      
+      // Method 2: Look in collapsible sections labeled "Custom fields"
+      document.querySelectorAll('.work-item-form-collapsible-section, [class*="collapsible-section"]').forEach(function(section) {
+        var header = section.querySelector('.work-item-form-collapsible-section-header, [class*="section-header"]');
+        var isCustomSection = header && header.textContent.toLowerCase().includes('custom');
+        
+        if (isCustomSection || true) { // Scan all sections for now
+          section.querySelectorAll('label, .workitemcontrol-label').forEach(function(label) {
+            var labelText = label.textContent.trim();
+            if (labelText && labelText.length > 1 && labelText.length < 100) {
+              var wrapper = label.closest('.work-item-form-control-wrapper, .flex-column, .flex-row');
+              if (wrapper) {
+                var input = wrapper.querySelector('input, textarea, .bolt-textfield-input');
+                if (input) {
+                  var val = input.value || input.textContent.trim();
+                  if (val && val !== labelText && val.length > 0) {
+                    customFields[labelText] = val;
+                  }
+                }
+              }
+            }
+          });
+        }
+      });
+      
+      // Method 3: Scan ALL input fields with nearby labels
+      document.querySelectorAll('.work-item-form-control-wrapper').forEach(function(wrapper) {
+        var label = wrapper.querySelector('label, .workitemcontrol-label');
+        var input = wrapper.querySelector('input, textarea, select, .bolt-textfield-input');
+        if (label && input) {
+          var labelText = label.textContent.trim();
+          var val = input.value || input.textContent.trim();
+          if (labelText && val && val !== labelText && labelText.length < 100) {
+            customFields[labelText] = val;
+          }
+        }
+      });
+      
+      return customFields;
+    }
+    
     // Extract Title
     var titleInput = document.querySelector('.work-item-form-title input, .work-item-form-title textarea, input.work-item-title-textfield, [class*="title"] input');
     if (!titleInput) {
@@ -284,6 +346,20 @@ export const bookmarkletCode = `
       if (allFields['Severity'] || allFields['Gravità']) data.severity = allFields['Severity'] || allFields['Gravità'];
     }
     
+    // Extract CUSTOM FIELDS (Codice_Ticket, WBS, etc.)
+    var customFields = extractCustomFields();
+    console.log('[DevOps v3.3] Custom fields found:', customFields);
+    if (Object.keys(customFields).length > 0) {
+      data.customFields = customFields;
+      // Map known custom fields to specific properties
+      if (customFields['Codice_Ticket'] || customFields['codice_ticket'] || customFields['Ticket']) {
+        data.ticketCode = customFields['Codice_Ticket'] || customFields['codice_ticket'] || customFields['Ticket'];
+      }
+      if (customFields['WBS'] || customFields['wbs'] || customFields['Codice WBS'] || customFields['WBE']) {
+        data.wbsCode = customFields['WBS'] || customFields['wbs'] || customFields['Codice WBS'] || customFields['WBE'];
+      }
+    }
+    
     // Extract Comments/Discussion - try multiple approaches
     var comments = [];
     
@@ -298,7 +374,7 @@ export const bookmarkletCode = `
         }
       });
     }
-    console.log('[DevOps v3.2] Discussion tab panel:', discussionTab);
+    console.log('[DevOps v3.3] Discussion tab panel:', discussionTab);
     
     // Approach 1: Look for discussion container with many selectors
     var discussionSelectors = [
@@ -316,7 +392,7 @@ export const bookmarkletCode = `
       discussionContainer = document.querySelector(discussionSelectors[ds]);
       if (discussionContainer) break;
     }
-    console.log('[DevOps v3.2] Discussion container:', discussionContainer);
+    console.log('[DevOps v3.3] Discussion container:', discussionContainer);
     
     // Use discussion tab if container not found
     var searchArea = discussionContainer || discussionTab || document;
@@ -376,9 +452,9 @@ export const bookmarkletCode = `
       });
     }
     
-    console.log('[DevOps v3.2] Comments found:', comments.length);
+    console.log('[DevOps v3.3] Comments found:', comments.length);
     if (comments.length > 0) {
-      console.log('[DevOps v3.2] Sample comment:', comments[0]);
+      console.log('[DevOps v3.3] Sample comment:', comments[0]);
       data.comments = comments;
     }
     
@@ -406,8 +482,8 @@ export const bookmarkletCode = `
     data._fieldCount = fieldCount;
     
     // Debug: log all found elements
-    console.log('[DevOps v3.2] Rich texts found:', richTexts.length);
-    console.log('[DevOps v3.2] All aria-labels:', Object.keys(allFields));
+    console.log('[DevOps v3.3] Rich texts found:', richTexts.length);
+    console.log('[DevOps v3.3] All aria-labels:', Object.keys(allFields));
     
     return data;
   }
