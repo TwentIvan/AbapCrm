@@ -96,6 +96,10 @@ export const tasks = pgTable("tasks", {
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   assignedTo: uuid("assigned_to").references(() => users.id),
   sapSystemId: uuid("sap_system_id").references(() => sapSystems.id), // Collegamento al sistema SAP per connessione automatica
+  // External Work Item Integration (Azure DevOps, etc.)
+  externalWorkItemId: text("external_work_item_id"), // ID del work item esterno (es. DevOps #12345)
+  externalWorkItemUrl: text("external_work_item_url"), // URL diretto al work item
+  externalSystem: text("external_system"), // Sistema di origine: "azure_devops", "jira", etc.
   startDate: timestamp("start_date"),
   dueDate: timestamp("due_date"),
   completedAt: timestamp("completed_at"),
@@ -266,6 +270,15 @@ export const timeEntries = pgTable("time_entries", {
 
 export const messageStatusEnum = pgEnum("message_status", ["unread", "read", "processed", "archived"]);
 export const messageTypeEnum = pgEnum("message_type", ["email", "chat", "sms", "other"]);
+export const messageSourceTypeEnum = pgEnum("message_source_type", [
+  "email_standard",           // Email generica
+  "email_devops_workitem",    // Notifica Azure DevOps Work Item
+  "email_transport_request",  // SAP Transport Request
+  "chat_teams",               // Microsoft Teams
+  "chat_whatsapp",            // WhatsApp
+  "chat_other",               // Altro chat
+  "manual"                    // Inserito manualmente
+]);
 
 // Messaggi ricevuti dalla casella email dedicata
 export const messages = pgTable("messages", {
@@ -274,6 +287,7 @@ export const messages = pgTable("messages", {
   organizationId: uuid("organization_id").references(() => organizations.id), // 🔧 FIX: Organization segregation for messages
   messageId: text("message_id"), // ID del messaggio originale (es. Message-ID email)
   type: messageTypeEnum("type").default("email").notNull(),
+  sourceType: messageSourceTypeEnum("source_type").default("email_standard"), // Categorizzazione sorgente
   status: messageStatusEnum("status").default("unread").notNull(),
   fromEmail: text("from_email").notNull(),
   fromName: text("from_name"),
@@ -286,6 +300,8 @@ export const messages = pgTable("messages", {
   forwardArtifacts: jsonb("forward_artifacts"), // { rfc822Payload?: {...}, resentHeaders?: {...}, hasRfc822: boolean, hasResent: boolean }
   // Chat metadata for multi-message conversations
   metadata: jsonb("metadata"), // { platform?: string, participants?: Array, messages?: Array, summary?: string, rawSource?: string }
+  // External system metadata (DevOps Work Items, Transport Requests, etc.)
+  externalMetadata: jsonb("external_metadata"), // { workItemId, workItemTitle, workItemUrl, workItemType, eventType, enrichedData, etc. }
   attachments: text("attachments").array(), // Array di nomi/paths allegati
   receivedAt: timestamp("received_at").notNull(),
   // Email Threading Support
