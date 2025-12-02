@@ -3067,6 +3067,13 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         return res.status(400).json({ error: "bookmarkletData is required" });
       }
 
+      // Log received bookmarklet data for debugging
+      console.log("[DevOps] Received bookmarklet data keys:", Object.keys(bookmarkletData));
+      console.log("[DevOps] Custom fields received:", JSON.stringify(bookmarkletData.customFields, null, 2));
+      console.log("[DevOps] ticketCode:", bookmarkletData.ticketCode);
+      console.log("[DevOps] wbsCode:", bookmarkletData.wbsCode);
+      console.log("[DevOps] ticketType:", bookmarkletData.ticketType);
+      
       // Validate bookmarklet data
       const validationResult = bookmarkletDataSchema.safeParse(bookmarkletData);
       if (!validationResult.success) {
