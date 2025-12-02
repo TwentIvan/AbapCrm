@@ -34,7 +34,6 @@ const getDefaultProgettiItems = (t: any) => [
 const getDefaultSoluzioniItems = (t: any) => [
   { id: "sol1", name: "Elenco", href: "/sap-transport", icon: FolderTree, testId: "nav-solutions-list" },
   { id: "sol2", name: "Pacchetti", href: "/solution-packages", icon: Code, testId: "nav-solution-packages" },
-  { id: "sol3", name: "DevOps Work Items", href: "/devops-workitems", icon: GitBranch, testId: "nav-devops-workitems" },
 ];
 
 // Vendita group

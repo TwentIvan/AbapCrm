@@ -45,7 +45,10 @@ import {
   RotateCcw,
   MessageSquare,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  GitBranch,
+  Clipboard,
+  ExternalLink
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { BarChart3, TrendingUp, Database, Image } from "lucide-react";
@@ -130,7 +133,7 @@ export default function MessagesPage() {
   const [selectedCustomReasonId, setSelectedCustomReasonId] = useState<string | null>(null);
   const [showThreadView, setShowThreadView] = useState(false);
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
-  const [filterType, setFilterType] = useState<"all" | "email" | "chat" | "sms" | "other">("all");
+  const [filterType, setFilterType] = useState<"all" | "email" | "chat" | "sms" | "other" | "devops">("all");
   
   // Training mode states
   const [isTrainingMode, setIsTrainingMode] = useState(false);
@@ -596,6 +599,7 @@ export default function MessagesPage() {
       chat: messages.filter(m => m.type === 'chat').length,
       sms: messages.filter(m => m.type === 'sms').length,
       other: messages.filter(m => m.type === 'other').length,
+      devops: messages.filter(m => (m as any).sourceType === 'email_devops_workitem').length,
     };
     return counts;
   }, [messages]);
@@ -614,7 +618,12 @@ export default function MessagesPage() {
   const filteredAndSortedMessages = messages
     .filter(message => {
       // Filter by type
-      if (filterType !== "all" && message.type !== filterType) return false;
+      if (filterType === "devops") {
+        // DevOps tab: filter by sourceType
+        if ((message as any).sourceType !== 'email_devops_workitem') return false;
+      } else if (filterType !== "all" && message.type !== filterType) {
+        return false;
+      }
       
       // Filter by search term
       if (!searchTerm) return true;
@@ -907,7 +916,7 @@ export default function MessagesPage() {
                 </div>
                 {/* Filter tabs by message type */}
                 <Tabs value={filterType} onValueChange={(value) => setFilterType(value as typeof filterType)} className="w-full">
-                  <TabsList className="grid w-full grid-cols-5">
+                  <TabsList className="grid w-full grid-cols-6">
                     <TabsTrigger value="all" data-testid="tab-all">
                       Tutti ({typeCounts.all})
                     </TabsTrigger>
@@ -922,6 +931,10 @@ export default function MessagesPage() {
                     <TabsTrigger value="sms" data-testid="tab-sms">
                       <MessageSquare className="h-4 w-4 mr-1" />
                       SMS ({typeCounts.sms})
+                    </TabsTrigger>
+                    <TabsTrigger value="devops" data-testid="tab-devops">
+                      <GitBranch className="h-4 w-4 mr-1" />
+                      DevOps ({typeCounts.devops})
                     </TabsTrigger>
                     <TabsTrigger value="other" data-testid="tab-other">
                       <FileText className="h-4 w-4 mr-1" />
@@ -2181,7 +2194,7 @@ export default function MessagesPage() {
           key={filterType} 
           onSuccess={() => setShowNewMessageDialog(false)}
           defaultValues={{
-            type: filterType === "all" ? "email" : filterType
+            type: filterType === "all" || filterType === "devops" ? "email" : filterType
           }}
         />
       )}
