@@ -1668,8 +1668,13 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
                                   <div 
-                                    className="mt-1 text-sm bg-white rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
-                                    dangerouslySetInnerHTML={{ __html: externalMeta.workItemDescriptionHtml }}
+                                    className="mt-1 text-sm bg-white dark:bg-gray-800 rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(externalMeta.workItemDescriptionHtml, {
+                                      ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody'],
+                                      ALLOWED_ATTR: ['href', 'src', 'alt', 'class'],
+                                      FORBID_TAGS: ['style', 'script'],
+                                      FORBID_ATTR: ['style']
+                                    }) }}
                                   />
                                 </CollapsibleContent>
                               </Collapsible>
@@ -1686,8 +1691,13 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
                                   <div 
-                                    className="mt-1 text-sm bg-white rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
-                                    dangerouslySetInnerHTML={{ __html: externalMeta.workItemAcceptanceCriteriaHtml }}
+                                    className="mt-1 text-sm bg-white dark:bg-gray-800 rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(externalMeta.workItemAcceptanceCriteriaHtml, {
+                                      ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody'],
+                                      ALLOWED_ATTR: ['href', 'src', 'alt', 'class'],
+                                      FORBID_TAGS: ['style', 'script'],
+                                      FORBID_ATTR: ['style']
+                                    }) }}
                                   />
                                 </CollapsibleContent>
                               </Collapsible>
@@ -1704,8 +1714,13 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
                                   <div 
-                                    className="mt-1 text-sm bg-white rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
-                                    dangerouslySetInnerHTML={{ __html: externalMeta.workItemReproStepsHtml }}
+                                    className="mt-1 text-sm bg-white dark:bg-gray-800 rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(externalMeta.workItemReproStepsHtml, {
+                                      ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody'],
+                                      ALLOWED_ATTR: ['href', 'src', 'alt', 'class'],
+                                      FORBID_TAGS: ['style', 'script'],
+                                      FORBID_ATTR: ['style']
+                                    }) }}
                                   />
                                 </CollapsibleContent>
                               </Collapsible>
@@ -1725,7 +1740,7 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                                 <CollapsibleContent>
                                   <div className="mt-1 space-y-2 max-h-60 overflow-y-auto">
                                     {externalMeta.workItemComments.map((comment: any, idx: number) => (
-                                      <div key={idx} className="bg-white rounded p-2 border text-sm">
+                                      <div key={idx} className="bg-white dark:bg-gray-800 rounded p-2 border text-sm">
                                         <div className="flex items-center justify-between mb-1">
                                           <span className="font-medium text-xs">{comment.author}</span>
                                           {comment.date && (
@@ -1734,8 +1749,13 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                                         </div>
                                         {comment.contentHtml ? (
                                           <div 
-                                            className="prose prose-sm max-w-none"
-                                            dangerouslySetInnerHTML={{ __html: comment.contentHtml }}
+                                            className="prose prose-sm max-w-none text-sm"
+                                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.contentHtml, {
+                                              ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a'],
+                                              ALLOWED_ATTR: ['href', 'class'],
+                                              FORBID_TAGS: ['style', 'script'],
+                                              FORBID_ATTR: ['style']
+                                            }) }}
                                           />
                                         ) : (
                                           <p className="text-xs">{comment.content}</p>
