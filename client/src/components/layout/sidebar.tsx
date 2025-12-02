@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import newLogo from "@assets/ChatGPT Image 18 ott 2025, 19_07_46_1760807285076.png";
 import ImageContainer from "@/components/ui/image-container";
@@ -34,6 +34,7 @@ const getDefaultProgettiItems = (t: any) => [
 const getDefaultSoluzioniItems = (t: any) => [
   { id: "sol1", name: "Elenco", href: "/sap-transport", icon: FolderTree, testId: "nav-solutions-list" },
   { id: "sol2", name: "Pacchetti", href: "/solution-packages", icon: Code, testId: "nav-solution-packages" },
+  { id: "sol3", name: "DevOps Work Items", href: "/devops-workitems", icon: GitBranch, testId: "nav-devops-workitems" },
 ];
 
 // Vendita group
