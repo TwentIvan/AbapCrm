@@ -3094,15 +3094,24 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       }
       
       // Merge existing externalMetadata with enriched data
-      const existingMetadata = (message.externalMetadata as any) || {};
+      // IMPORTANT: Remove any prior enrichedData to prevent nesting
+      const rawMetadata = (message.externalMetadata as any) || {};
+      const { enrichedData: _oldEnrichedData, ...existingMetadata } = rawMetadata;
+      
+      // Build flat enriched metadata - all canonical fields at top level
       const enrichedMetadata = {
-        ...existingMetadata,
-        enrichedData: { ...validatedData, description: sanitizedDescription },
+        // Preserve non-enriched fields from original metadata (e.g., eventType from email parsing)
+        eventType: existingMetadata.eventType,
+        enrichedFrom: 'bookmarklet',
         enrichedAt: new Date().toISOString(),
         bookmarkletVersion: validatedData.version || existingMetadata.bookmarkletVersion,
-        // Override with bookmarklet values if present
+        // Canonical DevOps fields at top level (bookmarklet values override)
+        workItemId: validatedData.workItemId || existingMetadata.workItemId,
         workItemTitle: validatedData.title || existingMetadata.workItemTitle,
         workItemType: validatedData.workItemType || existingMetadata.workItemType,
+        workItemUrl: validatedData.url || existingMetadata.workItemUrl,
+        workItemOrganization: validatedData.organization || existingMetadata.workItemOrganization,
+        workItemProject: validatedData.project || existingMetadata.workItemProject,
         state: validatedData.state || existingMetadata.state,
         assignedTo: validatedData.assignedTo || existingMetadata.assignedTo,
         description: sanitizedDescription || existingMetadata.description,
@@ -3110,11 +3119,6 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         iterationPath: validatedData.iterationPath,
         areaPath: validatedData.areaPath,
         tags: validatedData.tags,
-        // Add work item URL if present
-        workItemUrl: validatedData.url || existingMetadata.workItemUrl,
-        workItemId: validatedData.workItemId || existingMetadata.workItemId,
-        workItemOrganization: validatedData.organization || existingMetadata.workItemOrganization,
-        workItemProject: validatedData.project || existingMetadata.workItemProject,
         // SAP Custom Fields
         customFields: validatedData.customFields || existingMetadata.customFields,
         ticketCode: validatedData.ticketCode || existingMetadata.ticketCode,
@@ -3124,6 +3128,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         workItemDescriptionHtml: validatedData.descriptionHtml || existingMetadata.workItemDescriptionHtml,
         // Comments
         workItemComments: validatedData.comments || existingMetadata.workItemComments,
+        // Single-level enrichedData container (latest bookmarklet payload for diagnostics)
+        enrichedData: { ...validatedData, description: sanitizedDescription },
       };
       
       // Update the message with enriched metadata
