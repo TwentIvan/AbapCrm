@@ -213,23 +213,110 @@ export const bookmarkletCode = `
     });
     if (tags.length > 0) data.tags = tags;
     
-    // Extract Comments/Discussion
-    var comments = [];
-    document.querySelectorAll('.discussion-message, .comment-item, [class*="discussion-item"], [class*="comment-content"]').forEach(function(el) {
-      var content = el.querySelector('.message-content, .comment-content, .rendered-markdown, [class*="message-body"]');
-      var author = el.querySelector('.identity-picker-resolved-name, [class*="author"], [class*="persona-text"]');
-      var date = el.querySelector('time, [class*="timestamp"], [class*="date"]');
-      
-      if (content && content.textContent.trim()) {
-        comments.push({
-          author: author ? author.textContent.trim() : 'Unknown',
-          content: content.textContent.trim(),
-          contentHtml: content.innerHTML,
-          date: date ? (date.getAttribute('datetime') || date.textContent.trim()) : null
-        });
+    // Extract all visible form fields for debugging
+    var allFields = {};
+    document.querySelectorAll('[aria-label]').forEach(function(el) {
+      var label = el.getAttribute('aria-label');
+      if (label && label.length < 50) {
+        var input = el.querySelector('input, textarea, select');
+        var text = el.querySelector('.text, span, .combo-input');
+        var value = input ? (input.value || '') : (text ? text.textContent.trim() : '');
+        if (value && value.length > 0 && value.length < 200) {
+          allFields[label] = value;
+        }
       }
     });
+    if (Object.keys(allFields).length > 0) {
+      data._allFields = allFields;
+      // Try to extract specific fields from allFields
+      if (!data.state && (allFields['State'] || allFields['Stato'])) {
+        data.state = allFields['State'] || allFields['Stato'];
+      }
+      if (!data.priority && (allFields['Priority'] || allFields['Priorità'])) {
+        data.priority = parseInt(allFields['Priority'] || allFields['Priorità'], 10);
+      }
+      if (!data.storyPoints) {
+        var effort = allFields['Effort'] || allFields['Story Points'] || allFields['Impegno'] || allFields['Original Estimate'] || allFields['Remaining Work'];
+        if (effort) data.effort = parseFloat(effort);
+      }
+      if (!data.iterationPath && allFields['Iteration Path']) {
+        data.iterationPath = allFields['Iteration Path'];
+      }
+      if (!data.areaPath && allFields['Area Path']) {
+        data.areaPath = allFields['Area Path'];
+      }
+      if (allFields['Activity']) data.activity = allFields['Activity'];
+      if (allFields['Reason']) data.reason = allFields['Reason'];
+      if (allFields['Severity'] || allFields['Gravità']) data.severity = allFields['Severity'] || allFields['Gravità'];
+    }
+    
+    // Extract Comments/Discussion - try multiple approaches
+    var comments = [];
+    
+    // Approach 1: Look for discussion container
+    var discussionContainer = document.querySelector('.discussion-messages-container, .wit-discussion-control, [class*="discussion-control"], .work-item-discussion');
+    if (discussionContainer) {
+      discussionContainer.querySelectorAll('.discussion-message, .message-list-item, [class*="comment-item"], [class*="discussion-message"]').forEach(function(el) {
+        var content = el.querySelector('.message-content, .comment-content, .rendered-markdown, .message-body, [class*="message-text"]');
+        var author = el.querySelector('.identity-picker-resolved-name, .persona-text, [class*="author-name"], [class*="display-name"]');
+        var date = el.querySelector('time, [class*="timestamp"], [datetime]');
+        
+        if (content && content.textContent.trim().length > 0) {
+          comments.push({
+            author: author ? author.textContent.trim() : 'Unknown',
+            content: content.textContent.trim(),
+            contentHtml: content.innerHTML,
+            date: date ? (date.getAttribute('datetime') || date.textContent.trim()) : null
+          });
+        }
+      });
+    }
+    
+    // Approach 2: Fallback - look for any message-like elements
+    if (comments.length === 0) {
+      document.querySelectorAll('[class*="message-item"], [class*="activity-item"], [class*="history-item"]').forEach(function(el) {
+        var content = el.querySelector('.message-content, .rendered-markdown, [class*="content"]');
+        var author = el.querySelector('.identity-picker-resolved-name, [class*="author"]');
+        
+        if (content && content.textContent.trim().length > 10) {
+          var text = content.textContent.trim();
+          // Filter out system messages
+          if (!text.startsWith('changed') && !text.startsWith('Created') && !text.includes('field from')) {
+            comments.push({
+              author: author ? author.textContent.trim() : 'Unknown',
+              content: text,
+              contentHtml: content.innerHTML
+            });
+          }
+        }
+      });
+    }
+    
+    // Log for debugging
+    console.log('[DevOps Extractor v3] Discussion container:', discussionContainer);
+    console.log('[DevOps Extractor v3] Comments found:', comments.length);
+    console.log('[DevOps Extractor v3] All form fields:', allFields);
+    
     if (comments.length > 0) data.comments = comments;
+    
+    // Legacy approach for backwards compatibility
+    if (comments.length === 0) {
+      document.querySelectorAll('.discussion-message, .comment-item, [class*="discussion-item"], [class*="comment-content"]').forEach(function(el) {
+        var content = el.querySelector('.message-content, .comment-content, .rendered-markdown, [class*="message-body"]');
+        var author = el.querySelector('.identity-picker-resolved-name, [class*="author"], [class*="persona-text"]');
+        var date = el.querySelector('time, [class*="timestamp"], [class*="date"]');
+        
+        if (content && content.textContent.trim()) {
+          comments.push({
+            author: author ? author.textContent.trim() : 'Unknown',
+            content: content.textContent.trim(),
+            contentHtml: content.innerHTML,
+            date: date ? (date.getAttribute('datetime') || date.textContent.trim()) : null
+          });
+        }
+      });
+      if (comments.length > 0) data.comments = comments;
+    }
     
     // Extract Attachments
     var attachments = [];
