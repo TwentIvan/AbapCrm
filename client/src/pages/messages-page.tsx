@@ -343,14 +343,21 @@ export default function MessagesPage() {
 
   const enrichDevOpsMutation = useMutation({
     mutationFn: async ({ messageId, enrichData }: { messageId: string; enrichData: any }) => {
-      return apiRequest("PUT", `/api/messages/${messageId}`, {
+      const response = await apiRequest("PUT", `/api/messages/${messageId}`, {
         externalMetadata: enrichData
       });
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: (updatedMessage: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
       setShowEnrichPanel(false);
       setEnrichJsonInput("");
+      if (updatedMessage && selectedMessage) {
+        setSelectedMessage({
+          ...selectedMessage,
+          externalMetadata: updatedMessage.externalMetadata
+        } as any);
+      }
       toast({
         title: "Dati arricchiti!",
         description: "I dati del Work Item sono stati salvati nel messaggio.",
