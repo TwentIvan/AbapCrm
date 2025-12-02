@@ -2285,7 +2285,10 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                             </div>
                           ) : (
                             renderedContent.bodyHtml ? (
-                              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderedContent.bodyHtml }} data-testid="email-content-main" />
+                              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderedContent.bodyHtml, {
+                                FORBID_TAGS: ['style', 'script'],
+                                FORBID_ATTR: ['style']
+                              }) }} data-testid="email-content-main" />
                             ) : (
                               <div className="whitespace-pre-wrap text-sm" data-testid="email-content-main">{renderedContent.bodyText || 'Nessun contenuto'}</div>
                             )
@@ -2303,7 +2306,10 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                               {showThreadContent && (
                                 <div className="bg-muted/30 rounded-lg p-4" data-testid="div-thread-content">
                                   {renderedContent.remainderHtml ? (
-                                    <div className="prose prose-sm max-w-none text-muted-foreground" dangerouslySetInnerHTML={{ __html: renderedContent.remainderHtml }} data-testid="email-content-thread" />
+                                    <div className="prose prose-sm max-w-none text-muted-foreground" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderedContent.remainderHtml, {
+                                      FORBID_TAGS: ['style', 'script'],
+                                      FORBID_ATTR: ['style']
+                                    }) }} data-testid="email-content-thread" />
                                   ) : (
                                     <div className="whitespace-pre-wrap text-sm text-muted-foreground" data-testid="email-content-thread">{renderedContent.remainderText}</div>
                                   )}
@@ -2314,7 +2320,10 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                         </>
                       ) : (
                         selectedMessage?.htmlBody ? (
-                          <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: selectedMessage.htmlBody }} />
+                          <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedMessage.htmlBody, {
+                            FORBID_TAGS: ['style', 'script'],
+                            FORBID_ATTR: ['style']
+                          }) }} />
                         ) : (
                           <div className="whitespace-pre-wrap text-sm">{selectedMessage?.body || 'Nessun contenuto'}</div>
                         )
@@ -2513,7 +2522,10 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                           {selectedMessage!.htmlBody ? (
                             <div 
                               className="prose prose-sm max-w-none text-xs"
-                              dangerouslySetInnerHTML={{ __html: selectedMessage!.htmlBody }}
+                              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedMessage!.htmlBody, {
+                                FORBID_TAGS: ['style', 'script'],
+                                FORBID_ATTR: ['style']
+                              }) }}
                             />
                           ) : (
                             <pre className="whitespace-pre-wrap text-xs text-muted-foreground">
