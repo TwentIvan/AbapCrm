@@ -273,7 +273,31 @@ export const bookmarkletCode = `
     
     var json = JSON.stringify(data, null, 2);
     
-    navigator.clipboard.writeText(json).then(function() {
+    function copyToClipboard(text) {
+      // Try modern API first
+      if (navigator.clipboard && document.hasFocus()) {
+        return navigator.clipboard.writeText(text);
+      }
+      // Fallback: create textarea and use execCommand
+      return new Promise(function(resolve, reject) {
+        var textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;padding:0;border:none;outline:none;boxShadow:none;background:transparent;';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        try {
+          var ok = document.execCommand('copy');
+          textarea.remove();
+          if (ok) resolve(); else reject(new Error('execCommand failed'));
+        } catch(e) {
+          textarea.remove();
+          reject(e);
+        }
+      });
+    }
+    
+    copyToClipboard(json).then(function() {
       var msg = '✓ Work Item #' + data.workItemId + ' copiato! (' + data._fieldCount + ' campi';
       if (data.comments && data.comments.length) msg += ', ' + data.comments.length + ' commenti';
       if (data.attachments && data.attachments.length) msg += ', ' + data.attachments.length + ' allegati';
@@ -282,9 +306,15 @@ export const bookmarkletCode = `
       showNotification(msg, false);
       console.log('[DevOps Extractor v3] Dati estratti:', data);
     }).catch(function(err) {
-      showNotification('Errore copia: ' + err.message, true);
-      console.error('[DevOps Extractor v3] Clipboard error:', err);
-      console.log('[DevOps Extractor v3] JSON:', json);
+      // Show modal with copyable JSON as last resort
+      var modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;';
+      modal.innerHTML = '<div style="background:white;padding:20px;border-radius:8px;max-width:600px;max-height:80vh;overflow:auto;"><h3 style="margin:0 0 10px">Copia manualmente (Cmd+C / Ctrl+C)</h3><textarea id="devops-json" style="width:100%;height:300px;font-family:monospace;font-size:12px;">' + json.replace(/</g,'&lt;') + '</textarea><button onclick="this.parentElement.parentElement.remove()" style="margin-top:10px;padding:8px 16px;cursor:pointer;">Chiudi</button></div>';
+      document.body.appendChild(modal);
+      var ta = document.getElementById('devops-json');
+      ta.focus();
+      ta.select();
+      console.log('[DevOps Extractor v3] Dati estratti:', data);
     });
   } catch (err) {
     showNotification('Errore: ' + err.message, true);
