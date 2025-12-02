@@ -31,10 +31,14 @@ export interface DevOpsParseResult {
 const DEVOPS_SENDER_PATTERNS = [
   /azuredevops@microsoft\.com/i,
   /vsts@microsoft\.com/i,
+  /vsts.*noreply/i,
   /no-reply@azure\.com/i,
   /notifications@azure\.com/i,
   /@dev\.azure\.com/i,
   /visualstudio\.com.*noreply/i,
+  /noreply.*visualstudio/i,
+  /azure.*devops/i,
+  /devops.*azure/i,
 ];
 
 // Pattern per estrarre Work Item ID dall'oggetto
@@ -43,11 +47,25 @@ const DEVOPS_SENDER_PATTERNS = [
 // - "[ProjectName] #12345: Implement feature"
 // - "Re: [ProjectName] Task 12345: Update database"
 // - "[Organization/ProjectName] User Story 12345: ..."
+// - "Azure DevOps" (generic notification)
 const SUBJECT_PATTERNS = [
   /\[([^\]]+)\]\s*(?:#|(?:Bug|Task|User Story|Feature|Epic|Issue|Work Item)\s*)(\d+):\s*(.+)/i,
   /\[([^\]]+)\]\s*(\d+):\s*(.+)/i,
   /(?:Bug|Task|User Story|Feature|Epic|Issue)\s*#?(\d+):\s*(.+)/i,
   /#(\d+)\s*[-:]\s*(.+)/i,
+  // Pattern per Azure DevOps: "Task 121 - 26586:0004 - Descrizione"
+  /^(Bug|Task|User Story|Feature|Epic|Issue)\s+(\d+)\s*[-–]\s*(.+)/i,
+  // Pattern generico: "Type ID: Title" o "Type ID - Title"
+  /^(Bug|Task|User Story|Feature|Epic)\s+(\d+)\s*[:–-]\s*(.+)/i,
+];
+
+// Pattern per identificare email DevOps dal subject (senza necessità di estrarre metadata)
+const DEVOPS_SUBJECT_INDICATORS = [
+  /azure\s*devops/i,
+  /work\s*item/i,
+  /\bvsts\b/i,
+  /visualstudio/i,
+  /tfs\s+notification/i,
 ];
 
 // Pattern per estrarre URL del work item dal body
@@ -82,13 +100,17 @@ export class DevOpsEmailParser {
    * Verifica se un'email proviene da Azure DevOps
    */
   static isDevOpsEmail(fromEmail: string, subject: string): boolean {
-    // Check sender
-    const isSenderMatch = DEVOPS_SENDER_PATTERNS.some(pattern => pattern.test(fromEmail));
+    // Check sender patterns
+    const isSenderMatch = DEVOPS_SENDER_PATTERNS.some(pattern => pattern.test(fromEmail || ''));
     if (isSenderMatch) return true;
     
-    // Check subject pattern (Azure DevOps ha un formato riconoscibile)
+    // Check subject pattern with Work Item ID (Azure DevOps ha un formato riconoscibile)
     const hasDevOpsSubject = SUBJECT_PATTERNS.some(pattern => pattern.test(subject || ''));
     if (hasDevOpsSubject) return true;
+    
+    // Check subject for DevOps indicators (e.g., "Azure DevOps", "work item", etc.)
+    const hasDevOpsIndicator = DEVOPS_SUBJECT_INDICATORS.some(pattern => pattern.test(subject || ''));
+    if (hasDevOpsIndicator) return true;
     
     return false;
   }
@@ -157,9 +179,22 @@ export class DevOpsEmailParser {
       }
     }
     
-    // Se non abbiamo ID, non è parsificabile
+    // Se non abbiamo ID, creiamo comunque metadata parziali
+    // così l'email viene categorizzata come DevOps e può essere arricchita con il bookmarklet
     if (!workItemId) {
-      return { isDevOpsEmail: true, confidence: 0.3 };
+      const partialMetadata: DevOpsWorkItemMetadata = {
+        workItemId: 0, // Placeholder - will be enriched via bookmarklet
+        workItemTitle: subject || 'Unknown Work Item',
+        workItemUrl: '',
+        eventType: 'unknown',
+      };
+      console.log(`[DevOps Parser] Identified as DevOps email but no Work Item ID extracted. Subject: ${subject}`);
+      return { 
+        isDevOpsEmail: true, 
+        metadata: partialMetadata,
+        confidence: 0.4,
+        sourceType: 'email_devops_workitem' as const
+      };
     }
     
     // Determina il tipo di evento
