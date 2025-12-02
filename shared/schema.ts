@@ -274,6 +274,7 @@ export const messageSourceTypeEnum = pgEnum("message_source_type", [
   "email_standard",           // Email generica
   "email_devops_workitem",    // Notifica Azure DevOps Work Item
   "email_transport_request",  // SAP Transport Request
+  "email_calendar_event",     // Invito calendario (Teams, Google Meet, Zoom)
   "chat_teams",               // Microsoft Teams
   "chat_whatsapp",            // WhatsApp
   "chat_other",               // Altro chat
