@@ -14,6 +14,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
@@ -1534,11 +1535,29 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                                     workItemUrl: data.url || externalMeta.workItemUrl,
                                     workItemState: data.state,
                                     workItemAssignedTo: data.assignedTo,
-                                    workItemDescription: data.descriptionText,
+                                    workItemPriority: data.priority,
                                     workItemOrganization: data.organization,
                                     workItemProject: data.project,
+                                    workItemIterationPath: data.iterationPath,
+                                    workItemAreaPath: data.areaPath,
+                                    workItemTags: data.tags,
+                                    workItemDescriptionText: data.descriptionText,
+                                    workItemDescriptionHtml: data.descriptionHtml,
+                                    workItemDescriptionImages: data.descriptionImages,
+                                    workItemAcceptanceCriteriaText: data.acceptanceCriteriaText,
+                                    workItemAcceptanceCriteriaHtml: data.acceptanceCriteriaHtml,
+                                    workItemReproStepsText: data.reproStepsText,
+                                    workItemReproStepsHtml: data.reproStepsHtml,
+                                    workItemSystemInfoText: data.systemInfoText,
+                                    workItemStoryPoints: data.storyPoints,
+                                    workItemEffort: data.effort,
+                                    workItemRemainingWork: data.remainingWork,
+                                    workItemComments: data.comments,
+                                    workItemAttachments: data.attachments,
+                                    workItemLinkedItems: data.linkedWorkItems,
                                     enrichedAt: new Date().toISOString(),
-                                    enrichedFrom: 'bookmarklet'
+                                    enrichedFrom: 'bookmarklet',
+                                    bookmarkletVersion: data.version || '1.0'
                                   };
                                   enrichDevOpsMutation.mutate({
                                     messageId: selectedMessage.id,
@@ -1572,33 +1591,215 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                         
                         {/* Dettagli arricchiti */}
                         {externalMeta.enrichedAt && (
-                          <div className="mt-3 pt-3 border-t border-blue-200 space-y-2">
-                            <div className="flex items-center gap-2 text-xs text-blue-600">
-                              <CheckCircle className="h-3 w-3" />
-                              Arricchito il {new Date(externalMeta.enrichedAt).toLocaleString('it-IT')}
+                          <div className="mt-3 pt-3 border-t border-blue-200 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-xs text-blue-600">
+                                <CheckCircle className="h-3 w-3" />
+                                Arricchito il {new Date(externalMeta.enrichedAt).toLocaleString('it-IT')}
+                                {externalMeta.bookmarkletVersion && (
+                                  <span className="text-blue-400">(v{externalMeta.bookmarkletVersion})</span>
+                                )}
+                              </div>
                             </div>
+                            
+                            {/* Info base */}
                             <div className="grid grid-cols-2 gap-2 text-sm">
                               {externalMeta.workItemOrganization && (
                                 <div>
                                   <span className="text-muted-foreground">Organizzazione:</span>{' '}
-                                  <span className="font-medium">{externalMeta.workItemOrganization}</span>
+                                  <span className="font-medium">{decodeURIComponent(externalMeta.workItemOrganization)}</span>
                                 </div>
                               )}
                               {externalMeta.workItemProject && (
                                 <div>
                                   <span className="text-muted-foreground">Progetto:</span>{' '}
-                                  <span className="font-medium">{externalMeta.workItemProject}</span>
+                                  <span className="font-medium">{decodeURIComponent(externalMeta.workItemProject)}</span>
+                                </div>
+                              )}
+                              {externalMeta.workItemIterationPath && (
+                                <div>
+                                  <span className="text-muted-foreground">Iterazione:</span>{' '}
+                                  <span className="font-medium">{externalMeta.workItemIterationPath}</span>
+                                </div>
+                              )}
+                              {externalMeta.workItemAreaPath && (
+                                <div>
+                                  <span className="text-muted-foreground">Area:</span>{' '}
+                                  <span className="font-medium">{externalMeta.workItemAreaPath}</span>
+                                </div>
+                              )}
+                              {externalMeta.workItemPriority && (
+                                <div>
+                                  <span className="text-muted-foreground">Priorità:</span>{' '}
+                                  <Badge variant="outline" className="ml-1">{externalMeta.workItemPriority}</Badge>
+                                </div>
+                              )}
+                              {(externalMeta.workItemStoryPoints || externalMeta.workItemEffort) && (
+                                <div>
+                                  <span className="text-muted-foreground">
+                                    {externalMeta.workItemStoryPoints ? 'Story Points:' : 'Effort:'}
+                                  </span>{' '}
+                                  <span className="font-medium">
+                                    {externalMeta.workItemStoryPoints || externalMeta.workItemEffort}
+                                  </span>
                                 </div>
                               )}
                             </div>
-                            {externalMeta.workItemDescription && (
-                              <div className="text-sm">
-                                <span className="text-muted-foreground">Descrizione:</span>
-                                <p className="mt-1 text-xs bg-white/50 rounded p-2 max-h-20 overflow-y-auto">
-                                  {externalMeta.workItemDescription.substring(0, 300)}
-                                  {externalMeta.workItemDescription.length > 300 && '...'}
-                                </p>
+                            
+                            {/* Tags */}
+                            {externalMeta.workItemTags && externalMeta.workItemTags.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {externalMeta.workItemTags.map((tag: string, idx: number) => (
+                                  <Badge key={idx} variant="secondary" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
                               </div>
+                            )}
+                            
+                            {/* Descrizione HTML */}
+                            {externalMeta.workItemDescriptionHtml && (
+                              <Collapsible>
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
+                                    <span className="text-muted-foreground text-sm">📝 Descrizione</span>
+                                    <ChevronDown className="h-4 w-4" />
+                                  </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div 
+                                    className="mt-1 text-sm bg-white rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: externalMeta.workItemDescriptionHtml }}
+                                  />
+                                </CollapsibleContent>
+                              </Collapsible>
+                            )}
+                            
+                            {/* Acceptance Criteria */}
+                            {externalMeta.workItemAcceptanceCriteriaHtml && (
+                              <Collapsible>
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
+                                    <span className="text-muted-foreground text-sm">✅ Criteri di Accettazione</span>
+                                    <ChevronDown className="h-4 w-4" />
+                                  </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div 
+                                    className="mt-1 text-sm bg-white rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: externalMeta.workItemAcceptanceCriteriaHtml }}
+                                  />
+                                </CollapsibleContent>
+                              </Collapsible>
+                            )}
+                            
+                            {/* Repro Steps (per Bug) */}
+                            {externalMeta.workItemReproStepsHtml && (
+                              <Collapsible>
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
+                                    <span className="text-muted-foreground text-sm">🐛 Passi per Riprodurre</span>
+                                    <ChevronDown className="h-4 w-4" />
+                                  </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div 
+                                    className="mt-1 text-sm bg-white rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: externalMeta.workItemReproStepsHtml }}
+                                  />
+                                </CollapsibleContent>
+                              </Collapsible>
+                            )}
+                            
+                            {/* Commenti */}
+                            {externalMeta.workItemComments && externalMeta.workItemComments.length > 0 && (
+                              <Collapsible>
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
+                                    <span className="text-muted-foreground text-sm">
+                                      💬 Commenti ({externalMeta.workItemComments.length})
+                                    </span>
+                                    <ChevronDown className="h-4 w-4" />
+                                  </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div className="mt-1 space-y-2 max-h-60 overflow-y-auto">
+                                    {externalMeta.workItemComments.map((comment: any, idx: number) => (
+                                      <div key={idx} className="bg-white rounded p-2 border text-sm">
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className="font-medium text-xs">{comment.author}</span>
+                                          {comment.date && (
+                                            <span className="text-xs text-muted-foreground">{comment.date}</span>
+                                          )}
+                                        </div>
+                                        {comment.contentHtml ? (
+                                          <div 
+                                            className="prose prose-sm max-w-none"
+                                            dangerouslySetInnerHTML={{ __html: comment.contentHtml }}
+                                          />
+                                        ) : (
+                                          <p className="text-xs">{comment.content}</p>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+                            )}
+                            
+                            {/* Allegati */}
+                            {externalMeta.workItemAttachments && externalMeta.workItemAttachments.length > 0 && (
+                              <Collapsible>
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
+                                    <span className="text-muted-foreground text-sm">
+                                      📎 Allegati ({externalMeta.workItemAttachments.length})
+                                    </span>
+                                    <ChevronDown className="h-4 w-4" />
+                                  </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div className="mt-1 space-y-1">
+                                    {externalMeta.workItemAttachments.map((att: any, idx: number) => (
+                                      <div key={idx} className="flex items-center gap-2 text-sm bg-white rounded p-2 border">
+                                        <FileText className="h-4 w-4 text-muted-foreground" />
+                                        <span className="flex-1 truncate">{att.name}</span>
+                                        {att.size && <span className="text-xs text-muted-foreground">{att.size}</span>}
+                                        {att.url && (
+                                          <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
+                                            Apri
+                                          </a>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+                            )}
+                            
+                            {/* Work Item collegati */}
+                            {externalMeta.workItemLinkedItems && externalMeta.workItemLinkedItems.length > 0 && (
+                              <Collapsible>
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
+                                    <span className="text-muted-foreground text-sm">
+                                      🔗 Collegamenti ({externalMeta.workItemLinkedItems.length})
+                                    </span>
+                                    <ChevronDown className="h-4 w-4" />
+                                  </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div className="mt-1 space-y-1">
+                                    {externalMeta.workItemLinkedItems.map((link: any, idx: number) => (
+                                      <div key={idx} className="flex items-center gap-2 text-sm bg-white rounded p-2 border">
+                                        <Badge variant="outline" className="text-xs">{link.type}</Badge>
+                                        {link.workItemId && <span className="font-mono text-xs">#{link.workItemId}</span>}
+                                        {link.title && <span className="flex-1 truncate">{link.title}</span>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
                             )}
                           </div>
                         )}
