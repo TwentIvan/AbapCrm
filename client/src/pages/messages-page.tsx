@@ -1681,17 +1681,17 @@ export default function MessagesPage() {
                                     <CollapsibleTrigger asChild>
                                       <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1 mt-2">
                                         <span className="text-muted-foreground text-xs">
-                                          Tutti i campi custom ({Object.keys(externalMeta.customFields).length})
+                                          Altri campi ({Object.keys(externalMeta.customFields).length})
                                         </span>
                                         <ChevronDown className="h-3 w-3" />
                                       </Button>
                                     </CollapsibleTrigger>
                                     <CollapsibleContent>
-                                      <div className="mt-1 grid grid-cols-1 gap-1 text-xs bg-white dark:bg-gray-800 rounded p-2 border">
+                                      <div className="mt-1 grid grid-cols-2 gap-2 text-sm">
                                         {Object.entries(externalMeta.customFields).map(([key, value]: [string, any]) => (
-                                          <div key={key} className="flex justify-between">
-                                            <span className="text-muted-foreground truncate mr-2">{key}:</span>
-                                            <span className="font-medium text-right">{String(value)}</span>
+                                          <div key={key}>
+                                            <span className="text-muted-foreground">{key}:</span>{' '}
+                                            <span className="font-medium text-amber-800 dark:text-amber-300">{String(value)}</span>
                                           </div>
                                         ))}
                                       </div>
