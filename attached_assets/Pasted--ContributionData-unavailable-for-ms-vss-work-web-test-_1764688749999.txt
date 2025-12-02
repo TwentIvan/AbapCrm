@@ -1,0 +1,612 @@
+ ContributionData unavailable for 'ms.vss-work-web.test-plans-license-data-provider', ExceptionType: '', Reason: Data provider contribution 'ms.vss-work-web.test-plans-license-data-provider' specifies data provider 'WorkItemTracking.Provider.TestPlansLicense' which does not exist., StackTrace: null
+_applyData @ ms.vss-web.platform-…es6.c9SZIy.min.js:1
+ ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-…es6.c9SZIy.min.js:1
+ MSAL.js token provider init: no in-flight redirect promise
+ MSAL.js token provider init: acquireTokenSilent
+ MSAL.js token provider initialization complete
+ 
+evaluate @ ms.vss-work-web.work…es6.8RU1nj.min.js:1
+ 
+evaluate @ ms.vss-work-web.work…es6.8RU1nj.min.js:1
+ 
+evaluate @ ms.vss-work-web.work…es6.8RU1nj.min.js:1
+ 
+evaluate @ ms.vss-work-web.work…es6.8RU1nj.min.js:1
+ 
+evaluate @ ms.vss-work-web.work…es6.8RU1nj.min.js:1
+ ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-…es6.c9SZIy.min.js:1
+ ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-…es6.c9SZIy.min.js:1
+ SignalR: moved from disconnected to connecting for /_signalr/ITALCUSCINETTI/
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: moved from connecting to connected for /_signalr/ITALCUSCINETTI/
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: connected!
+121?src=WorkItemMent…ion=artifact_link:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+121?src=WorkItemMent…ion=artifact_link:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: stopping...
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: disconnected from /_signalr/ITALCUSCINETTI/
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-work-web.test-plans-license-data-provider', ExceptionType: '', Reason: Data provider contribution 'ms.vss-work-web.test-plans-license-data-provider' specifies data provider 'WorkItemTracking.Provider.TestPlansLicense' which does not exist., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-work-web.test-plans-license-data-provider', ExceptionType: '', Reason: Data provider contribution 'ms.vss-work-web.test-plans-license-data-provider' specifies data provider 'WorkItemTracking.Provider.TestPlansLicense' which does not exist., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-105,Required,,Trigger,-105 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.findIterationNodeByPath (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:1979)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:118482)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.findIterationNodeByPath (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:1979)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:118482)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-104,Trigger,-104 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119242)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119242)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-2,Trigger,-2 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119242)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119242)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-7,Required,,Trigger,-7,-12 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.findAreaNodeByPath (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2243)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:118424)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.findAreaNodeByPath (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2243)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:118424)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-2 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119638)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119638)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: moved from disconnected to connecting for /_signalr/ITALCUSCINETTI/
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: moved from connecting to connected for /_signalr/ITALCUSCINETTI/
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: connected!
+content.js:1 Uncaught (in promise) The message port closed before a response was received.
+content.js:1 Uncaught (in promise) The message port closed before a response was received.
+content.js:1 Uncaught (in promise) The message port closed before a response was received.
+content.js:1 Uncaught (in promise) The message port closed before a response was received.
+content.js:1 Uncaught (in promise) The message port closed before a response was received.
+content.js:1 Uncaught (in promise) The message port closed before a response was received.
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: reconnecting to /_signalr/ITALCUSCINETTI/
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: reconnected to /_signalr/ITALCUSCINETTI/
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: reconnecting to /_signalr/ITALCUSCINETTI/
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: reconnected to /_signalr/ITALCUSCINETTI/
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: reconnecting to /_signalr/ITALCUSCINETTI/
+ms.vss-features.signalr.es6.wiP9ho.min.js:3 WebSocket connection to 'wss://dev.azure.com/_signalr/ITALCUSCINETTI//signalr/reconnect?transport=webSockets&groupsToken=bPFEh4%2FeODMgu0AF8Fqfgb%2FUPDcFwiSZWX4rTSficKezUoiwRKCvrLyn0bEJI%2B9TgDQevTgNfrU8Sv1vHoJ%2BzeoymlliDz0ByK4t0DCJtgn4cCkUGzbImw7qXvZnuY7t2UrRkRM1kyCQCD80J1BFHRrb7YpvCLt1nyvz0pmemYmrZ1b%2B78y1riwTxONJyIoH&messageId=s-0%2C725439A&clientProtocol=1.5&contextToken=d8252911-cc54-4307-b4b6-7e35dc971a7b&connectionToken=1sMQeQ9RuFmJP2n0wRFLA8aBAifR0feKIGDZOHLeC8mOdAvNLSImEXKUhVjwBQIWXvSIN3FIJluSd%2BQ%2Fg9K2DE07dLAchXct%2FO5jWA8wLdCYLJ2WMeC%2FsnZi%2BFRioUWcofFUETWMNPFPlXMu2YYg5g%3D%3D&connectionData=%5B%7B%22name%22%3A%22workitemhub%22%7D%5D&tid=1' failed: 
+start @ ms.vss-features.signalr.es6.wiP9ho.min.js:3
+ms.vss-features.signalr.es6.wiP9ho.min.js:3 WebSocket connection to 'wss://dev.azure.com/_signalr/ITALCUSCINETTI//signalr/reconnect?transport=webSockets&groupsToken=bPFEh4%2FeODMgu0AF8Fqfgb%2FUPDcFwiSZWX4rTSficKezUoiwRKCvrLyn0bEJI%2B9TgDQevTgNfrU8Sv1vHoJ%2BzeoymlliDz0ByK4t0DCJtgn4cCkUGzbImw7qXvZnuY7t2UrRkRM1kyCQCD80J1BFHRrb7YpvCLt1nyvz0pmemYmrZ1b%2B78y1riwTxONJyIoH&messageId=s-0%2C725439A&clientProtocol=1.5&contextToken=d8252911-cc54-4307-b4b6-7e35dc971a7b&connectionToken=1sMQeQ9RuFmJP2n0wRFLA8aBAifR0feKIGDZOHLeC8mOdAvNLSImEXKUhVjwBQIWXvSIN3FIJluSd%2BQ%2Fg9K2DE07dLAchXct%2FO5jWA8wLdCYLJ2WMeC%2FsnZi%2BFRioUWcofFUETWMNPFPlXMu2YYg5g%3D%3D&connectionData=%5B%7B%22name%22%3A%22workitemhub%22%7D%5D&tid=5' failed: 
+start @ ms.vss-features.signalr.es6.wiP9ho.min.js:3
+ms.vss-features.signalr.es6.wiP9ho.min.js:3 WebSocket connection to 'wss://dev.azure.com/_signalr/ITALCUSCINETTI//signalr/reconnect?transport=webSockets&groupsToken=bPFEh4%2FeODMgu0AF8Fqfgb%2FUPDcFwiSZWX4rTSficKezUoiwRKCvrLyn0bEJI%2B9TgDQevTgNfrU8Sv1vHoJ%2BzeoymlliDz0ByK4t0DCJtgn4cCkUGzbImw7qXvZnuY7t2UrRkRM1kyCQCD80J1BFHRrb7YpvCLt1nyvz0pmemYmrZ1b%2B78y1riwTxONJyIoH&messageId=s-0%2C725439A&clientProtocol=1.5&contextToken=d8252911-cc54-4307-b4b6-7e35dc971a7b&connectionToken=1sMQeQ9RuFmJP2n0wRFLA8aBAifR0feKIGDZOHLeC8mOdAvNLSImEXKUhVjwBQIWXvSIN3FIJluSd%2BQ%2Fg9K2DE07dLAchXct%2FO5jWA8wLdCYLJ2WMeC%2FsnZi%2BFRioUWcofFUETWMNPFPlXMu2YYg5g%3D%3D&connectionData=%5B%7B%22name%22%3A%22workitemhub%22%7D%5D&tid=7' failed: 
+start @ ms.vss-features.signalr.es6.wiP9ho.min.js:3
+ms.vss-features.signalr.es6.wiP9ho.min.js:3 WebSocket connection to 'wss://dev.azure.com/_signalr/ITALCUSCINETTI//signalr/reconnect?transport=webSockets&groupsToken=bPFEh4%2FeODMgu0AF8Fqfgb%2FUPDcFwiSZWX4rTSficKezUoiwRKCvrLyn0bEJI%2B9TgDQevTgNfrU8Sv1vHoJ%2BzeoymlliDz0ByK4t0DCJtgn4cCkUGzbImw7qXvZnuY7t2UrRkRM1kyCQCD80J1BFHRrb7YpvCLt1nyvz0pmemYmrZ1b%2B78y1riwTxONJyIoH&messageId=s-0%2C725439A&clientProtocol=1.5&contextToken=d8252911-cc54-4307-b4b6-7e35dc971a7b&connectionToken=1sMQeQ9RuFmJP2n0wRFLA8aBAifR0feKIGDZOHLeC8mOdAvNLSImEXKUhVjwBQIWXvSIN3FIJluSd%2BQ%2Fg9K2DE07dLAchXct%2FO5jWA8wLdCYLJ2WMeC%2FsnZi%2BFRioUWcofFUETWMNPFPlXMu2YYg5g%3D%3D&connectionData=%5B%7B%22name%22%3A%22workitemhub%22%7D%5D&tid=9' failed: 
+start @ ms.vss-features.signalr.es6.wiP9ho.min.js:3
+ms.vss-features.signalr.es6.wiP9ho.min.js:3 WebSocket connection to 'wss://dev.azure.com/_signalr/ITALCUSCINETTI//signalr/reconnect?transport=webSockets&groupsToken=bPFEh4%2FeODMgu0AF8Fqfgb%2FUPDcFwiSZWX4rTSficKezUoiwRKCvrLyn0bEJI%2B9TgDQevTgNfrU8Sv1vHoJ%2BzeoymlliDz0ByK4t0DCJtgn4cCkUGzbImw7qXvZnuY7t2UrRkRM1kyCQCD80J1BFHRrb7YpvCLt1nyvz0pmemYmrZ1b%2B78y1riwTxONJyIoH&messageId=s-0%2C725439A&clientProtocol=1.5&contextToken=d8252911-cc54-4307-b4b6-7e35dc971a7b&connectionToken=1sMQeQ9RuFmJP2n0wRFLA8aBAifR0feKIGDZOHLeC8mOdAvNLSImEXKUhVjwBQIWXvSIN3FIJluSd%2BQ%2Fg9K2DE07dLAchXct%2FO5jWA8wLdCYLJ2WMeC%2FsnZi%2BFRioUWcofFUETWMNPFPlXMu2YYg5g%3D%3D&connectionData=%5B%7B%22name%22%3A%22workitemhub%22%7D%5D&tid=6' failed: 
+start @ ms.vss-features.signalr.es6.wiP9ho.min.js:3
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: disconnected from /_signalr/ITALCUSCINETTI/
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: moved from disconnected to connecting for /_signalr/ITALCUSCINETTI/
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: disconnected from /_signalr/ITALCUSCINETTI/
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: Cannot start connection...hard reconnect attempt 1
+(anonymous) @ ms.vss-features.signalr.es6.wiP9ho.min.js:9
+content.js:2 Uncaught TypeError: Cannot read properties of undefined (reading 'connect')
+    at zD (content.js:2:710321)
+ [DevOps Extractor v2] Dati estratti: Object
+content_script.js:1 Uncaught TypeError: Cannot read properties of undefined (reading 'control')
+    at content_script.js:1:422999
+    at Array.some (<anonymous>)
+    at shouldOfferCompletionListForField (content_script.js:1:422984)
+    at elementWasFocused (content_script.js:1:423712)
+    at HTMLDocument.focusInEventHandler (content_script.js:1:423069)
+content_script.js:1 Uncaught TypeError: Cannot read properties of undefined (reading 'control')
+    at content_script.js:1:422999
+    at Array.some (<anonymous>)
+    at shouldOfferCompletionListForField (content_script.js:1:422984)
+    at elementWasFocused (content_script.js:1:423712)
+    at HTMLDocument.focusInEventHandler (content_script.js:1:423069)
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: stopping...
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-work-web.test-plans-license-data-provider', ExceptionType: '', Reason: Data provider contribution 'ms.vss-work-web.test-plans-license-data-provider' specifies data provider 'WorkItemTracking.Provider.TestPlansLicense' which does not exist., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-work-web.test-plans-license-data-provider', ExceptionType: '', Reason: Data provider contribution 'ms.vss-work-web.test-plans-license-data-provider' specifies data provider 'WorkItemTracking.Provider.TestPlansLicense' which does not exist., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-105,Required,,Trigger,-105 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.findIterationNodeByPath (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:1979)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:118482)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.findIterationNodeByPath (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:1979)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:118482)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-104,Trigger,-104 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119242)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119242)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-2,Trigger,-2 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119242)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119242)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-7,Required,,Trigger,-7,-12 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.findAreaNodeByPath (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2243)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:118424)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.findAreaNodeByPath (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2243)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:118424)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-2 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119638)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119638)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: moved from disconnected to connecting for /_signalr/ITALCUSCINETTI/
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: moved from connecting to connected for /_signalr/ITALCUSCINETTI/
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: connected!
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: stopping...
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: disconnected from /_signalr/ITALCUSCINETTI/
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-work-web.test-plans-license-data-provider', ExceptionType: '', Reason: Data provider contribution 'ms.vss-work-web.test-plans-license-data-provider' specifies data provider 'WorkItemTracking.Provider.TestPlansLicense' which does not exist., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-work-web.test-plans-license-data-provider', ExceptionType: '', Reason: Data provider contribution 'ms.vss-work-web.test-plans-license-data-provider' specifies data provider 'WorkItemTracking.Provider.TestPlansLicense' which does not exist., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-105,Required,,Trigger,-105 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.findIterationNodeByPath (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:1979)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:118482)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.findIterationNodeByPath (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:1979)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:118482)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-104,Trigger,-104 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119242)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119242)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-2,Trigger,-2 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119242)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119242)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-7,Required,,Trigger,-7,-12 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.findAreaNodeByPath (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2243)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:118424)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.findAreaNodeByPath (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2243)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:118424)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1 Error: Error occured in Rule Engine Evaluate. Name: undefined Message: Node is undefined! Rules.length: 2 Rules.Information: Block,Computed,-2 Stack: Error: Node is undefined!
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119638)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at d.normalizeNodePaths (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:2361)
+    at d.getNodeById (ms.vss-work-web.work-item-node-service.es6.lD2rFK.min.js:1:3071)
+    at i.computeFieldValue (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:119638)
+    at i.Computed (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:45172)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.Block (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39228)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:38729)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:39041)
+    at Object._evaluateFieldRule (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51733)
+    at Object.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:51052)
+    at i.evaluateFields (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:103088)
+    at i.evaluate (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:102972)
+    at i.load (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:114531)
+    at new i (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81168)
+    at i.create (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81319)
+    at i.createAsync (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:81815)
+    at async s.createWorkItemModel (ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1:137352)
+evaluate @ ms.vss-work-web.work-item-model.es6.8RU1nj.min.js:1
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: moved from disconnected to connecting for /_signalr/ITALCUSCINETTI/
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-web.platform-content.es6.c9SZIy.min.js:1 ContributionData unavailable for 'ms.vss-code-web.versioncontrol-viewmodel-data-provider', ExceptionType: 'GitRepositoryNotFoundException', Reason: TF401019: The Git repository with name or identifier Italcuscinetti - AMS does not exist or you do not have permissions for the operation you are attempting., StackTrace: null
+_applyData @ ms.vss-web.platform-content.es6.c9SZIy.min.js:1
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: moved from connecting to connected for /_signalr/ITALCUSCINETTI/
+ms.vss-features.signalr.es6.wiP9ho.min.js:9 SignalR: connected!
+Connecting to 'https://amcdn.msftauth.net/meInlineBackCompat.min.js.map' violates the following Content Security Policy directive: "connect-src *.visualstudio.com wss://*.visualstudio.com https://web.vortex.data.microsoft.com *.dev.azure.com dev.azure.com wss://*.dev.azure.com wss://dev.azure.com *.vsassets.io ms.gallery.vsassets.io vsassetscdn.azure.cn ms.gallerycdn.vsassets.io ms.gallerycdn.azure.cn *.blob.core.windows.net https://login.microsoftonline.com https://browser.events.data.microsoft.com". The request has been blocked.
+
+Connecting to 'https://js.monitor.azure.com/scripts/c/ms.shared.analytics.mectrl-3.2.18.gbl.min.js.map' violates the following Content Security Policy directive: "connect-src *.visualstudio.com wss://*.visualstudio.com https://web.vortex.data.microsoft.com *.dev.azure.com dev.azure.com wss://*.dev.azure.com wss://dev.azure.com *.vsassets.io ms.gallery.vsassets.io vsassetscdn.azure.cn ms.gallerycdn.vsassets.io ms.gallerycdn.azure.cn *.blob.core.windows.net https://login.microsoftonline.com https://browser.events.data.microsoft.com". The request has been blocked.
+
+Connecting to 'https://amcdn.msftauth.net/scripts/me/MeControl/10.25136.1/en-US/meBoot.min.js.map' violates the following Content Security Policy directive: "connect-src *.visualstudio.com wss://*.visualstudio.com https://web.vortex.data.microsoft.com *.dev.azure.com dev.azure.com wss://*.dev.azure.com wss://dev.azure.com *.vsassets.io ms.gallery.vsassets.io vsassetscdn.azure.cn ms.gallerycdn.vsassets.io ms.gallerycdn.azure.cn *.blob.core.windows.net https://login.microsoftonline.com https://browser.events.data.microsoft.com". The request has been blocked.
+
+Connecting to 'https://amcdn.msftauth.net/scripts/me/MeControl/10.25136.1/en-US/meCore.min.js.map' violates the following Content Security Policy directive: "connect-src *.visualstudio.com wss://*.visualstudio.com https://web.vortex.data.microsoft.com *.dev.azure.com dev.azure.com wss://*.dev.azure.com wss://dev.azure.com *.vsassets.io ms.gallery.vsassets.io vsassetscdn.azure.cn ms.gallerycdn.vsassets.io ms.gallerycdn.azure.cn *.blob.core.windows.net https://login.microsoftonline.com https://browser.events.data.microsoft.com". The request has been blocked.
+
+VM671:1 [DevOps Extractor v2] Dati estratti: {extractedAt: '2025-12-02T15:18:42.485Z', source: 'bookmarklet', version: '2.0', url: 'https://dev.azure.com/ITALCUSCINETTI/Italcuscinetti%20-%20AMS/_workitems/edit/120/', workItemId: 120, …}
