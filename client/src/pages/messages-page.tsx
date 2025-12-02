@@ -1528,36 +1528,33 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                                     return;
                                   }
                                   const enrichData = {
-                                    ...externalMeta,
+                                    // Send fresh bookmarklet data directly - backend handles the merge
+                                    ...data,
+                                    // Ensure standard field mappings
                                     workItemId: data.workItemId,
-                                    workItemTitle: data.title || externalMeta.workItemTitle,
-                                    workItemType: data.workItemType || externalMeta.workItemType,
-                                    workItemUrl: data.url || externalMeta.workItemUrl,
-                                    workItemState: data.state,
-                                    workItemAssignedTo: data.assignedTo,
-                                    workItemPriority: data.priority,
-                                    workItemOrganization: data.organization,
-                                    workItemProject: data.project,
-                                    workItemIterationPath: data.iterationPath,
-                                    workItemAreaPath: data.areaPath,
-                                    workItemTags: data.tags,
-                                    workItemDescriptionText: data.descriptionText,
-                                    workItemDescriptionHtml: data.descriptionHtml,
-                                    workItemDescriptionImages: data.descriptionImages,
-                                    workItemAcceptanceCriteriaText: data.acceptanceCriteriaText,
-                                    workItemAcceptanceCriteriaHtml: data.acceptanceCriteriaHtml,
-                                    workItemReproStepsText: data.reproStepsText,
-                                    workItemReproStepsHtml: data.reproStepsHtml,
-                                    workItemSystemInfoText: data.systemInfoText,
-                                    workItemStoryPoints: data.storyPoints,
-                                    workItemEffort: data.effort,
-                                    workItemRemainingWork: data.remainingWork,
-                                    workItemComments: data.comments,
-                                    workItemAttachments: data.attachments,
-                                    workItemLinkedItems: data.linkedWorkItems,
-                                    enrichedAt: new Date().toISOString(),
-                                    enrichedFrom: 'bookmarklet',
-                                    bookmarkletVersion: data.version || '1.0'
+                                    title: data.title,
+                                    workItemType: data.workItemType,
+                                    url: data.url,
+                                    state: data.state,
+                                    assignedTo: data.assignedTo,
+                                    priority: data.priority,
+                                    organization: data.organization,
+                                    project: data.project,
+                                    iterationPath: data.iterationPath,
+                                    areaPath: data.areaPath,
+                                    tags: data.tags,
+                                    descriptionText: data.descriptionText,
+                                    descriptionHtml: data.descriptionHtml,
+                                    description: data.description || data.descriptionText,
+                                    comments: data.comments,
+                                    // SAP Custom Fields - explicitly include
+                                    customFields: data.customFields,
+                                    ticketCode: data.ticketCode,
+                                    wbsCode: data.wbsCode,
+                                    ticketType: data.ticketType,
+                                    // Metadata
+                                    source: 'bookmarklet',
+                                    version: data.version || '3.2'
                                   };
                                   enrichDevOpsMutation.mutate({
                                     messageId: selectedMessage.id,
