@@ -1477,34 +1477,6 @@ export default function MessagesPage() {
                               </Button>
                             )}
                             <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const instructions = `
-📋 ISTRUZIONI BOOKMARKLET DevOps
-
-1. Copia questo codice:
-javascript:(function(){'use strict';function showNotification(message,isError){var existing=document.getElementById('devops-extractor-notification');if(existing)existing.remove();var div=document.createElement('div');div.id='devops-extractor-notification';div.style.cssText='position:fixed;top:20px;right:20px;padding:16px 24px;border-radius:8px;z-index:999999;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:opacity 0.3s;'+(isError?'background:%23fee2e2;color:%23991b1b;border:1px solid %23fecaca;':'background:%23d1fae5;color:%23065f46;border:1px solid %23a7f3d0;');div.textContent=message;document.body.appendChild(div);setTimeout(function(){div.style.opacity='0';setTimeout(function(){div.remove();},300);},3000);}function getTextContent(selector){var el=document.querySelector(selector);return el?el.textContent.trim():null;}function extractWorkItemData(){var data={extractedAt:new Date().toISOString(),source:'bookmarklet',url:window.location.href};var idMatch=window.location.href.match(/_workitems\\/edit\\/(\\d+)/);if(idMatch){data.workItemId=parseInt(idMatch[1],10);}else{var idEl=document.querySelector('.work-item-form-id,.workitem-info-bar-id .id');if(idEl)data.workItemId=parseInt(idEl.textContent.replace('%23',''),10);}var typeEl=document.querySelector('.work-item-type-icon-control,.work-item-type-name,[aria-label*="Work item type"]');if(typeEl){data.workItemType=typeEl.getAttribute('aria-label')||typeEl.title||typeEl.textContent.trim();}var titleEl=document.querySelector('.work-item-form-title input,%23witc_1_txt,[aria-label="Title"]');if(titleEl){data.title=titleEl.value||titleEl.textContent.trim();}else{var titleContainer=document.querySelector('.work-item-form-title');if(titleContainer)data.title=titleContainer.textContent.trim();}var stateEl=document.querySelector('.work-item-state-dropdown,[aria-label="State"]');if(stateEl){data.state=stateEl.textContent.trim()||stateEl.value;}var assignedEl=document.querySelector('[aria-label="Assigned To"] .identity-picker-resolved-name,.workitem-identity-persona-name,.identity-picker-display-name');if(assignedEl){data.assignedTo=assignedEl.textContent.trim();}var descEl=document.querySelector('.wit-html-field-content,[data-field-name="Description"] .richeditor-container,.work-item-html-field');if(descEl){data.description=descEl.innerHTML;data.descriptionText=descEl.textContent.trim();}var urlMatch=window.location.href.match(/dev\\.azure\\.com\\/([^\\/]+)\\/([^\\/]+)/);if(urlMatch){data.organization=urlMatch[1];data.project=urlMatch[2];}return data;}try{var data=extractWorkItemData();if(!data.workItemId){showNotification('Impossibile trovare Work Item ID.',true);return;}var json=JSON.stringify(data,null,2);navigator.clipboard.writeText(json).then(function(){showNotification('✓ Work Item %23'+data.workItemId+' copiato!',false);}).catch(function(){var textarea=document.createElement('textarea');textarea.value=json;textarea.style.cssText='position:fixed;left:-9999px;';document.body.appendChild(textarea);textarea.select();document.execCommand('copy');textarea.remove();showNotification('✓ Work Item %23'+data.workItemId+' copiato!',false);});}catch(err){showNotification('Errore: '+err.message,true);}})();
-
-2. Crea un nuovo segnalibro nel browser
-3. Incolla il codice nel campo URL
-4. Vai sulla pagina del Work Item in Azure DevOps
-5. Clicca sul segnalibro per copiare i dati
-6. Incolla qui per arricchire il messaggio
-                                `.trim();
-                                navigator.clipboard.writeText(instructions);
-                                toast({
-                                  title: "Istruzioni copiate!",
-                                  description: "Le istruzioni per il bookmarklet sono state copiate negli appunti."
-                                });
-                              }}
-                              className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                              data-testid="button-copy-bookmarklet"
-                            >
-                              <Clipboard className="h-4 w-4 mr-1" />
-                              Istruzioni
-                            </Button>
-                            <Button
                               variant="default"
                               size="sm"
                               onClick={async () => {
@@ -1877,32 +1849,11 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                   })()}
                 </div>
 
-                {/* Training Mode Controls */}
-                {selectedMessage && (
+                {/* Training Mode Controls - Visible only in training mode */}
+                {selectedMessage && isTrainingMode && (
                   <div className="border-t border-b bg-muted/30 p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <Button
-                          onClick={() => setIsTrainingMode(!isTrainingMode)}
-                          variant={isTrainingMode ? "default" : "outline"}
-                          size="sm"
-                          data-testid="button-training-mode"
-                        >
-                          <Brain className="h-4 w-4 mr-2" />
-                          {isTrainingMode ? 'Esci da training' : 'Modalità training'}
-                        </Button>
-
-                        <Button
-                          onClick={() => selectedMessage && reprocessMutation.mutate(selectedMessage.id)}
-                          variant="outline"
-                          size="sm"
-                          disabled={reprocessMutation.isPending || !selectedMessage}
-                          data-testid="button-reprocess-message"
-                        >
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          {reprocessMutation.isPending ? 'Riprocessando...' : 'Riprocessa email'}
-                        </Button>
-                        
                         {isTrainingMode && (
                           <>
                             <div className="h-4 border-l border-border" />
@@ -2148,6 +2099,8 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                 )}
 
                 {/* Message Body - occupa tutto lo spazio rimanente */}
+                {/* Hide body for DevOps messages - data is shown in the panel above */}
+                {(selectedMessage as any)?.sourceType !== 'email_devops_workitem' && (
                 <div className="border-t">
                   <div className="h-[48rem] p-6 overflow-y-auto space-y-4">
                     {/* 🔍 DEBUG: Log rendering decision */}
@@ -2380,8 +2333,10 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                     )}
                   </div>
                 </div>
+                )}
 
-                {/* Pannello Feedback */}
+                {/* Pannello Feedback - Hidden for DevOps messages */}
+                {(selectedMessage as any)?.sourceType !== 'email_devops_workitem' && (
                 <div className="border-t bg-muted/10">
                   <div className="p-4">
                     <div className="flex items-center justify-between mb-3">
@@ -2586,6 +2541,7 @@ javascript:(function(){'use strict';function showNotification(message,isError){v
                     )}
                   </div>
                 </div>
+                )}
 
                 {/* Attachments Section */}
                 {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (() => {
