@@ -6,6 +6,7 @@ import { EmailForwardCleaner } from "./email-forward-cleaner";
 import { AttachmentsService } from "./attachments-service";
 import { ThreadingService } from "./threading-service";
 import { DevOpsEmailParser } from "./devops-email-parser";
+import { CalendarEmailParser } from "./calendar-email-parser";
 import crypto from "crypto";
 import type { InsertMessage } from "@shared/schema";
 
@@ -376,13 +377,27 @@ export class ImapEmailService {
         cleanedEmail.originalHtmlBody || parsed.html || null
       );
       
-      let sourceType: 'email_standard' | 'email_devops_workitem' | 'email_transport_request' = 'email_standard';
+      let sourceType: 'email_standard' | 'email_devops_workitem' | 'email_transport_request' | 'email_calendar_event' = 'email_standard';
       let externalMetadata: any = null;
       
       if (devOpsResult.isDevOpsEmail && devOpsResult.metadata) {
         sourceType = 'email_devops_workitem';
         externalMetadata = devOpsResult.metadata;
         console.log(`[IMAP] 🔵 Azure DevOps Work Item detected: #${devOpsResult.metadata.workItemId} - ${devOpsResult.metadata.workItemTitle}`);
+      } else {
+        // 📅 Calendar/Meeting Event Detection
+        const calendarResult = CalendarEmailParser.parse(
+          cleanedEmail.originalSubject || parsed.subject || '',
+          cleanedEmail.originalBody || parsed.text || '',
+          cleanedEmail.originalHtmlBody || parsed.html || '',
+          fromAddr?.address || ''
+        );
+        
+        if (calendarResult.isCalendarEmail && calendarResult.metadata) {
+          sourceType = 'email_calendar_event';
+          externalMetadata = calendarResult.metadata;
+          console.log(`[IMAP] 📅 Calendar Event detected: ${calendarResult.metadata.eventTitle} - ${calendarResult.metadata.eventDateTime || 'No date'}`);
+        }
       }
 
       const messageData: InsertMessage = {

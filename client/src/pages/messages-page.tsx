@@ -134,7 +134,7 @@ export default function MessagesPage() {
   const [selectedCustomReasonId, setSelectedCustomReasonId] = useState<string | null>(null);
   const [showThreadView, setShowThreadView] = useState(false);
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
-  const [filterType, setFilterType] = useState<"all" | "email" | "chat" | "sms" | "other" | "devops">("all");
+  const [filterType, setFilterType] = useState<"all" | "email" | "chat" | "sms" | "other" | "devops" | "calendar">("all");
   
   // Training mode states
   const [isTrainingMode, setIsTrainingMode] = useState(false);
@@ -634,6 +634,7 @@ export default function MessagesPage() {
       sms: messages.filter(m => m.type === 'sms').length,
       other: messages.filter(m => m.type === 'other').length,
       devops: messages.filter(m => (m as any).sourceType === 'email_devops_workitem').length,
+      calendar: messages.filter(m => (m as any).sourceType === 'email_calendar_event').length,
     };
     return counts;
   }, [messages]);
@@ -655,6 +656,9 @@ export default function MessagesPage() {
       if (filterType === "devops") {
         // DevOps tab: filter by sourceType
         if ((message as any).sourceType !== 'email_devops_workitem') return false;
+      } else if (filterType === "calendar") {
+        // Calendar tab: filter by sourceType
+        if ((message as any).sourceType !== 'email_calendar_event') return false;
       } else if (filterType !== "all" && message.type !== filterType) {
         return false;
       }
@@ -969,6 +973,10 @@ export default function MessagesPage() {
                     <TabsTrigger value="devops" data-testid="tab-devops">
                       <GitBranch className="h-4 w-4 mr-1" />
                       DevOps ({typeCounts.devops})
+                    </TabsTrigger>
+                    <TabsTrigger value="calendar" data-testid="tab-calendar">
+                      <Calendar className="h-4 w-4 mr-1" />
+                      Appuntamenti ({typeCounts.calendar})
                     </TabsTrigger>
                     <TabsTrigger value="other" data-testid="tab-other">
                       <FileText className="h-4 w-4 mr-1" />
@@ -1849,6 +1857,172 @@ export default function MessagesPage() {
                   })()}
                 </div>
 
+                {/* Calendar Event Panel */}
+                {(selectedMessage as any)?.sourceType === 'email_calendar_event' && (() => {
+                  const externalMeta = (selectedMessage as any)?.externalMetadata || {};
+                  
+                  return (
+                    <div className="border-t bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 p-4">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Calendar className="h-5 w-5 text-purple-600" />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Badge className="bg-purple-600 text-white">Appuntamento</Badge>
+                                {externalMeta.calendarType && (
+                                  <Badge variant="outline" className="text-purple-700 border-purple-300 capitalize">
+                                    {externalMeta.calendarType === 'teams' ? 'Microsoft Teams' : 
+                                     externalMeta.calendarType === 'google' ? 'Google Meet' :
+                                     externalMeta.calendarType === 'zoom' ? 'Zoom' : externalMeta.calendarType}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-lg font-semibold mt-1">
+                                {externalMeta.eventTitle || selectedMessage.subject}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {externalMeta.meetingLink && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(externalMeta.meetingLink, '_blank')}
+                              className="bg-purple-600 hover:bg-purple-700 text-white border-0"
+                              data-testid="button-join-meeting"
+                            >
+                              <ExternalLink className="h-4 w-4 mr-1" />
+                              Partecipa
+                            </Button>
+                          )}
+                        </div>
+                        
+                        {/* Dettagli evento */}
+                        <div className="space-y-3">
+                          {/* Data e Ora */}
+                          {(externalMeta.eventDateTime || externalMeta.eventDate) && (
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-purple-600" />
+                              <div>
+                                <span className="text-muted-foreground">Quando:</span>{' '}
+                                <span className="font-medium">{externalMeta.eventDateTime || externalMeta.eventDate}</span>
+                                {externalMeta.eventStartTime && externalMeta.eventEndTime && !externalMeta.eventDateTime && (
+                                  <span className="ml-2 text-sm">
+                                    {externalMeta.eventStartTime} - {externalMeta.eventEndTime}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Luogo */}
+                          {externalMeta.eventLocation && (
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-purple-600" />
+                              <div>
+                                <span className="text-muted-foreground">Dove:</span>{' '}
+                                <span className="font-medium">{externalMeta.eventLocation}</span>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Organizzatore */}
+                          {externalMeta.eventOrganizer && (
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-purple-600" />
+                              <div>
+                                <span className="text-muted-foreground">Organizzatore:</span>{' '}
+                                <span className="font-medium">{externalMeta.eventOrganizer}</span>
+                                {externalMeta.eventOrganizerEmail && (
+                                  <span className="text-sm text-muted-foreground ml-1">
+                                    ({externalMeta.eventOrganizerEmail})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Partecipanti */}
+                          {externalMeta.eventAttendees && externalMeta.eventAttendees.length > 0 && (
+                            <div className="flex items-start gap-2">
+                              <User className="h-4 w-4 text-purple-600 mt-0.5" />
+                              <div>
+                                <span className="text-muted-foreground">Partecipanti:</span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {externalMeta.eventAttendees.map((attendee: string, idx: number) => (
+                                    <Badge key={idx} variant="secondary" className="text-xs">
+                                      {attendee}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Dettagli Teams */}
+                        {externalMeta.calendarType === 'teams' && (
+                          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border space-y-2">
+                            <div className="text-sm font-medium text-purple-700 dark:text-purple-400">
+                              📞 Dettagli Microsoft Teams
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              {externalMeta.teamsMeetingId && (
+                                <div>
+                                  <span className="text-muted-foreground">ID Riunione:</span>{' '}
+                                  <span className="font-mono text-xs">{externalMeta.teamsMeetingId}</span>
+                                </div>
+                              )}
+                              {externalMeta.teamsPasscode && (
+                                <div>
+                                  <span className="text-muted-foreground">Passcode:</span>{' '}
+                                  <span className="font-mono text-xs">{externalMeta.teamsPasscode}</span>
+                                </div>
+                              )}
+                              {externalMeta.teamsDialIn && (
+                                <div>
+                                  <span className="text-muted-foreground">Dial-in:</span>{' '}
+                                  <span className="font-mono text-xs">{externalMeta.teamsDialIn}</span>
+                                </div>
+                              )}
+                              {externalMeta.teamsConferenceId && (
+                                <div>
+                                  <span className="text-muted-foreground">ID Conferenza:</span>{' '}
+                                  <span className="font-mono text-xs">{externalMeta.teamsConferenceId}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Dettagli Zoom */}
+                        {externalMeta.calendarType === 'zoom' && (
+                          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border space-y-2">
+                            <div className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                              📹 Dettagli Zoom
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              {externalMeta.zoomMeetingId && (
+                                <div>
+                                  <span className="text-muted-foreground">Meeting ID:</span>{' '}
+                                  <span className="font-mono text-xs">{externalMeta.zoomMeetingId}</span>
+                                </div>
+                              )}
+                              {externalMeta.zoomPasscode && (
+                                <div>
+                                  <span className="text-muted-foreground">Passcode:</span>{' '}
+                                  <span className="font-mono text-xs">{externalMeta.zoomPasscode}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Training Mode Controls - Visible only in training mode */}
                 {selectedMessage && isTrainingMode && (
                   <div className="border-t border-b bg-muted/30 p-4">
@@ -2099,8 +2273,9 @@ export default function MessagesPage() {
                 )}
 
                 {/* Message Body - occupa tutto lo spazio rimanente */}
-                {/* Hide body for DevOps messages - data is shown in the panel above */}
-                {(selectedMessage as any)?.sourceType !== 'email_devops_workitem' && (
+                {/* Hide body for DevOps and Calendar messages - data is shown in the panel above */}
+                {(selectedMessage as any)?.sourceType !== 'email_devops_workitem' && 
+                 (selectedMessage as any)?.sourceType !== 'email_calendar_event' && (
                 <div className="border-t">
                   <div className="h-[48rem] p-6 overflow-y-auto space-y-4">
                     {/* 🔍 DEBUG: Log rendering decision */}
@@ -2335,8 +2510,9 @@ export default function MessagesPage() {
                 </div>
                 )}
 
-                {/* Pannello Feedback - Hidden for DevOps messages */}
-                {(selectedMessage as any)?.sourceType !== 'email_devops_workitem' && (
+                {/* Pannello Feedback - Hidden for DevOps and Calendar messages */}
+                {(selectedMessage as any)?.sourceType !== 'email_devops_workitem' && 
+                 (selectedMessage as any)?.sourceType !== 'email_calendar_event' && (
                 <div className="border-t bg-muted/10">
                   <div className="p-4">
                     <div className="flex items-center justify-between mb-3">
