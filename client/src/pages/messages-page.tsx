@@ -1362,6 +1362,106 @@ export default function MessagesPage() {
                       </div>
                     );
                   })()}
+
+                  {/* Azure DevOps Work Item Panel */}
+                  {(selectedMessage as any)?.sourceType === 'email_devops_workitem' && (() => {
+                    const externalMeta = (selectedMessage as any)?.externalMetadata || {};
+                    const workItemId = externalMeta.workItemId;
+                    const workItemTitle = externalMeta.workItemTitle || selectedMessage.subject;
+                    const workItemType = externalMeta.workItemType;
+                    const workItemUrl = externalMeta.workItemUrl;
+                    
+                    const extractUrlFromBody = () => {
+                      const body = selectedMessage.htmlBody || selectedMessage.body || '';
+                      const urlPatterns = [
+                        /https?:\/\/dev\.azure\.com\/[^\s<>"]+\/_workitems\/edit\/\d+/gi,
+                        /https?:\/\/[^\s<>"]+\.visualstudio\.com\/[^\s<>"]+\/_workitems\/edit\/\d+/gi,
+                      ];
+                      for (const pattern of urlPatterns) {
+                        const match = body.match(pattern);
+                        if (match) return match[0];
+                      }
+                      return null;
+                    };
+                    
+                    const displayUrl = workItemUrl || extractUrlFromBody();
+                    
+                    return (
+                      <div 
+                        className="border rounded-lg p-4"
+                        style={{ backgroundColor: 'rgba(0, 120, 212, 0.1)', border: '1px solid rgba(0, 120, 212, 0.3)' }}
+                        data-testid="devops-workitem-panel"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <GitBranch className="h-5 w-5 text-blue-600" />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Badge className="bg-blue-600 text-white">Azure DevOps</Badge>
+                                {workItemType && (
+                                  <Badge variant="outline" className="text-blue-700 border-blue-300">
+                                    {workItemType}
+                                  </Badge>
+                                )}
+                                {workItemId > 0 && (
+                                  <Badge variant="outline" className="text-blue-700 border-blue-300">
+                                    #{workItemId}
+                                  </Badge>
+                                )}
+                              </div>
+                              {workItemTitle && (
+                                <p className="text-sm text-muted-foreground mt-1 max-w-md truncate">
+                                  {workItemTitle}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {displayUrl && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(displayUrl, '_blank')}
+                                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                                data-testid="button-open-workitem"
+                              >
+                                <ExternalLink className="h-4 w-4 mr-1" />
+                                Apri Work Item
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const instructions = `
+📋 ISTRUZIONI BOOKMARKLET DevOps
+
+1. Copia questo codice:
+javascript:(function(){'use strict';function showNotification(message,isError){var existing=document.getElementById('devops-extractor-notification');if(existing)existing.remove();var div=document.createElement('div');div.id='devops-extractor-notification';div.style.cssText='position:fixed;top:20px;right:20px;padding:16px 24px;border-radius:8px;z-index:999999;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:opacity 0.3s;'+(isError?'background:%23fee2e2;color:%23991b1b;border:1px solid %23fecaca;':'background:%23d1fae5;color:%23065f46;border:1px solid %23a7f3d0;');div.textContent=message;document.body.appendChild(div);setTimeout(function(){div.style.opacity='0';setTimeout(function(){div.remove();},300);},3000);}function getTextContent(selector){var el=document.querySelector(selector);return el?el.textContent.trim():null;}function extractWorkItemData(){var data={extractedAt:new Date().toISOString(),source:'bookmarklet',url:window.location.href};var idMatch=window.location.href.match(/_workitems\\/edit\\/(\\d+)/);if(idMatch){data.workItemId=parseInt(idMatch[1],10);}else{var idEl=document.querySelector('.work-item-form-id,.workitem-info-bar-id .id');if(idEl)data.workItemId=parseInt(idEl.textContent.replace('%23',''),10);}var typeEl=document.querySelector('.work-item-type-icon-control,.work-item-type-name,[aria-label*="Work item type"]');if(typeEl){data.workItemType=typeEl.getAttribute('aria-label')||typeEl.title||typeEl.textContent.trim();}var titleEl=document.querySelector('.work-item-form-title input,%23witc_1_txt,[aria-label="Title"]');if(titleEl){data.title=titleEl.value||titleEl.textContent.trim();}else{var titleContainer=document.querySelector('.work-item-form-title');if(titleContainer)data.title=titleContainer.textContent.trim();}var stateEl=document.querySelector('.work-item-state-dropdown,[aria-label="State"]');if(stateEl){data.state=stateEl.textContent.trim()||stateEl.value;}var assignedEl=document.querySelector('[aria-label="Assigned To"] .identity-picker-resolved-name,.workitem-identity-persona-name,.identity-picker-display-name');if(assignedEl){data.assignedTo=assignedEl.textContent.trim();}var descEl=document.querySelector('.wit-html-field-content,[data-field-name="Description"] .richeditor-container,.work-item-html-field');if(descEl){data.description=descEl.innerHTML;data.descriptionText=descEl.textContent.trim();}var urlMatch=window.location.href.match(/dev\\.azure\\.com\\/([^\\/]+)\\/([^\\/]+)/);if(urlMatch){data.organization=urlMatch[1];data.project=urlMatch[2];}return data;}try{var data=extractWorkItemData();if(!data.workItemId){showNotification('Impossibile trovare Work Item ID.',true);return;}var json=JSON.stringify(data,null,2);navigator.clipboard.writeText(json).then(function(){showNotification('✓ Work Item %23'+data.workItemId+' copiato!',false);}).catch(function(){var textarea=document.createElement('textarea');textarea.value=json;textarea.style.cssText='position:fixed;left:-9999px;';document.body.appendChild(textarea);textarea.select();document.execCommand('copy');textarea.remove();showNotification('✓ Work Item %23'+data.workItemId+' copiato!',false);});}catch(err){showNotification('Errore: '+err.message,true);}})();
+
+2. Crea un nuovo segnalibro nel browser
+3. Incolla il codice nel campo URL
+4. Vai sulla pagina del Work Item in Azure DevOps
+5. Clicca sul segnalibro per copiare i dati
+6. Incolla qui per arricchire il messaggio
+                                `.trim();
+                                navigator.clipboard.writeText(instructions);
+                                toast({
+                                  title: "Istruzioni copiate!",
+                                  description: "Le istruzioni per il bookmarklet sono state copiate negli appunti."
+                                });
+                              }}
+                              className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                              data-testid="button-copy-bookmarklet"
+                            >
+                              <Clipboard className="h-4 w-4 mr-1" />
+                              Bookmarklet
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Training Mode Controls */}
