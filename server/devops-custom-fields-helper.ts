@@ -8,6 +8,7 @@
 import { db } from "./db";
 import { devopsFieldMappings, customEntities, customFields, entityCustomValues } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { CustomMetadataService } from "./custom-metadata-service";
 
 export interface DevOpsFieldMapping {
   devopsFieldName: string;
@@ -198,6 +199,9 @@ export class DevOpsCustomFieldsHelper {
           });
       }
     }
+    
+    // Invalidate cache to ensure new custom fields are immediately visible
+    CustomMetadataService.invalidateOrganizationCache(organizationId);
   }
   
   /**
