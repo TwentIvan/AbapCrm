@@ -7848,6 +7848,288 @@ Format the response as professional documentation suitable for client delivery.`
     }
   });
 
+  // ========== Calendars API (Hierarchical Structure) ==========
+
+  app.get("/api/calendars", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      const calendars = await storage.getCalendars(userId, organizationId);
+      res.json(calendars);
+    } catch (error) {
+      console.error("Error fetching calendars:", error);
+      res.status(500).json({ error: "Failed to fetch calendars" });
+    }
+  });
+
+  app.get("/api/calendars/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      const calendar = await storage.getCalendar(req.params.id, userId, organizationId);
+      if (!calendar) return res.sendStatus(404);
+      res.json(calendar);
+    } catch (error) {
+      console.error("Error fetching calendar:", error);
+      res.status(500).json({ error: "Failed to fetch calendar" });
+    }
+  });
+
+  app.get("/api/calendars/partner/:partnerId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const calendars = await storage.getCalendarsByPartner(req.params.partnerId, organizationId);
+      res.json(calendars);
+    } catch (error) {
+      console.error("Error fetching partner calendars:", error);
+      res.status(500).json({ error: "Failed to fetch partner calendars" });
+    }
+  });
+
+  app.get("/api/calendars/:id/children", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const calendars = await storage.getChildCalendars(req.params.id, organizationId);
+      res.json(calendars);
+    } catch (error) {
+      console.error("Error fetching child calendars:", error);
+      res.status(500).json({ error: "Failed to fetch child calendars" });
+    }
+  });
+
+  app.post("/api/calendars", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      const calendar = await storage.createCalendar({
+        ...req.body,
+        userId,
+        organizationId,
+      });
+      res.status(201).json(calendar);
+    } catch (error) {
+      console.error("Error creating calendar:", error);
+      res.status(500).json({ error: "Failed to create calendar" });
+    }
+  });
+
+  app.put("/api/calendars/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      const calendar = await storage.updateCalendar(req.params.id, req.body, userId, organizationId);
+      if (!calendar) return res.sendStatus(404);
+      res.json(calendar);
+    } catch (error) {
+      console.error("Error updating calendar:", error);
+      res.status(500).json({ error: "Failed to update calendar" });
+    }
+  });
+
+  app.delete("/api/calendars/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      const deleted = await storage.deleteCalendar(req.params.id, userId, organizationId);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting calendar:", error);
+      res.status(500).json({ error: "Failed to delete calendar" });
+    }
+  });
+
+  // ========== AI Learning Patterns API ==========
+
+  app.get("/api/ai-learning-patterns", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const patternType = req.query.patternType as string | undefined;
+      const patterns = await storage.getAiLearningPatterns(organizationId, patternType);
+      res.json(patterns);
+    } catch (error) {
+      console.error("Error fetching AI learning patterns:", error);
+      res.status(500).json({ error: "Failed to fetch AI learning patterns" });
+    }
+  });
+
+  app.get("/api/ai-learning-patterns/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const pattern = await storage.getAiLearningPattern(req.params.id, organizationId);
+      if (!pattern) return res.sendStatus(404);
+      res.json(pattern);
+    } catch (error) {
+      console.error("Error fetching AI learning pattern:", error);
+      res.status(500).json({ error: "Failed to fetch AI learning pattern" });
+    }
+  });
+
+  app.post("/api/ai-learning-patterns", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      const pattern = await storage.createAiLearningPattern({
+        ...req.body,
+        userId,
+        organizationId,
+      });
+      res.status(201).json(pattern);
+    } catch (error) {
+      console.error("Error creating AI learning pattern:", error);
+      res.status(500).json({ error: "Failed to create AI learning pattern" });
+    }
+  });
+
+  app.put("/api/ai-learning-patterns/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const pattern = await storage.updateAiLearningPattern(req.params.id, req.body, organizationId);
+      if (!pattern) return res.sendStatus(404);
+      res.json(pattern);
+    } catch (error) {
+      console.error("Error updating AI learning pattern:", error);
+      res.status(500).json({ error: "Failed to update AI learning pattern" });
+    }
+  });
+
+  app.post("/api/ai-learning-patterns/:id/increment", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { accepted } = req.body;
+      const pattern = await storage.incrementPatternUsage(req.params.id, accepted === true);
+      if (!pattern) return res.sendStatus(404);
+      res.json(pattern);
+    } catch (error) {
+      console.error("Error incrementing AI learning pattern:", error);
+      res.status(500).json({ error: "Failed to increment AI learning pattern" });
+    }
+  });
+
+  app.delete("/api/ai-learning-patterns/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const deleted = await storage.deleteAiLearningPattern(req.params.id, organizationId);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting AI learning pattern:", error);
+      res.status(500).json({ error: "Failed to delete AI learning pattern" });
+    }
+  });
+
+  // ========== DevOps Field Mappings API ==========
+
+  app.get("/api/devops-field-mappings", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const mappings = await storage.getDevopsFieldMappings(organizationId);
+      res.json(mappings);
+    } catch (error) {
+      console.error("Error fetching DevOps field mappings:", error);
+      res.status(500).json({ error: "Failed to fetch DevOps field mappings" });
+    }
+  });
+
+  app.get("/api/devops-field-mappings/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const mapping = await storage.getDevopsFieldMapping(req.params.id, organizationId);
+      if (!mapping) return res.sendStatus(404);
+      res.json(mapping);
+    } catch (error) {
+      console.error("Error fetching DevOps field mapping:", error);
+      res.status(500).json({ error: "Failed to fetch DevOps field mapping" });
+    }
+  });
+
+  app.get("/api/devops-field-mappings/find", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const { devopsField, devopsValue } = req.query;
+      if (!devopsField || !devopsValue) {
+        return res.status(400).json({ error: "devopsField and devopsValue are required" });
+      }
+      const mapping = await storage.findDevopsFieldMapping(
+        organizationId,
+        devopsField as string,
+        devopsValue as string
+      );
+      res.json(mapping || null);
+    } catch (error) {
+      console.error("Error finding DevOps field mapping:", error);
+      res.status(500).json({ error: "Failed to find DevOps field mapping" });
+    }
+  });
+
+  app.post("/api/devops-field-mappings", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const mapping = await storage.createDevopsFieldMapping({
+        ...req.body,
+        organizationId,
+      });
+      res.status(201).json(mapping);
+    } catch (error) {
+      console.error("Error creating DevOps field mapping:", error);
+      res.status(500).json({ error: "Failed to create DevOps field mapping" });
+    }
+  });
+
+  app.put("/api/devops-field-mappings/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const mapping = await storage.updateDevopsFieldMapping(req.params.id, req.body, organizationId);
+      if (!mapping) return res.sendStatus(404);
+      res.json(mapping);
+    } catch (error) {
+      console.error("Error updating DevOps field mapping:", error);
+      res.status(500).json({ error: "Failed to update DevOps field mapping" });
+    }
+  });
+
+  app.post("/api/devops-field-mappings/:id/increment-usage", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const mapping = await storage.incrementMappingUsage(req.params.id);
+      if (!mapping) return res.sendStatus(404);
+      res.json(mapping);
+    } catch (error) {
+      console.error("Error incrementing DevOps field mapping usage:", error);
+      res.status(500).json({ error: "Failed to increment DevOps field mapping usage" });
+    }
+  });
+
+  app.delete("/api/devops-field-mappings/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const deleted = await storage.deleteDevopsFieldMapping(req.params.id, organizationId);
+      if (!deleted) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting DevOps field mapping:", error);
+      res.status(500).json({ error: "Failed to delete DevOps field mapping" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
