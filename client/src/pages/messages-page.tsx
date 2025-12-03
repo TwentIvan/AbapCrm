@@ -153,10 +153,10 @@ export default function MessagesPage() {
 
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
-    type: 4, // percentuale - ridotto per avvicinare a checkbox
-    fromEmail: 36,
-    subject: 38,
-    receivedAt: 22
+    type: 8, // percentuale
+    fromEmail: 35,
+    subject: 37,
+    receivedAt: 20
   });
   const [isResizing, setIsResizing] = useState(false);
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
@@ -1191,7 +1191,7 @@ export default function MessagesPage() {
                     <TableHeader>
                       <TableRow>
                         {/* Selection Checkbox Header */}
-                        <TableHead style={{ width: '20px', minWidth: '20px', maxWidth: '20px' }} className="p-0 pl-1">
+                        <TableHead style={{ width: '3%' }} className="p-0 pl-1">
                           <Checkbox
                             checked={filteredAndSortedMessages.length > 0 && selectedMessageIds.length === filteredAndSortedMessages.length}
                             onCheckedChange={(checked) => {
@@ -1420,7 +1420,7 @@ export default function MessagesPage() {
                                 onClick={() => handleSelectMessage(message)}
                               >
                                 {/* Colonna Checkbox */}
-                                <TableCell style={{ width: '20px', minWidth: '20px', maxWidth: '20px' }} className="p-0 pl-1">
+                                <TableCell style={{ width: '3%' }} className="p-0 pl-1">
                                   <Checkbox
                                     checked={selectedMessageIds.includes(message.id)}
                                     onCheckedChange={(checked) => {
