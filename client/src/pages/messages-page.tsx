@@ -2719,8 +2719,10 @@ export default function MessagesPage() {
                 </div>
                 )}
 
-                {/* Attachments Section - Hidden for DevOps messages (they only have work item attachments) */}
-                {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (selectedMessage as any)?.sourceType !== 'email_devops_workitem' && (() => {
+                {/* Attachments Section - Hidden for DevOps and Calendar messages */}
+                {selectedMessage.attachments && selectedMessage.attachments.length > 0 && 
+                 (selectedMessage as any)?.sourceType !== 'email_devops_workitem' && 
+                 (selectedMessage as any)?.sourceType !== 'email_calendar_event' && (() => {
                   // Deduplicazione degli allegati - raggruppa per nome file originale (senza messageId prefix)
                   const uniqueAttachments = selectedMessage.attachments.reduce((acc: { originalFilename: string; fullFilename: string; count: number }[], fullFilename: string) => {
                     // Estrai il filename originale rimuovendo il prefisso messageId_
