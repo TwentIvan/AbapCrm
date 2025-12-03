@@ -153,10 +153,10 @@ export default function MessagesPage() {
 
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
-    type: 8, // percentuale
-    fromEmail: 35,
-    subject: 37,
-    receivedAt: 20
+    type: 4, // percentuale - stessa spaziatura del checkbox
+    fromEmail: 36,
+    subject: 38,
+    receivedAt: 19
   });
   const [isResizing, setIsResizing] = useState(false);
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
