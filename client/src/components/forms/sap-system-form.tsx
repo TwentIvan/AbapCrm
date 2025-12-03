@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Server, Building, Globe } from "lucide-react";
+import { Loader2, Server, Building, Globe, Link, FileText, Cloud } from "lucide-react";
 
 // Create a form-specific schema with proper types
 const formSchema = z.object({
@@ -21,6 +21,10 @@ const formSchema = z.object({
   systemNumber: z.string().min(1, "System number richiesto"),
   applicationServerPort: z.coerce.number().min(1).max(65535).optional(),
   landscape: z.string().optional(),
+  landscapeType: z.string().optional(),
+  landscapeLevel: z.coerce.number().min(1).max(10).optional().nullable(),
+  cloudLink: z.string().url("URL non valido").optional().nullable().or(z.literal("")),
+  sapShortcutFile: z.string().optional().nullable(),
   description: z.string().optional(),
   partnerId: z.string().optional().nullable(),
   systemType: z.string().optional(),
@@ -62,6 +66,10 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
       systemNumber: system?.systemNumber || "00",
       applicationServerPort: system?.applicationServerPort || 3200,
       landscape: system?.landscape || "development",
+      landscapeType: (system as any)?.landscapeType || "development",
+      landscapeLevel: (system as any)?.landscapeLevel || null,
+      cloudLink: (system as any)?.cloudLink || "",
+      sapShortcutFile: (system as any)?.sapShortcutFile || "",
       description: system?.description || "",
       partnerId: system?.partnerId || undefined,
       defaultUsername: system?.defaultUsername || "",
@@ -162,7 +170,7 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Server className="h-5 w-5" />
-                Basic Information
+                Informazioni Base
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -171,12 +179,12 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>System Name</FormLabel>
+                    <FormLabel>Nome Sistema</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Production ERP" {...field} value={field.value || ''} data-testid="input-name" />
+                      <Input placeholder="es. ERP Produzione" {...field} value={field.value || ''} data-testid="input-name" />
                     </FormControl>
                     <FormDescription>
-                      Descriptive name for this SAP system
+                      Nome descrittivo per questo sistema SAP
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -191,14 +199,14 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                     <FormLabel>System Number</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="e.g. 00" 
+                        placeholder="es. 00" 
                         {...field} 
                         maxLength={2}
                         data-testid="input-system-number"
                       />
                     </FormControl>
                     <FormDescription>
-                      2-digit SAP system instance number
+                      Numero istanza SAP a 2 cifre
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -207,20 +215,23 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
 
               <FormField
                 control={form.control}
-                name="landscape"
+                name="landscapeType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Landscape</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
+                    <FormLabel>Tipo Landscape</FormLabel>
+                    <Select onValueChange={(value) => {
+                      field.onChange(value);
+                      form.setValue('landscape', value);
+                    }} defaultValue={field.value || undefined}>
                       <FormControl>
-                        <SelectTrigger data-testid="select-landscape">
-                          <SelectValue placeholder="Select landscape" />
+                        <SelectTrigger data-testid="select-landscape-type">
+                          <SelectValue placeholder="Seleziona tipo landscape" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="development">
                           <div className="flex items-center gap-2">
-                            <Badge className="bg-blue-100 text-blue-800">Development</Badge>
+                            <Badge className="bg-blue-100 text-blue-800">Sviluppo</Badge>
                           </div>
                         </SelectItem>
                         <SelectItem value="test">
@@ -228,15 +239,54 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                             <Badge className="bg-yellow-100 text-yellow-800">Test</Badge>
                           </div>
                         </SelectItem>
+                        <SelectItem value="quality">
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-purple-100 text-purple-800">Quality</Badge>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="pre_production">
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-orange-100 text-orange-800">Pre-Produzione</Badge>
+                          </div>
+                        </SelectItem>
                         <SelectItem value="production">
                           <div className="flex items-center gap-2">
-                            <Badge className="bg-red-100 text-red-800">Production</Badge>
+                            <Badge className="bg-red-100 text-red-800">Produzione</Badge>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="other">
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-gray-100 text-gray-800">Altro</Badge>
                           </div>
                         </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      Select the landscape type for this SAP system
+                      Seleziona il tipo di landscape per questo sistema SAP
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="landscapeLevel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Livello Landscape</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="es. 1, 2, 3..." 
+                        {...field}
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : null)}
+                        data-testid="input-landscape-level"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Livello numerico del landscape (1=sviluppo, 5=produzione)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -272,7 +322,7 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="h-5 w-5" />
-                Connection Details
+                Dettagli Connessione
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -283,10 +333,10 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                   <FormItem>
                     <FormLabel>Server Host</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. sap-prod.company.com" {...field} data-testid="input-server-host" />
+                      <Input placeholder="es. sap-prod.azienda.com" {...field} data-testid="input-server-host" />
                     </FormControl>
                     <FormDescription>
-                      Server hostname or IP address
+                      Hostname o indirizzo IP del server
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -299,7 +349,7 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                   name="applicationServerPort"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Application Server Port</FormLabel>
+                      <FormLabel>Porta Application Server</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
@@ -310,7 +360,7 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                         />
                       </FormControl>
                       <FormDescription>
-                        SAP application server port
+                        Porta SAP application server
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -345,11 +395,11 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                 name="partnerId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Associated Partner</FormLabel>
+                    <FormLabel>Partner Associato</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || undefined}>
                       <FormControl>
                         <SelectTrigger data-testid="select-partner">
-                          <SelectValue placeholder="Select a partner (optional)" />
+                          <SelectValue placeholder="Seleziona un partner (opzionale)" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -367,7 +417,58 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      Link this SAP system to a business partner
+                      Collega questo sistema SAP a un partner
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="cloudLink"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <Cloud className="h-4 w-4" />
+                      Link Cloud
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="url"
+                        placeholder="https://my-company.s4hana.cloud.sap" 
+                        {...field}
+                        value={field.value || ''}
+                        data-testid="input-cloud-link"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      URL per sistemi SAP cloud (BTP, S/4HANA Cloud, etc.)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="sapShortcutFile"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      File SAP Shortcut
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Nome file .sap (es. PRD_SE80.sap)" 
+                        {...field}
+                        value={field.value || ''}
+                        data-testid="input-sap-shortcut-file"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      File .sap shortcut da usare per l'accesso diretto al sistema
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -436,11 +537,11 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
         {/* Submit Button */}
         <div className="flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={onSuccess} data-testid="button-cancel">
-            Cancel
+            Annulla
           </Button>
           <Button type="submit" disabled={isLoading} data-testid="button-submit">
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {system ? "Update System" : "Create System"}
+            {system ? "Aggiorna Sistema" : "Crea Sistema"}
           </Button>
         </div>
       </form>

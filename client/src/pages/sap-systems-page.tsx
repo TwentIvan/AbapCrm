@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Server, MoreHorizontal, Edit, Trash2, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -24,16 +25,22 @@ import SapSystemForm from "../components/forms/sap-system-form";
 import SapLandscapeImport from "../components/forms/sap-landscape-import";
 import SapSystemFormContainer from "../components/forms/sap-system-form-container";
 
-const landscapeColors = {
+const landscapeColors: Record<string, string> = {
   development: "bg-blue-100 text-blue-800",
   test: "bg-yellow-100 text-yellow-800",
+  quality: "bg-purple-100 text-purple-800",
+  pre_production: "bg-orange-100 text-orange-800",
   production: "bg-red-100 text-red-800",
+  other: "bg-gray-100 text-gray-800",
 };
 
-const landscapeLabels = {
-  development: "Development",
+const landscapeLabels: Record<string, string> = {
+  development: "Sviluppo",
   test: "Test",
-  production: "Production",
+  quality: "Quality",
+  pre_production: "Pre-Produzione",
+  production: "Produzione",
+  other: "Altro",
 };
 
 export default function SapSystemsPage() {
@@ -336,8 +343,8 @@ export default function SapSystemsPage() {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
-          title="SAP Systems" 
-          subtitle="Manage your SAP system configurations and connections"
+          title="Sistemi SAP" 
+          subtitle="Gestisci le configurazioni e le connessioni ai sistemi SAP"
         />
         <main className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
@@ -355,15 +362,23 @@ export default function SapSystemsPage() {
                 onDeleteSelected={() => setShowBulkDeleteDialog(true)}
                 hasSelection={selectedSystems.length > 0}
                 customActions={
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setShowImportDialog(true)} 
-                    data-testid="button-import-xml"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import XML
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => setShowImportDialog(true)} 
+                          data-testid="button-import-xml"
+                        >
+                          <Upload className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Importa da XML</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 }
               />
             </div>
@@ -395,20 +410,20 @@ export default function SapSystemsPage() {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete SAP System</AlertDialogTitle>
+            <AlertDialogTitle>Elimina Sistema SAP</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{selectedSystem?.name}"? This action cannot be undone.
-              All associated credentials and transport requests will also be removed.
+              Sei sicuro di voler eliminare "{selectedSystem?.name}"? Questa azione non può essere annullata.
+              Verranno rimosse anche tutte le credenziali e le transport request associate.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => selectedSystem && deleteMutation.mutate(selectedSystem.id)}
               className="bg-red-600 hover:bg-red-700"
               data-testid="button-confirm-delete"
             >
-              Delete
+              Elimina
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -418,20 +433,20 @@ export default function SapSystemsPage() {
       <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Selected SAP Systems</AlertDialogTitle>
+            <AlertDialogTitle>Elimina Sistemi SAP Selezionati</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {selectedSystems.length} selected SAP systems? This action cannot be undone.
-              All associated credentials and transport requests will also be removed.
+              Sei sicuro di voler eliminare {selectedSystems.length} sistemi SAP selezionati? Questa azione non può essere annullata.
+              Verranno rimosse anche tutte le credenziali e le transport request associate.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => bulkDeleteMutation.mutate(selectedSystems.map(s => s.id))}
               className="bg-red-600 hover:bg-red-700"
               data-testid="button-confirm-bulk-delete"
             >
-              Delete All
+              Elimina Tutti
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
