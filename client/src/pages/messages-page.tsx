@@ -534,9 +534,9 @@ export default function MessagesPage() {
       return <Calendar className="h-6 w-6 text-purple-500" />;
     }
     switch (type) {
-      case 'email': return <Mail className="h-6 w-6 text-blue-600" />;
-      case 'chat': return <MessageSquare className="h-6 w-6 text-blue-600" />;
-      case 'sms': return <MessageSquare className="h-6 w-6 text-blue-600" />;
+      case 'email': return <Mail className="h-6 w-6 text-blue-500" />;
+      case 'chat': return <MessageSquare className="h-6 w-6 text-green-500" />;
+      case 'sms': return <Smartphone className="h-6 w-6 text-yellow-500" />;
       case 'other': return <FileText className="h-6 w-6 text-gray-500" />;
       default: return <Inbox className="h-6 w-6 text-slate-600" />;
     }
@@ -637,14 +637,21 @@ export default function MessagesPage() {
 
   // Calculate message counts by type
   const typeCounts = React.useMemo(() => {
+    const devopsCount = messages.filter(m => (m as any).sourceType === 'email_devops_workitem').length;
+    const calendarCount = messages.filter(m => (m as any).sourceType === 'email_calendar_event').length;
+    const pureEmailCount = messages.filter(m => 
+      m.type === 'email' && 
+      (m as any).sourceType !== 'email_devops_workitem' && 
+      (m as any).sourceType !== 'email_calendar_event'
+    ).length;
     const counts = {
       all: messages.length,
-      email: messages.filter(m => m.type === 'email').length,
+      email: pureEmailCount,
       chat: messages.filter(m => m.type === 'chat').length,
       sms: messages.filter(m => m.type === 'sms').length,
       other: messages.filter(m => m.type === 'other').length,
-      devops: messages.filter(m => (m as any).sourceType === 'email_devops_workitem').length,
-      calendar: messages.filter(m => (m as any).sourceType === 'email_calendar_event').length,
+      devops: devopsCount,
+      calendar: calendarCount,
     };
     return counts;
   }, [messages]);
@@ -652,9 +659,14 @@ export default function MessagesPage() {
   // Calculate unread counts by type
   const unreadCounts = React.useMemo(() => {
     const unreadMessages = messages.filter(m => m.status === 'unread');
+    const pureEmailUnread = unreadMessages.filter(m => 
+      m.type === 'email' && 
+      (m as any).sourceType !== 'email_devops_workitem' && 
+      (m as any).sourceType !== 'email_calendar_event'
+    ).length;
     const counts = {
       all: unreadMessages.length,
-      email: unreadMessages.filter(m => m.type === 'email').length,
+      email: pureEmailUnread,
       chat: unreadMessages.filter(m => m.type === 'chat').length,
       sms: unreadMessages.filter(m => m.type === 'sms').length,
       other: unreadMessages.filter(m => m.type === 'other').length,
@@ -1009,12 +1021,12 @@ export default function MessagesPage() {
                           data-testid="tab-all"
                           className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-slate-400 dark:hover:border-slate-500 transition-all data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:border-slate-600 data-[state=active]:shadow-lg"
                         >
-                          <Inbox className="h-6 w-6" />
-                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-slate-600 text-white rounded-full px-1.5 shadow-md">
+                          <Inbox className="h-5 w-5" />
+                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-slate-600 text-white rounded px-1 mt-0.5">
                             {typeCounts.all}
                           </span>
                           {unreadCounts.all > 0 && (
-                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                            <span className="absolute -top-2 -left-2 min-w-[20px] h-[20px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1 shadow-md animate-pulse">
                               {unreadCounts.all}
                             </span>
                           )}
@@ -1033,12 +1045,12 @@ export default function MessagesPage() {
                           data-testid="tab-email"
                           className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
                         >
-                          <Mail className="h-6 w-6" />
-                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
+                          <Mail className="h-5 w-5" />
+                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded px-1 mt-0.5">
                             {typeCounts.email}
                           </span>
                           {unreadCounts.email > 0 && (
-                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                            <span className="absolute -top-2 -left-2 min-w-[20px] h-[20px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1 shadow-md animate-pulse">
                               {unreadCounts.email}
                             </span>
                           )}
@@ -1057,12 +1069,12 @@ export default function MessagesPage() {
                           data-testid="tab-chat"
                           className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-green-300 dark:hover:border-green-600 transition-all data-[state=active]:bg-green-500 data-[state=active]:text-white data-[state=active]:border-green-500 data-[state=active]:shadow-lg"
                         >
-                          <MessageSquare className="h-6 w-6" />
-                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-green-500 text-white rounded-full px-1.5 shadow-md">
+                          <MessageSquare className="h-5 w-5" />
+                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-green-500 text-white rounded px-1 mt-0.5">
                             {typeCounts.chat}
                           </span>
                           {unreadCounts.chat > 0 && (
-                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                            <span className="absolute -top-2 -left-2 min-w-[20px] h-[20px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1 shadow-md animate-pulse">
                               {unreadCounts.chat}
                             </span>
                           )}
@@ -1081,12 +1093,12 @@ export default function MessagesPage() {
                           data-testid="tab-sms"
                           className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-yellow-400 dark:hover:border-yellow-500 transition-all data-[state=active]:bg-yellow-500 data-[state=active]:text-white data-[state=active]:border-yellow-500 data-[state=active]:shadow-lg"
                         >
-                          <Smartphone className="h-6 w-6" />
-                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-yellow-500 text-white rounded-full px-1.5 shadow-md">
+                          <Smartphone className="h-5 w-5" />
+                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-yellow-500 text-white rounded px-1 mt-0.5">
                             {typeCounts.sms}
                           </span>
                           {unreadCounts.sms > 0 && (
-                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                            <span className="absolute -top-2 -left-2 min-w-[20px] h-[20px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1 shadow-md animate-pulse">
                               {unreadCounts.sms}
                             </span>
                           )}
@@ -1105,12 +1117,12 @@ export default function MessagesPage() {
                           data-testid="tab-devops"
                           className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-orange-300 dark:hover:border-orange-600 transition-all data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:border-orange-500 data-[state=active]:shadow-lg"
                         >
-                          <GitBranch className="h-6 w-6" />
-                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-orange-500 text-white rounded-full px-1.5 shadow-md">
+                          <GitBranch className="h-5 w-5" />
+                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-orange-500 text-white rounded px-1 mt-0.5">
                             {typeCounts.devops}
                           </span>
                           {unreadCounts.devops > 0 && (
-                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                            <span className="absolute -top-2 -left-2 min-w-[20px] h-[20px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1 shadow-md animate-pulse">
                               {unreadCounts.devops}
                             </span>
                           )}
@@ -1129,12 +1141,12 @@ export default function MessagesPage() {
                           data-testid="tab-calendar"
                           className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:border-purple-500 data-[state=active]:shadow-lg"
                         >
-                          <Calendar className="h-6 w-6" />
-                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-purple-500 text-white rounded-full px-1.5 shadow-md">
+                          <Calendar className="h-5 w-5" />
+                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-purple-500 text-white rounded px-1 mt-0.5">
                             {typeCounts.calendar}
                           </span>
                           {unreadCounts.calendar > 0 && (
-                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                            <span className="absolute -top-2 -left-2 min-w-[20px] h-[20px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1 shadow-md animate-pulse">
                               {unreadCounts.calendar}
                             </span>
                           )}
@@ -1153,12 +1165,12 @@ export default function MessagesPage() {
                           data-testid="tab-other"
                           className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-500 transition-all data-[state=active]:bg-gray-500 data-[state=active]:text-white data-[state=active]:border-gray-500 data-[state=active]:shadow-lg"
                         >
-                          <FileText className="h-6 w-6" />
-                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-gray-500 text-white rounded-full px-1.5 shadow-md">
+                          <FileText className="h-5 w-5" />
+                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-gray-500 text-white rounded px-1 mt-0.5">
                             {typeCounts.other}
                           </span>
                           {unreadCounts.other > 0 && (
-                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                            <span className="absolute -top-2 -left-2 min-w-[20px] h-[20px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1 shadow-md animate-pulse">
                               {unreadCounts.other}
                             </span>
                           )}
@@ -1179,7 +1191,7 @@ export default function MessagesPage() {
                     <TableHeader>
                       <TableRow>
                         {/* Selection Checkbox Header */}
-                        <TableHead style={{ width: '28px' }} className="px-1">
+                        <TableHead style={{ width: '20px', minWidth: '20px', maxWidth: '20px' }} className="p-0 pl-1">
                           <Checkbox
                             checked={filteredAndSortedMessages.length > 0 && selectedMessageIds.length === filteredAndSortedMessages.length}
                             onCheckedChange={(checked) => {
@@ -1408,7 +1420,7 @@ export default function MessagesPage() {
                                 onClick={() => handleSelectMessage(message)}
                               >
                                 {/* Colonna Checkbox */}
-                                <TableCell style={{ width: '28px' }} className="px-1">
+                                <TableCell style={{ width: '20px', minWidth: '20px', maxWidth: '20px' }} className="p-0 pl-1">
                                   <Checkbox
                                     checked={selectedMessageIds.includes(message.id)}
                                     onCheckedChange={(checked) => {
