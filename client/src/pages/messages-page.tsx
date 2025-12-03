@@ -861,75 +861,6 @@ export default function MessagesPage() {
           subtitle="Gestisci email, chat, SMS e altri messaggi con suggerimenti AI"
         />
         
-        <div className="px-6 py-2 border-b">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              {(filterType === "chat" || filterType === "sms" || filterType === "other") && (
-                <div className="flex items-center text-sm text-muted-foreground bg-muted px-3 py-1 rounded-md">
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                  Solo inserimento manuale - Usa il pulsante "+" per aggiungere
-                </div>
-              )}
-            </div>
-            {messages.length > 0 && (
-              <div className="flex items-center space-x-2">
-                <Button 
-                  onClick={() => {
-                    const messagesToAnalyze = selectedMessageIds.length > 0 
-                      ? selectedMessageIds 
-                      : (selectedMessage ? [selectedMessage.id] : []);
-                    if (messagesToAnalyze.length > 0) {
-                      // Process each message sequentially
-                      messagesToAnalyze.forEach(id => analyzeProjectMutation.mutate(id));
-                    }
-                  }}
-                  disabled={analyzeProjectMutation.isPending || (!selectedMessage && selectedMessageIds.length === 0)}
-                  size="sm"
-                  data-testid="button-analyze-project"
-                  className="bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
-                >
-                  <Sparkles className="h-4 w-4 mr-2 text-purple-500" />
-                  {analyzeProjectMutation.isPending 
-                    ? 'Analizzando...' 
-                    : selectedMessageIds.length > 0 
-                      ? `Analizza ${selectedMessageIds.length} messaggi` 
-                      : 'Analizza con AI'}
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button 
-                      size="sm"
-                      variant="destructive"
-                      data-testid="button-clear-all-messages"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Elimina tutti
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Eliminare tutti i messaggi?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Questa azione eliminerà tutti i {messages.length} messaggi email. 
-                        Potrai ricaricarli usando il bottone "Sincronizza" per vedere la nuova formattazione HTML.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Annulla</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => clearAllMessagesMutation.mutate()}
-                        disabled={clearAllMessagesMutation.isPending}
-                        className="bg-destructive hover:bg-destructive/90"
-                      >
-                        {clearAllMessagesMutation.isPending ? "Eliminando..." : "Elimina tutti"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            )}
-          </div>
-        </div>
         <main className="p-6">
           <PanelGroup direction="horizontal" className="h-[calc(100vh-120px)]">
             <Panel defaultSize={40} minSize={25} maxSize={60}>
@@ -950,7 +881,97 @@ export default function MessagesPage() {
                 {/* Filter tabs by message type - Icon buttons with badges */}
                 <TooltipProvider delayDuration={300}>
                 <Tabs value={filterType} onValueChange={(value) => setFilterType(value as typeof filterType)} className="w-full">
-                  <TabsList className="flex justify-center gap-3 h-auto p-3 bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-xl">
+                  <TabsList className="flex justify-start gap-3 h-auto p-3 bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-xl">
+                    {/* THU AI Button */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={() => {
+                            const messagesToAnalyze = selectedMessageIds.length > 0 
+                              ? selectedMessageIds 
+                              : (selectedMessage ? [selectedMessage.id] : []);
+                            if (messagesToAnalyze.length > 0) {
+                              messagesToAnalyze.forEach(id => analyzeProjectMutation.mutate(id));
+                            }
+                          }}
+                          disabled={analyzeProjectMutation.isPending || (!selectedMessage && selectedMessageIds.length === 0)}
+                          variant="outline"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all disabled:opacity-50"
+                          data-testid="button-analyze-project"
+                        >
+                          <div className="relative flex flex-col items-center">
+                            <div className="flex items-baseline space-x-0">
+                              <span className="text-[10px] font-black text-blue-600 dark:text-blue-400">T</span>
+                              <span className="text-sm font-black text-blue-500 dark:text-blue-300">H</span>
+                              <span className="text-sm font-black text-blue-600 dark:text-blue-400">U</span>
+                            </div>
+                            <span className="text-[8px] font-bold text-purple-500 dark:text-purple-400 -mt-1">AI</span>
+                          </div>
+                          {selectedMessageIds.length > 0 && (
+                            <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-purple-500 text-white rounded-full px-1 shadow-md">
+                              {selectedMessageIds.length}
+                            </span>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-purple-500 text-white">
+                        <p>{analyzeProjectMutation.isPending 
+                          ? 'Analizzando...' 
+                          : selectedMessageIds.length > 0 
+                            ? `Analizza ${selectedMessageIds.length} messaggi con AI` 
+                            : 'Analizza con AI'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    
+                    {/* Delete Selected Button */}
+                    <AlertDialog>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              disabled={selectedMessageIds.length === 0}
+                              variant="outline"
+                              className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-red-200 dark:border-red-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-red-400 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all disabled:opacity-50"
+                              data-testid="button-delete-selected"
+                            >
+                              <Trash2 className="h-6 w-6 text-red-500" />
+                              {selectedMessageIds.length > 0 && (
+                                <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1 shadow-md">
+                                  {selectedMessageIds.length}
+                                </span>
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="bg-red-500 text-white">
+                          <p>{selectedMessageIds.length > 0 
+                            ? `Elimina ${selectedMessageIds.length} selezionati` 
+                            : 'Seleziona messaggi da eliminare'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Eliminare i messaggi selezionati?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Questa azione eliminerà {selectedMessageIds.length} messaggi selezionati. 
+                            L'operazione non può essere annullata.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annulla</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => {
+                              selectedMessageIds.forEach(id => deleteMessageMutation.mutate(id));
+                              setSelectedMessageIds([]);
+                            }}
+                            className="bg-destructive hover:bg-destructive/90"
+                          >
+                            Elimina {selectedMessageIds.length} messaggi
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    
                     {/* Sync Button */}
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -1148,6 +1169,20 @@ export default function MessagesPage() {
                   <Table style={{ tableLayout: 'fixed', width: '100%' }}>
                     <TableHeader>
                       <TableRow>
+                        {/* Selection Checkbox Header */}
+                        <TableHead style={{ width: '40px' }} className="px-2">
+                          <Checkbox
+                            checked={filteredAndSortedMessages.length > 0 && selectedMessageIds.length === filteredAndSortedMessages.length}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedMessageIds(filteredAndSortedMessages.map(m => m.id));
+                              } else {
+                                setSelectedMessageIds([]);
+                              }
+                            }}
+                            data-testid="checkbox-select-all"
+                          />
+                        </TableHead>
                         {filterType === 'all' && (
                           <TableHead 
                             className="cursor-pointer hover:bg-muted/50 relative"
@@ -1342,7 +1377,7 @@ export default function MessagesPage() {
                           // Normal Message View
                           filteredAndSortedMessages.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={4} className="h-32 text-center">
+                              <TableCell colSpan={5} className="h-32 text-center">
                                 <div className="flex flex-col items-center justify-center text-muted-foreground">
                                   <Mail className="h-8 w-8 mb-2 opacity-50" />
                                   <p>{searchTerm ? 'Nessun messaggio trovato' : 'Nessun messaggio ricevuto'}</p>
@@ -1360,9 +1395,24 @@ export default function MessagesPage() {
                                 data-testid={`message-item-${message.id}`}
                                 className={`cursor-pointer transition-colors ${
                                   selectedMessage?.id === message.id ? 'bg-muted' : ''
-                                } ${message.status === 'unread' ? 'border-l-4 border-l-blue-500' : ''}`}
+                                } ${selectedMessageIds.includes(message.id) ? 'bg-purple-50 dark:bg-purple-900/20' : ''} ${message.status === 'unread' ? 'border-l-4 border-l-blue-500' : ''}`}
                                 onClick={() => handleSelectMessage(message)}
                               >
+                                {/* Colonna Checkbox */}
+                                <TableCell style={{ width: '40px' }} className="px-2">
+                                  <Checkbox
+                                    checked={selectedMessageIds.includes(message.id)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setSelectedMessageIds(prev => [...prev, message.id]);
+                                      } else {
+                                        setSelectedMessageIds(prev => prev.filter(id => id !== message.id));
+                                      }
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    data-testid={`checkbox-message-${message.id}`}
+                                  />
+                                </TableCell>
                                 {/* Colonna Tipo */}
                                 {filterType === 'all' && (
                                   <TableCell style={{ width: `${columnWidths.type}%` }}>
