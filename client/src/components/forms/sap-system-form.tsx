@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Server, Building, Globe, Link, FileText, Cloud } from "lucide-react";
+import { Loader2, Server, Building, Globe, Link, FileText, Cloud, Search, FolderOpen } from "lucide-react";
 
 // Create a form-specific schema with proper types
 const formSchema = z.object({
@@ -22,6 +22,7 @@ const formSchema = z.object({
   applicationServerPort: z.coerce.number().min(1).max(65535).optional(),
   landscape: z.string().optional(),
   landscapeType: z.string().optional(),
+  landscapeTypeCustom: z.string().optional().nullable(),
   landscapeLevel: z.coerce.number().min(1).max(10).optional().nullable(),
   cloudLink: z.string().url("URL non valido").optional().nullable().or(z.literal("")),
   sapShortcutFile: z.string().optional().nullable(),
@@ -57,6 +58,9 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
     },
   });
 
+  const existingLandscapeType = (system as any)?.landscapeType || system?.landscape || "development";
+  const isCustomLandscape = !["development", "test", "quality", "pre_production", "production"].includes(existingLandscapeType);
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -66,7 +70,8 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
       systemNumber: system?.systemNumber || "00",
       applicationServerPort: system?.applicationServerPort || 3200,
       landscape: system?.landscape || "development",
-      landscapeType: (system as any)?.landscapeType || "development",
+      landscapeType: isCustomLandscape ? "other" : existingLandscapeType,
+      landscapeTypeCustom: isCustomLandscape ? existingLandscapeType : "",
       landscapeLevel: (system as any)?.landscapeLevel || null,
       cloudLink: (system as any)?.cloudLink || "",
       sapShortcutFile: (system as any)?.sapShortcutFile || "",
@@ -77,14 +82,26 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
       isActive: system?.isActive ?? true,
     },
   });
+  
+  const watchLandscapeType = form.watch("landscapeType");
 
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
+      // Handle custom landscape type
+      const effectiveLandscapeType = data.landscapeType === "other" && data.landscapeTypeCustom
+        ? data.landscapeTypeCustom
+        : data.landscapeType;
+      
       // Convert systemId to uppercase before sending
       const payload = {
         ...data,
         systemId: data.systemId?.toUpperCase() || '',
+        landscapeType: effectiveLandscapeType,
+        landscape: effectiveLandscapeType,
       };
+      // Remove the custom field from payload
+      delete (payload as any).landscapeTypeCustom;
+      
       const response = await fetch("/api/sap-systems", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -116,11 +133,21 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
 
   const updateMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
+      // Handle custom landscape type
+      const effectiveLandscapeType = data.landscapeType === "other" && data.landscapeTypeCustom
+        ? data.landscapeTypeCustom
+        : data.landscapeType;
+      
       // Convert systemId to uppercase before sending
       const payload = {
         ...data,
         systemId: data.systemId?.toUpperCase() || '',
+        landscapeType: effectiveLandscapeType,
+        landscape: effectiveLandscapeType,
       };
+      // Remove the custom field from payload
+      delete (payload as any).landscapeTypeCustom;
+      
       const response = await fetch(`/api/sap-systems/${system!.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -221,7 +248,10 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                     <FormLabel>Tipo Landscape</FormLabel>
                     <Select onValueChange={(value) => {
                       field.onChange(value);
-                      form.setValue('landscape', value);
+                      if (value !== "other") {
+                        form.setValue('landscape', value);
+                        form.setValue('landscapeTypeCustom', '');
+                      }
                     }} defaultValue={field.value || undefined}>
                       <FormControl>
                         <SelectTrigger data-testid="select-landscape-type">
@@ -256,7 +286,7 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                         </SelectItem>
                         <SelectItem value="other">
                           <div className="flex items-center gap-2">
-                            <Badge className="bg-gray-100 text-gray-800">Altro</Badge>
+                            <Badge className="bg-gray-100 text-gray-800">Altro...</Badge>
                           </div>
                         </SelectItem>
                       </SelectContent>
@@ -268,6 +298,34 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                   </FormItem>
                 )}
               />
+
+              {watchLandscapeType === "other" && (
+                <FormField
+                  control={form.control}
+                  name="landscapeTypeCustom"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo Landscape Personalizzato</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="es. sandbox, demo, training..." 
+                          {...field}
+                          value={field.value || ''}
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
+                            form.setValue('landscape', e.target.value || 'other');
+                          }}
+                          data-testid="input-landscape-type-custom"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Inserisci un tipo di landscape personalizzato
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}
@@ -460,15 +518,38 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                       File SAP Shortcut
                     </FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Nome file .sap (es. PRD_SE80.sap)" 
-                        {...field}
-                        value={field.value || ''}
-                        data-testid="input-sap-shortcut-file"
-                      />
+                      <div className="flex gap-2">
+                        <Input 
+                          placeholder="Nome file .sap (es. PRD_SE80.sap)" 
+                          {...field}
+                          value={field.value || ''}
+                          data-testid="input-sap-shortcut-file"
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = '.sap';
+                            input.onchange = (e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0];
+                              if (file) {
+                                field.onChange(file.name);
+                              }
+                            };
+                            input.click();
+                          }}
+                          data-testid="button-browse-sap-file"
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </FormControl>
                     <FormDescription>
-                      File .sap shortcut da usare per l'accesso diretto al sistema
+                      Seleziona o inserisci il nome del file .sap shortcut
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

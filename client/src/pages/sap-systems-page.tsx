@@ -181,16 +181,30 @@ export default function SapSystemsPage() {
 
   // SISTEMA UNIVERSALE: Configurazione colonne standardizzata (senza colonna Actions)
   const columns = [
-    createStandardColumns.text("name", "System Name"),
-    createStandardColumns.text("systemNumber", "System Number"),
+    createStandardColumns.text("name", "Nome Sistema"),
+    createStandardColumns.text("systemNumber", "Numero Sistema"),
     createStandardColumns.text("serverHost", "Server Host"),
-    createStandardColumns.badge("landscape", "Landscape", {
-      development: "bg-blue-100 text-blue-800",
-      test: "bg-yellow-100 text-yellow-800", 
-      production: "bg-red-100 text-red-800"
-    }),
+    {
+      key: "landscapeType",
+      label: "Tipo Landscape",
+      sortable: true,
+      render: (system: SapSystem) => {
+        const landscapeValue = (system as any).landscapeType || system.landscape || "development";
+        return (
+          <Badge className={landscapeColors[landscapeValue] || "bg-gray-100 text-gray-800"}>
+            {landscapeLabels[landscapeValue] || landscapeValue}
+          </Badge>
+        );
+      }
+    },
+    {
+      key: "landscapeLevel",
+      label: "Livello",
+      sortable: true,
+      render: (system: SapSystem) => (system as any).landscapeLevel || "-"
+    },
     createStandardColumns.partner("Partner"),
-    createStandardColumns.text("description", "Description"),
+    createStandardColumns.text("description", "Descrizione"),
     {
       key: "systemId",
       label: "System ID",
@@ -202,6 +216,25 @@ export default function SapSystemsPage() {
       label: "Tipo",
       sortable: true,
       render: (system: SapSystem) => system.systemType || "-"
+    },
+    {
+      key: "cloudLink",
+      label: "Link Cloud",
+      sortable: true,
+      render: (system: SapSystem) => {
+        const link = (system as any).cloudLink;
+        return link ? (
+          <a href={link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate max-w-[200px] block">
+            {link}
+          </a>
+        ) : "-";
+      }
+    },
+    {
+      key: "sapShortcutFile",
+      label: "File Shortcut",
+      sortable: true,
+      render: (system: SapSystem) => (system as any).sapShortcutFile || "-"
     },
     {
       key: "createdAt",
@@ -266,17 +299,17 @@ export default function SapSystemsPage() {
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">System Number:</span>
+                <span className="text-sm font-medium">Numero Sistema:</span>
                 <Badge variant="outline" data-testid={`text-system-number-${system.id}`}>{system.systemNumber}</Badge>
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Landscape:</span>
+                <span className="text-sm font-medium">Tipo Landscape:</span>
                 <Badge 
-                  className={landscapeColors[system.landscape as keyof typeof landscapeColors] || "bg-gray-100 text-gray-800"}
+                  className={landscapeColors[(system as any).landscapeType || system.landscape as keyof typeof landscapeColors] || "bg-gray-100 text-gray-800"}
                   data-testid={`text-landscape-${system.id}`}
                 >
-                  {landscapeLabels[system.landscape as keyof typeof landscapeLabels] || system.landscape}
+                  {landscapeLabels[(system as any).landscapeType || system.landscape as keyof typeof landscapeLabels] || (system as any).landscapeType || system.landscape}
                 </Badge>
               </div>
               
@@ -289,7 +322,7 @@ export default function SapSystemsPage() {
               
               {system.description && (
                 <div className="pt-2">
-                  <span className="text-sm font-medium">Description:</span>
+                  <span className="text-sm font-medium">Descrizione:</span>
                   <p className="text-sm text-gray-600 mt-1" data-testid={`text-description-${system.id}`}>
                     {system.description}
                   </p>
