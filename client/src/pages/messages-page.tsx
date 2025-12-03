@@ -49,7 +49,8 @@ import {
   Sparkles,
   GitBranch,
   Clipboard,
-  ExternalLink
+  ExternalLink,
+  Smartphone
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { BarChart3, TrendingUp, Database, Image, Inbox } from "lucide-react";
@@ -881,117 +882,124 @@ export default function MessagesPage() {
                 {/* Filter tabs by message type - Icon buttons with badges */}
                 <TooltipProvider delayDuration={300}>
                 <Tabs value={filterType} onValueChange={(value) => setFilterType(value as typeof filterType)} className="w-full">
-                  <TabsList className="flex justify-start gap-3 h-auto p-3 bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-xl">
-                    {/* THU AI Button */}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          onClick={() => {
-                            const messagesToAnalyze = selectedMessageIds.length > 0 
-                              ? selectedMessageIds 
-                              : (selectedMessage ? [selectedMessage.id] : []);
-                            if (messagesToAnalyze.length > 0) {
-                              messagesToAnalyze.forEach(id => analyzeProjectMutation.mutate(id));
-                            }
-                          }}
-                          disabled={analyzeProjectMutation.isPending || (!selectedMessage && selectedMessageIds.length === 0)}
-                          variant="outline"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all disabled:opacity-50"
-                          data-testid="button-analyze-project"
-                        >
-                          <div className="relative flex flex-col items-center">
-                            <div className="flex items-baseline space-x-0">
-                              <span className="text-[10px] font-black text-blue-600 dark:text-blue-400">T</span>
-                              <span className="text-sm font-black text-blue-500 dark:text-blue-300">H</span>
-                              <span className="text-sm font-black text-blue-600 dark:text-blue-400">U</span>
-                            </div>
-                            <span className="text-[8px] font-bold text-purple-500 dark:text-purple-400 -mt-1">AI</span>
-                          </div>
-                          {selectedMessageIds.length > 0 && (
-                            <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-purple-500 text-white rounded-full px-1 shadow-md">
-                              {selectedMessageIds.length}
-                            </span>
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="bg-purple-500 text-white">
-                        <p>{analyzeProjectMutation.isPending 
-                          ? 'Analizzando...' 
-                          : selectedMessageIds.length > 0 
-                            ? `Analizza ${selectedMessageIds.length} messaggi con AI` 
-                            : 'Analizza con AI'}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    
-                    {/* Delete Selected Button */}
-                    <AlertDialog>
+                  <TabsList className="flex justify-start gap-2 h-auto p-2 bg-transparent rounded-xl">
+                    {/* Action Buttons Box */}
+                    <div className="flex gap-2 p-2 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg">
+                      {/* Sync Button - First */}
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              disabled={selectedMessageIds.length === 0}
-                              variant="outline"
-                              className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-red-200 dark:border-red-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-red-400 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all disabled:opacity-50"
-                              data-testid="button-delete-selected"
-                            >
-                              <Trash2 className="h-6 w-6 text-red-500" />
-                              {selectedMessageIds.length > 0 && (
-                                <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1 shadow-md">
-                                  {selectedMessageIds.length}
-                                </span>
-                              )}
-                            </Button>
-                          </AlertDialogTrigger>
+                          <Button
+                            onClick={() => syncMutation.mutate()}
+                            disabled={syncMutation.isPending}
+                            variant="outline"
+                            className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-green-200 dark:border-green-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all"
+                            data-testid="button-sync-emails"
+                          >
+                            <RefreshCw className={`h-6 w-6 text-green-600 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                          </Button>
                         </TooltipTrigger>
-                        <TooltipContent side="bottom" className="bg-red-500 text-white">
-                          <p>{selectedMessageIds.length > 0 
-                            ? `Elimina ${selectedMessageIds.length} selezionati` 
-                            : 'Seleziona messaggi da eliminare'}</p>
+                        <TooltipContent side="bottom" className="bg-green-600 text-white">
+                          <p>Sincronizza Email</p>
                         </TooltipContent>
                       </Tooltip>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Eliminare i messaggi selezionati?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Questa azione eliminerà {selectedMessageIds.length} messaggi selezionati. 
-                            L'operazione non può essere annullata.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annulla</AlertDialogCancel>
-                          <AlertDialogAction
+                      
+                      {/* THU AI Button - Header style with opacity */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
                             onClick={() => {
-                              selectedMessageIds.forEach(id => deleteMessageMutation.mutate(id));
-                              setSelectedMessageIds([]);
+                              const messagesToAnalyze = selectedMessageIds.length > 0 
+                                ? selectedMessageIds 
+                                : (selectedMessage ? [selectedMessage.id] : []);
+                              if (messagesToAnalyze.length > 0) {
+                                messagesToAnalyze.forEach(id => analyzeProjectMutation.mutate(id));
+                              }
                             }}
-                            className="bg-destructive hover:bg-destructive/90"
+                            disabled={analyzeProjectMutation.isPending || (!selectedMessage && selectedMessageIds.length === 0)}
+                            variant="ghost"
+                            className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-blue-300/30 dark:border-blue-600/30 bg-sidebar-accent shadow-sm hover:shadow-md transition-all ${
+                              (!selectedMessage && selectedMessageIds.length === 0) ? 'opacity-40' : 'opacity-100 hover:border-purple-400 dark:hover:border-purple-500'
+                            }`}
+                            data-testid="button-analyze-project"
                           >
-                            Elimina {selectedMessageIds.length} messaggi
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            <div className="relative flex flex-col items-end">
+                              <div className="flex items-baseline space-x-0">
+                                <span className="text-lg font-black text-blue-600 dark:text-blue-400">T</span>
+                                <span className="text-2xl font-black text-blue-500 dark:text-blue-300">H</span>
+                                <span className="text-2xl font-black text-blue-600 dark:text-blue-400">U</span>
+                              </div>
+                              <span className="text-xs font-bold text-purple-500 dark:text-purple-400 -mt-1">AI</span>
+                            </div>
+                            {selectedMessageIds.length > 0 && (
+                              <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                                {selectedMessageIds.length > 9 ? '9+' : selectedMessageIds.length}
+                              </span>
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="bg-purple-500 text-white">
+                          <p>{analyzeProjectMutation.isPending 
+                            ? 'Analizzando...' 
+                            : selectedMessageIds.length > 0 
+                              ? `Analizza ${selectedMessageIds.length} messaggi con AI` 
+                              : 'Analizza con AI'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      
+                      {/* Delete Selected Button */}
+                      <AlertDialog>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                disabled={selectedMessageIds.length === 0}
+                                variant="outline"
+                                className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-red-200 dark:border-red-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-red-400 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all ${
+                                  selectedMessageIds.length === 0 ? 'opacity-40' : 'opacity-100'
+                                }`}
+                                data-testid="button-delete-selected"
+                              >
+                                <Trash2 className="h-6 w-6 text-red-500" />
+                                {selectedMessageIds.length > 0 && (
+                                  <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1 shadow-md">
+                                    {selectedMessageIds.length}
+                                  </span>
+                                )}
+                              </Button>
+                            </AlertDialogTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="bg-red-500 text-white">
+                            <p>{selectedMessageIds.length > 0 
+                              ? `Elimina ${selectedMessageIds.length} selezionati` 
+                              : 'Seleziona messaggi da eliminare'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Eliminare i messaggi selezionati?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Questa azione eliminerà {selectedMessageIds.length} messaggi selezionati. 
+                              L'operazione non può essere annullata.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annulla</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                selectedMessageIds.forEach(id => deleteMessageMutation.mutate(id));
+                                setSelectedMessageIds([]);
+                              }}
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              Elimina {selectedMessageIds.length} messaggi
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                     
-                    {/* Sync Button */}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          onClick={() => syncMutation.mutate()}
-                          disabled={syncMutation.isPending}
-                          variant="outline"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-green-200 dark:border-green-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all"
-                          data-testid="button-sync-emails"
-                        >
-                          <RefreshCw className={`h-6 w-6 text-green-600 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="bg-green-600 text-white">
-                        <p>Sincronizza Email</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    
-                    {/* Separator */}
-                    <div className="w-px h-10 bg-slate-300 dark:bg-slate-600 mx-1" />
+                    {/* Filter Tabs Box */}
+                    <div className="flex gap-2 p-2 bg-blue-50/80 dark:bg-blue-900/20 rounded-lg">
                     
                     {/* All */}
                     <Tooltip>
@@ -1041,16 +1049,16 @@ export default function MessagesPage() {
                       </TooltipContent>
                     </Tooltip>
                     
-                    {/* Chat */}
+                    {/* Chat - Green */}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <TabsTrigger 
                           value="chat" 
                           data-testid="tab-chat"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-green-300 dark:hover:border-green-600 transition-all data-[state=active]:bg-green-500 data-[state=active]:text-white data-[state=active]:border-green-500 data-[state=active]:shadow-lg"
                         >
                           <MessageSquare className="h-6 w-6" />
-                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
+                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-green-500 text-white rounded-full px-1.5 shadow-md">
                             {typeCounts.chat}
                           </span>
                           {unreadCounts.chat > 0 && (
@@ -1060,21 +1068,21 @@ export default function MessagesPage() {
                           )}
                         </TabsTrigger>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom" className="bg-blue-600 text-white">
+                      <TooltipContent side="bottom" className="bg-green-500 text-white">
                         <p>Chat ({typeCounts.chat})</p>
                       </TooltipContent>
                     </Tooltip>
                     
-                    {/* SMS */}
+                    {/* SMS - Yellow with Smartphone icon */}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <TabsTrigger 
                           value="sms" 
                           data-testid="tab-sms"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-yellow-400 dark:hover:border-yellow-500 transition-all data-[state=active]:bg-yellow-500 data-[state=active]:text-white data-[state=active]:border-yellow-500 data-[state=active]:shadow-lg"
                         >
-                          <MessageSquare className="h-6 w-6" />
-                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
+                          <Smartphone className="h-6 w-6" />
+                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-yellow-500 text-white rounded-full px-1.5 shadow-md">
                             {typeCounts.sms}
                           </span>
                           {unreadCounts.sms > 0 && (
@@ -1084,7 +1092,7 @@ export default function MessagesPage() {
                           )}
                         </TabsTrigger>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom" className="bg-blue-600 text-white">
+                      <TooltipContent side="bottom" className="bg-yellow-500 text-white">
                         <p>SMS ({typeCounts.sms})</p>
                       </TooltipContent>
                     </Tooltip>
@@ -1160,6 +1168,7 @@ export default function MessagesPage() {
                         <p>Altri ({typeCounts.other})</p>
                       </TooltipContent>
                     </Tooltip>
+                    </div>
                   </TabsList>
                 </Tabs>
                 </TooltipProvider>
@@ -1170,7 +1179,7 @@ export default function MessagesPage() {
                     <TableHeader>
                       <TableRow>
                         {/* Selection Checkbox Header */}
-                        <TableHead style={{ width: '40px' }} className="px-2">
+                        <TableHead style={{ width: '28px' }} className="px-1">
                           <Checkbox
                             checked={filteredAndSortedMessages.length > 0 && selectedMessageIds.length === filteredAndSortedMessages.length}
                             onCheckedChange={(checked) => {
@@ -1399,7 +1408,7 @@ export default function MessagesPage() {
                                 onClick={() => handleSelectMessage(message)}
                               >
                                 {/* Colonna Checkbox */}
-                                <TableCell style={{ width: '40px' }} className="px-2">
+                                <TableCell style={{ width: '28px' }} className="px-1">
                                   <Checkbox
                                     checked={selectedMessageIds.includes(message.id)}
                                     onCheckedChange={(checked) => {
