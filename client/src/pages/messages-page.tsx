@@ -1206,19 +1206,13 @@ export default function MessagesPage() {
                         </TableHead>
                         {filterType === 'all' && (
                           <TableHead 
-                            className="cursor-pointer hover:bg-muted/50 relative"
+                            className="p-0"
                             style={{ width: `${columnWidths.type}%` }}
                             data-testid="header-type"
                           >
-                            <div className="flex items-center space-x-2">
-                              <span>Tipo</span>
+                            <div className="flex items-center justify-start">
+                              <Inbox className="h-5 w-5 text-slate-500" />
                             </div>
-                            {/* Resize handle */}
-                            <div
-                              className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-border hover:bg-primary transition-colors z-10"
-                              onMouseDown={(e) => handleColumnResize(e, 0)}
-                              title="Trascina per ridimensionare"
-                            />
                           </TableHead>
                         )}
                         <TableHead 
