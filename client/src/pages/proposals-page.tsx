@@ -7,14 +7,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
-import { Check, X, Clock, AlertCircle, Eye, Sparkles, Mail, Loader2, RefreshCw } from "lucide-react";
+import { Check, X, Clock, AlertCircle, Eye, Sparkles, Mail, Loader2, RefreshCw, Brain, TrendingUp, Trash2 } from "lucide-react";
 import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import type { Proposal } from "@shared/schema";
+import type { Proposal, AiLearningPattern } from "@shared/schema";
 import { useOrganization } from "@/contexts/organization-context";
 
 interface ProposalWithMessage extends Proposal {
@@ -31,6 +32,7 @@ export default function ProposalsPage() {
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "accepted" | "rejected">("all");
+  const [mainTab, setMainTab] = useState<"proposals" | "learning">("proposals");
   const { toast } = useToast();
   const { currentOrganizationId } = useOrganization();
 
@@ -38,8 +40,33 @@ export default function ProposalsPage() {
     queryKey: ["/api/proposals"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
-    refetchInterval: 5000, // Refresh ogni 5 secondi per aggiornamenti rapidi
+    refetchInterval: 5000,
     refetchIntervalInBackground: true,
+  });
+
+  const { data: learningPatterns = [], isLoading: isLoadingPatterns, refetch: refetchPatterns } = useQuery<AiLearningPattern[]>({
+    queryKey: ["/api/ai-learning-patterns"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+  });
+
+  const deletePatternMutation = useMutation({
+    mutationFn: (patternId: string) =>
+      apiRequest("DELETE", `/api/ai-learning-patterns/${patternId}`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-learning-patterns"] });
+      toast({
+        title: "Pattern eliminato",
+        description: "Il pattern di apprendimento è stato eliminato",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile eliminare il pattern",
+        variant: "destructive",
+      });
+    },
   });
 
   // Sincronizza la proposta selezionata con i dati aggiornati
@@ -300,7 +327,7 @@ export default function ProposalsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => refetch()}
+                onClick={() => mainTab === "proposals" ? refetch() : refetchPatterns()}
                 data-testid="button-refresh-proposals"
                 className="flex items-center gap-2"
               >
@@ -309,24 +336,140 @@ export default function ProposalsPage() {
               </Button>
             </div>
 
-            <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+            <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as any)} className="mb-4">
               <TabsList>
-                <TabsTrigger value="all" data-testid="tab-all-proposals">
-                  Tutte ({proposals.length})
+                <TabsTrigger value="proposals" data-testid="tab-main-proposals" className="gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  Proposte ({proposals.length})
                 </TabsTrigger>
-                <TabsTrigger value="pending" data-testid="tab-pending-proposals">
-                  In sospeso ({proposals.filter(p => p.status === 'pending').length})
-                </TabsTrigger>
-                <TabsTrigger value="accepted" data-testid="tab-accepted-proposals">
-                  Accettate ({proposals.filter(p => p.status === 'accepted').length})
-                </TabsTrigger>
-                <TabsTrigger value="rejected" data-testid="tab-rejected-proposals">
-                  Rigettate ({proposals.filter(p => p.status === 'rejected').length})
+                <TabsTrigger value="learning" data-testid="tab-main-learning" className="gap-2">
+                  <Brain className="w-4 h-4" />
+                  Apprendimento AI ({learningPatterns.length})
                 </TabsTrigger>
               </TabsList>
-            </Tabs>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <TabsContent value="learning" className="mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="w-5 h-5" />
+                      Pattern Appresi
+                    </CardTitle>
+                    <CardDescription>
+                      L'AI utilizza questi pattern per migliorare le proposte future basandosi sulle tue decisioni passate
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoadingPatterns ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      </div>
+                    ) : learningPatterns.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Brain className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                        <p>Nessun pattern appreso</p>
+                        <p className="text-sm mt-1">Accetta o rigetta proposte per insegnare all'AI le tue preferenze</p>
+                      </div>
+                    ) : (
+                      <ScrollArea className="h-[500px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Tipo Pattern</TableHead>
+                              <TableHead>Input</TableHead>
+                              <TableHead>Azione Scelta</TableHead>
+                              <TableHead className="text-center">Confidenza</TableHead>
+                              <TableHead className="text-center">Utilizzi</TableHead>
+                              <TableHead></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {learningPatterns.map((pattern) => {
+                              const features = pattern.inputFeatures as Record<string, any> || {};
+                              const action = pattern.chosenAction as Record<string, any> || {};
+                              const total = pattern.acceptanceCount + pattern.rejectionCount;
+                              const confidence = total > 0 ? Math.round((pattern.acceptanceCount / total) * 100) : 0;
+                              
+                              return (
+                                <TableRow key={pattern.id} data-testid={`row-pattern-${pattern.id}`}>
+                                  <TableCell>
+                                    <Badge variant="outline">{pattern.patternType}</Badge>
+                                  </TableCell>
+                                  <TableCell className="max-w-[200px]">
+                                    <div className="text-xs text-muted-foreground truncate">
+                                      {Object.entries(features).map(([key, value]) => (
+                                        <div key={key}><strong>{key}:</strong> {String(value)}</div>
+                                      ))}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="max-w-[200px]">
+                                    <div className="text-xs text-muted-foreground truncate">
+                                      {Object.entries(action).map(([key, value]) => (
+                                        <div key={key}><strong>{key}:</strong> {String(value)}</div>
+                                      ))}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <div className="flex flex-col items-center gap-1">
+                                      <Progress 
+                                        value={confidence} 
+                                        className={`w-16 h-2 ${
+                                          confidence >= 80 ? '[&>div]:bg-green-500' :
+                                          confidence >= 50 ? '[&>div]:bg-yellow-500' :
+                                          '[&>div]:bg-red-500'
+                                        }`}
+                                      />
+                                      <span className="text-xs">{confidence}%</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <div className="flex items-center justify-center gap-1 text-sm">
+                                      <span className="text-green-600">{pattern.acceptanceCount}</span>
+                                      <span>/</span>
+                                      <span className="text-red-600">{pattern.rejectionCount}</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => deletePatternMutation.mutate(pattern.id)}
+                                      disabled={deletePatternMutation.isPending}
+                                      data-testid={`button-delete-pattern-${pattern.id}`}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="proposals" className="mt-4">
+                <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                  <TabsList>
+                    <TabsTrigger value="all" data-testid="tab-all-proposals">
+                      Tutte ({proposals.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="pending" data-testid="tab-pending-proposals">
+                      In sospeso ({proposals.filter(p => p.status === 'pending').length})
+                    </TabsTrigger>
+                    <TabsTrigger value="accepted" data-testid="tab-accepted-proposals">
+                      Accettate ({proposals.filter(p => p.status === 'accepted').length})
+                    </TabsTrigger>
+                    <TabsTrigger value="rejected" data-testid="tab-rejected-proposals">
+                      Rigettate ({proposals.filter(p => p.status === 'rejected').length})
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
               <Card className="lg:col-span-1">
                 <CardHeader>
                   <CardTitle className="text-sm">
@@ -451,7 +594,9 @@ export default function ProposalsPage() {
                   )}
                 </CardContent>
               </Card>
-            </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </main>
       </div>
