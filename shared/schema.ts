@@ -157,6 +157,7 @@ export const partners = pgTable("partners", {
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
   isLegalAddress: boolean("is_legal_address").default(true), // true = sede legale, false = sede operativa
   parentPartnerId: uuid("parent_partner_id").references((): any => partners.id), // Riferimento al partner principale (per sedi operative)
+  defaultCalendarId: uuid("default_calendar_id"), // Calendario predefinito per appuntamenti da questo partner (riferimento forward a calendars)
   fiscalCode: text("fiscal_code"), // Codice fiscale
   vatNumber: text("vat_number"), // Partita IVA
   logoUrl: text("logo_url"), // URL del logo
@@ -234,22 +235,43 @@ export const deals = pgTable("deals", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Calendars - Hierarchical calendar structure (like projects)
+export const calendars = pgTable("calendars", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  color: text("color").default("#3B82F6").notNull(), // Colore esadecimale per il calendario
+  parentCalendarId: uuid("parent_calendar_id"), // Self-reference for calendar hierarchy (cage structure)
+  partnerId: uuid("partner_id").references(() => partners.id), // Collegamento opzionale al partner
+  projectId: uuid("project_id").references(() => projects.id), // Collegamento opzionale al progetto
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  isDefault: boolean("is_default").default(false).notNull(), // Calendario predefinito per l'organizzazione
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const eventTypeEnum = pgEnum("event_type", ["meeting", "call", "deadline", "reminder", "other"]);
 
 export const calendarEvents = pgTable("calendar_events", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  calendarId: uuid("calendar_id").references(() => calendars.id), // Calendario di appartenenza
   title: text("title").notNull(),
   description: text("description"),
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time").notNull(),
   type: eventTypeEnum("type").default("other").notNull(),
   userId: uuid("user_id").references(() => users.id).notNull(),
-  // Note: calendar events are NOT segregated by organization - shared planning calendar
+  organizationId: uuid("organization_id").references(() => organizations.id), // Segregazione per organizzazione
   projectId: uuid("project_id").references(() => projects.id),
   partnerId: uuid("partner_id").references(() => partners.id),
   dealId: uuid("deal_id").references(() => deals.id),
   isAllDay: boolean("is_all_day").default(false).notNull(),
   location: text("location"),
+  // Metadata per eventi importati (inviti email, Teams, etc.)
+  sourceMessageId: uuid("source_message_id").references(() => messages.id), // Messaggio sorgente
+  externalMetadata: jsonb("external_metadata"), // { meetingLink, organizer, attendees, recurrence, etc. }
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -1378,10 +1400,18 @@ export const insertDealSchema = createInsertSchema(deals).omit({
   organizationId: true, // Auto-filled from user session
 });
 
+export const insertCalendarSchema = createInsertSchema(calendars).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  organizationId: true, // Auto-filled from user session
+});
+
 export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  organizationId: true, // Auto-filled from user session
 });
 
 export const insertPlanningWindowSchema = createInsertSchema(planningWindows).omit({
@@ -1507,6 +1537,8 @@ export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
 export type Deal = typeof deals.$inferSelect;
 export type InsertDeal = z.infer<typeof insertDealSchema>;
+export type Calendar = typeof calendars.$inferSelect;
+export type InsertCalendar = z.infer<typeof insertCalendarSchema>;
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
 export type PlanningWindow = typeof planningWindows.$inferSelect;
@@ -2923,4 +2955,120 @@ export type InsertEntityFieldMetadata = z.infer<typeof insertEntityFieldMetadata
 
 // Relations for entityFieldMetadata (empty relations - standalone table)
 export const entityFieldMetadataRelations = relations(entityFieldMetadata, ({}) => ({}));
+
+// ========== AI Learning Patterns System ==========
+// Sistema di apprendimento AI per migliorare le proposte nel tempo
+
+export const aiPatternTypeEnum = pgEnum("ai_pattern_type", [
+  "partner_match",      // Pattern per abbinamento partner (es. dominio email → partner specifico)
+  "project_match",      // Pattern per abbinamento progetto (es. keyword → progetto)
+  "task_creation",      // Pattern per creazione task (es. tipo messaggio → task type)
+  "estimate_adjustment", // Pattern per aggiustamento stime (es. cliente → moltiplicatore)
+  "calendar_assignment", // Pattern per assegnazione calendario (es. dominio → calendario)
+  "field_mapping"       // Pattern per mapping campi DevOps → nostri campi
+]);
+
+export const aiLearningPatterns = pgTable("ai_learning_patterns", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  patternType: aiPatternTypeEnum("pattern_type").notNull(),
+  // Caratteristiche input che attivano questo pattern
+  inputFeatures: jsonb("input_features").notNull(), // { senderDomain?, subjectKeywords?, partnerType?, workItemType?, etc. }
+  // Azione scelta dall'utente
+  chosenAction: jsonb("chosen_action").notNull(), // { partnerId?, projectId?, taskType?, calendarId?, fieldMapping?, estimateMultiplier? }
+  // Feedback
+  wasAccepted: boolean("was_accepted").default(true).notNull(), // Se l'utente ha accettato la proposta
+  acceptanceCount: integer("acceptance_count").default(1).notNull(), // Quante volte questo pattern è stato confermato
+  rejectionCount: integer("rejection_count").default(0).notNull(), // Quante volte è stato rifiutato
+  lastUsedAt: timestamp("last_used_at").defaultNow().notNull(),
+  // Metadata
+  sourceProposalId: uuid("source_proposal_id").references(() => proposals.id), // Proposta originale
+  notes: text("notes"), // Note opzionali dell'utente
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  patternTypeIdx: index("ai_learning_patterns_type_idx").on(table.organizationId, table.patternType),
+}));
+
+// ========== DevOps Field Mappings System ==========
+// Mapping dinamico valori DevOps → campi del nostro DB
+
+export const devopsTargetEntityEnum = pgEnum("devops_target_entity", ["task", "project"]);
+
+export const devopsFieldMappings = pgTable("devops_field_mappings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  // Campo sorgente DevOps
+  devopsField: text("devops_field").notNull(), // es. 'workItemType', 'state', 'priority', 'severity'
+  devopsValue: text("devops_value").notNull(), // es. 'Bug', 'Task', 'Active', 'Resolved', 'High'
+  // Campo target nel nostro DB
+  targetEntity: devopsTargetEntityEnum("target_entity").notNull(),
+  targetField: text("target_field").notNull(), // es. 'taskType', 'status', 'priority'
+  targetValue: text("target_value").notNull(), // es. 'maintenance', 'in_progress', 'high'
+  // Metadata
+  isAutoLearned: boolean("is_auto_learned").default(false).notNull(), // Se appreso automaticamente
+  confidence: decimal("confidence", { precision: 3, scale: 2 }).default("1.00"), // Livello di confidenza
+  usageCount: integer("usage_count").default(1).notNull(), // Quante volte è stato usato
+  lastUsedAt: timestamp("last_used_at").defaultNow().notNull(),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueMappingIdx: uniqueIndex("devops_field_mappings_unique_idx").on(
+    table.organizationId, table.devopsField, table.devopsValue
+  ),
+}));
+
+// ========== Calendar Relations (aggiunta) ==========
+export const calendarsRelations = relations(calendars, ({ one, many }) => ({
+  parentCalendar: one(calendars, {
+    fields: [calendars.parentCalendarId],
+    references: [calendars.id],
+    relationName: "CalendarHierarchy",
+  }),
+  childCalendars: many(calendars, { relationName: "CalendarHierarchy" }),
+  partner: one(partners, {
+    fields: [calendars.partnerId],
+    references: [partners.id],
+  }),
+  project: one(projects, {
+    fields: [calendars.projectId],
+    references: [projects.id],
+  }),
+  user: one(users, {
+    fields: [calendars.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [calendars.organizationId],
+    references: [organizations.id],
+  }),
+  events: many(calendarEvents),
+}));
+
+// ========== Insert Schemas & Types for AI Learning & DevOps Mappings ==========
+
+export const insertAiLearningPatternSchema = createInsertSchema(aiLearningPatterns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  organizationId: true,
+  lastUsedAt: true,
+});
+
+export const insertDevopsFieldMappingSchema = createInsertSchema(devopsFieldMappings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  organizationId: true,
+  lastUsedAt: true,
+});
+
+export type AiLearningPattern = typeof aiLearningPatterns.$inferSelect;
+export type InsertAiLearningPattern = z.infer<typeof insertAiLearningPatternSchema>;
+export type DevopsFieldMapping = typeof devopsFieldMappings.$inferSelect;
+export type InsertDevopsFieldMapping = z.infer<typeof insertDevopsFieldMappingSchema>;
 
