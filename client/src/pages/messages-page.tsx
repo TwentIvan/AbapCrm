@@ -969,22 +969,20 @@ export default function MessagesPage() {
                 </div>
                 {/* Filter tabs by message type - Icon buttons with badges */}
                 <Tabs value={filterType} onValueChange={(value) => setFilterType(value as typeof filterType)} className="w-full">
-                  <TabsList className="flex justify-center gap-2 h-auto p-2 bg-muted/50">
+                  <TabsList className="flex justify-center gap-3 h-auto p-3 bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-xl">
                     {/* All */}
                     <TabsTrigger 
                       value="all" 
                       data-testid="tab-all"
-                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
                       title="Tutti"
                     >
-                      <Mail className="h-5 w-5" />
-                      {typeCounts.all > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
-                          {typeCounts.all}
-                        </span>
-                      )}
+                      <Mail className="h-6 w-6" />
+                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
+                        {typeCounts.all}
+                      </span>
                       {unreadCounts.all > 0 && (
-                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
                           {unreadCounts.all}
                         </span>
                       )}
@@ -994,17 +992,15 @@ export default function MessagesPage() {
                     <TabsTrigger 
                       value="email" 
                       data-testid="tab-email"
-                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
                       title="Email"
                     >
-                      <Mail className="h-5 w-5" />
-                      {typeCounts.email > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
-                          {typeCounts.email}
-                        </span>
-                      )}
+                      <Mail className="h-6 w-6" />
+                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
+                        {typeCounts.email}
+                      </span>
                       {unreadCounts.email > 0 && (
-                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
                           {unreadCounts.email}
                         </span>
                       )}
@@ -1014,17 +1010,15 @@ export default function MessagesPage() {
                     <TabsTrigger 
                       value="chat" 
                       data-testid="tab-chat"
-                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
                       title="Chat"
                     >
-                      <MessageSquare className="h-5 w-5" />
-                      {typeCounts.chat > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
-                          {typeCounts.chat}
-                        </span>
-                      )}
+                      <MessageSquare className="h-6 w-6" />
+                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
+                        {typeCounts.chat}
+                      </span>
                       {unreadCounts.chat > 0 && (
-                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
                           {unreadCounts.chat}
                         </span>
                       )}
@@ -1034,17 +1028,15 @@ export default function MessagesPage() {
                     <TabsTrigger 
                       value="sms" 
                       data-testid="tab-sms"
-                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
                       title="SMS"
                     >
-                      <MessageSquare className="h-5 w-5" />
-                      {typeCounts.sms > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
-                          {typeCounts.sms}
-                        </span>
-                      )}
+                      <MessageSquare className="h-6 w-6" />
+                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
+                        {typeCounts.sms}
+                      </span>
                       {unreadCounts.sms > 0 && (
-                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
                           {unreadCounts.sms}
                         </span>
                       )}
@@ -1054,17 +1046,15 @@ export default function MessagesPage() {
                     <TabsTrigger 
                       value="devops" 
                       data-testid="tab-devops"
-                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-orange-300 dark:hover:border-orange-600 transition-all data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:border-orange-500 data-[state=active]:shadow-lg"
                       title="DevOps"
                     >
-                      <GitBranch className="h-5 w-5" />
-                      {typeCounts.devops > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
-                          {typeCounts.devops}
-                        </span>
-                      )}
+                      <GitBranch className="h-6 w-6" />
+                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-orange-500 text-white rounded-full px-1.5 shadow-md">
+                        {typeCounts.devops}
+                      </span>
                       {unreadCounts.devops > 0 && (
-                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
                           {unreadCounts.devops}
                         </span>
                       )}
@@ -1074,17 +1064,15 @@ export default function MessagesPage() {
                     <TabsTrigger 
                       value="calendar" 
                       data-testid="tab-calendar"
-                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:border-purple-500 data-[state=active]:shadow-lg"
                       title="Appuntamenti"
                     >
-                      <Calendar className="h-5 w-5" />
-                      {typeCounts.calendar > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
-                          {typeCounts.calendar}
-                        </span>
-                      )}
+                      <Calendar className="h-6 w-6" />
+                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-purple-500 text-white rounded-full px-1.5 shadow-md">
+                        {typeCounts.calendar}
+                      </span>
                       {unreadCounts.calendar > 0 && (
-                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
                           {unreadCounts.calendar}
                         </span>
                       )}
@@ -1094,17 +1082,15 @@ export default function MessagesPage() {
                     <TabsTrigger 
                       value="other" 
                       data-testid="tab-other"
-                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-500 transition-all data-[state=active]:bg-gray-500 data-[state=active]:text-white data-[state=active]:border-gray-500 data-[state=active]:shadow-lg"
                       title="Altro"
                     >
-                      <FileText className="h-5 w-5" />
-                      {typeCounts.other > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
-                          {typeCounts.other}
-                        </span>
-                      )}
+                      <FileText className="h-6 w-6" />
+                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-gray-500 text-white rounded-full px-1.5 shadow-md">
+                        {typeCounts.other}
+                      </span>
                       {unreadCounts.other > 0 && (
-                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
                           {unreadCounts.other}
                         </span>
                       )}
