@@ -153,10 +153,10 @@ export default function MessagesPage() {
 
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
-    type: 8, // percentuale
-    fromEmail: 35,
-    subject: 37,
-    receivedAt: 20
+    type: 4, // percentuale - ridotto per avvicinare a checkbox
+    fromEmail: 36,
+    subject: 38,
+    receivedAt: 22
   });
   const [isResizing, setIsResizing] = useState(false);
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
@@ -1337,8 +1337,8 @@ export default function MessagesPage() {
                                             onClick={() => handleSelectMessage(message)}
                                           >
                                             {filterType === 'all' && (
-                                              <TableCell style={{ width: `${columnWidths.type}%` }}>
-                                                <div className="flex items-center justify-center pl-4">
+                                              <TableCell style={{ width: `${columnWidths.type}%` }} className="p-0">
+                                                <div className="flex items-center justify-start">
                                                   {getTypeIcon(message.type, (message as any).sourceType)}
                                                 </div>
                                               </TableCell>
@@ -1436,8 +1436,8 @@ export default function MessagesPage() {
                                 </TableCell>
                                 {/* Colonna Tipo */}
                                 {filterType === 'all' && (
-                                  <TableCell style={{ width: `${columnWidths.type}%` }}>
-                                    <div className="flex items-center justify-center">
+                                  <TableCell style={{ width: `${columnWidths.type}%` }} className="p-0">
+                                    <div className="flex items-center justify-start">
                                       {getTypeIcon(message.type, (message as any).sourceType)}
                                     </div>
                                   </TableCell>
