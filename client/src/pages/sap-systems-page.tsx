@@ -179,9 +179,28 @@ export default function SapSystemsPage() {
     );
   }
 
+  const connectionTypeLabels: Record<string, string> = {
+    sapgui: "SAP GUI",
+    cloud: "Cloud",
+    citrix: "Citrix",
+  };
+
   // SISTEMA UNIVERSALE: Configurazione colonne standardizzata (senza colonna Actions)
   const columns = [
     createStandardColumns.text("name", "Nome Sistema"),
+    {
+      key: "connectionType",
+      label: "Tipo Connessione",
+      sortable: true,
+      render: (system: SapSystem) => {
+        const connType = (system as any).connectionType || "sapgui";
+        return (
+          <Badge variant="outline">
+            {connectionTypeLabels[connType] || connType}
+          </Badge>
+        );
+      }
+    },
     createStandardColumns.text("systemNumber", "Numero Sistema"),
     createStandardColumns.text("serverHost", "Server Host"),
     {

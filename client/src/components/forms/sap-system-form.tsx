@@ -17,14 +17,17 @@ import { Loader2, Server, Building, Globe, Link, FileText, Cloud, Search, Folder
 const formSchema = z.object({
   name: z.string().min(1, "Nome richiesto"),
   systemId: z.string().min(1, "System ID richiesto").max(3, "Max 3 caratteri"),
-  serverHost: z.string().min(1, "Server host richiesto"),
-  systemNumber: z.string().min(1, "System number richiesto"),
+  connectionType: z.string().default("sapgui"),
+  serverHost: z.string().optional(),
+  systemNumber: z.string().optional(),
   applicationServerPort: z.coerce.number().min(1).max(65535).optional(),
   landscape: z.string().optional(),
   landscapeType: z.string().optional(),
   landscapeTypeCustom: z.string().optional().nullable(),
   landscapeLevel: z.coerce.number().min(1).max(10).optional().nullable(),
   cloudLink: z.string().url("URL non valido").optional().nullable().or(z.literal("")),
+  citrixLink: z.string().url("URL non valido").optional().nullable().or(z.literal("")),
+  citrixAppName: z.string().optional().nullable(),
   sapShortcutFile: z.string().optional().nullable(),
   description: z.string().optional(),
   partnerId: z.string().optional().nullable(),
@@ -66,6 +69,7 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
     defaultValues: {
       name: system?.name || "",
       systemId: system?.systemId || "",
+      connectionType: (system as any)?.connectionType || "sapgui",
       serverHost: system?.serverHost || "",
       systemNumber: system?.systemNumber || "00",
       applicationServerPort: system?.applicationServerPort || 3200,
@@ -74,6 +78,8 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
       landscapeTypeCustom: isCustomLandscape ? existingLandscapeType : "",
       landscapeLevel: (system as any)?.landscapeLevel || null,
       cloudLink: (system as any)?.cloudLink || "",
+      citrixLink: (system as any)?.citrixLink || "",
+      citrixAppName: (system as any)?.citrixAppName || "",
       sapShortcutFile: (system as any)?.sapShortcutFile || "",
       description: system?.description || "",
       partnerId: system?.partnerId || undefined,
@@ -84,6 +90,7 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
   });
   
   const watchLandscapeType = form.watch("landscapeType");
+  const watchConnectionType = form.watch("connectionType");
 
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
@@ -386,67 +393,243 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
             <CardContent className="space-y-4">
               <FormField
                 control={form.control}
-                name="serverHost"
+                name="connectionType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Server Host</FormLabel>
-                    <FormControl>
-                      <Input placeholder="es. sap-prod.azienda.com" {...field} data-testid="input-server-host" />
-                    </FormControl>
+                    <FormLabel>Tipo Connessione</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || "sapgui"}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-connection-type">
+                          <SelectValue placeholder="Seleziona tipo connessione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="sapgui">
+                          <div className="flex items-center gap-2">
+                            <Server className="h-4 w-4" />
+                            SAP GUI
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="cloud">
+                          <div className="flex items-center gap-2">
+                            <Cloud className="h-4 w-4" />
+                            Cloud (Web)
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="citrix">
+                          <div className="flex items-center gap-2">
+                            <Globe className="h-4 w-4" />
+                            Citrix
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormDescription>
-                      Hostname o indirizzo IP del server
+                      Scegli come ci si connette a questo sistema SAP
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="applicationServerPort"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Porta Application Server</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="3200" 
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                          data-testid="input-application-server-port"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Porta SAP application server
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              {/* SAP GUI Connection Fields */}
+              {watchConnectionType === "sapgui" && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="serverHost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Server Host</FormLabel>
+                        <FormControl>
+                          <Input placeholder="es. sap-prod.azienda.com" {...field} data-testid="input-server-host" />
+                        </FormControl>
+                        <FormDescription>
+                          Hostname o indirizzo IP del server
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="applicationServerPort"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Porta Application Server</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              placeholder="3200" 
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                              data-testid="input-application-server-port"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Porta SAP application server
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="systemId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>System ID</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="PRD" 
+                              {...field}
+                              maxLength={3}
+                              data-testid="input-system-id"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            3-caratteri System ID SAP (es. PRD, DEV, QAS)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="sapShortcutFile"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          File SAP Shortcut
+                        </FormLabel>
+                        <FormControl>
+                          <div className="flex gap-2">
+                            <Input 
+                              placeholder="Nome file .sap (es. PRD_SE80.sap)" 
+                              {...field}
+                              value={field.value || ''}
+                              data-testid="input-sap-shortcut-file"
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = '.sap';
+                                input.onchange = (e) => {
+                                  const file = (e.target as HTMLInputElement).files?.[0];
+                                  if (file) {
+                                    field.onChange(file.name);
+                                  }
+                                };
+                                input.click();
+                              }}
+                              data-testid="button-browse-sap-file"
+                            >
+                              <FolderOpen className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          Seleziona o inserisci il nome del file .sap shortcut
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {/* Cloud Connection Fields */}
+              {watchConnectionType === "cloud" && (
                 <FormField
                   control={form.control}
-                  name="systemId"
+                  name="cloudLink"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>System ID</FormLabel>
+                      <FormLabel className="flex items-center gap-2">
+                        <Cloud className="h-4 w-4" />
+                        Link Cloud
+                      </FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="PRD" 
+                          type="url"
+                          placeholder="https://my-company.s4hana.cloud.sap" 
                           {...field}
-                          maxLength={3}
-                          data-testid="input-system-id"
+                          value={field.value || ''}
+                          data-testid="input-cloud-link"
                         />
                       </FormControl>
                       <FormDescription>
-                        3-caratteri System ID SAP (es. PRD, DEV, QAS)
+                        URL per sistemi SAP cloud (BTP, S/4HANA Cloud, etc.)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
+              )}
+
+              {/* Citrix Connection Fields */}
+              {watchConnectionType === "citrix" && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="citrixLink"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Globe className="h-4 w-4" />
+                          Link Citrix
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="url"
+                            placeholder="https://citrix.azienda.com" 
+                            {...field}
+                            value={field.value || ''}
+                            data-testid="input-citrix-link"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          URL del portale Citrix per l'accesso remoto
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="citrixAppName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome Applicazione Citrix</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="es. SAP PRD, SAP Logon" 
+                            {...field}
+                            value={field.value || ''}
+                            data-testid="input-citrix-app-name"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Nome dell'applicazione SAP pubblicata su Citrix
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
 
               <FormField
                 control={form.control}
@@ -476,80 +659,6 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                     </Select>
                     <FormDescription>
                       Collega questo sistema SAP a un partner
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="cloudLink"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <Cloud className="h-4 w-4" />
-                      Link Cloud
-                    </FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="url"
-                        placeholder="https://my-company.s4hana.cloud.sap" 
-                        {...field}
-                        value={field.value || ''}
-                        data-testid="input-cloud-link"
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      URL per sistemi SAP cloud (BTP, S/4HANA Cloud, etc.)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="sapShortcutFile"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      File SAP Shortcut
-                    </FormLabel>
-                    <FormControl>
-                      <div className="flex gap-2">
-                        <Input 
-                          placeholder="Nome file .sap (es. PRD_SE80.sap)" 
-                          {...field}
-                          value={field.value || ''}
-                          data-testid="input-sap-shortcut-file"
-                          className="flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => {
-                            const input = document.createElement('input');
-                            input.type = 'file';
-                            input.accept = '.sap';
-                            input.onchange = (e) => {
-                              const file = (e.target as HTMLInputElement).files?.[0];
-                              if (file) {
-                                field.onChange(file.name);
-                              }
-                            };
-                            input.click();
-                          }}
-                          data-testid="button-browse-sap-file"
-                        >
-                          <FolderOpen className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      Seleziona o inserisci il nome del file .sap shortcut
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

@@ -729,8 +729,11 @@ export const sapSystems = pgTable("sap_systems", {
   landscapeType: sapLandscapeTypeEnum("landscape_type").default("production"), // Tipo landscape (development, test, quality, pre_production, production, other)
   landscapeLevel: integer("landscape_level"), // Livello numerico del landscape (1=dev, 2=test, 3=quality, 4=preprod, 5=prod)
   
-  // Cloud & Shortcuts
+  // Connection Type & Access Methods
+  connectionType: text("connection_type").default("sapgui"), // sapgui, cloud, citrix
   cloudLink: text("cloud_link"), // Link per sistemi SAP cloud (BTP, S/4HANA Cloud, etc.)
+  citrixLink: text("citrix_link"), // URL del portale Citrix
+  citrixAppName: text("citrix_app_name"), // Nome applicazione Citrix pubblicata
   sapShortcutFile: text("sap_shortcut_file"), // File .sap shortcut allegato
   
   // VPN Configuration
