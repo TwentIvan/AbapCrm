@@ -702,6 +702,7 @@ export const humanResources = pgTable("human_resources", {
 // SAP Systems Management
 export const sapSystemTypeEnum = pgEnum("sap_system_type", ["ecc", "s4hana", "bw", "pi", "po", "solution_manager", "crm", "srm", "other"]);
 export const sapSystemStatusEnum = pgEnum("sap_system_status", ["active", "inactive", "maintenance", "test"]);
+export const sapLandscapeTypeEnum = pgEnum("sap_landscape_type", ["development", "test", "quality", "pre_production", "production", "other"]);
 
 export const sapSystems = pgTable("sap_systems", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -718,14 +719,19 @@ export const sapSystems = pgTable("sap_systems", {
   // Connection details
   serverHost: text("server_host").notNull(), // IP o hostname
   systemNumber: text("system_number").notNull(), // 00, 01, etc.
-  // clientNumber rimosso - è dato applicativo che va nelle credenziali
   applicationServerPort: integer("application_server_port").default(3200), // 32XX
   messageServerPort: integer("message_server_port").default(3600), // 36XX
   
   // Additional SAP details
   sapReleaseVersion: text("sap_release_version"), // 750, 740, etc.
   kernelVersion: text("kernel_version"),
-  landscape: text("landscape").default("production"), // production, test, development
+  landscape: text("landscape").default("production"), // Mantenuto per retrocompatibilità
+  landscapeType: sapLandscapeTypeEnum("landscape_type").default("production"), // Tipo landscape (development, test, quality, pre_production, production, other)
+  landscapeLevel: integer("landscape_level"), // Livello numerico del landscape (1=dev, 2=test, 3=quality, 4=preprod, 5=prod)
+  
+  // Cloud & Shortcuts
+  cloudLink: text("cloud_link"), // Link per sistemi SAP cloud (BTP, S/4HANA Cloud, etc.)
+  sapShortcutFile: text("sap_shortcut_file"), // File .sap shortcut allegato
   
   // VPN Configuration
   vpnConnectionId: uuid("vpn_connection_id").references(() => vpnConnections.id),
