@@ -7,6 +7,7 @@ import {
   sapTransportRequests, sapTransportTasks, sapTransportObjects, sapObjectContent, businessScenarios,
   customEntities, customFields, entityCustomValues,
   chatRooms, chatMessages, chatParticipants, chatRoomEntities,
+  calendars, aiLearningPatterns, devopsFieldMappings,
   type User, type InsertUser,
   type Organization, type InsertOrganization,
   type UserOrganization, type InsertUserOrganization,
@@ -17,6 +18,7 @@ import {
   type Contact, type InsertContact,
   type Deal, type InsertDeal,
   type CalendarEvent, type InsertCalendarEvent,
+  type Calendar, type InsertCalendar,
   type PlanningWindow, type InsertPlanningWindow,
   type TimeEntry, type InsertTimeEntry,
   type Message, type InsertMessage,
@@ -60,6 +62,8 @@ import {
   type ChatMessage, type InsertChatMessage,
   type ChatParticipant, type InsertChatParticipant,
   type ChatRoomEntity, type InsertChatRoomEntity,
+  type AiLearningPattern, type InsertAiLearningPattern,
+  type DevopsFieldMapping, type InsertDevopsFieldMapping,
   testExecutions, type TestExecution, type InsertTestExecution,
   partnerEmails, type PartnerEmail, type InsertPartnerEmail,
   partnerPhones, type PartnerPhone, type InsertPartnerPhone,
@@ -473,6 +477,32 @@ export interface IStorage {
   getEntityFieldMetadata(entity: string): Promise<EntityFieldMetadata[]>;
   upsertEntityFieldMetadata(metadata: InsertEntityFieldMetadata): Promise<EntityFieldMetadata>;
   deleteEntityFieldMetadata(entity: string, fieldKey: string): Promise<boolean>;
+
+  // Calendars (hierarchical structure)
+  getCalendars(userId: string, organizationId: string): Promise<Calendar[]>;
+  getCalendar(id: string, userId: string, organizationId: string): Promise<Calendar | undefined>;
+  getCalendarsByPartner(partnerId: string, organizationId: string): Promise<Calendar[]>;
+  getChildCalendars(parentId: string, organizationId: string): Promise<Calendar[]>;
+  createCalendar(calendar: InsertCalendar & { organizationId: string }): Promise<Calendar>;
+  updateCalendar(id: string, calendar: Partial<InsertCalendar>, userId: string, organizationId: string): Promise<Calendar | undefined>;
+  deleteCalendar(id: string, userId: string, organizationId: string): Promise<boolean>;
+
+  // AI Learning Patterns
+  getAiLearningPatterns(organizationId: string, patternType?: string): Promise<AiLearningPattern[]>;
+  getAiLearningPattern(id: string, organizationId: string): Promise<AiLearningPattern | undefined>;
+  createAiLearningPattern(pattern: InsertAiLearningPattern & { organizationId: string }): Promise<AiLearningPattern>;
+  updateAiLearningPattern(id: string, pattern: Partial<InsertAiLearningPattern>, organizationId: string): Promise<AiLearningPattern | undefined>;
+  incrementPatternUsage(id: string, accepted: boolean): Promise<AiLearningPattern | undefined>;
+  deleteAiLearningPattern(id: string, organizationId: string): Promise<boolean>;
+
+  // DevOps Field Mappings
+  getDevopsFieldMappings(organizationId: string): Promise<DevopsFieldMapping[]>;
+  getDevopsFieldMapping(id: string, organizationId: string): Promise<DevopsFieldMapping | undefined>;
+  findDevopsFieldMapping(organizationId: string, devopsField: string, devopsValue: string): Promise<DevopsFieldMapping | undefined>;
+  createDevopsFieldMapping(mapping: InsertDevopsFieldMapping & { organizationId: string }): Promise<DevopsFieldMapping>;
+  updateDevopsFieldMapping(id: string, mapping: Partial<InsertDevopsFieldMapping>, organizationId: string): Promise<DevopsFieldMapping | undefined>;
+  incrementMappingUsage(id: string): Promise<DevopsFieldMapping | undefined>;
+  deleteDevopsFieldMapping(id: string, organizationId: string): Promise<boolean>;
 
   // Chat System
   // Chat Rooms
@@ -4793,6 +4823,256 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return result.rowCount || 0;
+  }
+
+  // ==================== CALENDARS ====================
+  async getCalendars(userId: string, organizationId: string): Promise<Calendar[]> {
+    return await db.query.calendars.findMany({
+      where: and(
+        eq(calendars.organizationId, organizationId),
+        eq(calendars.isActive, true)
+      ),
+      orderBy: [asc(calendars.name)],
+    });
+  }
+
+  async getCalendar(id: string, userId: string, organizationId: string): Promise<Calendar | undefined> {
+    return await db.query.calendars.findFirst({
+      where: and(
+        eq(calendars.id, id),
+        eq(calendars.organizationId, organizationId)
+      ),
+    });
+  }
+
+  async getCalendarsByPartner(partnerId: string, organizationId: string): Promise<Calendar[]> {
+    return await db.query.calendars.findMany({
+      where: and(
+        eq(calendars.partnerId, partnerId),
+        eq(calendars.organizationId, organizationId),
+        eq(calendars.isActive, true)
+      ),
+      orderBy: [asc(calendars.name)],
+    });
+  }
+
+  async getChildCalendars(parentId: string, organizationId: string): Promise<Calendar[]> {
+    return await db.query.calendars.findMany({
+      where: and(
+        eq(calendars.parentCalendarId, parentId),
+        eq(calendars.organizationId, organizationId),
+        eq(calendars.isActive, true)
+      ),
+      orderBy: [asc(calendars.name)],
+    });
+  }
+
+  async createCalendar(calendar: InsertCalendar & { organizationId: string }): Promise<Calendar> {
+    const [result] = await db.insert(calendars).values(calendar).returning();
+    return result;
+  }
+
+  async updateCalendar(
+    id: string,
+    calendar: Partial<InsertCalendar>,
+    userId: string,
+    organizationId: string
+  ): Promise<Calendar | undefined> {
+    const [result] = await db
+      .update(calendars)
+      .set({ ...calendar, updatedAt: new Date() })
+      .where(
+        and(
+          eq(calendars.id, id),
+          eq(calendars.organizationId, organizationId)
+        )
+      )
+      .returning();
+    return result;
+  }
+
+  async deleteCalendar(id: string, userId: string, organizationId: string): Promise<boolean> {
+    const result = await db
+      .delete(calendars)
+      .where(
+        and(
+          eq(calendars.id, id),
+          eq(calendars.organizationId, organizationId)
+        )
+      );
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // ==================== AI LEARNING PATTERNS ====================
+  async getAiLearningPatterns(organizationId: string, patternType?: string): Promise<AiLearningPattern[]> {
+    if (patternType) {
+      return await db.query.aiLearningPatterns.findMany({
+        where: and(
+          eq(aiLearningPatterns.organizationId, organizationId),
+          eq(aiLearningPatterns.patternType, patternType as any),
+          eq(aiLearningPatterns.isActive, true)
+        ),
+        orderBy: [desc(aiLearningPatterns.acceptanceCount), desc(aiLearningPatterns.lastUsedAt)],
+      });
+    }
+    return await db.query.aiLearningPatterns.findMany({
+      where: and(
+        eq(aiLearningPatterns.organizationId, organizationId),
+        eq(aiLearningPatterns.isActive, true)
+      ),
+      orderBy: [desc(aiLearningPatterns.acceptanceCount), desc(aiLearningPatterns.lastUsedAt)],
+    });
+  }
+
+  async getAiLearningPattern(id: string, organizationId: string): Promise<AiLearningPattern | undefined> {
+    return await db.query.aiLearningPatterns.findFirst({
+      where: and(
+        eq(aiLearningPatterns.id, id),
+        eq(aiLearningPatterns.organizationId, organizationId)
+      ),
+    });
+  }
+
+  async createAiLearningPattern(pattern: InsertAiLearningPattern & { organizationId: string }): Promise<AiLearningPattern> {
+    const [result] = await db.insert(aiLearningPatterns).values(pattern).returning();
+    return result;
+  }
+
+  async updateAiLearningPattern(
+    id: string,
+    pattern: Partial<InsertAiLearningPattern>,
+    organizationId: string
+  ): Promise<AiLearningPattern | undefined> {
+    const [result] = await db
+      .update(aiLearningPatterns)
+      .set({ ...pattern, updatedAt: new Date() })
+      .where(
+        and(
+          eq(aiLearningPatterns.id, id),
+          eq(aiLearningPatterns.organizationId, organizationId)
+        )
+      )
+      .returning();
+    return result;
+  }
+
+  async incrementPatternUsage(id: string, accepted: boolean): Promise<AiLearningPattern | undefined> {
+    const pattern = await db.query.aiLearningPatterns.findFirst({
+      where: eq(aiLearningPatterns.id, id),
+    });
+    if (!pattern) return undefined;
+
+    const [result] = await db
+      .update(aiLearningPatterns)
+      .set({
+        acceptanceCount: accepted ? pattern.acceptanceCount + 1 : pattern.acceptanceCount,
+        rejectionCount: accepted ? pattern.rejectionCount : pattern.rejectionCount + 1,
+        lastUsedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(aiLearningPatterns.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteAiLearningPattern(id: string, organizationId: string): Promise<boolean> {
+    const result = await db
+      .delete(aiLearningPatterns)
+      .where(
+        and(
+          eq(aiLearningPatterns.id, id),
+          eq(aiLearningPatterns.organizationId, organizationId)
+        )
+      );
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // ==================== DEVOPS FIELD MAPPINGS ====================
+  async getDevopsFieldMappings(organizationId: string): Promise<DevopsFieldMapping[]> {
+    return await db.query.devopsFieldMappings.findMany({
+      where: and(
+        eq(devopsFieldMappings.organizationId, organizationId),
+        eq(devopsFieldMappings.isActive, true)
+      ),
+      orderBy: [asc(devopsFieldMappings.devopsField), asc(devopsFieldMappings.devopsValue)],
+    });
+  }
+
+  async getDevopsFieldMapping(id: string, organizationId: string): Promise<DevopsFieldMapping | undefined> {
+    return await db.query.devopsFieldMappings.findFirst({
+      where: and(
+        eq(devopsFieldMappings.id, id),
+        eq(devopsFieldMappings.organizationId, organizationId)
+      ),
+    });
+  }
+
+  async findDevopsFieldMapping(
+    organizationId: string,
+    devopsField: string,
+    devopsValue: string
+  ): Promise<DevopsFieldMapping | undefined> {
+    return await db.query.devopsFieldMappings.findFirst({
+      where: and(
+        eq(devopsFieldMappings.organizationId, organizationId),
+        eq(devopsFieldMappings.devopsField, devopsField),
+        eq(devopsFieldMappings.devopsValue, devopsValue),
+        eq(devopsFieldMappings.isActive, true)
+      ),
+    });
+  }
+
+  async createDevopsFieldMapping(mapping: InsertDevopsFieldMapping & { organizationId: string }): Promise<DevopsFieldMapping> {
+    const [result] = await db.insert(devopsFieldMappings).values(mapping).returning();
+    return result;
+  }
+
+  async updateDevopsFieldMapping(
+    id: string,
+    mapping: Partial<InsertDevopsFieldMapping>,
+    organizationId: string
+  ): Promise<DevopsFieldMapping | undefined> {
+    const [result] = await db
+      .update(devopsFieldMappings)
+      .set({ ...mapping, updatedAt: new Date() })
+      .where(
+        and(
+          eq(devopsFieldMappings.id, id),
+          eq(devopsFieldMappings.organizationId, organizationId)
+        )
+      )
+      .returning();
+    return result;
+  }
+
+  async incrementMappingUsage(id: string): Promise<DevopsFieldMapping | undefined> {
+    const mapping = await db.query.devopsFieldMappings.findFirst({
+      where: eq(devopsFieldMappings.id, id),
+    });
+    if (!mapping) return undefined;
+
+    const [result] = await db
+      .update(devopsFieldMappings)
+      .set({
+        usageCount: mapping.usageCount + 1,
+        lastUsedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(devopsFieldMappings.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteDevopsFieldMapping(id: string, organizationId: string): Promise<boolean> {
+    const result = await db
+      .delete(devopsFieldMappings)
+      .where(
+        and(
+          eq(devopsFieldMappings.id, id),
+          eq(devopsFieldMappings.organizationId, organizationId)
+        )
+      );
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 
