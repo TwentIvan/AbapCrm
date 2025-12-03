@@ -52,7 +52,8 @@ import {
   ExternalLink
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { BarChart3, TrendingUp, Database, Image } from "lucide-react";
+import { BarChart3, TrendingUp, Database, Image, Inbox } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Message, Project, Task, Partner } from "@shared/schema";
 import { format } from "date-fns";
 import MessageForm from "@/components/forms/message-form";
@@ -522,13 +523,21 @@ export default function MessagesPage() {
     }
   };
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: string, sourceType?: string) => {
+    // Check for DevOps
+    if (sourceType === 'email_devops_workitem') {
+      return <GitBranch className="h-6 w-6 text-orange-500" />;
+    }
+    // Check for Calendar
+    if (sourceType === 'email_calendar_event') {
+      return <Calendar className="h-6 w-6 text-purple-500" />;
+    }
     switch (type) {
-      case 'email': return <Mail className="h-4 w-4 text-amber-600" />;
-      case 'chat': return <MessageSquare className="h-4 w-4 text-indigo-600" />;
-      case 'sms': return <MessageSquare className="h-4 w-4 text-green-400" />;
-      case 'other': return <FileText className="h-4 w-4" />;
-      default: return <Mail className="h-4 w-4" />;
+      case 'email': return <Mail className="h-6 w-6 text-blue-600" />;
+      case 'chat': return <MessageSquare className="h-6 w-6 text-blue-600" />;
+      case 'sms': return <MessageSquare className="h-6 w-6 text-blue-600" />;
+      case 'other': return <FileText className="h-6 w-6 text-gray-500" />;
+      default: return <Inbox className="h-6 w-6 text-slate-600" />;
     }
   };
 
@@ -855,30 +864,6 @@ export default function MessagesPage() {
         <div className="px-6 py-2 border-b">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Badge variant="secondary" className="text-sm">
-                {unreadCount} non letti
-              </Badge>
-              <Button 
-                onClick={() => setShowThreadView(!showThreadView)}
-                size="sm"
-                variant={showThreadView ? "default" : "outline"}
-                data-testid="button-toggle-thread-view"
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                {showThreadView ? 'Vista normale' : 'Vista thread'}
-              </Button>
-              {(filterType === "all" || filterType === "email") && (
-                <Button 
-                  onClick={() => syncMutation.mutate()}
-                  disabled={syncMutation.isPending}
-                  size="sm"
-                  variant="outline"
-                  data-testid="button-sync-emails"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-                  Sincronizza Email
-                </Button>
-              )}
               {(filterType === "chat" || filterType === "sms" || filterType === "other") && (
                 <div className="flex items-center text-sm text-muted-foreground bg-muted px-3 py-1 rounded-md">
                   <AlertCircle className="h-4 w-4 mr-2" />
@@ -951,11 +936,6 @@ export default function MessagesPage() {
               {/* Message List */}
               <Card className="h-full flex flex-col">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Mail className="h-5 w-5" />
-                  </CardTitle>
-                </div>
                 {/* Barra di ricerca */}
                 <div className="relative">
                   <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -968,135 +948,200 @@ export default function MessagesPage() {
                   />
                 </div>
                 {/* Filter tabs by message type - Icon buttons with badges */}
+                <TooltipProvider delayDuration={300}>
                 <Tabs value={filterType} onValueChange={(value) => setFilterType(value as typeof filterType)} className="w-full">
                   <TabsList className="flex justify-center gap-3 h-auto p-3 bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-xl">
+                    {/* Sync Button */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={() => syncMutation.mutate()}
+                          disabled={syncMutation.isPending}
+                          variant="outline"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-green-200 dark:border-green-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all"
+                          data-testid="button-sync-emails"
+                        >
+                          <RefreshCw className={`h-6 w-6 text-green-600 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-green-600 text-white">
+                        <p>Sincronizza Email</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    
+                    {/* Separator */}
+                    <div className="w-px h-10 bg-slate-300 dark:bg-slate-600 mx-1" />
+                    
                     {/* All */}
-                    <TabsTrigger 
-                      value="all" 
-                      data-testid="tab-all"
-                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
-                      title="Tutti"
-                    >
-                      <Mail className="h-6 w-6" />
-                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
-                        {typeCounts.all}
-                      </span>
-                      {unreadCounts.all > 0 && (
-                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
-                          {unreadCounts.all}
-                        </span>
-                      )}
-                    </TabsTrigger>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger 
+                          value="all" 
+                          data-testid="tab-all"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-slate-400 dark:hover:border-slate-500 transition-all data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:border-slate-600 data-[state=active]:shadow-lg"
+                        >
+                          <Inbox className="h-6 w-6" />
+                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-slate-600 text-white rounded-full px-1.5 shadow-md">
+                            {typeCounts.all}
+                          </span>
+                          {unreadCounts.all > 0 && (
+                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                              {unreadCounts.all}
+                            </span>
+                          )}
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        <p>Tutti i messaggi ({typeCounts.all})</p>
+                      </TooltipContent>
+                    </Tooltip>
                     
                     {/* Email */}
-                    <TabsTrigger 
-                      value="email" 
-                      data-testid="tab-email"
-                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
-                      title="Email"
-                    >
-                      <Mail className="h-6 w-6" />
-                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
-                        {typeCounts.email}
-                      </span>
-                      {unreadCounts.email > 0 && (
-                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
-                          {unreadCounts.email}
-                        </span>
-                      )}
-                    </TabsTrigger>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger 
+                          value="email" 
+                          data-testid="tab-email"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
+                        >
+                          <Mail className="h-6 w-6" />
+                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
+                            {typeCounts.email}
+                          </span>
+                          {unreadCounts.email > 0 && (
+                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                              {unreadCounts.email}
+                            </span>
+                          )}
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-blue-600 text-white">
+                        <p>Email ({typeCounts.email})</p>
+                      </TooltipContent>
+                    </Tooltip>
                     
                     {/* Chat */}
-                    <TabsTrigger 
-                      value="chat" 
-                      data-testid="tab-chat"
-                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
-                      title="Chat"
-                    >
-                      <MessageSquare className="h-6 w-6" />
-                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
-                        {typeCounts.chat}
-                      </span>
-                      {unreadCounts.chat > 0 && (
-                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
-                          {unreadCounts.chat}
-                        </span>
-                      )}
-                    </TabsTrigger>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger 
+                          value="chat" 
+                          data-testid="tab-chat"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
+                        >
+                          <MessageSquare className="h-6 w-6" />
+                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
+                            {typeCounts.chat}
+                          </span>
+                          {unreadCounts.chat > 0 && (
+                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                              {unreadCounts.chat}
+                            </span>
+                          )}
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-blue-600 text-white">
+                        <p>Chat ({typeCounts.chat})</p>
+                      </TooltipContent>
+                    </Tooltip>
                     
                     {/* SMS */}
-                    <TabsTrigger 
-                      value="sms" 
-                      data-testid="tab-sms"
-                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
-                      title="SMS"
-                    >
-                      <MessageSquare className="h-6 w-6" />
-                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
-                        {typeCounts.sms}
-                      </span>
-                      {unreadCounts.sms > 0 && (
-                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
-                          {unreadCounts.sms}
-                        </span>
-                      )}
-                    </TabsTrigger>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger 
+                          value="sms" 
+                          data-testid="tab-sms"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
+                        >
+                          <MessageSquare className="h-6 w-6" />
+                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white rounded-full px-1.5 shadow-md">
+                            {typeCounts.sms}
+                          </span>
+                          {unreadCounts.sms > 0 && (
+                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                              {unreadCounts.sms}
+                            </span>
+                          )}
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-blue-600 text-white">
+                        <p>SMS ({typeCounts.sms})</p>
+                      </TooltipContent>
+                    </Tooltip>
                     
                     {/* DevOps */}
-                    <TabsTrigger 
-                      value="devops" 
-                      data-testid="tab-devops"
-                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-orange-300 dark:hover:border-orange-600 transition-all data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:border-orange-500 data-[state=active]:shadow-lg"
-                      title="DevOps"
-                    >
-                      <GitBranch className="h-6 w-6" />
-                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-orange-500 text-white rounded-full px-1.5 shadow-md">
-                        {typeCounts.devops}
-                      </span>
-                      {unreadCounts.devops > 0 && (
-                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
-                          {unreadCounts.devops}
-                        </span>
-                      )}
-                    </TabsTrigger>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger 
+                          value="devops" 
+                          data-testid="tab-devops"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-orange-300 dark:hover:border-orange-600 transition-all data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:border-orange-500 data-[state=active]:shadow-lg"
+                        >
+                          <GitBranch className="h-6 w-6" />
+                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-orange-500 text-white rounded-full px-1.5 shadow-md">
+                            {typeCounts.devops}
+                          </span>
+                          {unreadCounts.devops > 0 && (
+                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                              {unreadCounts.devops}
+                            </span>
+                          )}
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-orange-500 text-white">
+                        <p>DevOps ({typeCounts.devops})</p>
+                      </TooltipContent>
+                    </Tooltip>
                     
                     {/* Calendar */}
-                    <TabsTrigger 
-                      value="calendar" 
-                      data-testid="tab-calendar"
-                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:border-purple-500 data-[state=active]:shadow-lg"
-                      title="Appuntamenti"
-                    >
-                      <Calendar className="h-6 w-6" />
-                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-purple-500 text-white rounded-full px-1.5 shadow-md">
-                        {typeCounts.calendar}
-                      </span>
-                      {unreadCounts.calendar > 0 && (
-                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
-                          {unreadCounts.calendar}
-                        </span>
-                      )}
-                    </TabsTrigger>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger 
+                          value="calendar" 
+                          data-testid="tab-calendar"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:border-purple-500 data-[state=active]:shadow-lg"
+                        >
+                          <Calendar className="h-6 w-6" />
+                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-purple-500 text-white rounded-full px-1.5 shadow-md">
+                            {typeCounts.calendar}
+                          </span>
+                          {unreadCounts.calendar > 0 && (
+                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                              {unreadCounts.calendar}
+                            </span>
+                          )}
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-purple-500 text-white">
+                        <p>Appuntamenti ({typeCounts.calendar})</p>
+                      </TooltipContent>
+                    </Tooltip>
                     
                     {/* Other */}
-                    <TabsTrigger 
-                      value="other" 
-                      data-testid="tab-other"
-                      className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-500 transition-all data-[state=active]:bg-gray-500 data-[state=active]:text-white data-[state=active]:border-gray-500 data-[state=active]:shadow-lg"
-                      title="Altro"
-                    >
-                      <FileText className="h-6 w-6" />
-                      <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-gray-500 text-white rounded-full px-1.5 shadow-md">
-                        {typeCounts.other}
-                      </span>
-                      {unreadCounts.other > 0 && (
-                        <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
-                          {unreadCounts.other}
-                        </span>
-                      )}
-                    </TabsTrigger>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger 
+                          value="other" 
+                          data-testid="tab-other"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-500 transition-all data-[state=active]:bg-gray-500 data-[state=active]:text-white data-[state=active]:border-gray-500 data-[state=active]:shadow-lg"
+                        >
+                          <FileText className="h-6 w-6" />
+                          <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-gray-500 text-white rounded-full px-1.5 shadow-md">
+                            {typeCounts.other}
+                          </span>
+                          {unreadCounts.other > 0 && (
+                            <span className="absolute -top-2 -left-2 min-w-[22px] h-[22px] flex items-center justify-center text-[11px] font-bold bg-red-500 text-white rounded-full px-1.5 shadow-md animate-pulse">
+                              {unreadCounts.other}
+                            </span>
+                          )}
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-gray-500 text-white">
+                        <p>Altri ({typeCounts.other})</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </TabsList>
                 </Tabs>
+                </TooltipProvider>
               </CardHeader>
               <CardContent className="p-0 flex flex-col flex-1 min-h-0">
                 <div className="border rounded-md">
@@ -1238,7 +1283,7 @@ export default function MessagesPage() {
                                             {filterType === 'all' && (
                                               <TableCell style={{ width: `${columnWidths.type}%` }}>
                                                 <div className="flex items-center justify-center pl-4">
-                                                  {getTypeIcon(message.type)}
+                                                  {getTypeIcon(message.type, (message as any).sourceType)}
                                                 </div>
                                               </TableCell>
                                             )}
@@ -1322,7 +1367,7 @@ export default function MessagesPage() {
                                 {filterType === 'all' && (
                                   <TableCell style={{ width: `${columnWidths.type}%` }}>
                                     <div className="flex items-center justify-center">
-                                      {getTypeIcon(message.type)}
+                                      {getTypeIcon(message.type, (message as any).sourceType)}
                                     </div>
                                   </TableCell>
                                 )}
