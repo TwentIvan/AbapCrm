@@ -639,6 +639,21 @@ export default function MessagesPage() {
     return counts;
   }, [messages]);
 
+  // Calculate unread counts by type
+  const unreadCounts = React.useMemo(() => {
+    const unreadMessages = messages.filter(m => m.status === 'unread');
+    const counts = {
+      all: unreadMessages.length,
+      email: unreadMessages.filter(m => m.type === 'email').length,
+      chat: unreadMessages.filter(m => m.type === 'chat').length,
+      sms: unreadMessages.filter(m => m.type === 'sms').length,
+      other: unreadMessages.filter(m => m.type === 'other').length,
+      devops: unreadMessages.filter(m => (m as any).sourceType === 'email_devops_workitem').length,
+      calendar: unreadMessages.filter(m => (m as any).sourceType === 'email_calendar_event').length,
+    };
+    return counts;
+  }, [messages]);
+
   const toggleThread = (threadId: string) => {
     const newExpanded = new Set(expandedThreads);
     if (expandedThreads.has(threadId)) {
@@ -952,35 +967,147 @@ export default function MessagesPage() {
                     data-testid="search-messages"
                   />
                 </div>
-                {/* Filter tabs by message type */}
+                {/* Filter tabs by message type - Icon buttons with badges */}
                 <Tabs value={filterType} onValueChange={(value) => setFilterType(value as typeof filterType)} className="w-full">
-                  <TabsList className="grid w-full grid-cols-6">
-                    <TabsTrigger value="all" data-testid="tab-all">
-                      Tutti ({typeCounts.all})
+                  <TabsList className="flex justify-center gap-2 h-auto p-2 bg-muted/50">
+                    {/* All */}
+                    <TabsTrigger 
+                      value="all" 
+                      data-testid="tab-all"
+                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      title="Tutti"
+                    >
+                      <Mail className="h-5 w-5" />
+                      {typeCounts.all > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
+                          {typeCounts.all}
+                        </span>
+                      )}
+                      {unreadCounts.all > 0 && (
+                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                          {unreadCounts.all}
+                        </span>
+                      )}
                     </TabsTrigger>
-                    <TabsTrigger value="email" data-testid="tab-email">
-                      <Mail className="h-4 w-4 mr-1" />
-                      Email ({typeCounts.email})
+                    
+                    {/* Email */}
+                    <TabsTrigger 
+                      value="email" 
+                      data-testid="tab-email"
+                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      title="Email"
+                    >
+                      <Mail className="h-5 w-5" />
+                      {typeCounts.email > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
+                          {typeCounts.email}
+                        </span>
+                      )}
+                      {unreadCounts.email > 0 && (
+                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                          {unreadCounts.email}
+                        </span>
+                      )}
                     </TabsTrigger>
-                    <TabsTrigger value="chat" data-testid="tab-chat">
-                      <MessageSquare className="h-4 w-4 mr-1" />
-                      Chat ({typeCounts.chat})
+                    
+                    {/* Chat */}
+                    <TabsTrigger 
+                      value="chat" 
+                      data-testid="tab-chat"
+                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      title="Chat"
+                    >
+                      <MessageSquare className="h-5 w-5" />
+                      {typeCounts.chat > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
+                          {typeCounts.chat}
+                        </span>
+                      )}
+                      {unreadCounts.chat > 0 && (
+                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                          {unreadCounts.chat}
+                        </span>
+                      )}
                     </TabsTrigger>
-                    <TabsTrigger value="sms" data-testid="tab-sms">
-                      <MessageSquare className="h-4 w-4 mr-1" />
-                      SMS ({typeCounts.sms})
+                    
+                    {/* SMS */}
+                    <TabsTrigger 
+                      value="sms" 
+                      data-testid="tab-sms"
+                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      title="SMS"
+                    >
+                      <MessageSquare className="h-5 w-5" />
+                      {typeCounts.sms > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
+                          {typeCounts.sms}
+                        </span>
+                      )}
+                      {unreadCounts.sms > 0 && (
+                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                          {unreadCounts.sms}
+                        </span>
+                      )}
                     </TabsTrigger>
-                    <TabsTrigger value="devops" data-testid="tab-devops">
-                      <GitBranch className="h-4 w-4 mr-1" />
-                      DevOps ({typeCounts.devops})
+                    
+                    {/* DevOps */}
+                    <TabsTrigger 
+                      value="devops" 
+                      data-testid="tab-devops"
+                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      title="DevOps"
+                    >
+                      <GitBranch className="h-5 w-5" />
+                      {typeCounts.devops > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
+                          {typeCounts.devops}
+                        </span>
+                      )}
+                      {unreadCounts.devops > 0 && (
+                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                          {unreadCounts.devops}
+                        </span>
+                      )}
                     </TabsTrigger>
-                    <TabsTrigger value="calendar" data-testid="tab-calendar">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      Appuntamenti ({typeCounts.calendar})
+                    
+                    {/* Calendar */}
+                    <TabsTrigger 
+                      value="calendar" 
+                      data-testid="tab-calendar"
+                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      title="Appuntamenti"
+                    >
+                      <Calendar className="h-5 w-5" />
+                      {typeCounts.calendar > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
+                          {typeCounts.calendar}
+                        </span>
+                      )}
+                      {unreadCounts.calendar > 0 && (
+                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                          {unreadCounts.calendar}
+                        </span>
+                      )}
                     </TabsTrigger>
-                    <TabsTrigger value="other" data-testid="tab-other">
-                      <FileText className="h-4 w-4 mr-1" />
-                      Altro ({typeCounts.other})
+                    
+                    {/* Other */}
+                    <TabsTrigger 
+                      value="other" 
+                      data-testid="tab-other"
+                      className="relative flex flex-col items-center justify-center w-12 h-12 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      title="Altro"
+                    >
+                      <FileText className="h-5 w-5" />
+                      {typeCounts.other > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1">
+                          {typeCounts.other}
+                        </span>
+                      )}
+                      {unreadCounts.other > 0 && (
+                        <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1">
+                          {unreadCounts.other}
+                        </span>
+                      )}
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
