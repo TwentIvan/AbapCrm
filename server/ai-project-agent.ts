@@ -2,7 +2,7 @@
 // Using OpenAI integration from blueprint:javascript_openai
 
 import OpenAI from "openai";
-import type { Message, Project, Partner, Task } from "@shared/schema";
+import type { Message, Project, Partner, Task, AiLearningPattern, Calendar } from "@shared/schema";
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -44,14 +44,75 @@ export interface ProjectProposal {
     estimatedEffort?: number; // hours
     dueDate?: string;
   }>;
+  calendar?: {
+    id?: string; // Existing calendar ID
+    name?: string; // For new calendar creation
+    suggestedParentId?: string; // Parent calendar for hierarchy
+  };
   reasoning: string; // Explanation of why these were proposed
+}
+
+// Interface for learning context
+export interface LearningContext {
+  patterns: AiLearningPattern[];
+  calendars: Calendar[];
+}
+
+// Format learning patterns for AI context
+function formatLearningPatterns(patterns: AiLearningPattern[]): string {
+  if (!patterns || patterns.length === 0) {
+    return '(nessun pattern appreso)';
+  }
+
+  return patterns.slice(0, 10).map(p => {
+    const features = p.inputFeatures as Record<string, any>;
+    const action = p.chosenAction as Record<string, any>;
+    const ratio = p.acceptanceCount / (p.acceptanceCount + p.rejectionCount);
+    const confidence = (ratio * 100).toFixed(0);
+    
+    return `  • Pattern "${p.patternType}" (${confidence}% accettato, usato ${p.acceptanceCount}x):
+      Input: ${JSON.stringify(features)}
+      Azione scelta: ${JSON.stringify(action)}`;
+  }).join('\n');
+}
+
+// Format calendars for AI context
+function formatCalendars(calendars: Calendar[]): string {
+  if (!calendars || calendars.length === 0) {
+    return '(nessun calendario disponibile)';
+  }
+
+  // Build hierarchical view
+  const rootCalendars = calendars.filter(c => !c.parentCalendarId);
+  const childrenMap = new Map<string, Calendar[]>();
+  
+  calendars.forEach(c => {
+    if (c.parentCalendarId) {
+      const children = childrenMap.get(c.parentCalendarId) || [];
+      children.push(c);
+      childrenMap.set(c.parentCalendarId, children);
+    }
+  });
+
+  function formatCalendar(cal: Calendar, indent: string = ''): string {
+    const children = childrenMap.get(cal.id) || [];
+    let result = `${indent}• [${cal.id}] "${cal.name}" (${cal.color})${cal.isDefault ? ' ⭐ default' : ''}`;
+    if (cal.partnerId) result += ` - Partner: ${cal.partnerId}`;
+    if (children.length > 0) {
+      result += '\n' + children.map(c => formatCalendar(c, indent + '    ')).join('\n');
+    }
+    return result;
+  }
+
+  return rootCalendars.map(c => formatCalendar(c)).join('\n');
 }
 
 export async function analyzeMessageForProject(
   message: Message,
   existingProjects: Project[],
   existingPartners: Partner[],
-  existingTasks: Task[]
+  existingTasks: Task[],
+  learningContext?: LearningContext
 ): Promise<ProjectProposal> {
   const systemPrompt = `You are an intelligent project management assistant for a SAP ABAP freelancer CRM system.
 
@@ -192,6 +253,34 @@ Break down work into specific tasks based on message content:
 - Bug fix: 2-8 hours
 - Documentation: 4-8 hours
 
+### ⚠️ CRITICAL: Effort Consistency Rule
+**LA SOMMA DELLE STIME DEI TASK DEVE ESSERE UGUALE ALLA STIMA DEL PROGETTO**
+
+Se il progetto ha estimatedEffort = 40 ore, la somma di tutti i task.estimatedEffort deve essere esattamente 40 ore.
+- Assicurati che ogni task abbia una stima (estimatedEffort)
+- Verifica che: project.estimatedEffort === sum(tasks[].estimatedEffort)
+- Se non puoi determinare le singole stime, distribuisci equamente le ore del progetto tra i task
+
+Esempio corretto:
+- Project: estimatedEffort = 24h
+- Task 1: Analisi requisiti = 4h
+- Task 2: Sviluppo = 12h
+- Task 3: Testing = 4h
+- Task 4: Documentazione = 4h
+- TOTALE TASK: 4+12+4+4 = 24h ✓
+
+### Learning from Past Decisions
+Se il contesto include pattern appresi dall'utente, USALI per guidare le tue decisioni:
+- Pattern con alta confidenza (>80%) → Segui il pattern
+- Pattern con media confidenza (50-80%) → Considera il pattern
+- Pattern con bassa confidenza (<50%) → Ignora il pattern
+
+I pattern indicano preferenze dell'utente per:
+- Abbinamento partner/progetto per determinati domini email
+- Tipi di task preferiti per certi tipi di richiesta
+- Calendari predefiniti per partner specifici
+- Stime tipiche per certi tipi di lavoro
+
 ### Priority Detection
 - **urgent**: Keywords like "urgente", "ASAP", "immediately", "critical", "production down"
 - **high**: "importante", "priorità alta", "questa settimana", deadlines within 3 days
@@ -244,12 +333,36 @@ Return valid JSON ONLY with this exact structure (with ITALIAN content):
       "description": "ITALIAN: Cosa deve essere fatto (es. 'Raccogliere e documentare i requisiti funzionali dal cliente')",
       "priority": "low|medium|high|urgent",
       "taskType": "development|analysis|design|testing|consulting|meeting|documentation|maintenance|support|other",
-      "estimatedEffort": hours_number_or_null,
+      "estimatedEffort": hours_number (OBBLIGATORIO - la somma deve corrispondere al progetto!),
       "dueDate": "YYYY-MM-DD if mentioned"
     }
   ],
-  "reasoning": "ITALIAN: Breve spiegazione in italiano del perché hai proposto questo progetto/partner/task/contatti, cosa hai abbinato, cosa hai dedotto, livello di confidenza"
+  "calendar": {
+    "id": "uuid-if-existing-calendar-suitable OR null",
+    "name": "Nome nuovo calendario se necessario (es. 'Meeting Cliente ABC')",
+    "suggestedParentId": "uuid-of-parent-calendar-for-hierarchy OR null"
+  },
+  "reasoning": "ITALIAN: Breve spiegazione in italiano del perché hai proposto questo progetto/partner/task/contatti/calendario, cosa hai abbinato, cosa hai dedotto, pattern usati, livello di confidenza. MENZIONA SE HAI USATO PATTERN APPRESI."
 }`;
+
+  // Build learning context section if available
+  const learningSection = learningContext?.patterns && learningContext.patterns.length > 0 
+    ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 PATTERN APPRESI (usa per guidare le tue decisioni)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${formatLearningPatterns(learningContext.patterns)}
+` : '';
+
+  const calendarsSection = learningContext?.calendars && learningContext.calendars.length > 0
+    ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 CALENDARI DISPONIBILI (struttura gerarchica)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${formatCalendars(learningContext.calendars)}
+` : '';
 
   const userPrompt = `Analyze this message and propose project/partner/tasks.
 
@@ -292,7 +405,7 @@ ${existingTasks.length > 0
     ).join('\n')
   : '  (no existing tasks)'}
 ${existingTasks.length > 15 ? `  ... and ${existingTasks.length - 15} more` : ''}
-
+${learningSection}${calendarsSection}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 YOUR ANALYSIS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -301,8 +414,9 @@ Based on the message content and existing context above:
 1. Match or create appropriate Partner (prefer matching!)
 2. Extract relevant Contacts (people in CC, signatures, or mentioned in body)
 3. Match or create appropriate Project
-4. Break down work into 2-5 specific Tasks
-5. Provide reasoning for your decisions
+4. Break down work into 2-5 specific Tasks (⚠️ STIME DEVONO SOMMARE AL TOTALE PROGETTO!)
+5. Suggest appropriate Calendar for project events
+6. Provide reasoning for your decisions (including any patterns used)
 
 Respond with VALID JSON ONLY (no markdown, no explanations outside JSON).`;
 

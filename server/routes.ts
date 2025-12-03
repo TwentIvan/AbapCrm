@@ -3889,12 +3889,23 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
           const existingPartners = await storage.getPartners(userId, organizationId);
           const existingTasks = await storage.getTasks(userId, organizationId);
           
+          // Fetch learning context for AI
+          const patterns = await storage.getAiLearningPatterns(organizationId);
+          const calendars = await storage.getCalendars(userId, organizationId);
+          
           const { analyzeMessageForProject } = await import('./ai-project-agent');
+          
+          const learningContext = {
+            patterns,
+            calendars
+          };
+          
           const analysisResult = await analyzeMessageForProject(
             message,
             existingProjects,
             existingPartners,
-            existingTasks
+            existingTasks,
+            learningContext
           );
           
           // Update proposal with results
