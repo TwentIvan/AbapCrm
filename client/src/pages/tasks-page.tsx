@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square, Trash2, ExternalLink, History, MessageSquare } from "lucide-react";
+import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square, Trash2, ExternalLink, History, MessageSquare, Sparkles, Bot } from "lucide-react";
 import type { Task, Project, TimeEntry } from "@shared/schema";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
@@ -31,6 +31,7 @@ import { TableConfiguration } from "@/components/ui/table-configuration";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const statusColors = {
   todo: "bg-gray-100 text-gray-800",
@@ -47,10 +48,17 @@ const priorityColors = {
 };
 
 const statusLabels = {
-  todo: "To Do",
-  in_progress: "In Progress",
-  review: "Review",
-  completed: "Completed",
+  todo: "Da fare",
+  in_progress: "In corso",
+  review: "In revisione",
+  completed: "Completato",
+};
+
+const priorityLabels = {
+  low: "Bassa",
+  medium: "Media",
+  high: "Alta",
+  urgent: "Urgente",
 };
 
 // Compact Timer Buttons Component  
@@ -437,10 +445,10 @@ export default function TasksPage() {
       label: "Stato",
       type: "select",
       options: [
-        { value: "todo", label: "To Do" },
-        { value: "in_progress", label: "In Progress" },
-        { value: "review", label: "Review" },
-        { value: "completed", label: "Completed" },
+        { value: "todo", label: "Da fare" },
+        { value: "in_progress", label: "In corso" },
+        { value: "review", label: "In revisione" },
+        { value: "completed", label: "Completato" },
       ],
     },
     {
@@ -640,17 +648,17 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
   // Define filter columns for advanced filtering
   const filterColumns = [
     { id: 'title', label: 'Titolo', type: 'text' as const },
-    { id: 'status', label: 'Status', type: 'select' as const, options: [
-      { value: 'todo', label: 'To Do' },
-      { value: 'in_progress', label: 'In Progress' },
-      { value: 'review', label: 'Review' },
-      { value: 'completed', label: 'Completed' },
+    { id: 'status', label: 'Stato', type: 'select' as const, options: [
+      { value: 'todo', label: 'Da fare' },
+      { value: 'in_progress', label: 'In corso' },
+      { value: 'review', label: 'In revisione' },
+      { value: 'completed', label: 'Completato' },
     ]},
     { id: 'priority', label: 'Priorità', type: 'select' as const, options: [
-      { value: 'low', label: 'Low' },
-      { value: 'medium', label: 'Medium' },
-      { value: 'high', label: 'High' },
-      { value: 'urgent', label: 'Urgent' },
+      { value: 'low', label: 'Bassa' },
+      { value: 'medium', label: 'Media' },
+      { value: 'high', label: 'Alta' },
+      { value: 'urgent', label: 'Urgente' },
     ]},
     { id: 'description', label: 'Descrizione', type: 'text' as const },
     { id: 'dueDate', label: 'Scadenza', type: 'date' as const },
@@ -664,21 +672,8 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
   // Define table columns for UniversalTable
   const tableColumns = [
     {
-      key: 'completed',
-      label: '',
-      sortable: false,
-      searchable: false,
-      render: (task: Task) => (
-        <Checkbox
-          checked={task.status === 'completed'}
-          onCheckedChange={() => toggleTaskComplete(task)}
-          data-testid={`checkbox-task-${task.id}`}
-        />
-      ),
-    },
-    {
       key: 'title',
-      label: 'Title',
+      label: 'Titolo',
       sortable: true,
       searchable: true,
       render: (task: Task) => (
@@ -689,7 +684,7 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
     },
     {
       key: 'status',
-      label: 'Status',
+      label: 'Stato',
       sortable: true,
       searchable: true,
       render: (task: Task) => (
@@ -700,18 +695,18 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
     },
     {
       key: 'priority',
-      label: 'Priority',
+      label: 'Priorità',
       sortable: true,
       searchable: true,
       render: (task: Task) => (
         <Badge className={priorityColors[task.priority as keyof typeof priorityColors]} data-testid={`badge-task-priority-${task.id}`}>
-          {task.priority}
+          {priorityLabels[task.priority as keyof typeof priorityLabels]}
         </Badge>
       ),
     },
     {
       key: 'description',
-      label: 'Description',
+      label: 'Descrizione',
       sortable: false,
       searchable: true,
       render: (task: Task) => task.description ? (
@@ -719,12 +714,12 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
           {task.description}
         </div>
       ) : (
-        <span className="text-muted-foreground text-sm">No description</span>
+        <span className="text-muted-foreground text-sm">Nessuna descrizione</span>
       ),
     },
     {
       key: 'projectId',
-      label: 'Project',
+      label: 'Progetto',
       sortable: true,
       searchable: true,
       render: (task: any) => task.projectName ? (
@@ -732,21 +727,21 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
           {task.projectName}
         </div>
       ) : (
-        <span className="text-muted-foreground text-sm">No project</span>
+        <span className="text-muted-foreground text-sm">Nessun progetto</span>
       ),
     },
     {
       key: 'dueDate',
-      label: 'Due Date',
+      label: 'Scadenza',
       sortable: true,
       searchable: false,
       render: (task: Task) => {
-        if (!task.dueDate) return <span className="text-muted-foreground text-sm">No due date</span>;
+        if (!task.dueDate) return <span className="text-muted-foreground text-sm">Nessuna scadenza</span>;
         const dueDate = new Date(task.dueDate);
         const isOverdue = dueDate < new Date() && task.status !== 'completed';
         return (
           <div className={isOverdue ? 'text-red-600 font-medium' : ''}>
-            {dueDate.toLocaleDateString()}
+            {dueDate.toLocaleDateString('it-IT')}
           </div>
         );
       },
@@ -760,7 +755,7 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: 'Azioni',
       sortable: false,
       searchable: false,
       render: (task: Task) => (
@@ -856,7 +851,7 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
       <main className="flex-1 overflow-auto">
         <Header 
           title="Tasks" 
-          subtitle="Manage your project tasks and deliverables"
+          subtitle="Gestisci i tuoi task e le attività dei progetti"
         />
         
         <div 
@@ -879,6 +874,48 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
             onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => handleDelete(selectedTasks)}
             hasSelection={selectedTasks.length > 0}
+            customActions={
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => {
+                        // TODO: Implementare AI per task
+                        toast({
+                          title: "AI Task Assistant",
+                          description: "Funzionalità in sviluppo - Prossimamente!",
+                        });
+                      }}
+                      disabled={selectedTasks.length === 0}
+                      variant="ghost"
+                      className={`relative flex flex-col items-center justify-center w-12 h-9 rounded-lg border-2 border-purple-300/30 dark:border-purple-600/30 bg-sidebar-accent shadow-sm hover:shadow-md transition-all ${
+                        selectedTasks.length === 0 ? 'opacity-40' : 'opacity-100 hover:border-purple-400 dark:hover:border-purple-500'
+                      }`}
+                      data-testid="button-ai-tasks"
+                    >
+                      <div className="relative flex flex-col items-center">
+                        <div className="flex items-baseline space-x-0">
+                          <span className="text-xs font-black text-blue-600 dark:text-blue-400">T</span>
+                          <span className="text-sm font-black text-blue-500 dark:text-blue-300">H</span>
+                          <span className="text-sm font-black text-blue-600 dark:text-blue-400">U</span>
+                        </div>
+                        <span className="text-[8px] font-bold text-purple-500 dark:text-purple-400 -mt-0.5">AI</span>
+                      </div>
+                      {selectedTasks.length > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                          {selectedTasks.length > 9 ? '9+' : selectedTasks.length}
+                        </span>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="bg-purple-500 text-white">
+                    <p>{selectedTasks.length > 0 
+                      ? `Assistenza AI per ${selectedTasks.length} task` 
+                      : 'Seleziona task per assistenza AI'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            }
           />
 
           {isLoading && (!tasks || tasks.length === 0) ? (
@@ -890,10 +927,10 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
           ) : tasks?.length === 0 ? (
             <div className="text-center py-12">
               <CheckSquare className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No tasks yet</h3>
-              <p className="text-muted-foreground mb-4">Create your first task to start organizing your work</p>
+              <h3 className="text-lg font-medium text-foreground mb-2">Ancora nessun task</h3>
+              <p className="text-muted-foreground mb-4">Crea il tuo primo task per iniziare a organizzare il lavoro</p>
               <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-first-task">
-                Create Task
+                Crea Task
               </Button>
             </div>
           ) : (
@@ -977,13 +1014,13 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
       <TableConfiguration
         tableId="tasks"
         availableColumns={[
-          { id: 'title', label: 'Title' },
-          { id: 'status', label: 'Status' },
-          { id: 'priority', label: 'Priority' },
-          { id: 'projectId', label: 'Project' },
-          { id: 'assigneeId', label: 'Assignee' },
-          { id: 'dueDate', label: 'Due Date' },
-          { id: 'estimatedEffort', label: 'Estimated Effort' }
+          { id: 'title', label: 'Titolo' },
+          { id: 'status', label: 'Stato' },
+          { id: 'priority', label: 'Priorità' },
+          { id: 'projectId', label: 'Progetto' },
+          { id: 'assigneeId', label: 'Assegnato a' },
+          { id: 'dueDate', label: 'Scadenza' },
+          { id: 'estimatedEffort', label: 'Effort Stimato' }
         ]}
         isOpen={showConfigDialog}
         onOpenChange={setShowConfigDialog}
