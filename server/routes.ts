@@ -3074,6 +3074,29 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       console.log("[DevOps] wbsCode:", bookmarkletData.wbsCode);
       console.log("[DevOps] ticketType:", bookmarkletData.ticketType);
       
+      // Pre-process: Remove base64 images from HTML descriptions (can be huge)
+      // This prevents validation errors and reduces storage size
+      const removeBase64Images = (html: string | null | undefined): string | null | undefined => {
+        if (!html) return html;
+        const originalSize = html.length;
+        // Remove base64 image data URLs, keep a placeholder
+        const cleaned = html
+          .replace(/src\s*=\s*["']data:image\/[^;]+;base64,[^"']+["']/gi, 'src="[immagine rimossa]"')
+          .replace(/url\s*\(\s*["']?data:image\/[^;]+;base64,[^"')]+["']?\s*\)/gi, 'url([immagine rimossa])');
+        if (cleaned.length < originalSize) {
+          console.log(`[DevOps] Removed base64 images from HTML: ${originalSize} -> ${cleaned.length} chars`);
+        }
+        return cleaned;
+      };
+      
+      // Apply image removal to relevant fields before validation
+      if (bookmarkletData.descriptionHtml) {
+        bookmarkletData.descriptionHtml = removeBase64Images(bookmarkletData.descriptionHtml);
+      }
+      if (bookmarkletData.description) {
+        bookmarkletData.description = removeBase64Images(bookmarkletData.description);
+      }
+      
       // Validate bookmarklet data
       const validationResult = bookmarkletDataSchema.safeParse(bookmarkletData);
       if (!validationResult.success) {
