@@ -426,8 +426,14 @@ async function getFullDevOpsWorkItemData(
       // Check if this message has the DevOps work item data
       const workItemId = metadata.workItemId || metadata.enrichedData?.workItemId;
       if (String(workItemId) === String(externalWorkItemId)) {
-        // Extract images from HTML description
-        const descriptionHtml = metadata.workItemDescriptionHtml || metadata.descriptionHtml || '';
+        // Extract images from HTML description - check multiple locations including enrichedData from bookmarklet
+        const descriptionHtml = metadata.workItemDescriptionHtml || 
+                                 metadata.descriptionHtml || 
+                                 metadata.enrichedData?.descriptionHtml || 
+                                 '';
+        
+        console.log(`[AI-EXECUTOR] DevOps WI ${externalWorkItemId}: descriptionHtml length = ${descriptionHtml.length}`);
+        
         const images: string[] = [];
         
         // Extract image URLs (both base64 and external URLs)
@@ -440,30 +446,35 @@ async function getFullDevOpsWorkItemData(
             images.push(src);
           }
         }
+        
+        console.log(`[AI-EXECUTOR] DevOps WI ${externalWorkItemId}: found ${images.length} images in description`);
 
+        // Merge data from both direct metadata and enrichedData (from bookmarklet)
+        const enriched = metadata.enrichedData || {};
+        
         // Build the full DevOps context
         return {
           id: String(workItemId),
-          url: metadata.workItemUrl || '',
+          url: metadata.workItemUrl || enriched.url || '',
           system: 'azure_devops',
-          title: metadata.workItemTitle || undefined,
-          description: metadata.description || undefined,
+          title: metadata.workItemTitle || enriched.workItemTitle || undefined,
+          description: metadata.description || enriched.descriptionText || undefined,
           descriptionHtml: descriptionHtml.substring(0, 15000), // Limit for prompt
-          acceptanceCriteria: metadata.acceptanceCriteria || undefined,
-          workItemType: metadata.workItemType || undefined,
-          state: metadata.state || undefined,
-          priority: metadata.priority || undefined,
-          iterationPath: metadata.iterationPath || undefined,
-          areaPath: metadata.areaPath || undefined,
-          tags: metadata.tags || undefined,
+          acceptanceCriteria: metadata.acceptanceCriteria || enriched.acceptanceCriteria || undefined,
+          workItemType: metadata.workItemType || enriched.workItemType || undefined,
+          state: metadata.state || enriched.state || undefined,
+          priority: metadata.priority || enriched.customFields?.Priority || undefined,
+          iterationPath: metadata.iterationPath || enriched.iterationPath || undefined,
+          areaPath: metadata.areaPath || enriched.areaPath || undefined,
+          tags: metadata.tags || enriched.tags || undefined,
           images: images.length > 0 ? images : undefined,
           sapFields: {
-            ticketCode: metadata.ticketCode,
-            wbsCode: metadata.wbsCode,
-            ticketType: metadata.ticketType,
-            ...(metadata.customFields || {}),
+            ticketCode: metadata.ticketCode || enriched.ticketCode,
+            wbsCode: metadata.wbsCode || enriched.wbsCode,
+            ticketType: metadata.ticketType || enriched.ticketType,
+            ...(metadata.customFields || enriched.customFields || {}),
           },
-          comments: (metadata.workItemComments || []).slice(0, 10).map((c: any) => ({
+          comments: (metadata.workItemComments || enriched.comments || []).slice(0, 10).map((c: any) => ({
             author: c.author,
             content: c.content?.substring(0, 1000) || c.contentHtml?.substring(0, 1000),
             date: c.date,
