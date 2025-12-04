@@ -28,7 +28,7 @@ import {
   projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users, organizations,
-  customEntities, customFields, sapTransportRequests, timeEntries
+  customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -8040,6 +8040,129 @@ Format the response as professional documentation suitable for client delivery.`
     } catch (error) {
       console.error("Error deleting AI learning pattern:", error);
       res.status(500).json({ error: "Failed to delete AI learning pattern" });
+    }
+  });
+
+  // ========== THU AI Task Executor API ==========
+  
+  // Execute AI on selected tasks - generates ABAP code and operational assistance
+  app.post("/api/ai-task-executor/execute", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      const { taskIds, customInstructions } = req.body;
+      
+      if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
+        return res.status(400).json({ error: "taskIds array required" });
+      }
+
+      const { executeTaskWithAI } = await import('./ai-task-executor');
+      const results = await executeTaskWithAI(taskIds, userId, organizationId, customInstructions);
+      res.json(results);
+    } catch (error) {
+      console.error("Error executing AI task:", error);
+      res.status(500).json({ error: "Failed to execute AI task" });
+    }
+  });
+
+  // Submit feedback for an AI execution
+  app.post("/api/ai-task-executor/feedback/:executionId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { executionId } = req.params;
+      const { approved, feedback, rating } = req.body;
+      
+      const { submitExecutionFeedback } = await import('./ai-task-executor');
+      await submitExecutionFeedback(executionId, approved, feedback, rating);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error submitting execution feedback:", error);
+      res.status(500).json({ error: "Failed to submit feedback" });
+    }
+  });
+
+  // Get execution history for a task
+  app.get("/api/ai-task-executor/history/:taskId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { taskId } = req.params;
+      const { getTaskExecutions } = await import('./ai-task-executor');
+      const executions = await getTaskExecutions(taskId);
+      res.json(executions);
+    } catch (error) {
+      console.error("Error fetching task executions:", error);
+      res.status(500).json({ error: "Failed to fetch task executions" });
+    }
+  });
+
+  // ========== AI ABAP Patterns API ==========
+
+  app.get("/api/ai-abap-patterns", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const category = req.query.category as string | undefined;
+      const { getOrganizationPatterns } = await import('./ai-task-executor');
+      const patterns = await getOrganizationPatterns(organizationId, category);
+      res.json(patterns);
+    } catch (error) {
+      console.error("Error fetching ABAP patterns:", error);
+      res.status(500).json({ error: "Failed to fetch ABAP patterns" });
+    }
+  });
+
+  app.post("/api/ai-abap-patterns", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const organizationId = getOrganizationId(req);
+      
+      const pattern = await db.insert(aiAbapPatterns).values({
+        ...req.body,
+        userId,
+        organizationId,
+      }).returning();
+      
+      res.status(201).json(pattern[0]);
+    } catch (error) {
+      console.error("Error creating ABAP pattern:", error);
+      res.status(500).json({ error: "Failed to create ABAP pattern" });
+    }
+  });
+
+  app.put("/api/ai-abap-patterns/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      
+      const pattern = await db.update(aiAbapPatterns)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(and(eq(aiAbapPatterns.id, req.params.id), eq(aiAbapPatterns.organizationId, organizationId)))
+        .returning();
+      
+      if (!pattern[0]) return res.sendStatus(404);
+      res.json(pattern[0]);
+    } catch (error) {
+      console.error("Error updating ABAP pattern:", error);
+      res.status(500).json({ error: "Failed to update ABAP pattern" });
+    }
+  });
+
+  app.delete("/api/ai-abap-patterns/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      
+      const deleted = await db.delete(aiAbapPatterns)
+        .where(and(eq(aiAbapPatterns.id, req.params.id), eq(aiAbapPatterns.organizationId, organizationId)))
+        .returning();
+      
+      if (!deleted[0]) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting ABAP pattern:", error);
+      res.status(500).json({ error: "Failed to delete ABAP pattern" });
     }
   });
 
