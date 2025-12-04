@@ -156,7 +156,7 @@ async function getLinkedMessages(
     const linkedMsgs = await db
       .select({
         subject: messages.subject,
-        content: messages.textContent,
+        content: messages.body,
         fromName: messages.fromName,
         createdAt: messages.createdAt,
       })
@@ -179,19 +179,25 @@ async function getLinkedMessages(
   }
 }
 
-// Get comments for a task
+// Get comments for a task (with organization scoping via task ownership)
 async function getTaskComments(
   taskId: string,
+  organizationId: string,
   limit: number = 10
 ): Promise<ExtendedTaskContext['taskComments']> {
   try {
+    // Join with tasks to ensure the task belongs to the organization
     const taskComments = await db
       .select({
         content: comments.content,
         createdAt: comments.createdAt,
       })
       .from(comments)
-      .where(eq(comments.taskId, taskId))
+      .innerJoin(tasks, eq(comments.taskId, tasks.id))
+      .where(and(
+        eq(comments.taskId, taskId),
+        eq(tasks.organizationId, organizationId)
+      ))
       .orderBy(desc(comments.createdAt))
       .limit(limit);
 
@@ -439,11 +445,14 @@ export async function executeTaskWithAI(
 
   for (const taskId of taskIds) {
     try {
-      // Get task with project context
+      // Get task with project context - MUST filter by organizationId for tenant isolation
       const task = await db
         .select()
         .from(tasks)
-        .where(eq(tasks.id, taskId))
+        .where(and(
+          eq(tasks.id, taskId),
+          eq(tasks.organizationId, organizationId)
+        ))
         .limit(1);
 
       if (!task[0]) {
@@ -467,13 +476,16 @@ export async function executeTaskWithAI(
 
       const taskData = task[0];
 
-      // Get project if linked
+      // Get project if linked - MUST filter by organizationId for tenant isolation
       let projectData: Project | null = null;
       if (taskData.projectId) {
         const project = await db
           .select()
           .from(projects)
-          .where(eq(projects.id, taskData.projectId))
+          .where(and(
+            eq(projects.id, taskData.projectId),
+            eq(projects.organizationId, organizationId)
+          ))
           .limit(1);
         projectData = project[0] || null;
       }
@@ -488,12 +500,15 @@ export async function executeTaskWithAI(
         customInstructions,
       };
 
-      // Get SAP system info if available
+      // Get SAP system info if available - MUST filter by organizationId for tenant isolation
       if (context.sapSystemId) {
         const sapSystem = await db
           .select()
           .from(sapSystems)
-          .where(eq(sapSystems.id, context.sapSystemId))
+          .where(and(
+            eq(sapSystems.id, context.sapSystemId),
+            eq(sapSystems.organizationId, organizationId)
+          ))
           .limit(1);
         if (sapSystem[0]) {
           context.sapSystemName = sapSystem[0].name;
@@ -522,7 +537,7 @@ export async function executeTaskWithAI(
       }
 
       // === EXTENDED CONTEXT: Task comments ===
-      context.taskComments = await getTaskComments(taskId);
+      context.taskComments = await getTaskComments(taskId, organizationId);
 
       // === EXTENDED CONTEXT: Project transport requests ===
       if (taskData.projectId) {

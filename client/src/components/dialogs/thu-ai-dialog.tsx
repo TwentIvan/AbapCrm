@@ -29,6 +29,7 @@ import {
   Code,
   ListTodo,
   AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 import type { Task, AiGeneratedFile } from "@shared/schema";
 
@@ -381,9 +382,31 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                         <div key={result.executionId} className="flex items-center gap-2 p-2 rounded border">
                           <span className="text-sm font-medium">{selectedTasks[idx]?.title.substring(0, 30)}...</span>
                           {fb?.approved !== undefined ? (
-                            <Badge className={fb.approved ? "bg-green-500" : "bg-red-500"}>
-                              {fb.approved ? "Approvato" : "Rifiutato"}
-                            </Badge>
+                            <>
+                              <Badge className={fb.approved ? "bg-green-500" : "bg-red-500"}>
+                                {fb.approved ? "Approvato" : "Rifiutato"}
+                              </Badge>
+                              {!fb.approved && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setFeedback(prev => {
+                                      const newFeedback = { ...prev };
+                                      delete newFeedback[result.executionId];
+                                      return newFeedback;
+                                    });
+                                    setResults([]);
+                                    setActiveTab("analisi");
+                                  }}
+                                  data-testid={`button-regenerate-${idx}`}
+                                  className="ml-2"
+                                >
+                                  <RotateCcw className="h-3 w-3 mr-1" />
+                                  Rigenera
+                                </Button>
+                              )}
+                            </>
                           ) : (
                             <>
                               <Button
@@ -410,6 +433,28 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                       );
                     })}
                   </div>
+                  
+                  {/* Global Rigenera button when any result is rejected */}
+                  {Object.values(feedback).some(fb => fb.approved === false) && (
+                    <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Hai rifiutato uno o più risultati. Puoi modificare le istruzioni e rigenerare.
+                      </p>
+                      <Button
+                        onClick={() => {
+                          setFeedback({});
+                          setResults([]);
+                          setActiveTab("analisi");
+                        }}
+                        variant="outline"
+                        className="w-full"
+                        data-testid="button-regenerate-all"
+                      >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Torna all'Analisi e Rigenera
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>
