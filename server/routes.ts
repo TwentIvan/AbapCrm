@@ -8158,14 +8158,14 @@ Format the response as professional documentation suitable for client delivery.`
     try {
       const userId = req.user!.id;
       const organizationId = getOrganizationId(req);
-      const { taskIds, customInstructions, chatClarifications } = req.body;
+      const { taskIds, customInstructions, chatClarifications, patternIds } = req.body;
       
       if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
         return res.status(400).json({ error: "taskIds array required" });
       }
 
       const { executeTaskWithAI } = await import('./ai-task-executor');
-      const results = await executeTaskWithAI(taskIds, userId, organizationId, customInstructions, chatClarifications);
+      const results = await executeTaskWithAI(taskIds, userId, organizationId, customInstructions, chatClarifications, patternIds);
       res.json(results);
     } catch (error) {
       console.error("Error executing AI task:", error);

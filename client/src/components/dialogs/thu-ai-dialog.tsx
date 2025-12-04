@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -16,6 +16,20 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Loader2,
   Brain,
@@ -39,9 +53,13 @@ import {
   Send,
   Paperclip,
   Image,
+  ChevronDown,
+  ChevronUp,
+  Save,
+  BookMarked,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import type { Task, AiGeneratedFile } from "@shared/schema";
+import type { Task, AiGeneratedFile, AiAbapPattern } from "@shared/schema";
 
 interface TaskExecutionResult {
   success: boolean;
@@ -129,6 +147,19 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [feedback, setFeedback] = useState<{ [key: string]: { approved?: boolean; rating?: number } }>({});
   
+  // Pattern selection state
+  const [selectedPatternIds, setSelectedPatternIds] = useState<string[]>([]);
+  const [patternsExpanded, setPatternsExpanded] = useState(false);
+  const [patternCategoryFilter, setPatternCategoryFilter] = useState<string>("all");
+  
+  // Save pattern dialog state
+  const [savePatternOpen, setSavePatternOpen] = useState(false);
+  const [savePatternFile, setSavePatternFile] = useState<AiGeneratedFile | null>(null);
+  const [newPatternName, setNewPatternName] = useState("");
+  const [newPatternCategory, setNewPatternCategory] = useState<string>("other");
+  const [newPatternDescription, setNewPatternDescription] = useState("");
+  const [newPatternTags, setNewPatternTags] = useState("");
+  
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -136,6 +167,50 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
   const [chatAttachments, setChatAttachments] = useState<ChatAttachment[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Load available patterns
+  const { data: patterns = [], isLoading: patternsLoading } = useQuery<AiAbapPattern[]>({
+    queryKey: ["/api/ai-abap-patterns"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: open,
+  });
+  
+  // Filter patterns by category
+  const filteredPatterns = patternCategoryFilter === "all" 
+    ? patterns 
+    : patterns.filter(p => p.category === patternCategoryFilter);
+  
+  // Pattern categories for filter
+  const patternCategories = [
+    { value: "all", label: "Tutti" },
+    { value: "report", label: "Report" },
+    { value: "function_module", label: "Function Module" },
+    { value: "class", label: "Classe OO" },
+    { value: "enhancement", label: "Enhancement" },
+    { value: "alv", label: "ALV" },
+    { value: "bapi", label: "BAPI" },
+    { value: "data_extraction", label: "Estrazione Dati" },
+    { value: "cds_view", label: "CDS View" },
+    { value: "other", label: "Altro" },
+  ];
+  
+  // Toggle pattern selection
+  const togglePatternSelection = (patternId: string) => {
+    setSelectedPatternIds(prev => 
+      prev.includes(patternId) 
+        ? prev.filter(id => id !== patternId)
+        : [...prev, patternId]
+    );
+  };
+  
+  // Select/deselect all patterns
+  const toggleAllPatterns = () => {
+    if (selectedPatternIds.length === filteredPatterns.length) {
+      setSelectedPatternIds([]);
+    } else {
+      setSelectedPatternIds(filteredPatterns.map(p => p.id));
+    }
+  };
 
   // Handle file selection for chat
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -233,6 +308,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
         taskIds: selectedTasks.map(t => t.id),
         customInstructions: customInstructions || undefined,
         chatClarifications,
+        patternIds: selectedPatternIds.length > 0 ? selectedPatternIds : undefined,
       });
       return response.json();
     },
@@ -241,7 +317,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
       setActiveTab("generazione");
       toast({
         title: "Analisi Completata",
-        description: `Elaborati ${data.length} task con successo`,
+        description: `Elaborati ${data.length} task con successo${selectedPatternIds.length > 0 ? ` usando ${selectedPatternIds.length} pattern` : ''}`,
       });
     },
     onError: (error: any) => {
@@ -252,6 +328,54 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
       });
     },
   });
+  
+  // Mutation to save a new pattern from generated code
+  const savePatternMutation = useMutation({
+    mutationFn: async () => {
+      if (!savePatternFile || !newPatternName.trim()) {
+        throw new Error("Nome pattern e file richiesti");
+      }
+      
+      const response = await apiRequest("POST", "/api/ai-abap-patterns", {
+        name: newPatternName.trim(),
+        category: newPatternCategory,
+        description: newPatternDescription.trim() || null,
+        tags: newPatternTags.split(',').map(t => t.trim()).filter(t => t),
+        codeTemplate: savePatternFile.content,
+        source: "ai_generated",
+        sapModules: [], 
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Pattern Salvato",
+        description: `Pattern "${newPatternName}" salvato con successo`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-abap-patterns"] });
+      setSavePatternOpen(false);
+      setSavePatternFile(null);
+      setNewPatternName("");
+      setNewPatternCategory("other");
+      setNewPatternDescription("");
+      setNewPatternTags("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore nel salvataggio del pattern",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Open save pattern dialog
+  const openSavePatternDialog = (file: AiGeneratedFile) => {
+    setSavePatternFile(file);
+    setNewPatternName(file.filename.replace(/\.\w+$/, ''));
+    setNewPatternDescription(file.description || '');
+    setSavePatternOpen(true);
+  };
 
   const feedbackMutation = useMutation({
     mutationFn: async ({ executionId, approved, rating }: { executionId: string; approved: boolean; rating?: number }) => {
@@ -451,6 +575,144 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                   />
                 </div>
 
+                {/* Pattern Selection Section */}
+                <Collapsible open={patternsExpanded} onOpenChange={setPatternsExpanded}>
+                  <div className="rounded-lg border p-4 bg-muted/30">
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full flex items-center justify-between p-0 h-auto hover:bg-transparent"
+                        data-testid="button-toggle-patterns"
+                      >
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <BookMarked className="h-4 w-4 text-amber-500" />
+                          Pattern ABAP 
+                          {patterns.length > 0 && (
+                            <Badge variant="secondary" className="ml-2">
+                              {patterns.length} disponibili
+                            </Badge>
+                          )}
+                          {selectedPatternIds.length > 0 && (
+                            <Badge className="bg-blue-500 ml-2">
+                              {selectedPatternIds.length} selezionati
+                            </Badge>
+                          )}
+                        </h3>
+                        {patternsExpanded ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                    
+                    <CollapsibleContent className="mt-3">
+                      {patternsLoading ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                          <span className="text-sm text-muted-foreground">Caricamento pattern...</span>
+                        </div>
+                      ) : patterns.length === 0 ? (
+                        <div className="text-center py-4 text-muted-foreground text-sm">
+                          <BookMarked className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p>Nessun pattern salvato</p>
+                          <p className="text-xs mt-1">Approva codice generato per crearne automaticamente</p>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Filter and select all */}
+                          <div className="flex items-center gap-3 mb-3">
+                            <Select 
+                              value={patternCategoryFilter} 
+                              onValueChange={setPatternCategoryFilter}
+                            >
+                              <SelectTrigger className="w-48" data-testid="select-pattern-category">
+                                <SelectValue placeholder="Categoria" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {patternCategories.map(cat => (
+                                  <SelectItem key={cat.value} value={cat.value}>
+                                    {cat.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={toggleAllPatterns}
+                              data-testid="button-toggle-all-patterns"
+                            >
+                              {selectedPatternIds.length === filteredPatterns.length && filteredPatterns.length > 0
+                                ? "Deseleziona Tutti"
+                                : "Seleziona Tutti"
+                              }
+                            </Button>
+                          </div>
+                          
+                          {/* Pattern list */}
+                          <ScrollArea className="h-40">
+                            <div className="space-y-2">
+                              {filteredPatterns.map((pattern) => (
+                                <div 
+                                  key={pattern.id}
+                                  className={`flex items-start gap-3 p-2 rounded border transition-colors cursor-pointer ${
+                                    selectedPatternIds.includes(pattern.id) 
+                                      ? 'bg-blue-50 dark:bg-blue-950 border-blue-300'
+                                      : 'hover:bg-muted/50'
+                                  }`}
+                                  onClick={() => togglePatternSelection(pattern.id)}
+                                  data-testid={`pattern-item-${pattern.id}`}
+                                >
+                                  <Checkbox
+                                    checked={selectedPatternIds.includes(pattern.id)}
+                                    onCheckedChange={() => togglePatternSelection(pattern.id)}
+                                    data-testid={`checkbox-pattern-${pattern.id}`}
+                                    className="mt-0.5"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-sm truncate">{pattern.name}</span>
+                                      <Badge variant="outline" className="text-xs shrink-0">
+                                        {pattern.category}
+                                      </Badge>
+                                      {pattern.usageCount > 0 && (
+                                        <Badge variant="secondary" className="text-xs shrink-0">
+                                          usato {pattern.usageCount}x
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {pattern.description && (
+                                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                        {pattern.description}
+                                      </p>
+                                    )}
+                                    {pattern.tags && pattern.tags.length > 0 && (
+                                      <div className="flex gap-1 mt-1 flex-wrap">
+                                        {pattern.tags.slice(0, 3).map((tag, i) => (
+                                          <span key={i} className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                            {tag}
+                                          </span>
+                                        ))}
+                                        {pattern.tags.length > 3 && (
+                                          <span className="text-xs text-muted-foreground">
+                                            +{pattern.tags.length - 3}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </>
+                      )}
+                    </CollapsibleContent>
+                  </div>
+                </Collapsible>
+
                 {results.length > 0 && (
                   <div className="space-y-3">
                     <h3 className="font-semibold">Risultati Analisi</h3>
@@ -568,6 +830,16 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                             <p className="text-sm text-muted-foreground">{currentFile.description}</p>
                           </div>
                           <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openSavePatternDialog(currentFile)}
+                              data-testid="button-save-pattern"
+                              title="Salva come pattern riutilizzabile"
+                            >
+                              <Save className="mr-2 h-3 w-3" />
+                              Salva Pattern
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
@@ -1057,6 +1329,125 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
           </div>
         </Tabs>
       </DialogContent>
+      
+      {/* Save Pattern Dialog */}
+      <Dialog open={savePatternOpen} onOpenChange={setSavePatternOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookMarked className="h-5 w-5 text-amber-500" />
+              Salva come Pattern ABAP
+            </DialogTitle>
+            <DialogDescription>
+              Salva questo codice come pattern riutilizzabile per future generazioni
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="pattern-name">Nome Pattern *</Label>
+              <Input
+                id="pattern-name"
+                placeholder="Es: ALV con ordinamento dinamico"
+                value={newPatternName}
+                onChange={(e) => setNewPatternName(e.target.value)}
+                data-testid="input-pattern-name"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="pattern-category">Categoria *</Label>
+              <Select value={newPatternCategory} onValueChange={setNewPatternCategory}>
+                <SelectTrigger data-testid="select-new-pattern-category">
+                  <SelectValue placeholder="Seleziona categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="report">Report</SelectItem>
+                  <SelectItem value="function_module">Function Module</SelectItem>
+                  <SelectItem value="class">Classe OO</SelectItem>
+                  <SelectItem value="enhancement">Enhancement/BAdI</SelectItem>
+                  <SelectItem value="form">Form Routine</SelectItem>
+                  <SelectItem value="selection_screen">Selection Screen</SelectItem>
+                  <SelectItem value="alv">ALV Grid/List</SelectItem>
+                  <SelectItem value="bapi">BAPI</SelectItem>
+                  <SelectItem value="data_extraction">Estrazione Dati</SelectItem>
+                  <SelectItem value="bdc">Batch Data Communication</SelectItem>
+                  <SelectItem value="idoc">IDoc</SelectItem>
+                  <SelectItem value="smartform">SmartForm</SelectItem>
+                  <SelectItem value="workflow">Workflow</SelectItem>
+                  <SelectItem value="fiori">Fiori/UI5</SelectItem>
+                  <SelectItem value="cds_view">CDS View</SelectItem>
+                  <SelectItem value="amdp">AMDP HANA</SelectItem>
+                  <SelectItem value="other">Altro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="pattern-description">Descrizione</Label>
+              <Textarea
+                id="pattern-description"
+                placeholder="Descrivi quando usare questo pattern..."
+                value={newPatternDescription}
+                onChange={(e) => setNewPatternDescription(e.target.value)}
+                className="h-20"
+                data-testid="input-pattern-description"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="pattern-tags">Tag (separati da virgola)</Label>
+              <Input
+                id="pattern-tags"
+                placeholder="Es: alv, sorting, oo, grid"
+                value={newPatternTags}
+                onChange={(e) => setNewPatternTags(e.target.value)}
+                data-testid="input-pattern-tags"
+              />
+            </div>
+            
+            {savePatternFile && (
+              <div className="rounded-lg border p-3 bg-muted/50">
+                <div className="flex items-center gap-2 text-sm">
+                  <Code className="h-4 w-4" />
+                  <span className="font-medium">{savePatternFile.filename}</span>
+                  <Badge variant="outline">{savePatternFile.language}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {savePatternFile.content.length} caratteri
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setSavePatternOpen(false)}
+              data-testid="button-cancel-save-pattern"
+            >
+              Annulla
+            </Button>
+            <Button 
+              onClick={() => savePatternMutation.mutate()}
+              disabled={!newPatternName.trim() || savePatternMutation.isPending}
+              data-testid="button-confirm-save-pattern"
+            >
+              {savePatternMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvataggio...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Salva Pattern
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

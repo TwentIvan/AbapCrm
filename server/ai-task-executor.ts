@@ -826,7 +826,8 @@ export async function executeTaskWithAI(
   userId: string,
   organizationId: string,
   customInstructions?: string,
-  chatClarifications?: string
+  chatClarifications?: string,
+  patternIds?: string[]
 ): Promise<TaskExecutionResult[]> {
   const results: TaskExecutionResult[] = [];
 
@@ -1017,9 +1018,25 @@ export async function executeTaskWithAI(
         );
       }
 
-      // Extract keywords and get relevant patterns
-      const keywords = extractKeywords(context);
-      const patterns = await getRelevantPatterns(organizationId, keywords);
+      // Get patterns: use explicitly selected patternIds if provided, otherwise extract keywords
+      let patterns: AiAbapPattern[] = [];
+      if (patternIds && patternIds.length > 0) {
+        // Use user-selected patterns
+        patterns = await db
+          .select()
+          .from(aiAbapPatterns)
+          .where(and(
+            inArray(aiAbapPatterns.id, patternIds),
+            eq(aiAbapPatterns.organizationId, organizationId),
+            eq(aiAbapPatterns.isActive, true)
+          ));
+        console.log(`[THU-AI] Using ${patterns.length} user-selected patterns`);
+      } else {
+        // Auto-select patterns based on keywords
+        const keywords = extractKeywords(context);
+        patterns = await getRelevantPatterns(organizationId, keywords);
+        console.log(`[THU-AI] Auto-selected ${patterns.length} patterns based on keywords`);
+      }
       const codeExamples = await getExistingCodeExamples(organizationId);
 
       // Create execution record
