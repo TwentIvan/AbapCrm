@@ -3179,6 +3179,73 @@ export const calendarsRelations = relations(calendars, ({ one, many }) => ({
   events: many(calendarEvents),
 }));
 
+// ========== Dashboard Widget Templates ==========
+
+export const widgetTypeEnum = pgEnum("widget_type", [
+  "entity_list",
+  "pie_chart", 
+  "bar_chart",
+  "line_chart",
+  "area_chart",
+  "stat_card",
+  "counter",
+  "timer"
+]);
+
+export const dashboardWidgetTemplates = pgTable("dashboard_widget_templates", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  widgetType: widgetTypeEnum("widget_type").notNull(),
+  entityKey: text("entity_key"), // tasks, projects, partners, deals, etc.
+  
+  // Configurazione visualizzazione
+  config: jsonb("config").$type<{
+    // Per liste
+    filterField?: string;
+    filterValues?: string[];
+    sortField?: string;
+    sortDirection?: "asc" | "desc";
+    visibleColumns?: string[];
+    
+    // Per grafici
+    groupByField?: string;
+    valueField?: string;
+    aggregation?: "count" | "sum" | "avg" | "min" | "max";
+    chartColors?: string[];
+    showLegend?: boolean;
+    showLabels?: boolean;
+    
+    // Per stat cards
+    statLabel?: string;
+    statIcon?: string;
+    statColor?: string;
+  }>().default({}),
+  
+  // Layout predefinito
+  defaultWidth: integer("default_width").default(400).notNull(),
+  defaultHeight: integer("default_height").default(300).notNull(),
+  
+  // Organizzazione e ownership
+  isPublic: boolean("is_public").default(false).notNull(), // Template condiviso con tutti
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDashboardWidgetTemplateSchema = createInsertSchema(dashboardWidgetTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  userId: true,
+  organizationId: true,
+});
+
+export type DashboardWidgetTemplate = typeof dashboardWidgetTemplates.$inferSelect;
+export type InsertDashboardWidgetTemplate = z.infer<typeof insertDashboardWidgetTemplateSchema>;
+
 // ========== Insert Schemas & Types for AI Learning & DevOps Mappings ==========
 
 export const insertAiLearningPatternSchema = createInsertSchema(aiLearningPatterns).omit({

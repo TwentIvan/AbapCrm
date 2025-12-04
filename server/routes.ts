@@ -28,7 +28,8 @@ import {
   projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users, organizations,
-  customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions
+  customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions,
+  dashboardWidgetTemplates, insertDashboardWidgetTemplateSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -8707,6 +8708,202 @@ ISTRUZIONI:
     } catch (error) {
       console.error("Error deleting DevOps field mapping:", error);
       res.status(500).json({ error: "Failed to delete DevOps field mapping" });
+    }
+  });
+
+  // ========== Dashboard Widget Templates ==========
+  
+  // Get all widget templates (user's own + public templates)
+  app.get("/api/widget-templates", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const templates = await db.select()
+        .from(dashboardWidgetTemplates)
+        .where(
+          sql`(${dashboardWidgetTemplates.userId} = ${req.user!.id} AND ${dashboardWidgetTemplates.organizationId} = ${organizationId}) OR ${dashboardWidgetTemplates.isPublic} = true`
+        )
+        .orderBy(desc(dashboardWidgetTemplates.updatedAt));
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching widget templates:", error);
+      res.status(500).json({ error: "Failed to fetch widget templates" });
+    }
+  });
+
+  // Get single widget template
+  app.get("/api/widget-templates/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const template = await db.select()
+        .from(dashboardWidgetTemplates)
+        .where(eq(dashboardWidgetTemplates.id, req.params.id))
+        .limit(1);
+      if (template.length === 0) return res.sendStatus(404);
+      res.json(template[0]);
+    } catch (error) {
+      console.error("Error fetching widget template:", error);
+      res.status(500).json({ error: "Failed to fetch widget template" });
+    }
+  });
+
+  // Create widget template
+  app.post("/api/widget-templates", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const validatedData = insertDashboardWidgetTemplateSchema.parse(req.body);
+      
+      const [template] = await db.insert(dashboardWidgetTemplates)
+        .values({
+          ...validatedData,
+          userId: req.user!.id,
+          organizationId,
+        })
+        .returning();
+      
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Error creating widget template:", error);
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to create widget template" });
+    }
+  });
+
+  // Update widget template
+  app.put("/api/widget-templates/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      
+      // Check ownership
+      const existing = await db.select()
+        .from(dashboardWidgetTemplates)
+        .where(and(
+          eq(dashboardWidgetTemplates.id, req.params.id),
+          eq(dashboardWidgetTemplates.userId, req.user!.id),
+          eq(dashboardWidgetTemplates.organizationId, organizationId)
+        ))
+        .limit(1);
+      
+      if (existing.length === 0) return res.sendStatus(404);
+      
+      const [updated] = await db.update(dashboardWidgetTemplates)
+        .set({
+          ...req.body,
+          updatedAt: new Date(),
+        })
+        .where(eq(dashboardWidgetTemplates.id, req.params.id))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating widget template:", error);
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update widget template" });
+    }
+  });
+
+  // Delete widget template
+  app.delete("/api/widget-templates/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      
+      const deleted = await db.delete(dashboardWidgetTemplates)
+        .where(and(
+          eq(dashboardWidgetTemplates.id, req.params.id),
+          eq(dashboardWidgetTemplates.userId, req.user!.id),
+          eq(dashboardWidgetTemplates.organizationId, organizationId)
+        ))
+        .returning();
+      
+      if (deleted.length === 0) return res.sendStatus(404);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting widget template:", error);
+      res.status(500).json({ error: "Failed to delete widget template" });
+    }
+  });
+
+  // Get aggregated data for charts
+  app.get("/api/widget-data/:entityKey", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { entityKey } = req.params;
+      const { groupBy, valueField, aggregation, filterField, filterValues } = req.query;
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      
+      let data: any[] = [];
+      
+      // Get entity data based on entityKey
+      switch (entityKey) {
+        case "tasks":
+          data = await db.select().from(tasks)
+            .where(inArray(tasks.organizationId, organizationIds));
+          break;
+        case "projects":
+          data = await db.select().from(projects)
+            .where(inArray(projects.organizationId, organizationIds));
+          break;
+        case "partners":
+          data = await db.select().from(partners)
+            .where(inArray(partners.organizationId, organizationIds));
+          break;
+        case "deals":
+          data = await db.select().from(deals)
+            .where(inArray(deals.organizationId, organizationIds));
+          break;
+        default:
+          return res.status(400).json({ error: "Invalid entity key" });
+      }
+      
+      // Apply filters if provided
+      if (filterField && filterValues) {
+        const filterValuesArray = (filterValues as string).split(",");
+        data = data.filter(item => filterValuesArray.includes(item[filterField as string]));
+      }
+      
+      // Group and aggregate data
+      if (groupBy) {
+        const grouped: Record<string, { label: string; value: number; count: number }> = {};
+        
+        for (const item of data) {
+          const key = String(item[groupBy as string] || "Sconosciuto");
+          if (!grouped[key]) {
+            grouped[key] = { label: key, value: 0, count: 0 };
+          }
+          grouped[key].count++;
+          
+          if (valueField && aggregation) {
+            const val = parseFloat(item[valueField as string]) || 0;
+            switch (aggregation) {
+              case "sum":
+                grouped[key].value += val;
+                break;
+              case "avg":
+                grouped[key].value = (grouped[key].value * (grouped[key].count - 1) + val) / grouped[key].count;
+                break;
+              case "min":
+                grouped[key].value = grouped[key].count === 1 ? val : Math.min(grouped[key].value, val);
+                break;
+              case "max":
+                grouped[key].value = Math.max(grouped[key].value, val);
+                break;
+              default:
+                grouped[key].value = grouped[key].count;
+            }
+          } else {
+            grouped[key].value = grouped[key].count;
+          }
+        }
+        
+        res.json(Object.values(grouped));
+      } else {
+        // Return raw count
+        res.json([{ label: "Totale", value: data.length, count: data.length }]);
+      }
+    } catch (error) {
+      console.error("Error fetching widget data:", error);
+      res.status(500).json({ error: "Failed to fetch widget data" });
     }
   });
 
