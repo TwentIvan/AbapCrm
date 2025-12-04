@@ -75,6 +75,7 @@ interface TaskExecutionResult {
       state?: string;
       commentsCount?: number;
       hasImages?: boolean;
+      imagesCount?: number;
     };
     linkedMessages: Array<{
       subject: string;
@@ -695,7 +696,10 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                                   <Badge className="text-xs bg-purple-500">{result.contextSummary.devOpsWorkItem.commentsCount} commenti</Badge>
                                 ) : null}
                                 {result.contextSummary.devOpsWorkItem.hasImages && (
-                                  <Badge className="text-xs bg-green-500">Con immagini</Badge>
+                                  <Badge className="text-xs bg-green-500 flex items-center gap-1">
+                                    <Image className="h-3 w-3" />
+                                    {result.contextSummary.devOpsWorkItem.imagesCount || 0} immagini
+                                  </Badge>
                                 )}
                               </div>
                             </div>

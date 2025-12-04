@@ -109,6 +109,7 @@ export interface TaskExecutionResult {
       state?: string;
       commentsCount?: number;
       hasImages?: boolean;
+      imagesCount?: number;
     };
     linkedMessages: Array<{
       subject: string;
@@ -622,9 +623,21 @@ ${e.code.substring(0, 1500)}${e.code.length > 1500 ? '\n... (troncato)' : ''}
       ? `\nCampi SAP Custom: ${JSON.stringify(wi.sapFields, null, 2)}`
       : '';
     const tagsStr = wi.tags?.length ? `\nTags: ${wi.tags.join(', ')}` : '';
-    const imagesStr = wi.images?.length 
-      ? `\nImmagini nella descrizione: ${wi.images.length} (riferimento visivo disponibile)`
-      : '';
+    // Format images for the prompt - include actual URLs/base64 data
+    let imagesStr = '';
+    if (wi.images?.length) {
+      imagesStr = `\n\n### IMMAGINI DALLA DESCRIZIONE DEVOPS (${wi.images.length}):`;
+      wi.images.forEach((img, idx) => {
+        if (img.startsWith('data:image')) {
+          // Base64 image - include it for visual AI models
+          imagesStr += `\n[Immagine ${idx + 1}]: ${img.substring(0, 100)}... (base64 data - ${Math.round(img.length / 1024)}KB)`;
+        } else {
+          // URL image - include full URL
+          imagesStr += `\n[Immagine ${idx + 1}]: ${img}`;
+        }
+      });
+      imagesStr += '\n(Queste immagini sono disponibili per analisi visiva)';
+    }
     
     // DevOps comments section
     const commentsStr = wi.comments?.length
@@ -1045,6 +1058,7 @@ export async function executeTaskWithAI(
           state: context.devOpsWorkItem.state,
           commentsCount: context.devOpsWorkItem.comments?.length || 0,
           hasImages: (context.devOpsWorkItem.images?.length || 0) > 0,
+          imagesCount: context.devOpsWorkItem.images?.length || 0,
         } : undefined,
         linkedMessages: (context.linkedMessages || []).map(m => ({
           subject: m.subject,
