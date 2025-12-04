@@ -1,24 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { FolderKanban } from "lucide-react";
 import { registerEntity, EntityListDescriptor } from "../entity-registry";
-
-const statusColors: Record<string, string> = {
-  planning: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-  active: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-  in_progress: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300",
-  on_hold: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
-  completed: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
-  cancelled: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-};
-
-const statusLabels: Record<string, string> = {
-  planning: "Pianificazione",
-  active: "Attivo",
-  in_progress: "In Corso",
-  on_hold: "In Pausa",
-  completed: "Completato",
-  cancelled: "Annullato",
-};
+import { projectStatusColors, projectStatusLabels } from "../entity-constants";
 
 const projectsDescriptor: EntityListDescriptor = {
   entityKey: "projects",
@@ -48,7 +31,7 @@ const projectsDescriptor: EntityListDescriptor = {
               className="w-3 h-3 rounded-full flex-shrink-0"
               style={{ backgroundColor: project.color || "#3B82F6" }}
             />
-            <span className="font-medium">{project.name}</span>
+            <span className="font-medium" data-testid={`text-project-name-${project.id}`}>{project.name}</span>
           </div>
         ),
       },
@@ -57,8 +40,8 @@ const projectsDescriptor: EntityListDescriptor = {
         label: "Stato",
         sortable: true,
         render: (project: any) => (
-          <Badge className={statusColors[project.status] || ""}>
-            {statusLabels[project.status] || project.status}
+          <Badge className={projectStatusColors[project.status] || ""} data-testid={`badge-project-status-${project.id}`}>
+            {projectStatusLabels[project.status] || project.status}
           </Badge>
         ),
       },
@@ -164,7 +147,6 @@ const projectsDescriptor: EntityListDescriptor = {
       { key: "progress", label: "Progresso (%)", type: "number" },
     ];
   },
-
 };
 
 registerEntity(projectsDescriptor);

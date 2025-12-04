@@ -1,11 +1,9 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, Plus, Bot, Settings, Copy, Trash2, Edit, Play, Square } from "lucide-react";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
 import AuditHistory from "@/components/ui/audit-history";
@@ -14,14 +12,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { UniversalTable } from "@/components/ui/universal-table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { LayoutManager } from "@/components/ui/layout-manager";
+import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { BulkEditDialog } from "@/components/dialogs/bulk-edit-dialog";
 import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
 import { ThuAiDialog } from "@/components/dialogs/thu-ai-dialog";
 import { TableConfiguration } from "@/components/ui/table-configuration";
-import { getEntityDescriptor, EntityListDescriptor, TableColumn } from "@/lib/entity-registry";
-import { CompletionDialog } from "@/components/timesheet/completion-dialog";
-import type { TimeEntry } from "@shared/schema";
+import { getEntityDescriptor, TableColumn } from "@/lib/entity-registry";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface EmbeddedEntityListProps {
   entityKey: string;
@@ -31,154 +28,6 @@ interface EmbeddedEntityListProps {
   showTitle?: boolean;
   compact?: boolean;
   className?: string;
-}
-
-function TaskTimerButtons({ task }: { task: any }) {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
-  
-  const { data: runningEntry } = useQuery<any>({
-    queryKey: ["/api/time-entries/running"],
-    queryFn: getQueryFn({ on401: "throw" }),
-    refetchInterval: 1000,
-  });
-
-  const { data: timeEntries = [] } = useQuery<TimeEntry[]>({
-    queryKey: ["/api/time-entries/task", task.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/time-entries/task/${task.id}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch time entries");
-      return res.json();
-    },
-  });
-
-  useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const startTimerMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/time-entries", {
-        taskId: task.id,
-        startTime: new Date().toISOString(),
-        isRunning: true,
-      });
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/running"] });
-    },
-  });
-
-  const stopTimerMutation = useMutation({
-    mutationFn: async ({ entryId, completionData }: { entryId: string; completionData?: { completionPercentage: number } }) => {
-      const res = await apiRequest("POST", `/api/time-entries/${entryId}/stop`);
-      if (completionData) {
-        await apiRequest("PUT", `/api/tasks/${task.id}`, {
-          completionPercentage: completionData.completionPercentage,
-        });
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      setShowCompletionDialog(false);
-      toast({ title: "Timer fermato" });
-    },
-  });
-
-  const isCurrentTaskRunning = runningEntry?.taskId === task.id;
-  const hasRunningTimer = !!runningEntry;
-
-  const getElapsedTime = () => {
-    if (!runningEntry || runningEntry.taskId !== task.id) return "";
-    const start = new Date(runningEntry.startTime);
-    const diff = currentTime.getTime() - start.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    if (hours > 0) return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  };
-
-  const calculateSuggestedPercentage = () => {
-    if (!runningEntry) return task.completionPercentage || 0;
-    const sessionStartTime = new Date(runningEntry.startTime);
-    const sessionDuration = (currentTime.getTime() - sessionStartTime.getTime()) / (1000 * 60);
-    const currentCompletion = task.completionPercentage || 0;
-    let suggestedIncrease = 0;
-    if (sessionDuration >= 15) suggestedIncrease = Math.max(5, Math.min(15, sessionDuration / 4));
-    else if (sessionDuration >= 5) suggestedIncrease = Math.max(2, sessionDuration / 2);
-    else suggestedIncrease = 1;
-    return Math.min(100, Math.round(currentCompletion + suggestedIncrease));
-  };
-
-  const handleStart = () => startTimerMutation.mutate();
-  const handleStop = () => setShowCompletionDialog(true);
-
-  const handleCompletionSubmit = (completionData: { completionPercentage: number }) => {
-    if (runningEntry) {
-      stopTimerMutation.mutate({ entryId: runningEntry.id, completionData });
-    }
-  };
-
-  const getTotalTime = () => {
-    const totalTime = timeEntries.reduce((total, entry) => total + (entry.duration || 0), 0);
-    const hours = Math.floor(totalTime / 60);
-    const mins = Math.round(totalTime % 60);
-    if (hours > 0) return `${hours}h ${mins}m`;
-    return `${mins}m`;
-  };
-
-  return (
-    <>
-      <div className="flex items-center gap-1">
-        {isCurrentTaskRunning ? (
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={handleStop}
-            disabled={stopTimerMutation.isPending}
-            data-testid={`button-stop-timer-${task.id}`}
-          >
-            <Square className="h-3 w-3 mr-1" />
-            {getElapsedTime()}
-          </Button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white border-0"
-              onClick={handleStart}
-              disabled={startTimerMutation.isPending || hasRunningTimer}
-              data-testid={`button-start-timer-${task.id}`}
-            >
-              <Play className="h-3 w-3 mr-1" />
-              Start
-            </Button>
-            {timeEntries.length > 0 && (
-              <span className="text-xs text-muted-foreground font-medium">{getTotalTime()}</span>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {showCompletionDialog && (
-        <CompletionDialog
-          isOpen={showCompletionDialog}
-          onClose={() => setShowCompletionDialog(false)}
-          currentPercentage={calculateSuggestedPercentage()}
-          onSubmit={handleCompletionSubmit}
-          isLoading={stopTimerMutation.isPending}
-        />
-      )}
-    </>
-  );
 }
 
 export function EmbeddedEntityList({
@@ -191,69 +40,41 @@ export function EmbeddedEntityList({
   className = "",
 }: EmbeddedEntityListProps) {
   const descriptor = getEntityDescriptor(entityKey);
-  
-  if (!descriptor) {
-    return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        Entità "{entityKey}" non trovata
-      </div>
-    );
-  }
+  const { currentOrganizationId } = useOrganization();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  return (
-    <EntityListContent
-      descriptor={descriptor}
-      layoutKey={layoutKey || `embedded_${entityKey}`}
-      filterField={filterField}
-      filterValues={filterValues}
-      showTitle={showTitle}
-      compact={compact}
-      className={className}
-    />
-  );
-}
+  const effectiveLayoutKey = layoutKey || `embedded_${entityKey}`;
 
-function EntityListContent({
-  descriptor,
-  layoutKey,
-  filterField,
-  filterValues,
-  showTitle,
-  compact,
-  className,
-}: {
-  descriptor: EntityListDescriptor;
-  layoutKey: string;
-  filterField?: string;
-  filterValues?: string[];
-  showTitle: boolean;
-  compact: boolean;
-  className: string;
-}) {
+  const {
+    layout,
+    currentLayoutName,
+    savedLayouts,
+    updateLayout,
+    saveLayoutAs,
+    loadLayout,
+    renameLayout,
+    deleteLayout,
+  } = useTableLayout(effectiveLayoutKey);
+
+  const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [editingItem, setEditingItem] = useState<any>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editingItem, setEditingItem] = useState<any | null>(null);
-  const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
   const [showBulkCopyDialog, setShowBulkCopyDialog] = useState(false);
   const [showThuAiDialog, setShowThuAiDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
-  
-  const { currentOrganizationId } = useOrganization();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  const { 
-    layout, 
-    currentLayoutName,
-    savedLayouts,
-    updateLayout, 
-    loadLayout,
-    renameLayout,
-    deleteLayout,
-  } = useTableLayout(layoutKey);
+  if (!descriptor) {
+    return (
+      <div className={`p-4 text-center text-muted-foreground ${className}`}>
+        Entità "{entityKey}" non trovata nel registry
+      </div>
+    );
+  }
 
   const { data: items = [], isLoading } = useQuery<any[]>({
     queryKey: [descriptor.apiBase],
@@ -273,14 +94,27 @@ function EntityListContent({
     enabled: !!currentOrganizationId,
   });
 
+  const { data: partners = [] } = useQuery<any[]>({
+    queryKey: ["/api/partners"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+  });
+
+  const filteredItems = useMemo(() => {
+    if (!filterField || !filterValues || filterValues.length === 0) {
+      return items;
+    }
+    return items.filter((item) => filterValues.includes(item[filterField]));
+  }, [items, filterField, filterValues]);
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `${descriptor.apiBase}/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [descriptor.apiBase] });
       setShowDeleteDialog(false);
       setEditingItem(null);
-      toast({ title: `${descriptor.title} eliminato` });
-    }
+      toast({ title: "Eliminato", description: `${descriptor.title} eliminato con successo` });
+    },
   });
 
   const bulkDeleteMutation = useMutation({
@@ -293,33 +127,40 @@ function EntityListContent({
       queryClient.invalidateQueries({ queryKey: [descriptor.apiBase] });
       setSelectedItems([]);
       setShowBulkDeleteDialog(false);
-      toast({ title: `${descriptor.titlePlural} eliminati` });
-    }
+      toast({ title: "Eliminati", description: `${descriptor.titlePlural} eliminati con successo` });
+    },
   });
 
   const bulkEditMutation = useMutation({
-    mutationFn: async ({ itemsToEdit, updates }: { itemsToEdit: any[], updates: Record<string, any> }) => {
-      await Promise.all(itemsToEdit.map(item => apiRequest("PUT", `${descriptor.apiBase}/${item.id}`, updates)));
+    mutationFn: async ({ itemsToEdit, updates }: { itemsToEdit: any[]; updates: Record<string, any> }) => {
+      await Promise.all(
+        itemsToEdit.map((item) => apiRequest("PUT", `${descriptor.apiBase}/${item.id}`, updates))
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [descriptor.apiBase] });
       setSelectedItems([]);
       setShowBulkEditDialog(false);
-      toast({ title: `${descriptor.titlePlural} modificati` });
-    }
+      toast({ title: "Modificati", description: `${descriptor.titlePlural} modificati con successo` });
+    },
   });
 
   const bulkCopyMutation = useMutation({
-    mutationFn: async ({ itemsToCopy, addSuffix, suffix }: { itemsToCopy: any[], addSuffix: boolean, suffix: string }) => {
+    mutationFn: async ({ itemsToCopy, addSuffix, suffix }: { itemsToCopy: any[]; addSuffix: boolean; suffix: string }) => {
       await Promise.all(
-        itemsToCopy.map(item => {
-          const copyData = descriptor.prepareCopyData ? descriptor.prepareCopyData(item) : { ...item };
-          delete copyData.id;
-          if (copyData.title && addSuffix) {
-            copyData.title = `${copyData.title}${suffix}`;
-          } else if (copyData.name && addSuffix) {
-            copyData.name = `${copyData.name}${suffix}`;
+        itemsToCopy.map((item) => {
+          const copyData = descriptor.prepareCopyData
+            ? descriptor.prepareCopyData(item)
+            : (() => {
+                const { id, createdAt, updatedAt, userId, organizationId, ...rest } = item;
+                return rest;
+              })();
+
+          const titleField = "title" in item ? "title" : "name" in item ? "name" : null;
+          if (titleField && addSuffix) {
+            copyData[titleField] = `${item[titleField]}${suffix}`;
           }
+
           return apiRequest("POST", descriptor.apiBase, copyData);
         })
       );
@@ -328,7 +169,7 @@ function EntityListContent({
       queryClient.invalidateQueries({ queryKey: [descriptor.apiBase] });
       setSelectedItems([]);
       setShowBulkCopyDialog(false);
-      toast({ title: `${descriptor.titlePlural} copiati` });
+      toast({ title: "Copiati", description: `${descriptor.titlePlural} copiati con successo` });
     },
   });
 
@@ -342,211 +183,182 @@ function EntityListContent({
     setShowDeleteDialog(true);
   };
 
-  const handleAdd = () => {
-    setEditingItem(null);
-    setShowCreateDialog(true);
-  };
-
-  const columnHelpers = {
-    onEdit: handleEdit,
-    onDelete: handleDelete,
-    projects,
-    users,
-  };
-
-  const baseColumns = useMemo(() => {
-    const cols = descriptor.getColumns(columnHelpers);
-    if (descriptor.supportsTimer && descriptor.entityKey === "tasks") {
-      const actionsIdx = cols.findIndex(c => c.key === "actions");
-      if (actionsIdx > 0) {
-        cols.splice(actionsIdx, 0, {
-          key: "timer",
-          label: "Timer",
-          sortable: false,
-          render: (item: any) => <TaskTimerButtons task={item} />,
-        });
-      }
-    }
-    return cols;
-  }, [descriptor, columnHelpers]);
+  const baseColumns = useMemo(
+    () =>
+      descriptor.getColumns({
+        onEdit: handleEdit,
+        onDelete: handleDelete,
+        projects,
+        users,
+        partners,
+      }),
+    [descriptor, projects, users, partners]
+  );
 
   const visibleColumns = useMemo(() => {
-    const actionsColumn = baseColumns.find(c => c.key === "actions");
-    
+    const getColumnKey = (col: any) => col.key;
+    const actionsColumn = baseColumns.find((c) => getColumnKey(c) === "actions");
+    const timerColumn = baseColumns.find((c) => getColumnKey(c) === "timer");
+
     if (!layout.columns || Object.keys(layout.columns).length === 0) {
       return baseColumns;
     }
-    
+
     const configuredColumns = baseColumns
-      .filter(col => {
-        if (col.key === "actions") return false;
-        const config = layout.columns[col.key];
+      .filter((col) => {
+        const key = getColumnKey(col);
+        if (key === "actions" || key === "timer") return false;
+        const config = layout.columns[key];
         return config?.visible !== false;
       })
       .sort((a, b) => {
-        const posA = layout.columns[a.key]?.position ?? 999;
-        const posB = layout.columns[b.key]?.position ?? 999;
+        const posA = layout.columns[getColumnKey(a)]?.position ?? 999;
+        const posB = layout.columns[getColumnKey(b)]?.position ?? 999;
         return posA - posB;
       });
-    
-    if (actionsColumn) configuredColumns.push(actionsColumn);
-    return configuredColumns;
-  }, [baseColumns, layout.columns]);
 
-  const filteredItems = useMemo(() => {
-    let result = items;
-    if (filterField && filterValues && filterValues.length > 0) {
-      result = result.filter(item => filterValues.includes(item[filterField]));
+    if (timerColumn && descriptor.supportsTimeTracking) {
+      configuredColumns.push(timerColumn);
     }
-    return result;
-  }, [items, filterField, filterValues]);
+    if (actionsColumn) {
+      configuredColumns.push(actionsColumn);
+    }
 
-  const bulkEditFields = useMemo(() => 
-    descriptor.getBulkEditFields({ projects, users }), 
-    [descriptor, projects, users]
+    return configuredColumns;
+  }, [baseColumns, layout.columns, descriptor.supportsTimeTracking]);
+
+  const bulkEditFields = useMemo(
+    () => descriptor.getBulkEditFields({ projects, users, partners }),
+    [descriptor, projects, users, partners]
   );
-
 
   const FormComponent = descriptor.FormComponent;
   const Icon = descriptor.icon;
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        <Clock className="h-6 w-6 animate-spin mr-2" />
-        Caricamento...
+      <div className={`space-y-2 p-4 ${className}`}>
+        {[...Array(compact ? 3 : 5)].map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
       </div>
     );
   }
 
-  return (
-    <div className={`h-full flex flex-col overflow-hidden ${className}`}>
-      {/* Toolbar */}
-      <div className="flex-shrink-0 border-b p-2">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
-            {showTitle && (
-              <div className="flex items-center gap-2 mr-2">
-                <Icon className="h-5 w-5 text-muted-foreground" />
-                <span className="font-semibold">{descriptor.titlePlural}</span>
+  const renderAIButton = () => {
+    if (!descriptor.supportsAI || descriptor.entityKey !== "tasks") return null;
+    
+    return (
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={() => setShowThuAiDialog(true)}
+              disabled={selectedItems.length === 0}
+              variant="ghost"
+              className={`relative flex flex-col items-center justify-center w-12 h-9 rounded-lg border-2 border-purple-300/30 dark:border-purple-600/30 bg-sidebar-accent shadow-sm hover:shadow-md transition-all ${
+                selectedItems.length === 0 ? "opacity-40" : "opacity-100 hover:border-purple-400 dark:hover:border-purple-500"
+              }`}
+              data-testid="button-ai-tasks-embedded"
+            >
+              <div className="relative flex flex-col items-center">
+                <div className="flex items-baseline space-x-0">
+                  <span className="text-xs font-black text-blue-600 dark:text-blue-400">T</span>
+                  <span className="text-sm font-black text-blue-500 dark:text-blue-300">H</span>
+                  <span className="text-sm font-black text-blue-600 dark:text-blue-400">U</span>
+                </div>
+                <span className="text-[8px] font-bold text-purple-500 dark:text-purple-400 -mt-0.5">AI</span>
               </div>
-            )}
-            <Button size="sm" onClick={handleAdd} data-testid={`button-add-${descriptor.entityKey}`}>
-              <Plus className="h-4 w-4 mr-1" />
-              Nuovo
+              {selectedItems.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {selectedItems.length > 9 ? "9+" : selectedItems.length}
+                </span>
+              )}
             </Button>
-            {selectedItems.length > 0 && (
-              <>
-                <Button size="sm" variant="outline" onClick={() => setShowBulkEditDialog(true)}>
-                  <Edit className="h-4 w-4 mr-1" />
-                  Modifica ({selectedItems.length})
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setShowBulkCopyDialog(true)}>
-                  <Copy className="h-4 w-4 mr-1" />
-                  Copia
-                </Button>
-                <Button size="sm" variant="destructive" onClick={() => setShowBulkDeleteDialog(true)}>
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Elimina
-                </Button>
-                {descriptor.supportsAI && descriptor.entityKey === "tasks" && (
-                  <Button size="sm" variant="outline" onClick={() => setShowThuAiDialog(true)}>
-                    <Bot className="h-4 w-4 mr-1" />
-                    AI
-                  </Button>
-                )}
-              </>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="bg-purple-500 text-white">
+            <p>
+              {selectedItems.length > 0
+                ? `Assistenza AI per ${selectedItems.length} task`
+                : "Seleziona task per assistenza AI"}
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
+  return (
+    <div className={`flex flex-col h-full ${className}`}>
+      <ListViewToolbar
+        currentLayoutName={currentLayoutName}
+        savedLayouts={savedLayouts}
+        onLoadLayout={loadLayout}
+        onRenameLayout={renameLayout}
+        onDeleteLayout={deleteLayout}
+        onConfigureTable={() => setShowConfigDialog(true)}
+        onCreateNew={FormComponent ? () => setShowCreateDialog(true) : undefined}
+        onCopySelected={descriptor.supportsBulkCopy ? () => setShowBulkCopyDialog(true) : undefined}
+        onBulkEdit={descriptor.supportsBulkEdit ? () => setShowBulkEditDialog(true) : undefined}
+        onDeleteSelected={descriptor.supportsBulkDelete ? () => setShowBulkDeleteDialog(true) : undefined}
+        hasSelection={selectedItems.length > 0}
+        customActions={renderAIButton()}
+      />
+
+      <div className="flex-1 min-h-0 overflow-auto">
+        {filteredItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Icon className="h-12 w-12 mb-4 opacity-30" />
+            <p>Nessun {descriptor.title.toLowerCase()} trovato</p>
+            {FormComponent && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => setShowCreateDialog(true)}
+                data-testid={`button-create-first-${entityKey}`}
+              >
+                Crea {descriptor.title}
+              </Button>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <LayoutManager
-              currentLayoutName={currentLayoutName}
-              savedLayouts={savedLayouts}
-              onLoadLayout={loadLayout}
-              onRenameLayout={renameLayout}
-              onDeleteLayout={deleteLayout}
-              onConfigureTable={() => setShowConfigDialog(true)}
-            />
-          </div>
-        </div>
+        ) : (
+          <UniversalTable
+            data={filteredItems}
+            columns={visibleColumns}
+            enableSelection={true}
+            onSelectionChange={(rows) => setSelectedItems(rows)}
+            onRowClick={handleEdit}
+          />
+        )}
       </div>
 
-      {/* Table */}
-      <ScrollArea className="flex-1 min-h-0">
-        <UniversalTable
-          data={filteredItems}
-          columns={visibleColumns}
-          enableSelection={true}
-          onSelectionChange={(items) => setSelectedItems(items)}
-          onRowClick={handleEdit}
-        />
-      </ScrollArea>
-
-      {/* Create Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Nuovo {descriptor.title}</DialogTitle>
-          </DialogHeader>
-          <FormComponent
-            open={showCreateDialog}
-            onOpenChange={setShowCreateDialog}
-            editingItem={null}
-            onSuccess={() => {
+      {FormComponent && (
+        <FormComponent
+          open={showCreateDialog || showEditDialog}
+          onOpenChange={(open) => {
+            if (!open) {
               setShowCreateDialog(false);
-              queryClient.invalidateQueries({ queryKey: [descriptor.apiBase] });
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+              setShowEditDialog(false);
+              setEditingItem(null);
+            }
+          }}
+          editingItem={editingItem}
+          onSuccess={() => {
+            setShowCreateDialog(false);
+            setShowEditDialog(false);
+            setEditingItem(null);
+            queryClient.invalidateQueries({ queryKey: [descriptor.apiBase] });
+          }}
+        />
+      )}
 
-      {/* Edit Dialog with Tabs */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Modifica {descriptor.title}</DialogTitle>
-          </DialogHeader>
-          {editingItem && (
-            <Tabs defaultValue="details">
-              <TabsList>
-                <TabsTrigger value="details">Dettagli</TabsTrigger>
-                {descriptor.supportsMessages && <TabsTrigger value="messages">Messaggi</TabsTrigger>}
-                {descriptor.supportsHistory && <TabsTrigger value="history">Cronologia</TabsTrigger>}
-              </TabsList>
-              <TabsContent value="details">
-                <FormComponent
-                  open={showEditDialog}
-                  onOpenChange={setShowEditDialog}
-                  editingItem={editingItem}
-                  onSuccess={() => {
-                    setShowEditDialog(false);
-                    setEditingItem(null);
-                    queryClient.invalidateQueries({ queryKey: [descriptor.apiBase] });
-                  }}
-                />
-              </TabsContent>
-              {descriptor.supportsMessages && (
-                <TabsContent value="messages">
-                  <MessageHistory tableName={descriptor.entityKey} recordId={editingItem.id} />
-                </TabsContent>
-              )}
-              {descriptor.supportsHistory && (
-                <TabsContent value="history">
-                  <AuditHistory tableName={descriptor.entityKey} recordId={editingItem.id} />
-                </TabsContent>
-              )}
-            </Tabs>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Dialogs */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogTitle>Elimina {descriptor.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              Sei sicuro di voler eliminare "{editingItem?.title || editingItem?.name}"?
+              Sei sicuro di voler eliminare questo {descriptor.title.toLowerCase()}? Questa azione non può essere annullata.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -561,21 +373,21 @@ function EntityListContent({
       <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Conferma eliminazione multipla</AlertDialogTitle>
+            <AlertDialogTitle>Elimina {descriptor.titlePlural} Selezionati</AlertDialogTitle>
             <AlertDialogDescription>
-              Sei sicuro di voler eliminare {selectedItems.length} {descriptor.titlePlural.toLowerCase()}?
+              Sei sicuro di voler eliminare i {selectedItems.length} {descriptor.titlePlural.toLowerCase()} selezionati?
+              Questa azione non può essere annullata.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
             <AlertDialogAction onClick={() => bulkDeleteMutation.mutate(selectedItems)}>
-              Elimina tutti
+              Elimina {selectedItems.length} {descriptor.titlePlural}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Bulk Edit/Copy Dialogs */}
       <BulkEditDialog
         open={showBulkEditDialog}
         onOpenChange={setShowBulkEditDialog}
@@ -597,8 +409,7 @@ function EntityListContent({
         isPending={bulkCopyMutation.isPending}
       />
 
-      {/* AI Dialog (only for tasks) */}
-      {descriptor.supportsAI && descriptor.entityKey === "tasks" && selectedItems.length > 0 && (
+      {descriptor.supportsAI && descriptor.entityKey === "tasks" && (
         <ThuAiDialog
           open={showThuAiDialog}
           onOpenChange={setShowThuAiDialog}
@@ -606,10 +417,11 @@ function EntityListContent({
         />
       )}
 
-      {/* Table Configuration */}
       <TableConfiguration
-        tableId={layoutKey}
-        availableColumns={baseColumns.filter(c => c.key !== "actions" && c.key !== "timer").map(c => ({ id: c.key, label: c.label }))}
+        tableId={effectiveLayoutKey}
+        availableColumns={baseColumns
+          .filter((c) => c.key !== "actions" && c.key !== "timer")
+          .map((c) => ({ id: c.key, label: c.label }))}
         isOpen={showConfigDialog}
         onOpenChange={setShowConfigDialog}
         onSave={(config) => {

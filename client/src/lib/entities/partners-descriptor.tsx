@@ -1,24 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Users } from "lucide-react";
 import { registerEntity, EntityListDescriptor } from "../entity-registry";
-
-const typeLabels: Record<string, string> = {
-  client: "Cliente",
-  supplier: "Fornitore",
-  partner: "Partner",
-  employee: "Dipendente",
-  candidate: "Candidato",
-  other: "Altro",
-};
-
-const typeColors: Record<string, string> = {
-  client: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-  supplier: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
-  partner: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300",
-  employee: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-  candidate: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300",
-  other: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
-};
+import { partnerTypeLabels, partnerTypeColors } from "../entity-constants";
 
 const partnersDescriptor: EntityListDescriptor = {
   entityKey: "partners",
@@ -56,7 +39,7 @@ const partnersDescriptor: EntityListDescriptor = {
               </span>
             </div>
           )}
-          <span className="font-medium">{partner.name}</span>
+          <span className="font-medium" data-testid={`text-partner-name-${partner.id}`}>{partner.name}</span>
         </div>
       ),
     },
@@ -65,8 +48,8 @@ const partnersDescriptor: EntityListDescriptor = {
       label: "Tipo",
       sortable: true,
       render: (partner: any) => (
-        <Badge className={typeColors[partner.type] || ""}>
-          {typeLabels[partner.type] || partner.type}
+        <Badge className={partnerTypeColors[partner.type] || ""} data-testid={`badge-partner-type-${partner.id}`}>
+          {partnerTypeLabels[partner.type] || partner.type}
         </Badge>
       ),
     },
@@ -148,7 +131,6 @@ const partnersDescriptor: EntityListDescriptor = {
     { key: "city", label: "Città", type: "text" },
     { key: "country", label: "Paese", type: "text" },
   ],
-
 };
 
 registerEntity(partnersDescriptor);

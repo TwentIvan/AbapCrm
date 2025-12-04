@@ -1,24 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Handshake } from "lucide-react";
 import { registerEntity, EntityListDescriptor } from "../entity-registry";
-
-const stageLabels: Record<string, string> = {
-  prospecting: "Prospezione",
-  qualification: "Qualificazione",
-  proposal: "Proposta",
-  negotiation: "Negoziazione",
-  closed_won: "Vinto",
-  closed_lost: "Perso",
-};
-
-const stageColors: Record<string, string> = {
-  prospecting: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-  qualification: "bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300",
-  proposal: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300",
-  negotiation: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
-  closed_won: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-  closed_lost: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-};
+import { dealStageLabels, dealStageColors } from "../entity-constants";
 
 const dealsDescriptor: EntityListDescriptor = {
   entityKey: "deals",
@@ -41,15 +24,15 @@ const dealsDescriptor: EntityListDescriptor = {
       label: "Titolo",
       sortable: true,
       searchable: true,
-      render: (deal: any) => <span className="font-medium">{deal.title}</span>,
+      render: (deal: any) => <span className="font-medium" data-testid={`text-deal-title-${deal.id}`}>{deal.title}</span>,
     },
     {
       key: "stage",
       label: "Fase",
       sortable: true,
       render: (deal: any) => (
-        <Badge className={stageColors[deal.stage] || ""}>
-          {stageLabels[deal.stage] || deal.stage}
+        <Badge className={dealStageColors[deal.stage] || ""} data-testid={`badge-deal-stage-${deal.id}`}>
+          {dealStageLabels[deal.stage] || deal.stage}
         </Badge>
       ),
     },
@@ -154,7 +137,6 @@ const dealsDescriptor: EntityListDescriptor = {
       { key: "probability", label: "Probabilità (%)", type: "number" },
     ];
   },
-
 };
 
 registerEntity(dealsDescriptor);

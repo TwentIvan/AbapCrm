@@ -4,28 +4,17 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckSquare, Calendar, AlertCircle, Clock, ChevronDown, ChevronRight, Edit, TrendingDown, BarChart3, Grid3X3, List, MoreHorizontal, Play, Square, Trash2, ExternalLink, History, MessageSquare, Sparkles, Bot } from "lucide-react";
-import type { Task, Project, TimeEntry } from "@shared/schema";
+import { CheckSquare, Edit, MoreHorizontal, ExternalLink } from "lucide-react";
+import type { Task, Project } from "@shared/schema";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
-import TaskForm from "@/components/forms/task-form";
 import TaskFormContainer from "@/components/forms/task-form-container";
-import AuditHistory from "@/components/ui/audit-history";
-import { MessageHistory } from "@/components/ui/message-history";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TimeTracker } from "@/components/timesheet/time-tracker";
-import { CompletionDialog } from "@/components/timesheet/completion-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
+import { UniversalTable } from "@/components/ui/universal-table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { LayoutManager } from "@/components/ui/layout-manager";
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -33,263 +22,8 @@ import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-di
 import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
 import { ThuAiDialog } from "@/components/dialogs/thu-ai-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
-const statusColors = {
-  todo: "bg-gray-100 text-gray-800",
-  in_progress: "bg-blue-100 text-blue-800",
-  review: "bg-yellow-100 text-yellow-800",
-  completed: "bg-green-100 text-green-800",
-};
-
-const priorityColors = {
-  low: "bg-green-100 text-green-800",
-  medium: "bg-yellow-100 text-yellow-800", 
-  high: "bg-orange-100 text-orange-800",
-  urgent: "bg-red-100 text-red-800",
-};
-
-const statusLabels = {
-  todo: "Da fare",
-  in_progress: "In corso",
-  review: "In revisione",
-  completed: "Completato",
-};
-
-const priorityLabels = {
-  low: "Bassa",
-  medium: "Media",
-  high: "Alta",
-  urgent: "Urgente",
-};
-
-// Compact Timer Buttons Component  
-function TaskTimerButtons({ task }: { task: Task }) {
-  const queryClient = useQueryClient();
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
-  
-  // Get running entry globally
-  const { data: runningEntry, error: runningEntryError } = useQuery<any>({
-    queryKey: ["/api/time-entries/running"],
-    queryFn: async () => {
-      const res = await fetch("/api/time-entries/running", { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch running entry');
-      return res.json();
-    },
-    refetchInterval: 1000, // Refresh every second to get timer updates
-  });
-
-  // Get all time entries for this task to show total time
-  const { data: timeEntries = [] } = useQuery<TimeEntry[]>({
-    queryKey: ["/api/time-entries/task", task.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/time-entries/task/${task.id}`, { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch time entries');
-      return res.json();
-    },
-  });
-
-
-  // Start timer mutation
-  const startTimerMutation = useMutation({
-    mutationFn: async () => {
-      const requestData = {
-        taskId: task.id,
-        startTime: new Date().toISOString(),
-        isRunning: true,
-      };
-      const res = await apiRequest("POST", "/api/time-entries", requestData);
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/running"] });
-      queryClient.refetchQueries({ queryKey: ["/api/time-entries/running"] });
-    },
-  });
-
-  // Stop timer mutation
-  const stopTimerMutation = useMutation({
-    mutationFn: async ({ entryId, completionData }: { entryId: string; completionData?: { completionPercentage: number; notes?: string } }) => {
-      const res = await apiRequest("POST", `/api/time-entries/${entryId}/stop`);
-      
-      // Update task completion percentage if provided
-      if (completionData) {
-        await apiRequest("PUT", `/api/tasks/${task.id}`, {
-          completionPercentage: completionData.completionPercentage,
-        });
-      }
-      
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/running"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/task", task.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      setShowCompletionDialog(false);
-    },
-  });
-
-  // Update current time every second when timer is running
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (runningEntry && runningEntry.taskId === task.id) {
-      interval = setInterval(() => {
-        setCurrentTime(new Date());
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [runningEntry, task.id]);
-
-  const isCurrentTaskRunning = runningEntry && runningEntry.taskId === task.id;
-  const hasRunningTimer = !!runningEntry;
-
-  const handleStart = (e?: any) => {
-    e?.stopPropagation(); // Prevent event bubbling
-    startTimerMutation.mutate();
-  };
-
-  const handleStop = (e?: any) => {
-    console.log('Stop clicked, opening completion dialog');
-    console.log('Event details:', { 
-      type: e?.type, 
-      target: e?.target?.tagName,
-      currentTarget: e?.currentTarget?.tagName,
-      bubbles: e?.bubbles 
-    });
-    e?.stopPropagation(); // Prevent event bubbling
-    e?.preventDefault(); // Also prevent default behavior
-    if (runningEntry) {
-      setShowCompletionDialog(true);
-      console.log('Completion dialog should be open:', true);
-    }
-  };
-
-  // Calculate elapsed time for display (total time including previous sessions)
-  const getElapsedTime = () => {
-    if (!isCurrentTaskRunning || !runningEntry) return "";
-    
-    // Get previous total time from completed time entries
-    const previousTotal = timeEntries.reduce((total, entry) => {
-      return total + (entry.duration || 0);
-    }, 0);
-    
-    // Get current session time in minutes
-    const startTime = new Date(runningEntry.startTime);
-    const currentSessionMinutes = (currentTime.getTime() - startTime.getTime()) / (1000 * 60);
-    
-    // Total time = previous + current session
-    const totalMinutes = previousTotal + currentSessionMinutes;
-    const totalHours = Math.floor(totalMinutes / 60);
-    const remainingMinutes = Math.floor(totalMinutes % 60);
-    
-    if (totalHours > 0) {
-      return `${totalHours}h ${remainingMinutes}m`;
-    }
-    return `${remainingMinutes}m`;
-  };
-
-  // Calculate suggested completion percentage 
-  const calculateSuggestedPercentage = () => {
-    if (!runningEntry) return task.completionPercentage || 0;
-
-    const sessionStartTime = new Date(runningEntry.startTime);
-    const sessionDuration = (currentTime.getTime() - sessionStartTime.getTime()) / (1000 * 60);
-    const currentCompletion = task.completionPercentage || 0;
-    
-    // Simple practical approach: meaningful increments based on time worked
-    let suggestedIncrease = 0;
-    
-    if (sessionDuration >= 15) { // 15+ minutes = significant work
-      suggestedIncrease = Math.max(5, Math.min(15, sessionDuration / 4)); // 5-15% increase
-    } else if (sessionDuration >= 5) { // 5-14 minutes = moderate work  
-      suggestedIncrease = Math.max(2, sessionDuration / 2); // 2-7% increase
-    } else { // Less than 5 minutes = small adjustment
-      suggestedIncrease = 1; // 1% increase
-    }
-    
-    return Math.min(100, Math.round(currentCompletion + suggestedIncrease));
-  };
-
-  const handleCompletionSubmit = (completionData: { completionPercentage: number; notes?: string }) => {
-    if (runningEntry) {
-      stopTimerMutation.mutate({ entryId: runningEntry.id, completionData });
-    }
-  };
-
-  // Calculate total time tracked for this task
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.round(minutes % 60);
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
-    }
-    return `${mins}m`;
-  };
-
-  const getTotalTime = () => {
-    const totalTime = timeEntries.reduce((total, entry) => {
-      return total + (entry.duration || 0);
-    }, 0);
-    return formatDuration(totalTime);
-  };
-
-
-  return (
-    <>
-      <div className="flex items-center gap-1">
-        {isCurrentTaskRunning ? (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={handleStop}
-              disabled={stopTimerMutation.isPending}
-              data-testid={`button-stop-timer-${task.id}`}
-              data-timer-button="true"
-            >
-              <Square className="h-3 w-3 mr-1" />
-              {getElapsedTime()}
-            </Button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white border-0"
-              onClick={handleStart}
-              disabled={startTimerMutation.isPending || hasRunningTimer}
-              data-testid={`button-start-timer-${task.id}`}
-              data-timer-button="true"
-            >
-              <Play className="h-3 w-3 mr-1" />
-              Start
-            </Button>
-            {timeEntries.length > 0 && (
-              <span className="text-xs text-muted-foreground font-medium">
-                {getTotalTime()}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {/* Completion Dialog - Only render when needed */}
-      {showCompletionDialog && (
-        <CompletionDialog
-          isOpen={showCompletionDialog}
-          onClose={() => setShowCompletionDialog(false)}
-          currentPercentage={calculateSuggestedPercentage()}
-          onSubmit={handleCompletionSubmit}
-          isLoading={stopTimerMutation.isPending}
-        />
-      )}
-    </>
-  );
-}
+import { TaskTimerButtons } from "@/components/timesheet/task-timer-buttons";
+import { taskStatusColors, taskStatusLabels, taskPriorityColors, taskPriorityLabels } from "@/lib/entity-constants";
 
 export default function TasksPage() {
   const [location] = useLocation();
@@ -690,8 +424,8 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
       sortable: true,
       searchable: true,
       render: (task: Task) => (
-        <Badge className={statusColors[task.status as keyof typeof statusColors]} data-testid={`badge-task-status-${task.id}`}>
-          {statusLabels[task.status as keyof typeof statusLabels]}
+        <Badge className={taskStatusColors[task.status as keyof typeof taskStatusColors]} data-testid={`badge-task-status-${task.id}`}>
+          {taskStatusLabels[task.status as keyof typeof taskStatusLabels]}
         </Badge>
       ),
     },
@@ -701,8 +435,8 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
       sortable: true,
       searchable: true,
       render: (task: Task) => (
-        <Badge className={priorityColors[task.priority as keyof typeof priorityColors]} data-testid={`badge-task-priority-${task.id}`}>
-          {priorityLabels[task.priority as keyof typeof priorityLabels]}
+        <Badge className={taskPriorityColors[task.priority as keyof typeof taskPriorityColors]} data-testid={`badge-task-priority-${task.id}`}>
+          {taskPriorityLabels[task.priority as keyof typeof taskPriorityLabels]}
         </Badge>
       ),
     },

@@ -4,35 +4,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { CheckSquare, Edit, MoreHorizontal, Trash2 } from "lucide-react";
 import type { Task } from "@shared/schema";
 import { EntityListDescriptor, registerEntity, TableColumn, ColumnHelpers, BulkEditField, FilterColumn } from "../entity-registry";
+import { taskStatusColors, taskStatusLabels, taskPriorityColors, taskPriorityLabels } from "../entity-constants";
+import { TaskTimerButtons } from "@/components/timesheet/task-timer-buttons";
 import TaskFormContainer from "@/components/forms/task-form-container";
-
-const statusColors: Record<string, string> = {
-  todo: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
-  in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  review: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-};
-
-const priorityColors: Record<string, string> = {
-  low: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  urgent: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-};
-
-const statusLabels: Record<string, string> = {
-  todo: "Da fare",
-  in_progress: "In corso",
-  review: "In revisione",
-  completed: "Completato",
-};
-
-const priorityLabels: Record<string, string> = {
-  low: "Bassa",
-  medium: "Media",
-  high: "Alta",
-  urgent: "Urgente",
-};
 
 export const tasksDescriptor: EntityListDescriptor = {
   entityKey: "tasks",
@@ -41,9 +15,12 @@ export const tasksDescriptor: EntityListDescriptor = {
   apiBase: "/api/tasks",
   icon: CheckSquare,
   supportsAI: true,
-  supportsTimer: true,
-  supportsHistory: true,
+  supportsTimeTracking: true,
+  supportsAudit: true,
   supportsMessages: true,
+  supportsBulkEdit: true,
+  supportsBulkCopy: true,
+  supportsBulkDelete: true,
 
   getColumns: (helpers: ColumnHelpers): TableColumn[] => [
     {
@@ -62,8 +39,8 @@ export const tasksDescriptor: EntityListDescriptor = {
       label: "Stato",
       sortable: true,
       render: (task: Task) => (
-        <Badge className={statusColors[task.status] || ""}>
-          {statusLabels[task.status] || task.status}
+        <Badge className={taskStatusColors[task.status] || ""} data-testid={`badge-task-status-${task.id}`}>
+          {taskStatusLabels[task.status] || task.status}
         </Badge>
       ),
     },
@@ -72,9 +49,22 @@ export const tasksDescriptor: EntityListDescriptor = {
       label: "Priorità",
       sortable: true,
       render: (task: Task) => (
-        <Badge className={priorityColors[task.priority] || ""}>
-          {priorityLabels[task.priority] || task.priority}
+        <Badge className={taskPriorityColors[task.priority] || ""} data-testid={`badge-task-priority-${task.id}`}>
+          {taskPriorityLabels[task.priority] || task.priority}
         </Badge>
+      ),
+    },
+    {
+      key: "description",
+      label: "Descrizione",
+      sortable: false,
+      searchable: true,
+      render: (task: Task) => task.description ? (
+        <div className="text-sm max-w-xs truncate" title={task.description}>
+          {task.description}
+        </div>
+      ) : (
+        <span className="text-muted-foreground text-sm">-</span>
       ),
     },
     {
@@ -82,7 +72,9 @@ export const tasksDescriptor: EntityListDescriptor = {
       label: "Progetto",
       sortable: true,
       render: (task: any) => task.projectName ? (
-        <div className="text-sm font-medium">{task.projectName}</div>
+        <div className="text-sm font-medium" data-testid={`text-task-project-${task.id}`}>
+          {task.projectName}
+        </div>
       ) : (
         <span className="text-muted-foreground text-sm">-</span>
       ),
@@ -101,6 +93,12 @@ export const tasksDescriptor: EntityListDescriptor = {
           </div>
         );
       },
+    },
+    {
+      key: "timer",
+      label: "Timer",
+      sortable: false,
+      render: (task: Task) => <TaskTimerButtons task={task} />,
     },
     {
       key: "actions",
@@ -152,6 +150,8 @@ export const tasksDescriptor: EntityListDescriptor = {
         { value: "urgent", label: "Urgente" },
       ],
     },
+    { id: "description", label: "Descrizione", type: "text" },
+    { id: "dueDate", label: "Scadenza", type: "date" },
   ],
 
   getBulkEditFields: (relatedData: any): BulkEditField[] => [
