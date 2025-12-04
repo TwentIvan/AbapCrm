@@ -1091,28 +1091,46 @@ export async function executeTaskWithAI(
               aiResult = JSON.parse(safeJson);
               console.log('[AI-EXECUTOR] Parsed with code content removed');
             } catch (safeError) {
-              // Last resort: extract key fields manually
+              // Last resort: extract key fields manually and include raw response
               console.error('[AI-EXECUTOR] Safe parse also failed, extracting manually');
+              console.log('[AI-EXECUTOR] Raw content sample:', content.substring(0, 500));
               
               const taskTypeMatch = jsonStr.match(/"taskType"\s*:\s*"([^"]+)"/);
               const complexityMatch = jsonStr.match(/"complexity"\s*:\s*"([^"]+)"/);
               const approachMatch = jsonStr.match(/"suggestedApproach"\s*:\s*"([^"]*?)(?:"|$)/);
               
+              // Try to extract code blocks from the raw response
+              const codeBlockMatch = content.match(/```abap\n([\s\S]*?)```/i);
+              const generatedFiles = [];
+              
+              if (codeBlockMatch) {
+                generatedFiles.push({
+                  filename: 'ZGENERATED_CODE.abap',
+                  language: 'ABAP',
+                  objectType: 'PROG',
+                  description: 'Codice estratto dalla risposta AI (parsing parziale)',
+                  content: codeBlockMatch[1].trim(),
+                });
+                console.log('[AI-EXECUTOR] Extracted ABAP code block from markdown');
+              }
+              
               aiResult = {
                 analysis: {
                   taskType: taskTypeMatch?.[1] || 'extraction',
                   complexity: complexityMatch?.[1] || 'medium',
-                  suggestedApproach: approachMatch?.[1] || 'Vedere risposta AI completa',
+                  suggestedApproach: approachMatch?.[1] || 'Vedere risposta AI completa nel contesto',
                   sapModules: [],
                   requiredObjects: [],
+                  rawResponse: content.substring(0, 10000), // Store raw response for manual review
                 },
-                generatedFiles: [],
+                generatedFiles,
                 suggestedActions: [{ 
                   action: 'review_raw', 
-                  description: 'La risposta AI contiene caratteri speciali - rivedi la risposta raw nel contesto' 
+                  priority: 'high',
+                  description: 'La risposta AI è stata parzialmente elaborata - verifica il codice estratto' 
                 }],
               };
-              console.log('[AI-EXECUTOR] Extracted basic structure manually');
+              console.log('[AI-EXECUTOR] Extracted basic structure manually, found ' + generatedFiles.length + ' code blocks');
             }
           }
         } else {

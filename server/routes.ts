@@ -8510,6 +8510,10 @@ ISTRUZIONI:
       // Add current message with optional images
       messages.push({ role: "user", content: userMessageContent });
       
+      // Log the message structure for debugging
+      const totalImages = userMessageContent.filter((c: any) => c.type === 'image_url').length;
+      console.log(`[AI-CHAT] Sending to OpenAI: ${totalImages} images, text length: ${userMessageContent[0]?.text?.length || 0}`);
+      
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages,
@@ -8517,12 +8521,22 @@ ISTRUZIONI:
         max_tokens: 2000,
       });
       
-      const aiResponse = response.choices[0]?.message?.content || "Mi dispiace, non sono riuscito a elaborare la risposta.";
+      const aiResponse = response.choices[0]?.message?.content;
+      const finishReason = response.choices[0]?.finish_reason;
+      
+      console.log(`[AI-CHAT] OpenAI response: finish_reason=${finishReason}, content length=${aiResponse?.length || 0}`);
+      
+      if (!aiResponse) {
+        console.error(`[AI-CHAT] Empty response from OpenAI, finish_reason: ${finishReason}`);
+        res.json({ response: "Mi dispiace, l'AI non ha restituito una risposta. Riprova con meno immagini o un messaggio più breve." });
+        return;
+      }
       
       res.json({ response: aiResponse });
-    } catch (error) {
-      console.error("Error in AI chat:", error);
-      res.status(500).json({ error: "Failed to process chat message" });
+    } catch (error: any) {
+      console.error("[AI-CHAT] Error in AI chat:", error?.message || error);
+      console.error("[AI-CHAT] Error details:", error?.response?.data || error?.status || 'No details');
+      res.status(500).json({ error: `Errore nella chat AI: ${error?.message || 'Errore sconosciuto'}` });
     }
   });
 
