@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
 import { Mail, MessageSquare, Link as LinkIcon, Trash2, Eye, Plus } from "lucide-react";
+import DOMPurify from "dompurify";
 
 interface MessageHistoryProps {
   tableName: string;
@@ -319,11 +320,18 @@ export function MessageHistory({ tableName, recordId, title = "Message History",
                       <Separator className="my-3" />
                       <div className="space-y-2">
                         <div className="text-xs font-medium text-muted-foreground">Message Content</div>
-                        <div className="bg-muted p-3 rounded text-sm max-h-48 overflow-y-auto">
+                        <div className="bg-muted p-3 rounded text-sm max-h-96 overflow-y-auto">
                           {link.message.htmlBody ? (
                             <div 
                               className="prose prose-sm max-w-none"
-                              dangerouslySetInnerHTML={{ __html: link.message.htmlBody }}
+                              dangerouslySetInnerHTML={{ 
+                                __html: DOMPurify.sanitize(link.message.htmlBody, {
+                                  ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'code'],
+                                  ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'width', 'height', 'target'],
+                                  FORBID_TAGS: ['style', 'script', 'form', 'input', 'button'],
+                                  FORBID_ATTR: ['style', 'onclick', 'onload', 'onerror']
+                                })
+                              }}
                             />
                           ) : (
                             <div className="whitespace-pre-wrap">
