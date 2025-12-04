@@ -31,6 +31,7 @@ import { TableConfiguration } from "@/components/ui/table-configuration";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
+import { ThuAiDialog } from "@/components/dialogs/thu-ai-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const statusColors = {
@@ -306,6 +307,7 @@ export default function TasksPage() {
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
   const [showBulkCopyDialog, setShowBulkCopyDialog] = useState(false);
+  const [showThuAiDialog, setShowThuAiDialog] = useState(false);
   const [editingLayout, setEditingLayout] = useState<any>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   
@@ -879,13 +881,7 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      onClick={() => {
-                        // TODO: Implementare AI per task
-                        toast({
-                          title: "AI Task Assistant",
-                          description: "Funzionalità in sviluppo - Prossimamente!",
-                        });
-                      }}
+                      onClick={() => setShowThuAiDialog(true)}
                       disabled={selectedTasks.length === 0}
                       variant="ghost"
                       className={`relative flex flex-col items-center justify-center w-12 h-9 rounded-lg border-2 border-purple-300/30 dark:border-purple-600/30 bg-sidebar-accent shadow-sm hover:shadow-md transition-all ${
@@ -1046,6 +1042,13 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
         selectedCount={selectedTasks.length}
         onSave={handleBulkEditSave}
         isPending={bulkEditMutation.isPending}
+      />
+
+      {/* THU AI Dialog */}
+      <ThuAiDialog
+        open={showThuAiDialog}
+        onOpenChange={setShowThuAiDialog}
+        selectedTasks={selectedTasks}
       />
     </div>
   );
