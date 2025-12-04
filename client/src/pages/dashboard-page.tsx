@@ -1,12 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -19,41 +15,28 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
+import { getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
-import { useToast } from "@/hooks/use-toast";
-import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
-import { CompletionDialog } from "@/components/timesheet/completion-dialog";
-import type { Task, TimeEntry } from "@shared/schema";
+import { EmbeddedTasksList } from "@/components/embedded/embedded-tasks-list";
 import { 
   FolderKanban, 
   CheckSquare, 
   Users, 
   Handshake,
-  Calendar,
   TrendingUp,
   Clock,
-  Play,
-  Square,
   Settings,
   LayoutGrid,
   Timer,
   Briefcase,
   X,
-  GripVertical,
-  PanelLeftClose,
-  PanelLeft,
-  MoreVertical
+  Plus,
+  ListTodo
 } from "lucide-react";
 import { Link } from "wouter";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-type PanelContent = "tasks" | "stats" | "timer" | "projects" | "empty";
+type PanelContent = "tasks" | "tasks-active" | "stats" | "timer" | "projects" | "empty";
 
 interface PanelConfig {
   id: string;
@@ -66,261 +49,23 @@ interface DashboardLayout {
   direction: "horizontal" | "vertical";
 }
 
-const PANEL_OPTIONS: { value: PanelContent; label: string; icon: any }[] = [
-  { value: "tasks", label: "Lista Task", icon: CheckSquare },
-  { value: "stats", label: "Statistiche", icon: TrendingUp },
-  { value: "timer", label: "Timer Attivo", icon: Timer },
-  { value: "projects", label: "Progetti", icon: Briefcase },
-  { value: "empty", label: "Vuoto", icon: X },
+const PANEL_OPTIONS: { value: PanelContent; label: string; icon: any; description: string }[] = [
+  { value: "tasks", label: "Lista Task (completa)", icon: ListTodo, description: "Tutti i task con tutte le funzionalità" },
+  { value: "tasks-active", label: "Task Attivi", icon: CheckSquare, description: "Solo task da fare e in corso" },
+  { value: "stats", label: "Statistiche", icon: TrendingUp, description: "Panoramica numeri" },
+  { value: "timer", label: "Timer Attivo", icon: Timer, description: "Timer corrente" },
+  { value: "projects", label: "Progetti", icon: Briefcase, description: "Progetti attivi" },
+  { value: "empty", label: "Vuoto", icon: X, description: "Pannello vuoto" },
 ];
 
 const DEFAULT_LAYOUT: DashboardLayout = {
   panels: [
-    { id: "1", content: "tasks", title: "I Miei Task" },
+    { id: "1", content: "tasks-active", title: "Task Attivi" },
     { id: "2", content: "timer", title: "Timer" },
   ],
   direction: "horizontal",
 };
 
-// ===== EMBEDDED TASK TABLE =====
-const statusColors: Record<string, string> = {
-  todo: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
-  in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  review: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-};
-
-const priorityColors: Record<string, string> = {
-  low: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  urgent: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-};
-
-const statusLabels: Record<string, string> = {
-  todo: "Da fare",
-  in_progress: "In corso",
-  review: "In revisione",
-  completed: "Completato",
-};
-
-const priorityLabels: Record<string, string> = {
-  low: "Bassa",
-  medium: "Media",
-  high: "Alta",
-  urgent: "Urgente",
-};
-
-function TaskTimerButton({ task }: { task: Task }) {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
-  
-  const { data: runningEntry } = useQuery<any>({
-    queryKey: ["/api/time-entries/running"],
-    queryFn: getQueryFn({ on401: "throw" }),
-    refetchInterval: 1000,
-  });
-
-  const startTimer = useMutation({
-    mutationFn: async () => {
-      return apiRequest("POST", "/api/time-entries", { taskId: task.id });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      toast({ title: "Timer avviato" });
-    },
-  });
-
-  const stopTimer = useMutation({
-    mutationFn: async ({ completionData }: { completionData?: { completionPercentage: number } }) => {
-      const res = await apiRequest("POST", `/api/time-entries/${runningEntry.id}/stop`, {});
-      if (completionData) {
-        await apiRequest("PUT", `/api/tasks/${task.id}`, {
-          completionPercentage: completionData.completionPercentage,
-        });
-      }
-      return res;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      setShowCompletionDialog(false);
-      toast({ title: "Timer fermato" });
-    },
-  });
-
-  const isRunning = runningEntry?.taskId === task.id;
-  const hasOtherRunning = runningEntry && runningEntry.taskId !== task.id;
-
-  const handleStopClick = () => {
-    setShowCompletionDialog(true);
-  };
-
-  const handleConfirmStop = (percentage: number) => {
-    stopTimer.mutate({ completionData: { completionPercentage: percentage } });
-  };
-
-  return (
-    <>
-      {isRunning ? (
-        <Button
-          size="sm"
-          variant="destructive"
-          className="h-7 w-7 p-0"
-          onClick={handleStopClick}
-          disabled={stopTimer.isPending}
-          data-testid={`button-stop-${task.id}`}
-        >
-          <Square className="h-3 w-3" />
-        </Button>
-      ) : (
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 w-7 p-0"
-          onClick={() => startTimer.mutate()}
-          disabled={startTimer.isPending || hasOtherRunning}
-          data-testid={`button-start-${task.id}`}
-        >
-          <Play className="h-3 w-3" />
-        </Button>
-      )}
-      
-      <CompletionDialog
-        isOpen={showCompletionDialog}
-        onClose={() => setShowCompletionDialog(false)}
-        currentPercentage={task.completionPercentage || 0}
-        onSubmit={(data) => handleConfirmStop(data.completionPercentage)}
-        isLoading={stopTimer.isPending}
-      />
-    </>
-  );
-}
-
-function EmbeddedTasksPanel() {
-  const { currentOrganizationId } = useOrganization();
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
-  const { data: tasks, isLoading } = useQuery<(Task & { projectName?: string })[]>({
-    queryKey: ["/api/tasks", { orgId: currentOrganizationId }],
-    queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!currentOrganizationId,
-  });
-
-  const { data: runningEntry } = useQuery<any>({
-    queryKey: ["/api/time-entries/running"],
-    queryFn: getQueryFn({ on401: "throw" }),
-    refetchInterval: 2000,
-  });
-
-  // Filter active tasks only
-  const activeTasks = useMemo(() => {
-    return tasks?.filter(t => t.status === "todo" || t.status === "in_progress") || [];
-  }, [tasks]);
-
-  const columns = useMemo(() => [
-    {
-      key: "title",
-      header: "Task",
-      cell: (task: Task) => (
-        <div className="max-w-[300px]">
-          <div className="font-medium text-sm truncate">{task.title}</div>
-          {task.projectName && (
-            <div className="text-xs text-muted-foreground truncate">{task.projectName}</div>
-          )}
-        </div>
-      ),
-      sortable: true,
-    },
-    {
-      key: "status",
-      header: "Stato",
-      cell: (task: Task) => (
-        <Badge className={`text-xs ${statusColors[task.status] || ""}`}>
-          {statusLabels[task.status] || task.status}
-        </Badge>
-      ),
-      sortable: true,
-    },
-    {
-      key: "priority",
-      header: "Priorità",
-      cell: (task: Task) => (
-        <Badge className={`text-xs ${priorityColors[task.priority] || ""}`}>
-          {priorityLabels[task.priority] || task.priority}
-        </Badge>
-      ),
-      sortable: true,
-    },
-    {
-      key: "completionPercentage",
-      header: "%",
-      cell: (task: Task) => (
-        <div className="text-sm text-center">{task.completionPercentage || 0}%</div>
-      ),
-      sortable: true,
-    },
-    {
-      key: "timer",
-      header: "Timer",
-      cell: (task: Task) => {
-        const isRunning = runningEntry?.taskId === task.id;
-        return (
-          <div className="flex items-center gap-2">
-            {isRunning && (
-              <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                ● REC
-              </span>
-            )}
-            <TaskTimerButton task={task} />
-          </div>
-        );
-      },
-    },
-  ], [runningEntry]);
-
-  if (isLoading) {
-    return <div className="flex items-center justify-center h-full text-muted-foreground">Caricamento...</div>;
-  }
-
-  if (activeTasks.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-        <CheckSquare className="h-12 w-12 mb-2 opacity-30" />
-        <p>Nessun task attivo</p>
-        <Link href="/tasks">
-          <Button variant="link" size="sm">Vai ai Task</Button>
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-2 py-1 border-b">
-        <span className="text-xs text-muted-foreground">{activeTasks.length} task attivi</span>
-        <Link href="/tasks">
-          <Button variant="ghost" size="sm" className="h-6 text-xs">
-            Apri pagina completa
-          </Button>
-        </Link>
-      </div>
-      <ScrollArea className="flex-1">
-        <UniversalTable
-          data={activeTasks}
-          columns={columns}
-          enableSelection={false}
-          selectedIds={selectedIds}
-          onSelectionChange={setSelectedIds}
-          compact={true}
-        />
-      </ScrollArea>
-    </div>
-  );
-}
-
-// ===== STATS PANEL =====
 function StatsPanel() {
   const { currentOrganizationId } = useOrganization();
   
@@ -399,34 +144,11 @@ function StatsPanel() {
   );
 }
 
-// ===== TIMER PANEL =====
 function TimerPanel() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
-
   const { data: runningEntry } = useQuery<any>({
     queryKey: ["/api/time-entries/running"],
     queryFn: getQueryFn({ on401: "throw" }),
     refetchInterval: 1000,
-  });
-
-  const stopTimer = useMutation({
-    mutationFn: async ({ completionData }: { completionData?: { completionPercentage: number } }) => {
-      const res = await apiRequest("POST", `/api/time-entries/${runningEntry.id}/stop`, {});
-      if (completionData && runningEntry.taskId) {
-        await apiRequest("PUT", `/api/tasks/${runningEntry.taskId}`, {
-          completionPercentage: completionData.completionPercentage,
-        });
-      }
-      return res;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      setShowCompletionDialog(false);
-      toast({ title: "Timer fermato" });
-    },
   });
 
   const [elapsed, setElapsed] = useState(0);
@@ -471,31 +193,12 @@ function TimerPanel() {
         {runningEntry.taskTitle}
       </div>
       {runningEntry.projectName && (
-        <div className="text-sm text-muted-foreground mb-6">{runningEntry.projectName}</div>
+        <div className="text-sm text-muted-foreground">{runningEntry.projectName}</div>
       )}
-      <Button
-        size="lg"
-        variant="destructive"
-        onClick={() => setShowCompletionDialog(true)}
-        disabled={stopTimer.isPending}
-        data-testid="button-stop-timer"
-      >
-        <Square className="h-4 w-4 mr-2" />
-        Ferma Timer
-      </Button>
-      
-      <CompletionDialog
-        isOpen={showCompletionDialog}
-        onClose={() => setShowCompletionDialog(false)}
-        currentPercentage={runningEntry.taskCompletionPercentage || 0}
-        onSubmit={(data) => stopTimer.mutate({ completionData: { completionPercentage: data.completionPercentage } })}
-        isLoading={stopTimer.isPending}
-      />
     </div>
   );
 }
 
-// ===== PROJECTS PANEL =====
 function ProjectsPanel() {
   const { currentOrganizationId } = useOrganization();
   
@@ -526,7 +229,7 @@ function ProjectsPanel() {
     <ScrollArea className="h-full">
       <div className="p-2 space-y-2">
         {activeProjects.map((project: any) => (
-          <Link key={project.id} href={`/projects`}>
+          <Link key={project.id} href="/projects">
             <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
               <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
                 <FolderKanban className="h-5 w-5 text-blue-500" />
@@ -545,7 +248,6 @@ function ProjectsPanel() {
   );
 }
 
-// ===== PANEL WRAPPER =====
 function PanelWrapper({ 
   config, 
   onChangeContent,
@@ -558,7 +260,22 @@ function PanelWrapper({
   const renderContent = () => {
     switch (config.content) {
       case "tasks":
-        return <EmbeddedTasksPanel />;
+        return (
+          <EmbeddedTasksList 
+            layoutKey={`dashboard_tasks_${config.id}`}
+            showToolbar={true}
+            showLayoutManager={true}
+          />
+        );
+      case "tasks-active":
+        return (
+          <EmbeddedTasksList 
+            layoutKey={`dashboard_tasks_active_${config.id}`}
+            showToolbar={true}
+            showLayoutManager={true}
+            filterStatus={["todo", "in_progress"]}
+          />
+        );
       case "stats":
         return <StatsPanel />;
       case "timer":
@@ -568,7 +285,7 @@ function PanelWrapper({
       case "empty":
         return (
           <div className="flex items-center justify-center h-full text-muted-foreground">
-            <p>Pannello vuoto</p>
+            <p>Pannello vuoto - seleziona un contenuto</p>
           </div>
         );
     }
@@ -578,14 +295,14 @@ function PanelWrapper({
 
   return (
     <div className="h-full flex flex-col bg-card rounded-lg border overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+      <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30 flex-shrink-0">
         <div className="flex items-center gap-2">
           {currentOption && <currentOption.icon className="h-4 w-4 text-muted-foreground" />}
           <span className="font-medium text-sm">{config.title}</span>
         </div>
         {isConfiguring && (
           <Select value={config.content} onValueChange={(v) => onChangeContent(v as PanelContent)}>
-            <SelectTrigger className="h-7 w-[140px] text-xs">
+            <SelectTrigger className="h-7 w-[160px] text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -601,22 +318,20 @@ function PanelWrapper({
           </Select>
         )}
       </div>
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {renderContent()}
       </div>
     </div>
   );
 }
 
-// ===== MAIN DASHBOARD =====
 export default function DashboardPage() {
   const { currentOrganization } = useOrganization();
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [layout, setLayout] = useState<DashboardLayout>(DEFAULT_LAYOUT);
 
-  // Load layout from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem("dashboard-layout-v2");
+    const saved = localStorage.getItem("dashboard-layout-v3");
     if (saved) {
       try {
         setLayout(JSON.parse(saved));
@@ -626,10 +341,9 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Save layout to localStorage
   const saveLayout = (newLayout: DashboardLayout) => {
     setLayout(newLayout);
-    localStorage.setItem("dashboard-layout-v2", JSON.stringify(newLayout));
+    localStorage.setItem("dashboard-layout-v3", JSON.stringify(newLayout));
   };
 
   const handleChangeContent = (panelId: string, content: PanelContent) => {
@@ -676,10 +390,9 @@ export default function DashboardPage() {
           subtitle={`${currentOrganization?.name || "THE HUB UP"}`}
         />
         
-        {/* Config Bar */}
-        <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
+        <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30 flex-shrink-0">
           <div className="text-sm text-muted-foreground">
-            {isConfiguring ? "Trascina i bordi per ridimensionare i pannelli" : "La tua dashboard personalizzata"}
+            {isConfiguring ? "Configura i pannelli - trascina i bordi per ridimensionare" : "Dashboard personalizzata"}
           </div>
           <div className="flex items-center gap-2">
             {isConfiguring && (
@@ -695,7 +408,8 @@ export default function DashboardPage() {
                 </Button>
                 {layout.panels.length < 4 && (
                   <Button variant="outline" size="sm" onClick={handleAddPanel} data-testid="button-add-panel">
-                    + Aggiungi
+                    <Plus className="h-4 w-4 mr-1" />
+                    Aggiungi
                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={handleResetLayout} data-testid="button-reset">
@@ -715,8 +429,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Resizable Panels */}
-        <div className="flex-1 p-4 overflow-hidden">
+        <div className="flex-1 p-4 overflow-hidden min-h-0">
           <ResizablePanelGroup 
             direction={layout.direction} 
             className="h-full rounded-lg"
@@ -724,7 +437,7 @@ export default function DashboardPage() {
             {layout.panels.map((panel, index) => (
               <div key={panel.id} className="contents">
                 {index > 0 && <ResizableHandle withHandle className="mx-1" />}
-                <ResizablePanel defaultSize={100 / layout.panels.length} minSize={20}>
+                <ResizablePanel defaultSize={100 / layout.panels.length} minSize={15}>
                   <div className="h-full relative">
                     <PanelWrapper
                       config={panel}
