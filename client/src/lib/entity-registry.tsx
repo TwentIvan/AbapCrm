@@ -18,8 +18,9 @@ export interface BulkEditField {
 export interface FilterColumn {
   id: string;
   label: string;
-  type: "text" | "select" | "date" | "number";
+  type: "text" | "select" | "date" | "number" | "relation";
   options?: { value: string; label: string }[];
+  relationEntity?: string;
 }
 
 export interface EntityListDescriptor {
@@ -30,15 +31,18 @@ export interface EntityListDescriptor {
   icon: React.ComponentType<{ className?: string }>;
   
   getColumns: (helpers: ColumnHelpers) => TableColumn[];
-  getFilters: () => FilterColumn[];
+  getFilterColumns: () => FilterColumn[];
   getBulkEditFields: (relatedData: any) => BulkEditField[];
   
-  FormComponent: React.ComponentType<FormComponentProps>;
+  FormComponent?: React.ComponentType<FormComponentProps>;
   
   supportsAI?: boolean;
-  supportsTimer?: boolean;
-  supportsHistory?: boolean;
+  supportsTimeTracking?: boolean;
+  supportsAudit?: boolean;
   supportsMessages?: boolean;
+  supportsBulkEdit?: boolean;
+  supportsBulkCopy?: boolean;
+  supportsBulkDelete?: boolean;
   
   getRowActions?: (item: any, handlers: RowActionHandlers) => ReactNode;
   

@@ -60,6 +60,11 @@ const MIN_WIDGET_SIZE = 200;
 const WIDGET_TEMPLATES = [
   { type: "entity-list" as const, entityKey: "tasks", title: "Lista Task", icon: CheckSquare },
   { type: "entity-list" as const, entityKey: "tasks", filterField: "status", filterValues: ["todo", "in_progress"], title: "Task Attivi", icon: CheckSquare },
+  { type: "entity-list" as const, entityKey: "projects", title: "Lista Progetti", icon: FolderKanban },
+  { type: "entity-list" as const, entityKey: "projects", filterField: "status", filterValues: ["active", "in_progress"], title: "Progetti Attivi", icon: FolderKanban },
+  { type: "entity-list" as const, entityKey: "partners", title: "Lista Partner", icon: Users },
+  { type: "entity-list" as const, entityKey: "deals", title: "Lista Accordi", icon: Handshake },
+  { type: "entity-list" as const, entityKey: "deals", filterField: "stage", filterValues: ["prospecting", "qualification", "proposal", "negotiation"], title: "Accordi Aperti", icon: Handshake },
   { type: "stats" as const, title: "Statistiche", icon: TrendingUp },
   { type: "timer" as const, title: "Timer Attivo", icon: Timer },
 ];

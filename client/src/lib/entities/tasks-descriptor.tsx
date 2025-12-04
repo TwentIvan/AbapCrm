@@ -128,7 +128,7 @@ export const tasksDescriptor: EntityListDescriptor = {
     },
   ],
 
-  getFilters: (): FilterColumn[] => [
+  getFilterColumns: (): FilterColumn[] => [
     { id: "title", label: "Titolo", type: "text" },
     {
       id: "status",
