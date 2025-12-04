@@ -334,6 +334,17 @@ export default function DashboardPage() {
     });
   }, [layout, saveLayout]);
 
+  const handleUpdateTitle = useCallback((widgetId: string, newTitle: string) => {
+    setLayout(prev => {
+      const newWidgets = prev.widgets.map(w => 
+        w.id === widgetId ? { ...w, title: newTitle } : w
+      );
+      const newLayout = { ...prev, widgets: newWidgets };
+      localStorage.setItem("dashboard-freeform-v1", JSON.stringify(newLayout));
+      return newLayout;
+    });
+  }, []);
+
   const handleResetLayout = useCallback(() => {
     saveLayout(DEFAULT_LAYOUT);
   }, [saveLayout]);
@@ -445,13 +456,30 @@ export default function DashboardPage() {
               <div className="h-full flex flex-col bg-card rounded-lg border shadow-sm overflow-hidden">
                 {/* Widget Header */}
                 <div 
-                  className={`flex items-center justify-between px-3 py-2 border-b bg-muted/30 flex-shrink-0 ${isConfiguring ? 'cursor-move' : ''}`}
+                  className={`flex items-center justify-between px-3 py-2 flex-shrink-0 ${isConfiguring ? 'cursor-move' : ''}`}
                 >
                   <div className="flex items-center gap-2">
                     {isConfiguring && (
                       <GripVertical className="h-4 w-4 text-muted-foreground" />
                     )}
-                    <span className="font-medium text-sm">{widget.title}</span>
+                    {isConfiguring ? (
+                      <input
+                        type="text"
+                        value={widget.title}
+                        onChange={(e) => handleUpdateTitle(widget.id, e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="font-medium text-sm bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-md border-0 outline-none focus:ring-2 focus:ring-blue-400 min-w-[100px]"
+                        data-testid={`input-widget-title-${widget.id}`}
+                      />
+                    ) : (
+                      <span 
+                        className="font-medium text-sm bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-md"
+                        data-testid={`badge-widget-title-${widget.id}`}
+                      >
+                        {widget.title}
+                      </span>
+                    )}
                   </div>
                   {isConfiguring && (
                     <Button
