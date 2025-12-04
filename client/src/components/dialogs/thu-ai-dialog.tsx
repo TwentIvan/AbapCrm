@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -117,12 +117,26 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatMessages, isChatLoading]);
 
   const executeMutation = useMutation({
     mutationFn: async () => {
+      // Include chat clarifications as additional context for regeneration
+      const chatClarifications = chatMessages.length > 0 
+        ? chatMessages.map(m => `[${m.role === 'user' ? 'Utente' : 'AI'}]: ${m.content}`).join('\n')
+        : undefined;
+
       const response = await apiRequest("POST", "/api/ai-task-executor/execute", {
         taskIds: selectedTasks.map(t => t.id),
         customInstructions: customInstructions || undefined,
+        chatClarifications,
       });
       return response.json();
     },
@@ -750,48 +764,53 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
             </TabsContent>
 
             {/* Tab Chat - Chiarisci con l'AI */}
-            <TabsContent value="chat" className="h-full m-0 flex flex-col">
-              <div className="flex-1 overflow-hidden flex flex-col">
-                <ScrollArea className="flex-1 h-60 border rounded-lg p-4 mb-4">
-                  {chatMessages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                      <MessageSquare className="h-12 w-12 mb-4" />
-                      <p>Nessun messaggio</p>
-                      <p className="text-sm text-center max-w-md">
-                        Fai domande per chiarire cosa l'AI ha capito o per guidare la generazione del codice
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {chatMessages.map((msg, idx) => (
-                        <div
-                          key={idx}
-                          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                        >
+            <TabsContent value="chat" className="h-full m-0">
+              <div className="flex flex-col h-80">
+                <div className="flex-1 min-h-0 border rounded-lg mb-3 overflow-hidden">
+                  <ScrollArea className="h-full p-4">
+                    {chatMessages.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+                        <MessageSquare className="h-12 w-12 mb-4" />
+                        <p>Nessun messaggio</p>
+                        <p className="text-sm text-center max-w-md">
+                          Fai domande per chiarire cosa l'AI ha capito o per guidare la generazione del codice.
+                          <br />
+                          <strong>I chiarimenti verranno usati per rigenerare il codice.</strong>
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {chatMessages.map((msg, idx) => (
                           <div
-                            className={`max-w-[80%] p-3 rounded-lg ${
-                              msg.role === 'user'
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted'
-                            }`}
+                            key={idx}
+                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                           >
-                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                            <p className="text-xs opacity-70 mt-1">
-                              {msg.timestamp.toLocaleTimeString()}
-                            </p>
+                            <div
+                              className={`max-w-[80%] p-3 rounded-lg ${
+                                msg.role === 'user'
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-muted'
+                              }`}
+                            >
+                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                              <p className="text-xs opacity-70 mt-1">
+                                {msg.timestamp.toLocaleTimeString()}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                      {isChatLoading && (
-                        <div className="flex justify-start">
-                          <div className="bg-muted p-3 rounded-lg">
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ))}
+                        {isChatLoading && (
+                          <div className="flex justify-start">
+                            <div className="bg-muted p-3 rounded-lg">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </ScrollArea>
+                        )}
+                        <div ref={chatEndRef} />
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
 
                 <div className="flex gap-2">
                   <Input
@@ -823,6 +842,13 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                 {results.length === 0 && (
                   <p className="text-xs text-muted-foreground mt-2">
                     Esegui prima l'analisi AI per abilitare la chat
+                  </p>
+                )}
+
+                {chatMessages.length > 0 && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    I chiarimenti saranno inclusi nella prossima rigenerazione
                   </p>
                 )}
               </div>

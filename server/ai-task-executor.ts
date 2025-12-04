@@ -629,6 +629,16 @@ Oggetti: ${tr.objects.slice(0, 10).join(', ')}${tr.objects.length > 10 ? ` ... e
 `).join('\n')}`
     : '';
 
+  // Build chat clarifications section (from previous chat interaction)
+  const chatClarificationsSection = context.chatClarifications
+    ? `## CHIARIMENTI DALLA CHAT (IMPORTANTE!)
+L'utente ha chiesto chiarimenti prima di rigenerare il codice. Considera queste informazioni come prioritarie:
+
+${context.chatClarifications}
+
+**ATTENZIONE**: Usa questi chiarimenti per generare un codice più accurato e allineato alle aspettative dell'utente.`
+    : '';
+
   return `Sei un esperto sviluppatore SAP ABAP con oltre 15 anni di esperienza.
 Il tuo compito è analizzare un task e generare codice ABAP di alta qualità.
 
@@ -640,6 +650,8 @@ Descrizione Progetto: ${context.projectDescription || 'N/A'}
 Sistema SAP: ${context.sapSystemName || 'N/A'}
 Moduli SAP: ${(context.sapModules || []).join(', ') || 'N/A'}
 Istruzioni Aggiuntive: ${context.customInstructions || 'Nessuna'}
+
+${chatClarificationsSection}
 
 ${devOpsSection}
 
@@ -713,7 +725,8 @@ export async function executeTaskWithAI(
   taskIds: string[],
   userId: string,
   organizationId: string,
-  customInstructions?: string
+  customInstructions?: string,
+  chatClarifications?: string
 ): Promise<TaskExecutionResult[]> {
   const results: TaskExecutionResult[] = [];
 
@@ -772,6 +785,7 @@ export async function executeTaskWithAI(
         projectDescription: projectData?.description || undefined,
         sapSystemId: projectData?.sapSystemId || undefined,
         customInstructions,
+        chatClarifications,
       };
 
       // Get SAP system info if available - MUST filter by organizationId for tenant isolation

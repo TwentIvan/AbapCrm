@@ -3252,5 +3252,6 @@ export interface AiTaskContext {
   sapModules?: string[];
   relatedTransports?: string[];
   customInstructions?: string;
+  chatClarifications?: string;
 }
 
