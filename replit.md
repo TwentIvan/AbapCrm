@@ -86,6 +86,13 @@ Supports receiving Transport Requests from SAP systems via three methods: direct
 ### SAP Shortcut Integration
 Projects linked to an SAP system can launch the **ZTHU_DOCUMENTATION** program. The system generates a `.sap` shortcut file; users execute the ABAP program, copy its JSON output, and paste it into a dialog to automatically create and link the Transport Request.
 
+### THU AI Task Executor
+AI-powered ABAP code generation with extended context:
+- **Rich Context Collection**: Project details, DevOps work items (via externalWorkItemId), linked messages/comments (via sourceMessageIds/taskId), transport requests with objects
+- **Pattern Learning**: Learns from existing ABAP code patterns (data_extraction, report_generation, interface_development, form_enhancement, workflow_automation)
+- **Regenerate Flow**: After rejecting AI output, users can modify customInstructions and retry
+- **Security**: All queries enforce organizationId filtering for tenant isolation (task, project, sapSystem, comments, messages, transports)
+
 ### Address Management System
 Comprehensive address handling for partner entities with:
 - **AddressSearch Component** (`client/src/components/ui/address-search.tsx`): Autocomplete search using Nominatim API (OpenStreetMap geocoding), Italian province code extraction (100+ mappings), radio buttons for legal/operational address type selection
