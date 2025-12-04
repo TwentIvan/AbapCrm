@@ -608,6 +608,109 @@ function extractKeywords(context: AiTaskContext): string[] {
   return Array.from(new Set(combined));
 }
 
+// Extract generated files from raw AI response when JSON parsing fails
+function extractGeneratedFilesFromRaw(content: string): Array<{
+  filename: string;
+  language: string;
+  objectType: string;
+  description: string;
+  content: string;
+}> {
+  const files: Array<{
+    filename: string;
+    language: string;
+    objectType: string;
+    description: string;
+    content: string;
+  }> = [];
+  
+  // Strategy 1: Extract from generatedFiles JSON array
+  // Match each file object with its content
+  const filePattern = /\{\s*"filename"\s*:\s*"([^"]+)"\s*,\s*"language"\s*:\s*"([^"]+)"\s*,\s*"objectType"\s*:\s*"([^"]+)"\s*,\s*"description"\s*:\s*"([^"]*?)"\s*,\s*"content"\s*:\s*"/g;
+  let match;
+  
+  while ((match = filePattern.exec(content)) !== null) {
+    const filename = match[1];
+    const language = match[2];
+    const objectType = match[3];
+    const description = match[4];
+    
+    // Find the content - it ends at the next unescaped quote
+    const startPos = match.index + match[0].length;
+    let endPos = startPos;
+    let depth = 0;
+    let escaped = false;
+    
+    for (let i = startPos; i < content.length; i++) {
+      const char = content[i];
+      
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      
+      if (char === '\\') {
+        escaped = true;
+        continue;
+      }
+      
+      if (char === '"') {
+        endPos = i;
+        break;
+      }
+    }
+    
+    if (endPos > startPos) {
+      let codeContent = content.substring(startPos, endPos);
+      // Unescape the content
+      codeContent = codeContent
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/\\t/g, '\t')
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+      
+      files.push({
+        filename,
+        language,
+        objectType,
+        description,
+        content: codeContent,
+      });
+    }
+  }
+  
+  // Strategy 2: If no files found, try markdown code blocks
+  if (files.length === 0) {
+    const codeBlockPattern = /```abap\n([\s\S]*?)```/gi;
+    let blockMatch;
+    let blockIndex = 1;
+    
+    while ((blockMatch = codeBlockPattern.exec(content)) !== null) {
+      const code = blockMatch[1].trim();
+      if (code.length > 20) { // Ignore very short snippets
+        // Try to extract report name from code
+        const reportMatch = code.match(/^REPORT\s+(\w+)/im);
+        const filename = reportMatch 
+          ? `${reportMatch[1].toUpperCase()}.abap`
+          : `ZGENERATED_CODE_${blockIndex}.abap`;
+        
+        files.push({
+          filename,
+          language: 'ABAP',
+          objectType: 'PROG',
+          description: `Codice estratto (blocco ${blockIndex})`,
+          content: code,
+        });
+        blockIndex++;
+      }
+    }
+  }
+  
+  console.log(`[AI-EXECUTOR] extractGeneratedFilesFromRaw: found ${files.length} files`);
+  return files;
+}
+
 // Build AI prompt for task execution with extended context
 function buildTaskExecutionPrompt(
   context: ExtendedTaskContext,
@@ -1107,6 +1210,13 @@ export async function executeTaskWithAI(
             try {
               aiResult = JSON.parse(safeJson);
               console.log('[AI-EXECUTOR] Parsed with code content removed');
+              
+              // Now extract the actual code content from raw response
+              const generatedFiles = extractGeneratedFilesFromRaw(content);
+              if (generatedFiles.length > 0) {
+                aiResult.generatedFiles = generatedFiles;
+                console.log(`[AI-EXECUTOR] Extracted ${generatedFiles.length} files from raw content`);
+              }
             } catch (safeError) {
               // Last resort: extract key fields manually and include raw response
               console.error('[AI-EXECUTOR] Safe parse also failed, extracting manually');
@@ -1116,20 +1226,9 @@ export async function executeTaskWithAI(
               const complexityMatch = jsonStr.match(/"complexity"\s*:\s*"([^"]+)"/);
               const approachMatch = jsonStr.match(/"suggestedApproach"\s*:\s*"([^"]*?)(?:"|$)/);
               
-              // Try to extract code blocks from the raw response
-              const codeBlockMatch = content.match(/```abap\n([\s\S]*?)```/i);
-              const generatedFiles = [];
-              
-              if (codeBlockMatch) {
-                generatedFiles.push({
-                  filename: 'ZGENERATED_CODE.abap',
-                  language: 'ABAP',
-                  objectType: 'PROG',
-                  description: 'Codice estratto dalla risposta AI (parsing parziale)',
-                  content: codeBlockMatch[1].trim(),
-                });
-                console.log('[AI-EXECUTOR] Extracted ABAP code block from markdown');
-              }
+              // Extract generated files from raw JSON content
+              const generatedFiles = extractGeneratedFilesFromRaw(content);
+              console.log(`[AI-EXECUTOR] Extracted ${generatedFiles.length} files from raw content`);
               
               aiResult = {
                 analysis: {
@@ -1144,7 +1243,9 @@ export async function executeTaskWithAI(
                 suggestedActions: [{ 
                   action: 'review_raw', 
                   priority: 'high',
-                  description: 'La risposta AI è stata parzialmente elaborata - verifica il codice estratto' 
+                  description: generatedFiles.length > 0 
+                    ? 'Codice estratto con successo - verifica il risultato' 
+                    : 'La risposta AI è stata parzialmente elaborata - verifica il contesto' 
                 }],
               };
               console.log('[AI-EXECUTOR] Extracted basic structure manually, found ' + generatedFiles.length + ' code blocks');
