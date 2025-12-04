@@ -3028,9 +3028,9 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     state: z.string().max(50).nullish(),
     assignedTo: z.string().max(200).nullish(),
     priority: z.number().int().min(1).max(4).nullish(),
-    description: z.string().max(500000).nullish(), // Allow very long descriptions
-    descriptionText: z.string().max(500000).nullish(),
-    descriptionHtml: z.string().max(500000).nullish(), // HTML description - can be very large
+    description: z.string().nullish(), // No limit - can contain images
+    descriptionText: z.string().nullish(), // No limit
+    descriptionHtml: z.string().nullish(), // No limit - can contain base64 images
     iterationPath: z.string().max(500).nullish(),
     areaPath: z.string().max(500).nullish(),
     tags: z.array(z.string().max(100)).max(50).nullish(),
@@ -3074,30 +3074,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       console.log("[DevOps] wbsCode:", bookmarkletData.wbsCode);
       console.log("[DevOps] ticketType:", bookmarkletData.ticketType);
       
-      // Pre-process: Remove base64 images from HTML descriptions (can be huge)
-      // This prevents validation errors and reduces storage size
-      const removeBase64Images = (html: string | null | undefined): string | null | undefined => {
-        if (!html) return html;
-        const originalSize = html.length;
-        // Remove base64 image data URLs, keep a placeholder
-        const cleaned = html
-          .replace(/src\s*=\s*["']data:image\/[^;]+;base64,[^"']+["']/gi, 'src="[immagine rimossa]"')
-          .replace(/url\s*\(\s*["']?data:image\/[^;]+;base64,[^"')]+["']?\s*\)/gi, 'url([immagine rimossa])');
-        if (cleaned.length < originalSize) {
-          console.log(`[DevOps] Removed base64 images from HTML: ${originalSize} -> ${cleaned.length} chars`);
-        }
-        return cleaned;
-      };
-      
-      // Apply image removal to relevant fields before validation
-      if (bookmarkletData.descriptionHtml) {
-        bookmarkletData.descriptionHtml = removeBase64Images(bookmarkletData.descriptionHtml);
-      }
-      if (bookmarkletData.description) {
-        bookmarkletData.description = removeBase64Images(bookmarkletData.description);
-      }
-      
-      // Validate bookmarklet data
+      // Validate bookmarklet data (no size limits on descriptions - can contain base64 images)
       const validationResult = bookmarkletDataSchema.safeParse(bookmarkletData);
       if (!validationResult.success) {
         console.error("[DevOps] Invalid bookmarklet data:", validationResult.error.errors);
