@@ -334,12 +334,15 @@ export function WidgetBuilderDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="filter-field">Campo Filtro</Label>
-                <Select value={filterField} onValueChange={setFilterField}>
+                <Select 
+                  value={filterField || "__none__"} 
+                  onValueChange={(val) => setFilterField(val === "__none__" ? "" : val)}
+                >
                   <SelectTrigger id="filter-field" data-testid="select-filter-field">
                     <SelectValue placeholder="Nessun filtro" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nessun filtro</SelectItem>
+                    <SelectItem value="__none__">Nessun filtro</SelectItem>
                     {GROUPABLE_FIELDS.map((field) => (
                       <SelectItem key={field.value} value={field.value}>
                         {field.label}
