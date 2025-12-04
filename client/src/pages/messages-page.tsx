@@ -137,6 +137,7 @@ export default function MessagesPage() {
   const [showThreadView, setShowThreadView] = useState(false);
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [filterType, setFilterType] = useState<"all" | "email" | "chat" | "sms" | "other" | "devops" | "calendar">("all");
+  const [initialMessageId, setInitialMessageId] = useState<string | null>(null);
   
   // Training mode states
   const [isTrainingMode, setIsTrainingMode] = useState(false);
@@ -171,6 +172,17 @@ export default function MessagesPage() {
   useEffect(() => {
     setShowThreadContent(false);
   }, [selectedMessage?.id]);
+
+  // Handle URL parameter to open a specific message
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const messageId = urlParams.get('id');
+    if (messageId) {
+      setInitialMessageId(messageId);
+      // Clear the URL parameter after reading it
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
@@ -280,6 +292,22 @@ export default function MessagesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
     }
   });
+
+  // Select message from URL parameter when messages are loaded
+  useEffect(() => {
+    if (initialMessageId && messages.length > 0) {
+      const targetMessage = messages.find(m => m.id === initialMessageId);
+      if (targetMessage) {
+        setSelectedMessage(targetMessage);
+        setShowSuggestions(false);
+        if (targetMessage.status === 'unread') {
+          markAsReadMutation.mutate(targetMessage.id);
+        }
+      }
+      // Clear the initial message ID after processing
+      setInitialMessageId(null);
+    }
+  }, [initialMessageId, messages]);
 
   const analyzeMutation = useMutation<AnalysisResult, Error, string>({
     mutationFn: async (messageId: string) => {

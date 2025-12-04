@@ -14,6 +14,7 @@ import {
   aiAbapPatterns,
   aiTaskExecutions,
   messages,
+  messageLinks,
   comments,
   type Task,
   type Project,
@@ -188,6 +189,96 @@ async function getLinkedMessages(
     }));
   } catch (error) {
     console.error('Error fetching linked messages:', error);
+    return [];
+  }
+}
+
+// Get messages linked via messageLinks table (for task or project)
+// This retrieves messages associated through the MessageHistory feature
+async function getMessageHistoryLinks(
+  tableName: string,
+  recordId: string,
+  organizationId: string,
+  limit: number = 10
+): Promise<ExtendedTaskContext['linkedMessages']> {
+  try {
+    // Query messageLinks to get linked message IDs
+    const links = await db
+      .select({
+        messageId: messageLinks.messageId,
+        linkType: messageLinks.linkType,
+      })
+      .from(messageLinks)
+      .where(and(
+        eq(messageLinks.linkedTableName, tableName),
+        eq(messageLinks.linkedRecordId, recordId),
+        eq(messageLinks.organizationId, organizationId)
+      ))
+      .limit(limit);
+
+    if (links.length === 0) return [];
+
+    const messageIds = links.map(l => l.messageId);
+    
+    // Fetch the actual messages
+    const linkedMsgs = await db
+      .select({
+        id: messages.id,
+        subject: messages.subject,
+        content: messages.body,
+        htmlBody: messages.htmlBody,
+        fromName: messages.fromName,
+        createdAt: messages.createdAt,
+        externalMetadata: messages.externalMetadata,
+      })
+      .from(messages)
+      .where(and(
+        inArray(messages.id, messageIds),
+        eq(messages.organizationId, organizationId)
+      ));
+
+    return linkedMsgs.map(m => {
+      // Extract meaningful content - prefer body over HTML
+      let content = m.content || '';
+      
+      // If HTML body exists and body is empty, extract text from HTML
+      if (!content && m.htmlBody) {
+        // Basic HTML to text conversion
+        content = m.htmlBody
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+          .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
+      
+      // Check for DevOps metadata
+      const metadata = m.externalMetadata as any;
+      if (metadata) {
+        // Include DevOps description if available
+        if (metadata.description && metadata.description.length > content.length) {
+          content = metadata.description;
+        }
+        // Include work item title in subject if available
+        if (metadata.workItemTitle && !m.subject) {
+          return {
+            subject: `[DevOps] ${metadata.workItemTitle}`,
+            content: content.substring(0, 3000),
+            fromName: metadata.assignedTo || m.fromName || undefined,
+            date: m.createdAt?.toISOString(),
+          };
+        }
+      }
+      
+      return {
+        subject: m.subject || '',
+        content: content.substring(0, 3000), // Slightly larger limit for message history
+        fromName: m.fromName || undefined,
+        date: m.createdAt?.toISOString(),
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching message history links:', error);
     return [];
   }
 }
@@ -689,12 +780,44 @@ export async function executeTaskWithAI(
       }
 
       // === EXTENDED CONTEXT: Linked messages ===
+      // Combine messages from sourceMessageIds AND messageLinks table
+      const allLinkedMessages: NonNullable<ExtendedTaskContext['linkedMessages']> = [];
+      
+      // 1. Get messages from task.sourceMessageIds (direct link)
       if (taskData.sourceMessageIds && taskData.sourceMessageIds.length > 0) {
-        context.linkedMessages = await getLinkedMessages(
+        const directLinkedMessages = await getLinkedMessages(
           taskData.sourceMessageIds,
           organizationId
         );
+        if (directLinkedMessages && directLinkedMessages.length > 0) {
+          allLinkedMessages.push(...directLinkedMessages);
+          console.log(`[THU-AI] Found ${directLinkedMessages.length} direct linked messages from sourceMessageIds`);
+        }
       }
+      
+      // 2. Get messages from messageLinks table (MessageHistory feature)
+      const taskHistoryMessages = await getMessageHistoryLinks('tasks', taskId, organizationId);
+      if (taskHistoryMessages && taskHistoryMessages.length > 0) {
+        // Deduplicate by subject+date to avoid duplicates
+        const existingKeys = new Set(allLinkedMessages.map(m => `${m.subject}|${m.date}`));
+        const newMessages = taskHistoryMessages.filter(m => !existingKeys.has(`${m.subject}|${m.date}`));
+        allLinkedMessages.push(...newMessages);
+        console.log(`[THU-AI] Found ${taskHistoryMessages.length} messages from task MessageHistory (${newMessages.length} new)`);
+      }
+      
+      // 3. Also get messages from project's messageLinks (project-level context)
+      if (taskData.projectId) {
+        const projectHistoryMessages = await getMessageHistoryLinks('projects', taskData.projectId, organizationId);
+        if (projectHistoryMessages && projectHistoryMessages.length > 0) {
+          const existingKeys = new Set(allLinkedMessages.map(m => `${m.subject}|${m.date}`));
+          const newMessages = projectHistoryMessages.filter(m => !existingKeys.has(`${m.subject}|${m.date}`));
+          allLinkedMessages.push(...newMessages);
+          console.log(`[THU-AI] Found ${projectHistoryMessages.length} messages from project MessageHistory (${newMessages.length} new)`);
+        }
+      }
+      
+      context.linkedMessages = allLinkedMessages;
+      console.log(`[THU-AI] Total linked messages for context: ${allLinkedMessages.length}`);
 
       // === EXTENDED CONTEXT: Task comments ===
       context.taskComments = await getTaskComments(taskId, organizationId);

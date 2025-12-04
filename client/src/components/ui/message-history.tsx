@@ -11,8 +11,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
-import { Mail, MessageSquare, Link as LinkIcon, Trash2, Eye, Plus } from "lucide-react";
+import { Mail, MessageSquare, Link as LinkIcon, Trash2, Eye, Plus, ExternalLink } from "lucide-react";
 import DOMPurify from "dompurify";
+import { Link } from "wouter";
 
 interface MessageHistoryProps {
   tableName: string;
@@ -270,10 +271,21 @@ export function MessageHistory({ tableName, recordId, title = "Message History",
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
+                      <Link href={`/messages?id=${link.message.id}`}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="Open in Messages"
+                          data-testid={`button-open-message-${link.message.id}`}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </Link>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => toggleMessageExpansion(link.message.id)}
+                        title="Toggle content preview"
                         data-testid={`button-toggle-message-${link.message.id}`}
                       >
                         <Eye className="h-4 w-4" />
