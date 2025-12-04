@@ -4451,6 +4451,49 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Alternative route for getting linked messages (used by MessageHistory component)
+  app.get("/api/message-links/:tableName/:recordId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { tableName, recordId } = req.params;
+      const organizationId = getOrganizationId(req);
+      
+      const linkedMessages = await MessageLogService.getLinkedMessages(tableName, recordId, organizationId);
+      res.json(linkedMessages);
+    } catch (error) {
+      console.error("Get linked messages error:", error);
+      res.status(500).json({ error: "Failed to get linked messages" });
+    }
+  });
+
+  // Alternative POST route for creating message links (used by MessageHistory component)
+  app.post("/api/message-links", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { messageId, linkedTableName, linkedRecordId, notes } = req.body;
+      
+      if (!messageId || !linkedTableName || !linkedRecordId) {
+        return res.status(400).json({ error: "messageId, linkedTableName, and linkedRecordId are required" });
+      }
+      
+      const context = MessageLogService.createContext(req);
+      const link = await MessageLogService.linkMessage(
+        messageId,
+        linkedTableName,
+        linkedRecordId,
+        context,
+        {
+          notes: notes || undefined
+        }
+      );
+      
+      res.json(link);
+    } catch (error) {
+      console.error("Link message error:", error);
+      res.status(500).json({ error: "Failed to link message" });
+    }
+  });
+
   app.put("/api/message-links/:linkId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
