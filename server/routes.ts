@@ -8207,10 +8207,10 @@ Format the response as professional documentation suitable for client delivery.`
   app.post("/api/ai-task-executor/chat", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const { message, executionId, contextSummary, previousMessages } = req.body;
+      const { message, executionId, contextSummary, previousMessages, attachments } = req.body;
       
-      if (!message) {
-        return res.status(400).json({ error: "message required" });
+      if (!message && (!attachments || attachments.length === 0)) {
+        return res.status(400).json({ error: "message or attachments required" });
       }
 
       // Try to reload full context from execution record if executionId provided
@@ -8425,14 +8425,76 @@ ISTRUZIONI:
       }];
       
       // Add images to the first user message for vision analysis
-      const userMessageContent: any[] = [{ type: "text", text: message }];
+      const userMessageContent: any[] = [{ type: "text", text: message || "Analizza i file allegati" }];
+      
+      // Include DevOps images in the first message of conversation
       if (imageUrls.length > 0 && (!previousMessages || previousMessages.length === 0)) {
-        // Only include images in the first message of conversation
         for (const img of imageUrls) {
           userMessageContent.push({
             type: "image_url",
             image_url: { url: img.url, detail: "high" }
           });
+        }
+      }
+      
+      // Include user-uploaded attachments with server-side validation
+      if (attachments && Array.isArray(attachments)) {
+        const maxAttachmentSize = 5 * 1024 * 1024; // 5MB per file
+        const maxTotalSize = 15 * 1024 * 1024; // 15MB total
+        const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        const allowedOtherTypes = ['application/pdf', 'text/plain', 'text/csv'];
+        
+        const isAllowedType = (mimeType: string) => {
+          return allowedImageTypes.includes(mimeType) || allowedOtherTypes.includes(mimeType);
+        };
+        
+        console.log(`[AI-CHAT] Processing ${attachments.length} user-uploaded attachments`);
+        
+        let totalSize = 0;
+        for (const att of attachments) {
+          // Validate MIME type
+          if (!att.type || !isAllowedType(att.type)) {
+            console.log(`[AI-CHAT] Rejected invalid MIME type: ${att.name} (${att.type})`);
+            continue;
+          }
+          
+          // Validate base64 size (base64 is ~1.33x the original size)
+          const base64Size = att.base64?.length || 0;
+          const estimatedFileSize = Math.ceil(base64Size * 0.75);
+          
+          if (estimatedFileSize > maxAttachmentSize) {
+            console.log(`[AI-CHAT] Rejected oversized file: ${att.name} (${Math.round(estimatedFileSize / 1024)}KB)`);
+            continue;
+          }
+          
+          totalSize += estimatedFileSize;
+          if (totalSize > maxTotalSize) {
+            console.log(`[AI-CHAT] Skipping remaining files: total size limit exceeded`);
+            break;
+          }
+          
+          if (allowedImageTypes.includes(att.type) && att.base64) {
+            // Image attachment - add to vision API
+            const dataUrl = `data:${att.type};base64,${att.base64}`;
+            userMessageContent.push({
+              type: "image_url",
+              image_url: { url: dataUrl, detail: "high" }
+            });
+            console.log(`[AI-CHAT] Added user image: ${att.name} (${Math.round(base64Size / 1024)}KB)`);
+          } else if (att.type === 'text/plain' || att.type === 'text/csv') {
+            // Text file - decode and include as text content
+            try {
+              const textContent = Buffer.from(att.base64, 'base64').toString('utf-8');
+              userMessageContent[0].text += `\n\n--- Contenuto di ${att.name} ---\n${textContent.substring(0, 5000)}${textContent.length > 5000 ? '\n... (troncato)' : ''}`;
+              console.log(`[AI-CHAT] Added text file: ${att.name} (${textContent.length} chars)`);
+            } catch (e) {
+              console.log(`[AI-CHAT] Could not decode text file: ${att.name}`);
+            }
+          } else if (att.type === 'application/pdf') {
+            // PDF - just note it for now (full PDF parsing would require a library)
+            userMessageContent[0].text += `\n\n[File PDF allegato: ${att.name}]`;
+            console.log(`[AI-CHAT] Added PDF reference: ${att.name}`);
+          }
         }
       }
       

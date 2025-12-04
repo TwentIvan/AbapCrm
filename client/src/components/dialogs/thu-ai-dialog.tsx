@@ -100,10 +100,19 @@ interface TaskExecutionResult {
   };
 }
 
+interface ChatAttachment {
+  name: string;
+  type: string;
+  size: number;
+  base64: string;
+  preview?: string; // For image previews
+}
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  attachments?: ChatAttachment[];
 }
 
 interface ThuAiDialogProps {
@@ -124,7 +133,87 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [chatAttachments, setChatAttachments] = useState<ChatAttachment[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle file selection for chat
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const maxSize = 5 * 1024 * 1024; // 5MB max per file
+    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedOtherTypes = ['application/pdf', 'text/plain', 'text/csv'];
+    
+    const isAllowedType = (mimeType: string) => {
+      // Check exact match for specific types
+      if (allowedOtherTypes.includes(mimeType)) return true;
+      // Check if it's an allowed image type
+      if (allowedImageTypes.includes(mimeType)) return true;
+      return false;
+    };
+    
+    const newAttachments: ChatAttachment[] = [];
+    
+    for (const file of Array.from(files)) {
+      if (file.size > maxSize) {
+        toast({
+          title: "File troppo grande",
+          description: `${file.name} supera il limite di 5MB`,
+          variant: "destructive",
+        });
+        continue;
+      }
+      
+      if (!isAllowedType(file.type)) {
+        toast({
+          title: "Tipo file non supportato",
+          description: `${file.name} non è supportato. Tipi validi: immagini (JPEG, PNG, GIF, WebP), PDF, TXT, CSV`,
+          variant: "destructive",
+        });
+        continue;
+      }
+
+      // Read file as base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove the data URL prefix to get pure base64
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Create preview for images
+      let preview: string | undefined;
+      if (file.type.startsWith('image/')) {
+        preview = `data:${file.type};base64,${base64}`;
+      }
+
+      newAttachments.push({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        base64,
+        preview,
+      });
+    }
+
+    setChatAttachments(prev => [...prev, ...newAttachments]);
+    
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setChatAttachments(prev => prev.filter((_, i) => i !== index));
+  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -214,16 +303,19 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
 
   // Chat handler
   const handleChatSend = async () => {
-    if (!chatInput.trim() || results.length === 0) return;
+    if ((!chatInput.trim() && chatAttachments.length === 0) || results.length === 0) return;
 
     const userMessage: ChatMessage = {
       role: 'user',
-      content: chatInput,
+      content: chatInput || (chatAttachments.length > 0 ? `[${chatAttachments.length} file allegati]` : ''),
       timestamp: new Date(),
+      attachments: chatAttachments.length > 0 ? [...chatAttachments] : undefined,
     };
     
     setChatMessages(prev => [...prev, userMessage]);
+    const currentAttachments = [...chatAttachments];
     setChatInput("");
+    setChatAttachments([]);
     setIsChatLoading(true);
 
     try {
@@ -231,11 +323,20 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
       const executionId = results[0]?.executionId;
       const contextSummary = results[0]?.contextSummary;
       
+      // Prepare attachments for API (only send base64 and metadata, not preview)
+      const attachmentsForApi = currentAttachments.map(a => ({
+        name: a.name,
+        type: a.type,
+        size: a.size,
+        base64: a.base64,
+      }));
+      
       const response = await apiRequest("POST", "/api/ai-task-executor/chat", {
         executionId,
         message: chatInput,
         contextSummary,
         previousMessages: chatMessages.map(m => ({ role: m.role, content: m.content })),
+        attachments: attachmentsForApi.length > 0 ? attachmentsForApi : undefined,
       });
       
       const data = await response.json();
@@ -816,6 +917,27 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                                   : 'bg-muted'
                               }`}
                             >
+                              {/* Display attachments if present */}
+                              {msg.attachments && msg.attachments.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                  {msg.attachments.map((att, attIdx) => (
+                                    <div key={attIdx} className="relative">
+                                      {att.preview ? (
+                                        <img 
+                                          src={att.preview} 
+                                          alt={att.name}
+                                          className="w-20 h-20 object-cover rounded border"
+                                        />
+                                      ) : (
+                                        <div className="w-20 h-20 bg-muted-foreground/20 rounded border flex items-center justify-center">
+                                          <FileText className="h-6 w-6" />
+                                        </div>
+                                      )}
+                                      <p className="text-[10px] truncate max-w-[80px] mt-1">{att.name}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                               <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                               <p className="text-xs opacity-70 mt-1">
                                 {msg.timestamp.toLocaleTimeString()}
@@ -836,13 +958,68 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                   </ScrollArea>
                 </div>
 
+                {/* File upload preview */}
+                {chatAttachments.length > 0 && (
+                  <div className="flex flex-wrap gap-2 p-2 border rounded-lg bg-muted/50 mb-2">
+                    {chatAttachments.map((att, idx) => (
+                      <div key={idx} className="relative group">
+                        {att.preview ? (
+                          <img 
+                            src={att.preview} 
+                            alt={att.name}
+                            className="w-16 h-16 object-cover rounded border"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 bg-background rounded border flex flex-col items-center justify-center">
+                            <FileText className="h-5 w-5 text-muted-foreground" />
+                            <span className="text-[8px] text-muted-foreground mt-1">
+                              {att.type.split('/')[1]?.toUpperCase() || 'FILE'}
+                            </span>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => removeAttachment(idx)}
+                          className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                          data-testid={`button-remove-attachment-${idx}`}
+                        >
+                          ×
+                        </button>
+                        <p className="text-[9px] truncate max-w-[64px] text-center">{att.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex gap-2">
+                  {/* Hidden file input */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept="image/*,.pdf,.txt,.csv"
+                    multiple
+                    className="hidden"
+                    data-testid="input-file-upload"
+                  />
+                  
+                  {/* Upload button */}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isChatLoading || results.length === 0}
+                    title="Allega file (immagini, PDF, testo)"
+                    data-testid="button-attach-file"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
+                  
                   <Input
                     placeholder="Chiedi chiarimenti all'AI..."
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey && chatInput.trim()) {
+                      if (e.key === 'Enter' && !e.shiftKey && (chatInput.trim() || chatAttachments.length > 0)) {
                         e.preventDefault();
                         handleChatSend();
                       }
@@ -852,7 +1029,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                   />
                   <Button
                     onClick={handleChatSend}
-                    disabled={isChatLoading || !chatInput.trim() || results.length === 0}
+                    disabled={isChatLoading || (!chatInput.trim() && chatAttachments.length === 0) || results.length === 0}
                     data-testid="button-chat-send"
                   >
                     {isChatLoading ? (
