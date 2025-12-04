@@ -8775,6 +8775,9 @@ ISTRUZIONI:
     try {
       const organizationId = getOrganizationId(req);
       
+      // Validate request body with partial schema (allow partial updates)
+      const validatedData = insertDashboardWidgetTemplateSchema.partial().parse(req.body);
+      
       // Check ownership
       const existing = await db.select()
         .from(dashboardWidgetTemplates)
@@ -8787,9 +8790,12 @@ ISTRUZIONI:
       
       if (existing.length === 0) return res.sendStatus(404);
       
+      // Remove any attempts to override userId or organizationId
+      const { userId, organizationId: orgId, ...safeData } = validatedData as any;
+      
       const [updated] = await db.update(dashboardWidgetTemplates)
         .set({
-          ...req.body,
+          ...safeData,
           updatedAt: new Date(),
         })
         .where(eq(dashboardWidgetTemplates.id, req.params.id))

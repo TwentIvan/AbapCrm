@@ -53,6 +53,8 @@ const NUMERIC_FIELDS = [
   { value: "completionPercentage", label: "Percentuale Completamento" },
 ];
 
+const SUPPORTED_CHART_ENTITIES = ["tasks", "projects", "partners", "deals"];
+
 interface WidgetBuilderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -226,13 +228,21 @@ export function WidgetBuilderDialog({
                 <SelectValue placeholder="Seleziona entità" />
               </SelectTrigger>
               <SelectContent>
-                {entities.map((entity) => (
+                {(isChartType || widgetType === "counter" 
+                  ? entities.filter(e => SUPPORTED_CHART_ENTITIES.includes(e.entityKey))
+                  : entities
+                ).map((entity) => (
                   <SelectItem key={entity.entityKey} value={entity.entityKey}>
                     {entity.titlePlural}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {(isChartType || widgetType === "counter") && (
+              <p className="text-xs text-muted-foreground">
+                I widget grafici supportano: Task, Progetti, Partner e Accordi
+              </p>
+            )}
           </div>
 
           {isChartType && entityKey && (
