@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Rnd, RndDragCallback, RndResizeCallback } from "react-rnd";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
@@ -10,85 +11,111 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
 import { getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
-import { EmbeddedTasksList } from "@/components/embedded/embedded-tasks-list";
+import { EmbeddedEntityList } from "@/components/embedded/embedded-entity-list";
+import "@/lib/entities";
+import { getAllEntities, getEntityDescriptor } from "@/lib/entity-registry";
 import { 
   FolderKanban, 
   CheckSquare, 
   Users, 
   Handshake,
   TrendingUp,
-  Clock,
-  Settings,
-  LayoutGrid,
   Timer,
-  Briefcase,
+  Settings,
+  GripVertical,
   X,
   Plus,
-  ListTodo
+  Maximize2,
+  Minimize2,
+  LayoutGrid,
 } from "lucide-react";
-import { Link } from "wouter";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-type PanelContent = "tasks" | "tasks-active" | "stats" | "timer" | "projects" | "empty";
+type WidgetType = "entity-list" | "stats" | "timer";
 
-interface PanelConfig {
+interface Widget {
   id: string;
-  content: PanelContent;
+  type: WidgetType;
+  entityKey?: string;
+  filterField?: string;
+  filterValues?: string[];
   title: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zIndex: number;
 }
 
 interface DashboardLayout {
-  panels: PanelConfig[];
-  direction: "horizontal" | "vertical";
+  widgets: Widget[];
+  nextZIndex: number;
 }
 
-const PANEL_OPTIONS: { value: PanelContent; label: string; icon: any; description: string }[] = [
-  { value: "tasks", label: "Lista Task (completa)", icon: ListTodo, description: "Tutti i task con tutte le funzionalità" },
-  { value: "tasks-active", label: "Task Attivi", icon: CheckSquare, description: "Solo task da fare e in corso" },
-  { value: "stats", label: "Statistiche", icon: TrendingUp, description: "Panoramica numeri" },
-  { value: "timer", label: "Timer Attivo", icon: Timer, description: "Timer corrente" },
-  { value: "projects", label: "Progetti", icon: Briefcase, description: "Progetti attivi" },
-  { value: "empty", label: "Vuoto", icon: X, description: "Pannello vuoto" },
+const GRID_SIZE = 20;
+const MIN_WIDGET_SIZE = 200;
+
+const WIDGET_TEMPLATES = [
+  { type: "entity-list" as const, entityKey: "tasks", title: "Lista Task", icon: CheckSquare },
+  { type: "entity-list" as const, entityKey: "tasks", filterField: "status", filterValues: ["todo", "in_progress"], title: "Task Attivi", icon: CheckSquare },
+  { type: "stats" as const, title: "Statistiche", icon: TrendingUp },
+  { type: "timer" as const, title: "Timer Attivo", icon: Timer },
 ];
 
 const DEFAULT_LAYOUT: DashboardLayout = {
-  panels: [
-    { id: "1", content: "tasks-active", title: "Task Attivi" },
-    { id: "2", content: "timer", title: "Timer" },
+  widgets: [
+    {
+      id: "widget-1",
+      type: "entity-list",
+      entityKey: "tasks",
+      filterField: "status",
+      filterValues: ["todo", "in_progress"],
+      title: "Task Attivi",
+      x: 20,
+      y: 20,
+      width: 700,
+      height: 500,
+      zIndex: 1,
+    },
+    {
+      id: "widget-2",
+      type: "timer",
+      title: "Timer Attivo",
+      x: 740,
+      y: 20,
+      width: 350,
+      height: 250,
+      zIndex: 2,
+    },
   ],
-  direction: "horizontal",
+  nextZIndex: 3,
 };
 
-function StatsPanel() {
+function StatsWidget() {
   const { currentOrganizationId } = useOrganization();
   
   const { data: projects } = useQuery<any[]>({
-    queryKey: ["/api/projects", { orgId: currentOrganizationId }],
+    queryKey: ["/api/projects"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
   });
 
   const { data: tasks } = useQuery<any[]>({
-    queryKey: ["/api/tasks", { orgId: currentOrganizationId }],
+    queryKey: ["/api/tasks"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
   });
 
   const { data: partners } = useQuery<any[]>({
-    queryKey: ["/api/partners", { orgId: currentOrganizationId }],
+    queryKey: ["/api/partners"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
   });
 
   const { data: deals } = useQuery<any[]>({
-    queryKey: ["/api/deals", { orgId: currentOrganizationId }],
+    queryKey: ["/api/deals"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
   });
@@ -144,7 +171,7 @@ function StatsPanel() {
   );
 }
 
-function TimerPanel() {
+function TimerWidget() {
   const { data: runningEntry } = useQuery<any>({
     queryKey: ["/api/time-entries/running"],
     queryFn: getQueryFn({ on401: "throw" }),
@@ -186,7 +213,7 @@ function TimerPanel() {
 
   return (
     <div className="flex flex-col items-center justify-center h-full p-4">
-      <div className="text-6xl font-mono font-bold text-green-600 dark:text-green-400 mb-4">
+      <div className="text-5xl font-mono font-bold text-green-600 dark:text-green-400 mb-4">
         {formatTime(elapsed)}
       </div>
       <div className="text-lg font-medium mb-1 text-center px-4 truncate max-w-full">
@@ -199,139 +226,36 @@ function TimerPanel() {
   );
 }
 
-function ProjectsPanel() {
-  const { currentOrganizationId } = useOrganization();
-  
-  const { data: projects, isLoading } = useQuery<any[]>({
-    queryKey: ["/api/projects", { orgId: currentOrganizationId }],
-    queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!currentOrganizationId,
-  });
-
-  const activeProjects = projects?.filter((p: any) => 
-    p.status === "active" || p.status === "in_progress"
-  )?.slice(0, 10) || [];
-
-  if (isLoading) {
-    return <div className="flex items-center justify-center h-full text-muted-foreground">Caricamento...</div>;
+function WidgetContent({ widget }: { widget: Widget }) {
+  switch (widget.type) {
+    case "entity-list":
+      if (!widget.entityKey) return null;
+      return (
+        <EmbeddedEntityList
+          entityKey={widget.entityKey}
+          layoutKey={`dashboard_${widget.id}`}
+          filterField={widget.filterField}
+          filterValues={widget.filterValues}
+          className="h-full"
+        />
+      );
+    case "stats":
+      return <StatsWidget />;
+    case "timer":
+      return <TimerWidget />;
+    default:
+      return null;
   }
-
-  if (activeProjects.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-        <FolderKanban className="h-12 w-12 mb-2 opacity-30" />
-        <p>Nessun progetto attivo</p>
-      </div>
-    );
-  }
-
-  return (
-    <ScrollArea className="h-full">
-      <div className="p-2 space-y-2">
-        {activeProjects.map((project: any) => (
-          <Link key={project.id} href="/projects">
-            <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
-              <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                <FolderKanban className="h-5 w-5 text-blue-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{project.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {project.status === "active" ? "Attivo" : project.status}
-                </div>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </ScrollArea>
-  );
-}
-
-function PanelWrapper({ 
-  config, 
-  onChangeContent,
-  isConfiguring 
-}: { 
-  config: PanelConfig;
-  onChangeContent: (content: PanelContent) => void;
-  isConfiguring: boolean;
-}) {
-  const renderContent = () => {
-    switch (config.content) {
-      case "tasks":
-        return (
-          <EmbeddedTasksList 
-            layoutKey={`dashboard_tasks_${config.id}`}
-            showToolbar={true}
-            showLayoutManager={true}
-          />
-        );
-      case "tasks-active":
-        return (
-          <EmbeddedTasksList 
-            layoutKey={`dashboard_tasks_active_${config.id}`}
-            showToolbar={true}
-            showLayoutManager={true}
-            filterStatus={["todo", "in_progress"]}
-          />
-        );
-      case "stats":
-        return <StatsPanel />;
-      case "timer":
-        return <TimerPanel />;
-      case "projects":
-        return <ProjectsPanel />;
-      case "empty":
-        return (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            <p>Pannello vuoto - seleziona un contenuto</p>
-          </div>
-        );
-    }
-  };
-
-  const currentOption = PANEL_OPTIONS.find(o => o.value === config.content);
-
-  return (
-    <div className="h-full flex flex-col bg-card rounded-lg border overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          {currentOption && <currentOption.icon className="h-4 w-4 text-muted-foreground" />}
-          <span className="font-medium text-sm">{config.title}</span>
-        </div>
-        {isConfiguring && (
-          <Select value={config.content} onValueChange={(v) => onChangeContent(v as PanelContent)}>
-            <SelectTrigger className="h-7 w-[160px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PANEL_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  <div className="flex items-center gap-2">
-                    <opt.icon className="h-3 w-3" />
-                    {opt.label}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
-      <div className="flex-1 min-h-0 overflow-hidden">
-        {renderContent()}
-      </div>
-    </div>
-  );
 }
 
 export default function DashboardPage() {
   const { currentOrganization } = useOrganization();
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [layout, setLayout] = useState<DashboardLayout>(DEFAULT_LAYOUT);
+  const [showPalette, setShowPalette] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("dashboard-layout-v3");
+    const saved = localStorage.getItem("dashboard-freeform-v1");
     if (saved) {
       try {
         setLayout(JSON.parse(saved));
@@ -341,45 +265,82 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const saveLayout = (newLayout: DashboardLayout) => {
+  const saveLayout = useCallback((newLayout: DashboardLayout) => {
     setLayout(newLayout);
-    localStorage.setItem("dashboard-layout-v3", JSON.stringify(newLayout));
-  };
+    localStorage.setItem("dashboard-freeform-v1", JSON.stringify(newLayout));
+  }, []);
 
-  const handleChangeContent = (panelId: string, content: PanelContent) => {
-    const newPanels = layout.panels.map((p) =>
-      p.id === panelId
-        ? { ...p, content, title: PANEL_OPTIONS.find((o) => o.value === content)?.label || "Pannello" }
-        : p
-    );
-    saveLayout({ ...layout, panels: newPanels });
-  };
-
-  const handleAddPanel = () => {
-    if (layout.panels.length >= 4) return;
-    const newPanel: PanelConfig = {
-      id: `panel-${Date.now()}`,
-      content: "empty",
-      title: "Nuovo Pannello",
-    };
-    saveLayout({ ...layout, panels: [...layout.panels, newPanel] });
-  };
-
-  const handleRemovePanel = (panelId: string) => {
-    if (layout.panels.length <= 1) return;
-    saveLayout({ ...layout, panels: layout.panels.filter((p) => p.id !== panelId) });
-  };
-
-  const handleToggleDirection = () => {
-    saveLayout({ 
-      ...layout, 
-      direction: layout.direction === "horizontal" ? "vertical" : "horizontal" 
+  const handleDragStop = useCallback((widgetId: string, x: number, y: number) => {
+    const snappedX = Math.round(x / GRID_SIZE) * GRID_SIZE;
+    const snappedY = Math.round(y / GRID_SIZE) * GRID_SIZE;
+    
+    setLayout(prev => {
+      const newWidgets = prev.widgets.map(w => 
+        w.id === widgetId 
+          ? { ...w, x: Math.max(0, snappedX), y: Math.max(0, snappedY), zIndex: prev.nextZIndex }
+          : w
+      );
+      const newLayout = { ...prev, widgets: newWidgets, nextZIndex: prev.nextZIndex + 1 };
+      localStorage.setItem("dashboard-freeform-v1", JSON.stringify(newLayout));
+      return newLayout;
     });
-  };
+  }, []);
 
-  const handleResetLayout = () => {
+  const handleResizeStop = useCallback((widgetId: string, width: number, height: number, x: number, y: number) => {
+    setLayout(prev => {
+      const newWidgets = prev.widgets.map(w => 
+        w.id === widgetId 
+          ? { ...w, width, height, x, y }
+          : w
+      );
+      const newLayout = { ...prev, widgets: newWidgets };
+      localStorage.setItem("dashboard-freeform-v1", JSON.stringify(newLayout));
+      return newLayout;
+    });
+  }, []);
+
+  const handleAddWidget = useCallback((template: typeof WIDGET_TEMPLATES[0]) => {
+    const newWidget: Widget = {
+      id: `widget-${Date.now()}`,
+      type: template.type,
+      entityKey: template.entityKey,
+      filterField: (template as any).filterField,
+      filterValues: (template as any).filterValues,
+      title: template.title,
+      x: 20 + (layout.widgets.length * 40) % 200,
+      y: 20 + (layout.widgets.length * 40) % 200,
+      width: template.type === "entity-list" ? 700 : 350,
+      height: template.type === "entity-list" ? 500 : 250,
+      zIndex: layout.nextZIndex,
+    };
+    
+    const newLayout = {
+      widgets: [...layout.widgets, newWidget],
+      nextZIndex: layout.nextZIndex + 1,
+    };
+    saveLayout(newLayout);
+    setShowPalette(false);
+  }, [layout, saveLayout]);
+
+  const handleRemoveWidget = useCallback((widgetId: string) => {
+    saveLayout({
+      ...layout,
+      widgets: layout.widgets.filter(w => w.id !== widgetId),
+    });
+  }, [layout, saveLayout]);
+
+  const handleResetLayout = useCallback(() => {
     saveLayout(DEFAULT_LAYOUT);
-  };
+  }, [saveLayout]);
+
+  const bringToFront = useCallback((widgetId: string) => {
+    setLayout(prev => {
+      const newWidgets = prev.widgets.map(w => 
+        w.id === widgetId ? { ...w, zIndex: prev.nextZIndex } : w
+      );
+      return { ...prev, widgets: newWidgets, nextZIndex: prev.nextZIndex + 1 };
+    });
+  }, []);
 
   return (
     <div className="flex h-screen">
@@ -392,26 +353,37 @@ export default function DashboardPage() {
         
         <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30 flex-shrink-0">
           <div className="text-sm text-muted-foreground">
-            {isConfiguring ? "Configura i pannelli - trascina i bordi per ridimensionare" : "Dashboard personalizzata"}
+            {isConfiguring ? "Trascina e ridimensiona i widget liberamente" : "Dashboard personalizzata"}
           </div>
           <div className="flex items-center gap-2">
             {isConfiguring && (
               <>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleToggleDirection}
-                  data-testid="button-toggle-direction"
-                >
-                  <LayoutGrid className="h-4 w-4 mr-1" />
-                  {layout.direction === "horizontal" ? "Verticale" : "Orizzontale"}
-                </Button>
-                {layout.panels.length < 4 && (
-                  <Button variant="outline" size="sm" onClick={handleAddPanel} data-testid="button-add-panel">
+                <div className="relative">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowPalette(!showPalette)}
+                    data-testid="button-add-widget"
+                  >
                     <Plus className="h-4 w-4 mr-1" />
-                    Aggiungi
+                    Aggiungi Widget
                   </Button>
-                )}
+                  {showPalette && (
+                    <div className="absolute top-full right-0 mt-1 bg-popover border rounded-lg shadow-lg p-2 z-50 w-64">
+                      <div className="text-sm font-medium mb-2 px-2">Seleziona widget</div>
+                      {WIDGET_TEMPLATES.map((template, idx) => (
+                        <button
+                          key={idx}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-left rounded hover:bg-muted transition-colors"
+                          onClick={() => handleAddWidget(template)}
+                        >
+                          <template.icon className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{template.title}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <Button variant="outline" size="sm" onClick={handleResetLayout} data-testid="button-reset">
                   Ripristina
                 </Button>
@@ -420,7 +392,10 @@ export default function DashboardPage() {
             <Button
               variant={isConfiguring ? "default" : "outline"}
               size="sm"
-              onClick={() => setIsConfiguring(!isConfiguring)}
+              onClick={() => {
+                setIsConfiguring(!isConfiguring);
+                setShowPalette(false);
+              }}
               data-testid="button-configure"
             >
               <Settings className="h-4 w-4 mr-1" />
@@ -429,36 +404,69 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="flex-1 p-4 overflow-hidden min-h-0">
-          <ResizablePanelGroup 
-            direction={layout.direction} 
-            className="h-full rounded-lg"
-          >
-            {layout.panels.map((panel, index) => (
-              <div key={panel.id} className="contents">
-                {index > 0 && <ResizableHandle withHandle className="mx-1" />}
-                <ResizablePanel defaultSize={100 / layout.panels.length} minSize={15}>
-                  <div className="h-full relative">
-                    <PanelWrapper
-                      config={panel}
-                      onChangeContent={(content) => handleChangeContent(panel.id, content)}
-                      isConfiguring={isConfiguring}
-                    />
-                    {isConfiguring && layout.panels.length > 1 && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-2 right-2 h-6 w-6 p-0 z-10"
-                        onClick={() => handleRemovePanel(panel.id)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
+        <div 
+          className="flex-1 relative overflow-auto bg-muted/10" 
+          style={{ 
+            backgroundImage: isConfiguring ? `radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px)` : 'none',
+            backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`,
+          }}
+        >
+          {layout.widgets.map((widget) => (
+            <Rnd
+              key={widget.id}
+              size={{ width: widget.width, height: widget.height }}
+              position={{ x: widget.x, y: widget.y }}
+              onDragStart={() => bringToFront(widget.id)}
+              onDragStop={(e, d) => handleDragStop(widget.id, d.x, d.y)}
+              onResizeStop={(e, direction, ref, delta, position) => {
+                handleResizeStop(
+                  widget.id,
+                  parseInt(ref.style.width),
+                  parseInt(ref.style.height),
+                  position.x,
+                  position.y
+                );
+              }}
+              minWidth={MIN_WIDGET_SIZE}
+              minHeight={MIN_WIDGET_SIZE}
+              bounds="parent"
+              dragGrid={isConfiguring ? [GRID_SIZE, GRID_SIZE] : undefined}
+              resizeGrid={isConfiguring ? [GRID_SIZE, GRID_SIZE] : undefined}
+              disableDragging={!isConfiguring}
+              enableResizing={isConfiguring}
+              style={{ zIndex: widget.zIndex }}
+              className={`${isConfiguring ? 'ring-2 ring-primary/30' : ''}`}
+            >
+              <div className="h-full flex flex-col bg-card rounded-lg border shadow-sm overflow-hidden">
+                {/* Widget Header */}
+                <div 
+                  className={`flex items-center justify-between px-3 py-2 border-b bg-muted/30 flex-shrink-0 ${isConfiguring ? 'cursor-move' : ''}`}
+                >
+                  <div className="flex items-center gap-2">
+                    {isConfiguring && (
+                      <GripVertical className="h-4 w-4 text-muted-foreground" />
                     )}
+                    <span className="font-medium text-sm">{widget.title}</span>
                   </div>
-                </ResizablePanel>
+                  {isConfiguring && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => handleRemoveWidget(widget.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Widget Content */}
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <WidgetContent widget={widget} />
+                </div>
               </div>
-            ))}
-          </ResizablePanelGroup>
+            </Rnd>
+          ))}
         </div>
       </div>
     </div>
