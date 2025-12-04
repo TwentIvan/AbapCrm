@@ -4006,17 +4006,13 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/proposals/:id/apply", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const headerOrganizationId = getOrganizationId(req);
+      const organizationId = getOrganizationId(req);
       const userId = req.user!.id;
       
-      const proposal = await storage.getProposal(req.params.id, userId, headerOrganizationId);
-      if (!proposal) return res.sendStatus(404);
+      console.log(`[PROPOSAL APPLY] Using organizationId from header: ${organizationId}`);
       
-      // IMPORTANT: Use the organization from the original message, not the current header
-      // This ensures projects/tasks are created in the same org as the source message
-      const message = await storage.getMessage(proposal.messageId, userId);
-      const organizationId = message?.organizationId || proposal.organizationId || headerOrganizationId;
-      console.log(`[PROPOSAL APPLY] Using organizationId: ${organizationId} (from message: ${message?.organizationId}, proposal: ${proposal.organizationId}, header: ${headerOrganizationId})`);
+      const proposal = await storage.getProposal(req.params.id, userId, organizationId);
+      if (!proposal) return res.sendStatus(404);
       
       if (proposal.status !== 'pending') {
         return res.status(400).json({ error: "Proposal already processed" });
