@@ -8365,21 +8365,48 @@ Format the response as professional documentation suitable for client delivery.`
       const OpenAI = (await import('openai')).default;
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       
-      const messages: any[] = [
-        { 
-          role: "system", 
-          content: `Sei un assistente AI esperto di sviluppo SAP ABAP. Stai aiutando l'utente a capire il contesto e generare codice ABAP per un task specifico.
+      // Extract images from DevOps work item for vision API
+      const imageUrls: { url: string; alt?: string }[] = [];
+      if (fullContext?.devOpsWorkItem?.images?.length > 0) {
+        for (const img of fullContext.devOpsWorkItem.images.slice(0, 5)) {
+          if (img.base64 && img.base64.length < 1500000) { // Max 1.5MB base64
+            imageUrls.push({
+              url: `data:${img.mimeType || 'image/png'};base64,${img.base64}`,
+              alt: img.alt || `Screenshot DevOps ${imageUrls.length + 1}`
+            });
+          }
+        }
+        console.log(`[AI-CHAT] Including ${imageUrls.length} images for vision API`);
+      }
+      
+      // Build system message content - can include images via vision
+      const systemContent: any[] = [{
+        type: "text",
+        text: `Sei un assistente AI esperto di sviluppo SAP ABAP. Stai aiutando l'utente a capire il contesto e generare codice ABAP per un task specifico.
 
 ${contextText}
 
 ISTRUZIONI:
 - Rispondi sempre in italiano
 - Usa le informazioni del contesto per rispondere in modo preciso
-- Se ci sono immagini menzionate, sappi che mostrano schermate SAP rilevanti per il task
-- Se l'utente chiede cosa hai capito, fai un riassunto dettagliato e strutturato del contesto
+- Analizza attentamente le immagini allegate se presenti - mostrano schermate SAP rilevanti per il task
+- Se l'utente chiede cosa hai capito, fai un riassunto dettagliato e strutturato del contesto incluse le immagini
 - Se l'utente chiede di generare codice, usa tutte le informazioni disponibili (DevOps description, campi SAP, immagini, commenti)`
+      }];
+      
+      // Add images to the first user message for vision analysis
+      const userMessageContent: any[] = [{ type: "text", text: message }];
+      if (imageUrls.length > 0 && (!previousMessages || previousMessages.length === 0)) {
+        // Only include images in the first message of conversation
+        for (const img of imageUrls) {
+          userMessageContent.push({
+            type: "image_url",
+            image_url: { url: img.url, detail: "high" }
+          });
         }
-      ];
+      }
+      
+      const messages: any[] = [{ role: "system", content: systemContent }];
       
       // Add previous messages
       if (previousMessages && Array.isArray(previousMessages)) {
@@ -8388,8 +8415,8 @@ ISTRUZIONI:
         }
       }
       
-      // Add current message
-      messages.push({ role: "user", content: message });
+      // Add current message with optional images
+      messages.push({ role: "user", content: userMessageContent });
       
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
