@@ -449,8 +449,8 @@ async function getFullDevOpsWorkItemData(
         let match;
         while ((match = imgRegex.exec(descriptionHtml)) !== null) {
           const src = match[1];
-          // Keep first 5 images, skip very long base64 (>50kb)
-          if (images.length < 5 && (!src.startsWith('data:') || src.length < 70000)) {
+          // Keep first 5 images, allow base64 up to 500KB (about 700K chars)
+          if (images.length < 5 && (!src.startsWith('data:') || src.length < 700000)) {
             images.push(src);
           }
         }
