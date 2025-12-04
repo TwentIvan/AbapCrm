@@ -782,6 +782,14 @@ ${codeExamplesSection}
 4. **Azioni Suggerite**: Elenca i passi successivi per implementare la soluzione
 
 ## FORMATO RISPOSTA (JSON)
+
+**IMPORTANTE - ESCAPE CORRETTO DEL JSON:**
+- Usa \\n per i newline nel codice (NON newline reali nelle stringhe JSON)
+- Usa \\\\ per i backslash singoli
+- Usa \\" per le virgolette dentro le stringhe
+- NON usare newline o tab reali dentro i valori stringa JSON
+
+ESEMPIO CORRETTO:
 {
   "analysis": {
     "taskType": "report|function_module|class|enhancement|bapi|alv|other",
@@ -797,7 +805,7 @@ ${codeExamplesSection}
       "language": "ABAP",
       "objectType": "PROG",
       "description": "Report principale per...",
-      "content": "REPORT zreport_esempio.\\n..."
+      "content": "REPORT zreport_esempio.\\nDATA: lv_var TYPE string.\\nSTART-OF-SELECTION.\\n  WRITE: 'Hello'.\\n"
     }
   ],
   "suggestedActions": [
@@ -809,7 +817,7 @@ ${codeExamplesSection}
   ]
 }
 
-Rispondi SOLO con il JSON, senza markdown o altro testo.`;
+Rispondi SOLO con il JSON valido, senza markdown, backticks o altro testo. Assicurati che il JSON sia parsabile.`;
 }
 
 // Execute AI analysis and code generation for tasks
@@ -1049,7 +1057,64 @@ export async function executeTaskWithAI(
         // Try to extract JSON from response
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          aiResult = JSON.parse(jsonMatch[0]);
+          let jsonStr = jsonMatch[0];
+          
+          // Fix common JSON escaping issues in AI responses
+          // Replace unescaped newlines inside strings
+          jsonStr = jsonStr.replace(/:\s*"([^"]*?)(?<!\\)\n([^"]*?)"/g, (match, before, after) => {
+            return `: "${before}\\n${after}"`;
+          });
+          
+          // Fix unescaped backslashes that aren't part of valid escape sequences
+          jsonStr = jsonStr.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+          
+          // Fix unescaped control characters
+          jsonStr = jsonStr.replace(/[\x00-\x1F\x7F]/g, (char) => {
+            if (char === '\n') return '\\n';
+            if (char === '\r') return '\\r';
+            if (char === '\t') return '\\t';
+            return '';
+          });
+          
+          try {
+            aiResult = JSON.parse(jsonStr);
+          } catch (innerError) {
+            // If still failing, try a more aggressive cleanup
+            console.error('[AI-EXECUTOR] First parse attempt failed, trying aggressive cleanup');
+            
+            // Try to parse without code blocks (just get the structure)
+            const safeJson = jsonStr
+              .replace(/"content"\s*:\s*"[^"]*(?:\\.[^"]*)*"/g, '"content": "[code removed for parsing]"')
+              .replace(/"code"\s*:\s*"[^"]*(?:\\.[^"]*)*"/g, '"code": "[code removed for parsing]"');
+            
+            try {
+              aiResult = JSON.parse(safeJson);
+              console.log('[AI-EXECUTOR] Parsed with code content removed');
+            } catch (safeError) {
+              // Last resort: extract key fields manually
+              console.error('[AI-EXECUTOR] Safe parse also failed, extracting manually');
+              
+              const taskTypeMatch = jsonStr.match(/"taskType"\s*:\s*"([^"]+)"/);
+              const complexityMatch = jsonStr.match(/"complexity"\s*:\s*"([^"]+)"/);
+              const approachMatch = jsonStr.match(/"suggestedApproach"\s*:\s*"([^"]*?)(?:"|$)/);
+              
+              aiResult = {
+                analysis: {
+                  taskType: taskTypeMatch?.[1] || 'extraction',
+                  complexity: complexityMatch?.[1] || 'medium',
+                  suggestedApproach: approachMatch?.[1] || 'Vedere risposta AI completa',
+                  sapModules: [],
+                  requiredObjects: [],
+                },
+                generatedFiles: [],
+                suggestedActions: [{ 
+                  action: 'review_raw', 
+                  description: 'La risposta AI contiene caratteri speciali - rivedi la risposta raw nel contesto' 
+                }],
+              };
+              console.log('[AI-EXECUTOR] Extracted basic structure manually');
+            }
+          }
         } else {
           throw new Error('No JSON found in response');
         }
