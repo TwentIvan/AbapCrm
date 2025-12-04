@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "DevOps Workitem Extractor",
-  "version": "3.3.0",
-  "description": "Estrae il contenuto del work item DevOps corrente, converte le immagini in base64 e copia in clipboard in formato JSON. Versione 3.3 con supporto immagini.",
+  "version": "3.4.0",
+  "description": "Estrae il contenuto del work item DevOps corrente, converte le immagini in base64 con 3 metodi (fetch, canvas, DOM capture) e copia in clipboard JSON.",
   "permissions": [
     "scripting",
     "activeTab"
