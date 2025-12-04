@@ -1,21 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Rnd, RndDragCallback, RndResizeCallback } from "react-rnd";
+import { Rnd } from "react-rnd";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
 import { EmbeddedEntityList } from "@/components/embedded/embedded-entity-list";
 import "@/lib/entities";
-import { getAllEntities, getEntityDescriptor } from "@/lib/entity-registry";
 import { 
   FolderKanban, 
   CheckSquare, 
@@ -27,13 +19,31 @@ import {
   GripVertical,
   X,
   Plus,
-  Maximize2,
-  Minimize2,
-  LayoutGrid,
+  Sparkles,
+  BarChart3,
+  PieChart as PieChartIcon,
+  LineChart as LineChartIcon,
+  AreaChart as AreaChartIcon,
 } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
+  PieChartWidget, 
+  BarChartWidget, 
+  LineChartWidget, 
+  AreaChartWidget, 
+  CounterWidget 
+} from "@/components/dashboard/chart-widgets";
+import { WidgetBuilderDialog } from "@/components/dashboard/widget-builder-dialog";
+import type { DashboardWidgetTemplate } from "@shared/schema";
 
-type WidgetType = "entity-list" | "stats" | "timer";
+type WidgetType = "entity-list" | "stats" | "timer" | "pie_chart" | "bar_chart" | "line_chart" | "area_chart" | "counter";
+
+interface WidgetConfig {
+  groupByField?: string;
+  valueField?: string;
+  aggregation?: "count" | "sum" | "avg" | "min" | "max";
+  showLegend?: boolean;
+  showLabels?: boolean;
+}
 
 interface Widget {
   id: string;
@@ -41,6 +51,7 @@ interface Widget {
   entityKey?: string;
   filterField?: string;
   filterValues?: string[];
+  config?: WidgetConfig;
   title: string;
   x: number;
   y: number;
@@ -67,6 +78,9 @@ const WIDGET_TEMPLATES = [
   { type: "entity-list" as const, entityKey: "deals", filterField: "stage", filterValues: ["prospecting", "qualification", "proposal", "negotiation"], title: "Accordi Aperti", icon: Handshake },
   { type: "stats" as const, title: "Statistiche", icon: TrendingUp },
   { type: "timer" as const, title: "Timer Attivo", icon: Timer },
+  { type: "pie_chart" as const, entityKey: "tasks", config: { groupByField: "status" }, title: "Task per Stato", icon: PieChartIcon },
+  { type: "bar_chart" as const, entityKey: "tasks", config: { groupByField: "priority" }, title: "Task per Priorità", icon: BarChart3 },
+  { type: "pie_chart" as const, entityKey: "deals", config: { groupByField: "stage" }, title: "Deals per Fase", icon: PieChartIcon },
 ];
 
 const DEFAULT_LAYOUT: DashboardLayout = {
@@ -232,6 +246,17 @@ function TimerWidget() {
 }
 
 function WidgetContent({ widget }: { widget: Widget }) {
+  const chartProps = {
+    entityKey: widget.entityKey || "",
+    groupBy: widget.config?.groupByField,
+    valueField: widget.config?.valueField,
+    aggregation: widget.config?.aggregation,
+    filterField: widget.filterField,
+    filterValues: widget.filterValues,
+    showLegend: widget.config?.showLegend,
+    showLabels: widget.config?.showLabels,
+  };
+
   switch (widget.type) {
     case "entity-list":
       if (!widget.entityKey) return null;
@@ -248,6 +273,44 @@ function WidgetContent({ widget }: { widget: Widget }) {
       return <StatsWidget />;
     case "timer":
       return <TimerWidget />;
+    case "pie_chart":
+      if (!widget.entityKey) return null;
+      return (
+        <div className="h-full p-4">
+          <PieChartWidget {...chartProps} />
+        </div>
+      );
+    case "bar_chart":
+      if (!widget.entityKey) return null;
+      return (
+        <div className="h-full p-4">
+          <BarChartWidget {...chartProps} />
+        </div>
+      );
+    case "line_chart":
+      if (!widget.entityKey) return null;
+      return (
+        <div className="h-full p-4">
+          <LineChartWidget {...chartProps} />
+        </div>
+      );
+    case "area_chart":
+      if (!widget.entityKey) return null;
+      return (
+        <div className="h-full p-4">
+          <AreaChartWidget {...chartProps} />
+        </div>
+      );
+    case "counter":
+      if (!widget.entityKey) return null;
+      return (
+        <CounterWidget
+          entityKey={widget.entityKey}
+          filterField={widget.filterField}
+          filterValues={widget.filterValues}
+          label={widget.title}
+        />
+      );
     default:
       return null;
   }
@@ -258,6 +321,7 @@ export default function DashboardPage() {
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [layout, setLayout] = useState<DashboardLayout>(DEFAULT_LAYOUT);
   const [showPalette, setShowPalette] = useState(false);
+  const [showWidgetBuilder, setShowWidgetBuilder] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("dashboard-freeform-v1");
@@ -305,17 +369,19 @@ export default function DashboardPage() {
   }, []);
 
   const handleAddWidget = useCallback((template: typeof WIDGET_TEMPLATES[0]) => {
+    const isChartType = ["pie_chart", "bar_chart", "line_chart", "area_chart", "counter"].includes(template.type);
     const newWidget: Widget = {
       id: `widget-${Date.now()}`,
       type: template.type,
       entityKey: template.entityKey,
       filterField: (template as any).filterField,
       filterValues: (template as any).filterValues,
+      config: (template as any).config,
       title: template.title,
       x: 20 + (layout.widgets.length * 40) % 200,
       y: 20 + (layout.widgets.length * 40) % 200,
-      width: template.type === "entity-list" ? 700 : 350,
-      height: template.type === "entity-list" ? 500 : 250,
+      width: template.type === "entity-list" ? 700 : (isChartType ? 450 : 350),
+      height: template.type === "entity-list" ? 500 : (isChartType ? 350 : 250),
       zIndex: layout.nextZIndex,
     };
     
@@ -325,6 +391,39 @@ export default function DashboardPage() {
     };
     saveLayout(newLayout);
     setShowPalette(false);
+  }, [layout, saveLayout]);
+
+  const handleAddCustomWidget = useCallback((templateData: Partial<DashboardWidgetTemplate>) => {
+    const widgetType = templateData.widgetType === "entity_list" ? "entity-list" : templateData.widgetType;
+    const isChartType = ["pie_chart", "bar_chart", "line_chart", "area_chart", "counter"].includes(widgetType || "");
+    
+    const newWidget: Widget = {
+      id: `widget-${Date.now()}`,
+      type: widgetType as WidgetType,
+      entityKey: templateData.entityKey || undefined,
+      filterField: templateData.config?.filterField,
+      filterValues: templateData.config?.filterValues,
+      config: {
+        groupByField: templateData.config?.groupByField,
+        valueField: templateData.config?.valueField,
+        aggregation: templateData.config?.aggregation,
+        showLegend: templateData.config?.showLegend,
+        showLabels: templateData.config?.showLabels,
+      },
+      title: templateData.name || "Nuovo Widget",
+      x: 20 + (layout.widgets.length * 40) % 200,
+      y: 20 + (layout.widgets.length * 40) % 200,
+      width: templateData.defaultWidth || (widgetType === "entity-list" ? 700 : (isChartType ? 450 : 350)),
+      height: templateData.defaultHeight || (widgetType === "entity-list" ? 500 : (isChartType ? 350 : 250)),
+      zIndex: layout.nextZIndex,
+    };
+    
+    const newLayout = {
+      widgets: [...layout.widgets, newWidget],
+      nextZIndex: layout.nextZIndex + 1,
+    };
+    saveLayout(newLayout);
+    setShowWidgetBuilder(false);
   }, [layout, saveLayout]);
 
   const handleRemoveWidget = useCallback((widgetId: string) => {
@@ -385,18 +484,34 @@ export default function DashboardPage() {
                     Aggiungi Widget
                   </Button>
                   {showPalette && (
-                    <div className="absolute top-full right-0 mt-1 bg-popover border rounded-lg shadow-lg p-2 z-50 w-64">
-                      <div className="text-sm font-medium mb-2 px-2">Seleziona widget</div>
-                      {WIDGET_TEMPLATES.map((template, idx) => (
+                    <div className="absolute top-full right-0 mt-1 bg-popover border rounded-lg shadow-lg p-2 z-50 w-72">
+                      <div className="text-sm font-medium mb-2 px-2">Widget Predefiniti</div>
+                      <div className="max-h-[300px] overflow-y-auto">
+                        {WIDGET_TEMPLATES.map((template, idx) => (
+                          <button
+                            key={idx}
+                            className="flex items-center gap-2 w-full px-3 py-2 text-left rounded hover:bg-muted transition-colors"
+                            onClick={() => handleAddWidget(template)}
+                            data-testid={`button-template-${idx}`}
+                          >
+                            <template.icon className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{template.title}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="border-t mt-2 pt-2">
                         <button
-                          key={idx}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-left rounded hover:bg-muted transition-colors"
-                          onClick={() => handleAddWidget(template)}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-left rounded hover:bg-primary/10 transition-colors text-primary"
+                          onClick={() => {
+                            setShowPalette(false);
+                            setShowWidgetBuilder(true);
+                          }}
+                          data-testid="button-custom-widget"
                         >
-                          <template.icon className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{template.title}</span>
+                          <Sparkles className="h-4 w-4" />
+                          <span className="text-sm font-medium">Crea Widget Personalizzato</span>
                         </button>
-                      ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -502,6 +617,12 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      <WidgetBuilderDialog
+        open={showWidgetBuilder}
+        onOpenChange={setShowWidgetBuilder}
+        onWidgetCreated={handleAddCustomWidget}
+      />
     </div>
   );
 }
