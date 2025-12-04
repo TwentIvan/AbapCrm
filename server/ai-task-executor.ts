@@ -418,13 +418,20 @@ async function getFullDevOpsWorkItemData(
         .limit(1);
     }
 
+    console.log(`[AI-EXECUTOR] Found ${devOpsMessages.length} DevOps messages for WI ${externalWorkItemId}`);
+    
     // Find the message with matching workItemId
     for (const msg of devOpsMessages) {
       const metadata = msg.externalMetadata as any;
-      if (!metadata) continue;
+      if (!metadata) {
+        console.log(`[AI-EXECUTOR] Message ${msg.id} has no metadata`);
+        continue;
+      }
 
       // Check if this message has the DevOps work item data
       const workItemId = metadata.workItemId || metadata.enrichedData?.workItemId;
+      console.log(`[AI-EXECUTOR] Checking message ${msg.id}: workItemId=${workItemId}, looking for ${externalWorkItemId}`);
+      
       if (String(workItemId) === String(externalWorkItemId)) {
         // Extract images from HTML description - check multiple locations including enrichedData from bookmarklet
         const descriptionHtml = metadata.workItemDescriptionHtml || 
@@ -433,6 +440,7 @@ async function getFullDevOpsWorkItemData(
                                  '';
         
         console.log(`[AI-EXECUTOR] DevOps WI ${externalWorkItemId}: descriptionHtml length = ${descriptionHtml.length}`);
+        console.log(`[AI-EXECUTOR] Source: workItemDescriptionHtml=${!!metadata.workItemDescriptionHtml}, descriptionHtml=${!!metadata.descriptionHtml}, enrichedData=${!!metadata.enrichedData?.descriptionHtml}`);
         
         const images: string[] = [];
         
@@ -448,6 +456,9 @@ async function getFullDevOpsWorkItemData(
         }
         
         console.log(`[AI-EXECUTOR] DevOps WI ${externalWorkItemId}: found ${images.length} images in description`);
+        if (images.length > 0) {
+          console.log(`[AI-EXECUTOR] Image URLs: ${images.map(img => img.startsWith('data:') ? `base64(${Math.round(img.length/1024)}KB)` : img.substring(0, 100)).join(', ')}`);
+        }
 
         // Merge data from both direct metadata and enrichedData (from bookmarklet)
         const enriched = metadata.enrichedData || {};
