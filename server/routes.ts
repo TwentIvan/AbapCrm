@@ -28,7 +28,7 @@ import {
   projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users, organizations,
-  customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns
+  customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -8207,43 +8207,159 @@ Format the response as professional documentation suitable for client delivery.`
   app.post("/api/ai-task-executor/chat", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const { message, contextSummary, previousMessages } = req.body;
+      const { message, executionId, contextSummary, previousMessages } = req.body;
       
       if (!message) {
         return res.status(400).json({ error: "message required" });
       }
 
-      // Build context for AI
-      let contextText = "Contesto del task:\n";
-      if (contextSummary?.taskInfo) {
-        contextText += `- Task: ${contextSummary.taskInfo.title}\n`;
-        if (contextSummary.taskInfo.description) {
-          contextText += `  Descrizione: ${contextSummary.taskInfo.description.substring(0, 300)}\n`;
-        }
-        if (contextSummary.taskInfo.projectName) {
-          contextText += `- Progetto: ${contextSummary.taskInfo.projectName}\n`;
-        }
-      }
-      if (contextSummary?.devOpsWorkItem) {
-        contextText += `- DevOps Work Item #${contextSummary.devOpsWorkItem.id}: ${contextSummary.devOpsWorkItem.title || 'N/A'}\n`;
-        if (contextSummary.devOpsWorkItem.type) {
-          contextText += `  Tipo: ${contextSummary.devOpsWorkItem.type}, Stato: ${contextSummary.devOpsWorkItem.state || 'N/A'}\n`;
-        }
-      }
-      if (contextSummary?.linkedMessages?.length > 0) {
-        contextText += `- ${contextSummary.linkedMessages.length} messaggi collegati:\n`;
-        for (const msg of contextSummary.linkedMessages.slice(0, 3)) {
-          contextText += `  * ${msg.subject}: ${msg.preview.substring(0, 100)}...\n`;
+      // Try to reload full context from execution record if executionId provided
+      // SECURITY: Must filter by organizationId to prevent cross-tenant data leakage
+      let fullContext: any = null;
+      if (executionId) {
+        const organizationId = getOrganizationId(req);
+        const execution = await db
+          .select()
+          .from(aiTaskExecutions)
+          .where(and(
+            eq(aiTaskExecutions.id, executionId),
+            eq(aiTaskExecutions.organizationId, organizationId)
+          ))
+          .limit(1);
+        if (execution[0]?.taskContext) {
+          fullContext = execution[0].taskContext;
+          console.log('[AI-CHAT] Loaded full context from execution:', executionId, 'org:', organizationId);
+        } else if (executionId) {
+          console.log('[AI-CHAT] Execution not found or access denied:', executionId, 'org:', organizationId);
         }
       }
-      if (contextSummary?.taskComments?.length > 0) {
-        contextText += `- ${contextSummary.taskComments.length} commenti sul task:\n`;
-        for (const comment of contextSummary.taskComments.slice(0, 3)) {
-          contextText += `  * ${comment.preview}\n`;
+
+      // Build rich context for AI from full execution context or fallback to summary
+      let contextText = "## CONTESTO COMPLETO DEL TASK\n\n";
+      
+      if (fullContext) {
+        // Use full context from execution
+        contextText += `### TASK\n`;
+        contextText += `Titolo: ${fullContext.taskTitle}\n`;
+        if (fullContext.taskDescription) {
+          contextText += `Descrizione: ${fullContext.taskDescription}\n`;
         }
-      }
-      if (contextSummary?.projectTransports?.length > 0) {
-        contextText += `- ${contextSummary.projectTransports.length} Transport Requests del progetto\n`;
+        if (fullContext.projectName) {
+          contextText += `\n### PROGETTO\n`;
+          contextText += `Nome: ${fullContext.projectName}\n`;
+          if (fullContext.projectDescription) {
+            contextText += `Descrizione: ${fullContext.projectDescription}\n`;
+          }
+        }
+        if (fullContext.sapSystemName) {
+          contextText += `\n### SISTEMA SAP\n`;
+          contextText += `Nome: ${fullContext.sapSystemName}\n`;
+        }
+        
+        // DevOps work item with full description
+        if (fullContext.devOpsWorkItem) {
+          const wi = fullContext.devOpsWorkItem;
+          contextText += `\n### AZURE DEVOPS WORK ITEM #${wi.id}\n`;
+          if (wi.title) contextText += `Titolo: ${wi.title}\n`;
+          if (wi.workItemType) contextText += `Tipo: ${wi.workItemType}\n`;
+          if (wi.state) contextText += `Stato: ${wi.state}\n`;
+          if (wi.priority) contextText += `Priorità: ${wi.priority}\n`;
+          if (wi.url) contextText += `URL: ${wi.url}\n`;
+          
+          // Full description (not truncated)
+          if (wi.description || wi.descriptionHtml) {
+            const desc = wi.description || wi.descriptionHtml?.replace(/<[^>]*>/g, ' ').substring(0, 8000);
+            contextText += `\nDESCRIZIONE COMPLETA:\n${desc}\n`;
+          }
+          
+          // SAP custom fields
+          if (wi.sapFields && Object.keys(wi.sapFields).length > 0) {
+            contextText += `\nCAMPI SAP: ${JSON.stringify(wi.sapFields, null, 2)}\n`;
+          }
+          
+          // Images info
+          if (wi.images?.length > 0) {
+            contextText += `\nIMMAGINI: ${wi.images.length} immagini allegate alla descrizione DevOps\n`;
+            contextText += `(Le immagini mostrano schermate SAP con dettagli tecnici rilevanti)\n`;
+          }
+          
+          // Comments
+          if (wi.comments?.length > 0) {
+            contextText += `\nCOMMENTI DEVOPS:\n`;
+            wi.comments.forEach((c: any, i: number) => {
+              contextText += `[${i+1}] ${c.author || 'Anonimo'} (${c.date || 'N/A'}): ${c.content?.substring(0, 500) || ''}\n`;
+            });
+          }
+        }
+        
+        // Linked messages with full content
+        if (fullContext.linkedMessages?.length > 0) {
+          contextText += `\n### MESSAGGI COLLEGATI (${fullContext.linkedMessages.length})\n`;
+          fullContext.linkedMessages.slice(0, 5).forEach((msg: any, i: number) => {
+            contextText += `[${i+1}] ${msg.subject || 'N/A'}\n`;
+            if (msg.body) {
+              contextText += `${msg.body.substring(0, 1500)}\n`;
+            }
+            contextText += '\n';
+          });
+        }
+        
+        // Task comments
+        if (fullContext.taskComments?.length > 0) {
+          contextText += `\n### COMMENTI SUL TASK (${fullContext.taskComments.length})\n`;
+          fullContext.taskComments.forEach((c: any, i: number) => {
+            contextText += `[${i+1}] ${c.content}\n`;
+          });
+        }
+        
+        // Transport requests
+        if (fullContext.projectTransports?.length > 0) {
+          contextText += `\n### TRANSPORT REQUESTS (${fullContext.projectTransports.length})\n`;
+          fullContext.projectTransports.slice(0, 5).forEach((tr: any) => {
+            contextText += `- ${tr.transportId}: ${tr.description || 'N/A'} (${tr.status})\n`;
+          });
+        }
+        
+        // Load ABAP patterns for this organization
+        try {
+          const organizationId = getOrganizationId(req);
+          const patterns = await db
+            .select()
+            .from(aiAbapPatterns)
+            .where(eq(aiAbapPatterns.organizationId, organizationId))
+            .limit(10);
+          
+          if (patterns.length > 0) {
+            contextText += `\n### PATTERN ABAP DISPONIBILI (${patterns.length})\n`;
+            patterns.forEach((p: any) => {
+              contextText += `\n**${p.name}** (${p.category})\n`;
+              contextText += `Descrizione: ${p.description?.substring(0, 200) || 'N/A'}\n`;
+              if (p.codeTemplate) {
+                contextText += `Codice:\n\`\`\`abap\n${p.codeTemplate.substring(0, 1000)}\n\`\`\`\n`;
+              }
+            });
+          }
+        } catch (e) {
+          console.log('[AI-CHAT] Could not load patterns:', e);
+        }
+        
+      } else if (contextSummary) {
+        // Fallback to summary (less rich)
+        if (contextSummary.taskInfo) {
+          contextText += `- Task: ${contextSummary.taskInfo.title}\n`;
+          if (contextSummary.taskInfo.description) {
+            contextText += `  Descrizione: ${contextSummary.taskInfo.description.substring(0, 500)}\n`;
+          }
+          if (contextSummary.taskInfo.projectName) {
+            contextText += `- Progetto: ${contextSummary.taskInfo.projectName}\n`;
+          }
+        }
+        if (contextSummary.devOpsWorkItem) {
+          contextText += `- DevOps Work Item #${contextSummary.devOpsWorkItem.id}: ${contextSummary.devOpsWorkItem.title || 'N/A'}\n`;
+        }
+        if (contextSummary.linkedMessages?.length > 0) {
+          contextText += `- ${contextSummary.linkedMessages.length} messaggi collegati\n`;
+        }
       }
       
       const OpenAI = (await import('openai')).default;
@@ -8252,11 +8368,16 @@ Format the response as professional documentation suitable for client delivery.`
       const messages: any[] = [
         { 
           role: "system", 
-          content: `Sei un assistente AI esperto di sviluppo SAP ABAP. Stai aiutando l'utente a capire e generare codice ABAP per un task specifico.
+          content: `Sei un assistente AI esperto di sviluppo SAP ABAP. Stai aiutando l'utente a capire il contesto e generare codice ABAP per un task specifico.
 
 ${contextText}
 
-Rispondi in italiano, in modo conciso e utile. Se l'utente chiede "cosa hai capito" o simili, riassumi il contesto che ti è stato fornito in modo chiaro e strutturato.`
+ISTRUZIONI:
+- Rispondi sempre in italiano
+- Usa le informazioni del contesto per rispondere in modo preciso
+- Se ci sono immagini menzionate, sappi che mostrano schermate SAP rilevanti per il task
+- Se l'utente chiede cosa hai capito, fai un riassunto dettagliato e strutturato del contesto
+- Se l'utente chiede di generare codice, usa tutte le informazioni disponibili (DevOps description, campi SAP, immagini, commenti)`
         }
       ];
       
@@ -8274,7 +8395,7 @@ Rispondi in italiano, in modo conciso e utile. Se l'utente chiede "cosa hai capi
         model: "gpt-4o",
         messages,
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 2000,
       });
       
       const aiResponse = response.choices[0]?.message?.content || "Mi dispiace, non sono riuscito a elaborare la risposta.";
