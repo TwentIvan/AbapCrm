@@ -82,12 +82,13 @@ async function getRelevantPatterns(
 }
 
 // Get existing ABAP code from transport objects for learning
+// CRITICAL: Must filter by organizationId to prevent tenant data leakage
 async function getExistingCodeExamples(
   organizationId: string,
   objectTypes: string[] = [],
   limit: number = 3
 ): Promise<{ objectName: string; objectType: string; code: string }[]> {
-  // Get recent transport objects with code content
+  // Get recent transport objects with code content, filtered by organization
   const results = await db
     .select({
       objectName: sapTransportObjects.objectName,
@@ -97,7 +98,10 @@ async function getExistingCodeExamples(
     .from(sapObjectContent)
     .innerJoin(sapTransportObjects, eq(sapObjectContent.objectId, sapTransportObjects.id))
     .innerJoin(sapTransportRequests, eq(sapTransportObjects.requestId, sapTransportRequests.id))
-    .where(eq(sapObjectContent.contentType, "source"))
+    .where(and(
+      eq(sapObjectContent.contentType, "source"),
+      eq(sapTransportRequests.organizationId, organizationId) // Filter by org to prevent tenant leakage
+    ))
     .orderBy(desc(sapTransportRequests.createdAt))
     .limit(limit);
 
