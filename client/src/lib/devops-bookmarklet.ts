@@ -1,7 +1,8 @@
 /**
- * Azure DevOps Work Item Data Extractor Bookmarklet - Version 3.2
+ * Azure DevOps Work Item Data Extractor Bookmarklet - Version 3.3
  * 
  * Aggressive field extraction with multiple strategies
+ * NEW: Converts URL-based images to base64 for AI accessibility
  */
 
 export const bookmarkletCode = `
@@ -29,7 +30,7 @@ export const bookmarkletCode = `
     var data = {
       extractedAt: new Date().toISOString(),
       source: 'bookmarklet',
-      version: '3.2',
+      version: '3.3',
       url: window.location.href
     };
     
@@ -502,63 +503,168 @@ export const bookmarkletCode = `
     return data;
   }
   
-  try {
-    var data = extractWorkItemData();
+  // Convert URL-based images in HTML to base64 (while authenticated on DevOps)
+  async function convertImagesToBase64(html) {
+    if (!html) return html;
     
-    if (!data.workItemId) {
-      showNotification('Work Item ID non trovato. Sei sulla pagina di un Work Item?', true);
-      return;
-    }
+    // Find all img tags with https:// URLs (not base64)
+    var imgRegex = /<img([^>]*)src=["'](https?:\\/\\/[^"']+)["']([^>]*)>/gi;
+    var matches = [];
+    var match;
     
-    var json = JSON.stringify(data, null, 2);
-    
-    function copyToClipboard(text) {
-      // Try modern API first
-      if (navigator.clipboard && document.hasFocus()) {
-        return navigator.clipboard.writeText(text);
-      }
-      // Fallback: create textarea and use execCommand
-      return new Promise(function(resolve, reject) {
-        var textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;padding:0;border:none;outline:none;boxShadow:none;background:transparent;';
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        try {
-          var ok = document.execCommand('copy');
-          textarea.remove();
-          if (ok) resolve(); else reject(new Error('execCommand failed'));
-        } catch(e) {
-          textarea.remove();
-          reject(e);
-        }
+    while ((match = imgRegex.exec(html)) !== null) {
+      matches.push({
+        fullMatch: match[0],
+        before: match[1],
+        url: match[2],
+        after: match[3]
       });
     }
     
-    copyToClipboard(json).then(function() {
-      var msg = '✓ Work Item #' + data.workItemId + ' copiato! (' + data._fieldCount + ' campi';
-      if (data.comments && data.comments.length) msg += ', ' + data.comments.length + ' commenti';
-      if (data.attachments && data.attachments.length) msg += ', ' + data.attachments.length + ' allegati';
-      if (data._richTextsFound) msg += ', ' + data._richTextsFound + ' testi formattati';
-      msg += ')';
-      showNotification(msg, false);
-      console.log('[DevOps Extractor v3] Dati estratti:', data);
-    }).catch(function(err) {
-      // Show modal with copyable JSON as last resort
-      var modal = document.createElement('div');
-      modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;';
-      modal.innerHTML = '<div style="background:white;padding:20px;border-radius:8px;max-width:600px;max-height:80vh;overflow:auto;"><h3 style="margin:0 0 10px">Copia manualmente (Cmd+C / Ctrl+C)</h3><textarea id="devops-json" style="width:100%;height:300px;font-family:monospace;font-size:12px;">' + json.replace(/</g,'&lt;') + '</textarea><button onclick="this.parentElement.parentElement.remove()" style="margin-top:10px;padding:8px 16px;cursor:pointer;">Chiudi</button></div>';
-      document.body.appendChild(modal);
-      var ta = document.getElementById('devops-json');
-      ta.focus();
-      ta.select();
-      console.log('[DevOps Extractor v3] Dati estratti:', data);
-    });
-  } catch (err) {
-    showNotification('Errore: ' + err.message, true);
-    console.error('[DevOps Extractor v3] Error:', err);
+    if (matches.length === 0) return html;
+    
+    console.log('[DevOps v3.3] Found ' + matches.length + ' URL images to convert');
+    
+    // Fetch and convert each image
+    var newHtml = html;
+    for (var i = 0; i < matches.length; i++) {
+      var m = matches[i];
+      try {
+        console.log('[DevOps v3.3] Fetching image ' + (i+1) + '/' + matches.length + ': ' + m.url.substring(0, 80));
+        
+        var response = await fetch(m.url, { 
+          credentials: 'include',
+          mode: 'cors'
+        });
+        
+        if (!response.ok) {
+          console.warn('[DevOps v3.3] Failed to fetch image: ' + response.status);
+          continue;
+        }
+        
+        var blob = await response.blob();
+        
+        // Skip if too large (> 500KB)
+        if (blob.size > 500 * 1024) {
+          console.warn('[DevOps v3.3] Image too large, skipping: ' + Math.round(blob.size/1024) + 'KB');
+          continue;
+        }
+        
+        // Convert to base64
+        var base64 = await new Promise(function(resolve) {
+          var reader = new FileReader();
+          reader.onloadend = function() { resolve(reader.result); };
+          reader.readAsDataURL(blob);
+        });
+        
+        // Replace in HTML
+        var newImg = '<img' + m.before + 'src="' + base64 + '"' + m.after + '>';
+        newHtml = newHtml.replace(m.fullMatch, newImg);
+        
+        console.log('[DevOps v3.3] Converted image ' + (i+1) + ' to base64 (' + Math.round(blob.size/1024) + 'KB)');
+      } catch (e) {
+        console.warn('[DevOps v3.3] Error converting image: ' + e.message);
+      }
+    }
+    
+    return newHtml;
   }
+  
+  // Process all HTML fields to convert images
+  async function processDataImages(data) {
+    var fieldsToProcess = ['descriptionHtml', 'acceptanceCriteriaHtml', 'reproStepsHtml'];
+    var convertedCount = 0;
+    
+    for (var i = 0; i < fieldsToProcess.length; i++) {
+      var field = fieldsToProcess[i];
+      if (data[field]) {
+        var original = data[field];
+        data[field] = await convertImagesToBase64(data[field]);
+        if (data[field] !== original) convertedCount++;
+      }
+    }
+    
+    // Also process comments HTML
+    if (data.comments && data.comments.length > 0) {
+      for (var j = 0; j < data.comments.length; j++) {
+        if (data.comments[j].contentHtml) {
+          data.comments[j].contentHtml = await convertImagesToBase64(data.comments[j].contentHtml);
+        }
+      }
+    }
+    
+    return data;
+  }
+  
+  (async function() {
+    try {
+      showNotification('Estrazione dati in corso...', false);
+      
+      var data = extractWorkItemData();
+      
+      if (!data.workItemId) {
+        showNotification('Work Item ID non trovato. Sei sulla pagina di un Work Item?', true);
+        return;
+      }
+      
+      // Convert URL images to base64 while authenticated
+      showNotification('Conversione immagini in corso...', false);
+      data = await processDataImages(data);
+      
+      var json = JSON.stringify(data, null, 2);
+      
+      function copyToClipboard(text) {
+        // Try modern API first
+        if (navigator.clipboard && document.hasFocus()) {
+          return navigator.clipboard.writeText(text);
+        }
+        // Fallback: create textarea and use execCommand
+        return new Promise(function(resolve, reject) {
+          var textarea = document.createElement('textarea');
+          textarea.value = text;
+          textarea.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;padding:0;border:none;outline:none;boxShadow:none;background:transparent;';
+          document.body.appendChild(textarea);
+          textarea.focus();
+          textarea.select();
+          try {
+            var ok = document.execCommand('copy');
+            textarea.remove();
+            if (ok) resolve(); else reject(new Error('execCommand failed'));
+          } catch(e) {
+            textarea.remove();
+            reject(e);
+          }
+        });
+      }
+      
+      // Count converted images
+      var imgCount = (json.match(/data:image/g) || []).length;
+      
+      copyToClipboard(json).then(function() {
+        var msg = '✓ Work Item #' + data.workItemId + ' copiato! (' + data._fieldCount + ' campi';
+        if (data.comments && data.comments.length) msg += ', ' + data.comments.length + ' commenti';
+        if (data.attachments && data.attachments.length) msg += ', ' + data.attachments.length + ' allegati';
+        if (imgCount > 0) msg += ', ' + imgCount + ' immagini';
+        if (data._richTextsFound) msg += ', ' + data._richTextsFound + ' testi formattati';
+        msg += ')';
+        showNotification(msg, false);
+        console.log('[DevOps Extractor v3.3] Dati estratti:', data);
+      }).catch(function(err) {
+        // Show modal with copyable JSON as last resort
+        var modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:999999;display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML = '<div style="background:white;padding:20px;border-radius:8px;max-width:600px;max-height:80vh;overflow:auto;"><h3 style="margin:0 0 10px">Copia manualmente (Cmd+C / Ctrl+C)</h3><textarea id="devops-json" style="width:100%;height:300px;font-family:monospace;font-size:12px;">' + json.replace(/</g,'&lt;') + '</textarea><button onclick="this.parentElement.parentElement.remove()" style="margin-top:10px;padding:8px 16px;cursor:pointer;">Chiudi</button></div>';
+        document.body.appendChild(modal);
+        var ta = document.getElementById('devops-json');
+        ta.focus();
+        ta.select();
+        console.log('[DevOps Extractor v3.3] Dati estratti:', data);
+      });
+    } catch (err) {
+      showNotification('Errore: ' + err.message, true);
+      console.error('[DevOps Extractor v3.3] Error:', err);
+    }
+  })();
 })();
 `;
 
