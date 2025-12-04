@@ -61,6 +61,7 @@ import MessageForm from "@/components/forms/message-form";
 import SimpleChatForm from "@/components/forms/simple-chat-form";
 import { ProjectProposalDialog } from "@/components/dialogs/project-proposal-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { generateBookmarkletUrl } from "@/lib/devops-bookmarklet";
 
 interface AISuggestion {
   type: 'project' | 'task' | 'partner';
@@ -1735,6 +1736,30 @@ export default function MessagesPage() {
                                 Apri Work Item
                               </Button>
                             )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  await navigator.clipboard.writeText(generateBookmarkletUrl());
+                                  toast({
+                                    title: "Bookmarklet copiato!",
+                                    description: "Incolla l'URL in un nuovo segnalibro del browser. Versione 3.3 con conversione immagini.",
+                                  });
+                                } catch (err) {
+                                  toast({
+                                    title: "Errore",
+                                    description: "Impossibile copiare negli appunti",
+                                    variant: "destructive"
+                                  });
+                                }
+                              }}
+                              className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                              data-testid="button-copy-bookmarklet"
+                            >
+                              <Sparkles className="h-4 w-4 mr-1" />
+                              Copia Bookmarklet
+                            </Button>
                             <Button
                               variant="default"
                               size="sm"
