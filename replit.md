@@ -99,6 +99,17 @@ AI-powered ABAP code generation with extended context:
 - **Regenerate Flow**: After rejecting AI output, users can modify customInstructions and retry
 - **Security**: All queries enforce organizationId filtering for tenant isolation (task, project, sapSystem, comments, messages, transports)
 
+### Freeform Dashboard with Entity Widget System
+Customizable dashboard with drag-and-drop widget placement:
+- **React-RND Integration**: Uses `react-rnd` for freeform widget positioning and resizing
+- **EntityListDescriptor Pattern**: Unified interface (`client/src/lib/entity-registry.tsx`) defining columns, filters, bulk edit fields, and feature flags for each entity
+- **EmbeddedEntityList Component**: Generic shell (`client/src/components/embedded/embedded-entity-list.tsx`) that renders any entity with full CRUD, AI, config, LayoutManager, filters, and bulk operations
+- **Registered Entities**: Tasks, Projects, Partners, Deals - each with dedicated descriptor files in `client/src/lib/entities/`
+- **Widget Templates**: Pre-configured widget options including filtered views (e.g., "Task Attivi", "Progetti Attivi", "Accordi Aperti")
+- **Widget Types**: entity-list (any registered entity), stats (overview counts), timer (active time tracking)
+- **Layout Persistence**: Widget positions (x, y, width, height, zIndex) saved in localStorage key `dashboard-freeform-v1`
+- **Configure Mode**: Toggle to enable/disable drag-resize with grid snapping and visual feedback
+
 ### Address Management System
 Comprehensive address handling for partner entities with:
 - **AddressSearch Component** (`client/src/components/ui/address-search.tsx`): Autocomplete search using Nominatim API (OpenStreetMap geocoding), Italian province code extraction (100+ mappings), radio buttons for legal/operational address type selection
