@@ -3001,6 +3001,127 @@ export const aiLearningPatterns = pgTable("ai_learning_patterns", {
   patternTypeIdx: index("ai_learning_patterns_type_idx").on(table.organizationId, table.patternType),
 }));
 
+// ========== AI ABAP Code Patterns System ==========
+// Pattern di codice ABAP appresi dalle soluzioni e generazioni approvate
+
+export const abapPatternCategoryEnum = pgEnum("abap_pattern_category", [
+  "report",           // Report classici ABAP
+  "function_module",  // Function Modules
+  "class",            // Classi ABAP OO
+  "enhancement",      // Enhancement/BAdI
+  "form",             // Form routine
+  "selection_screen", // Selection screens
+  "alv",              // ALV Grid/List
+  "bapi",             // BAPI wrapper
+  "data_extraction",  // Estrazione dati
+  "bdc",              // Batch Data Communication
+  "idoc",             // IDoc processing
+  "smartform",        // SmartForms
+  "workflow",         // SAP Workflow
+  "fiori",            // Fiori/UI5
+  "cds_view",         // CDS Views
+  "amdp",             // AMDP HANA
+  "other"             // Altro
+]);
+
+export const abapPatternSourceEnum = pgEnum("abap_pattern_source", [
+  "transport_import",  // Importato da Transport Request
+  "manual_upload",     // Caricato manualmente
+  "ai_generated",      // Generato da AI e approvato
+  "external_source"    // Sorgente esterna (GitHub, etc.)
+]);
+
+export const aiAbapPatterns = pgTable("ai_abap_patterns", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  
+  // Categorizzazione
+  category: abapPatternCategoryEnum("category").notNull(),
+  source: abapPatternSourceEnum("source").default("manual_upload").notNull(),
+  
+  // Identificazione
+  name: text("name").notNull(), // Nome pattern (es. "ALV con ordinamento dinamico")
+  description: text("description"), // Descrizione funzionale
+  tags: text("tags").array().default([]), // Tag per ricerca (es. ["alv", "sorting", "oo"])
+  
+  // Codice sorgente
+  codeTemplate: text("code_template").notNull(), // Template codice ABAP (può contenere placeholder {{variable}})
+  codeExamples: jsonb("code_examples").default([]), // Array di esempi concreti derivati
+  
+  // Contesto d'uso
+  useCaseDescription: text("use_case_description"), // Quando usare questo pattern
+  prerequisites: text("prerequisites").array().default([]), // Prerequisiti (es. ["Tabella MARA", "FM BAPI_..."])
+  sapModules: text("sap_modules").array().default([]), // Moduli SAP (MM, SD, FI, etc.)
+  
+  // Relazioni con entità esistenti
+  sourceTransportId: uuid("source_transport_id").references(() => sapTransportRequests.id), // Se importato da TR
+  sourceObjectId: uuid("source_object_id").references(() => sapTransportObjects.id), // Oggetto SAP sorgente
+  
+  // Statistiche e qualità
+  usageCount: integer("usage_count").default(0).notNull(), // Quante volte usato per generazione
+  successCount: integer("success_count").default(0).notNull(), // Generazioni approvate
+  failureCount: integer("failure_count").default(0).notNull(), // Generazioni rifiutate
+  qualityScore: decimal("quality_score", { precision: 3, scale: 2 }).default("1.00"), // Score 0.00-1.00
+  
+  // Metadata
+  isActive: boolean("is_active").default(true).notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  categoryIdx: index("ai_abap_patterns_category_idx").on(table.organizationId, table.category),
+  tagsIdx: index("ai_abap_patterns_tags_idx").on(table.organizationId),
+}));
+
+// AI Task Execution Results - Risultati delle esecuzioni AI sui task
+export const aiTaskExecutionStatusEnum = pgEnum("ai_task_execution_status", [
+  "pending",      // In attesa di elaborazione
+  "processing",   // In elaborazione
+  "completed",    // Completato con successo
+  "failed",       // Fallito
+  "approved",     // Approvato dall'utente
+  "rejected"      // Rifiutato dall'utente
+]);
+
+export const aiTaskExecutions = pgTable("ai_task_executions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  
+  // Task collegato
+  taskId: uuid("task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
+  
+  // Stato esecuzione
+  status: aiTaskExecutionStatusEnum("status").default("pending").notNull(),
+  
+  // Input per AI
+  taskContext: jsonb("task_context").notNull(), // { title, description, projectContext, sapSystem, etc. }
+  patternsUsed: uuid("patterns_used").array().default([]), // ID dei pattern ABAP usati
+  
+  // Output generato
+  generatedFiles: jsonb("generated_files").default([]), // [{ filename, content, language, description }]
+  analysisResult: jsonb("analysis_result"), // Risultato analisi AI
+  suggestedActions: jsonb("suggested_actions").default([]), // Azioni suggerite
+  
+  // AI metadata
+  aiModel: text("ai_model").default("gpt-4o").notNull(),
+  promptTokens: integer("prompt_tokens"),
+  completionTokens: integer("completion_tokens"),
+  totalCost: decimal("total_cost", { precision: 10, scale: 6 }),
+  
+  // Feedback utente
+  userFeedback: text("user_feedback"), // Feedback testuale
+  userRating: integer("user_rating"), // 1-5 stelle
+  
+  // Timing
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // ========== DevOps Field Mappings System ==========
 // Mapping dinamico valori DevOps → campi del nostro DB
 
@@ -3080,4 +3201,56 @@ export type AiLearningPattern = typeof aiLearningPatterns.$inferSelect;
 export type InsertAiLearningPattern = z.infer<typeof insertAiLearningPatternSchema>;
 export type DevopsFieldMapping = typeof devopsFieldMappings.$inferSelect;
 export type InsertDevopsFieldMapping = z.infer<typeof insertDevopsFieldMappingSchema>;
+
+// ========== Insert Schemas & Types for AI ABAP Patterns & Task Executions ==========
+
+export const insertAiAbapPatternSchema = createInsertSchema(aiAbapPatterns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  organizationId: true,
+  lastUsedAt: true,
+  usageCount: true,
+  successCount: true,
+  failureCount: true,
+  qualityScore: true,
+});
+
+export const insertAiTaskExecutionSchema = createInsertSchema(aiTaskExecutions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  organizationId: true,
+  startedAt: true,
+  completedAt: true,
+  promptTokens: true,
+  completionTokens: true,
+  totalCost: true,
+});
+
+export type AiAbapPattern = typeof aiAbapPatterns.$inferSelect;
+export type InsertAiAbapPattern = z.infer<typeof insertAiAbapPatternSchema>;
+export type AiTaskExecution = typeof aiTaskExecutions.$inferSelect;
+export type InsertAiTaskExecution = z.infer<typeof insertAiTaskExecutionSchema>;
+
+// ========== Generated File Type for AI Task Executions ==========
+export interface AiGeneratedFile {
+  filename: string;
+  content: string;
+  language: "ABAP" | "SQL" | "JSON" | "XML" | "TEXT";
+  description?: string;
+  objectType?: string; // PROG, FUGR, CLAS, etc.
+}
+
+export interface AiTaskContext {
+  taskTitle: string;
+  taskDescription?: string;
+  projectName?: string;
+  projectDescription?: string;
+  sapSystemId?: string;
+  sapSystemName?: string;
+  sapModules?: string[];
+  relatedTransports?: string[];
+  customInstructions?: string;
+}
 
