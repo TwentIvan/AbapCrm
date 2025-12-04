@@ -30,7 +30,15 @@ import {
   ListTodo,
   AlertTriangle,
   RotateCcw,
+  Eye,
+  MessageSquare,
+  Mail,
+  GitBranch,
+  FileText,
+  Layers,
+  Send,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import type { Task, AiGeneratedFile } from "@shared/schema";
 
 interface TaskExecutionResult {
@@ -52,6 +60,43 @@ interface TaskExecutionResult {
   }>;
   patternsUsed: string[];
   error?: string;
+  contextSummary?: {
+    taskInfo: {
+      title: string;
+      description?: string;
+      projectName?: string;
+    };
+    devOpsWorkItem?: {
+      id: string;
+      title?: string;
+      type?: string;
+      state?: string;
+      commentsCount?: number;
+      hasImages?: boolean;
+    };
+    linkedMessages: Array<{
+      subject: string;
+      fromName?: string;
+      date?: string;
+      preview: string;
+    }>;
+    taskComments: Array<{
+      preview: string;
+      createdAt: string;
+    }>;
+    projectTransports: Array<{
+      requestNumber: string;
+      description: string;
+      objectsCount: number;
+    }>;
+    patternsCount: number;
+  };
+}
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
 }
 
 interface ThuAiDialogProps {
@@ -67,6 +112,11 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
   const [results, setResults] = useState<TaskExecutionResult[]>([]);
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [feedback, setFeedback] = useState<{ [key: string]: { approved?: boolean; rating?: number } }>({});
+  
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   const executeMutation = useMutation({
     mutationFn: async () => {
@@ -141,6 +191,53 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
   const allFiles = results.flatMap(r => r.generatedFiles);
   const currentFile = allFiles[selectedFileIndex];
 
+  // Chat handler
+  const handleChatSend = async () => {
+    if (!chatInput.trim() || results.length === 0) return;
+
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content: chatInput,
+      timestamp: new Date(),
+    };
+    
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput("");
+    setIsChatLoading(true);
+
+    try {
+      // Get the first result's execution ID and context
+      const executionId = results[0]?.executionId;
+      const contextSummary = results[0]?.contextSummary;
+      
+      const response = await apiRequest("POST", "/api/ai-task-executor/chat", {
+        executionId,
+        message: chatInput,
+        contextSummary,
+        previousMessages: chatMessages.map(m => ({ role: m.role, content: m.content })),
+      });
+      
+      const data = await response.json();
+      
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: data.response || "Non ho capito la domanda. Potresti riformularla?",
+        timestamp: new Date(),
+      };
+      
+      setChatMessages(prev => [...prev, assistantMessage]);
+    } catch (error: any) {
+      const errorMessage: ChatMessage = {
+        role: 'assistant',
+        content: `Errore: ${error.message || 'Si è verificato un errore'}`,
+        timestamp: new Date(),
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
   const getComplexityColor = (complexity: string) => {
     switch (complexity) {
       case "low": return "bg-green-500";
@@ -178,18 +275,26 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="analisi" className="flex items-center gap-2" data-testid="tab-analysis">
               <Brain className="h-4 w-4" />
               Analisi
             </TabsTrigger>
+            <TabsTrigger value="contesto" className="flex items-center gap-2" data-testid="tab-context">
+              <Eye className="h-4 w-4" />
+              Contesto
+            </TabsTrigger>
             <TabsTrigger value="generazione" className="flex items-center gap-2" data-testid="tab-generation">
               <FileCode className="h-4 w-4" />
-              Codice Generato
+              Codice
             </TabsTrigger>
             <TabsTrigger value="azioni" className="flex items-center gap-2" data-testid="tab-actions">
               <ListTodo className="h-4 w-4" />
-              Azioni Suggerite
+              Azioni
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="flex items-center gap-2" data-testid="tab-chat">
+              <MessageSquare className="h-4 w-4" />
+              Chat
             </TabsTrigger>
           </TabsList>
 
@@ -511,6 +616,216 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                   </div>
                 )}
               </ScrollArea>
+            </TabsContent>
+
+            {/* Tab Contesto - Mostra cosa l'AI ha ricevuto */}
+            <TabsContent value="contesto" className="h-full m-0">
+              <ScrollArea className="h-80">
+                {results.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+                    <Eye className="h-12 w-12 mb-4" />
+                    <p>Nessun contesto disponibile</p>
+                    <p className="text-sm">Esegui l'analisi AI per vedere il contesto raccolto</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {results.map((result, resultIdx) => result.contextSummary && (
+                      <div key={resultIdx} className="rounded-lg border p-4">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <Layers className="h-4 w-4" />
+                          Contesto per: {selectedTasks[resultIdx]?.title}
+                        </h4>
+                        
+                        {/* Task Info */}
+                        <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+                          <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                            <FileText className="h-3 w-3" />
+                            Informazioni Task
+                          </h5>
+                          <div className="text-sm space-y-1">
+                            <p><span className="text-muted-foreground">Titolo:</span> {result.contextSummary.taskInfo.title}</p>
+                            {result.contextSummary.taskInfo.projectName && (
+                              <p><span className="text-muted-foreground">Progetto:</span> {result.contextSummary.taskInfo.projectName}</p>
+                            )}
+                            {result.contextSummary.taskInfo.description && (
+                              <p className="text-muted-foreground text-xs mt-1">{result.contextSummary.taskInfo.description.substring(0, 200)}...</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* DevOps Work Item */}
+                        {result.contextSummary.devOpsWorkItem && (
+                          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                              <GitBranch className="h-3 w-3" />
+                              DevOps Work Item #{result.contextSummary.devOpsWorkItem.id}
+                            </h5>
+                            <div className="text-sm space-y-1">
+                              {result.contextSummary.devOpsWorkItem.title && (
+                                <p><span className="text-muted-foreground">Titolo:</span> {result.contextSummary.devOpsWorkItem.title}</p>
+                              )}
+                              <div className="flex gap-2 flex-wrap">
+                                {result.contextSummary.devOpsWorkItem.type && (
+                                  <Badge variant="outline" className="text-xs">{result.contextSummary.devOpsWorkItem.type}</Badge>
+                                )}
+                                {result.contextSummary.devOpsWorkItem.state && (
+                                  <Badge variant="secondary" className="text-xs">{result.contextSummary.devOpsWorkItem.state}</Badge>
+                                )}
+                                {result.contextSummary.devOpsWorkItem.commentsCount ? (
+                                  <Badge className="text-xs bg-purple-500">{result.contextSummary.devOpsWorkItem.commentsCount} commenti</Badge>
+                                ) : null}
+                                {result.contextSummary.devOpsWorkItem.hasImages && (
+                                  <Badge className="text-xs bg-green-500">Con immagini</Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Linked Messages */}
+                        {result.contextSummary.linkedMessages.length > 0 && (
+                          <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950 rounded-lg">
+                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-orange-700 dark:text-orange-300">
+                              <Mail className="h-3 w-3" />
+                              Messaggi Collegati ({result.contextSummary.linkedMessages.length})
+                            </h5>
+                            <div className="space-y-2">
+                              {result.contextSummary.linkedMessages.map((msg, msgIdx) => (
+                                <div key={msgIdx} className="text-xs p-2 bg-background rounded border">
+                                  <div className="font-medium">{msg.subject || '(Senza oggetto)'}</div>
+                                  {msg.fromName && <div className="text-muted-foreground">Da: {msg.fromName}</div>}
+                                  <div className="text-muted-foreground mt-1">{msg.preview}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Task Comments */}
+                        {result.contextSummary.taskComments.length > 0 && (
+                          <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
+                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-yellow-700 dark:text-yellow-300">
+                              <MessageSquare className="h-3 w-3" />
+                              Commenti Task ({result.contextSummary.taskComments.length})
+                            </h5>
+                            <div className="space-y-2">
+                              {result.contextSummary.taskComments.map((comment, cIdx) => (
+                                <div key={cIdx} className="text-xs p-2 bg-background rounded border">
+                                  {comment.preview}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Transport Requests */}
+                        {result.contextSummary.projectTransports.length > 0 && (
+                          <div className="mb-4 p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-green-700 dark:text-green-300">
+                              <Code className="h-3 w-3" />
+                              Transport Requests ({result.contextSummary.projectTransports.length})
+                            </h5>
+                            <div className="space-y-1">
+                              {result.contextSummary.projectTransports.map((tr, trIdx) => (
+                                <div key={trIdx} className="text-xs flex items-center gap-2">
+                                  <Badge variant="outline" className="font-mono">{tr.requestNumber}</Badge>
+                                  <span className="text-muted-foreground">{tr.description}</span>
+                                  <Badge className="text-xs">{tr.objectsCount} oggetti</Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Pattern Count */}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Sparkles className="h-4 w-4" />
+                          <span>{result.contextSummary.patternsCount} pattern ABAP utilizzati per la generazione</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+
+            {/* Tab Chat - Chiarisci con l'AI */}
+            <TabsContent value="chat" className="h-full m-0 flex flex-col">
+              <div className="flex-1 overflow-hidden flex flex-col">
+                <ScrollArea className="flex-1 h-60 border rounded-lg p-4 mb-4">
+                  {chatMessages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                      <MessageSquare className="h-12 w-12 mb-4" />
+                      <p>Nessun messaggio</p>
+                      <p className="text-sm text-center max-w-md">
+                        Fai domande per chiarire cosa l'AI ha capito o per guidare la generazione del codice
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {chatMessages.map((msg, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-[80%] p-3 rounded-lg ${
+                              msg.role === 'user'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted'
+                            }`}
+                          >
+                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            <p className="text-xs opacity-70 mt-1">
+                              {msg.timestamp.toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      {isChatLoading && (
+                        <div className="flex justify-start">
+                          <div className="bg-muted p-3 rounded-lg">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </ScrollArea>
+
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Chiedi chiarimenti all'AI..."
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey && chatInput.trim()) {
+                        e.preventDefault();
+                        handleChatSend();
+                      }
+                    }}
+                    disabled={isChatLoading || results.length === 0}
+                    data-testid="input-chat"
+                  />
+                  <Button
+                    onClick={handleChatSend}
+                    disabled={isChatLoading || !chatInput.trim() || results.length === 0}
+                    data-testid="button-chat-send"
+                  >
+                    {isChatLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+
+                {results.length === 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Esegui prima l'analisi AI per abilitare la chat
+                  </p>
+                )}
+              </div>
             </TabsContent>
           </div>
         </Tabs>

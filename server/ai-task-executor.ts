@@ -93,6 +93,38 @@ export interface TaskExecutionResult {
   }>;
   patternsUsed: string[];
   error?: string;
+  // Context transparency - what the AI received
+  contextSummary?: {
+    taskInfo: {
+      title: string;
+      description?: string;
+      projectName?: string;
+    };
+    devOpsWorkItem?: {
+      id: string;
+      title?: string;
+      type?: string;
+      state?: string;
+      commentsCount?: number;
+      hasImages?: boolean;
+    };
+    linkedMessages: Array<{
+      subject: string;
+      fromName?: string;
+      date?: string;
+      preview: string;
+    }>;
+    taskComments: Array<{
+      preview: string;
+      createdAt: string;
+    }>;
+    projectTransports: Array<{
+      requestNumber: string;
+      description: string;
+      objectsCount: number;
+    }>;
+    patternsCount: number;
+  };
 }
 
 // Get relevant ABAP patterns for a task
@@ -928,6 +960,39 @@ export async function executeTaskWithAI(
           .where(eq(aiAbapPatterns.id, pattern.id));
       }
 
+      // Build context summary for transparency
+      const contextSummary: TaskExecutionResult['contextSummary'] = {
+        taskInfo: {
+          title: taskData.title,
+          description: taskData.description || undefined,
+          projectName: projectData?.name || undefined,
+        },
+        devOpsWorkItem: context.devOpsWorkItem ? {
+          id: context.devOpsWorkItem.id,
+          title: context.devOpsWorkItem.title,
+          type: context.devOpsWorkItem.workItemType,
+          state: context.devOpsWorkItem.state,
+          commentsCount: context.devOpsWorkItem.comments?.length || 0,
+          hasImages: (context.devOpsWorkItem.images?.length || 0) > 0,
+        } : undefined,
+        linkedMessages: (context.linkedMessages || []).map(m => ({
+          subject: m.subject,
+          fromName: m.fromName,
+          date: m.date,
+          preview: m.content.substring(0, 200) + (m.content.length > 200 ? '...' : ''),
+        })),
+        taskComments: (context.taskComments || []).map(c => ({
+          preview: c.content.substring(0, 150) + (c.content.length > 150 ? '...' : ''),
+          createdAt: c.createdAt,
+        })),
+        projectTransports: (context.projectTransports || []).map(t => ({
+          requestNumber: t.requestNumber,
+          description: t.description,
+          objectsCount: t.objects.length,
+        })),
+        patternsCount: patterns.length,
+      };
+
       results.push({
         success: true,
         executionId: execution.id,
@@ -941,6 +1006,7 @@ export async function executeTaskWithAI(
         generatedFiles: aiResult.generatedFiles || [],
         suggestedActions: aiResult.suggestedActions || [],
         patternsUsed: patterns.map(p => p.id),
+        contextSummary,
       });
 
     } catch (error: any) {

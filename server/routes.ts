@@ -8203,6 +8203,89 @@ Format the response as professional documentation suitable for client delivery.`
     }
   });
 
+  // Chat with AI about task execution context
+  app.post("/api/ai-task-executor/chat", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { message, contextSummary, previousMessages } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ error: "message required" });
+      }
+
+      // Build context for AI
+      let contextText = "Contesto del task:\n";
+      if (contextSummary?.taskInfo) {
+        contextText += `- Task: ${contextSummary.taskInfo.title}\n`;
+        if (contextSummary.taskInfo.description) {
+          contextText += `  Descrizione: ${contextSummary.taskInfo.description.substring(0, 300)}\n`;
+        }
+        if (contextSummary.taskInfo.projectName) {
+          contextText += `- Progetto: ${contextSummary.taskInfo.projectName}\n`;
+        }
+      }
+      if (contextSummary?.devOpsWorkItem) {
+        contextText += `- DevOps Work Item #${contextSummary.devOpsWorkItem.id}: ${contextSummary.devOpsWorkItem.title || 'N/A'}\n`;
+        if (contextSummary.devOpsWorkItem.type) {
+          contextText += `  Tipo: ${contextSummary.devOpsWorkItem.type}, Stato: ${contextSummary.devOpsWorkItem.state || 'N/A'}\n`;
+        }
+      }
+      if (contextSummary?.linkedMessages?.length > 0) {
+        contextText += `- ${contextSummary.linkedMessages.length} messaggi collegati:\n`;
+        for (const msg of contextSummary.linkedMessages.slice(0, 3)) {
+          contextText += `  * ${msg.subject}: ${msg.preview.substring(0, 100)}...\n`;
+        }
+      }
+      if (contextSummary?.taskComments?.length > 0) {
+        contextText += `- ${contextSummary.taskComments.length} commenti sul task:\n`;
+        for (const comment of contextSummary.taskComments.slice(0, 3)) {
+          contextText += `  * ${comment.preview}\n`;
+        }
+      }
+      if (contextSummary?.projectTransports?.length > 0) {
+        contextText += `- ${contextSummary.projectTransports.length} Transport Requests del progetto\n`;
+      }
+      
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      const messages: any[] = [
+        { 
+          role: "system", 
+          content: `Sei un assistente AI esperto di sviluppo SAP ABAP. Stai aiutando l'utente a capire e generare codice ABAP per un task specifico.
+
+${contextText}
+
+Rispondi in italiano, in modo conciso e utile. Se l'utente chiede "cosa hai capito" o simili, riassumi il contesto che ti è stato fornito in modo chiaro e strutturato.`
+        }
+      ];
+      
+      // Add previous messages
+      if (previousMessages && Array.isArray(previousMessages)) {
+        for (const msg of previousMessages.slice(-10)) { // Keep last 10 messages for context
+          messages.push({ role: msg.role, content: msg.content });
+        }
+      }
+      
+      // Add current message
+      messages.push({ role: "user", content: message });
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages,
+        temperature: 0.7,
+        max_tokens: 1000,
+      });
+      
+      const aiResponse = response.choices[0]?.message?.content || "Mi dispiace, non sono riuscito a elaborare la risposta.";
+      
+      res.json({ response: aiResponse });
+    } catch (error) {
+      console.error("Error in AI chat:", error);
+      res.status(500).json({ error: "Failed to process chat message" });
+    }
+  });
+
   // ========== AI ABAP Patterns API ==========
 
   app.get("/api/ai-abap-patterns", async (req, res) => {
