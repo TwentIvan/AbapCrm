@@ -31,7 +31,7 @@ async function runDevOpsExtractor() {
     var data = {
       extractedAt: new Date().toISOString(),
       source: 'chrome_extension',
-      version: '3.4',
+      version: '3.5',
       url: window.location.href
     };
     
@@ -109,7 +109,7 @@ async function runDevOpsExtractor() {
     }
     
     var customFields = extractCustomFields();
-    console.log('[DevOps v3.4] Custom fields found:', customFields);
+    console.log('[DevOps v3.5] Custom fields found:', customFields);
     if (Object.keys(customFields).length > 0) {
       data.customFields = customFields;
       var ticketKeys = ['Codice_Ticket', 'codice_ticket', 'Ticket', 'N. Ticket', 'N. Ticket Rapportino SAP'];
@@ -252,7 +252,7 @@ async function runDevOpsExtractor() {
         }
       });
     });
-    console.log('[DevOps v3.4] Comments found:', comments.length);
+    console.log('[DevOps v3.5] Comments found:', comments.length);
     if (comments.length > 0) data.comments = comments;
     
     var attachments = [];
@@ -280,14 +280,14 @@ async function runDevOpsExtractor() {
 
   // Convert image URL to base64 using canvas (works with authenticated images)
   function imageUrlToBase64ViaCanvas(url, maxSize) {
-    maxSize = maxSize || 500 * 1024; // 500KB default
+    maxSize = maxSize || 1024 * 1024; // 1MB default (increased from 500KB)
     
     return new Promise(function(resolve) {
       var img = new Image();
       img.crossOrigin = 'anonymous'; // Try CORS
       
       var timeout = setTimeout(function() {
-        console.log('[DevOps v3.4] Image load timeout:', url.substring(0, 80));
+        console.log('[DevOps v3.5] Image load timeout:', url.substring(0, 80));
         resolve(null);
       }, 10000);
       
@@ -300,7 +300,7 @@ async function runDevOpsExtractor() {
           
           // Skip very large images
           if (canvas.width * canvas.height > 4000 * 4000) {
-            console.log('[DevOps v3.4] Image too large, skipping:', canvas.width + 'x' + canvas.height);
+            console.log('[DevOps v3.5] Image too large, skipping:', canvas.width + 'x' + canvas.height);
             resolve(null);
             return;
           }
@@ -316,24 +316,24 @@ async function runDevOpsExtractor() {
             dataUrl = canvas.toDataURL('image/jpeg', 0.8);
           }
           
-          // Final size check
-          if (dataUrl.length > maxSize) {
-            console.log('[DevOps v3.4] Image base64 too large:', Math.round(dataUrl.length/1024) + 'KB');
+          // Final size check (use 1.5MB for base64 which is ~33% larger than binary)
+          if (dataUrl.length > 1.5 * 1024 * 1024) {
+            console.log('[DevOps v3.5] Image base64 too large:', Math.round(dataUrl.length/1024) + 'KB');
             resolve(null);
             return;
           }
           
-          console.log('[DevOps v3.4] Converted via canvas:', Math.round(dataUrl.length/1024) + 'KB');
+          console.log('[DevOps v3.5] Converted via canvas:', Math.round(dataUrl.length/1024) + 'KB');
           resolve(dataUrl);
         } catch(e) {
-          console.warn('[DevOps v3.4] Canvas conversion failed (CORS?):', e.message);
+          console.warn('[DevOps v3.5] Canvas conversion failed (CORS?):', e.message);
           resolve(null);
         }
       };
       
       img.onerror = function() {
         clearTimeout(timeout);
-        console.log('[DevOps v3.4] Image load error:', url.substring(0, 80));
+        console.log('[DevOps v3.5] Image load error:', url.substring(0, 80));
         resolve(null);
       };
       
@@ -346,7 +346,7 @@ async function runDevOpsExtractor() {
     // Skip data URLs
     if (url.startsWith('data:')) return url;
     
-    console.log('[DevOps v3.4] Converting image:', url.substring(0, 80));
+    console.log('[DevOps v3.5] Converting image:', url.substring(0, 80));
     
     // Method 1: Try fetch with credentials (works if CORS allows)
     try {
@@ -358,9 +358,9 @@ async function runDevOpsExtractor() {
       if (response.ok) {
         var blob = await response.blob();
         
-        // Skip large images
-        if (blob.size > 500 * 1024) {
-          console.warn('[DevOps v3.4] Image too large via fetch:', Math.round(blob.size/1024) + 'KB');
+        // Skip large images (increased to 1MB)
+        if (blob.size > 1024 * 1024) {
+          console.warn('[DevOps v3.5] Image too large via fetch:', Math.round(blob.size/1024) + 'KB');
         } else {
           var base64 = await new Promise(function(resolve) {
             var reader = new FileReader();
@@ -368,12 +368,12 @@ async function runDevOpsExtractor() {
             reader.readAsDataURL(blob);
           });
           
-          console.log('[DevOps v3.4] Converted via fetch:', Math.round(blob.size/1024) + 'KB');
+          console.log('[DevOps v3.5] Converted via fetch:', Math.round(blob.size/1024) + 'KB');
           return base64;
         }
       }
     } catch(e) {
-      console.log('[DevOps v3.4] Fetch failed, trying canvas...', e.message);
+      console.log('[DevOps v3.5] Fetch failed, trying canvas...', e.message);
     }
     
     // Method 2: Try canvas (works if image is visible in page)
@@ -393,16 +393,16 @@ async function runDevOpsExtractor() {
         ctx.drawImage(existingImg, 0, 0);
         var dataUrl = canvas.toDataURL('image/png');
         
-        if (dataUrl.length < 500 * 1024) {
-          console.log('[DevOps v3.4] Captured existing DOM image:', Math.round(dataUrl.length/1024) + 'KB');
+        if (dataUrl.length < 1.5 * 1024 * 1024) {
+          console.log('[DevOps v3.5] Captured existing DOM image:', Math.round(dataUrl.length/1024) + 'KB');
           return dataUrl;
         }
       } catch(e) {
-        console.log('[DevOps v3.4] DOM capture failed:', e.message);
+        console.log('[DevOps v3.5] DOM capture failed:', e.message);
       }
     }
     
-    console.log('[DevOps v3.4] All methods failed for:', url.substring(0, 80));
+    console.log('[DevOps v3.5] All methods failed for:', url.substring(0, 80));
     return null; // Failed to convert
   }
 
@@ -424,7 +424,7 @@ async function runDevOpsExtractor() {
     
     if (matches.length === 0) return html;
     
-    console.log('[DevOps v3.4] Found ' + matches.length + ' URL images to convert');
+    console.log('[DevOps v3.5] Found ' + matches.length + ' URL images to convert');
     
     var newHtml = html;
     var convertedCount = 0;
@@ -446,7 +446,7 @@ async function runDevOpsExtractor() {
       }
     }
     
-    console.log('[DevOps v3.4] Converted ' + convertedCount + '/' + matches.length + ' images (' + failedCount + ' failed)');
+    console.log('[DevOps v3.5] Converted ' + convertedCount + '/' + matches.length + ' images (' + failedCount + ' failed)');
     return newHtml;
   }
 
