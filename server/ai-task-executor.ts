@@ -56,6 +56,8 @@ interface ExtendedTaskContext extends AiTaskContext {
     content: string;
     fromName?: string;
     date?: string;
+    attachments?: string[];
+    images?: string[];
   }>;
   // Task comments
   taskComments?: Array<{
@@ -203,8 +205,11 @@ async function getLinkedMessages(
       .select({
         subject: messages.subject,
         content: messages.body,
+        htmlBody: messages.htmlBody,
         fromName: messages.fromName,
         createdAt: messages.createdAt,
+        attachments: messages.attachments,
+        externalMetadata: messages.externalMetadata,
       })
       .from(messages)
       .where(and(
@@ -213,12 +218,36 @@ async function getLinkedMessages(
       ))
       .limit(limit);
 
-    return linkedMsgs.map(m => ({
-      subject: m.subject || '',
-      content: (m.content || '').substring(0, 2000), // Truncate for prompt
-      fromName: m.fromName || undefined,
-      date: m.createdAt?.toISOString(),
-    }));
+    return linkedMsgs.map(m => {
+      // Extract images from HTML body if present
+      const images: string[] = [];
+      if (m.htmlBody) {
+        const imgMatches = m.htmlBody.match(/<img[^>]+src=["']([^"']+)["']/gi);
+        if (imgMatches) {
+          imgMatches.slice(0, 5).forEach(match => {
+            const srcMatch = match.match(/src=["']([^"']+)["']/i);
+            if (srcMatch?.[1] && !srcMatch[1].startsWith('data:')) {
+              images.push(srcMatch[1]);
+            }
+          });
+        }
+      }
+      
+      // Also check externalMetadata for DevOps images
+      const extMeta = m.externalMetadata as any;
+      if (extMeta?.enrichedData?.images) {
+        images.push(...(extMeta.enrichedData.images as string[]).slice(0, 5 - images.length));
+      }
+
+      return {
+        subject: m.subject || '',
+        content: (m.content || '').substring(0, 2000), // Truncate for prompt
+        fromName: m.fromName || undefined,
+        date: m.createdAt?.toISOString(),
+        attachments: m.attachments || undefined,
+        images: images.length > 0 ? images : undefined,
+      };
+    });
   } catch (error) {
     console.error('Error fetching linked messages:', error);
     return [];
@@ -252,7 +281,7 @@ async function getMessageHistoryLinks(
 
     const messageIds = links.map(l => l.messageId);
     
-    // Fetch the actual messages
+    // Fetch the actual messages with attachments
     const linkedMsgs = await db
       .select({
         id: messages.id,
@@ -261,6 +290,7 @@ async function getMessageHistoryLinks(
         htmlBody: messages.htmlBody,
         fromName: messages.fromName,
         createdAt: messages.createdAt,
+        attachments: messages.attachments,
         externalMetadata: messages.externalMetadata,
       })
       .from(messages)
@@ -272,6 +302,20 @@ async function getMessageHistoryLinks(
     return linkedMsgs.map(m => {
       // Extract meaningful content - prefer body over HTML
       let content = m.content || '';
+      
+      // Extract images from HTML body
+      const images: string[] = [];
+      if (m.htmlBody) {
+        const imgMatches = m.htmlBody.match(/<img[^>]+src=["']([^"']+)["']/gi);
+        if (imgMatches) {
+          imgMatches.slice(0, 5).forEach(match => {
+            const srcMatch = match.match(/src=["']([^"']+)["']/i);
+            if (srcMatch?.[1] && !srcMatch[1].startsWith('data:')) {
+              images.push(srcMatch[1]);
+            }
+          });
+        }
+      }
       
       // If HTML body exists and body is empty, extract text from HTML
       if (!content && m.htmlBody) {
@@ -291,6 +335,10 @@ async function getMessageHistoryLinks(
         if (metadata.description && metadata.description.length > content.length) {
           content = metadata.description;
         }
+        // Extract DevOps images
+        if (metadata.enrichedData?.images) {
+          images.push(...(metadata.enrichedData.images as string[]).slice(0, 5 - images.length));
+        }
         // Include work item title in subject if available
         if (metadata.workItemTitle && !m.subject) {
           return {
@@ -298,6 +346,8 @@ async function getMessageHistoryLinks(
             content: content.substring(0, 3000),
             fromName: metadata.assignedTo || m.fromName || undefined,
             date: m.createdAt?.toISOString(),
+            attachments: m.attachments || undefined,
+            images: images.length > 0 ? images : undefined,
           };
         }
       }
@@ -307,6 +357,8 @@ async function getMessageHistoryLinks(
         content: content.substring(0, 3000), // Slightly larger limit for message history
         fromName: m.fromName || undefined,
         date: m.createdAt?.toISOString(),
+        attachments: m.attachments || undefined,
+        images: images.length > 0 ? images : undefined,
       };
     });
   } catch (error) {
@@ -601,14 +653,19 @@ ${wi.acceptanceCriteria || 'Non specificati'}
 ${sapFieldsStr}${commentsStr}`;
   }
 
-  // Build messages section
+  // Build messages section with attachment/image info
   const messagesSection = context.linkedMessages?.length
     ? `## MESSAGGI COLLEGATI (email/conversazioni)
-${context.linkedMessages.map(m => `
-### ${m.subject || 'Senza oggetto'}
+${context.linkedMessages.map(m => {
+  const attachInfo = m.attachments?.length ? `[${m.attachments.length} allegati]` : '';
+  const imgInfo = m.images?.length ? `[${m.images.length} immagini]` : '';
+  const extras = [attachInfo, imgInfo].filter(Boolean).join(' ');
+  return `
+### ${m.subject || 'Senza oggetto'} ${extras}
 Da: ${m.fromName || 'Sconosciuto'} | Data: ${m.date || 'N/A'}
 ${m.content.substring(0, 1000)}${m.content.length > 1000 ? '\n... (troncato)' : ''}
-`).join('\n')}`
+${m.attachments?.length ? `Allegati: ${m.attachments.join(', ')}` : ''}`;
+}).join('\n')}`
     : '';
 
   // Build comments section
@@ -994,6 +1051,10 @@ export async function executeTaskWithAI(
           fromName: m.fromName,
           date: m.date,
           preview: m.content.substring(0, 200) + (m.content.length > 200 ? '...' : ''),
+          hasAttachments: (m.attachments?.length || 0) > 0,
+          attachmentsCount: m.attachments?.length || 0,
+          hasImages: (m.images?.length || 0) > 0,
+          imagesCount: m.images?.length || 0,
         })),
         taskComments: (context.taskComments || []).map(c => ({
           preview: c.content.substring(0, 150) + (c.content.length > 150 ? '...' : ''),

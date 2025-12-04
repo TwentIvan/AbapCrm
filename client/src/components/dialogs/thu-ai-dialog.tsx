@@ -37,6 +37,8 @@ import {
   FileText,
   Layers,
   Send,
+  Paperclip,
+  Image,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { Task, AiGeneratedFile } from "@shared/schema";
@@ -79,6 +81,10 @@ interface TaskExecutionResult {
       fromName?: string;
       date?: string;
       preview: string;
+      hasAttachments?: boolean;
+      attachmentsCount?: number;
+      hasImages?: boolean;
+      imagesCount?: number;
     }>;
     taskComments: Array<{
       preview: string;
@@ -706,7 +712,21 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                             <div className="space-y-2">
                               {result.contextSummary.linkedMessages.map((msg, msgIdx) => (
                                 <div key={msgIdx} className="text-xs p-2 bg-background rounded border">
-                                  <div className="font-medium">{msg.subject || '(Senza oggetto)'}</div>
+                                  <div className="font-medium flex items-center gap-2">
+                                    {msg.subject || '(Senza oggetto)'}
+                                    {msg.hasAttachments && (
+                                      <span className="flex items-center gap-0.5 text-blue-500" title={`${msg.attachmentsCount} allegati`}>
+                                        <Paperclip className="h-3 w-3" />
+                                        <span>{msg.attachmentsCount}</span>
+                                      </span>
+                                    )}
+                                    {msg.hasImages && (
+                                      <span className="flex items-center gap-0.5 text-green-500" title={`${msg.imagesCount} immagini`}>
+                                        <Image className="h-3 w-3" />
+                                        <span>{msg.imagesCount}</span>
+                                      </span>
+                                    )}
+                                  </div>
                                   {msg.fromName && <div className="text-muted-foreground">Da: {msg.fromName}</div>}
                                   <div className="text-muted-foreground mt-1">{msg.preview}</div>
                                 </div>
