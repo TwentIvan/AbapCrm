@@ -89,6 +89,12 @@ Projects linked to an SAP system can launch the **ZTHU_DOCUMENTATION** program. 
 ### THU AI Task Executor
 AI-powered ABAP code generation with extended context:
 - **Rich Context Collection**: Project details, DevOps work items (via externalWorkItemId), linked messages/comments (via sourceMessageIds/taskId), transport requests with objects
+- **Full DevOps Integration**: Two-step lookup strategy - first searches linked sourceMessageIds, then falls back to org-scoped search by workItemId. Extracts complete work item data including:
+  - Full HTML description with image extraction (max 5 images, skip base64 >50kb)
+  - DevOps comments (max 10) auto-created as independent messages with deduplication via hash
+  - SAP custom fields (ticketCode, wbsCode, ticketType)
+  - Work item metadata (type, state, priority, tags, iteration/area paths)
+- **DevOps Comment Auto-Creation**: During message enrichment, DevOps comments are automatically created as separate messages (sourceType='devops_comment') with deduplication via base64 hash of workItemId+author+date+content
 - **Pattern Learning**: Learns from existing ABAP code patterns (data_extraction, report_generation, interface_development, form_enhancement, workflow_automation)
 - **Regenerate Flow**: After rejecting AI output, users can modify customInstructions and retry
 - **Security**: All queries enforce organizationId filtering for tenant isolation (task, project, sapSystem, comments, messages, transports)
