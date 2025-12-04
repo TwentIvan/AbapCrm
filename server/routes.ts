@@ -3028,9 +3028,9 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     state: z.string().max(50).nullish(),
     assignedTo: z.string().max(200).nullish(),
     priority: z.number().int().min(1).max(4).nullish(),
-    description: z.string().max(50000).nullish(), // Allow long descriptions
-    descriptionText: z.string().max(50000).nullish(),
-    descriptionHtml: z.string().max(100000).nullish(), // HTML description
+    description: z.string().max(500000).nullish(), // Allow very long descriptions
+    descriptionText: z.string().max(500000).nullish(),
+    descriptionHtml: z.string().max(500000).nullish(), // HTML description - can be very large
     iterationPath: z.string().max(500).nullish(),
     areaPath: z.string().max(500).nullish(),
     tags: z.array(z.string().max(100)).max(50).nullish(),
