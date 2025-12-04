@@ -3,7 +3,7 @@
 
 import OpenAI from "openai";
 import { db } from "./db";
-import { eq, and, sql, desc, or, ilike } from "drizzle-orm";
+import { eq, and, sql, desc, or, ilike, inArray } from "drizzle-orm";
 import {
   tasks,
   projects,
@@ -13,6 +13,8 @@ import {
   sapObjectContent,
   aiAbapPatterns,
   aiTaskExecutions,
+  messages,
+  comments,
   type Task,
   type Project,
   type AiAbapPattern,
@@ -20,6 +22,40 @@ import {
   type AiGeneratedFile,
   type AiTaskContext,
 } from "@shared/schema";
+
+// Extended context with DevOps, messages, transport requests
+interface ExtendedTaskContext extends AiTaskContext {
+  // DevOps work item info
+  devOpsWorkItem?: {
+    id: string;
+    url: string;
+    system: string;
+    title?: string;
+    description?: string;
+    acceptanceCriteria?: string;
+    attachments?: string[];
+    sapFields?: Record<string, any>;
+  };
+  // Linked messages
+  linkedMessages?: Array<{
+    subject: string;
+    content: string;
+    fromName?: string;
+    date?: string;
+  }>;
+  // Task comments
+  taskComments?: Array<{
+    content: string;
+    createdAt: string;
+  }>;
+  // Project transport requests
+  projectTransports?: Array<{
+    requestNumber: string;
+    description: string;
+    status: string;
+    objects: string[];
+  }>;
+}
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -108,6 +144,113 @@ async function getExistingCodeExamples(
   return results.filter(r => r.code && r.code.length > 100);
 }
 
+// Get linked messages for a task (from sourceMessageIds)
+async function getLinkedMessages(
+  sourceMessageIds: string[],
+  organizationId: string,
+  limit: number = 5
+): Promise<ExtendedTaskContext['linkedMessages']> {
+  if (!sourceMessageIds || sourceMessageIds.length === 0) return [];
+  
+  try {
+    const linkedMsgs = await db
+      .select({
+        subject: messages.subject,
+        content: messages.textContent,
+        fromName: messages.fromName,
+        createdAt: messages.createdAt,
+      })
+      .from(messages)
+      .where(and(
+        inArray(messages.id, sourceMessageIds),
+        eq(messages.organizationId, organizationId)
+      ))
+      .limit(limit);
+
+    return linkedMsgs.map(m => ({
+      subject: m.subject || '',
+      content: (m.content || '').substring(0, 2000), // Truncate for prompt
+      fromName: m.fromName || undefined,
+      date: m.createdAt?.toISOString(),
+    }));
+  } catch (error) {
+    console.error('Error fetching linked messages:', error);
+    return [];
+  }
+}
+
+// Get comments for a task
+async function getTaskComments(
+  taskId: string,
+  limit: number = 10
+): Promise<ExtendedTaskContext['taskComments']> {
+  try {
+    const taskComments = await db
+      .select({
+        content: comments.content,
+        createdAt: comments.createdAt,
+      })
+      .from(comments)
+      .where(eq(comments.taskId, taskId))
+      .orderBy(desc(comments.createdAt))
+      .limit(limit);
+
+    return taskComments.map(c => ({
+      content: c.content.substring(0, 1000),
+      createdAt: c.createdAt.toISOString(),
+    }));
+  } catch (error) {
+    console.error('Error fetching task comments:', error);
+    return [];
+  }
+}
+
+// Get transport requests for a project
+async function getProjectTransports(
+  projectId: string,
+  organizationId: string,
+  limit: number = 5
+): Promise<ExtendedTaskContext['projectTransports']> {
+  try {
+    const transports = await db
+      .select({
+        requestNumber: sapTransportRequests.requestNumber,
+        description: sapTransportRequests.description,
+        status: sapTransportRequests.status,
+        id: sapTransportRequests.id,
+      })
+      .from(sapTransportRequests)
+      .where(and(
+        eq(sapTransportRequests.projectId, projectId),
+        eq(sapTransportRequests.organizationId, organizationId)
+      ))
+      .orderBy(desc(sapTransportRequests.createdAt))
+      .limit(limit);
+
+    // Get objects for each transport
+    const results: ExtendedTaskContext['projectTransports'] = [];
+    for (const tr of transports) {
+      const objects = await db
+        .select({ objectName: sapTransportObjects.objectName })
+        .from(sapTransportObjects)
+        .where(eq(sapTransportObjects.requestId, tr.id))
+        .limit(20);
+
+      results.push({
+        requestNumber: tr.requestNumber,
+        description: tr.description || '',
+        status: tr.status || 'unknown',
+        objects: objects.map(o => o.objectName),
+      });
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Error fetching project transports:', error);
+    return [];
+  }
+}
+
 // Extract keywords from task context
 function extractKeywords(context: AiTaskContext): string[] {
   const text = `${context.taskTitle} ${context.taskDescription || ''} ${context.projectDescription || ''}`;
@@ -137,9 +280,9 @@ function extractKeywords(context: AiTaskContext): string[] {
   return Array.from(new Set(combined));
 }
 
-// Build AI prompt for task execution
+// Build AI prompt for task execution with extended context
 function buildTaskExecutionPrompt(
-  context: AiTaskContext,
+  context: ExtendedTaskContext,
   patterns: AiAbapPattern[],
   codeExamples: { objectName: string; objectType: string; code: string }[]
 ): string {
@@ -166,6 +309,46 @@ ${e.code.substring(0, 1500)}${e.code.length > 1500 ? '\n... (troncato)' : ''}
 `).join('\n')
     : '(Nessun esempio di codice disponibile)';
 
+  // Build DevOps section
+  const devOpsSection = context.devOpsWorkItem
+    ? `## AZURE DEVOPS WORK ITEM
+ID: ${context.devOpsWorkItem.id}
+URL: ${context.devOpsWorkItem.url}
+Titolo: ${context.devOpsWorkItem.title || 'N/A'}
+Descrizione: ${context.devOpsWorkItem.description || 'N/A'}
+Criteri di Accettazione: ${context.devOpsWorkItem.acceptanceCriteria || 'N/A'}
+${context.devOpsWorkItem.sapFields ? `Campi SAP Custom: ${JSON.stringify(context.devOpsWorkItem.sapFields, null, 2)}` : ''}
+${context.devOpsWorkItem.attachments?.length ? `Allegati: ${context.devOpsWorkItem.attachments.join(', ')}` : ''}`
+    : '';
+
+  // Build messages section
+  const messagesSection = context.linkedMessages?.length
+    ? `## MESSAGGI COLLEGATI (email/conversazioni)
+${context.linkedMessages.map(m => `
+### ${m.subject || 'Senza oggetto'}
+Da: ${m.fromName || 'Sconosciuto'} | Data: ${m.date || 'N/A'}
+${m.content.substring(0, 1000)}${m.content.length > 1000 ? '\n... (troncato)' : ''}
+`).join('\n')}`
+    : '';
+
+  // Build comments section
+  const commentsSection = context.taskComments?.length
+    ? `## COMMENTI SUL TASK
+${context.taskComments.map(c => `
+[${c.createdAt}] ${c.content}
+`).join('\n')}`
+    : '';
+
+  // Build transport requests section
+  const transportsSection = context.projectTransports?.length
+    ? `## TRANSPORT REQUEST DEL PROGETTO
+${context.projectTransports.map(tr => `
+### ${tr.requestNumber} (${tr.status})
+Descrizione: ${tr.description}
+Oggetti: ${tr.objects.slice(0, 10).join(', ')}${tr.objects.length > 10 ? ` ... e altri ${tr.objects.length - 10}` : ''}
+`).join('\n')}`
+    : '';
+
   return `Sei un esperto sviluppatore SAP ABAP con oltre 15 anni di esperienza.
 Il tuo compito è analizzare un task e generare codice ABAP di alta qualità.
 
@@ -178,6 +361,14 @@ Sistema SAP: ${context.sapSystemName || 'N/A'}
 Moduli SAP: ${(context.sapModules || []).join(', ') || 'N/A'}
 Istruzioni Aggiuntive: ${context.customInstructions || 'Nessuna'}
 
+${devOpsSection}
+
+${messagesSection}
+
+${commentsSection}
+
+${transportsSection}
+
 ## PATTERN APPRESI (usa come riferimento)
 ${patternsSection}
 
@@ -186,7 +377,7 @@ ${codeExamplesSection}
 
 ## ISTRUZIONI PER LA GENERAZIONE
 
-1. **Analisi**: Analizza il task e identifica:
+1. **Analisi**: Analizza TUTTI i dati disponibili sopra (task, DevOps, messaggi, commenti, transports) e identifica:
    - Tipo di sviluppo richiesto (report, function module, class, enhancement, etc.)
    - Complessità (low/medium/high)
    - Moduli SAP coinvolti
@@ -197,6 +388,7 @@ ${codeExamplesSection}
    - Includi commenti dettagliati in italiano
    - Gestisci correttamente le eccezioni
    - Usa naming convention SAP standard (Z*, Y*)
+   - Considera i criteri di accettazione da DevOps se presenti
 
 3. **Output Files**: Per ogni oggetto generato, fornisci:
    - Nome file (es. ZREPORT_VENDITE.abap)
@@ -286,8 +478,8 @@ export async function executeTaskWithAI(
         projectData = project[0] || null;
       }
 
-      // Build context
-      const context: AiTaskContext = {
+      // Build extended context with all available data
+      const context: ExtendedTaskContext = {
         taskTitle: taskData.title,
         taskDescription: taskData.description || undefined,
         projectName: projectData?.name,
@@ -306,6 +498,38 @@ export async function executeTaskWithAI(
         if (sapSystem[0]) {
           context.sapSystemName = sapSystem[0].name;
         }
+      }
+
+      // === EXTENDED CONTEXT: DevOps work item ===
+      if (taskData.externalWorkItemId && taskData.externalSystem) {
+        context.devOpsWorkItem = {
+          id: taskData.externalWorkItemId,
+          url: taskData.externalWorkItemUrl || '',
+          system: taskData.externalSystem,
+          // Try to extract title and description from metadata if available
+          title: (taskData as any).externalWorkItemTitle || undefined,
+          description: (taskData as any).externalWorkItemDescription || undefined,
+          acceptanceCriteria: (taskData as any).externalWorkItemAcceptanceCriteria || undefined,
+        };
+      }
+
+      // === EXTENDED CONTEXT: Linked messages ===
+      if (taskData.sourceMessageIds && taskData.sourceMessageIds.length > 0) {
+        context.linkedMessages = await getLinkedMessages(
+          taskData.sourceMessageIds,
+          organizationId
+        );
+      }
+
+      // === EXTENDED CONTEXT: Task comments ===
+      context.taskComments = await getTaskComments(taskId);
+
+      // === EXTENDED CONTEXT: Project transport requests ===
+      if (taskData.projectId) {
+        context.projectTransports = await getProjectTransports(
+          taskData.projectId,
+          organizationId
+        );
       }
 
       // Extract keywords and get relevant patterns
