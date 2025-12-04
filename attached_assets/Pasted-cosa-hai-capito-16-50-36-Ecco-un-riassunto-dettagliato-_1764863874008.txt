@@ -1,0 +1,72 @@
+cosa hai capito?
+
+16:50:36
+
+Ecco un riassunto dettagliato e strutturato del contesto del task:
+
+### TASK
+- **Titolo**: Sviluppo estrazione/report ABAP per punti non fatturati
+- **Descrizione**: Implementare un'estrazione dati e un report in ABAP per comunicare i punti non fatturati nelle comunicazioni mensili UTF.
+
+### PROGETTO
+- **Nome**: User story 744 AIMAG - Comunicazione dei punti non fatturati nelle comunicazioni mensili UTF
+- **Descrizione**: Si tratta di una nuova user story richiesta da AIMAG per includere i punti non fatturati nelle comunicazioni mensili UTF. Richiede analisi delle regole di calcolo, sviluppo del report in ABAP, testing e documentazione. La richiesta è stata inviata tramite Azure DevOps da Derga Consulting il 3 dicembre 2025.
+
+### AZURE DEVOPS WORK ITEM #744
+- **Titolo**: AIMAG - COMUNICAZIONE DEI PUNTI NON FATTURATI nelle COMUNICAZIONI MENSILI UTF
+- **Tipo**: User Story
+- **Stato**: Nuovo
+- **Priorità**: 2
+- **URL**: Fornisce un collegamento a un task su Azure DevOps.
+
+### DESCRIZIONE COMPLETA
+- Identificare i punti attivi ma non fatturati che sono attivi almeno un giorno nel mese rendicontato ma per cui non sono state emesse fatture.
+- Escludere i contratti che rientrano nella dichiarazione mensile.
+- C'è un riferimento a contratti con data di cessazione maggiore o uguale all'inizio del mese.
+
+### CAMPI SAP
+- **WBE**: 1000712.15
+- **Cliente**: AIMAG
+- **wbsCode**: 1000712.15
+- **Priority**: 2
+- **Called By**: Marco Sauro
+- **N. Ticket**: CRBIL36
+- **Start Date**: 03/12/2025 15:59
+- **Assigned To**: Ivan Lo Torto
+- **Target Date**: 18/12/2025 00:00
+- **Modulo/Attività**: BILLING
+- **Effort previsto GG**: 6
+- **Tipologia attività**: SVILUPPO CAPITOLATO
+
+### MESSAGGI COLLEGATI
+- C'è un messaggio collegato che riporta la user story 744 relativa alla comunicazione dei punti non fatturati.
+
+### IMMAGINI
+- Sono presenti 5 immagini che mostrano schermate SAP con dettagli tecnici rilevanti per il task.
+
+In sintesi, il compito consiste nello sviluppare un report ABAP per identificare e comunicare i punti di fatturazione non fatturati, includendo l'analisi delle regole di calcolo, lo sviluppo del report, il testing e la documentazione.
+
+16:50:47
+
+ok. Riesci a capire cosa rappresentano le diverse immagini?
+
+16:51:36
+
+Non posso visualizzare direttamente le immagini, ma posso aiutarti a interpretarle basandomi su descrizioni generali di schermate SAP tipiche e il contesto fornito. Inoltre, possiamo fare delle ipotesi plausibili su ciò che le immagini potrebbero rappresentare in base al task e alla user story.
+
+Ecco alcune ipotesi su ciò che le immagini potrebbero mostrare:
+
+1. **Dettagli del Contratto**: Potrebbe esserci un'immagine che mostra un elenco di contratti con dettagli come date di inizio e cessazione, stato del contratto, e altre informazioni rilevanti per determinare se un contratto è stato attivo ma non fatturato.
+
+2. **Schermata di Fatturazione**: Un'altra immagine potrebbe mostrare una lista di fatture emesse nel periodo in questione, che può essere utilizzata per confrontare i contratti attivi con le fatture emesse, identificando così i punti non fatturati.
+
+3. **Reportistica**: Una o più immagini potrebbero rappresentare esempi o modelli di report che mostrano come i dati devono essere estratti e presentati. Questo potrebbe includere colonne per identificatori di contratto, date, stato di fatturazione, ecc.
+
+4. **Parametri di Selezione**: Potrebbe esserci un'immagine che mostra una schermata di selezione dei parametri per l'estrazione dei dati, come date di inizio e fine, filtri per stato del contratto, ecc.
+
+5. **Struttura del Programma ABAP**: Infine, potrebbe esserci uno screenshot che mostra una bozza o una struttura del codice ABAP per l'estrazione o il report, evidenziando le sezioni chiave del codice come selezione dati, elaborazione logica, e generazione output.
+
+Se hai domande specifiche su un'immagine o riesci a fornire una descrizione, posso aiutarti a interpretare ulteriormente il contenuto.
+
+16:51:47
+

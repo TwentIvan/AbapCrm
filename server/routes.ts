@@ -8366,14 +8366,44 @@ Format the response as professional documentation suitable for client delivery.`
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       
       // Extract images from DevOps work item for vision API
+      // Images are stored as strings (data URLs like "data:image/png;base64,..." or regular URLs)
       const imageUrls: { url: string; alt?: string }[] = [];
       if (fullContext?.devOpsWorkItem?.images?.length > 0) {
+        console.log(`[AI-CHAT] Found ${fullContext.devOpsWorkItem.images.length} images in context`);
         for (const img of fullContext.devOpsWorkItem.images.slice(0, 5)) {
-          if (img.base64 && img.base64.length < 1500000) { // Max 1.5MB base64
-            imageUrls.push({
-              url: `data:${img.mimeType || 'image/png'};base64,${img.base64}`,
-              alt: img.alt || `Screenshot DevOps ${imageUrls.length + 1}`
-            });
+          // Images are stored as strings (data URLs or regular URLs)
+          if (typeof img === 'string') {
+            if (img.startsWith('data:image') && img.length < 1500000) {
+              // Already a data URL - use directly
+              imageUrls.push({
+                url: img,
+                alt: `Screenshot DevOps ${imageUrls.length + 1}`
+              });
+              console.log(`[AI-CHAT] Added base64 image (${Math.round(img.length / 1024)}KB)`);
+            } else if (img.startsWith('http') && img.length < 2000) {
+              // Regular URL - pass to OpenAI (it can fetch)
+              imageUrls.push({
+                url: img,
+                alt: `Screenshot DevOps ${imageUrls.length + 1}`
+              });
+              console.log(`[AI-CHAT] Added URL image: ${img.substring(0, 100)}...`);
+            }
+          } else if (typeof img === 'object' && img !== null) {
+            // Object format with base64 property
+            const imgObj = img as { base64?: string; src?: string; mimeType?: string; alt?: string };
+            if (imgObj.base64 && imgObj.base64.length < 1500000) {
+              imageUrls.push({
+                url: `data:${imgObj.mimeType || 'image/png'};base64,${imgObj.base64}`,
+                alt: imgObj.alt || `Screenshot DevOps ${imageUrls.length + 1}`
+              });
+              console.log(`[AI-CHAT] Added object image (${Math.round(imgObj.base64.length / 1024)}KB)`);
+            } else if (imgObj.src) {
+              imageUrls.push({
+                url: imgObj.src,
+                alt: imgObj.alt || `Screenshot DevOps ${imageUrls.length + 1}`
+              });
+              console.log(`[AI-CHAT] Added object src image: ${imgObj.src.substring(0, 100)}...`);
+            }
           }
         }
         console.log(`[AI-CHAT] Including ${imageUrls.length} images for vision API`);
