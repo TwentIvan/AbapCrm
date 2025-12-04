@@ -896,8 +896,8 @@ export async function executeTaskWithAI(
       }
 
       // === EXTENDED CONTEXT: DevOps work item (full data from linked message or by searching) ===
+      // Strategy 1: Task has direct externalWorkItemId
       if (taskData.externalWorkItemId) {
-        // Try to get full DevOps data - function now searches by workItemId if not in sourceMessageIds
         const fullDevOpsData = await getFullDevOpsWorkItemData(
           taskData.sourceMessageIds || [],
           taskData.externalWorkItemId,
@@ -907,13 +907,54 @@ export async function executeTaskWithAI(
           context.devOpsWorkItem = fullDevOpsData;
           console.log(`[THU-AI] Loaded full DevOps data for Work Item #${fullDevOpsData.id}: ${fullDevOpsData.images?.length || 0} images, ${fullDevOpsData.comments?.length || 0} comments`);
         } else if (taskData.externalSystem) {
-          // Fallback to basic data from task fields if no enriched message found
           context.devOpsWorkItem = {
             id: taskData.externalWorkItemId,
             url: taskData.externalWorkItemUrl || '',
             system: taskData.externalSystem,
           };
           console.log(`[THU-AI] Using basic DevOps data for Work Item #${taskData.externalWorkItemId} (no enriched message found)`);
+        }
+      }
+      
+      // Strategy 2: If no DevOps data from task, try to inherit from project's sourceMessageIds
+      if (!context.devOpsWorkItem && projectData?.sourceMessageIds && projectData.sourceMessageIds.length > 0) {
+        console.log(`[THU-AI] No DevOps on task, checking project's sourceMessageIds: ${projectData.sourceMessageIds.join(', ')}`);
+        
+        // Get messages linked to the project and check for DevOps data
+        const projectMessages = await db
+          .select({
+            id: messages.id,
+            externalMetadata: messages.externalMetadata,
+            sourceType: messages.sourceType,
+          })
+          .from(messages)
+          .where(and(
+            inArray(messages.id, projectData.sourceMessageIds),
+            eq(messages.organizationId, organizationId)
+          ));
+        
+        for (const msg of projectMessages) {
+          const metadata = msg.externalMetadata as any;
+          if (!metadata) continue;
+          
+          // Check if this message has DevOps work item data
+          const workItemId = metadata.workItemId || metadata.enrichedData?.workItemId;
+          if (workItemId) {
+            console.log(`[THU-AI] Found DevOps WI #${workItemId} in project's message ${msg.id}`);
+            
+            // Get full DevOps data using the found workItemId
+            const fullDevOpsData = await getFullDevOpsWorkItemData(
+              [msg.id],
+              String(workItemId),
+              organizationId
+            );
+            
+            if (fullDevOpsData) {
+              context.devOpsWorkItem = fullDevOpsData;
+              console.log(`[THU-AI] Inherited DevOps data from project: WI #${fullDevOpsData.id}, ${fullDevOpsData.images?.length || 0} images`);
+              break;
+            }
+          }
         }
       }
 
