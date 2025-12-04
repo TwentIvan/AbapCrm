@@ -25,16 +25,29 @@ import {
 
 // Extended context with DevOps, messages, transport requests
 interface ExtendedTaskContext extends AiTaskContext {
-  // DevOps work item info
+  // DevOps work item info (full data from linked message)
   devOpsWorkItem?: {
     id: string;
     url: string;
     system: string;
     title?: string;
     description?: string;
+    descriptionHtml?: string;
     acceptanceCriteria?: string;
+    workItemType?: string;
+    state?: string;
+    priority?: number;
+    iterationPath?: string;
+    areaPath?: string;
+    tags?: string[];
     attachments?: string[];
+    images?: string[]; // Extracted image URLs from description
     sapFields?: Record<string, any>;
+    comments?: Array<{
+      author?: string;
+      content?: string;
+      date?: string;
+    }>;
   };
   // Linked messages
   linkedMessages?: Array<{
@@ -179,6 +192,117 @@ async function getLinkedMessages(
   }
 }
 
+// Get full DevOps work item data from linked message or by searching for the work item
+// The message's externalMetadata contains the enriched DevOps data from the bookmarklet
+async function getFullDevOpsWorkItemData(
+  sourceMessageIds: string[],
+  externalWorkItemId: string,
+  organizationId: string
+): Promise<ExtendedTaskContext['devOpsWorkItem'] | undefined> {
+  if (!externalWorkItemId) {
+    return undefined;
+  }
+
+  try {
+    let devOpsMessages: Array<{
+      id: string;
+      externalMetadata: unknown;
+      sourceType: string | null;
+    }> = [];
+
+    // Strategy 1: Look in linked source messages first
+    if (sourceMessageIds && sourceMessageIds.length > 0) {
+      devOpsMessages = await db
+        .select({
+          id: messages.id,
+          externalMetadata: messages.externalMetadata,
+          sourceType: messages.sourceType,
+        })
+        .from(messages)
+        .where(and(
+          inArray(messages.id, sourceMessageIds),
+          eq(messages.organizationId, organizationId)
+        ));
+    }
+
+    // Strategy 2: If not found in sourceMessageIds, search by workItemId in organization
+    if (devOpsMessages.length === 0) {
+      devOpsMessages = await db
+        .select({
+          id: messages.id,
+          externalMetadata: messages.externalMetadata,
+          sourceType: messages.sourceType,
+        })
+        .from(messages)
+        .where(and(
+          eq(messages.organizationId, organizationId),
+          eq(messages.sourceType, 'email_devops_workitem'),
+          sql`${messages.externalMetadata}->>'workItemId' = ${externalWorkItemId}`
+        ))
+        .limit(1);
+    }
+
+    // Find the message with matching workItemId
+    for (const msg of devOpsMessages) {
+      const metadata = msg.externalMetadata as any;
+      if (!metadata) continue;
+
+      // Check if this message has the DevOps work item data
+      const workItemId = metadata.workItemId || metadata.enrichedData?.workItemId;
+      if (String(workItemId) === String(externalWorkItemId)) {
+        // Extract images from HTML description
+        const descriptionHtml = metadata.workItemDescriptionHtml || metadata.descriptionHtml || '';
+        const images: string[] = [];
+        
+        // Extract image URLs (both base64 and external URLs)
+        const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
+        let match;
+        while ((match = imgRegex.exec(descriptionHtml)) !== null) {
+          const src = match[1];
+          // Keep first 5 images, skip very long base64 (>50kb)
+          if (images.length < 5 && (!src.startsWith('data:') || src.length < 70000)) {
+            images.push(src);
+          }
+        }
+
+        // Build the full DevOps context
+        return {
+          id: String(workItemId),
+          url: metadata.workItemUrl || '',
+          system: 'azure_devops',
+          title: metadata.workItemTitle || undefined,
+          description: metadata.description || undefined,
+          descriptionHtml: descriptionHtml.substring(0, 15000), // Limit for prompt
+          acceptanceCriteria: metadata.acceptanceCriteria || undefined,
+          workItemType: metadata.workItemType || undefined,
+          state: metadata.state || undefined,
+          priority: metadata.priority || undefined,
+          iterationPath: metadata.iterationPath || undefined,
+          areaPath: metadata.areaPath || undefined,
+          tags: metadata.tags || undefined,
+          images: images.length > 0 ? images : undefined,
+          sapFields: {
+            ticketCode: metadata.ticketCode,
+            wbsCode: metadata.wbsCode,
+            ticketType: metadata.ticketType,
+            ...(metadata.customFields || {}),
+          },
+          comments: (metadata.workItemComments || []).slice(0, 10).map((c: any) => ({
+            author: c.author,
+            content: c.content?.substring(0, 1000) || c.contentHtml?.substring(0, 1000),
+            date: c.date,
+          })),
+        };
+      }
+    }
+
+    return undefined;
+  } catch (error) {
+    console.error('Error fetching DevOps work item data:', error);
+    return undefined;
+  }
+}
+
 // Get comments for a task (with organization scoping via task ownership)
 async function getTaskComments(
   taskId: string,
@@ -315,17 +439,44 @@ ${e.code.substring(0, 1500)}${e.code.length > 1500 ? '\n... (troncato)' : ''}
 `).join('\n')
     : '(Nessun esempio di codice disponibile)';
 
-  // Build DevOps section
-  const devOpsSection = context.devOpsWorkItem
-    ? `## AZURE DEVOPS WORK ITEM
-ID: ${context.devOpsWorkItem.id}
-URL: ${context.devOpsWorkItem.url}
-Titolo: ${context.devOpsWorkItem.title || 'N/A'}
-Descrizione: ${context.devOpsWorkItem.description || 'N/A'}
-Criteri di Accettazione: ${context.devOpsWorkItem.acceptanceCriteria || 'N/A'}
-${context.devOpsWorkItem.sapFields ? `Campi SAP Custom: ${JSON.stringify(context.devOpsWorkItem.sapFields, null, 2)}` : ''}
-${context.devOpsWorkItem.attachments?.length ? `Allegati: ${context.devOpsWorkItem.attachments.join(', ')}` : ''}`
-    : '';
+  // Build DevOps section with full data
+  let devOpsSection = '';
+  if (context.devOpsWorkItem) {
+    const wi = context.devOpsWorkItem;
+    const sapFieldsStr = wi.sapFields && Object.keys(wi.sapFields).length > 0
+      ? `\nCampi SAP Custom: ${JSON.stringify(wi.sapFields, null, 2)}`
+      : '';
+    const tagsStr = wi.tags?.length ? `\nTags: ${wi.tags.join(', ')}` : '';
+    const imagesStr = wi.images?.length 
+      ? `\nImmagini nella descrizione: ${wi.images.length} (riferimento visivo disponibile)`
+      : '';
+    
+    // DevOps comments section
+    const commentsStr = wi.comments?.length
+      ? `\n\n### COMMENTI DAL WORK ITEM DEVOPS:
+${wi.comments.map((c, i) => `[${i + 1}] ${c.author || 'Anonimo'} (${c.date || 'N/A'}): ${c.content || ''}`).join('\n')}`
+      : '';
+
+    devOpsSection = `## AZURE DEVOPS WORK ITEM (DATI COMPLETI)
+ID: ${wi.id}
+URL: ${wi.url}
+Tipo: ${wi.workItemType || 'N/A'}
+Stato: ${wi.state || 'N/A'}
+Priorità: ${wi.priority || 'N/A'}
+Iteration Path: ${wi.iterationPath || 'N/A'}
+Area Path: ${wi.areaPath || 'N/A'}${tagsStr}
+
+### TITOLO:
+${wi.title || 'N/A'}
+
+### DESCRIZIONE COMPLETA:
+${wi.description || wi.descriptionHtml?.replace(/<[^>]*>/g, ' ').substring(0, 5000) || 'N/A'}
+${imagesStr}
+
+### CRITERI DI ACCETTAZIONE:
+${wi.acceptanceCriteria || 'Non specificati'}
+${sapFieldsStr}${commentsStr}`;
+  }
 
   // Build messages section
   const messagesSection = context.linkedMessages?.length
@@ -515,17 +666,26 @@ export async function executeTaskWithAI(
         }
       }
 
-      // === EXTENDED CONTEXT: DevOps work item ===
-      if (taskData.externalWorkItemId && taskData.externalSystem) {
-        context.devOpsWorkItem = {
-          id: taskData.externalWorkItemId,
-          url: taskData.externalWorkItemUrl || '',
-          system: taskData.externalSystem,
-          // Try to extract title and description from metadata if available
-          title: (taskData as any).externalWorkItemTitle || undefined,
-          description: (taskData as any).externalWorkItemDescription || undefined,
-          acceptanceCriteria: (taskData as any).externalWorkItemAcceptanceCriteria || undefined,
-        };
+      // === EXTENDED CONTEXT: DevOps work item (full data from linked message or by searching) ===
+      if (taskData.externalWorkItemId) {
+        // Try to get full DevOps data - function now searches by workItemId if not in sourceMessageIds
+        const fullDevOpsData = await getFullDevOpsWorkItemData(
+          taskData.sourceMessageIds || [],
+          taskData.externalWorkItemId,
+          organizationId
+        );
+        if (fullDevOpsData) {
+          context.devOpsWorkItem = fullDevOpsData;
+          console.log(`[THU-AI] Loaded full DevOps data for Work Item #${fullDevOpsData.id}: ${fullDevOpsData.images?.length || 0} images, ${fullDevOpsData.comments?.length || 0} comments`);
+        } else if (taskData.externalSystem) {
+          // Fallback to basic data from task fields if no enriched message found
+          context.devOpsWorkItem = {
+            id: taskData.externalWorkItemId,
+            url: taskData.externalWorkItemUrl || '',
+            system: taskData.externalSystem,
+          };
+          console.log(`[THU-AI] Using basic DevOps data for Work Item #${taskData.externalWorkItemId} (no enriched message found)`);
+        }
       }
 
       // === EXTENDED CONTEXT: Linked messages ===

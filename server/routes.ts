@@ -3148,7 +3148,71 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       
       console.log(`[DevOps] Enriched Work Item #${enrichedMetadata.workItemId} with bookmarklet data`);
       
-      res.json(updatedMessage);
+      // === AUTO-CREATE MESSAGES FOR DEVOPS COMMENTS ===
+      // Each comment becomes an independent message linked to the same entities
+      const devOpsComments = validatedData.comments || [];
+      let createdCommentsCount = 0;
+      
+      if (devOpsComments.length > 0) {
+        const organizationId = getOrganizationId(req);
+        
+        for (const comment of devOpsComments) {
+          if (!comment.content && !comment.contentHtml) continue;
+          
+          // Check if this comment was already imported (by content hash)
+          const commentHash = Buffer.from(
+            `${enrichedMetadata.workItemId}-${comment.author || ''}-${comment.date || ''}-${(comment.content || '').substring(0, 100)}`
+          ).toString('base64').substring(0, 50);
+          
+          // Check for existing message with same hash
+          const existingComment = await db
+            .select({ id: messages.id })
+            .from(messages)
+            .where(and(
+              eq(messages.organizationId, organizationId),
+              sql`${messages.externalMetadata}->>'commentHash' = ${commentHash}`
+            ))
+            .limit(1);
+          
+          if (existingComment.length > 0) continue; // Skip duplicate
+          
+          // Create a new message for this comment
+          const commentMessage = await storage.createMessage({
+            subject: `[DevOps #${enrichedMetadata.workItemId}] Commento di ${comment.author || 'Anonimo'}`,
+            body: comment.content || '',
+            htmlBody: comment.contentHtml || undefined,
+            fromName: comment.author || 'Azure DevOps',
+            fromEmail: 'devops@azure.com',
+            sourceType: 'devops_comment',
+            isProcessed: true,
+            taskId: message.taskId || undefined,
+            projectId: message.projectId || undefined,
+            organizationId,
+            userId: req.user!.id,
+            externalMetadata: {
+              workItemId: enrichedMetadata.workItemId,
+              workItemUrl: enrichedMetadata.workItemUrl,
+              workItemTitle: enrichedMetadata.workItemTitle,
+              commentAuthor: comment.author,
+              commentDate: comment.date,
+              commentHash,
+              parentMessageId: req.params.id, // Link to the main DevOps message
+            },
+            matchingReason: `Commento DevOps da Work Item #${enrichedMetadata.workItemId}`,
+          });
+          
+          createdCommentsCount++;
+        }
+        
+        if (createdCommentsCount > 0) {
+          console.log(`[DevOps] Created ${createdCommentsCount} messages from DevOps comments`);
+        }
+      }
+      
+      res.json({
+        ...updatedMessage,
+        createdCommentMessages: createdCommentsCount
+      });
     } catch (error) {
       console.error("Error enriching DevOps work item:", error);
       res.status(500).json({ error: "Failed to enrich work item" });
