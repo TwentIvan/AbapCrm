@@ -117,6 +117,7 @@ export const timesheetStatusEnum = pgEnum("timesheet_status", ["draft", "to_send
 // Planning Windows - Multiple planning periods for a project with recurrence support
 export const planningWindows = pgTable("planning_windows", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
   projectId: uuid("project_id").references(() => projects.id),
   parentPlanningWindowId: uuid("parent_planning_window_id"), // Self-reference for hierarchy
   // Note: planning windows are NOT segregated by organization - shared planning calendar

@@ -2748,12 +2748,15 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const windowData = insertPlanningWindowSchema.parse({
-        projectId: req.body.projectId,
+        userId: req.user!.id,
+        projectId: req.body.projectId || null,
+        parentPlanningWindowId: req.body.parentPlanningWindowId || null,
         name: req.body.name,
         startDate: new Date(req.body.startDate),
         endDate: new Date(req.body.endDate),
         startTime: req.body.startTime || '09:00',
         endTime: req.body.endTime || '17:00',
+        timeSlots: req.body.timeSlots || null,
         workingHoursPerDay: req.body.workingHoursPerDay || 8,
         isActive: req.body.isActive !== undefined ? req.body.isActive : true,
         recurrenceType: req.body.recurrenceType || 'none',
