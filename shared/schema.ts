@@ -1431,6 +1431,7 @@ export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit
 
 export const insertPlanningWindowSchema = createInsertSchema(planningWindows).omit({
   id: true,
+  userId: true, // Auto-filled from user session
   createdAt: true,
   updatedAt: true,
 }).extend({
