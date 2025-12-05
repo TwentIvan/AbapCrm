@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { insertPlanningWindowSchema, PlanningWindow } from "@shared/schema";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
+import { insertPlanningWindowSchema, PlanningWindow, Project } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Calendar, Clock } from "lucide-react";
+import { Loader2, Calendar, Clock, FolderOpen } from "lucide-react";
+import { useOrganization } from "@/contexts/organization-context";
 
 const formSchema = insertPlanningWindowSchema.extend({
   startDate: z.string().min(1, "Start date is required"),
@@ -24,12 +26,13 @@ const formSchema = insertPlanningWindowSchema.extend({
   daysOfWeek: z.array(z.number().min(1).max(7)).min(1, "Seleziona almeno un giorno della settimana"),
   recurrenceInterval: z.string().optional(),
   recurrenceEnd: z.string().optional(),
+  projectId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 interface PlanningWindowFormProps {
-  projectId: string;
+  projectId?: string;
   planningWindow?: PlanningWindow;
   onSuccess?: () => void;
 }
@@ -37,6 +40,17 @@ interface PlanningWindowFormProps {
 export default function PlanningWindowForm({ projectId, planningWindow, onSuccess }: PlanningWindowFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { currentOrganizationId } = useOrganization();
+  
+  // State per il flag "collega a progetto"
+  const [linkToProject, setLinkToProject] = useState<boolean>(!!projectId || !!planningWindow?.projectId);
+  
+  // Query per i progetti
+  const { data: projects } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+  });
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -58,9 +72,11 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
 
   const savePlanningWindowMutation = useMutation({
     mutationFn: async (data: FormData) => {
+      const finalProjectId = linkToProject ? (data.projectId || projectId) : null;
+      
       const windowData = {
         ...data,
-        projectId,
+        projectId: finalProjectId,
         startDate: new Date(data.startDate),
         endDate: new Date(data.endDate),
         startTime: data.startTime,
@@ -122,10 +138,10 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Window Name</FormLabel>
+              <FormLabel>Nome Finestra</FormLabel>
               <FormControl>
                 <Input 
-                  placeholder="e.g., Sprint 1, Phase A, Q1 Development"
+                  placeholder="Es: Sprint 1, Fase A, Sviluppo Q1"
                   {...field}
                   data-testid="input-planning-window-name"
                 />
@@ -135,12 +151,72 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
           )}
         />
 
+        {/* Link to Project */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FolderOpen className="h-5 w-5" />
+              Collegamento Progetto
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <div className="text-sm font-medium">Collega a Progetto</div>
+                <div className="text-xs text-muted-foreground">
+                  Associa questa pianificazione ad un progetto specifico
+                </div>
+              </div>
+              <Switch
+                checked={linkToProject}
+                onCheckedChange={(checked) => {
+                  setLinkToProject(checked);
+                  if (!checked) {
+                    form.setValue("projectId", undefined);
+                  }
+                }}
+                data-testid="switch-link-to-project"
+              />
+            </div>
+
+            {linkToProject && (
+              <FormField
+                control={form.control}
+                name="projectId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Progetto</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value || ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-project">
+                          <SelectValue placeholder="Seleziona un progetto" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {projects?.map((project) => (
+                          <SelectItem key={project.id} value={project.id}>
+                            {project.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+          </CardContent>
+        </Card>
+
         {/* Date Range */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Date & Time Range
+              Date e Orari
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -150,7 +226,7 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
                 name="startDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start Date</FormLabel>
+                    <FormLabel>Data Inizio</FormLabel>
                     <FormControl>
                       <Input 
                         type="date"
@@ -168,7 +244,7 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
                 name="endDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>End Date</FormLabel>
+                    <FormLabel>Data Fine</FormLabel>
                     <FormControl>
                       <Input 
                         type="date"
@@ -188,7 +264,7 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
                 name="startTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start Time</FormLabel>
+                    <FormLabel>Ora Inizio</FormLabel>
                     <FormControl>
                       <Input 
                         type="time"
@@ -206,7 +282,7 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
                 name="endTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>End Time</FormLabel>
+                    <FormLabel>Ora Fine</FormLabel>
                     <FormControl>
                       <Input 
                         type="time"
