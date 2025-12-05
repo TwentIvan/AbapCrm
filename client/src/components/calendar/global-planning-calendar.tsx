@@ -28,6 +28,9 @@ interface ExpandedPlanningInstance {
   startTime: string;
   endTime: string;
   level: number;
+  slotLabel?: string;
+  slotIndex?: number;
+  totalSlots?: number;
 }
 
 type CalendarView = 'month' | 'week' | 'day';
@@ -93,6 +96,19 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     }
   };
 
+  // Helper function to get time slots from a window
+  const getTimeSlots = (window: PlanningWindow): Array<{ startTime: string; endTime: string; label?: string }> => {
+    // Se ci sono time slots definiti, usali
+    if (window.timeSlots && Array.isArray(window.timeSlots) && window.timeSlots.length > 0) {
+      return window.timeSlots as Array<{ startTime: string; endTime: string; label?: string }>;
+    }
+    // Altrimenti, usa startTime e endTime come singolo slot
+    return [{ 
+      startTime: window.startTime || '09:00', 
+      endTime: window.endTime || '17:00' 
+    }];
+  };
+
   // Expand planning windows for current view
   const expandedInstances = useMemo(() => {
     if (!planningWindowsWithProject) return [];
@@ -104,6 +120,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const windowStart = new Date(window.startDate);
       const windowEnd = new Date(window.endDate);
       const projectLevel = project ? (projectHierarchy.get(project.id) || 0) : 0;
+      const timeSlots = getTimeSlots(window);
       
       if (window.recurrenceType === 'none') {
         if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
@@ -121,24 +138,35 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             const dayRange = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
             
             dayRange.forEach(day => {
-              instances.push({
-                window,
-                project,
-                date: day,
-                startTime: window.startTime || '09:00',
-                endTime: window.endTime || '17:00',
-                level: projectLevel
+              // Crea un'istanza per ogni time slot
+              timeSlots.forEach((slot, slotIdx) => {
+                instances.push({
+                  window,
+                  project,
+                  date: day,
+                  startTime: slot.startTime,
+                  endTime: slot.endTime,
+                  level: projectLevel,
+                  slotLabel: slot.label,
+                  slotIndex: slotIdx,
+                  totalSlots: timeSlots.length
+                });
               });
             });
           } else {
             // Per i progetti figlio senza sotto-progetti, manteniamo la logica originale
-            instances.push({
-              window,
-              project,
-              date: windowStart,
-              startTime: window.startTime || '09:00',
-              endTime: window.endTime || '17:00',
-              level: projectLevel
+            timeSlots.forEach((slot, slotIdx) => {
+              instances.push({
+                window,
+                project,
+                date: windowStart,
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                level: projectLevel,
+                slotLabel: slot.label,
+                slotIndex: slotIdx,
+                totalSlots: timeSlots.length
+              });
             });
           }
         }
@@ -165,13 +193,19 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                     targetDateOnly <= endRecurrenceOnly && 
                     targetDate >= calendarStart && 
                     targetDate <= calendarEnd) {
-                  instances.push({
-                    window,
-                    project,
-                    date: new Date(targetDate),
-                    startTime: window.startTime || '09:00',
-                    endTime: window.endTime || '17:00',
-                    level: projectLevel
+                  // Crea un'istanza per ogni time slot
+                  timeSlots.forEach((slot, slotIdx) => {
+                    instances.push({
+                      window,
+                      project,
+                      date: new Date(targetDate),
+                      startTime: slot.startTime,
+                      endTime: slot.endTime,
+                      level: projectLevel,
+                      slotLabel: slot.label,
+                      slotIndex: slotIdx,
+                      totalSlots: timeSlots.length
+                    });
                   });
                 }
               });
@@ -187,13 +221,19 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           
           while (currentInstanceDate <= endRecurrence && currentInstanceDate <= calendarEnd) {
             if (currentInstanceDate >= calendarStart) {
-              instances.push({
-                window,
-                project,
-                date: new Date(currentInstanceDate),
-                startTime: window.startTime || '09:00',
-                endTime: window.endTime || '17:00',
-                level: projectLevel
+              // Crea un'istanza per ogni time slot
+              timeSlots.forEach((slot, slotIdx) => {
+                instances.push({
+                  window,
+                  project,
+                  date: new Date(currentInstanceDate),
+                  startTime: slot.startTime,
+                  endTime: slot.endTime,
+                  level: projectLevel,
+                  slotLabel: slot.label,
+                  slotIndex: slotIdx,
+                  totalSlots: timeSlots.length
+                });
               });
             }
             
