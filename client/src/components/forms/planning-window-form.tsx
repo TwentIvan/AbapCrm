@@ -143,8 +143,8 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
       startDate = addDays(startDate, 1);
     }
     
-    // Calculate days needed based on project's estimated hours
-    const estimatedHours = parseFloat(selectedProject.estimatedHours || "0");
+    // Calculate days needed based on project's estimated effort
+    const estimatedHours = selectedProject.estimatedEffort || 0;
     if (estimatedHours <= 0) {
       toast({
         title: "Stima mancante",
@@ -418,7 +418,7 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
                   Calcola automaticamente date e orari basandosi sulla stima del progetto 
-                  ({selectedProject?.estimatedHours || 0}h) e posiziona dopo le pianificazioni esistenti.
+                  ({selectedProject?.estimatedEffort || 0}h) e posiziona dopo le pianificazioni esistenti.
                   {siblingWindows.length > 0 && (
                     <span className="block mt-1 text-primary">
                       {siblingWindows.length} pianificazion{siblingWindows.length === 1 ? 'e' : 'i'} già presente{siblingWindows.length === 1 ? '' : 'i'}
