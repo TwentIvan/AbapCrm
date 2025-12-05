@@ -2747,8 +2747,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/planning-windows", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const windowData = insertPlanningWindowSchema.parse({
-        userId: req.user!.id,
+      const validated = insertPlanningWindowSchema.parse({
         projectId: req.body.projectId || null,
         parentPlanningWindowId: req.body.parentPlanningWindowId || null,
         name: req.body.name,
@@ -2765,7 +2764,9 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         recurrenceEnd: req.body.recurrenceEnd ? new Date(req.body.recurrenceEnd) : null,
         notes: req.body.notes || null
       });
-      const window = await storage.createPlanningWindow(windowData);
+      // Add userId after validation (it's auto-filled from session)
+      const windowData = { ...validated, userId: req.user!.id };
+      const window = await storage.createPlanningWindow(windowData as any);
       res.status(201).json(window);
     } catch (error) {
       console.error("Planning window creation error:", error);
