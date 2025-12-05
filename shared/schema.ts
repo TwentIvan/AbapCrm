@@ -118,6 +118,7 @@ export const timesheetStatusEnum = pgEnum("timesheet_status", ["draft", "to_send
 export const planningWindows = pgTable("planning_windows", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   projectId: uuid("project_id").references(() => projects.id),
+  parentPlanningWindowId: uuid("parent_planning_window_id"), // Self-reference for hierarchy
   // Note: planning windows are NOT segregated by organization - shared planning calendar
   name: text("name").notNull(), // e.g., "Sprint 1", "Phase A", "Q1 Development"
   startDate: timestamp("start_date").notNull(),
@@ -1429,6 +1430,7 @@ export const insertPlanningWindowSchema = createInsertSchema(planningWindows).om
   updatedAt: true,
 }).extend({
   projectId: z.string().nullable().optional(),
+  parentPlanningWindowId: z.string().nullable().optional(),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   daysOfWeek: z.array(z.number().min(1).max(7)).optional(),

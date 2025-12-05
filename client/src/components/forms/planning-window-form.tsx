@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Calendar, Clock, FolderOpen } from "lucide-react";
+import { Loader2, Calendar, Clock, FolderOpen, Layers } from "lucide-react";
 import { useOrganization } from "@/contexts/organization-context";
 
 const formSchema = insertPlanningWindowSchema.extend({
@@ -27,6 +27,7 @@ const formSchema = insertPlanningWindowSchema.extend({
   recurrenceInterval: z.string().optional(),
   recurrenceEnd: z.string().optional(),
   projectId: z.string().optional(),
+  parentPlanningWindowId: z.string().nullable().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -52,10 +53,17 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
     enabled: !!currentOrganizationId,
   });
 
+  // Query per le planning windows esistenti (per gerarchia)
+  const { data: planningWindows } = useQuery<PlanningWindow[]>({
+    queryKey: ["/api/planning-windows/user"],
+    queryFn: getQueryFn({ on401: "throw" }),
+  });
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       projectId,
+      parentPlanningWindowId: planningWindow?.parentPlanningWindowId || null,
       name: planningWindow?.name || "",
       startDate: planningWindow?.startDate ? new Date(planningWindow.startDate).toISOString().split('T')[0] : "",
       endDate: planningWindow?.endDate ? new Date(planningWindow.endDate).toISOString().split('T')[0] : "",
@@ -208,6 +216,48 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
                 )}
               />
             )}
+          </CardContent>
+        </Card>
+
+        {/* Hierarchy */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Layers className="h-5 w-5" />
+              Gerarchia
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="parentPlanningWindowId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Finestra Superiore</FormLabel>
+                  <Select 
+                    onValueChange={(value) => field.onChange(value === "__none__" ? null : value)} 
+                    value={field.value || "__none__"}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-parent-planning-window">
+                        <SelectValue placeholder="Nessuna (finestra principale)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="__none__">Nessuna (finestra principale)</SelectItem>
+                      {planningWindows
+                        ?.filter(pw => pw.id !== planningWindow?.id) // Escludi se stessa
+                        .map((pw) => (
+                          <SelectItem key={pw.id} value={pw.id}>
+                            {pw.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </CardContent>
         </Card>
 
