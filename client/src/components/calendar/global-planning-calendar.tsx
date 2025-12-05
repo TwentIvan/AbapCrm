@@ -44,29 +44,28 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     queryKey: ["/api/planning-windows", "user"],
   });
 
-  // Build project hierarchy map
-  const projectHierarchy = useMemo(() => {
+  // Build planning window hierarchy map (based on parentPlanningWindowId)
+  const windowHierarchy = useMemo(() => {
     if (!planningWindowsWithProject) return new Map<string, number>();
     
     const hierarchy = new Map<string, number>();
-    const projects = planningWindowsWithProject
-      .map(w => w.project)
-      .filter((p): p is Project => p !== null);
+    const windows = planningWindowsWithProject.map(w => ({
+      id: w.id,
+      parentPlanningWindowId: w.parentPlanningWindowId
+    }));
     
-    const calculateDepth = (project: Project, visited = new Set<string>()): number => {
-      if (visited.has(project.id)) return 0;
-      visited.add(project.id);
+    const calculateDepth = (windowId: string, visited = new Set<string>()): number => {
+      if (visited.has(windowId)) return 0;
+      visited.add(windowId);
       
-      if (!project.parentProjectId) return 0;
+      const window = windows.find(w => w.id === windowId);
+      if (!window || !window.parentPlanningWindowId) return 0;
       
-      const parent = projects.find(p => p.id === project.parentProjectId);
-      if (!parent) return 0;
-      
-      return 1 + calculateDepth(parent, visited);
+      return 1 + calculateDepth(window.parentPlanningWindowId, visited);
     };
     
-    projects.forEach(project => {
-      hierarchy.set(project.id, calculateDepth(project));
+    windows.forEach(window => {
+      hierarchy.set(window.id, calculateDepth(window.id));
     });
     
     return hierarchy;
@@ -119,7 +118,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     planningWindowsWithProject.forEach(({ project, ...window }) => {
       const windowStart = new Date(window.startDate);
       const windowEnd = new Date(window.endDate);
-      const projectLevel = project ? (projectHierarchy.get(project.id) || 0) : 0;
+      const windowLevel = windowHierarchy.get(window.id) || 0;
       const timeSlots = getTimeSlots(window);
       
       if (window.recurrenceType === 'none') {
@@ -127,11 +126,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
             (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
           
-          // Per i progetti padre, creiamo istanze per ogni giorno nel range della planning window
-          // Questo assicura che il box padre sia continuo anche quando ci sono gap tra i progetti figlio
-          const hasChildProjects = project ? planningWindowsWithProject.some(w => w.project?.parentProjectId === project.id) : false;
+          // Per le finestre padre, creiamo istanze per ogni giorno nel range della planning window
+          // Questo assicura che il box padre sia continuo anche quando ci sono gap tra le finestre figlio
+          const hasChildWindows = planningWindowsWithProject.some(w => w.parentPlanningWindowId === window.id);
           
-          if (hasChildProjects || projectLevel === 0) {
+          if (hasChildWindows || windowLevel === 0) {
             // Per progetti padre o progetti di primo livello (o finestre standalone), creiamo istanze per ogni giorno
             const rangeStart = max([windowStart, calendarStart]);
             const rangeEnd = min([windowEnd, calendarEnd]);
@@ -146,7 +145,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   date: day,
                   startTime: slot.startTime,
                   endTime: slot.endTime,
-                  level: projectLevel,
+                  level: windowLevel,
                   slotLabel: slot.label,
                   slotIndex: slotIdx,
                   totalSlots: timeSlots.length
@@ -162,7 +161,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 date: windowStart,
                 startTime: slot.startTime,
                 endTime: slot.endTime,
-                level: projectLevel,
+                level: windowLevel,
                 slotLabel: slot.label,
                 slotIndex: slotIdx,
                 totalSlots: timeSlots.length
@@ -201,7 +200,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                       date: new Date(targetDate),
                       startTime: slot.startTime,
                       endTime: slot.endTime,
-                      level: projectLevel,
+                      level: windowLevel,
                       slotLabel: slot.label,
                       slotIndex: slotIdx,
                       totalSlots: timeSlots.length
@@ -229,7 +228,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   date: new Date(currentInstanceDate),
                   startTime: slot.startTime,
                   endTime: slot.endTime,
-                  level: projectLevel,
+                  level: windowLevel,
                   slotLabel: slot.label,
                   slotIndex: slotIdx,
                   totalSlots: timeSlots.length
@@ -261,7 +260,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     });
     
     return instances;
-  }, [planningWindowsWithProject, currentDate, view, projectHierarchy]);
+  }, [planningWindowsWithProject, currentDate, view, windowHierarchy]);
 
   // Navigation functions
   const navigate = (direction: 'prev' | 'next') => {
@@ -378,11 +377,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     planningWindowsWithProject.forEach(({ project, ...window }) => {
       const windowStart = new Date(window.startDate);
       const windowEnd = new Date(window.endDate);
-      const projectLevel = project ? (projectHierarchy.get(project.id) || 0) : 0;
+      const windowLevel = windowHierarchy.get(window.id) || 0;
       
-      // Solo progetti padre o senza padre (o finestre standalone)
-      const hasChildProjects = project ? planningWindowsWithProject.some(w => w.project?.parentProjectId === project.id) : false;
-      if (!project || hasChildProjects || !project.parentProjectId) {
+      // Solo finestre padre (che hanno figli) o finestre di primo livello
+      const hasChildWindows = planningWindowsWithProject.some(w => w.parentPlanningWindowId === window.id);
+      if (hasChildWindows || windowLevel === 0) {
         // Intersect with calendar range
         const rangeStart = max([windowStart, calendarStart]);
         const rangeEnd = min([windowEnd, calendarEnd]);
@@ -391,7 +390,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           periods.push({
             window,
             project,
-            level: projectLevel,
+            level: windowLevel,
             startDate: rangeStart,
             endDate: rangeEnd,
             startTime: window.startTime || '09:00',
