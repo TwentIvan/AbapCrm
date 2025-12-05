@@ -126,39 +126,18 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
             (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
           
-          // Per le finestre padre, creiamo istanze per ogni giorno nel range della planning window
-          // Questo assicura che il box padre sia continuo anche quando ci sono gap tra le finestre figlio
-          const hasChildWindows = planningWindowsWithProject.some(w => w.parentPlanningWindowId === window.id);
+          // Creiamo istanze per ogni giorno nel range della planning window (per tutte le finestre)
+          const rangeStart = max([windowStart, calendarStart]);
+          const rangeEnd = min([windowEnd, calendarEnd]);
+          const dayRange = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
           
-          if (hasChildWindows || windowLevel === 0) {
-            // Per progetti padre o progetti di primo livello (o finestre standalone), creiamo istanze per ogni giorno
-            const rangeStart = max([windowStart, calendarStart]);
-            const rangeEnd = min([windowEnd, calendarEnd]);
-            const dayRange = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
-            
-            dayRange.forEach(day => {
-              // Crea un'istanza per ogni time slot
-              timeSlots.forEach((slot, slotIdx) => {
-                instances.push({
-                  window,
-                  project,
-                  date: day,
-                  startTime: slot.startTime,
-                  endTime: slot.endTime,
-                  level: windowLevel,
-                  slotLabel: slot.label,
-                  slotIndex: slotIdx,
-                  totalSlots: timeSlots.length
-                });
-              });
-            });
-          } else {
-            // Per i progetti figlio senza sotto-progetti, manteniamo la logica originale
+          dayRange.forEach(day => {
+            // Crea un'istanza per ogni time slot
             timeSlots.forEach((slot, slotIdx) => {
               instances.push({
                 window,
                 project,
-                date: windowStart,
+                date: day,
                 startTime: slot.startTime,
                 endTime: slot.endTime,
                 level: windowLevel,
@@ -167,7 +146,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 totalSlots: timeSlots.length
               });
             });
-          }
+          });
         }
       } else {
         const interval = window.recurrenceInterval || 1;
