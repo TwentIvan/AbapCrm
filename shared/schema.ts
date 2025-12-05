@@ -123,8 +123,12 @@ export const planningWindows = pgTable("planning_windows", {
   name: text("name").notNull(), // e.g., "Sprint 1", "Phase A", "Q1 Development"
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
+  // Single time slot (for simple windows linked to projects)
   startTime: time("start_time").notNull().default('09:00'), // Start time of day
   endTime: time("end_time").notNull().default('17:00'), // End time of day
+  // Multiple time slots (for container windows with breaks, e.g., morning + afternoon)
+  // Format: [{startTime: "09:00", endTime: "13:00", label: "Mattino"}, {startTime: "14:00", endTime: "18:00", label: "Pomeriggio"}]
+  timeSlots: jsonb("time_slots").$type<Array<{startTime: string, endTime: string, label?: string}>>(),
   workingHoursPerDay: integer("working_hours_per_day").default(8).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   // Recurrence fields

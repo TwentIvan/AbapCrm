@@ -14,8 +14,11 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Calendar, Clock, FolderOpen, Layers } from "lucide-react";
+import { Loader2, Calendar, Clock, FolderOpen, Layers, Plus, Trash2 } from "lucide-react";
 import { useOrganization } from "@/contexts/organization-context";
+
+// Time slot type for multiple time ranges
+type TimeSlot = { startTime: string; endTime: string; label?: string };
 
 const formSchema = insertPlanningWindowSchema.extend({
   startDate: z.string().min(1, "Start date is required"),
@@ -45,6 +48,15 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
   
   // State per il flag "collega a progetto"
   const [linkToProject, setLinkToProject] = useState<boolean>(!!projectId || !!planningWindow?.projectId);
+  
+  // State per le fasce orarie multiple
+  const hasExistingTimeSlots = planningWindow?.timeSlots && Array.isArray(planningWindow.timeSlots) && planningWindow.timeSlots.length > 0;
+  const [useMultipleSlots, setUseMultipleSlots] = useState<boolean>(hasExistingTimeSlots);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>(
+    hasExistingTimeSlots 
+      ? (planningWindow.timeSlots as TimeSlot[])
+      : [{ startTime: "09:00", endTime: "13:00", label: "Mattino" }, { startTime: "14:00", endTime: "18:00", label: "Pomeriggio" }]
+  );
   
   // Query per i progetti
   const { data: projects } = useQuery<Project[]>({
@@ -82,6 +94,17 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
     mutationFn: async (data: FormData) => {
       const finalProjectId = linkToProject ? (data.projectId || projectId) : null;
       
+      // Calculate working hours from time slots if using multiple slots
+      let calculatedWorkingHours = 8;
+      if (useMultipleSlots && timeSlots.length > 0) {
+        calculatedWorkingHours = timeSlots.reduce((total, slot) => {
+          const [startH, startM] = slot.startTime.split(':').map(Number);
+          const [endH, endM] = slot.endTime.split(':').map(Number);
+          const hours = (endH * 60 + endM - startH * 60 - startM) / 60;
+          return total + hours;
+        }, 0);
+      }
+      
       const windowData = {
         ...data,
         projectId: finalProjectId,
@@ -89,7 +112,8 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
         endDate: new Date(data.endDate),
         startTime: data.startTime,
         endTime: data.endTime,
-        workingHoursPerDay: 8, // Default value
+        timeSlots: useMultipleSlots ? timeSlots : null, // Save time slots only if using multiple
+        workingHoursPerDay: Math.round(calculatedWorkingHours),
         recurrenceType: data.recurrenceType,
         daysOfWeek: data.daysOfWeek || [],
         recurrenceInterval: data.recurrenceInterval ? parseInt(data.recurrenceInterval) : 1,
@@ -308,43 +332,149 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="startTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ora Inizio</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="time"
-                        {...field}
-                        data-testid="input-planning-window-start-time"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="endTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ora Fine</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="time"
-                        {...field}
-                        data-testid="input-planning-window-end-time"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            {/* Toggle for multiple time slots */}
+            <div className="flex items-center justify-between py-2 border-t border-b">
+              <div className="space-y-0.5">
+                <div className="text-sm font-medium">Fasce orarie multiple</div>
+                <div className="text-xs text-muted-foreground">
+                  Attiva per gestire pause (es. pausa pranzo)
+                </div>
+              </div>
+              <Switch
+                checked={useMultipleSlots}
+                onCheckedChange={setUseMultipleSlots}
+                data-testid="switch-multiple-time-slots"
               />
             </div>
+
+            {!useMultipleSlots ? (
+              /* Single time slot mode */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ora Inizio</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="time"
+                          {...field}
+                          data-testid="input-planning-window-start-time"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ora Fine</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="time"
+                          {...field}
+                          data-testid="input-planning-window-end-time"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : (
+              /* Multiple time slots mode */
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <FormLabel>Fasce Orarie</FormLabel>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTimeSlots([...timeSlots, { startTime: "09:00", endTime: "12:00", label: "" }])}
+                    data-testid="button-add-time-slot"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Aggiungi Fascia
+                  </Button>
+                </div>
+                
+                {timeSlots.map((slot, index) => (
+                  <div key={index} className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+                    <div className="flex-1">
+                      <Input
+                        type="text"
+                        placeholder="Etichetta (es. Mattino)"
+                        value={slot.label || ""}
+                        onChange={(e) => {
+                          const newSlots = [...timeSlots];
+                          newSlots[index].label = e.target.value;
+                          setTimeSlots(newSlots);
+                        }}
+                        className="mb-2"
+                        data-testid={`input-time-slot-label-${index}`}
+                      />
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="time"
+                          value={slot.startTime}
+                          onChange={(e) => {
+                            const newSlots = [...timeSlots];
+                            newSlots[index].startTime = e.target.value;
+                            setTimeSlots(newSlots);
+                          }}
+                          className="w-28"
+                          data-testid={`input-time-slot-start-${index}`}
+                        />
+                        <span className="text-muted-foreground">-</span>
+                        <Input
+                          type="time"
+                          value={slot.endTime}
+                          onChange={(e) => {
+                            const newSlots = [...timeSlots];
+                            newSlots[index].endTime = e.target.value;
+                            setTimeSlots(newSlots);
+                          }}
+                          className="w-28"
+                          data-testid={`input-time-slot-end-${index}`}
+                        />
+                      </div>
+                    </div>
+                    {timeSlots.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          const newSlots = timeSlots.filter((_, i) => i !== index);
+                          setTimeSlots(newSlots);
+                        }}
+                        className="text-destructive hover:text-destructive"
+                        data-testid={`button-remove-time-slot-${index}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                
+                {/* Show calculated total hours */}
+                <div className="text-sm text-muted-foreground text-right">
+                  Ore totali giornaliere: {
+                    timeSlots.reduce((total, slot) => {
+                      const [startH, startM] = slot.startTime.split(':').map(Number);
+                      const [endH, endM] = slot.endTime.split(':').map(Number);
+                      const hours = (endH * 60 + endM - startH * 60 - startM) / 60;
+                      return total + hours;
+                    }, 0).toFixed(1)
+                  }h
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
