@@ -108,6 +108,44 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     }];
   };
 
+  // Helper to calculate effective end date based on estimated effort
+  const calculateEffectiveEndDate = (
+    windowStart: Date, 
+    windowEnd: Date, 
+    estimatedHours: number | null | undefined, 
+    workingHoursPerDay: number,
+    daysOfWeek: number[]
+  ): Date => {
+    // If no estimated hours, use the window's end date
+    if (!estimatedHours || estimatedHours <= 0) {
+      return windowEnd;
+    }
+    
+    // Calculate working days needed
+    const daysNeeded = Math.ceil(estimatedHours / workingHoursPerDay);
+    
+    // Function to check if a day is a working day
+    const isWorkingDay = (date: Date): boolean => {
+      const dayOfWeek = date.getDay();
+      const ourDayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek;
+      return daysOfWeek.includes(ourDayOfWeek);
+    };
+    
+    // Calculate end date by counting only working days
+    let effectiveEnd = new Date(windowStart);
+    let workingDaysCount = isWorkingDay(effectiveEnd) ? 1 : 0;
+    
+    while (workingDaysCount < daysNeeded && effectiveEnd < windowEnd) {
+      effectiveEnd = addDays(effectiveEnd, 1);
+      if (isWorkingDay(effectiveEnd)) {
+        workingDaysCount++;
+      }
+    }
+    
+    // Don't exceed window's end date
+    return min([effectiveEnd, windowEnd]);
+  };
+
   // Expand planning windows for current view
   const expandedInstances = useMemo(() => {
     if (!planningWindowsWithProject) return [];
@@ -121,15 +159,23 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const windowLevel = windowHierarchy.get(window.id) || 0;
       const timeSlots = getTimeSlots(window);
       
+      // Calculate effective end date based on project's estimated effort
+      const estimatedHours = project?.estimatedEffort || null;
+      const workingHoursPerDay = window.workingHoursPerDay || 8;
+      const daysOfWeek = window.daysOfWeek || [1, 2, 3, 4, 5];
+      const effectiveEndDate = calculateEffectiveEndDate(
+        windowStart, windowEnd, estimatedHours, workingHoursPerDay, daysOfWeek
+      );
+      
       if (window.recurrenceType === 'none') {
+        // Verifica se la finestra interseca il range del calendario
         if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
-            isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
-            (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
+            isWithinInterval(effectiveEndDate, { start: calendarStart, end: calendarEnd }) ||
+            (windowStart <= calendarStart && effectiveEndDate >= calendarEnd)) {
           
-          // Creiamo istanze per ogni giorno nel range della planning window (per tutte le finestre)
-          const rangeStart = max([windowStart, calendarStart]);
-          const rangeEnd = min([windowEnd, calendarEnd]);
-          const dayRange = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
+          // Crea istanze per TUTTI i giorni della finestra (da windowStart a effectiveEndDate)
+          // ma renderizza solo quelli nel range del calendario
+          const dayRange = eachDayOfInterval({ start: windowStart, end: effectiveEndDate });
           
           dayRange.forEach(day => {
             // Crea un'istanza per ogni time slot
@@ -358,12 +404,24 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const windowEnd = new Date(window.endDate);
       const windowLevel = windowHierarchy.get(window.id) || 0;
       
-      // Solo finestre padre (che hanno figli) o finestre di primo livello
+      // Solo finestre padre (che hanno figli) o finestre standalone di primo livello
+      // Le finestre figlie usano i box giornalieri, non le barre continue
       const hasChildWindows = planningWindowsWithProject.some(w => w.parentPlanningWindowId === window.id);
       if (hasChildWindows || windowLevel === 0) {
+        // Per le finestre padre con figli, usa windowEnd (gabbia completa)
+        // Per le finestre standalone senza figli, calcola effectiveEndDate
+        let effectiveEnd = windowEnd;
+        if (!hasChildWindows && project?.estimatedEffort) {
+          const workingHoursPerDay = window.workingHoursPerDay || 8;
+          const daysOfWeek = window.daysOfWeek || [1, 2, 3, 4, 5];
+          effectiveEnd = calculateEffectiveEndDate(
+            windowStart, windowEnd, project.estimatedEffort, workingHoursPerDay, daysOfWeek
+          );
+        }
+        
         // Intersect with calendar range
         const rangeStart = max([windowStart, calendarStart]);
-        const rangeEnd = min([windowEnd, calendarEnd]);
+        const rangeEnd = min([effectiveEnd, calendarEnd]);
         
         if (rangeStart <= rangeEnd) {
           periods.push({
