@@ -20,9 +20,8 @@ const formSchema = insertPlanningWindowSchema.extend({
   endDate: z.string().min(1, "End date is required"),
   startTime: z.string().min(1, "Start time is required"),
   endTime: z.string().min(1, "End time is required"),
-  workingHoursPerDay: z.string().optional(),
-  recurrenceType: z.enum(["none", "daily", "weekly", "monthly", "yearly"]).default("none"),
-  daysOfWeek: z.array(z.number().min(1).max(7)).optional(),
+  recurrenceType: z.enum(["none", "daily", "weekly", "monthly", "yearly"]).default("weekly"),
+  daysOfWeek: z.array(z.number().min(1).max(7)).min(1, "Seleziona almeno un giorno della settimana"),
   recurrenceInterval: z.string().optional(),
   recurrenceEnd: z.string().optional(),
 });
@@ -48,10 +47,9 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
       endDate: planningWindow?.endDate ? new Date(planningWindow.endDate).toISOString().split('T')[0] : "",
       startTime: planningWindow?.startTime || "09:00",
       endTime: planningWindow?.endTime || "17:00",
-      workingHoursPerDay: (planningWindow?.workingHoursPerDay || 8).toString(),
       isActive: planningWindow?.isActive ?? true,
-      recurrenceType: planningWindow?.recurrenceType || "none",
-      daysOfWeek: planningWindow?.daysOfWeek || [],
+      recurrenceType: planningWindow?.recurrenceType || "weekly",
+      daysOfWeek: planningWindow?.daysOfWeek || [1, 2, 3, 4, 5], // Default: Mon-Fri
       recurrenceInterval: (planningWindow?.recurrenceInterval || 1).toString(),
       recurrenceEnd: planningWindow?.recurrenceEnd ? new Date(planningWindow.recurrenceEnd).toISOString().split('T')[0] : "",
       notes: planningWindow?.notes || "",
@@ -67,7 +65,7 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
         endDate: new Date(data.endDate),
         startTime: data.startTime,
         endTime: data.endTime,
-        workingHoursPerDay: data.workingHoursPerDay ? parseInt(data.workingHoursPerDay) : 8,
+        workingHoursPerDay: 8, // Default value
         recurrenceType: data.recurrenceType,
         daysOfWeek: data.daysOfWeek || [],
         recurrenceInterval: data.recurrenceInterval ? parseInt(data.recurrenceInterval) : 1,
@@ -224,108 +222,114 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
           </CardContent>
         </Card>
 
+        {/* Days of Week - Required */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Giorni Lavorativi
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="daysOfWeek"
+              render={({ field }) => {
+                const dayNames = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+                const selectedDays = field.value || [];
+                
+                return (
+                  <FormItem>
+                    <FormLabel>Seleziona i giorni della settimana *</FormLabel>
+                    <FormControl>
+                      <div className="flex flex-wrap gap-2">
+                        {dayNames.map((day, index) => {
+                          const dayNumber = index + 1;
+                          const isSelected = selectedDays.includes(dayNumber);
+                          
+                          return (
+                            <Button
+                              key={day}
+                              type="button"
+                              variant={isSelected ? "default" : "outline"}
+                              size="sm"
+                              className="h-10 w-14"
+                              onClick={() => {
+                                const newDays = isSelected
+                                  ? selectedDays.filter(d => d !== dayNumber)
+                                  : [...selectedDays, dayNumber].sort();
+                                field.onChange(newDays);
+                              }}
+                              data-testid={`button-day-${dayNumber}`}
+                            >
+                              {day}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => form.setValue("daysOfWeek", [1, 2, 3, 4, 5])}
+                data-testid="button-weekdays"
+              >
+                Lun-Ven
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => form.setValue("daysOfWeek", [1, 2, 3, 4, 5, 6, 7])}
+                data-testid="button-all-days"
+              >
+                Tutti i giorni
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Recurrence Settings */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Recurrence & Settings
+              Ricorrenza
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="recurrenceType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Repeat</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-planning-window-recurrence">
-                          <SelectValue placeholder="Select recurrence" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">No repeat</SelectItem>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="yearly">Yearly</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="workingHoursPerDay"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Working Hours per Day</FormLabel>
+            <FormField
+              control={form.control}
+              name="recurrenceType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ripeti</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <Input 
-                        type="number"
-                        min="1"
-                        max="12"
-                        placeholder="8"
-                        {...field}
-                        data-testid="input-planning-window-hours"
-                      />
+                      <SelectTrigger data-testid="select-planning-window-recurrence">
+                        <SelectValue placeholder="Seleziona ricorrenza" />
+                      </SelectTrigger>
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Days of Week - only show for weekly recurrence */}
-            {form.watch("recurrenceType") === "weekly" && (
-              <FormField
-                control={form.control}
-                name="daysOfWeek"
-                render={({ field }) => {
-                  const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-                  const selectedDays = field.value || [];
-                  
-                  return (
-                    <FormItem>
-                      <FormLabel>Repeat on</FormLabel>
-                      <FormControl>
-                        <div className="flex flex-wrap gap-2">
-                          {dayNames.map((day, index) => {
-                            const dayNumber = index + 1;
-                            const isSelected = selectedDays.includes(dayNumber);
-                            
-                            return (
-                              <Button
-                                key={day}
-                                type="button"
-                                variant={isSelected ? "default" : "outline"}
-                                size="sm"
-                                className="h-8 w-12"
-                                onClick={() => {
-                                  const newDays = isSelected
-                                    ? selectedDays.filter(d => d !== dayNumber)
-                                    : [...selectedDays, dayNumber].sort();
-                                  field.onChange(newDays);
-                                }}
-                                data-testid={`button-day-${dayNumber}`}
-                              >
-                                {day}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
-            )}
+                    <SelectContent>
+                      <SelectItem value="none">Nessuna ripetizione</SelectItem>
+                      <SelectItem value="daily">Giornaliera</SelectItem>
+                      <SelectItem value="weekly">Settimanale</SelectItem>
+                      <SelectItem value="monthly">Mensile</SelectItem>
+                      <SelectItem value="yearly">Annuale</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Recurrence Interval */}
             {form.watch("recurrenceType") !== "none" && (
@@ -335,13 +339,13 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
                   name="recurrenceInterval"
                   render={({ field }) => {
                     const currentRecurrence = form.watch("recurrenceType");
-                    const intervalLabel = currentRecurrence === "daily" ? "days" :
-                                        currentRecurrence === "weekly" ? "weeks" :
-                                        currentRecurrence === "monthly" ? "months" : "years";
+                    const intervalLabel = currentRecurrence === "daily" ? "giorni" :
+                                        currentRecurrence === "weekly" ? "settimane" :
+                                        currentRecurrence === "monthly" ? "mesi" : "anni";
                     
                     return (
                       <FormItem>
-                        <FormLabel>Every</FormLabel>
+                        <FormLabel>Ogni</FormLabel>
                         <FormControl>
                           <div className="flex items-center gap-2">
                             <Input 
@@ -367,7 +371,7 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
                   name="recurrenceEnd"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>End Date (Optional)</FormLabel>
+                      <FormLabel>Data Fine (Opzionale)</FormLabel>
                       <FormControl>
                         <Input 
                           type="date"
@@ -390,9 +394,9 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <FormLabel className="text-base">Active Window</FormLabel>
+                <FormLabel className="text-base">Finestra Attiva</FormLabel>
                 <div className="text-[0.8rem] text-muted-foreground">
-                  Active windows are used for task scheduling
+                  Le finestre attive vengono usate per la pianificazione dei task
                 </div>
               </div>
               <FormControl>
@@ -411,10 +415,10 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
           name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Notes (Optional)</FormLabel>
+              <FormLabel>Note (Opzionale)</FormLabel>
               <FormControl>
                 <Textarea 
-                  placeholder="Any additional notes about this planning window..."
+                  placeholder="Note aggiuntive su questa finestra di pianificazione..."
                   className="resize-none"
                   {...field}
                   value={field.value || ""}
