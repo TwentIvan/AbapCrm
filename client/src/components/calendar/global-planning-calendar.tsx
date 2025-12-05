@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Calendar, FolderTree, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, FolderTree, Clock, Plus } from "lucide-react";
 import { PlanningWindow, Project } from "@shared/schema";
 import { 
   format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, 
@@ -18,6 +18,7 @@ interface PlanningWindowWithProject extends PlanningWindow {
 
 interface GlobalPlanningCalendarProps {
   onWindowSelect?: (window: PlanningWindow) => void;
+  onAddNew?: () => void;
 }
 
 interface ExpandedPlanningInstance {
@@ -31,7 +32,7 @@ interface ExpandedPlanningInstance {
 
 type CalendarView = 'month' | 'week' | 'day';
 
-export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlanningCalendarProps) {
+export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: GlobalPlanningCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('month');
   
@@ -789,6 +790,19 @@ export default function GlobalPlanningCalendar({ onWindowSelect }: GlobalPlannin
           </div>
           
           <div className="flex items-center gap-4">
+            {/* Add new planning window button */}
+            {onAddNew && (
+              <Button
+                onClick={onAddNew}
+                size="sm"
+                data-testid="button-add-planning-window"
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Nuova Pianificazione
+              </Button>
+            )}
+            
             {/* View buttons */}
             <div className="flex gap-1 bg-muted rounded-lg p-1">
               <Button

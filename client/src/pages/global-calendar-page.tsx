@@ -30,7 +30,10 @@ export default function GlobalCalendarPage() {
           onNewClick={() => setShowPlanningWindowDialog(true)}
         />
         <main className="p-6 space-y-6">
-          <GlobalPlanningCalendar onWindowSelect={handleWindowSelect} />
+          <GlobalPlanningCalendar 
+            onWindowSelect={handleWindowSelect} 
+            onAddNew={() => setShowPlanningWindowDialog(true)}
+          />
         </main>
       </div>
 
