@@ -200,21 +200,12 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const estimatedHours = project?.estimatedEffort || null;
       const workingDaysQuota = estimatedHours ? Math.ceil(estimatedHours / workingHoursPerDay) : null;
       
-      // Debug log for AIMAG window
-      if (window.name?.includes('744') || window.name?.includes('AIMAG')) {
-        console.log('[EXPAND AIMAG]', {
-          name: window.name?.substring(0, 40),
-          windowStart: format(windowStart, 'yyyy-MM-dd'),
-          windowEnd: format(windowEnd, 'yyyy-MM-dd'),
-          daysOfWeek,
-          timeSlots: timeSlots.map(s => s.label || `${s.startTime}-${s.endTime}`),
-          estimatedHours,
-          workingDaysQuota,
-          recurrenceType: window.recurrenceType
-        });
-      }
+      // CRITICAL: Child windows (with parentPlanningWindowId) should ALWAYS use 'none' expansion logic
+      // to respect quota-based day generation from estimatedEffort, regardless of their recurrence_type setting
+      const isChildWindow = !!window.parentPlanningWindowId;
+      const effectiveRecurrenceType = isChildWindow ? 'none' : window.recurrenceType;
       
-      if (window.recurrenceType === 'none') {
+      if (effectiveRecurrenceType === 'none') {
         // Verifica se la finestra interseca il range del calendario
         if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
             isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
@@ -570,12 +561,14 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           const topPosition = relativeTop + (relativeStart / (parentBounds ? (parentBounds.end - parentBounds.start) : minutesInDay)) * relativeHeight;
           const height = Math.max(16, (durationMinutes / (parentBounds ? (parentBounds.end - parentBounds.start) : minutesInDay)) * relativeHeight);
           
-          // Determina se questo è un progetto padre (ha figli) - per ora tutti i progetti level 0 sono padri
-          const hasChildren = level === 0 && instances.some(other => other.level > level);
+          // Determina se questo è un progetto padre (ha figli) - verifica per parentPlanningWindowId
+          const hasChildren = level === 0 && instances.some(other => 
+            other.level > level && other.window.parentPlanningWindowId === instance.window.id
+          );
           
           result.push(
             <div
-              key={`${instance.window.id}-${level}-${idx}`}
+              key={`${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.slotIndex}`}
               onClick={() => onWindowSelect?.(instance.window)}
               className="absolute cursor-pointer"
               style={{ 
@@ -612,14 +605,20 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           );
           
           // Se questo ha figli, renderizza i figli all'interno
+          // CRITICAL: Filter children by parentPlanningWindowId, not just by level
           if (hasChildren) {
-            const children = instances.filter(other => other.level > level);
-            const childElements = renderHierarchicalProjects(children, totalCellHeight, {
-              start: startMinutes,
-              end: endMinutes,
-              level: level
-            });
-            result.push(...childElements);
+            const children = instances.filter(other => 
+              other.level > level && 
+              other.window.parentPlanningWindowId === instance.window.id
+            );
+            if (children.length > 0) {
+              const childElements = renderHierarchicalProjects(children, totalCellHeight, {
+                start: startMinutes,
+                end: endMinutes,
+                level: level
+              });
+              result.push(...childElements);
+            }
           }
         });
       });
