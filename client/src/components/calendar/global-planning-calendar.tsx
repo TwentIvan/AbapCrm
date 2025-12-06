@@ -168,8 +168,16 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     };
   };
 
+  // Debug: log outside useMemo to verify component renders
+  console.log('[CALENDAR RENDER]', { 
+    hasData: !!planningWindowsWithProject, 
+    count: planningWindowsWithProject?.length,
+    view 
+  });
+
   // Expand planning windows for current view
   const expandedInstances = useMemo(() => {
+    console.log('[CALENDAR MEMO RECALC]', { dataCount: planningWindowsWithProject?.length });
     if (!planningWindowsWithProject) return [];
     
     const { start: calendarStart, end: calendarEnd } = getDateRange();
