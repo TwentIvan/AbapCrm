@@ -946,6 +946,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           <div className="flex items-center gap-2">
             <FolderTree className="h-5 w-5" />
             Global Planning Calendar
+            <span className="text-xs bg-red-500 text-white px-2 py-1 rounded ml-2">[DEBUG v2]</span>
           </div>
           
           <div className="flex items-center gap-4">
