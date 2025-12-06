@@ -611,7 +611,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           
           result.push(
             <div
-              key={`${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.slotIndex}`}
+              key={`${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.slotIndex}-${instance.level}`}
               onClick={() => onWindowSelect?.(instance.window)}
               className="absolute cursor-pointer"
               style={{ 
