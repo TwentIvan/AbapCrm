@@ -23,6 +23,7 @@ const formSchema = insertTaskSchema.omit({
   milestoneId: z.string().optional(),
   parentTaskId: z.string().optional(),
   estimatedEffort: z.string().optional(),
+  completionPercentage: z.string().optional(),
   sapSystemId: z.string().optional(),
   assignedTo: z.string().optional(),
 });
@@ -87,6 +88,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       startDate: task?.startDate ? new Date(task.startDate).toISOString().slice(0, 16) : "",
       dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : "",
       estimatedEffort: task?.estimatedEffort?.toString() || "",
+      completionPercentage: task?.completionPercentage?.toString() || "0",
       sapSystemId: task?.sapSystemId || "none",
       assignedTo: task?.assignedTo || "none",
     },
@@ -106,6 +108,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         startDate: task.startDate ? new Date(task.startDate).toISOString().slice(0, 16) : "",
         dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : "",
         estimatedEffort: task.estimatedEffort?.toString() || "",
+        completionPercentage: task.completionPercentage?.toString() || "0",
         sapSystemId: task.sapSystemId || "none",
         assignedTo: task.assignedTo || "none",
       });
@@ -123,8 +126,8 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         sapSystemId: data.sapSystemId && data.sapSystemId !== "none" ? data.sapSystemId : null,
         startDate: data.startDate || null,
         dueDate: data.dueDate || null,
-        estimatedEffort: data.estimatedEffort ? parseInt(data.estimatedEffort) : null,
-        completionPercentage: task?.completionPercentage || 0,
+        estimatedEffort: data.estimatedEffort ? parseFloat(data.estimatedEffort) : null,
+        completionPercentage: data.completionPercentage ? Math.min(100, Math.max(0, Math.round(parseFloat(data.completionPercentage)))) : 0,
         assignedTo: data.assignedTo && data.assignedTo !== "none" ? data.assignedTo : null,
       };
       
@@ -189,24 +192,50 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="estimatedEffort"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Estimated Effort (Hours)</FormLabel>
-              <FormControl>
-                <Input 
-                  {...field} 
-                  type="number"
-                  data-testid="input-task-effort"
-                  placeholder="0"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="estimatedEffort"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Ore Stimate</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field} 
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    data-testid="input-task-effort"
+                    placeholder="0"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="completionPercentage"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Completamento %</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field} 
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="5"
+                    data-testid="input-task-completion"
+                    placeholder="0"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}

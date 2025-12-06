@@ -1,7 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CheckSquare, Edit, MoreHorizontal, Trash2 } from "lucide-react";
+import { CheckSquare, Edit, MoreHorizontal, Trash2, Clock } from "lucide-react";
 import type { Task } from "@shared/schema";
 import { EntityListDescriptor, registerEntity, TableColumn, ColumnHelpers, BulkEditField, FilterColumn } from "../entity-registry";
 import { taskStatusColors, taskStatusLabels, taskPriorityColors, taskPriorityLabels } from "../entity-constants";
@@ -95,6 +96,44 @@ export const tasksDescriptor: EntityListDescriptor = {
       },
     },
     {
+      key: "estimatedEffort",
+      label: "Ore Stimate",
+      sortable: true,
+      render: (task: Task) => {
+        const estimated = task.estimatedEffort || 0;
+        if (estimated === 0) return <span className="text-muted-foreground text-sm">-</span>;
+        return (
+          <div className="text-sm font-medium" data-testid={`text-task-effort-${task.id}`}>
+            {estimated}h
+          </div>
+        );
+      },
+    },
+    {
+      key: "completionPercentage",
+      label: "Completamento",
+      sortable: true,
+      render: (task: Task) => {
+        const completion = Math.min(100, Math.max(0, task.completionPercentage || 0));
+        const estimated = task.estimatedEffort || 0;
+        const remaining = Math.max(0, estimated * (1 - completion / 100));
+        return (
+          <div className="space-y-1 min-w-[100px]" data-testid={`text-task-completion-${task.id}`}>
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium">{completion}%</span>
+              {estimated > 0 && (
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {remaining.toFixed(1)}h
+                </span>
+              )}
+            </div>
+            <Progress value={completion} className="h-1.5" />
+          </div>
+        );
+      },
+    },
+    {
       key: "timer",
       label: "Timer",
       sortable: false,
@@ -152,6 +191,8 @@ export const tasksDescriptor: EntityListDescriptor = {
     },
     { id: "description", label: "Descrizione", type: "text" },
     { id: "dueDate", label: "Scadenza", type: "date" },
+    { id: "estimatedEffort", label: "Ore Stimate", type: "number" },
+    { id: "completionPercentage", label: "Completamento %", type: "number" },
   ],
 
   getBulkEditFields: (relatedData: any): BulkEditField[] => [
@@ -190,6 +231,16 @@ export const tasksDescriptor: EntityListDescriptor = {
       key: "dueDate",
       label: "Data Scadenza",
       type: "date",
+    },
+    {
+      key: "estimatedEffort",
+      label: "Ore Stimate",
+      type: "number",
+    },
+    {
+      key: "completionPercentage",
+      label: "Completamento %",
+      type: "number",
     },
   ],
 
