@@ -1,18 +1,17 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, Play, Square, Bot } from "lucide-react";
-import type { Task, Project, TimeEntry } from "@shared/schema";
+import { Clock, Bot } from "lucide-react";
+import type { Task, Project } from "@shared/schema";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
 import TaskFormContainer from "@/components/forms/task-form-container";
 import AuditHistory from "@/components/ui/audit-history";
 import { MessageHistory } from "@/components/ui/message-history";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CompletionDialog } from "@/components/timesheet/completion-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { UniversalTable } from "@/components/ui/universal-table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -29,154 +28,6 @@ interface EmbeddedTasksListProps {
   showLayoutManager?: boolean;
   filterStatus?: string[];
   compact?: boolean;
-}
-
-function TaskTimerButtons({ task }: { task: Task }) {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
-  
-  const { data: runningEntry } = useQuery<any>({
-    queryKey: ["/api/time-entries/running"],
-    queryFn: getQueryFn({ on401: "throw" }),
-    refetchInterval: 1000,
-  });
-
-  const { data: timeEntries = [] } = useQuery<TimeEntry[]>({
-    queryKey: ["/api/time-entries/task", task.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/time-entries/task/${task.id}`, { credentials: "include" });
-      if (!res.ok) throw new Error('Failed to fetch time entries');
-      return res.json();
-    },
-  });
-
-  useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const startTimerMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/time-entries", {
-        taskId: task.id,
-        startTime: new Date().toISOString(),
-        isRunning: true,
-      });
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/running"] });
-    },
-  });
-
-  const stopTimerMutation = useMutation({
-    mutationFn: async ({ entryId, completionData }: { entryId: string; completionData?: { completionPercentage: number } }) => {
-      const res = await apiRequest("POST", `/api/time-entries/${entryId}/stop`);
-      if (completionData) {
-        await apiRequest("PUT", `/api/tasks/${task.id}`, {
-          completionPercentage: completionData.completionPercentage,
-        });
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      setShowCompletionDialog(false);
-      toast({ title: "Timer fermato" });
-    },
-  });
-
-  const isCurrentTaskRunning = runningEntry?.taskId === task.id;
-  const hasRunningTimer = !!runningEntry;
-
-  const getElapsedTime = () => {
-    if (!runningEntry || runningEntry.taskId !== task.id) return "";
-    const start = new Date(runningEntry.startTime);
-    const diff = currentTime.getTime() - start.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    if (hours > 0) return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  };
-
-  const calculateSuggestedPercentage = () => {
-    if (!runningEntry) return task.completionPercentage || 0;
-    const sessionStartTime = new Date(runningEntry.startTime);
-    const sessionDuration = (currentTime.getTime() - sessionStartTime.getTime()) / (1000 * 60);
-    const currentCompletion = task.completionPercentage || 0;
-    let suggestedIncrease = 0;
-    if (sessionDuration >= 15) suggestedIncrease = Math.max(5, Math.min(15, sessionDuration / 4));
-    else if (sessionDuration >= 5) suggestedIncrease = Math.max(2, sessionDuration / 2);
-    else suggestedIncrease = 1;
-    return Math.min(100, Math.round(currentCompletion + suggestedIncrease));
-  };
-
-  const handleStart = () => startTimerMutation.mutate();
-  const handleStop = () => setShowCompletionDialog(true);
-
-  const handleCompletionSubmit = (completionData: { completionPercentage: number }) => {
-    if (runningEntry) {
-      stopTimerMutation.mutate({ entryId: runningEntry.id, completionData });
-    }
-  };
-
-  const getTotalTime = () => {
-    const totalTime = timeEntries.reduce((total, entry) => total + (entry.duration || 0), 0);
-    const hours = Math.floor(totalTime / 60);
-    const mins = Math.round(totalTime % 60);
-    if (hours > 0) return `${hours}h ${mins}m`;
-    return `${mins}m`;
-  };
-
-  return (
-    <>
-      <div className="flex items-center gap-1">
-        {isCurrentTaskRunning ? (
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={handleStop}
-            disabled={stopTimerMutation.isPending}
-            data-testid={`button-stop-timer-${task.id}`}
-          >
-            <Square className="h-3 w-3 mr-1" />
-            {getElapsedTime()}
-          </Button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white border-0"
-              onClick={handleStart}
-              disabled={startTimerMutation.isPending || hasRunningTimer}
-              data-testid={`button-start-timer-${task.id}`}
-            >
-              <Play className="h-3 w-3 mr-1" />
-              Start
-            </Button>
-            {timeEntries.length > 0 && (
-              <span className="text-xs text-muted-foreground font-medium">{getTotalTime()}</span>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {showCompletionDialog && (
-        <CompletionDialog
-          isOpen={showCompletionDialog}
-          onClose={() => setShowCompletionDialog(false)}
-          currentPercentage={calculateSuggestedPercentage()}
-          onSubmit={handleCompletionSubmit}
-          isLoading={stopTimerMutation.isPending}
-        />
-      )}
-    </>
-  );
 }
 
 export function EmbeddedTasksList({
@@ -326,7 +177,7 @@ export function EmbeddedTasksList({
     
     if (actionsColumn) configuredColumns.push(actionsColumn);
     return configuredColumns;
-  }, [layout.columns]);
+  }, [tableColumns, layout.columns]);
 
   const filteredTasks = useMemo(() => {
     let result = tasks || [];
