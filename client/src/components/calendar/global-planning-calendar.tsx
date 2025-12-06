@@ -31,6 +31,10 @@ interface ExpandedPlanningInstance {
   slotLabel?: string;
   slotIndex?: number;
   totalSlots?: number;
+  // New fields for partial slot support
+  slotDurationHours: number;      // Full duration of the slot (e.g., 4 hours for morning)
+  allocatedHours: number;         // Actual hours allocated to this slot (may be partial)
+  isPartialSlot: boolean;         // True if this slot doesn't use its full duration
 }
 
 type CalendarView = 'month' | 'week' | 'day';
@@ -200,26 +204,59 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const isChildWindow = !!window.parentPlanningWindowId;
       const effectiveRecurrenceType = isChildWindow ? 'none' : window.recurrenceType;
       
+      // Helper to calculate slot duration in hours
+      const getSlotDurationHours = (slot: { startTime: string; endTime: string }): number => {
+        const [startH, startM] = slot.startTime.split(':').map(Number);
+        const [endH, endM] = slot.endTime.split(':').map(Number);
+        return (endH * 60 + endM - startH * 60 - startM) / 60;
+      };
+      
       if (effectiveRecurrenceType === 'none') {
         // Verifica se la finestra interseca il range del calendario
         if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
             isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
             (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
           
-          // Iterate day by day, only on working days, stop when quota is met
+          // Track remaining hours instead of working days for accurate partial slot handling
+          let remainingHours = estimatedHours;
           let currentDay = new Date(windowStart);
-          let workingDaysUsed = 0;
           
           while (currentDay <= windowEnd) {
             // Check if this is a working day
             if (isWorkingDay(currentDay, daysOfWeek)) {
-              // Check if we've exceeded the quota (only if quota is set)
-              if (workingDaysQuota !== null && workingDaysUsed >= workingDaysQuota) {
+              // Stop if hours are exhausted (only if estimatedHours is set)
+              if (remainingHours !== null && remainingHours <= 0) {
                 break;
               }
               
-              // Create instance for each time slot
-              timeSlots.forEach((slot, slotIdx) => {
+              // Create instance for each time slot, tracking hours consumed
+              for (let slotIdx = 0; slotIdx < timeSlots.length; slotIdx++) {
+                const slot = timeSlots[slotIdx];
+                const slotDurationHours = getSlotDurationHours(slot);
+                
+                // Calculate hours to allocate to this slot
+                let allocatedHours: number;
+                let isPartialSlot: boolean;
+                
+                if (remainingHours === null) {
+                  // No estimated hours - use full slot duration
+                  allocatedHours = slotDurationHours;
+                  isPartialSlot = false;
+                } else if (remainingHours <= 0) {
+                  // Hours exhausted - skip this slot
+                  break;
+                } else if (remainingHours >= slotDurationHours) {
+                  // Enough hours for full slot
+                  allocatedHours = slotDurationHours;
+                  isPartialSlot = false;
+                  remainingHours -= slotDurationHours;
+                } else {
+                  // Partial slot - use only remaining hours
+                  allocatedHours = remainingHours;
+                  isPartialSlot = true;
+                  remainingHours = 0;
+                }
+                
                 instances.push({
                   window,
                   project,
@@ -229,11 +266,12 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   level: windowLevel,
                   slotLabel: slot.label,
                   slotIndex: slotIdx,
-                  totalSlots: timeSlots.length
+                  totalSlots: timeSlots.length,
+                  slotDurationHours,
+                  allocatedHours,
+                  isPartialSlot
                 });
-              });
-              
-              workingDaysUsed++;
+              }
             }
             
             currentDay = addDays(currentDay, 1);
@@ -264,6 +302,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                     targetDate <= calendarEnd) {
                   // Crea un'istanza per ogni time slot
                   timeSlots.forEach((slot, slotIdx) => {
+                    const slotDurationHours = getSlotDurationHours(slot);
                     instances.push({
                       window,
                       project,
@@ -273,7 +312,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                       level: windowLevel,
                       slotLabel: slot.label,
                       slotIndex: slotIdx,
-                      totalSlots: timeSlots.length
+                      totalSlots: timeSlots.length,
+                      slotDurationHours,
+                      allocatedHours: slotDurationHours,
+                      isPartialSlot: false
                     });
                   });
                 }
@@ -292,6 +334,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             if (currentInstanceDate >= calendarStart) {
               // Crea un'istanza per ogni time slot
               timeSlots.forEach((slot, slotIdx) => {
+                const slotDurationHours = getSlotDurationHours(slot);
                 instances.push({
                   window,
                   project,
@@ -301,7 +344,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   level: windowLevel,
                   slotLabel: slot.label,
                   slotIndex: slotIdx,
-                  totalSlots: timeSlots.length
+                  totalSlots: timeSlots.length,
+                  slotDurationHours,
+                  allocatedHours: slotDurationHours,
+                  isPartialSlot: false
                 });
               });
             }
@@ -578,7 +624,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               }}
             >
               <div 
-                className={`hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden flex flex-col justify-between ${hasChildren ? 'border-2 border-dashed' : ''}`}
+                className={`hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden flex flex-col justify-between ${hasChildren ? 'border-2 border-dashed' : ''} ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
                 style={getProjectColorStyle(getProjectHierarchyColor(instance.project), level)}
               >
                 <div>
@@ -587,6 +633,16 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   </div>
                   <div className="text-[10px] opacity-75">
                     {instance.startTime} - {instance.endTime}
+                    {instance.isPartialSlot && (
+                      <span className="ml-1 text-orange-600 font-medium">
+                        ({instance.allocatedHours}h/{instance.slotDurationHours}h)
+                      </span>
+                    )}
+                    {!instance.isPartialSlot && instance.allocatedHours > 0 && (
+                      <span className="ml-1 opacity-60">
+                        ({instance.allocatedHours}h)
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="text-[9px] opacity-75 truncate">
@@ -774,7 +830,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                         }}
                       >
                         <div 
-                          className={`hover:opacity-80 text-xs p-2 rounded border h-full overflow-hidden`}
+                          className={`hover:opacity-80 text-xs p-2 rounded border h-full overflow-hidden ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
                           style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level)}
                         >
                           <div className="font-medium truncate">
@@ -782,6 +838,16 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                           </div>
                           <div className="text-[10px] opacity-75">
                             {instance.startTime} - {instance.endTime}
+                            {instance.isPartialSlot && (
+                              <span className="ml-1 text-orange-600 font-medium">
+                                ({instance.allocatedHours}h/{instance.slotDurationHours}h)
+                              </span>
+                            )}
+                            {!instance.isPartialSlot && instance.allocatedHours > 0 && (
+                              <span className="ml-1 opacity-60">
+                                ({instance.allocatedHours}h)
+                              </span>
+                            )}
                           </div>
                           <div className="text-[9px] opacity-75 truncate">
                             {instance.project?.name || 'Finestra Standalone'}
@@ -884,7 +950,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                     }}
                   >
                     <div 
-                      className={`hover:opacity-80 p-3 rounded border h-full overflow-hidden flex flex-col`}
+                      className={`hover:opacity-80 p-3 rounded border h-full overflow-hidden flex flex-col ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
                       style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level)}
                     >
                       <div className="font-medium truncate">
@@ -892,6 +958,16 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                       </div>
                       <div className="text-sm opacity-75 mt-1">
                         {instance.startTime} - {instance.endTime}
+                        {instance.isPartialSlot && (
+                          <span className="ml-2 text-orange-600 font-medium">
+                            ({instance.allocatedHours}h/{instance.slotDurationHours}h)
+                          </span>
+                        )}
+                        {!instance.isPartialSlot && instance.allocatedHours > 0 && (
+                          <span className="ml-2 opacity-60">
+                            ({instance.allocatedHours}h)
+                          </span>
+                        )}
                       </div>
                       <div className="text-sm opacity-75 mt-1">
                         {instance.project?.name || 'Finestra Standalone'}
