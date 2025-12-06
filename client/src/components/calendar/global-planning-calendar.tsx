@@ -173,11 +173,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     if (!planningWindowsWithProject) return [];
     
     const { start: calendarStart, end: calendarEnd } = getDateRange();
-    console.log('[EXPAND] Calendar range:', { 
-      start: format(calendarStart, 'yyyy-MM-dd'), 
-      end: format(calendarEnd, 'yyyy-MM-dd'),
-      view 
-    });
     const instances: ExpandedPlanningInstance[] = [];
     
     // Helper to check if a day is a working day
@@ -523,13 +518,15 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     // Con 112px di contenuto: 8 ore = 1/3 = ~37px, quindi ~4.7px per ora
 
     // Funzione ricorsiva per renderizzare progetti padre -> figli
-    const renderHierarchicalProjects = (instances: ExpandedPlanningInstance[], availableHeight: number, parentBounds?: { start: number, end: number, level: number }) => {
+    // allDayInstances: all instances for this day (for hasChildren lookup)
+    // instancesToProcess: subset of instances to render in this call
+    const renderHierarchicalProjects = (allDayInstances: ExpandedPlanningInstance[], instancesToProcess: ExpandedPlanningInstance[], availableHeight: number, parentBounds?: { start: number, end: number, level: number }) => {
       const minutesInDay = 24 * 60; // 1440 minuti
       // IMPORTANTE: Usa l'altezza totale della cella (140px) per calcoli proporzioni corrette
       const totalCellHeight = FIXED_DAY_HEIGHT; // 140px per proporzioni corrette
       
       // Raggruppa per livello
-      const byLevel = instances.reduce((acc, instance) => {
+      const byLevel = instancesToProcess.reduce((acc, instance) => {
         if (!acc[instance.level]) acc[instance.level] = [];
         acc[instance.level].push(instance);
         return acc;
@@ -561,8 +558,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           const topPosition = relativeTop + (relativeStart / (parentBounds ? (parentBounds.end - parentBounds.start) : minutesInDay)) * relativeHeight;
           const height = Math.max(16, (durationMinutes / (parentBounds ? (parentBounds.end - parentBounds.start) : minutesInDay)) * relativeHeight);
           
-          // Determina se questo è un progetto padre (ha figli) - verifica per parentPlanningWindowId
-          const hasChildren = level === 0 && instances.some(other => 
+          // Determina se questo è un progetto padre (ha figli) - cerca tra TUTTE le istanze del giorno
+          const hasChildren = allDayInstances.some(other => 
             other.level > level && other.window.parentPlanningWindowId === instance.window.id
           );
           
@@ -605,14 +602,14 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           );
           
           // Se questo ha figli, renderizza i figli all'interno
-          // CRITICAL: Filter children by parentPlanningWindowId, not just by level
+          // CRITICAL: Filter children by parentPlanningWindowId from ALL day instances
           if (hasChildren) {
-            const children = instances.filter(other => 
+            const children = allDayInstances.filter(other => 
               other.level > level && 
               other.window.parentPlanningWindowId === instance.window.id
             );
             if (children.length > 0) {
-              const childElements = renderHierarchicalProjects(children, totalCellHeight, {
+              const childElements = renderHierarchicalProjects(allDayInstances, children, totalCellHeight, {
                 start: startMinutes,
                 end: endMinutes,
                 level: level
@@ -664,7 +661,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 top: `0px`, // Inizia dall'alto della cella per proporzioni corrette
                 height: `${FIXED_DAY_HEIGHT}px` // Usa altezza totale per proporzioni corrette
               }}>
-                {renderHierarchicalProjects(dayInstances, FIXED_DAY_HEIGHT)}
+                {renderHierarchicalProjects(dayInstances, dayInstances.filter(i => i.level === 0), FIXED_DAY_HEIGHT)}
               </div>
             </div>
           );
