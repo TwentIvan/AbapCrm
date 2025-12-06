@@ -807,6 +807,16 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       isSameDay(instance.date, currentDate)
     );
     
+    // Debug: log instances for day view
+    console.log('[DAY VIEW]', format(currentDate, 'yyyy-MM-dd'), 'Total expanded:', expandedInstances.length, 'Filtered:', dayInstances.length);
+    if (expandedInstances.length > 0) {
+      console.log('[DAY VIEW instances]', expandedInstances.map(i => ({
+        name: i.window.name?.substring(0, 15),
+        date: format(i.date, 'yyyy-MM-dd'),
+        level: i.level
+      })));
+    }
+    
     // Funzione per convertire time string in minuti dall'inizio della giornata
     const timeToMinutes = (timeStr: string) => {
       const [hours, minutes] = timeStr.split(':').map(Number);
