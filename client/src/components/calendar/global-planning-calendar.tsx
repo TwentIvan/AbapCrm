@@ -729,15 +729,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               const dayInstances = instancesByDate[dateKey] || [];
               const isTodayDate = isSameDay(day, new Date());
               
-              // Debug: log instances for this day
-              if (dayInstances.length > 0) {
-                console.log('[WEEK VIEW]', dateKey, dayInstances.map(i => ({
-                  name: i.window.name?.substring(0, 20),
-                  level: i.level,
-                  parentId: i.window.parentPlanningWindowId?.substring(0, 8)
-                })));
-              }
-              
               return (
                 <div key={dateKey} className={`relative ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20' : 'bg-background'}`}>
                   {/* Griglia di background */}
@@ -755,8 +746,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                     </div>
                   ))}
                   
-                  {/* Eventi sovrapposti come box continui */}
-                  {dayInstances.map((instance, idx) => {
+                  {/* Eventi sovrapposti come box continui - renderizza prima livello 0, poi livelli superiori */}
+                  {dayInstances
+                    .sort((a, b) => a.level - b.level) // Parents first, children on top
+                    .map((instance) => {
                     const startMinutes = timeToMinutes(instance.startTime);
                     const endMinutes = timeToMinutes(instance.endTime);
                     const durationMinutes = endMinutes - startMinutes;
@@ -764,16 +757,20 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                     const topPosition = (startMinutes / 60) * hourHeight;
                     const height = (durationMinutes / 60) * hourHeight;
                     
+                    // Unique key including all identifiers
+                    const uniqueKey = `${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.slotIndex}-${instance.level}`;
+                    
                     return (
                       <div
-                        key={`${instance.window.id}-${idx}`}
+                        key={uniqueKey}
                         onClick={() => onWindowSelect?.(instance.window)}
-                        className="absolute cursor-pointer z-10"
+                        className="absolute cursor-pointer"
                         style={{ 
                           top: `${topPosition}px`,
                           height: `${height}px`,
                           left: `${2 + getLevelIndentation(instance.level)}px`,
                           right: `${2 + getLevelIndentation(instance.level)}px`,
+                          zIndex: 10 + instance.level, // Higher level = higher z-index
                         }}
                       >
                         <div 
@@ -859,8 +856,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 </div>
               ))}
               
-              {/* Eventi sovrapposti */}
-              {dayInstances.map((instance, idx) => {
+              {/* Eventi sovrapposti - renderizza prima livello 0, poi livelli superiori */}
+              {dayInstances
+                .sort((a, b) => a.level - b.level) // Parents first, children on top
+                .map((instance) => {
                 const startMinutes = timeToMinutes(instance.startTime);
                 const endMinutes = timeToMinutes(instance.endTime);
                 const durationMinutes = endMinutes - startMinutes;
@@ -868,16 +867,20 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 const topPosition = (startMinutes / 60) * hourHeight;
                 const height = (durationMinutes / 60) * hourHeight;
                 
+                // Unique key including all identifiers
+                const uniqueKey = `${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.slotIndex}-${instance.level}`;
+                
                 return (
                   <div
-                    key={`${instance.window.id}-${idx}`}
+                    key={uniqueKey}
                     onClick={() => onWindowSelect?.(instance.window)}
-                    className="absolute cursor-pointer z-10"
+                    className="absolute cursor-pointer"
                     style={{ 
                       top: `${topPosition}px`,
                       height: `${height}px`,
                       left: `${8 + getLevelIndentation(instance.level)}px`,
                       right: `${8 + getLevelIndentation(instance.level)}px`,
+                      zIndex: 10 + instance.level, // Higher level = higher z-index
                     }}
                   >
                     <div 
