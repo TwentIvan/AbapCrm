@@ -195,9 +195,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const estimatedHours = project?.estimatedEffort || null;
       const workingDaysQuota = estimatedHours ? Math.ceil(estimatedHours / workingHoursPerDay) : null;
       
-      // Debug: log window expansion info
-      if (window.name?.includes('AIMAG') || window.name?.includes('744')) {
-        console.log('[CALENDAR DEBUG]', {
+      // Debug: log window expansion info (only once)
+      if ((window.name?.includes('AIMAG') || window.name?.includes('744')) && view === 'month') {
+        console.log('[CALENDAR DEBUG AIMAG]', {
           name: window.name,
           windowStart: windowStart.toISOString(),
           windowEnd: windowEnd.toISOString(),
@@ -218,6 +218,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           // Iterate day by day, only on working days, stop when quota is met
           let currentDay = new Date(windowStart);
           let workingDaysUsed = 0;
+          const createdDates: string[] = [];
           
           while (currentDay <= windowEnd) {
             // Check if this is a working day
@@ -226,6 +227,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               if (workingDaysQuota !== null && workingDaysUsed >= workingDaysQuota) {
                 break;
               }
+              
+              createdDates.push(format(currentDay, 'yyyy-MM-dd (EEEE)'));
               
               // Create instance for each time slot
               timeSlots.forEach((slot, slotIdx) => {
@@ -246,6 +249,15 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             }
             
             currentDay = addDays(currentDay, 1);
+          }
+          
+          // Debug: log created dates for AIMAG
+          if ((window.name?.includes('AIMAG') || window.name?.includes('744')) && view === 'month') {
+            console.log('[CALENDAR DEBUG DATES]', {
+              name: window.name?.substring(0, 30),
+              createdDates,
+              workingDaysUsed
+            });
           }
         }
       } else {
