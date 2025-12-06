@@ -1,12 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, Edit, MoreHorizontal, Play, Square, Trash2, Bot } from "lucide-react";
+import { Clock, Play, Square, Bot } from "lucide-react";
 import type { Task, Project, TimeEntry } from "@shared/schema";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
@@ -19,38 +17,11 @@ import { useToast } from "@/hooks/use-toast";
 import { UniversalTable } from "@/components/ui/universal-table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LayoutManager } from "@/components/ui/layout-manager";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
+import { BulkEditDialog } from "@/components/dialogs/bulk-edit-dialog";
 import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
 import { ThuAiDialog } from "@/components/dialogs/thu-ai-dialog";
-
-const statusColors: Record<string, string> = {
-  todo: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
-  in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  review: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-};
-
-const priorityColors: Record<string, string> = {
-  low: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  urgent: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-};
-
-const statusLabels: Record<string, string> = {
-  todo: "Da fare",
-  in_progress: "In corso",
-  review: "In revisione",
-  completed: "Completato",
-};
-
-const priorityLabels: Record<string, string> = {
-  low: "Bassa",
-  medium: "Media",
-  high: "Alta",
-  urgent: "Urgente",
-};
+import { tasksDescriptor } from "@/lib/entities/tasks-descriptor";
+import type { ColumnHelpers } from "@/lib/entity-registry";
 
 interface EmbeddedTasksListProps {
   layoutKey?: string;
@@ -307,55 +278,6 @@ export function EmbeddedTasksList({
     },
   });
 
-  const bulkEditFields: BulkEditField[] = [
-    {
-      key: "status",
-      label: "Stato",
-      type: "select",
-      options: [
-        { value: "todo", label: "Da fare" },
-        { value: "in_progress", label: "In corso" },
-        { value: "review", label: "In revisione" },
-        { value: "completed", label: "Completato" },
-      ],
-    },
-    {
-      key: "priority",
-      label: "Priorità",
-      type: "select",
-      options: [
-        { value: "low", label: "Bassa" },
-        { value: "medium", label: "Media" },
-        { value: "high", label: "Alta" },
-        { value: "urgent", label: "Urgente" },
-      ],
-    },
-    {
-      key: "projectId",
-      label: "Progetto",
-      type: "select",
-      options: [
-        { value: "", label: "Nessuno" },
-        ...projects.map(p => ({ value: p.id, label: p.name })),
-      ],
-    },
-    {
-      key: "dueDate",
-      label: "Data Scadenza",
-      type: "date",
-    },
-    {
-      key: "estimatedEffort",
-      label: "Ore Stimate",
-      type: "number",
-    },
-    {
-      key: "completionPercentage",
-      label: "Completamento %",
-      type: "number",
-    },
-  ];
-
   const handleEdit = (task: Task) => {
     setEditingTask(task);
     setShowEditDialog(true);
@@ -371,132 +293,14 @@ export function EmbeddedTasksList({
     setShowDeleteDialog(true);
   };
 
-  const tableColumns = [
-    {
-      key: 'title',
-      label: 'Titolo',
-      sortable: true,
-      searchable: true,
-      render: (task: Task) => (
-        <div className="font-medium" data-testid={`text-task-title-${task.id}`}>
-          {task.title}
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      label: 'Stato',
-      sortable: true,
-      render: (task: Task) => (
-        <Badge className={statusColors[task.status] || ""}>
-          {statusLabels[task.status] || task.status}
-        </Badge>
-      ),
-    },
-    {
-      key: 'priority',
-      label: 'Priorità',
-      sortable: true,
-      render: (task: Task) => (
-        <Badge className={priorityColors[task.priority] || ""}>
-          {priorityLabels[task.priority] || task.priority}
-        </Badge>
-      ),
-    },
-    {
-      key: 'projectId',
-      label: 'Progetto',
-      sortable: true,
-      render: (task: any) => task.projectName ? (
-        <div className="text-sm font-medium">{task.projectName}</div>
-      ) : (
-        <span className="text-muted-foreground text-sm">-</span>
-      ),
-    },
-    {
-      key: 'dueDate',
-      label: 'Scadenza',
-      sortable: true,
-      render: (task: Task) => {
-        if (!task.dueDate) return <span className="text-muted-foreground text-sm">-</span>;
-        const dueDate = new Date(task.dueDate);
-        const isOverdue = dueDate < new Date() && task.status !== 'completed';
-        return (
-          <div className={isOverdue ? 'text-red-600 font-medium' : 'text-sm'}>
-            {dueDate.toLocaleDateString('it-IT')}
-          </div>
-        );
-      },
-    },
-    {
-      key: 'estimatedEffort',
-      label: 'Ore Stimate',
-      sortable: true,
-      render: (task: Task) => {
-        const estimated = task.estimatedEffort || 0;
-        if (estimated === 0) return <span className="text-muted-foreground text-sm">-</span>;
-        return (
-          <div className="text-sm font-medium" data-testid={`text-task-effort-${task.id}`}>
-            {estimated}h
-          </div>
-        );
-      },
-    },
-    {
-      key: 'completionPercentage',
-      label: 'Completamento',
-      sortable: true,
-      render: (task: Task) => {
-        const completion = Math.min(100, Math.max(0, task.completionPercentage || 0));
-        const estimated = task.estimatedEffort || 0;
-        const remaining = Math.max(0, estimated * (1 - completion / 100));
-        return (
-          <div className="space-y-1 min-w-[100px]" data-testid={`text-task-completion-${task.id}`}>
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-medium">{completion}%</span>
-              {estimated > 0 && (
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {remaining.toFixed(1)}h
-                </span>
-              )}
-            </div>
-            <Progress value={completion} className="h-1.5" />
-          </div>
-        );
-      },
-    },
-    {
-      key: 'timer',
-      label: 'Timer',
-      sortable: false,
-      render: (task: Task) => <TaskTimerButtons task={task} />,
-    },
-    {
-      key: 'actions',
-      label: '',
-      sortable: false,
-      render: (task: Task) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" data-testid={`button-task-menu-${task.id}`}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleEdit(task)}>
-              <Edit className="mr-2 h-4 w-4" />
-              Modifica
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleSingleDelete(task)} className="text-red-600">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Elimina
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-    },
-  ];
+  const columnHelpers: ColumnHelpers = {
+    onEdit: handleEdit,
+    onDelete: handleSingleDelete,
+    projects,
+  };
+
+  const tableColumns = tasksDescriptor.getColumns(columnHelpers);
+  const bulkEditFields = tasksDescriptor.getBulkEditFields({ projects });
 
   const visibleColumns = useMemo(() => {
     const actionsColumn = tableColumns.find(c => c.key === 'actions');
