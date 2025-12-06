@@ -36,8 +36,6 @@ interface ExpandedPlanningInstance {
 type CalendarView = 'month' | 'week' | 'day';
 
 export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: GlobalPlanningCalendarProps) {
-  console.log("=== GlobalPlanningCalendar RENDER ===");
-  
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('month');
   
@@ -170,19 +168,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     };
   };
 
-  // Debug: use alert to force visual confirmation
-  if (typeof window !== 'undefined' && planningWindowsWithProject && planningWindowsWithProject.length > 0) {
-    // Only alert once when data arrives
-    const debugKey = 'calendar-debug-alerted';
-    if (!sessionStorage.getItem(debugKey)) {
-      sessionStorage.setItem(debugKey, 'true');
-      alert('[CALENDAR DEBUG] Data loaded: ' + planningWindowsWithProject.length + ' windows');
-    }
-  }
-
   // Expand planning windows for current view
   const expandedInstances = useMemo(() => {
-    console.log('[CALENDAR MEMO RECALC]', { dataCount: planningWindowsWithProject?.length });
     if (!planningWindowsWithProject) return [];
     
     const { start: calendarStart, end: calendarEnd } = getDateRange();
@@ -208,20 +195,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const estimatedHours = project?.estimatedEffort || null;
       const workingDaysQuota = estimatedHours ? Math.ceil(estimatedHours / workingHoursPerDay) : null;
       
-      // Debug: log window expansion info
-      if (window.name?.includes('AIMAG') || window.name?.includes('744')) {
-        console.log('[CALENDAR DEBUG AIMAG]', {
-          name: window.name,
-          windowStart: windowStart.toISOString(),
-          windowEnd: windowEnd.toISOString(),
-          daysOfWeek,
-          workingHoursPerDay,
-          estimatedHours,
-          workingDaysQuota,
-          hasParent: !!window.parentPlanningWindowId
-        });
-      }
-      
       if (window.recurrenceType === 'none') {
         // Verifica se la finestra interseca il range del calendario
         if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
@@ -231,7 +204,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           // Iterate day by day, only on working days, stop when quota is met
           let currentDay = new Date(windowStart);
           let workingDaysUsed = 0;
-          const createdDates: string[] = [];
           
           while (currentDay <= windowEnd) {
             // Check if this is a working day
@@ -240,8 +212,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               if (workingDaysQuota !== null && workingDaysUsed >= workingDaysQuota) {
                 break;
               }
-              
-              createdDates.push(format(currentDay, 'yyyy-MM-dd (EEEE)'));
               
               // Create instance for each time slot
               timeSlots.forEach((slot, slotIdx) => {
@@ -262,15 +232,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             }
             
             currentDay = addDays(currentDay, 1);
-          }
-          
-          // Debug: log created dates for AIMAG
-          if (window.name?.includes('AIMAG') || window.name?.includes('744')) {
-            console.log('[CALENDAR DEBUG DATES]', {
-              name: window.name?.substring(0, 30),
-              createdDates,
-              workingDaysUsed
-            });
           }
         }
       } else {
@@ -946,7 +907,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           <div className="flex items-center gap-2">
             <FolderTree className="h-5 w-5" />
             Global Planning Calendar
-            <span className="text-xs bg-red-500 text-white px-2 py-1 rounded ml-2">[DEBUG v2]</span>
           </div>
           
           <div className="flex items-center gap-4">
