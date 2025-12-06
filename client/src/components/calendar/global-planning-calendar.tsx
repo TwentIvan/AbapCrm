@@ -729,6 +729,15 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               const dayInstances = instancesByDate[dateKey] || [];
               const isTodayDate = isSameDay(day, new Date());
               
+              // Debug: log instances for this day
+              if (dayInstances.length > 0) {
+                console.log('[WEEK VIEW]', dateKey, dayInstances.map(i => ({
+                  name: i.window.name?.substring(0, 20),
+                  level: i.level,
+                  parentId: i.window.parentPlanningWindowId?.substring(0, 8)
+                })));
+              }
+              
               return (
                 <div key={dateKey} className={`relative ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20' : 'bg-background'}`}>
                   {/* Griglia di background */}
