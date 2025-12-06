@@ -173,6 +173,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     if (!planningWindowsWithProject) return [];
     
     const { start: calendarStart, end: calendarEnd } = getDateRange();
+    console.log('[EXPAND] Calendar range:', { 
+      start: format(calendarStart, 'yyyy-MM-dd'), 
+      end: format(calendarEnd, 'yyyy-MM-dd'),
+      view 
+    });
     const instances: ExpandedPlanningInstance[] = [];
     
     // Helper to check if a day is a working day
@@ -194,6 +199,20 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       // Calculate working days quota from estimated effort
       const estimatedHours = project?.estimatedEffort || null;
       const workingDaysQuota = estimatedHours ? Math.ceil(estimatedHours / workingHoursPerDay) : null;
+      
+      // Debug log for AIMAG window
+      if (window.name?.includes('744') || window.name?.includes('AIMAG')) {
+        console.log('[EXPAND AIMAG]', {
+          name: window.name?.substring(0, 40),
+          windowStart: format(windowStart, 'yyyy-MM-dd'),
+          windowEnd: format(windowEnd, 'yyyy-MM-dd'),
+          daysOfWeek,
+          timeSlots: timeSlots.map(s => s.label || `${s.startTime}-${s.endTime}`),
+          estimatedHours,
+          workingDaysQuota,
+          recurrenceType: window.recurrenceType
+        });
+      }
       
       if (window.recurrenceType === 'none') {
         // Verifica se la finestra interseca il range del calendario
