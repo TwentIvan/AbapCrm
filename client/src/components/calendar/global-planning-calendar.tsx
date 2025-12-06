@@ -173,6 +173,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     if (!planningWindowsWithProject) return [];
     
     const { start: calendarStart, end: calendarEnd } = getDateRange();
+    console.log('[EXPAND] View:', view, 'Range:', format(calendarStart, 'yyyy-MM-dd'), 'to', format(calendarEnd, 'yyyy-MM-dd'));
     const instances: ExpandedPlanningInstance[] = [];
     
     // Helper to check if a day is a working day
@@ -199,6 +200,22 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       // to respect quota-based day generation from estimatedEffort, regardless of their recurrence_type setting
       const isChildWindow = !!window.parentPlanningWindowId;
       const effectiveRecurrenceType = isChildWindow ? 'none' : window.recurrenceType;
+      
+      // Debug for AIMAG window
+      if (window.name?.includes('744') || window.name?.includes('AIMAG')) {
+        console.log('[EXPAND AIMAG]', {
+          name: window.name?.substring(0, 30),
+          isChildWindow,
+          effectiveRecurrenceType,
+          windowStart: format(windowStart, 'yyyy-MM-dd'),
+          windowEnd: format(windowEnd, 'yyyy-MM-dd'),
+          calendarStart: format(calendarStart, 'yyyy-MM-dd'),
+          calendarEnd: format(calendarEnd, 'yyyy-MM-dd'),
+          intersectsStart: isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }),
+          intersectsEnd: isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }),
+          fullContained: windowStart <= calendarStart && windowEnd >= calendarEnd
+        });
+      }
       
       if (effectiveRecurrenceType === 'none') {
         // Verifica se la finestra interseca il range del calendario
