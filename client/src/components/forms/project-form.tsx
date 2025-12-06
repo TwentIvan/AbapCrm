@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import EndToCompleteCard from "@/components/ui/end-to-complete-card";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -120,6 +121,10 @@ export default function ProjectForm({ project, onSuccess, isReadOnly = false }: 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {project && (
+          <EndToCompleteCard projectId={project.id} />
+        )}
+        
         <FormField
           control={form.control}
           name="name"

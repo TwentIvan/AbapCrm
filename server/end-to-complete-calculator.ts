@@ -11,12 +11,17 @@ export interface TimeSlot {
 export interface EndToCompleteResult {
   projectId: string;
   projectName: string;
+  state: 'completed' | 'on_track' | 'delayed' | 'no_planning_window' | 'no_tasks';
+  hasTasks: boolean;
+  hasWindow: boolean;
   totalEstimatedHours: number;
   totalRemainingHours: number;
   completionPercentage: number;
-  plannedEndDate: Date | null;
-  effectiveEndDate: Date | null;
+  plannedEndDate: string | null;
+  effectiveEndDate: string | null;
   effectiveEndTime: string | null;
+  windowId: string | null;
+  windowName: string | null;
   taskBreakdown: {
     taskId: string;
     taskTitle: string;
@@ -25,7 +30,7 @@ export interface EndToCompleteResult {
     remainingHours: number;
   }[];
   slotAllocation: {
-    date: Date;
+    date: string;
     startTime: string;
     endTime: string;
     allocatedHours: number;
@@ -53,21 +58,86 @@ function getEffectiveEndTime(startTime: string, allocatedHours: number): string 
   return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
 }
 
+async function getInheritedConfigFromHierarchy(
+  projectWindow: PlanningWindow,
+  allWindows: PlanningWindow[]
+): Promise<{ daysOfWeek: number[]; timeSlots: TimeSlot[]; workingHoursPerDay: number }> {
+  const ancestorChain: PlanningWindow[] = [];
+  let currentWindow: PlanningWindow | undefined = projectWindow;
+
+  while (currentWindow?.parentPlanningWindowId) {
+    const parentWindow = allWindows.find(w => w.id === currentWindow!.parentPlanningWindowId);
+    if (!parentWindow) break;
+    ancestorChain.unshift(parentWindow);
+    currentWindow = parentWindow;
+  }
+
+  let daysOfWeek: number[] = [1, 2, 3, 4, 5];
+  let timeSlots: TimeSlot[] = [];
+  let workingHoursPerDay = 8;
+
+  for (const ancestor of ancestorChain) {
+    if (ancestor.daysOfWeek && ancestor.daysOfWeek.length > 0) {
+      daysOfWeek = ancestor.daysOfWeek;
+    }
+    if (ancestor.timeSlots && ancestor.timeSlots.length > 0) {
+      timeSlots = ancestor.timeSlots;
+    }
+    if (ancestor.workingHoursPerDay) {
+      workingHoursPerDay = ancestor.workingHoursPerDay;
+    }
+  }
+
+  if (projectWindow.daysOfWeek && projectWindow.daysOfWeek.length > 0) {
+    daysOfWeek = projectWindow.daysOfWeek;
+  }
+  if (projectWindow.timeSlots && projectWindow.timeSlots.length > 0) {
+    timeSlots = projectWindow.timeSlots;
+  }
+  if (projectWindow.workingHoursPerDay) {
+    workingHoursPerDay = projectWindow.workingHoursPerDay;
+  }
+
+  if (timeSlots.length === 0) {
+    timeSlots = [{ startTime: projectWindow.startTime, endTime: projectWindow.endTime }];
+  }
+
+  return { daysOfWeek, timeSlots, workingHoursPerDay };
+}
+
 export async function calculateEndToComplete(
   projectId: string,
   userId: string,
   organizationId: string
-): Promise<EndToCompleteResult | null> {
+): Promise<EndToCompleteResult> {
   const project = await storage.getProject(projectId, userId, organizationId);
+  
+  const baseResult: Partial<EndToCompleteResult> = {
+    projectId,
+    projectName: project?.name || 'Unknown',
+    hasTasks: false,
+    hasWindow: false,
+    totalEstimatedHours: 0,
+    totalRemainingHours: 0,
+    completionPercentage: 0,
+    plannedEndDate: null,
+    effectiveEndDate: null,
+    effectiveEndTime: null,
+    windowId: null,
+    windowName: null,
+    taskBreakdown: [],
+    slotAllocation: []
+  };
+
   if (!project) {
-    return null;
+    return {
+      ...baseResult,
+      state: 'no_tasks'
+    } as EndToCompleteResult;
   }
 
   const tasks = await storage.getTasksByProject(projectId, userId, organizationId);
   
-  const planningWindows = await storage.getPlanningWindows(projectId, userId);
-  const projectWindow = planningWindows.find(w => w.projectId === projectId);
-
   const taskBreakdown = tasks.map(task => {
     const estimatedHours = task.estimatedEffort || 0;
     const completionPct = task.completionPercentage || 0;
@@ -88,40 +158,43 @@ export async function calculateEndToComplete(
     ? Math.round((1 - totalRemainingHours / totalEstimatedHours) * 100) 
     : 0;
 
-  if (!projectWindow || totalRemainingHours <= 0) {
+  baseResult.taskBreakdown = taskBreakdown;
+  baseResult.totalEstimatedHours = totalEstimatedHours;
+  baseResult.totalRemainingHours = totalRemainingHours;
+  baseResult.completionPercentage = overallCompletionPercentage;
+  baseResult.hasTasks = tasks.length > 0;
+
+  if (tasks.length === 0) {
     return {
-      projectId,
-      projectName: project.name,
-      totalEstimatedHours,
-      totalRemainingHours,
-      completionPercentage: overallCompletionPercentage,
-      plannedEndDate: projectWindow ? new Date(projectWindow.endDate) : null,
-      effectiveEndDate: totalRemainingHours <= 0 ? new Date() : null,
-      effectiveEndTime: null,
-      taskBreakdown,
-      slotAllocation: []
-    };
+      ...baseResult,
+      state: 'no_tasks'
+    } as EndToCompleteResult;
   }
 
-  const parentWindow = projectWindow.parentPlanningWindowId 
-    ? planningWindows.find(w => w.id === projectWindow.parentPlanningWindowId)
-    : null;
-  
-  const getInheritedConfig = (window: PlanningWindow) => {
-    let daysOfWeek = window.daysOfWeek || [1, 2, 3, 4, 5];
-    let timeSlots: TimeSlot[] = window.timeSlots || [{ startTime: window.startTime, endTime: window.endTime }];
-    let workingHoursPerDay = window.workingHoursPerDay || 8;
+  if (totalRemainingHours <= 0) {
+    return {
+      ...baseResult,
+      state: 'completed',
+      effectiveEndDate: new Date().toISOString()
+    } as EndToCompleteResult;
+  }
 
-    if (parentWindow) {
-      daysOfWeek = parentWindow.daysOfWeek || daysOfWeek;
-      timeSlots = parentWindow.timeSlots || [{ startTime: parentWindow.startTime, endTime: parentWindow.endTime }];
-      workingHoursPerDay = parentWindow.workingHoursPerDay || workingHoursPerDay;
-    }
+  const allUserWindows = await storage.getAllPlanningWindowsForUser(userId);
+  const projectWindow = allUserWindows.find(w => w.projectId === projectId);
 
-    return { daysOfWeek, timeSlots, workingHoursPerDay };
-  };
+  if (!projectWindow) {
+    return {
+      ...baseResult,
+      state: 'no_planning_window'
+    } as EndToCompleteResult;
+  }
 
-  const { daysOfWeek, timeSlots } = getInheritedConfig(projectWindow);
+  baseResult.hasWindow = true;
+  baseResult.windowId = projectWindow.id;
+  baseResult.windowName = projectWindow.name;
+  baseResult.plannedEndDate = new Date(projectWindow.endDate).toISOString();
+
+  const { daysOfWeek, timeSlots, workingHoursPerDay } = await getInheritedConfigFromHierarchy(projectWindow, allUserWindows);
 
   const windowStart = new Date(projectWindow.startDate);
   const windowEnd = new Date(projectWindow.endDate);
@@ -139,12 +212,13 @@ export async function calculateEndToComplete(
 
   const maxIterations = 365 * 2;
   let iterations = 0;
+  let extendedBeyondWindow = false;
 
   while (remainingHours > 0 && iterations < maxIterations) {
     iterations++;
     
     if (currentDay > windowEnd) {
-      currentDay = addDays(windowEnd, Math.floor((currentDay.getTime() - windowEnd.getTime()) / (24 * 60 * 60 * 1000)));
+      extendedBeyondWindow = true;
     }
 
     if (isWorkingDay(currentDay, daysOfWeek)) {
@@ -171,7 +245,7 @@ export async function calculateEndToComplete(
           : slot.endTime;
 
         slotAllocation.push({
-          date: new Date(currentDay),
+          date: new Date(currentDay).toISOString(),
           startTime: slot.startTime,
           endTime: effectiveEndTime,
           allocatedHours,
@@ -186,18 +260,17 @@ export async function calculateEndToComplete(
     currentDay = addDays(currentDay, 1);
   }
 
+  const effectiveEnd = lastDate;
+  const plannedEnd = new Date(projectWindow.endDate);
+  const isDelayed = effectiveEnd && effectiveEnd > plannedEnd;
+
   return {
-    projectId,
-    projectName: project.name,
-    totalEstimatedHours,
-    totalRemainingHours,
-    completionPercentage: overallCompletionPercentage,
-    plannedEndDate: new Date(projectWindow.endDate),
-    effectiveEndDate: lastDate,
+    ...baseResult,
+    state: isDelayed ? 'delayed' : 'on_track',
+    effectiveEndDate: lastDate?.toISOString() || null,
     effectiveEndTime: lastEndTime,
-    taskBreakdown,
     slotAllocation
-  };
+  } as EndToCompleteResult;
 }
 
 export async function calculateEndToCompleteForAllProjects(
@@ -211,9 +284,7 @@ export async function calculateEndToCompleteForAllProjects(
     
     for (const project of projects) {
       const result = await calculateEndToComplete(project.id, userId, orgId);
-      if (result) {
-        results.set(project.id, result);
-      }
+      results.set(project.id, result);
     }
   }
 
