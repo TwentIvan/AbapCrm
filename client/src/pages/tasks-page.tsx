@@ -7,7 +7,8 @@ import Header from "@/components/layout/header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckSquare, Edit, MoreHorizontal, ExternalLink } from "lucide-react";
+import { CheckSquare, Edit, MoreHorizontal, ExternalLink, Clock } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import type { Task, Project } from "@shared/schema";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
@@ -478,6 +479,46 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
         return (
           <div className={isOverdue ? 'text-red-600 font-medium' : ''}>
             {dueDate.toLocaleDateString('it-IT')}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'estimatedEffort',
+      label: 'Ore Stimate',
+      sortable: true,
+      searchable: false,
+      render: (task: Task) => {
+        const estimated = task.estimatedEffort || 0;
+        if (estimated === 0) return <span className="text-muted-foreground text-sm">-</span>;
+        return (
+          <div className="text-sm font-medium" data-testid={`text-task-effort-${task.id}`}>
+            {estimated}h
+          </div>
+        );
+      },
+    },
+    {
+      key: 'completionPercentage',
+      label: 'Completamento',
+      sortable: true,
+      searchable: false,
+      render: (task: Task) => {
+        const completion = Math.min(100, Math.max(0, task.completionPercentage || 0));
+        const estimated = task.estimatedEffort || 0;
+        const remaining = Math.max(0, estimated * (1 - completion / 100));
+        return (
+          <div className="space-y-1 min-w-[100px]" data-testid={`text-task-completion-${task.id}`}>
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium">{completion}%</span>
+              {estimated > 0 && (
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {remaining.toFixed(1)}h
+                </span>
+              )}
+            </div>
+            <Progress value={completion} className="h-1.5" />
           </div>
         );
       },
