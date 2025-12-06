@@ -581,13 +581,27 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const levels = Object.keys(byLevel).map(Number).sort();
       const result: JSX.Element[] = [];
       
+      // Helper per calcolare l'orario di fine effettivo basato sulle ore allocate
+      const getEffectiveEndTime = (startTime: string, allocatedHours: number): string => {
+        const [startH, startM] = startTime.split(':').map(Number);
+        const totalMinutes = startH * 60 + startM + allocatedHours * 60;
+        const endH = Math.floor(totalMinutes / 60);
+        const endM = Math.round(totalMinutes % 60);
+        return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+      };
+
       levels.forEach(level => {
         const levelInstances = byLevel[level];
         
         levelInstances.forEach((instance, idx) => {
           const startMinutes = timeToMinutes(instance.startTime);
-          const endMinutes = timeToMinutes(instance.endTime);
-          const durationMinutes = endMinutes - startMinutes;
+          const originalEndMinutes = timeToMinutes(instance.endTime); // Per i bounds dei children
+          // Per slot parziali, usa le ore allocate effettive invece della durata completa
+          const effectiveDurationMinutes = instance.allocatedHours * 60;
+          const effectiveEndTime = instance.isPartialSlot 
+            ? getEffectiveEndTime(instance.startTime, instance.allocatedHours)
+            : instance.endTime;
+          const durationMinutes = effectiveDurationMinutes;
           
           // Se c'è un parent bound, calcola le coordinate relative al padre
           let relativeStart = startMinutes;
@@ -632,7 +646,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                     {instance.window.name}
                   </div>
                   <div className="text-[10px] opacity-75">
-                    {instance.startTime} - {instance.endTime}
+                    {instance.startTime} - {effectiveEndTime}
                     {instance.isPartialSlot && (
                       <span className="ml-1 text-orange-600 font-medium">
                         ({instance.allocatedHours}h/{instance.slotDurationHours}h)
@@ -667,7 +681,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             if (children.length > 0) {
               const childElements = renderHierarchicalProjects(allDayInstances, children, totalCellHeight, {
                 start: startMinutes,
-                end: endMinutes,
+                end: originalEndMinutes,
                 level: level
               });
               result.push(...childElements);
@@ -807,11 +821,21 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                     .sort((a, b) => a.level - b.level) // Parents first, children on top
                     .map((instance) => {
                     const startMinutes = timeToMinutes(instance.startTime);
-                    const endMinutes = timeToMinutes(instance.endTime);
-                    const durationMinutes = endMinutes - startMinutes;
+                    // Per slot parziali, usa le ore allocate effettive
+                    const effectiveDurationMinutes = instance.allocatedHours * 60;
+                    const getEffectiveEndTime = (startTime: string, allocatedHours: number): string => {
+                      const [startH, startM] = startTime.split(':').map(Number);
+                      const totalMinutes = startH * 60 + startM + allocatedHours * 60;
+                      const endH = Math.floor(totalMinutes / 60);
+                      const endM = Math.round(totalMinutes % 60);
+                      return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+                    };
+                    const effectiveEndTime = instance.isPartialSlot 
+                      ? getEffectiveEndTime(instance.startTime, instance.allocatedHours)
+                      : instance.endTime;
                     
                     const topPosition = (startMinutes / 60) * hourHeight;
-                    const height = (durationMinutes / 60) * hourHeight;
+                    const height = (effectiveDurationMinutes / 60) * hourHeight;
                     
                     // Unique key including all identifiers
                     const uniqueKey = `${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.slotIndex}-${instance.level}`;
@@ -837,7 +861,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                             {instance.window.name}
                           </div>
                           <div className="text-[10px] opacity-75">
-                            {instance.startTime} - {instance.endTime}
+                            {instance.startTime} - {effectiveEndTime}
                             {instance.isPartialSlot && (
                               <span className="ml-1 text-orange-600 font-medium">
                                 ({instance.allocatedHours}h/{instance.slotDurationHours}h)
@@ -927,11 +951,21 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 .sort((a, b) => a.level - b.level) // Parents first, children on top
                 .map((instance) => {
                 const startMinutes = timeToMinutes(instance.startTime);
-                const endMinutes = timeToMinutes(instance.endTime);
-                const durationMinutes = endMinutes - startMinutes;
+                // Per slot parziali, usa le ore allocate effettive
+                const effectiveDurationMinutes = instance.allocatedHours * 60;
+                const getEffectiveEndTime = (startTime: string, allocatedHours: number): string => {
+                  const [startH, startM] = startTime.split(':').map(Number);
+                  const totalMinutes = startH * 60 + startM + allocatedHours * 60;
+                  const endH = Math.floor(totalMinutes / 60);
+                  const endM = Math.round(totalMinutes % 60);
+                  return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+                };
+                const effectiveEndTime = instance.isPartialSlot 
+                  ? getEffectiveEndTime(instance.startTime, instance.allocatedHours)
+                  : instance.endTime;
                 
                 const topPosition = (startMinutes / 60) * hourHeight;
-                const height = (durationMinutes / 60) * hourHeight;
+                const height = (effectiveDurationMinutes / 60) * hourHeight;
                 
                 // Unique key including all identifiers
                 const uniqueKey = `${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.slotIndex}-${instance.level}`;
@@ -957,7 +991,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                         {instance.window.name}
                       </div>
                       <div className="text-sm opacity-75 mt-1">
-                        {instance.startTime} - {instance.endTime}
+                        {instance.startTime} - {effectiveEndTime}
                         {instance.isPartialSlot && (
                           <span className="ml-2 text-orange-600 font-medium">
                             ({instance.allocatedHours}h/{instance.slotDurationHours}h)
