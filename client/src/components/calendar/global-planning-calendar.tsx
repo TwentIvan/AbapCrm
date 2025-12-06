@@ -36,6 +36,8 @@ interface ExpandedPlanningInstance {
 type CalendarView = 'month' | 'week' | 'day';
 
 export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: GlobalPlanningCalendarProps) {
+  console.log("=== GlobalPlanningCalendar RENDER ===");
+  
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('month');
   
