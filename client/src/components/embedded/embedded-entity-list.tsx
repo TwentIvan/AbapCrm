@@ -209,7 +209,10 @@ export function EmbeddedEntityList({
         const key = getColumnKey(col);
         if (key === "actions" || key === "timer") return false;
         const config = layout.columns[key];
-        return config?.visible !== false;
+        // If column is not in saved layout, treat it as visible (new column)
+        // Only hide if explicitly set to visible: false
+        if (config === undefined) return true;
+        return config.visible !== false;
       })
       .sort((a, b) => {
         const posA = layout.columns[getColumnKey(a)]?.position ?? 999;

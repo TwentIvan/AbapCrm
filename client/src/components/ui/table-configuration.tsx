@@ -190,56 +190,32 @@ export function TableConfiguration({
     }
   }, [editingLayout]);
 
-  // Sync columns when availableColumns changes (e.g., when metadata loads from server)
-  // Use functional update to avoid depending on columns state directly
+  // Sync columns when availableColumns or tableId changes
+  // This ensures new columns appear and config is reset when switching tables/projects
   useEffect(() => {
     if (availableColumns.length === 0) return;
     
     const layout = userPreferences.getTableLayout(tableId);
     
-    setColumns(prevColumns => {
-      // If previous columns are empty, do a full initialization from metadata
-      if (prevColumns.length === 0) {
-        return availableColumns.map(col => ({
-          id: col.id,
-          label: col.label,
-          visible: layout.columns?.[col.id]?.visible ?? true,
-          sortDirection: layout.sorting?.find(s => s.id === col.id)?.desc === false ? 'asc' : 
-                        layout.sorting?.find(s => s.id === col.id)?.desc === true ? 'desc' : null,
-          enableSubtotal: layout.aggregations?.subtotals?.groupBy?.includes(col.id) || false,
-        }));
+    // Always reinitialize from availableColumns, merging with saved layout
+    // This ensures new descriptor columns always appear
+    const newColumns: ColumnConfig[] = availableColumns.map(col => {
+      const sortEntry = layout.sorting?.find(s => s.id === col.id);
+      let sortDirection: 'asc' | 'desc' | null = null;
+      if (sortEntry) {
+        sortDirection = sortEntry.desc ? 'desc' : 'asc';
       }
-      
-      const currentColumnIds = new Set(prevColumns.map(c => c.id));
-      const newColumnIds = new Set(availableColumns.map(c => c.id));
-      
-      // Check if there are new columns that weren't in the previous list
-      const hasNewColumns = availableColumns.some(col => !currentColumnIds.has(col.id));
-      const hasRemovedColumns = prevColumns.some(col => !newColumnIds.has(col.id));
-      
-      if (!hasNewColumns && !hasRemovedColumns) {
-        return prevColumns; // No changes needed
-      }
-      
-      // Merge: keep existing column configs for columns that still exist, add new ones
-      const existingConfigMap = new Map(prevColumns.map(c => [c.id, c]));
-      
-      return availableColumns.map(col => {
-        const existing = existingConfigMap.get(col.id);
-        if (existing) {
-          return { ...existing, label: col.label }; // Update label from metadata
-        }
-        // New column from metadata
-        return {
-          id: col.id,
-          label: col.label,
-          visible: layout.columns?.[col.id]?.visible ?? true,
-          sortDirection: layout.sorting?.find(s => s.id === col.id)?.desc === false ? 'asc' : 
-                        layout.sorting?.find(s => s.id === col.id)?.desc === true ? 'desc' : null,
-          enableSubtotal: layout.aggregations?.subtotals?.groupBy?.includes(col.id) || false,
-        } as ColumnConfig;
-      });
+      return {
+        id: col.id,
+        label: col.label,
+        // For visibility: if column exists in layout, use saved value; otherwise default to visible
+        visible: layout.columns?.[col.id]?.visible ?? true,
+        sortDirection,
+        enableSubtotal: layout.aggregations?.subtotals?.groupBy?.includes(col.id) || false,
+      };
     });
+    
+    setColumns(newColumns);
   }, [availableColumns, tableId]);
 
   const handleDragEnd = (event: DragEndEvent) => {

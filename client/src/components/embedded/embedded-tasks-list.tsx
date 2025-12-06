@@ -460,7 +460,10 @@ export function EmbeddedTasksList({
       .filter(col => {
         if (col.key === 'actions') return false;
         const config = layout.columns[col.key];
-        return config?.visible !== false;
+        // If column is not in saved layout, treat it as visible (new column)
+        // Only hide if explicitly set to visible: false
+        if (config === undefined) return true;
+        return config.visible !== false;
       })
       .sort((a, b) => {
         const posA = layout.columns[a.key]?.position ?? 999;
