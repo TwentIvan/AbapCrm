@@ -168,12 +168,15 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     };
   };
 
-  // Debug: log outside useMemo to verify component renders
-  console.log('[CALENDAR RENDER]', { 
-    hasData: !!planningWindowsWithProject, 
-    count: planningWindowsWithProject?.length,
-    view 
-  });
+  // Debug: use alert to force visual confirmation
+  if (typeof window !== 'undefined' && planningWindowsWithProject && planningWindowsWithProject.length > 0) {
+    // Only alert once when data arrives
+    const debugKey = 'calendar-debug-alerted';
+    if (!sessionStorage.getItem(debugKey)) {
+      sessionStorage.setItem(debugKey, 'true');
+      alert('[CALENDAR DEBUG] Data loaded: ' + planningWindowsWithProject.length + ' windows');
+    }
+  }
 
   // Expand planning windows for current view
   const expandedInstances = useMemo(() => {
