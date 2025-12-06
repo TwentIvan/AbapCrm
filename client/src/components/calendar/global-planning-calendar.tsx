@@ -195,6 +195,20 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const estimatedHours = project?.estimatedEffort || null;
       const workingDaysQuota = estimatedHours ? Math.ceil(estimatedHours / workingHoursPerDay) : null;
       
+      // Debug: log window expansion info
+      if (window.name?.includes('AIMAG') || window.name?.includes('744')) {
+        console.log('[CALENDAR DEBUG]', {
+          name: window.name,
+          windowStart: windowStart.toISOString(),
+          windowEnd: windowEnd.toISOString(),
+          daysOfWeek,
+          workingHoursPerDay,
+          estimatedHours,
+          workingDaysQuota,
+          hasParent: !!window.parentPlanningWindowId
+        });
+      }
+      
       if (window.recurrenceType === 'none') {
         // Verifica se la finestra interseca il range del calendario
         if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
