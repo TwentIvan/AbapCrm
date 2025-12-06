@@ -146,6 +146,28 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     return min([effectiveEnd, windowEnd]);
   };
 
+  // Helper to get inherited scheduling config from parent window chain
+  const getInheritedConfig = (window: PlanningWindow): { daysOfWeek: number[], workingHoursPerDay: number, timeSlots: Array<{ startTime: string; endTime: string; label?: string }> } => {
+    // If window has parentPlanningWindowId, inherit from parent
+    if (window.parentPlanningWindowId && planningWindowsWithProject) {
+      const parent = planningWindowsWithProject.find(w => w.id === window.parentPlanningWindowId);
+      if (parent) {
+        // Use parent's config
+        return {
+          daysOfWeek: parent.daysOfWeek || [1, 2, 3, 4, 5],
+          workingHoursPerDay: parent.workingHoursPerDay || 8,
+          timeSlots: getTimeSlots(parent)
+        };
+      }
+    }
+    // Use own config
+    return {
+      daysOfWeek: window.daysOfWeek || [1, 2, 3, 4, 5],
+      workingHoursPerDay: window.workingHoursPerDay || 8,
+      timeSlots: getTimeSlots(window)
+    };
+  };
+
   // Expand planning windows for current view
   const expandedInstances = useMemo(() => {
     if (!planningWindowsWithProject) return [];
@@ -153,46 +175,64 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     const { start: calendarStart, end: calendarEnd } = getDateRange();
     const instances: ExpandedPlanningInstance[] = [];
     
+    // Helper to check if a day is a working day
+    const isWorkingDay = (date: Date, daysOfWeek: number[]): boolean => {
+      const dayOfWeek = date.getDay();
+      const ourDayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek;
+      return daysOfWeek.includes(ourDayOfWeek);
+    };
+    
     planningWindowsWithProject.forEach(({ project, ...window }) => {
       const windowStart = new Date(window.startDate);
       const windowEnd = new Date(window.endDate);
       const windowLevel = windowHierarchy.get(window.id) || 0;
-      const timeSlots = getTimeSlots(window);
       
-      // Calculate effective end date based on project's estimated effort
+      // Get inherited config from parent chain
+      const inheritedConfig = getInheritedConfig(window);
+      const { daysOfWeek, workingHoursPerDay, timeSlots } = inheritedConfig;
+      
+      // Calculate working days quota from estimated effort
       const estimatedHours = project?.estimatedEffort || null;
-      const workingHoursPerDay = window.workingHoursPerDay || 8;
-      const daysOfWeek = window.daysOfWeek || [1, 2, 3, 4, 5];
-      const effectiveEndDate = calculateEffectiveEndDate(
-        windowStart, windowEnd, estimatedHours, workingHoursPerDay, daysOfWeek
-      );
+      const workingDaysQuota = estimatedHours ? Math.ceil(estimatedHours / workingHoursPerDay) : null;
       
       if (window.recurrenceType === 'none') {
         // Verifica se la finestra interseca il range del calendario
         if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
-            isWithinInterval(effectiveEndDate, { start: calendarStart, end: calendarEnd }) ||
-            (windowStart <= calendarStart && effectiveEndDate >= calendarEnd)) {
+            isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
+            (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
           
-          // Crea istanze per TUTTI i giorni della finestra (da windowStart a effectiveEndDate)
-          // ma renderizza solo quelli nel range del calendario
-          const dayRange = eachDayOfInterval({ start: windowStart, end: effectiveEndDate });
+          // Iterate day by day, only on working days, stop when quota is met
+          let currentDay = new Date(windowStart);
+          let workingDaysUsed = 0;
           
-          dayRange.forEach(day => {
-            // Crea un'istanza per ogni time slot
-            timeSlots.forEach((slot, slotIdx) => {
-              instances.push({
-                window,
-                project,
-                date: day,
-                startTime: slot.startTime,
-                endTime: slot.endTime,
-                level: windowLevel,
-                slotLabel: slot.label,
-                slotIndex: slotIdx,
-                totalSlots: timeSlots.length
+          while (currentDay <= windowEnd) {
+            // Check if this is a working day
+            if (isWorkingDay(currentDay, daysOfWeek)) {
+              // Check if we've exceeded the quota (only if quota is set)
+              if (workingDaysQuota !== null && workingDaysUsed >= workingDaysQuota) {
+                break;
+              }
+              
+              // Create instance for each time slot
+              timeSlots.forEach((slot, slotIdx) => {
+                instances.push({
+                  window,
+                  project,
+                  date: new Date(currentDay),
+                  startTime: slot.startTime,
+                  endTime: slot.endTime,
+                  level: windowLevel,
+                  slotLabel: slot.label,
+                  slotIndex: slotIdx,
+                  totalSlots: timeSlots.length
+                });
               });
-            });
-          });
+              
+              workingDaysUsed++;
+            }
+            
+            currentDay = addDays(currentDay, 1);
+          }
         }
       } else {
         const interval = window.recurrenceInterval || 1;
