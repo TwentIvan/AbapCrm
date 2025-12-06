@@ -195,8 +195,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const estimatedHours = project?.estimatedEffort || null;
       const workingDaysQuota = estimatedHours ? Math.ceil(estimatedHours / workingHoursPerDay) : null;
       
-      // Debug: log window expansion info (only once)
-      if ((window.name?.includes('AIMAG') || window.name?.includes('744')) && view === 'month') {
+      // Debug: log window expansion info
+      if (window.name?.includes('AIMAG') || window.name?.includes('744')) {
         console.log('[CALENDAR DEBUG AIMAG]', {
           name: window.name,
           windowStart: windowStart.toISOString(),
@@ -252,7 +252,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           }
           
           // Debug: log created dates for AIMAG
-          if ((window.name?.includes('AIMAG') || window.name?.includes('744')) && view === 'month') {
+          if (window.name?.includes('AIMAG') || window.name?.includes('744')) {
             console.log('[CALENDAR DEBUG DATES]', {
               name: window.name?.substring(0, 30),
               createdDates,
