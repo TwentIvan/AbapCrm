@@ -41,6 +41,7 @@ import { EmailForwardCleaner } from './email-forward-cleaner';
 import { CustomMetadataService } from "./custom-metadata-service";
 import { PdfService } from "./pdf-service";
 import { ObjectStorageService } from "./objectStorage";
+import { calculateEndToComplete } from "./end-to-complete-calculator";
 
 // Helper function to extract organizationId from request header
 function getOrganizationId(req: any): string {
@@ -2735,6 +2736,21 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const windows = await storage.getPlanningWindows(req.params.projectId, req.user!.id);
     res.json(windows);
+  });
+
+  app.get("/api/projects/:projectId/end-to-complete", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const result = await calculateEndToComplete(req.params.projectId, req.user!.id, organizationId);
+      if (!result) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Error calculating end-to-complete:", error);
+      res.status(500).json({ error: "Failed to calculate end-to-complete" });
+    }
   });
 
   app.get("/api/planning-windows/:id", async (req, res) => {
