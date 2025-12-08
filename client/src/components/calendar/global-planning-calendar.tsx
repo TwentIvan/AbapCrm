@@ -620,7 +620,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
   const getContinuousPeriods = () => {
     if (!planningWindowsWithProject) return [];
     
-    const { start: calendarStart, end: calendarEnd } = getDateRange();
+    const { start: calendarStart, end: calendarEnd } = getViewDateRange();
     const periods: Array<{
       window: PlanningWindow;
       project: Project | null;
@@ -680,7 +680,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
 
   // Render functions for different views
   const renderMonthView = () => {
-    const { start: calendarStart, end: calendarEnd } = getDateRange();
+    const { start: calendarStart, end: calendarEnd } = getViewDateRange();
     const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
     
     const instancesByDate = expandedInstances.reduce((acc, instance) => {
