@@ -290,28 +290,20 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             ? min([windowEnd, etcEffectiveEndDate]) 
             : windowEnd;
           
-          // CRITICAL: Always track remaining hours to distribute across slots
-          // Use totalRemainingHours from ETC, fallback to estimatedHours
-          let hoursLeft: number | null = estimatedHours;
-          
-          // Start from the planning window's start date (as originally designed)
-          // The END date uses storedCalculatedEndDate from ETC (Fine Effettiva)
+          // Start from the planning window's start date
+          // The END date uses storedCalculatedEndDate from ETC (Fine Effettiva) as the authoritative limit
+          // We DON'T track remaining hours to stop early - we trust the ETC cutoff completely
           let currentDay = new Date(windowStart);
           
           while (currentDay <= effectiveWindowEnd) {
             // Check if this is a working day
             if (isWorkingDay(currentDay, daysOfWeek)) {
-              // Stop if hours are exhausted
-              if (hoursLeft !== null && hoursLeft <= 0) {
-                break;
-              }
-              
-              // Create instance for each time slot, tracking hours consumed
+              // Create instance for each time slot
               for (let slotIdx = 0; slotIdx < timeSlots.length; slotIdx++) {
                 const slot = timeSlots[slotIdx];
                 const slotDurationHours = getSlotDurationHours(slot);
                 
-                // Check ETC date/time limit for this slot (max hours available based on cutoff)
+                // Check ETC date/time limit for this slot (calculates partial hours for final slot)
                 const etcLimit = getETCLimitedHours(currentDay, slot.startTime, slot.endTime, slotDurationHours);
                 
                 // Skip slot if it's completely beyond ETC end date/time
@@ -319,25 +311,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   continue;
                 }
                 
-                // COMBINED ALLOCATION: Use minimum of (remaining hours, ETC time limit)
-                // This ensures hours flow correctly across slots AND respects the ETC cutoff
-                let allocatedHours: number;
-                let isPartialSlot: boolean;
-                
-                if (hoursLeft === null) {
-                  // No hour tracking - use ETC time limit or full slot
-                  allocatedHours = etcLimit.hours;
-                  isPartialSlot = etcLimit.isPartial;
-                } else if (hoursLeft <= 0) {
-                  // Hours exhausted - skip this slot
-                  break;
-                } else {
-                  // COMBINE both limits: remaining hours AND ETC time cutoff
-                  const maxAvailableInSlot = etcLimit.hours; // Limited by ETC date/time
-                  allocatedHours = Math.min(hoursLeft, maxAvailableInSlot);
-                  isPartialSlot = allocatedHours < slotDurationHours;
-                  hoursLeft -= allocatedHours;
-                }
+                // Use ETC-calculated hours (full slot or partial for the final slot ending at Fine Effettiva)
+                const allocatedHours = etcLimit.hours;
+                const isPartialSlot = etcLimit.isPartial;
                 
                 instances.push({
                   window,
@@ -353,16 +329,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   allocatedHours,
                   isPartialSlot
                 });
-                
-                // Exit inner loop if hours exhausted after this slot
-                if (hoursLeft !== null && hoursLeft <= 0) {
-                  break;
-                }
-              }
-              
-              // Exit day loop if hours exhausted
-              if (hoursLeft !== null && hoursLeft <= 0) {
-                break;
               }
             }
             
