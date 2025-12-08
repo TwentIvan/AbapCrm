@@ -71,6 +71,9 @@ export const projects = pgTable("projects", {
   estimatedEffort: integer("estimated_effort"), // in hours
   color: text("color").default("#3B82F6").notNull(), // Colore esadecimale per il progetto
   sourceMessageIds: text("source_message_ids").array().default([]), // IDs dei messaggi da cui è stato creato
+  // Auto-rescheduling fields - updated automatically when task completion changes
+  calculatedEndDate: timestamp("calculated_end_date"), // Predicted effective end date based on remaining work
+  scheduleDeficitHours: integer("schedule_deficit_hours").default(0), // Hours exceeding the planning window (0 = fits within window)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
