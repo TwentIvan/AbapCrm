@@ -141,10 +141,19 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         return res.json();
       }
     },
-    onSuccess: () => {
+    onSuccess: (updatedTask: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       if (task) {
         queryClient.invalidateQueries({ queryKey: ["/api/tasks", task.id] });
+      }
+      // Invalidate project-related queries to refresh ETC calculations after task update
+      queryClient.invalidateQueries({ queryKey: ["/api/projects/batch-end-to-complete"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      // Invalidate specific project ETC if task has a project
+      const projectId = updatedTask?.projectId || task?.projectId;
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "end-to-complete"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
       }
       toast({ title: task ? "Task updated successfully" : "Task created successfully" });
       onSuccess?.();

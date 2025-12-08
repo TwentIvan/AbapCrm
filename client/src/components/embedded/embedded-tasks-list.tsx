@@ -103,6 +103,9 @@ export function EmbeddedTasksList({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      // Invalidate project-related queries to refresh ETC calculations
+      queryClient.invalidateQueries({ queryKey: ["/api/projects/batch-end-to-complete"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       setSelectedTasks([]);
       setShowBulkEditDialog(false);
       toast({ title: "Tasks modificati" });

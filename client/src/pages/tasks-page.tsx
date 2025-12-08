@@ -105,8 +105,15 @@ export default function TasksPage() {
       const res = await apiRequest("PUT", `/api/tasks/${id}`, data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedTask: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      // Invalidate project-related queries to refresh ETC calculations
+      queryClient.invalidateQueries({ queryKey: ["/api/projects/batch-end-to-complete"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      if (updatedTask?.projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", updatedTask.projectId, "end-to-complete"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", updatedTask.projectId] });
+      }
       toast({ title: "Task updated successfully" });
     },
     onError: () => {
@@ -146,6 +153,9 @@ export default function TasksPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      // Invalidate project-related queries to refresh ETC calculations
+      queryClient.invalidateQueries({ queryKey: ["/api/projects/batch-end-to-complete"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       setSelectedTasks([]);
       setShowBulkEditDialog(false);
       toast({ title: "Modificati", description: "Tasks modificati con successo" });

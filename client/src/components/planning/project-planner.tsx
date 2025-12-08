@@ -164,6 +164,13 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      // Invalidate project-related queries to refresh ETC calculations after task update
+      queryClient.invalidateQueries({ queryKey: ["/api/projects/batch-end-to-complete"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "end-to-complete"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
+      }
       toast({
         title: "Task updated",
         description: "Task schedule has been updated successfully.",
