@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   // Password reset fields
   resetToken: text("reset_token"), // Token for password reset
   resetTokenExpiry: timestamp("reset_token_expiry"), // Token expiration
+  calendarScrollHour: integer("calendar_scroll_hour").default(9), // Default hour to scroll to in calendar views (0-23)
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

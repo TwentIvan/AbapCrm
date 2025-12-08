@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Calendar, FolderTree, Clock, Plus } from "lucide-react";
-import { PlanningWindow, Project } from "@shared/schema";
+import { PlanningWindow, Project, User } from "@shared/schema";
 import { 
   format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, 
   isWithinInterval, addDays, startOfWeek, endOfWeek, startOfDay, endOfDay, addWeeks, 
@@ -64,6 +64,15 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('month');
   
+  // Refs for scrollable containers
+  const weekScrollRef = useRef<HTMLDivElement>(null);
+  const dayScrollRef = useRef<HTMLDivElement>(null);
+  
+  // Fetch current user for calendar preferences
+  const { data: currentUser } = useQuery<User>({
+    queryKey: ["/api/user"],
+  });
+  
   // Fetch all planning windows for the user
   const { data: planningWindowsWithProject, isLoading } = useQuery<PlanningWindowWithProject[]>({
     queryKey: ["/api/planning-windows", "user"],
@@ -73,6 +82,23 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
   const { data: etcBatchData } = useQuery<ETCBatchData>({
     queryKey: ["/api/projects/batch-end-to-complete"],
   });
+  
+  // Auto-scroll to user's preferred hour when view changes or data loads
+  useEffect(() => {
+    if (view === 'month') return; // No scroll for month view
+    
+    const scrollHour = currentUser?.calendarScrollHour ?? new Date().getHours();
+    const hourHeight = view === 'week' ? 60 : 80;
+    const scrollPosition = scrollHour * hourHeight;
+    
+    // Delay scroll to ensure DOM is rendered
+    setTimeout(() => {
+      const ref = view === 'week' ? weekScrollRef.current : dayScrollRef.current;
+      if (ref) {
+        ref.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+      }
+    }, 100);
+  }, [view, currentUser?.calendarScrollHour, planningWindowsWithProject]);
 
   // Build planning window hierarchy map (based on parentPlanningWindowId)
   const windowHierarchy = useMemo(() => {
@@ -709,7 +735,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           
           result.push(
             <div
-              key={`${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.slotIndex}-${instance.level}`}
+              key={`${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`}
               onClick={() => onWindowSelect?.(instance.window)}
               className="absolute cursor-pointer"
               style={{ 
@@ -859,7 +885,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
         </div>
         
         {/* Corpo con layout fisso che mantiene box continui */}
-        <div className="flex-1 overflow-auto max-h-[600px] relative">
+        <div ref={weekScrollRef} className="flex-1 overflow-auto max-h-[600px] relative">
           <div className="grid grid-cols-8 gap-1">
             {/* Colonna orari */}
             <div className="bg-muted/30">
@@ -995,7 +1021,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           </h3>
         </div>
         
-        <div className="flex-1 overflow-auto max-h-[700px] relative">
+        <div ref={dayScrollRef} className="flex-1 overflow-auto max-h-[700px] relative">
           <div className="flex">
             {/* Colonna orari */}
             <div className="w-20 border-r border-border bg-muted/30 flex-shrink-0">
