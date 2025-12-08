@@ -2,8 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CheckSquare, Edit, MoreHorizontal, Trash2, Clock, ExternalLink } from "lucide-react";
-import { SiSap } from "react-icons/si";
+import { CheckSquare, Edit, MoreHorizontal, Trash2, Clock, ExternalLink, Monitor } from "lucide-react";
+import { SiSap, SiCitrix } from "react-icons/si";
 import type { Task } from "@shared/schema";
 import { EntityListDescriptor, registerEntity, TableColumn, ColumnHelpers, BulkEditField, FilterColumn } from "../entity-registry";
 import { taskStatusColors, taskStatusLabels, taskPriorityColors, taskPriorityLabels } from "../entity-constants";
@@ -146,10 +146,59 @@ export const tasksDescriptor: EntityListDescriptor = {
       label: "SAP",
       sortable: false,
       render: (task: any) => {
-        if (!task.sapServerHost || !task.sapSystemIdCode || !task.sapSystemNumber) {
+        const connectionType = task.sapConnectionType || 'sapgui';
+        const hasCitrix = connectionType === 'citrix' && task.sapCitrixLink;
+        const hasCloud = connectionType === 'cloud' && task.sapCloudLink;
+        const hasSapGui = task.sapServerHost && task.sapSystemIdCode && task.sapSystemNumber;
+        
+        // No SAP system configured
+        if (!hasCitrix && !hasCloud && !hasSapGui) {
           return <span className="text-muted-foreground text-sm">-</span>;
         }
         
+        // Citrix connection - open link in new tab
+        if (hasCitrix) {
+          const handleOpenCitrix = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            window.open(task.sapCitrixLink, '_blank');
+          };
+          
+          return (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              onClick={handleOpenCitrix}
+              title={`Apri Citrix per ${task.sapSystemName || 'SAP'}`}
+              data-testid={`button-citrix-launch-${task.id}`}
+            >
+              <Monitor className="h-4 w-4" />
+            </Button>
+          );
+        }
+        
+        // Cloud connection - open link in new tab
+        if (hasCloud) {
+          const handleOpenCloud = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            window.open(task.sapCloudLink, '_blank');
+          };
+          
+          return (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+              onClick={handleOpenCloud}
+              title={`Apri SAP Cloud per ${task.sapSystemName || 'SAP'}`}
+              data-testid={`button-cloud-launch-${task.id}`}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          );
+        }
+        
+        // SAP GUI - download shortcut
         const handleDownloadShortcut = (e: React.MouseEvent) => {
           e.stopPropagation();
           downloadSapShortcut({
