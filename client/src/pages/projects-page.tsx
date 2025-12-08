@@ -18,7 +18,7 @@ import { UniversalTable, createStandardColumns } from "@/components/ui/universal
 import { LayoutManager } from "@/components/ui/layout-manager";
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
-import { Code, Calendar, DollarSign, User, Edit, Target, Grid3X3, List, Trash2, History, MessageSquare, Workflow } from "lucide-react";
+import { Code, Calendar, DollarSign, User, Edit, Target, Grid3X3, List, Trash2, History, MessageSquare, Workflow, CheckCircle2, Clock, AlertTriangle, CalendarX, HelpCircle } from "lucide-react";
 import { Project, Partner, SapSystem } from "@shared/schema";
 import { RelationshipBadge } from "@/components/ui/relationship-badge";
 import { RelationshipPreviewProvider } from "@/components/ui/relationship-preview-context";
@@ -42,6 +42,15 @@ const statusColors = {
   review: "bg-yellow-100 text-yellow-800",
   completed: "bg-gray-100 text-gray-800",
   on_hold: "bg-red-100 text-red-800",
+};
+
+// Configurazione stati ETC (End-to-Complete)
+const etcStateConfig: Record<string, { label: string; color: string; icon: any }> = {
+  completed: { label: "Completato", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400", icon: CheckCircle2 },
+  on_track: { label: "In Tempo", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", icon: Clock },
+  delayed: { label: "In Ritardo", color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400", icon: AlertTriangle },
+  no_planning_window: { label: "No Pianificazione", color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400", icon: CalendarX },
+  no_tasks: { label: "No Task", color: "bg-gray-100 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400", icon: HelpCircle },
 };
 
 // Type for project relationships response
@@ -188,6 +197,15 @@ export default function ProjectsPage() {
     staleTime: 30 * 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
+  });
+
+  // Query per dati ETC calcolati (End-to-Complete)
+  const { data: etcData = {} } = useQuery<Record<string, any>>({
+    queryKey: ["/api/projects/batch-end-to-complete"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId && projects.length > 0,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnMount: true,
   });
 
   const { data: fieldMetadata } = useEntityFieldMetadata("projects");
@@ -489,6 +507,104 @@ export default function ProjectsPage() {
       render: (project: Project) => (
         <ProjectMilestonesCount projectId={project.id} currentOrganizationId={currentOrganizationId} />
       )
+    },
+    // Colonne ETC (End-to-Complete) calcolate
+    {
+      key: "etc_state",
+      label: "Stato ETC",
+      sortable: false,
+      searchable: false,
+      group: "computed" as const,
+      render: (project: Project) => {
+        const projectEtc = etcData[project.id];
+        if (!projectEtc || !projectEtc.hasTasks) {
+          return <span className="text-muted-foreground text-xs">-</span>;
+        }
+        const config = etcStateConfig[projectEtc.state] || etcStateConfig.no_tasks;
+        const IconComponent = config.icon;
+        return (
+          <Badge 
+            className={`${config.color} text-xs flex items-center gap-1 w-fit`}
+            title={`Stato: ${config.label}`}
+            data-testid={`badge-etc-state-${project.id}`}
+          >
+            <IconComponent className="h-3 w-3" />
+            {config.label}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: "etc_completion",
+      label: "% Complet.",
+      sortable: false,
+      searchable: false,
+      group: "computed" as const,
+      render: (project: Project) => {
+        const projectEtc = etcData[project.id];
+        if (!projectEtc || !projectEtc.hasTasks) {
+          return <span className="text-muted-foreground text-xs">-</span>;
+        }
+        const percentage = projectEtc.completionPercentage || 0;
+        return (
+          <div 
+            className="flex items-center gap-2 min-w-[80px]"
+            title={`${percentage}% completato`}
+          >
+            <Progress value={percentage} className="h-2 flex-1" />
+            <span className="text-xs font-medium" data-testid={`text-etc-completion-${project.id}`}>
+              {percentage}%
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      key: "etc_remaining_hours",
+      label: "Ore Rimanenti",
+      sortable: false,
+      searchable: false,
+      group: "computed" as const,
+      render: (project: Project) => {
+        const projectEtc = etcData[project.id];
+        if (!projectEtc || !projectEtc.hasTasks) {
+          return <span className="text-muted-foreground text-xs">-</span>;
+        }
+        return (
+          <span 
+            className="text-sm font-medium" 
+            data-testid={`text-remaining-hours-${project.id}`}
+            title={`${projectEtc.totalRemainingHours.toFixed(1)}h rimanenti su ${projectEtc.totalEstimatedHours}h stimate`}
+          >
+            {projectEtc.totalRemainingHours.toFixed(1)}h
+          </span>
+        );
+      },
+    },
+    {
+      key: "etc_effective_end",
+      label: "Fine Effettiva",
+      sortable: false,
+      searchable: false,
+      group: "computed" as const,
+      render: (project: Project) => {
+        const projectEtc = etcData[project.id];
+        if (!projectEtc || !projectEtc.effectiveEndDate) {
+          return <span className="text-muted-foreground text-xs">-</span>;
+        }
+        const effectiveDate = new Date(projectEtc.effectiveEndDate);
+        const formattedDate = effectiveDate.toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
+        const isDelayed = projectEtc.state === "delayed";
+        return (
+          <span 
+            className={`text-sm ${isDelayed ? "text-red-600 font-medium" : ""}`}
+            data-testid={`text-effective-end-${project.id}`}
+            title={`Fine effettiva calcolata: ${effectiveDate.toLocaleDateString("it-IT")}`}
+          >
+            {formattedDate}
+          </span>
+        );
+      },
     },
   ];
 
