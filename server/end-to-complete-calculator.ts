@@ -217,7 +217,12 @@ export async function calculateEndToComplete(
   }
 
   const allUserWindows = await storage.getAllPlanningWindowsForUser(userId);
-  const projectWindow = allUserWindows.find(w => w.projectId === projectId);
+  
+  // NEW: Use inverted relationship - project points to window via planningWindowId
+  // Also support legacy windows that have projectId for backwards compatibility
+  const projectWindow = project.planningWindowId
+    ? allUserWindows.find(w => w.id === project.planningWindowId)
+    : allUserWindows.find(w => w.projectId === projectId);
 
   if (!projectWindow) {
     return {

@@ -2831,7 +2831,26 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.get("/api/planning-windows/user", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const windows = await storage.getAllPlanningWindowsForUser(req.user!.id);
-    res.json(windows);
+    
+    // Enrich windows with projects using inverted relationship (project.planningWindowId -> window)
+    const organizationId = req.headers['x-organization-id'] as string | undefined;
+    const allProjects = await storage.getProjects(req.user!.id, organizationId || null);
+    
+    const enrichedWindows = windows.map(window => {
+      // NEW: Find project that points to this window via planningWindowId (inverted relationship)
+      const linkedProject = allProjects.find(p => p.planningWindowId === window.id);
+      // LEGACY: Also check old-style windows that have projectId
+      const legacyProject = window.projectId 
+        ? allProjects.find(p => p.id === window.projectId)
+        : null;
+      
+      return {
+        ...window,
+        project: linkedProject || legacyProject || null
+      };
+    });
+    
+    res.json(enrichedWindows);
   });
 
   app.get("/api/planning-windows/project/:projectId", async (req, res) => {
