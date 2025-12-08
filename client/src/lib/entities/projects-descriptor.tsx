@@ -213,6 +213,29 @@ const projectsDescriptor: EntityListDescriptor = {
           );
         },
       },
+      {
+        key: "etc_deficit_hours",
+        label: "Ore Deficit",
+        group: "computed" as const,
+        render: (project: any) => {
+          const etcData = context?.computedData?.[project.id];
+          const deficitHours = etcData?.scheduleDeficitHours || 0;
+          
+          if (!deficitHours || deficitHours <= 0) {
+            return <span className="text-muted-foreground text-xs">-</span>;
+          }
+          
+          return (
+            <span 
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+              data-testid={`text-deficit-hours-${project.id}`}
+              title={`Servono ${deficitHours.toFixed(1)} ore aggiuntive oltre la finestra pianificata`}
+            >
+              ⚠ +{deficitHours.toFixed(1)}h
+            </span>
+          );
+        },
+      },
     ];
     return baseColumns;
   },
