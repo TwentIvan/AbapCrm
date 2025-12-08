@@ -217,6 +217,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const estimatedHours = projectETC?.totalRemainingHours ?? project?.estimatedEffort ?? null;
       const workingDaysQuota = estimatedHours ? Math.ceil(estimatedHours / workingHoursPerDay) : null;
       
+      // Get the effective end date from ETC (storedCalculatedEndDate or effectiveEndDate)
+      // This is the precise date/time when the project's work ends based on task completion
+      const etcEndDateStr = projectETC?.storedCalculatedEndDate || projectETC?.effectiveEndDate;
+      const etcEffectiveEndDate = etcEndDateStr ? new Date(etcEndDateStr) : null;
+      
       // CRITICAL: Child windows (with parentPlanningWindowId) should ALWAYS use 'none' expansion logic
       // to respect quota-based day generation from estimatedEffort, regardless of their recurrence_type setting
       const isChildWindow = !!window.parentPlanningWindowId;
@@ -229,21 +234,66 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
         return (endH * 60 + endM - startH * 60 - startM) / 60;
       };
       
+      // Helper to check if a slot ends before or at the ETC effective end date
+      const isSlotBeforeETCEnd = (dayDate: Date, slotEndTime: string): boolean => {
+        if (!etcEffectiveEndDate) return true; // No ETC limit, show all slots
+        
+        const [endH, endM] = slotEndTime.split(':').map(Number);
+        const slotEndDateTime = new Date(dayDate);
+        slotEndDateTime.setHours(endH, endM, 0, 0);
+        
+        return slotEndDateTime <= etcEffectiveEndDate;
+      };
+      
+      // Helper to calculate partial hours if slot crosses ETC end time
+      const getETCLimitedHours = (dayDate: Date, slotStartTime: string, slotEndTime: string, fullSlotHours: number): { hours: number; isPartial: boolean } => {
+        if (!etcEffectiveEndDate) return { hours: fullSlotHours, isPartial: false };
+        
+        const [startH, startM] = slotStartTime.split(':').map(Number);
+        const [endH, endM] = slotEndTime.split(':').map(Number);
+        
+        const slotStartDateTime = new Date(dayDate);
+        slotStartDateTime.setHours(startH, startM, 0, 0);
+        
+        const slotEndDateTime = new Date(dayDate);
+        slotEndDateTime.setHours(endH, endM, 0, 0);
+        
+        // Slot ends before or at ETC end - full slot
+        if (slotEndDateTime <= etcEffectiveEndDate) {
+          return { hours: fullSlotHours, isPartial: false };
+        }
+        
+        // Slot starts after ETC end - no hours
+        if (slotStartDateTime >= etcEffectiveEndDate) {
+          return { hours: 0, isPartial: false };
+        }
+        
+        // Slot crosses ETC end - partial hours
+        const partialMinutes = (etcEffectiveEndDate.getTime() - slotStartDateTime.getTime()) / (1000 * 60);
+        const partialHours = Math.max(0, partialMinutes / 60);
+        return { hours: partialHours, isPartial: true };
+      };
+      
       if (effectiveRecurrenceType === 'none') {
         // Verifica se la finestra interseca il range del calendario
         if (isWithinInterval(windowStart, { start: calendarStart, end: calendarEnd }) ||
             isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
             (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
           
-          // Track remaining hours instead of working days for accurate partial slot handling
+          // Use ETC effective end date as the primary limit for slot generation
+          const effectiveWindowEnd = etcEffectiveEndDate 
+            ? min([windowEnd, etcEffectiveEndDate]) 
+            : windowEnd;
+          
+          // Track remaining hours for fallback (when no ETC data available)
           let remainingHours = estimatedHours;
           let currentDay = new Date(windowStart);
           
-          while (currentDay <= windowEnd) {
+          while (currentDay <= effectiveWindowEnd) {
             // Check if this is a working day
             if (isWorkingDay(currentDay, daysOfWeek)) {
-              // Stop if hours are exhausted (only if estimatedHours is set)
-              if (remainingHours !== null && remainingHours <= 0) {
+              // Stop if hours are exhausted (only if estimatedHours is set and no ETC end date)
+              if (!etcEffectiveEndDate && remainingHours !== null && remainingHours <= 0) {
                 break;
               }
               
@@ -252,11 +302,23 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 const slot = timeSlots[slotIdx];
                 const slotDurationHours = getSlotDurationHours(slot);
                 
+                // Check ETC limit for this slot
+                const etcLimit = getETCLimitedHours(currentDay, slot.startTime, slot.endTime, slotDurationHours);
+                
+                // Skip slot if it's completely beyond ETC end
+                if (etcLimit.hours <= 0) {
+                  continue;
+                }
+                
                 // Calculate hours to allocate to this slot
                 let allocatedHours: number;
                 let isPartialSlot: boolean;
                 
-                if (remainingHours === null) {
+                if (etcEffectiveEndDate) {
+                  // Use ETC-based allocation
+                  allocatedHours = etcLimit.hours;
+                  isPartialSlot = etcLimit.isPartial;
+                } else if (remainingHours === null) {
                   // No estimated hours - use full slot duration
                   allocatedHours = slotDurationHours;
                   isPartialSlot = false;
