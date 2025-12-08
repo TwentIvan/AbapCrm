@@ -491,9 +491,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     });
     
     // Deduplicate instances by unique key to prevent React duplicate key warnings
+    // Include project.id to distinguish different projects using the same window
     const uniqueInstances = new Map<string, ExpandedPlanningInstance>();
     instances.forEach(instance => {
-      const key = `${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
+      const projectKey = instance.project?.id || 'standalone';
+      const key = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
       // Keep the first occurrence (or could prefer one with more data)
       if (!uniqueInstances.has(key)) {
         uniqueInstances.set(key, instance);
@@ -748,9 +750,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             other.level > level && other.window.parentPlanningWindowId === instance.window.id
           );
           
+          const projectKey = instance.project?.id || 'standalone';
           result.push(
             <div
-              key={`${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`}
+              key={`${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`}
               onClick={() => onWindowSelect?.(instance.window)}
               className="absolute cursor-pointer"
               style={{ 
@@ -962,8 +965,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                     const topPosition = (startMinutes / 60) * hourHeight;
                     const height = (effectiveDurationMinutes / 60) * hourHeight;
                     
-                    // Unique key including all identifiers (add startTime to ensure uniqueness across ETC slots)
-                    const uniqueKey = `${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
+                    // Unique key including all identifiers (add project.id and startTime to ensure uniqueness across ETC slots)
+                    const projectKey = instance.project?.id || 'standalone';
+                    const uniqueKey = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
                     
                     return (
                       <div
@@ -1094,8 +1098,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 const topPosition = (startMinutes / 60) * hourHeight;
                 const height = (effectiveDurationMinutes / 60) * hourHeight;
                 
-                // Unique key including all identifiers (add startTime to ensure uniqueness across ETC slots)
-                const uniqueKey = `${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
+                // Unique key including all identifiers (add project.id and startTime to ensure uniqueness across ETC slots)
+                const projectKey = instance.project?.id || 'standalone';
+                const uniqueKey = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
                 
                 return (
                   <div
