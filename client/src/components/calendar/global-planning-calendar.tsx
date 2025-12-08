@@ -784,6 +784,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           const MIN_CHARS = 10;
           const WINDOW_WIDTH = CHAR_WIDTH * MIN_CHARS; // 70px
           const leftOffset = baseLeft + (siblingIndex * WINDOW_WIDTH);
+          const isLastSibling = siblingIndex === siblingCount - 1;
           
           return (
             <div
@@ -794,7 +795,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 top: `${topPosition}px`,
                 height: `${height}px`,
                 left: `${leftOffset}px`,
-                width: `${WINDOW_WIDTH}px`,
+                // Last sibling (or only child) stretches to right edge; others get fixed width
+                ...(isLastSibling ? { right: '2px' } : { width: `${WINDOW_WIDTH}px` }),
                 zIndex: hasChildren ? instance.level : 10 + instance.level + siblingIndex
               }}
             >
@@ -984,6 +986,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                       const WINDOW_WIDTH = CHAR_WIDTH * MIN_CHARS; // 70px
                       const baseLeft = 2 + getLevelIndentation(instance.level);
                       const leftOffset = baseLeft + (siblingIndex * WINDOW_WIDTH);
+                      const isLastSibling = siblingIndex === siblingCount - 1;
                       
                       return (
                         <div
@@ -994,7 +997,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                             top: `${topPosition}px`,
                             height: `${height}px`,
                             left: `${leftOffset}px`,
-                            width: `${WINDOW_WIDTH}px`,
+                            // Last sibling stretches to right edge; others get fixed width
+                            ...(isLastSibling ? { right: '2px' } : { width: `${WINDOW_WIDTH}px` }),
                             zIndex: 10 + instance.level + siblingIndex,
                           }}
                         >
@@ -1127,6 +1131,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   const WINDOW_WIDTH = CHAR_WIDTH * MIN_CHARS; // 70px
                   const baseLeft = 8 + getLevelIndentation(instance.level);
                   const leftOffset = baseLeft + (siblingIndex * WINDOW_WIDTH);
+                  const isLastSibling = siblingIndex === siblingCount - 1;
                   
                   return (
                     <div
@@ -1137,7 +1142,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                         top: `${topPosition}px`,
                         height: `${height}px`,
                         left: `${leftOffset}px`,
-                        width: `${WINDOW_WIDTH}px`,
+                        // Last sibling stretches to right edge; others get fixed width
+                        ...(isLastSibling ? { right: '8px' } : { width: `${WINDOW_WIDTH}px` }),
                         zIndex: 10 + instance.level + siblingIndex,
                       }}
                     >
