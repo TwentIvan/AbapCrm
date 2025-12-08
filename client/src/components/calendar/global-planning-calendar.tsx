@@ -822,7 +822,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null)}
               >
                 <div className="font-medium truncate">
-                  {instance.window.name}
+                  {instance.project?.name || instance.window.name}
                 </div>
               </div>
             </div>
@@ -1017,7 +1017,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                             style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null)}
                           >
                             <div className="font-medium truncate">
-                              {instance.window.name}
+                              {instance.project?.name || instance.window.name}
                             </div>
                           </div>
                         </div>
@@ -1152,7 +1152,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                         style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null)}
                       >
                         <div className="font-medium truncate">
-                          {instance.window.name}
+                          {instance.project?.name || instance.window.name}
                         </div>
                       </div>
                     </div>
