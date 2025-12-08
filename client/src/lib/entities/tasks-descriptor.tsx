@@ -2,7 +2,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CheckSquare, Edit, MoreHorizontal, Trash2, Clock, ExternalLink } from "lucide-react";
 import { SiSap } from "react-icons/si";
 import type { Task } from "@shared/schema";
@@ -164,24 +163,16 @@ export const tasksDescriptor: EntityListDescriptor = {
         };
         
         return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                  onClick={handleDownloadShortcut}
-                  data-testid={`button-sap-launch-${task.id}`}
-                >
-                  <SiSap className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Scarica shortcut SAP per {task.sapSystemName || task.sapSystemIdCode}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+            onClick={handleDownloadShortcut}
+            title={`Scarica shortcut SAP per ${task.sapSystemName || task.sapSystemIdCode}`}
+            data-testid={`button-sap-launch-${task.id}`}
+          >
+            <SiSap className="h-4 w-4" />
+          </Button>
         );
       },
     },

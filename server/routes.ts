@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { db } from "./db";
-import { sql, inArray, eq, and, desc, asc, isNull } from "drizzle-orm";
+import { sql, inArray, eq, and, desc, asc, isNull, aliasedTable } from "drizzle-orm";
 import { generateVPNAutomationScript, discoverVPNConnections, discoverAvailableVPNSoftware, testVPNConnection } from "./vpn-automation";
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
@@ -1193,6 +1193,10 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
+      // Alias for SAP systems table for partner-based lookup
+      const partnerSapSystems = aliasedTable(sapSystems, 'partner_sap_systems');
+      const taskSapSystems = aliasedTable(sapSystems, 'task_sap_systems');
+      
       const tasksList = await db.select({
         id: tasks.id,
         title: tasks.title,
@@ -1217,15 +1221,19 @@ export function registerRoutes(app: Express): Server {
         updatedAt: tasks.updatedAt,
         organizationId: tasks.organizationId,
         projectName: projects.name,
-        projectSapSystemId: projects.sapSystemId,
-        sapSystemName: sapSystems.name,
-        sapServerHost: sapSystems.serverHost,
-        sapSystemIdCode: sapSystems.systemId,
-        sapSystemNumber: sapSystems.systemNumber,
-        sapApplicationServerPort: sapSystems.applicationServerPort,
+        projectClientId: projects.clientId,
+        // SAP system: priority is task.sapSystemId, then partner's SAP system (project.clientId -> sapSystems.partnerId)
+        sapSystemName: sql<string>`COALESCE(${taskSapSystems.name}, ${partnerSapSystems.name})`.as('sap_system_name'),
+        sapServerHost: sql<string>`COALESCE(${taskSapSystems.serverHost}, ${partnerSapSystems.serverHost})`.as('sap_server_host'),
+        sapSystemIdCode: sql<string>`COALESCE(${taskSapSystems.systemId}, ${partnerSapSystems.systemId})`.as('sap_system_id_code'),
+        sapSystemNumber: sql<string>`COALESCE(${taskSapSystems.systemNumber}, ${partnerSapSystems.systemNumber})`.as('sap_system_number'),
+        sapApplicationServerPort: sql<number>`COALESCE(${taskSapSystems.applicationServerPort}, ${partnerSapSystems.applicationServerPort})`.as('sap_application_server_port'),
       }).from(tasks)
         .leftJoin(projects, eq(tasks.projectId, projects.id))
-        .leftJoin(sapSystems, eq(projects.sapSystemId, sapSystems.id))
+        // Join SAP system directly on task (override)
+        .leftJoin(taskSapSystems, eq(tasks.sapSystemId, taskSapSystems.id))
+        // Join SAP system via partner (project.clientId -> sapSystems.partnerId)
+        .leftJoin(partnerSapSystems, eq(projects.clientId, partnerSapSystems.partnerId))
         .leftJoin(users, eq(tasks.assignedTo, users.id))
         .where(inArray(tasks.organizationId, organizationIds))
         .orderBy(desc(tasks.updatedAt));
