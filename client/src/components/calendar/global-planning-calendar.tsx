@@ -581,8 +581,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     };
   };
 
+  // Indentazione progressiva per sotto-finestre: ogni livello parte più a destra
+  // per creare l'effetto di "dopo la descrizione del parent"
   const getLevelIndentation = (level: number) => {
-    return level * 4;
+    return level * 30; // 30px per ogni livello di profondità
   };
 
   // Funzione per trovare il colore del progetto padre nella gerarchia
@@ -751,38 +753,20 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 top: `${topPosition}px`,
                 height: `${height}px`,
                 left: `${getLevelIndentation(instance.level)}px`,
-                right: `${getLevelIndentation(instance.level)}px`,
+                right: `2px`,
                 zIndex: hasChildren ? instance.level : 10 + instance.level,
                 opacity: hasChildren ? 0.4 : 1
               }}
             >
               <div 
-                className={`hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden flex flex-col justify-between ${hasChildren ? 'border-2 border-dashed' : ''} ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
+                className={`hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden ${hasChildren ? 'border-2 border-dashed' : ''} ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
                 style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level)}
               >
-                <div>
-                  <div className="font-medium truncate">
-                    {instance.window.name}
-                  </div>
-                  <div className="text-[10px] opacity-75">
-                    {instance.startTime} - {effectiveEndTime}
-                    {instance.isPartialSlot && (
-                      <span className="ml-1 text-orange-600 font-medium">
-                        ({instance.allocatedHours}h/{instance.slotDurationHours}h)
-                      </span>
-                    )}
-                    {!instance.isPartialSlot && instance.allocatedHours > 0 && (
-                      <span className="ml-1 opacity-60">
-                        ({instance.allocatedHours}h)
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="text-[9px] opacity-75 truncate">
-                  {instance.project?.name || 'Finestra Standalone'}
-                  {instance.level > 0 && (
-                    <span className="ml-1">
-                      {'→'.repeat(instance.level)}
+                <div className="font-medium truncate">
+                  {instance.window.name}
+                  {instance.project && (
+                    <span className="font-normal opacity-75 ml-1">
+                      - {instance.project.name}
                     </span>
                   )}
                 </div>
@@ -949,7 +933,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                           top: `${topPosition}px`,
                           height: `${height}px`,
                           left: `${2 + getLevelIndentation(instance.level)}px`,
-                          right: `${2 + getLevelIndentation(instance.level)}px`,
+                          right: `2px`,
                           zIndex: 10 + instance.level, // Higher level = higher z-index
                         }}
                       >
@@ -960,22 +944,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                           <div className="font-medium truncate">
                             {instance.window.name}
                           </div>
-                          <div className="text-[10px] opacity-75">
-                            {instance.startTime} - {effectiveEndTime}
-                            {instance.isPartialSlot && (
-                              <span className="ml-1 text-orange-600 font-medium">
-                                ({instance.allocatedHours}h/{instance.slotDurationHours}h)
-                              </span>
-                            )}
-                            {!instance.isPartialSlot && instance.allocatedHours > 0 && (
-                              <span className="ml-1 opacity-60">
-                                ({instance.allocatedHours}h)
-                              </span>
-                            )}
-                          </div>
                           <div className="text-[9px] opacity-75 truncate">
                             {instance.project?.name || 'Finestra Standalone'}
-                            {instance.level > 0 && <span className="ml-1">{'→'.repeat(instance.level)}</span>}
                           </div>
                         </div>
                       </div>
@@ -1082,7 +1052,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                       top: `${topPosition}px`,
                       height: `${height}px`,
                       left: `${8 + getLevelIndentation(instance.level)}px`,
-                      right: `${8 + getLevelIndentation(instance.level)}px`,
+                      right: `8px`,
                       zIndex: 10 + instance.level, // Higher level = higher z-index
                     }}
                   >
@@ -1093,26 +1063,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                       <div className="font-medium truncate">
                         {instance.window.name}
                       </div>
-                      <div className="text-sm opacity-75 mt-1">
-                        {instance.startTime} - {effectiveEndTime}
-                        {instance.isPartialSlot && (
-                          <span className="ml-2 text-orange-600 font-medium">
-                            ({instance.allocatedHours}h/{instance.slotDurationHours}h)
-                          </span>
-                        )}
-                        {!instance.isPartialSlot && instance.allocatedHours > 0 && (
-                          <span className="ml-2 opacity-60">
-                            ({instance.allocatedHours}h)
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm opacity-75 mt-1">
+                      <div className="text-sm opacity-75 mt-1 truncate">
                         {instance.project?.name || 'Finestra Standalone'}
-                        {instance.level > 0 && (
-                          <span className="ml-2">
-                            {'→'.repeat(instance.level)}
-                          </span>
-                        )}
                       </div>
                       {instance.project?.description && height > 120 && (
                         <div className="text-xs opacity-60 mt-2 flex-1 overflow-hidden">
