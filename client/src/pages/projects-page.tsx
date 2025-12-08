@@ -517,7 +517,7 @@ export default function ProjectsPage() {
       group: "computed" as const,
       render: (project: Project) => {
         const projectEtc = etcData[project.id];
-        if (!projectEtc || !projectEtc.hasTasks) {
+        if (!projectEtc) {
           return <span className="text-muted-foreground text-xs">-</span>;
         }
         const config = etcStateConfig[projectEtc.state] || etcStateConfig.no_tasks;
