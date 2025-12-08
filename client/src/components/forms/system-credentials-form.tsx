@@ -52,6 +52,7 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
       systemType: credential?.systemType || "sap",
       systemId: credential?.systemId || undefined,
       systemName: credential?.systemName || "",
+      webLink: (credential as any)?.webLink || "",
       expirationDate: credential?.expirationDate ? new Date(credential.expirationDate) : undefined,
       isActive: credential?.isActive ?? true,
       description: credential?.description || "",
@@ -164,6 +165,7 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
                     <SelectContent>
                       <SelectItem value="sap">SAP</SelectItem>
                       <SelectItem value="vpn">VPN</SelectItem>
+                      <SelectItem value="weblink">Link Web</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -262,8 +264,30 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
                     <FormControl>
                       <Input 
                         {...field} 
-                        placeholder={selectedSystemType === "sap" ? "Es. PRD, DEV, QAS" : "Es. Cliente VPN, Office VPN"}
+                        placeholder={selectedSystemType === "sap" ? "Es. PRD, DEV, QAS" : selectedSystemType === "weblink" ? "Es. Portale Cliente, Intranet" : "Es. Cliente VPN, Office VPN"}
                         data-testid="input-system-name"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Web Link field for weblink type credentials */}
+            {selectedSystemType === "weblink" && (
+              <FormField
+                control={form.control}
+                name="webLink"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>URL Link Web</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        type="url"
+                        placeholder="https://portale.azienda.com"
+                        data-testid="input-web-link"
                       />
                     </FormControl>
                     <FormMessage />

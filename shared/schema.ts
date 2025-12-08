@@ -742,10 +742,11 @@ export const sapSystems = pgTable("sap_systems", {
   landscapeLevel: integer("landscape_level"), // Livello numerico del landscape (1=dev, 2=test, 3=quality, 4=preprod, 5=prod)
   
   // Connection Type & Access Methods
-  connectionType: text("connection_type").default("sapgui"), // sapgui, cloud, citrix
+  connectionType: text("connection_type").default("sapgui"), // sapgui, cloud, citrix, weblink
   cloudLink: text("cloud_link"), // Link per sistemi SAP cloud (BTP, S/4HANA Cloud, etc.)
   citrixLink: text("citrix_link"), // URL del portale Citrix
   citrixAppName: text("citrix_app_name"), // Nome applicazione Citrix pubblicata
+  webLink: text("web_link"), // Link generico per accesso web (portali, webapp, etc.)
   sapShortcutFile: text("sap_shortcut_file"), // File .sap shortcut allegato
   
   // VPN Configuration
@@ -914,7 +915,7 @@ export const vpnCredentials = pgTable("vpn_credentials", {
 });
 
 // Tabella unificata per credenziali di sistema (SAP + VPN)
-export const systemTypeEnum = pgEnum("system_type", ["sap", "vpn"]);
+export const systemTypeEnum = pgEnum("system_type", ["sap", "vpn", "weblink"]);
 
 export const systemCredentials = pgTable("system_credentials", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -925,9 +926,10 @@ export const systemCredentials = pgTable("system_credentials", {
   password: text("password").notNull(), // Encrypted in storage
   
   // Tipo sistema e riferimento
-  systemType: systemTypeEnum("system_type").notNull(), // SAP o VPN
+  systemType: systemTypeEnum("system_type").notNull(), // SAP, VPN o WebLink
   systemId: uuid("system_id"), // ID del sistema SAP o VPN di riferimento
   systemName: text("system_name").notNull(), // Nome leggibile del sistema
+  webLink: text("web_link"), // URL per accesso web (quando systemType = weblink)
   
   // Scadenza e validità
   expirationDate: timestamp("expiration_date"), // Data scadenza credenziali

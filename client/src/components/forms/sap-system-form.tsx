@@ -28,6 +28,7 @@ const formSchema = z.object({
   cloudLink: z.string().url("URL non valido").optional().nullable().or(z.literal("")),
   citrixLink: z.string().url("URL non valido").optional().nullable().or(z.literal("")),
   citrixAppName: z.string().optional().nullable(),
+  webLink: z.string().url("URL non valido").optional().nullable().or(z.literal("")),
   sapShortcutFile: z.string().optional().nullable(),
   description: z.string().optional(),
   partnerId: z.string().optional().nullable(),
@@ -80,6 +81,7 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
       cloudLink: (system as any)?.cloudLink || "",
       citrixLink: (system as any)?.citrixLink || "",
       citrixAppName: (system as any)?.citrixAppName || "",
+      webLink: (system as any)?.webLink || "",
       sapShortcutFile: (system as any)?.sapShortcutFile || "",
       description: system?.description || "",
       partnerId: system?.partnerId || undefined,
@@ -422,6 +424,12 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                             Citrix
                           </div>
                         </SelectItem>
+                        <SelectItem value="weblink">
+                          <div className="flex items-center gap-2">
+                            <Link className="h-4 w-4" />
+                            Link Web
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormDescription>
@@ -629,6 +637,35 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
                     )}
                   />
                 </>
+              )}
+
+              {/* Web Link Connection Fields */}
+              {watchConnectionType === "weblink" && (
+                <FormField
+                  control={form.control}
+                  name="webLink"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Link className="h-4 w-4" />
+                        Link Web
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="url"
+                          placeholder="https://portale.azienda.com/sap" 
+                          {...field}
+                          value={field.value || ''}
+                          data-testid="input-web-link"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        URL generico per accesso web (portali, webapp, etc.)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
 
               <FormField
