@@ -753,6 +753,19 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           const projectKey = instance.project?.id || 'standalone';
           const uniqueKey = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
           
+          // DEBUG: Log all instances to understand the color issue
+          const dateStr = format(instance.date, 'yyyy-MM-dd');
+          if (dateStr === '2025-12-15') {
+            console.log(`DEBUG ${dateStr} ${instance.startTime}:`, {
+              windowName: instance.window.name,
+              hasProject: instance.project !== null,
+              projectId: instance.project?.id,
+              level: instance.level,
+              slotIndex: instance.slotIndex,
+              color: getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null).backgroundColor
+            });
+          }
+          
           return (
             <div
               key={uniqueKey}
