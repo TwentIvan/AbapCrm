@@ -690,23 +690,12 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     const CONTENT_HEIGHT = FIXED_DAY_HEIGHT - HEADER_HEIGHT; // 112px effettivi
     // Con 112px di contenuto: 8 ore = 1/3 = ~37px, quindi ~4.7px per ora
 
-    // Funzione ricorsiva per renderizzare progetti padre -> figli
-    // allDayInstances: all instances for this day (for hasChildren lookup)
-    // instancesToProcess: subset of instances to render in this call
-    const renderHierarchicalProjects = (allDayInstances: ExpandedPlanningInstance[], instancesToProcess: ExpandedPlanningInstance[], availableHeight: number, parentBounds?: { start: number, end: number, level: number }) => {
+    // Funzione lineare per renderizzare tutte le istanze del giorno
+    // Usa lo stesso approccio delle viste settimana/giorno: itera su tutte le istanze ordinate per level
+    // Questo evita duplicati e garantisce consistenza tra le viste
+    const renderDayInstances = (allDayInstances: ExpandedPlanningInstance[]) => {
       const minutesInDay = 24 * 60; // 1440 minuti
-      // IMPORTANTE: Usa l'altezza totale della cella (140px) per calcoli proporzioni corrette
       const totalCellHeight = FIXED_DAY_HEIGHT; // 140px per proporzioni corrette
-      
-      // Raggruppa per livello
-      const byLevel = instancesToProcess.reduce((acc, instance) => {
-        if (!acc[instance.level]) acc[instance.level] = [];
-        acc[instance.level].push(instance);
-        return acc;
-      }, {} as Record<number, ExpandedPlanningInstance[]>);
-      
-      const levels = Object.keys(byLevel).map(Number).sort();
-      const result: JSX.Element[] = [];
       
       // Helper per calcolare l'orario di fine effettivo basato sulle ore allocate
       const getEffectiveEndTime = (startTime: string, allocatedHours: number): string => {
@@ -717,57 +706,45 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
         return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
       };
 
-      levels.forEach(level => {
-        const levelInstances = byLevel[level];
-        
-        levelInstances.forEach((instance, idx) => {
+      // Ordina per level (parents first, children on top) - stesso approccio di settimana/giorno
+      return allDayInstances
+        .sort((a, b) => a.level - b.level)
+        .map((instance) => {
           const startMinutes = timeToMinutes(instance.startTime);
-          const originalEndMinutes = timeToMinutes(instance.endTime); // Per i bounds dei children
-          // Per slot parziali, usa le ore allocate effettive invece della durata completa
           const effectiveDurationMinutes = instance.allocatedHours * 60;
           const effectiveEndTime = instance.isPartialSlot 
             ? getEffectiveEndTime(instance.startTime, instance.allocatedHours)
             : instance.endTime;
-          const durationMinutes = effectiveDurationMinutes;
           
-          // Se c'è un parent bound, calcola le coordinate relative al padre
-          let relativeStart = startMinutes;
-          let relativeHeight = totalCellHeight; // Usa altezza totale per proporzioni corrette
-          let relativeTop = 0;
+          // Calcola posizione usando proporzioni sulla giornata intera
+          const topPosition = (startMinutes / minutesInDay) * totalCellHeight;
+          const height = Math.max(16, (effectiveDurationMinutes / minutesInDay) * totalCellHeight);
           
-          if (parentBounds) {
-            relativeTop = ((parentBounds.start) / minutesInDay) * totalCellHeight;
-            relativeHeight = ((parentBounds.end - parentBounds.start) / minutesInDay) * totalCellHeight;
-            relativeStart = startMinutes - parentBounds.start; // Posizione relativa al padre
-          }
-          
-          // Calcola proporzioni usando altezza totale cella (140px): 8 ore = 1/3 = ~47px
-          const topPosition = relativeTop + (relativeStart / (parentBounds ? (parentBounds.end - parentBounds.start) : minutesInDay)) * relativeHeight;
-          const height = Math.max(16, (durationMinutes / (parentBounds ? (parentBounds.end - parentBounds.start) : minutesInDay)) * relativeHeight);
-          
-          // Determina se questo è un progetto padre (ha figli) - cerca tra TUTTE le istanze del giorno
+          // Determina se questo è un progetto padre (ha figli)
           const hasChildren = allDayInstances.some(other => 
-            other.level > level && other.window.parentPlanningWindowId === instance.window.id
+            other.level > instance.level && other.window.parentPlanningWindowId === instance.window.id
           );
           
           const projectKey = instance.project?.id || 'standalone';
-          result.push(
+          const uniqueKey = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
+          
+          return (
             <div
-              key={`${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`}
+              key={uniqueKey}
               onClick={() => onWindowSelect?.(instance.window)}
               className="absolute cursor-pointer"
               style={{ 
                 top: `${topPosition}px`,
                 height: `${height}px`,
-                left: `${getLevelIndentation(level)}px`,
-                right: `${getLevelIndentation(level)}px`,
-                zIndex: hasChildren ? level : 10 + level,
+                left: `${getLevelIndentation(instance.level)}px`,
+                right: `${getLevelIndentation(instance.level)}px`,
+                zIndex: hasChildren ? instance.level : 10 + instance.level,
                 opacity: hasChildren ? 0.4 : 1
               }}
             >
               <div 
                 className={`hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden flex flex-col justify-between ${hasChildren ? 'border-2 border-dashed' : ''} ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
-                style={getProjectColorStyle(getProjectHierarchyColor(instance.project), level)}
+                style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level)}
               >
                 <div>
                   <div className="font-medium truncate">
@@ -789,36 +766,16 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 </div>
                 <div className="text-[9px] opacity-75 truncate">
                   {instance.project?.name || 'Finestra Standalone'}
-                  {level > 0 && (
+                  {instance.level > 0 && (
                     <span className="ml-1">
-                      {'→'.repeat(level)}
+                      {'→'.repeat(instance.level)}
                     </span>
                   )}
                 </div>
               </div>
             </div>
           );
-          
-          // Se questo ha figli, renderizza i figli all'interno
-          // CRITICAL: Filter children by parentPlanningWindowId from ALL day instances
-          if (hasChildren) {
-            const children = allDayInstances.filter(other => 
-              other.level > level && 
-              other.window.parentPlanningWindowId === instance.window.id
-            );
-            if (children.length > 0) {
-              const childElements = renderHierarchicalProjects(allDayInstances, children, totalCellHeight, {
-                start: startMinutes,
-                end: originalEndMinutes,
-                level: level
-              });
-              result.push(...childElements);
-            }
-          }
         });
-      });
-      
-      return result;
     };
 
     return (
@@ -854,12 +811,12 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 {format(day, 'd')}
               </div>
               
-              {/* Renderizzazione ricorsiva progetti padre -> figli */}
+              {/* Renderizzazione lineare delle istanze - stesso approccio di settimana/giorno */}
               <div className="absolute inset-x-0" style={{ 
                 top: `0px`, // Inizia dall'alto della cella per proporzioni corrette
                 height: `${FIXED_DAY_HEIGHT}px` // Usa altezza totale per proporzioni corrette
               }}>
-                {renderHierarchicalProjects(dayInstances, dayInstances.filter(i => i.level === 0), FIXED_DAY_HEIGHT)}
+                {renderDayInstances(dayInstances)}
               </div>
             </div>
           );
