@@ -963,6 +963,27 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get("/api/projects/:id/end-to-complete", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const result = await calculateEndToComplete(req.params.id, req.user!.id, organizationId);
+      
+      // Include stored schedule deficit from project (auto-rescheduling result)
+      const project = await storage.getProject(req.params.id, req.user!.id, organizationId);
+      res.json({
+        ...result,
+        scheduleDeficitHours: project?.scheduleDeficitHours || 0,
+        storedCalculatedEndDate: project?.calculatedEndDate 
+          ? new Date(project.calculatedEndDate).toISOString() 
+          : null
+      });
+    } catch (error) {
+      console.error("Error calculating end-to-complete:", error);
+      res.status(500).json({ error: "Failed to calculate end-to-complete" });
+    }
+  });
+
   app.get("/api/projects/:id/relationships", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
