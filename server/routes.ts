@@ -924,9 +924,23 @@ export function registerRoutes(app: Express): Server {
       for (const project of projectsList) {
         try {
           const result = await calculateEndToComplete(project.id, req.user!.id, organizationId);
-          results[project.id] = result;
+          // Include stored schedule deficit from project (auto-rescheduling result)
+          results[project.id] = {
+            ...result,
+            scheduleDeficitHours: project.scheduleDeficitHours || 0,
+            storedCalculatedEndDate: project.calculatedEndDate 
+              ? new Date(project.calculatedEndDate).toISOString() 
+              : null
+          };
         } catch (err) {
-          results[project.id] = { error: true, state: 'error' };
+          results[project.id] = { 
+            error: true, 
+            state: 'error',
+            scheduleDeficitHours: project.scheduleDeficitHours || 0,
+            storedCalculatedEndDate: project.calculatedEndDate 
+              ? new Date(project.calculatedEndDate).toISOString() 
+              : null
+          };
         }
       }
       
