@@ -568,8 +568,12 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
   };
 
   // Funzione per generare gli stili inline per un progetto e livello
+  // Le finestre standalone (grigio #6B7280) mantengono sempre il colore scuro senza schiarimento
+  const STANDALONE_GRAY = '#6B7280';
   const getProjectColorStyle = (projectColor: string, level: number): { backgroundColor: string; borderColor: string; color: string } => {
-    const lightColor = getLighterColor(projectColor, level);
+    // Per finestre standalone (grigio default), mantieni sempre il colore scuro
+    const isStandalone = projectColor === STANDALONE_GRAY;
+    const lightColor = isStandalone ? projectColor : getLighterColor(projectColor, level);
     const rgb = hexToRgb(lightColor);
     if (!rgb) return { backgroundColor: '#E5E7EB', borderColor: '#D1D5DB', color: '#374151' };
     
