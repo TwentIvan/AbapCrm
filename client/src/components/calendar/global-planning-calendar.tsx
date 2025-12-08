@@ -733,24 +733,29 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
         return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
       };
       
-      // Group siblings (same level, same slot time) to calculate horizontal offset
-      // This prevents windows with same level from completely overlapping
-      const getSiblingIndex = (instance: ExpandedPlanningInstance): number => {
-        const siblings = allDayInstances.filter(other => 
-          other.level === instance.level && 
-          other.startTime === instance.startTime &&
-          other.window.id !== instance.window.id
-        );
-        // Sort siblings by window id for consistent ordering
-        const allSameSlot = [instance, ...siblings].sort((a, b) => a.window.id.localeCompare(b.window.id));
-        return allSameSlot.findIndex(s => s.window.id === instance.window.id);
-      };
+      // Group siblings by PARENT (not just level) to calculate horizontal offset
+      // Level 0 windows are never siblings - each spans full width
+      // Level 1+ siblings share the same parentPlanningWindowId
+      const getSiblingGroupKey = (inst: ExpandedPlanningInstance): string => 
+        inst.level === 0 ? inst.window.id : (inst.window.parentPlanningWindowId ?? inst.window.id);
       
-      const getSiblingCount = (instance: ExpandedPlanningInstance): number => {
-        return allDayInstances.filter(other => 
-          other.level === instance.level && 
-          other.startTime === instance.startTime
-        ).length;
+      const getSiblingMeta = (inst: ExpandedPlanningInstance): { index: number; count: number } => {
+        // Level 0 always spans full width (no siblings)
+        if (inst.level === 0) return { index: 0, count: 1 };
+        
+        const groupKey = getSiblingGroupKey(inst);
+        const siblings = allDayInstances
+          .filter(other => 
+            other.level === inst.level &&
+            other.startTime === inst.startTime &&
+            getSiblingGroupKey(other) === groupKey
+          )
+          .sort((a, b) => a.window.id.localeCompare(b.window.id));
+        
+        return {
+          index: siblings.findIndex(s => s.window.id === inst.window.id),
+          count: siblings.length
+        };
       };
 
       // Ordina per level (parents first, children on top) - stesso approccio di settimana/giorno
@@ -775,16 +780,17 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           const projectKey = instance.project?.id || 'standalone';
           const uniqueKey = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
           
-          // Calculate horizontal position for siblings (same level, same time slot)
-          const siblingIndex = getSiblingIndex(instance);
-          const siblingCount = getSiblingCount(instance);
-          const baseLeft = getLevelIndentation(instance.level);
+          // Calculate horizontal position for siblings
+          const { index: siblingIndex, count: siblingCount } = getSiblingMeta(instance);
+          // Level 0: minimal padding; Level 1+: indentation + padding
+          const baseIndent = instance.level === 0 ? 2 : getLevelIndentation(instance.level);
           // Fixed width per window: ~70px for 10 characters (font-size xs ≈ 7px/char)
           const CHAR_WIDTH = 7;
           const MIN_CHARS = 10;
           const WINDOW_WIDTH = CHAR_WIDTH * MIN_CHARS; // 70px
-          const leftOffset = baseLeft + (siblingIndex * WINDOW_WIDTH);
-          const isLastSibling = siblingIndex === siblingCount - 1;
+          const leftOffset = baseIndent + (siblingIndex * WINDOW_WIDTH);
+          // Level 0 or last sibling stretches to right edge
+          const isTerminal = instance.level === 0 || siblingIndex === siblingCount - 1;
           
           return (
             <div
@@ -796,7 +802,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 height: `${height}px`,
                 left: `${leftOffset}px`,
                 // Last sibling (or only child) stretches to right edge; others get fixed width
-                ...(isLastSibling ? { right: '2px' } : { width: `${WINDOW_WIDTH}px` }),
+                ...(isTerminal ? { right: '2px' } : { width: `${WINDOW_WIDTH}px` }),
                 zIndex: hasChildren ? instance.level : 10 + instance.level + siblingIndex
               }}
             >
@@ -939,21 +945,23 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   {/* Eventi sovrapposti come box continui - renderizza prima livello 0, poi livelli superiori */}
                   {(() => {
                     // Sibling calculation helpers (same as month view)
-                    const getSiblingIndex = (inst: ExpandedPlanningInstance): number => {
-                      const siblings = dayInstances.filter(other => 
-                        other.level === inst.level && 
-                        other.startTime === inst.startTime &&
-                        other.window.id !== inst.window.id
-                      );
-                      const allSameSlot = [inst, ...siblings].sort((a, b) => a.window.id.localeCompare(b.window.id));
-                      return allSameSlot.findIndex(s => s.window.id === inst.window.id);
-                    };
+                    const getSiblingGroupKey = (inst: ExpandedPlanningInstance): string => 
+                      inst.level === 0 ? inst.window.id : (inst.window.parentPlanningWindowId ?? inst.window.id);
                     
-                    const getSiblingCount = (inst: ExpandedPlanningInstance): number => {
-                      return dayInstances.filter(other => 
-                        other.level === inst.level && 
-                        other.startTime === inst.startTime
-                      ).length;
+                    const getSiblingMeta = (inst: ExpandedPlanningInstance): { index: number; count: number } => {
+                      if (inst.level === 0) return { index: 0, count: 1 };
+                      const groupKey = getSiblingGroupKey(inst);
+                      const siblings = dayInstances
+                        .filter(other => 
+                          other.level === inst.level &&
+                          other.startTime === inst.startTime &&
+                          getSiblingGroupKey(other) === groupKey
+                        )
+                        .sort((a, b) => a.window.id.localeCompare(b.window.id));
+                      return {
+                        index: siblings.findIndex(s => s.window.id === inst.window.id),
+                        count: siblings.length
+                      };
                     };
                     
                     return dayInstances
@@ -961,16 +969,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                       .map((instance) => {
                       const startMinutes = timeToMinutes(instance.startTime);
                       const effectiveDurationMinutes = instance.allocatedHours * 60;
-                      const getEffectiveEndTime = (startTime: string, allocatedHours: number): string => {
-                        const [startH, startM] = startTime.split(':').map(Number);
-                        const totalMinutes = startH * 60 + startM + allocatedHours * 60;
-                        const endH = Math.floor(totalMinutes / 60);
-                        const endM = Math.round(totalMinutes % 60);
-                        return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
-                      };
-                      const effectiveEndTime = instance.isPartialSlot 
-                        ? getEffectiveEndTime(instance.startTime, instance.allocatedHours)
-                        : instance.endTime;
                       
                       const topPosition = (startMinutes / 60) * hourHeight;
                       const height = (effectiveDurationMinutes / 60) * hourHeight;
@@ -979,14 +977,13 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                       const uniqueKey = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
                       
                       // Sibling positioning (10 chars ≈ 70px)
-                      const siblingIndex = getSiblingIndex(instance);
-                      const siblingCount = getSiblingCount(instance);
+                      const { index: siblingIndex, count: siblingCount } = getSiblingMeta(instance);
+                      const baseIndent = instance.level === 0 ? 2 : 2 + getLevelIndentation(instance.level);
                       const CHAR_WIDTH = 7;
                       const MIN_CHARS = 10;
                       const WINDOW_WIDTH = CHAR_WIDTH * MIN_CHARS; // 70px
-                      const baseLeft = 2 + getLevelIndentation(instance.level);
-                      const leftOffset = baseLeft + (siblingIndex * WINDOW_WIDTH);
-                      const isLastSibling = siblingIndex === siblingCount - 1;
+                      const leftOffset = baseIndent + (siblingIndex * WINDOW_WIDTH);
+                      const isTerminal = instance.level === 0 || siblingIndex === siblingCount - 1;
                       
                       return (
                         <div
@@ -997,8 +994,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                             top: `${topPosition}px`,
                             height: `${height}px`,
                             left: `${leftOffset}px`,
-                            // Last sibling stretches to right edge; others get fixed width
-                            ...(isLastSibling ? { right: '2px' } : { width: `${WINDOW_WIDTH}px` }),
+                            ...(isTerminal ? { right: '2px' } : { width: `${WINDOW_WIDTH}px` }),
                             zIndex: 10 + instance.level + siblingIndex,
                           }}
                         >
@@ -1084,21 +1080,23 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               {/* Eventi sovrapposti - renderizza prima livello 0, poi livelli superiori */}
               {(() => {
                 // Sibling calculation helpers (same as month/week view)
-                const getSiblingIndex = (inst: ExpandedPlanningInstance): number => {
-                  const siblings = dayInstances.filter(other => 
-                    other.level === inst.level && 
-                    other.startTime === inst.startTime &&
-                    other.window.id !== inst.window.id
-                  );
-                  const allSameSlot = [inst, ...siblings].sort((a, b) => a.window.id.localeCompare(b.window.id));
-                  return allSameSlot.findIndex(s => s.window.id === inst.window.id);
-                };
+                const getSiblingGroupKey = (inst: ExpandedPlanningInstance): string => 
+                  inst.level === 0 ? inst.window.id : (inst.window.parentPlanningWindowId ?? inst.window.id);
                 
-                const getSiblingCount = (inst: ExpandedPlanningInstance): number => {
-                  return dayInstances.filter(other => 
-                    other.level === inst.level && 
-                    other.startTime === inst.startTime
-                  ).length;
+                const getSiblingMeta = (inst: ExpandedPlanningInstance): { index: number; count: number } => {
+                  if (inst.level === 0) return { index: 0, count: 1 };
+                  const groupKey = getSiblingGroupKey(inst);
+                  const siblings = dayInstances
+                    .filter(other => 
+                      other.level === inst.level &&
+                      other.startTime === inst.startTime &&
+                      getSiblingGroupKey(other) === groupKey
+                    )
+                    .sort((a, b) => a.window.id.localeCompare(b.window.id));
+                  return {
+                    index: siblings.findIndex(s => s.window.id === inst.window.id),
+                    count: siblings.length
+                  };
                 };
                 
                 return dayInstances
@@ -1106,16 +1104,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   .map((instance) => {
                   const startMinutes = timeToMinutes(instance.startTime);
                   const effectiveDurationMinutes = instance.allocatedHours * 60;
-                  const getEffectiveEndTime = (startTime: string, allocatedHours: number): string => {
-                    const [startH, startM] = startTime.split(':').map(Number);
-                    const totalMinutes = startH * 60 + startM + allocatedHours * 60;
-                    const endH = Math.floor(totalMinutes / 60);
-                    const endM = Math.round(totalMinutes % 60);
-                    return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
-                  };
-                  const effectiveEndTime = instance.isPartialSlot 
-                    ? getEffectiveEndTime(instance.startTime, instance.allocatedHours)
-                    : instance.endTime;
                   
                   const topPosition = (startMinutes / 60) * hourHeight;
                   const height = (effectiveDurationMinutes / 60) * hourHeight;
@@ -1124,14 +1112,13 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   const uniqueKey = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
                   
                   // Sibling positioning (10 chars ≈ 70px)
-                  const siblingIndex = getSiblingIndex(instance);
-                  const siblingCount = getSiblingCount(instance);
+                  const { index: siblingIndex, count: siblingCount } = getSiblingMeta(instance);
+                  const baseIndent = instance.level === 0 ? 8 : 8 + getLevelIndentation(instance.level);
                   const CHAR_WIDTH = 7;
                   const MIN_CHARS = 10;
                   const WINDOW_WIDTH = CHAR_WIDTH * MIN_CHARS; // 70px
-                  const baseLeft = 8 + getLevelIndentation(instance.level);
-                  const leftOffset = baseLeft + (siblingIndex * WINDOW_WIDTH);
-                  const isLastSibling = siblingIndex === siblingCount - 1;
+                  const leftOffset = baseIndent + (siblingIndex * WINDOW_WIDTH);
+                  const isTerminal = instance.level === 0 || siblingIndex === siblingCount - 1;
                   
                   return (
                     <div
@@ -1142,8 +1129,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                         top: `${topPosition}px`,
                         height: `${height}px`,
                         left: `${leftOffset}px`,
-                        // Last sibling stretches to right edge; others get fixed width
-                        ...(isLastSibling ? { right: '8px' } : { width: `${WINDOW_WIDTH}px` }),
+                        ...(isTerminal ? { right: '8px' } : { width: `${WINDOW_WIDTH}px` }),
                         zIndex: 10 + instance.level + siblingIndex,
                       }}
                     >
