@@ -39,6 +39,14 @@ interface ExpandedPlanningInstance {
 
 type CalendarView = 'month' | 'week' | 'day';
 
+interface ETCSlotAllocation {
+  date: string;
+  startTime: string;
+  endTime: string;
+  allocatedHours: number;
+  isPartialSlot: boolean;
+}
+
 interface ETCBatchData {
   [projectId: string]: {
     state: string;
@@ -47,6 +55,8 @@ interface ETCBatchData {
     effectiveEndDate: string | null;
     scheduleDeficitHours: number;
     storedCalculatedEndDate: string | null;
+    simulationStartDate: string | null;
+    slotAllocation: ETCSlotAllocation[];
   };
 }
 
@@ -285,54 +295,70 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
             (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
           
-          // Use ETC effective end date (storedCalculatedEndDate) as the authoritative end limit
-          // DO NOT use min() - the ETC end may extend beyond the original window end date
-          // when the schedule overflows, and we need to show all occupied slots
-          const effectiveWindowEnd = etcEffectiveEndDate ?? windowEnd;
+          // PRIORITY 1: Use slotAllocation from backend ETC (authoritative source)
+          // This ensures perfect alignment between frontend display and backend calculation
+          const etcSlotAllocation = projectETC?.slotAllocation;
           
-          // Start from the planning window's start date
-          // The END date uses storedCalculatedEndDate from ETC (Fine Effettiva) as the authoritative limit
-          // We DON'T track remaining hours to stop early - we trust the ETC cutoff completely
-          let currentDay = new Date(windowStart);
-          
-          while (currentDay <= effectiveWindowEnd) {
-            // Check if this is a working day
-            if (isWorkingDay(currentDay, daysOfWeek)) {
-              // Create instance for each time slot
-              for (let slotIdx = 0; slotIdx < timeSlots.length; slotIdx++) {
-                const slot = timeSlots[slotIdx];
-                const slotDurationHours = getSlotDurationHours(slot);
-                
-                // Check ETC date/time limit for this slot (calculates partial hours for final slot)
-                const etcLimit = getETCLimitedHours(currentDay, slot.startTime, slot.endTime, slotDurationHours);
-                
-                // Skip slot if it's completely beyond ETC end date/time
-                if (etcLimit.hours <= 0) {
-                  continue;
-                }
-                
-                // Use ETC-calculated hours (full slot or partial for the final slot ending at Fine Effettiva)
-                const allocatedHours = etcLimit.hours;
-                const isPartialSlot = etcLimit.isPartial;
+          if (etcSlotAllocation && etcSlotAllocation.length > 0) {
+            // Use backend-calculated slot allocation directly
+            for (const etcSlot of etcSlotAllocation) {
+              const slotDate = new Date(etcSlot.date);
+              
+              // Only include slots within current calendar view
+              if (slotDate >= calendarStart && slotDate <= calendarEnd) {
+                // Find matching time slot to get label and index
+                const slotIdx = timeSlots.findIndex(ts => ts.startTime === etcSlot.startTime);
+                const matchingSlot = timeSlots[slotIdx] || timeSlots[0];
+                const slotDurationHours = getSlotDurationHours({ startTime: etcSlot.startTime, endTime: etcSlot.endTime });
                 
                 instances.push({
                   window,
                   project,
-                  date: new Date(currentDay),
-                  startTime: slot.startTime,
-                  endTime: slot.endTime,
+                  date: slotDate,
+                  startTime: etcSlot.startTime,
+                  endTime: etcSlot.endTime,
                   level: windowLevel,
-                  slotLabel: slot.label,
-                  slotIndex: slotIdx,
+                  slotLabel: matchingSlot?.label,
+                  slotIndex: slotIdx >= 0 ? slotIdx : 0,
                   totalSlots: timeSlots.length,
                   slotDurationHours,
-                  allocatedHours,
-                  isPartialSlot
+                  allocatedHours: etcSlot.allocatedHours,
+                  isPartialSlot: etcSlot.isPartialSlot
                 });
               }
             }
+          } else {
+            // FALLBACK: If no ETC slot allocation, generate from window dates (for windows without tasks)
+            const effectiveWindowEnd = etcEffectiveEndDate ?? windowEnd;
+            let currentDay = new Date(windowStart);
             
-            currentDay = addDays(currentDay, 1);
+            while (currentDay <= effectiveWindowEnd) {
+              if (isWorkingDay(currentDay, daysOfWeek)) {
+                for (let slotIdx = 0; slotIdx < timeSlots.length; slotIdx++) {
+                  const slot = timeSlots[slotIdx];
+                  const slotDurationHours = getSlotDurationHours(slot);
+                  const etcLimit = getETCLimitedHours(currentDay, slot.startTime, slot.endTime, slotDurationHours);
+                  
+                  if (etcLimit.hours <= 0) continue;
+                  
+                  instances.push({
+                    window,
+                    project,
+                    date: new Date(currentDay),
+                    startTime: slot.startTime,
+                    endTime: slot.endTime,
+                    level: windowLevel,
+                    slotLabel: slot.label,
+                    slotIndex: slotIdx,
+                    totalSlots: timeSlots.length,
+                    slotDurationHours,
+                    allocatedHours: etcLimit.hours,
+                    isPartialSlot: etcLimit.isPartial
+                  });
+                }
+              }
+              currentDay = addDays(currentDay, 1);
+            }
           }
         }
       } else {

@@ -143,7 +143,9 @@ export async function calculateEndToComplete(
   const taskBreakdown = tasks.map(task => {
     const estimatedHours = task.estimatedEffort || 0;
     const completionPct = task.completionPercentage || 0;
-    const remainingHours = estimatedHours * (1 - completionPct / 100);
+    // Use effectiveRemainingHours if manually set, otherwise calculate from completion percentage
+    const derivedRemainingHours = estimatedHours * (1 - completionPct / 100);
+    const remainingHours = task.effectiveRemainingHours ?? derivedRemainingHours;
     
     return {
       taskId: task.id,

@@ -108,6 +108,7 @@ export const tasks = pgTable("tasks", {
   completedAt: timestamp("completed_at"),
   estimatedEffort: integer("estimated_effort"), // in hours
   remainingEffort: integer("remaining_effort"), // in hours - automatically calculated
+  effectiveRemainingHours: real("effective_remaining_hours"), // Manual override: actual remaining hours for planning
   completionPercentage: integer("completion_percentage").default(0).notNull(), // 0-100
   sourceMessageIds: text("source_message_ids").array().default([]), // IDs dei messaggi da cui è stato creato
   createdAt: timestamp("created_at").defaultNow().notNull(),
