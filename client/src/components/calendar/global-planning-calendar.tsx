@@ -352,13 +352,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               
               const slotDate = new Date(etcSlot.date);
               
-              // CRITICAL: Filter out slots beyond windowEnd
-              // The ETC backend generates slots beyond windowEnd to show delays,
-              // but the calendar should only display slots within the window's date range
-              const slotDateOnly = new Date(slotDate.getFullYear(), slotDate.getMonth(), slotDate.getDate());
-              const windowEndOnly = new Date(windowEnd.getFullYear(), windowEnd.getMonth(), windowEnd.getDate());
-              if (slotDateOnly > windowEndOnly) continue;
-              
               // Only include slots within current calendar view
               if (slotDate >= calendarStart && slotDate <= calendarEnd) {
                 // Find matching time slot to get label and index
@@ -759,19 +752,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           
           const projectKey = instance.project?.id || 'standalone';
           const uniqueKey = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
-          
-          // DEBUG: Log month view instances to find the gray slot issue
-          const dateStr = format(instance.date, 'yyyy-MM-dd');
-          if (dateStr >= '2025-12-08' && dateStr <= '2025-12-15') {
-            const colorResult = getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null);
-            console.log(`MONTH VIEW ${dateStr} slot ${instance.startTime}:`, {
-              windowName: instance.window.name,
-              hasProject: instance.project !== null,
-              projectColor: instance.project?.color,
-              level: instance.level,
-              resultBgColor: colorResult.backgroundColor
-            });
-          }
           
           return (
             <div
