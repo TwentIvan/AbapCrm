@@ -39,6 +39,17 @@ interface ExpandedPlanningInstance {
 
 type CalendarView = 'month' | 'week' | 'day';
 
+interface ETCBatchData {
+  [projectId: string]: {
+    state: string;
+    completionPercentage: number;
+    totalRemainingHours: number;
+    effectiveEndDate: string | null;
+    scheduleDeficitHours: number;
+    storedCalculatedEndDate: string | null;
+  };
+}
+
 export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: GlobalPlanningCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('month');
@@ -46,6 +57,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
   // Fetch all planning windows for the user
   const { data: planningWindowsWithProject, isLoading } = useQuery<PlanningWindowWithProject[]>({
     queryKey: ["/api/planning-windows", "user"],
+  });
+  
+  // Fetch ETC batch data to get remaining hours for all projects
+  const { data: etcBatchData } = useQuery<ETCBatchData>({
+    queryKey: ["/api/projects/batch-end-to-complete"],
   });
 
   // Build planning window hierarchy map (based on parentPlanningWindowId)
@@ -195,8 +211,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const inheritedConfig = getInheritedConfig(window);
       const { daysOfWeek, workingHoursPerDay, timeSlots } = inheritedConfig;
       
-      // Calculate working days quota from estimated effort
-      const estimatedHours = project?.estimatedEffort || null;
+      // Use REMAINING hours from ETC batch data (reflects task completion progress)
+      // This ensures calendar slot occupation updates when tasks advance
+      const projectETC = project?.id ? etcBatchData?.[project.id] : null;
+      const estimatedHours = projectETC?.totalRemainingHours ?? project?.estimatedEffort ?? null;
       const workingDaysQuota = estimatedHours ? Math.ceil(estimatedHours / workingHoursPerDay) : null;
       
       // CRITICAL: Child windows (with parentPlanningWindowId) should ALWAYS use 'none' expansion logic
@@ -376,7 +394,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     });
     
     return instances;
-  }, [planningWindowsWithProject, currentDate, view, windowHierarchy]);
+  }, [planningWindowsWithProject, currentDate, view, windowHierarchy, etcBatchData]);
 
   // Navigation functions
   const navigate = (direction: 'prev' | 'next') => {
