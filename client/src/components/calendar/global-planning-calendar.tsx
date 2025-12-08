@@ -352,10 +352,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               
               const slotDate = new Date(etcSlot.date);
               
-              // Skip slots outside window's date range (respects parent window constraints)
-              if (slotDate < windowStart || slotDate > windowEnd) continue;
-              
               // Only include slots within current calendar view
+              // Backend ETC already handles parent window constraints
               if (slotDate >= calendarStart && slotDate <= calendarEnd) {
                 // Find matching time slot to get label and index
                 const slotIdx = timeSlots.findIndex(ts => ts.startTime === etcSlot.startTime);
