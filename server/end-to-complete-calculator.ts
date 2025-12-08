@@ -238,14 +238,6 @@ export async function calculateEndToComplete(
 
   const { daysOfWeek, timeSlots, workingHoursPerDay } = await getInheritedConfigFromHierarchy(projectWindow, allUserWindows);
 
-  // DEBUG: Log what's being used for calculation
-  console.log(`[ETC DEBUG] Project: ${project.name}`);
-  console.log(`[ETC DEBUG] Window found: ${projectWindow.name} (id: ${projectWindow.id})`);
-  console.log(`[ETC DEBUG] Window dates: ${projectWindow.startDate} - ${projectWindow.endDate}`);
-  console.log(`[ETC DEBUG] TimeSlots used:`, JSON.stringify(timeSlots));
-  console.log(`[ETC DEBUG] Working hours/day: ${workingHoursPerDay}`);
-  console.log(`[ETC DEBUG] Total remaining hours: ${totalRemainingHours}`);
-
   const { effectiveStart, effectiveEnd } = getEffectiveDateRange(projectWindow, allUserWindows);
   
   const windowStart = effectiveStart;
@@ -319,14 +311,6 @@ export async function calculateEndToComplete(
   const calculatedEndDate = lastDate;
   const plannedEnd = new Date(projectWindow.endDate);
   const isDelayed = calculatedEndDate && calculatedEndDate > plannedEnd;
-
-  // DEBUG: Log slot allocation summary
-  const totalAllocated = slotAllocation.reduce((sum, s) => sum + s.allocatedHours, 0);
-  console.log(`[ETC DEBUG] Slots generated: ${slotAllocation.length}, Total allocated hours: ${totalAllocated}`);
-  if (slotAllocation.length > 0) {
-    console.log(`[ETC DEBUG] First slot: ${slotAllocation[0].date} ${slotAllocation[0].startTime}-${slotAllocation[0].endTime} (${slotAllocation[0].allocatedHours}h)`);
-    console.log(`[ETC DEBUG] Last slot: ${slotAllocation[slotAllocation.length-1].date} ${slotAllocation[slotAllocation.length-1].startTime}-${slotAllocation[slotAllocation.length-1].endTime} (${slotAllocation[slotAllocation.length-1].allocatedHours}h)`);
-  }
 
   return {
     ...baseResult,
