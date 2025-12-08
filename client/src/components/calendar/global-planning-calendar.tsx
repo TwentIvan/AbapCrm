@@ -302,6 +302,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const isChildWindow = !!window.parentPlanningWindowId;
       const effectiveRecurrenceType = isChildWindow ? 'none' : window.recurrenceType;
       
+      // ARCHITECTURE: Create separate layers for windows and projects
+      // - Windows (standalone or parent) show their slot background at windowLevel
+      // - Projects (via planningWindowId) show ETC allocations at windowLevel + 1
+      const hasLinkedProject = !!project && project.planningWindowId === window.id;
+      
       // Helper to calculate slot duration in hours
       const getSlotDurationHours = (slot: { startTime: string; endTime: string }): number => {
         const [startH, startM] = slot.startTime.split(':').map(Number);
@@ -355,33 +360,55 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
             (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
           
-          // PRIORITY 1: Use slotAllocation from backend ETC (authoritative source)
-          // This ensures perfect alignment between frontend display and backend calculation
-          const etcSlotAllocation = projectETC?.slotAllocation;
+          // LAYER 1: Window background slots (always show window slots as background)
+          // Generate window slot instances for the full window date range
+          let currentWindowDay = new Date(windowStart);
+          while (currentWindowDay <= windowEnd) {
+            if (isWorkingDay(currentWindowDay, daysOfWeek) && 
+                currentWindowDay >= calendarStart && currentWindowDay <= calendarEnd) {
+              for (let slotIdx = 0; slotIdx < timeSlots.length; slotIdx++) {
+                const slot = timeSlots[slotIdx];
+                const slotDurationHours = getSlotDurationHours(slot);
+                
+                instances.push({
+                  window,
+                  project: null, // Window layer has no project (will be gray)
+                  date: new Date(currentWindowDay),
+                  startTime: slot.startTime,
+                  endTime: slot.endTime,
+                  level: windowLevel,
+                  slotLabel: slot.label,
+                  slotIndex: slotIdx,
+                  totalSlots: timeSlots.length,
+                  slotDurationHours,
+                  allocatedHours: slotDurationHours,
+                  isPartialSlot: false
+                });
+              }
+            }
+            currentWindowDay = addDays(currentWindowDay, 1);
+          }
           
-          if (etcSlotAllocation && etcSlotAllocation.length > 0) {
-            // Use backend-calculated slot allocation directly
-            for (const etcSlot of etcSlotAllocation) {
-              // Skip empty slots (allocatedHours <= 0) - they should not be rendered
+          // LAYER 2: Project allocations (if project linked via planningWindowId)
+          // These are rendered at windowLevel + 1 with project color (blue)
+          if (hasLinkedProject && projectETC?.slotAllocation && projectETC.slotAllocation.length > 0) {
+            for (const etcSlot of projectETC.slotAllocation) {
               if (etcSlot.allocatedHours <= 0) continue;
               
               const slotDate = new Date(etcSlot.date);
               
-              // Only include slots within current calendar view
-              // Backend ETC already handles parent window constraints
               if (slotDate >= calendarStart && slotDate <= calendarEnd) {
-                // Find matching time slot to get label and index
                 const slotIdx = timeSlots.findIndex(ts => ts.startTime === etcSlot.startTime);
                 const matchingSlot = timeSlots[slotIdx] || timeSlots[0];
                 const slotDurationHours = getSlotDurationHours({ startTime: etcSlot.startTime, endTime: etcSlot.endTime });
                 
                 instances.push({
                   window,
-                  project,
+                  project, // Project layer has project (will be blue)
                   date: slotDate,
                   startTime: etcSlot.startTime,
                   endTime: etcSlot.endTime,
-                  level: windowLevel,
+                  level: windowLevel + 1, // Project is one level deeper than its window
                   slotLabel: matchingSlot?.label,
                   slotIndex: slotIdx >= 0 ? slotIdx : 0,
                   totalSlots: timeSlots.length,
@@ -390,38 +417,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   isPartialSlot: etcSlot.isPartialSlot
                 });
               }
-            }
-          } else {
-            // FALLBACK: If no ETC slot allocation, generate from window dates (for windows without tasks)
-            const effectiveWindowEnd = etcEffectiveEndDate ?? windowEnd;
-            let currentDay = new Date(windowStart);
-            
-            while (currentDay <= effectiveWindowEnd) {
-              if (isWorkingDay(currentDay, daysOfWeek)) {
-                for (let slotIdx = 0; slotIdx < timeSlots.length; slotIdx++) {
-                  const slot = timeSlots[slotIdx];
-                  const slotDurationHours = getSlotDurationHours(slot);
-                  const etcLimit = getETCLimitedHours(currentDay, slot.startTime, slot.endTime, slotDurationHours);
-                  
-                  if (etcLimit.hours <= 0) continue;
-                  
-                  instances.push({
-                    window,
-                    project,
-                    date: new Date(currentDay),
-                    startTime: slot.startTime,
-                    endTime: slot.endTime,
-                    level: windowLevel,
-                    slotLabel: slot.label,
-                    slotIndex: slotIdx,
-                    totalSlots: timeSlots.length,
-                    slotDurationHours,
-                    allocatedHours: etcLimit.hours,
-                    isPartialSlot: etcLimit.isPartial
-                  });
-                }
-              }
-              currentDay = addDays(currentDay, 1);
             }
           }
         }
