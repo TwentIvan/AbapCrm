@@ -571,11 +571,13 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
 
   // Funzione per generare gli stili inline per un progetto e livello
   // Finestre con progetto: schiarimento progressivo per livello
-  // Finestre standalone (project === null): sempre grigio scuro costante
+  // Finestre standalone (project === null): grigio base con schiarimento per level
   const STANDALONE_GRAY = '#6B7280';
   const getProjectColorStyle = (projectColor: string, level: number, hasProject: boolean): { backgroundColor: string; borderColor: string; color: string } => {
-    // Per finestre standalone (senza progetto), mantieni sempre il grigio scuro senza schiarimento
-    const finalColor = hasProject ? getLighterColor(projectColor, level) : STANDALONE_GRAY;
+    // Applica lo schiarimento basato sul level sia per progetti che per finestre standalone
+    // Questo permette di differenziare visivamente le sotto-finestre dai loro parent
+    const baseColor = hasProject ? projectColor : STANDALONE_GRAY;
+    const finalColor = getLighterColor(baseColor, level);
     const rgb = hexToRgb(finalColor);
     if (!rgb) return { backgroundColor: '#E5E7EB', borderColor: '#D1D5DB', color: '#374151' };
     
@@ -585,7 +587,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     
     return {
       backgroundColor: finalColor,
-      borderColor: hasProject ? projectColor : STANDALONE_GRAY,
+      borderColor: baseColor,
       color: textColor
     };
   };
