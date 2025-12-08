@@ -86,19 +86,24 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
   // Auto-scroll to user's preferred hour when view changes or data loads
   useEffect(() => {
     if (view === 'month') return; // No scroll for month view
+    if (isLoading) return; // Wait for data to load
     
     const scrollHour = currentUser?.calendarScrollHour ?? new Date().getHours();
     const hourHeight = view === 'week' ? 60 : 80;
     const scrollPosition = scrollHour * hourHeight;
     
-    // Delay scroll to ensure DOM is rendered
-    setTimeout(() => {
-      const ref = view === 'week' ? weekScrollRef.current : dayScrollRef.current;
-      if (ref) {
-        ref.scrollTo({ top: scrollPosition, behavior: 'smooth' });
-      }
-    }, 100);
-  }, [view, currentUser?.calendarScrollHour, planningWindowsWithProject]);
+    // Use requestAnimationFrame + timeout to ensure DOM is fully rendered
+    const timeoutId = setTimeout(() => {
+      requestAnimationFrame(() => {
+        const ref = view === 'week' ? weekScrollRef.current : dayScrollRef.current;
+        if (ref && ref.scrollHeight > ref.clientHeight) {
+          ref.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+        }
+      });
+    }, 150);
+    
+    return () => clearTimeout(timeoutId);
+  }, [view, currentUser?.calendarScrollHour, planningWindowsWithProject, isLoading]);
 
   // Build planning window hierarchy map (based on parentPlanningWindowId)
   const windowHierarchy = useMemo(() => {

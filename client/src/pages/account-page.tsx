@@ -12,8 +12,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import EmailConfig from "@/components/email-config";
 import { EmailSendDialog } from "@/components/email-send-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Send, Upload, Trash2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Send, Upload, Trash2, Clock } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function AccountPage() {
@@ -30,6 +31,10 @@ export default function AccountPage() {
     lastName: user?.lastName || "",
     email: user?.email || "",
   });
+  
+  const [calendarScrollHour, setCalendarScrollHour] = useState<number>(
+    user?.calendarScrollHour ?? 9
+  );
 
   const userInitials = user?.firstName && user?.lastName 
     ? `${user.firstName[0]}${user.lastName[0]}` 
@@ -157,6 +162,32 @@ export default function AccountPage() {
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+  
+  const updateCalendarPreferencesMutation = useMutation({
+    mutationFn: async (hour: number) => {
+      return await apiRequest("PUT", `/api/users/${user?.id}`, { calendarScrollHour: hour });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      toast({
+        title: "Successo",
+        description: "Preferenze calendario aggiornate",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare le preferenze",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const handleCalendarScrollHourChange = (value: string) => {
+    const hour = parseInt(value);
+    setCalendarScrollHour(hour);
+    updateCalendarPreferencesMutation.mutate(hour);
   };
   
   // Route detection for full-page mode
@@ -322,9 +353,44 @@ export default function AccountPage() {
                   </TabsContent>
                   
                   <TabsContent value="preferences" className="space-y-4">
-                    <p className="text-muted-foreground">
-                      Le preferenze saranno disponibili in una versione futura.
-                    </p>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Clock className="h-5 w-5" />
+                          Preferenze Calendario
+                        </CardTitle>
+                        <CardDescription>
+                          Configura il comportamento del calendario globale
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="calendarScrollHour">
+                            Ora di scroll predefinita
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            Quando apri la vista giorno o settimana, il calendario scorrerà automaticamente a quest'ora
+                          </p>
+                          <Select
+                            value={calendarScrollHour.toString()}
+                            onValueChange={handleCalendarScrollHourChange}
+                            disabled={updateCalendarPreferencesMutation.isPending}
+                            data-testid="select-calendar-scroll-hour"
+                          >
+                            <SelectTrigger className="w-48" data-testid="select-trigger-calendar-scroll-hour">
+                              <SelectValue placeholder="Seleziona ora" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 24 }, (_, i) => (
+                                <SelectItem key={i} value={i.toString()}>
+                                  {i.toString().padStart(2, '0')}:00
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </TabsContent>
                 </Tabs>
               </div>
