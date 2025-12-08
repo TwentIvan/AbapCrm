@@ -1034,6 +1034,7 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       // Convert data before validation
+      const endDateValue = req.body.endDate ? new Date(req.body.endDate) : null;
       const processedData = {
         name: req.body.name,
         description: req.body.description || null,
@@ -1041,7 +1042,10 @@ export function registerRoutes(app: Express): Server {
         clientId: req.body.clientId || null,
         parentProjectId: req.body.parentProjectId || null,
         startDate: req.body.startDate ? new Date(req.body.startDate) : null,
-        endDate: req.body.endDate ? new Date(req.body.endDate) : null,
+        endDate: endDateValue,
+        // Initialize calculatedEndDate with endDate at creation time
+        calculatedEndDate: endDateValue,
+        scheduleDeficitHours: 0,
         budget: req.body.budget || null,
         progress: req.body.progress || 0,
         estimatedEffort: req.body.estimatedEffort || null,

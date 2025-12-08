@@ -280,8 +280,10 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
 
   const totalEstimatedHours = scheduledTasks.reduce((sum, task) => sum + (task.estimatedEffort || 0), 0);
   const totalRemainingHours = scheduledTasks.reduce((sum, task) => sum + (task.remainingEffort || task.estimatedEffort || 0), 0);
-  const projectDays = project.startDate && project.endDate ? 
-    differenceInDays(new Date(project.endDate), new Date(project.startDate)) : 0;
+  // Use calculatedEndDate (Fine Effettiva) for planning calculations, fallback to endDate for old projects
+  const effectiveEndDate = project.calculatedEndDate || project.endDate;
+  const projectDays = project.startDate && effectiveEndDate ? 
+    differenceInDays(new Date(effectiveEndDate), new Date(project.startDate)) : 0;
   const requiredWorkingDays = Math.ceil(totalRemainingHours / workingHoursPerDay);
   const overdueTasksCount = scheduledTasks.filter(task => task.isOverdue).length;
 
@@ -436,12 +438,12 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
           {/* Project Info */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Project Timeline</Label>
+              <Label className="text-sm font-medium">Project Timeline (Fine Effettiva)</Label>
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4" />
-                {project.startDate && project.endDate ? (
+                {project.startDate && effectiveEndDate ? (
                   <span>
-                    {format(new Date(project.startDate), 'MMM dd')} - {format(new Date(project.endDate), 'MMM dd')}
+                    {format(new Date(project.startDate), 'MMM dd')} - {format(new Date(effectiveEndDate), 'MMM dd')}
                     <span className="text-muted-foreground ml-1">({projectDays} days)</span>
                   </span>
                 ) : (
