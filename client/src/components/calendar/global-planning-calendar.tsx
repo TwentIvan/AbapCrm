@@ -411,7 +411,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
         }
       } else {
         const interval = window.recurrenceInterval || 1;
-        const endRecurrence = window.recurrenceEnd ? new Date(window.recurrenceEnd) : calendarEnd;
+        // Use recurrenceEnd if specified, otherwise use windowEnd (not calendarEnd!)
+        // This ensures recurring windows don't extend beyond their defined end date
+        const endRecurrence = window.recurrenceEnd ? new Date(window.recurrenceEnd) : windowEnd;
         
         if (window.recurrenceType === 'weekly' && window.daysOfWeek && window.daysOfWeek.length > 0) {
           const startWeek = startOfWeek(windowStart, { weekStartsOn: 1 });
