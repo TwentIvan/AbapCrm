@@ -220,24 +220,39 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
   };
 
   // Helper to get inherited scheduling config from parent window chain
+  // Priority: use window's own config if defined, otherwise inherit from parent
   const getInheritedConfig = (window: PlanningWindow): { daysOfWeek: number[], workingHoursPerDay: number, timeSlots: Array<{ startTime: string; endTime: string; label?: string }> } => {
-    // If window has parentPlanningWindowId, inherit from parent
+    const ownTimeSlots = getTimeSlots(window);
+    const ownDaysOfWeek = window.daysOfWeek && window.daysOfWeek.length > 0 ? window.daysOfWeek : null;
+    const ownWorkingHours = window.workingHoursPerDay || null;
+    
+    // If window has all its own config, use it directly
+    if (ownTimeSlots.length > 0 && ownDaysOfWeek && ownWorkingHours) {
+      return {
+        daysOfWeek: ownDaysOfWeek,
+        workingHoursPerDay: ownWorkingHours,
+        timeSlots: ownTimeSlots
+      };
+    }
+    
+    // If window has parentPlanningWindowId, inherit missing config from parent
     if (window.parentPlanningWindowId && planningWindowsWithProject) {
       const parent = planningWindowsWithProject.find(w => w.id === window.parentPlanningWindowId);
       if (parent) {
-        // Use parent's config
+        const parentTimeSlots = getTimeSlots(parent);
         return {
-          daysOfWeek: parent.daysOfWeek || [1, 2, 3, 4, 5],
-          workingHoursPerDay: parent.workingHoursPerDay || 8,
-          timeSlots: getTimeSlots(parent)
+          daysOfWeek: ownDaysOfWeek || parent.daysOfWeek || [1, 2, 3, 4, 5],
+          workingHoursPerDay: ownWorkingHours || parent.workingHoursPerDay || 8,
+          timeSlots: ownTimeSlots.length > 0 ? ownTimeSlots : parentTimeSlots
         };
       }
     }
-    // Use own config
+    
+    // Use own config with defaults
     return {
-      daysOfWeek: window.daysOfWeek || [1, 2, 3, 4, 5],
-      workingHoursPerDay: window.workingHoursPerDay || 8,
-      timeSlots: getTimeSlots(window)
+      daysOfWeek: ownDaysOfWeek || [1, 2, 3, 4, 5],
+      workingHoursPerDay: ownWorkingHours || 8,
+      timeSlots: ownTimeSlots.length > 0 ? ownTimeSlots : [{ startTime: window.startTime, endTime: window.endTime }]
     };
   };
 
