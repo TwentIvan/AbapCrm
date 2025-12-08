@@ -257,10 +257,25 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       return daysOfWeek.includes(ourDayOfWeek);
     };
     
+    console.log('=== EXPANDED INSTANCES DEBUG ===');
+    console.log('Calendar range:', { start: calendarStart, end: calendarEnd });
+    console.log('ETC batch data keys:', etcBatchData ? Object.keys(etcBatchData) : 'none');
+    
     planningWindowsWithProject.forEach(({ project, ...window }) => {
       const windowStart = new Date(window.startDate);
       const windowEnd = new Date(window.endDate);
       const windowLevel = windowHierarchy.get(window.id) || 0;
+      
+      // DEBUG
+      const projectEtcDebug = project?.id ? etcBatchData?.[project.id] : null;
+      console.log(`WINDOW: ${window.name}`, {
+        hasProject: !!project,
+        hasEtcSlotAllocation: !!(projectEtcDebug?.slotAllocation?.length),
+        slotAllocationCount: projectEtcDebug?.slotAllocation?.length || 0,
+        isChild: !!window.parentPlanningWindowId,
+        level: windowLevel,
+        windowDates: `${window.startDate} - ${window.endDate}`
+      });
       
       // Get inherited config from parent chain
       const inheritedConfig = getInheritedConfig(window);
