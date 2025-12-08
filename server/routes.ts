@@ -2810,6 +2810,21 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   });
 
   // Planning Windows
+  // GET all planning windows for user (with at least 1 day from today)
+  app.get("/api/planning-windows", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const allWindows = await storage.getAllPlanningWindowsForUser(req.user!.id);
+    // Filter windows with endDate >= today (at least 1 day of planning from now)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const activeWindows = allWindows.filter(w => {
+      const endDate = new Date(w.endDate);
+      endDate.setHours(0, 0, 0, 0);
+      return endDate >= today;
+    });
+    res.json(activeWindows);
+  });
+
   app.get("/api/planning-windows/user", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const windows = await storage.getAllPlanningWindowsForUser(req.user!.id);
