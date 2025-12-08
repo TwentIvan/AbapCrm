@@ -1008,8 +1008,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
   const renderDayView = () => {
     const hours = Array.from({ length: 24 }, (_, i) => i);
     const hourHeight = 80; // altezza in pixel più grande per la vista giornaliera
+    // Use same date matching approach as week view (format to string comparison)
+    const currentDateKey = format(currentDate, 'yyyy-MM-dd');
     const dayInstances = expandedInstances.filter(instance => 
-      isSameDay(instance.date, currentDate)
+      format(instance.date, 'yyyy-MM-dd') === currentDateKey
     );
     
     // Funzione per convertire time string in minuti dall'inizio della giornata
