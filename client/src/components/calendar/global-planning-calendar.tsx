@@ -490,7 +490,17 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       }
     });
     
-    return instances;
+    // Deduplicate instances by unique key to prevent React duplicate key warnings
+    const uniqueInstances = new Map<string, ExpandedPlanningInstance>();
+    instances.forEach(instance => {
+      const key = `${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
+      // Keep the first occurrence (or could prefer one with more data)
+      if (!uniqueInstances.has(key)) {
+        uniqueInstances.set(key, instance);
+      }
+    });
+    
+    return Array.from(uniqueInstances.values());
   }, [planningWindowsWithProject, currentDate, view, windowHierarchy, etcBatchData]);
 
   // Navigation functions
