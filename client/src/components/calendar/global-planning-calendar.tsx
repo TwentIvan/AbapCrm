@@ -801,8 +801,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 top: `${topPosition}px`,
                 height: `${height}px`,
                 left: `${leftOffset}px`,
-                // Last sibling (or only child) stretches to right edge; others get fixed width
-                ...(isTerminal ? { right: '2px' } : { width: `${WINDOW_WIDTH}px` }),
+                // Last sibling (or level 0) stretches to right edge; others get fixed width
+                width: isTerminal ? `calc(100% - ${leftOffset}px - 2px)` : `${WINDOW_WIDTH}px`,
                 zIndex: hasChildren ? instance.level : 10 + instance.level + siblingIndex
               }}
             >
@@ -994,7 +994,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                             top: `${topPosition}px`,
                             height: `${height}px`,
                             left: `${leftOffset}px`,
-                            ...(isTerminal ? { right: '2px' } : { width: `${WINDOW_WIDTH}px` }),
+                            width: isTerminal ? `calc(100% - ${leftOffset}px - 2px)` : `${WINDOW_WIDTH}px`,
                             zIndex: 10 + instance.level + siblingIndex,
                           }}
                         >
@@ -1129,7 +1129,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                         top: `${topPosition}px`,
                         height: `${height}px`,
                         left: `${leftOffset}px`,
-                        ...(isTerminal ? { right: '8px' } : { width: `${WINDOW_WIDTH}px` }),
+                        width: isTerminal ? `calc(100% - ${leftOffset}px - 8px)` : `${WINDOW_WIDTH}px`,
                         zIndex: 10 + instance.level + siblingIndex,
                       }}
                     >
