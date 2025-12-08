@@ -780,12 +780,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           const siblingCount = getSiblingCount(instance);
           const baseLeft = getLevelIndentation(instance.level);
           // Fixed width per window: ~70px for 10 characters (font-size xs ≈ 7px/char)
-          // Siblings are offset to show side-by-side with slight overlap
           const CHAR_WIDTH = 7;
           const MIN_CHARS = 10;
-          const SIBLING_OFFSET = CHAR_WIDTH * MIN_CHARS; // 70px
-          const leftOffset = baseLeft + (siblingIndex * SIBLING_OFFSET * 0.4);
-          const rightOffset = 2;
+          const WINDOW_WIDTH = CHAR_WIDTH * MIN_CHARS; // 70px
+          const leftOffset = baseLeft + (siblingIndex * WINDOW_WIDTH);
           
           return (
             <div
@@ -796,7 +794,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 top: `${topPosition}px`,
                 height: `${height}px`,
                 left: `${leftOffset}px`,
-                right: `${rightOffset}px`,
+                width: `${WINDOW_WIDTH}px`,
                 zIndex: hasChildren ? instance.level : 10 + instance.level + siblingIndex
               }}
             >
@@ -983,9 +981,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                       const siblingCount = getSiblingCount(instance);
                       const CHAR_WIDTH = 7;
                       const MIN_CHARS = 10;
-                      const SIBLING_OFFSET = CHAR_WIDTH * MIN_CHARS * 0.4; // 28px offset
+                      const WINDOW_WIDTH = CHAR_WIDTH * MIN_CHARS; // 70px
                       const baseLeft = 2 + getLevelIndentation(instance.level);
-                      const leftOffset = baseLeft + (siblingIndex * SIBLING_OFFSET);
+                      const leftOffset = baseLeft + (siblingIndex * WINDOW_WIDTH);
                       
                       return (
                         <div
@@ -996,7 +994,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                             top: `${topPosition}px`,
                             height: `${height}px`,
                             left: `${leftOffset}px`,
-                            right: `2px`,
+                            width: `${WINDOW_WIDTH}px`,
                             zIndex: 10 + instance.level + siblingIndex,
                           }}
                         >
@@ -1126,9 +1124,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   const siblingCount = getSiblingCount(instance);
                   const CHAR_WIDTH = 7;
                   const MIN_CHARS = 10;
-                  const SIBLING_OFFSET = CHAR_WIDTH * MIN_CHARS * 0.4; // 28px offset
+                  const WINDOW_WIDTH = CHAR_WIDTH * MIN_CHARS; // 70px
                   const baseLeft = 8 + getLevelIndentation(instance.level);
-                  const leftOffset = baseLeft + (siblingIndex * SIBLING_OFFSET);
+                  const leftOffset = baseLeft + (siblingIndex * WINDOW_WIDTH);
                   
                   return (
                     <div
@@ -1139,7 +1137,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                         top: `${topPosition}px`,
                         height: `${height}px`,
                         left: `${leftOffset}px`,
-                        right: `8px`,
+                        width: `${WINDOW_WIDTH}px`,
                         zIndex: 10 + instance.level + siblingIndex,
                       }}
                     >
