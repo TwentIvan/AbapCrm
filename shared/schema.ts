@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, decimal, pgEnum, boolean, uuid, time, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, decimal, real, pgEnum, boolean, uuid, time, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -73,7 +73,7 @@ export const projects = pgTable("projects", {
   sourceMessageIds: text("source_message_ids").array().default([]), // IDs dei messaggi da cui è stato creato
   // Auto-rescheduling fields - updated automatically when task completion changes
   calculatedEndDate: timestamp("calculated_end_date"), // Predicted effective end date based on remaining work
-  scheduleDeficitHours: integer("schedule_deficit_hours").default(0), // Hours exceeding the planning window (0 = fits within window)
+  scheduleDeficitHours: real("schedule_deficit_hours").default(0), // Hours exceeding the planning window (0 = fits within window) - supports fractional hours
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
