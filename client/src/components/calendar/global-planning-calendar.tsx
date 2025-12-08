@@ -921,8 +921,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                     const topPosition = (startMinutes / 60) * hourHeight;
                     const height = (effectiveDurationMinutes / 60) * hourHeight;
                     
-                    // Unique key including all identifiers
-                    const uniqueKey = `${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.slotIndex}-${instance.level}`;
+                    // Unique key including all identifiers (add startTime to ensure uniqueness across ETC slots)
+                    const uniqueKey = `${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
                     
                     return (
                       <div
@@ -1051,8 +1051,8 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 const topPosition = (startMinutes / 60) * hourHeight;
                 const height = (effectiveDurationMinutes / 60) * hourHeight;
                 
-                // Unique key including all identifiers
-                const uniqueKey = `${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.slotIndex}-${instance.level}`;
+                // Unique key including all identifiers (add startTime to ensure uniqueness across ETC slots)
+                const uniqueKey = `${instance.window.id}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
                 
                 return (
                   <div
