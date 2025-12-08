@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { insertPlanningWindowSchema, PlanningWindow, Project } from "@shared/schema";
+import { insertPlanningWindowSchema, PlanningWindow } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -14,8 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Calendar, Clock, FolderOpen, Layers, Plus, Trash2, ListEnd } from "lucide-react";
-import { addDays, isWeekend, getDay, format } from "date-fns";
+import { Loader2, Calendar, Clock, Layers, Plus, Trash2 } from "lucide-react";
 import { useOrganization } from "@/contexts/organization-context";
 
 // Time slot type for multiple time ranges
@@ -30,28 +29,23 @@ const formSchema = insertPlanningWindowSchema.extend({
   daysOfWeek: z.array(z.number().min(1).max(7)).min(1, "Seleziona almeno un giorno della settimana"),
   recurrenceInterval: z.string().optional(),
   recurrenceEnd: z.string().optional(),
-  projectId: z.string().optional(),
   parentPlanningWindowId: z.string().nullable().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 interface PlanningWindowFormProps {
-  projectId?: string;
   planningWindow?: PlanningWindow;
   onSuccess?: () => void;
 }
 
-export default function PlanningWindowForm({ projectId, planningWindow, onSuccess }: PlanningWindowFormProps) {
+export default function PlanningWindowForm({ planningWindow, onSuccess }: PlanningWindowFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { currentOrganizationId } = useOrganization();
   
-  // State per il flag "collega a progetto"
-  const [linkToProject, setLinkToProject] = useState<boolean>(!!projectId || !!planningWindow?.projectId);
-  
   // State per le fasce orarie multiple
-  const hasExistingTimeSlots = planningWindow?.timeSlots && Array.isArray(planningWindow.timeSlots) && planningWindow.timeSlots.length > 0;
+  const hasExistingTimeSlots = !!(planningWindow?.timeSlots && Array.isArray(planningWindow.timeSlots) && planningWindow.timeSlots.length > 0);
   const [useMultipleSlots, setUseMultipleSlots] = useState<boolean>(hasExistingTimeSlots);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>(
     hasExistingTimeSlots 
@@ -59,13 +53,6 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
       : [{ startTime: "09:00", endTime: "13:00", label: "Mattino" }, { startTime: "14:00", endTime: "18:00", label: "Pomeriggio" }]
   );
   
-  // Query per i progetti
-  const { data: projects } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
-    queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!currentOrganizationId,
-  });
-
   // Query per le planning windows esistenti (per gerarchia)
   const { data: planningWindows } = useQuery<PlanningWindow[]>({
     queryKey: ["/api/planning-windows/user"],
@@ -75,7 +62,6 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      projectId,
       parentPlanningWindowId: planningWindow?.parentPlanningWindowId || null,
       name: planningWindow?.name || "",
       startDate: planningWindow?.startDate ? new Date(planningWindow.startDate).toISOString().split('T')[0] : "",
@@ -91,129 +77,10 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
     },
   });
 
-  // Get current form values for "Accoda" calculation
-  const watchProjectId = form.watch("projectId");
   const watchParentId = form.watch("parentPlanningWindowId");
-  
-  // Get selected project for estimated hours
-  const selectedProject = projects?.find(p => p.id === (watchProjectId || projectId));
-  
-  // Get parent planning window
-  const parentWindow = planningWindows?.find(pw => pw.id === watchParentId);
-  
-  // Get child windows of parent (excluding current if editing)
-  const siblingWindows = planningWindows?.filter(pw => 
-    pw.parentPlanningWindowId === watchParentId && 
-    pw.id !== planningWindow?.id
-  ) || [];
-  
-  // Calculate queue position - finds first available slot after last sibling
-  const calculateQueuePosition = () => {
-    if (!parentWindow || !selectedProject) return;
-    
-    // Get parent's working hours per day
-    const parentWorkingHours = parentWindow.workingHoursPerDay || 8;
-    const parentDaysOfWeek = parentWindow.daysOfWeek || [1, 2, 3, 4, 5];
-    
-    // Function to check if a day is a working day
-    const isWorkingDay = (date: Date) => {
-      const dayOfWeek = getDay(date);
-      // Convert JS day (0=Sun) to our format (1=Mon, 7=Sun)
-      const ourDayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek;
-      return parentDaysOfWeek.includes(ourDayOfWeek);
-    };
-    
-    // Find the last end date among siblings
-    let startDate: Date;
-    if (siblingWindows.length > 0) {
-      const lastEndDate = siblingWindows.reduce((latest, pw) => {
-        const pwEnd = new Date(pw.endDate);
-        return pwEnd > latest ? pwEnd : latest;
-      }, new Date(0));
-      
-      // Start from the day after the last sibling ends
-      startDate = addDays(lastEndDate, 1);
-    } else {
-      // No siblings, start from parent's start date
-      startDate = new Date(parentWindow.startDate);
-    }
-    
-    // Move to the next working day if needed
-    while (!isWorkingDay(startDate)) {
-      startDate = addDays(startDate, 1);
-    }
-    
-    // Calculate days needed based on project's estimated effort
-    const estimatedHours = selectedProject.estimatedEffort || 0;
-    if (estimatedHours <= 0) {
-      toast({
-        title: "Stima mancante",
-        description: "Il progetto selezionato non ha ore stimate. Inserisci le ore stimate nel progetto.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const daysNeeded = Math.ceil(estimatedHours / parentWorkingHours);
-    
-    // Calculate end date by counting only working days
-    let endDate = new Date(startDate);
-    let workingDaysCount = 1;
-    while (workingDaysCount < daysNeeded) {
-      endDate = addDays(endDate, 1);
-      if (isWorkingDay(endDate)) {
-        workingDaysCount++;
-      }
-    }
-    
-    // Check if end date exceeds parent's end date
-    const parentEndDate = new Date(parentWindow.endDate);
-    if (endDate > parentEndDate) {
-      toast({
-        title: "Attenzione",
-        description: `La pianificazione supera la data di fine della finestra superiore (${format(parentEndDate, 'dd/MM/yyyy')}). Verifica le date.`,
-        variant: "default",
-      });
-    }
-    
-    // Inherit time settings from parent
-    const parentTimeSlots = parentWindow.timeSlots as TimeSlot[] | null;
-    if (parentTimeSlots && parentTimeSlots.length > 0) {
-      setUseMultipleSlots(true);
-      setTimeSlots(parentTimeSlots);
-      form.setValue("startTime", parentTimeSlots[0].startTime);
-      form.setValue("endTime", parentTimeSlots[parentTimeSlots.length - 1].endTime);
-    } else {
-      form.setValue("startTime", parentWindow.startTime || "09:00");
-      form.setValue("endTime", parentWindow.endTime || "17:00");
-    }
-    
-    // Inherit days of week from parent
-    form.setValue("daysOfWeek", parentDaysOfWeek);
-    form.setValue("recurrenceType", parentWindow.recurrenceType || "weekly");
-    
-    // Set calculated dates
-    form.setValue("startDate", format(startDate, 'yyyy-MM-dd'));
-    form.setValue("endDate", format(endDate, 'yyyy-MM-dd'));
-    
-    // Auto-fill name from project if empty
-    if (!form.getValues("name")) {
-      form.setValue("name", selectedProject.name);
-    }
-    
-    toast({
-      title: "Pianificazione accodata",
-      description: `Dal ${format(startDate, 'dd/MM/yyyy')} al ${format(endDate, 'dd/MM/yyyy')} (${daysNeeded} giorni lavorativi per ${estimatedHours}h stimate)`,
-    });
-  };
-  
-  // Show "Accoda" button when both project and parent are selected
-  const canQueue = linkToProject && (watchProjectId || projectId) && watchParentId;
 
   const savePlanningWindowMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      const finalProjectId = linkToProject ? (data.projectId || projectId) : null;
-      
       // Calculate working hours from time slots if using multiple slots
       let calculatedWorkingHours = 8;
       if (useMultipleSlots && timeSlots.length > 0) {
@@ -227,7 +94,7 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
       
       const windowData = {
         ...data,
-        projectId: finalProjectId,
+        projectId: null, // Windows are always standalone now
         startDate: new Date(data.startDate),
         endDate: new Date(data.endDate),
         startTime: data.startTime,
@@ -303,66 +170,6 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
           )}
         />
 
-        {/* Link to Project */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <FolderOpen className="h-5 w-5" />
-              Collegamento Progetto
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <div className="text-sm font-medium">Collega a Progetto</div>
-                <div className="text-xs text-muted-foreground">
-                  Associa questa pianificazione ad un progetto specifico
-                </div>
-              </div>
-              <Switch
-                checked={linkToProject}
-                onCheckedChange={(checked) => {
-                  setLinkToProject(checked);
-                  if (!checked) {
-                    form.setValue("projectId", undefined);
-                  }
-                }}
-                data-testid="switch-link-to-project"
-              />
-            </div>
-
-            {linkToProject && (
-              <FormField
-                control={form.control}
-                name="projectId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Progetto</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      value={field.value || ""}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-project">
-                          <SelectValue placeholder="Seleziona un progetto" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {projects?.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-          </CardContent>
-        </Card>
-
         {/* Hierarchy */}
         <Card>
           <CardHeader>
@@ -403,30 +210,6 @@ export default function PlanningWindowForm({ projectId, planningWindow, onSucces
               )}
             />
             
-            {/* Queue Button - appears when project and parent window are selected */}
-            {canQueue && (
-              <div className="pt-2 border-t">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={calculateQueuePosition}
-                  className="w-full flex items-center gap-2"
-                  data-testid="btn-queue-planning"
-                >
-                  <ListEnd className="h-4 w-4" />
-                  Accoda alla Finestra Superiore
-                </Button>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Calcola automaticamente date e orari basandosi sulla stima del progetto 
-                  ({selectedProject?.estimatedEffort || 0}h) e posiziona dopo le pianificazioni esistenti.
-                  {siblingWindows.length > 0 && (
-                    <span className="block mt-1 text-primary">
-                      {siblingWindows.length} pianificazion{siblingWindows.length === 1 ? 'e' : 'i'} già presente{siblingWindows.length === 1 ? '' : 'i'}
-                    </span>
-                  )}
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
 
