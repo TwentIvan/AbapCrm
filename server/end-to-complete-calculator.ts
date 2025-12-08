@@ -59,10 +59,10 @@ function getEffectiveEndTime(startTime: string, allocatedHours: number): string 
   return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
 }
 
-async function getInheritedConfigFromHierarchy(
+function getAncestorChain(
   projectWindow: PlanningWindow,
   allWindows: PlanningWindow[]
-): Promise<{ daysOfWeek: number[]; timeSlots: TimeSlot[]; workingHoursPerDay: number }> {
+): PlanningWindow[] {
   const ancestorChain: PlanningWindow[] = [];
   let currentWindow: PlanningWindow | undefined = projectWindow;
 
@@ -72,6 +72,35 @@ async function getInheritedConfigFromHierarchy(
     ancestorChain.unshift(parentWindow);
     currentWindow = parentWindow;
   }
+  return ancestorChain;
+}
+
+function getEffectiveDateRange(
+  projectWindow: PlanningWindow,
+  ancestorChain: PlanningWindow[]
+): { effectiveStart: Date; effectiveEnd: Date } {
+  let effectiveStart = new Date(projectWindow.startDate);
+  let effectiveEnd = new Date(projectWindow.endDate);
+
+  for (const ancestor of ancestorChain) {
+    const ancestorStart = new Date(ancestor.startDate);
+    const ancestorEnd = new Date(ancestor.endDate);
+    if (ancestorStart > effectiveStart) {
+      effectiveStart = ancestorStart;
+    }
+    if (ancestorEnd < effectiveEnd) {
+      effectiveEnd = ancestorEnd;
+    }
+  }
+
+  return { effectiveStart, effectiveEnd };
+}
+
+async function getInheritedConfigFromHierarchy(
+  projectWindow: PlanningWindow,
+  allWindows: PlanningWindow[]
+): Promise<{ daysOfWeek: number[]; timeSlots: TimeSlot[]; workingHoursPerDay: number }> {
+  const ancestorChain = getAncestorChain(projectWindow, allWindows);
 
   let daysOfWeek: number[] = [1, 2, 3, 4, 5];
   let timeSlots: TimeSlot[] = [];
@@ -200,8 +229,11 @@ export async function calculateEndToComplete(
 
   const { daysOfWeek, timeSlots, workingHoursPerDay } = await getInheritedConfigFromHierarchy(projectWindow, allUserWindows);
 
-  const windowStart = new Date(projectWindow.startDate);
-  const windowEnd = new Date(projectWindow.endDate);
+  const ancestorChain = getAncestorChain(projectWindow, allUserWindows);
+  const { effectiveStart, effectiveEnd } = getEffectiveDateRange(projectWindow, ancestorChain);
+  
+  const windowStart = effectiveStart;
+  const windowEnd = effectiveEnd;
   
   let remainingHours = totalRemainingHours;
   let currentDay = new Date();
@@ -268,9 +300,9 @@ export async function calculateEndToComplete(
     currentDay = addDays(currentDay, 1);
   }
 
-  const effectiveEnd = lastDate;
+  const calculatedEndDate = lastDate;
   const plannedEnd = new Date(projectWindow.endDate);
-  const isDelayed = effectiveEnd && effectiveEnd > plannedEnd;
+  const isDelayed = calculatedEndDate && calculatedEndDate > plannedEnd;
 
   return {
     ...baseResult,
