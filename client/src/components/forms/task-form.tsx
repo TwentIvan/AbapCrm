@@ -73,7 +73,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
 
   const activeProjects = projects?.filter(project => project.status !== "completed") || [];
   
-  const parentTasks = tasks?.filter(t => t.id !== task?.id) || []; // Exclude current task
+  const parentTasks = tasks?.filter(t => t.id !== task?.id) || [];
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -114,6 +114,16 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       });
     }
   }, [task, form]);
+
+  // Watch projectId to filter SAP systems by partner
+  const selectedProjectId = form.watch("projectId");
+  const selectedProject = projects?.find(p => p.id === selectedProjectId);
+  
+  // Filter SAP systems by the partner associated with the selected project
+  const filteredSapSystems = sapSystems?.filter(sys => {
+    if (!selectedProject?.clientId) return true; // Show all if no project selected
+    return sys.partnerId === selectedProject.clientId;
+  }) || [];
 
   const saveTaskMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -420,7 +430,10 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="none">No SAP system</SelectItem>
-                  {sapSystems?.map((sapSystem) => (
+                  {filteredSapSystems.length === 0 && selectedProject?.clientId && (
+                    <SelectItem value="no-systems" disabled>Nessun sistema SAP per questo partner</SelectItem>
+                  )}
+                  {filteredSapSystems.map((sapSystem) => (
                     <SelectItem key={sapSystem.id} value={sapSystem.id}>
                       {sapSystem.name} - {sapSystem.serverHost}:{sapSystem.applicationServerPort}
                     </SelectItem>
