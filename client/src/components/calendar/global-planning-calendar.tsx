@@ -294,14 +294,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           // Use totalRemainingHours from ETC, fallback to estimatedHours
           let hoursLeft: number | null = estimatedHours;
           
-          // CRITICAL: Start from ETC simulation start date (max(today, windowStart))
-          // This aligns frontend slot allocation with backend ETC calculation
-          // Without this, frontend starts from windowStart (potentially in the past)
-          // while backend starts from today, causing slot count mismatch
-          const effectiveStartDate = etcSimulationStartDate 
-            ? (etcSimulationStartDate > windowStart ? etcSimulationStartDate : windowStart)
-            : windowStart;
-          let currentDay = new Date(effectiveStartDate);
+          // Start from the planning window's start date (as originally designed)
+          // The END date uses storedCalculatedEndDate from ETC (Fine Effettiva)
+          let currentDay = new Date(windowStart);
           
           while (currentDay <= effectiveWindowEnd) {
             // Check if this is a working day
