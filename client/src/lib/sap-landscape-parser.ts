@@ -3,10 +3,10 @@ import { z } from "zod";
 // Schema per validare i dati estratti dal XML
 export const SapSystemFromXmlSchema = z.object({
   name: z.string().min(1, "System name is required"),
+  systemId: z.string().min(1, "System ID is required"), // SAP System ID (e.g., PRD, DEV, QAS)
   description: z.string().optional(),
   serverHost: z.string().min(1, "Server host is required"),
   systemNumber: z.string().regex(/^\d{2}$/, "System number must be 2 digits"),
-  // clientNumber rimosso - è dato applicativo che va nelle credenziali
   applicationServerPort: z.number().min(1).max(65535).default(3200),
   messageServerPort: z.number().min(1).max(65535).default(3600),
   systemType: z.enum(["ecc", "s4hana", "bw", "pi", "po", "solution_manager", "crm", "srm", "other"]).default("other"),
@@ -416,6 +416,7 @@ export class SapLandscapeParser {
 
     return {
       name: systemName || systemId, // Usa il nome completo (es: "Hera.SV6") o fallback al system ID
+      systemId: systemId, // SAP System ID (e.g., PRD, DEV, QAS)
       description: description || undefined,
       serverHost: finalServer,
       systemNumber: systemNumber.padStart(2, '0'), // Assicura 2 cifre
@@ -426,7 +427,7 @@ export class SapLandscapeParser {
       landscape,
       sapReleaseVersion: undefined,
       kernelVersion: undefined,
-      notes: `System ID: ${systemId}`, // Salva il system ID nelle note
+      notes: undefined,
       isActive: true,
       partnerId: undefined, // Will be set during auto-assignment
     };
