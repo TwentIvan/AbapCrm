@@ -352,6 +352,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               
               const slotDate = new Date(etcSlot.date);
               
+              // Skip slots outside window's date range (respects parent window constraints)
+              if (slotDate < windowStart || slotDate > windowEnd) continue;
+              
               // Only include slots within current calendar view
               if (slotDate >= calendarStart && slotDate <= calendarEnd) {
                 // Find matching time slot to get label and index
@@ -854,10 +857,13 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               
               {/* Renderizzazione lineare delle istanze - stesso approccio di settimana/giorno */}
               <div className="absolute inset-x-0" style={{ 
-                top: `0px`, // Inizia dall'alto della cella per proporzioni corrette
-                height: `${FIXED_DAY_HEIGHT}px` // Usa altezza totale per proporzioni corrette
+                top: `0px`,
+                height: `${FIXED_DAY_HEIGHT}px`
               }}>
-                {renderDayInstances(dayInstances)}
+                {/* Inner relative wrapper for calc(100%) to work correctly */}
+                <div className="relative w-full h-full">
+                  {renderDayInstances(dayInstances)}
+                </div>
               </div>
             </div>
           );
