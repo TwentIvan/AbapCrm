@@ -347,6 +347,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           if (etcSlotAllocation && etcSlotAllocation.length > 0) {
             // Use backend-calculated slot allocation directly
             for (const etcSlot of etcSlotAllocation) {
+              // Skip empty slots (allocatedHours <= 0) - they should not be rendered
+              if (etcSlot.allocatedHours <= 0) continue;
+              
               const slotDate = new Date(etcSlot.date);
               
               // Only include slots within current calendar view
@@ -764,11 +767,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               >
                 <div className="font-medium truncate">
                   {instance.window.name}
-                  {instance.project && (
-                    <span className="font-normal opacity-75 ml-1">
-                      - {instance.project.name}
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
@@ -944,9 +942,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                           <div className="font-medium truncate">
                             {instance.window.name}
                           </div>
-                          <div className="text-[9px] opacity-75 truncate">
-                            {instance.project?.name || 'Finestra Standalone'}
-                          </div>
                         </div>
                       </div>
                     );
@@ -1063,14 +1058,6 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                       <div className="font-medium truncate">
                         {instance.window.name}
                       </div>
-                      <div className="text-sm opacity-75 mt-1 truncate">
-                        {instance.project?.name || 'Finestra Standalone'}
-                      </div>
-                      {instance.project?.description && height > 120 && (
-                        <div className="text-xs opacity-60 mt-2 flex-1 overflow-hidden">
-                          {instance.project.description}
-                        </div>
-                      )}
                     </div>
                   </div>
                 );
