@@ -257,26 +257,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       return daysOfWeek.includes(ourDayOfWeek);
     };
     
-    console.log('=== EXPANDED INSTANCES DEBUG ===');
-    console.log('Calendar range:', { start: calendarStart, end: calendarEnd });
-    console.log('ETC batch data keys:', etcBatchData ? Object.keys(etcBatchData) : 'none');
-    
     planningWindowsWithProject.forEach(({ project, ...window }) => {
       const windowStart = new Date(window.startDate);
       const windowEnd = new Date(window.endDate);
       const windowLevel = windowHierarchy.get(window.id) || 0;
-      
-      // DEBUG
-      const projectEtcDebug = project?.id ? etcBatchData?.[project.id] : null;
-      console.log(`WINDOW: ${window.name}`, {
-        hasProject: !!project,
-        hasEtcSlotAllocation: !!(projectEtcDebug?.slotAllocation?.length),
-        slotAllocationCount: projectEtcDebug?.slotAllocation?.length || 0,
-        slotDates: projectEtcDebug?.slotAllocation?.map((s: any) => s.date) || [],
-        isChild: !!window.parentPlanningWindowId,
-        level: windowLevel,
-        windowDates: `${window.startDate} - ${window.endDate}`
-      });
       
       // Get inherited config from parent chain
       const inheritedConfig = getInheritedConfig(window);
@@ -537,24 +521,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       }
     });
     
-    // DEBUG: Log total instances generated
-    const finalInstances = Array.from(uniqueInstances.values());
-    console.log('INSTANCES SUMMARY:', {
-      totalBeforeDedup: instances.length,
-      totalAfterDedup: finalInstances.length,
-      byWindow: finalInstances.reduce((acc, i) => {
-        const name = i.window.name.substring(0, 20);
-        acc[name] = (acc[name] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      byDate: finalInstances.reduce((acc, i) => {
-        const date = format(i.date, 'yyyy-MM-dd');
-        acc[date] = (acc[date] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>)
-    });
-    
-    return finalInstances;
+    return Array.from(uniqueInstances.values());
   }, [planningWindowsWithProject, getInstanceGenerationRange, windowHierarchy, etcBatchData]);
 
   // Navigation functions
@@ -812,10 +779,12 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           const siblingIndex = getSiblingIndex(instance);
           const siblingCount = getSiblingCount(instance);
           const baseLeft = getLevelIndentation(instance.level);
-          // Fixed offset per sibling to ensure consistent ~10 char width for all windows
-          // Each sibling gets 25px horizontal offset, keeping enough space for text
-          const SIBLING_OFFSET = 25;
-          const leftOffset = baseLeft + (siblingIndex * SIBLING_OFFSET);
+          // Fixed width per window: ~70px for 10 characters (font-size xs ≈ 7px/char)
+          // Siblings are offset to show side-by-side with slight overlap
+          const CHAR_WIDTH = 7;
+          const MIN_CHARS = 10;
+          const SIBLING_OFFSET = CHAR_WIDTH * MIN_CHARS; // 70px
+          const leftOffset = baseLeft + (siblingIndex * SIBLING_OFFSET * 0.4);
           const rightOffset = 2;
           
           return (
@@ -968,54 +937,81 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   ))}
                   
                   {/* Eventi sovrapposti come box continui - renderizza prima livello 0, poi livelli superiori */}
-                  {dayInstances
-                    .sort((a, b) => a.level - b.level) // Parents first, children on top
-                    .map((instance) => {
-                    const startMinutes = timeToMinutes(instance.startTime);
-                    // Per slot parziali, usa le ore allocate effettive
-                    const effectiveDurationMinutes = instance.allocatedHours * 60;
-                    const getEffectiveEndTime = (startTime: string, allocatedHours: number): string => {
-                      const [startH, startM] = startTime.split(':').map(Number);
-                      const totalMinutes = startH * 60 + startM + allocatedHours * 60;
-                      const endH = Math.floor(totalMinutes / 60);
-                      const endM = Math.round(totalMinutes % 60);
-                      return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+                  {(() => {
+                    // Sibling calculation helpers (same as month view)
+                    const getSiblingIndex = (inst: ExpandedPlanningInstance): number => {
+                      const siblings = dayInstances.filter(other => 
+                        other.level === inst.level && 
+                        other.startTime === inst.startTime &&
+                        other.window.id !== inst.window.id
+                      );
+                      const allSameSlot = [inst, ...siblings].sort((a, b) => a.window.id.localeCompare(b.window.id));
+                      return allSameSlot.findIndex(s => s.window.id === inst.window.id);
                     };
-                    const effectiveEndTime = instance.isPartialSlot 
-                      ? getEffectiveEndTime(instance.startTime, instance.allocatedHours)
-                      : instance.endTime;
                     
-                    const topPosition = (startMinutes / 60) * hourHeight;
-                    const height = (effectiveDurationMinutes / 60) * hourHeight;
+                    const getSiblingCount = (inst: ExpandedPlanningInstance): number => {
+                      return dayInstances.filter(other => 
+                        other.level === inst.level && 
+                        other.startTime === inst.startTime
+                      ).length;
+                    };
                     
-                    // Unique key including all identifiers (add project.id and startTime to ensure uniqueness across ETC slots)
-                    const projectKey = instance.project?.id || 'standalone';
-                    const uniqueKey = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
-                    
-                    return (
-                      <div
-                        key={uniqueKey}
-                        onClick={() => onWindowSelect?.(instance.window)}
-                        className="absolute cursor-pointer"
-                        style={{ 
-                          top: `${topPosition}px`,
-                          height: `${height}px`,
-                          left: `${2 + getLevelIndentation(instance.level)}px`,
-                          right: `2px`,
-                          zIndex: 10 + instance.level, // Higher level = higher z-index
-                        }}
-                      >
-                        <div 
-                          className={`hover:opacity-80 text-xs p-2 rounded border h-full overflow-hidden ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
-                          style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null)}
+                    return dayInstances
+                      .sort((a, b) => a.level - b.level)
+                      .map((instance) => {
+                      const startMinutes = timeToMinutes(instance.startTime);
+                      const effectiveDurationMinutes = instance.allocatedHours * 60;
+                      const getEffectiveEndTime = (startTime: string, allocatedHours: number): string => {
+                        const [startH, startM] = startTime.split(':').map(Number);
+                        const totalMinutes = startH * 60 + startM + allocatedHours * 60;
+                        const endH = Math.floor(totalMinutes / 60);
+                        const endM = Math.round(totalMinutes % 60);
+                        return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+                      };
+                      const effectiveEndTime = instance.isPartialSlot 
+                        ? getEffectiveEndTime(instance.startTime, instance.allocatedHours)
+                        : instance.endTime;
+                      
+                      const topPosition = (startMinutes / 60) * hourHeight;
+                      const height = (effectiveDurationMinutes / 60) * hourHeight;
+                      
+                      const projectKey = instance.project?.id || 'standalone';
+                      const uniqueKey = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
+                      
+                      // Sibling positioning (10 chars ≈ 70px)
+                      const siblingIndex = getSiblingIndex(instance);
+                      const siblingCount = getSiblingCount(instance);
+                      const CHAR_WIDTH = 7;
+                      const MIN_CHARS = 10;
+                      const SIBLING_OFFSET = CHAR_WIDTH * MIN_CHARS * 0.4; // 28px offset
+                      const baseLeft = 2 + getLevelIndentation(instance.level);
+                      const leftOffset = baseLeft + (siblingIndex * SIBLING_OFFSET);
+                      
+                      return (
+                        <div
+                          key={uniqueKey}
+                          onClick={() => onWindowSelect?.(instance.window)}
+                          className="absolute cursor-pointer"
+                          style={{ 
+                            top: `${topPosition}px`,
+                            height: `${height}px`,
+                            left: `${leftOffset}px`,
+                            right: `2px`,
+                            zIndex: 10 + instance.level + siblingIndex,
+                          }}
                         >
-                          <div className="font-medium truncate">
-                            {instance.window.name}
+                          <div 
+                            className={`hover:opacity-80 text-xs p-2 rounded border h-full overflow-hidden ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
+                            style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null)}
+                          >
+                            <div className="font-medium truncate">
+                              {instance.window.name}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </div>
               );
             })}
@@ -1084,54 +1080,81 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               ))}
               
               {/* Eventi sovrapposti - renderizza prima livello 0, poi livelli superiori */}
-              {dayInstances
-                .sort((a, b) => a.level - b.level) // Parents first, children on top
-                .map((instance) => {
-                const startMinutes = timeToMinutes(instance.startTime);
-                // Per slot parziali, usa le ore allocate effettive
-                const effectiveDurationMinutes = instance.allocatedHours * 60;
-                const getEffectiveEndTime = (startTime: string, allocatedHours: number): string => {
-                  const [startH, startM] = startTime.split(':').map(Number);
-                  const totalMinutes = startH * 60 + startM + allocatedHours * 60;
-                  const endH = Math.floor(totalMinutes / 60);
-                  const endM = Math.round(totalMinutes % 60);
-                  return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+              {(() => {
+                // Sibling calculation helpers (same as month/week view)
+                const getSiblingIndex = (inst: ExpandedPlanningInstance): number => {
+                  const siblings = dayInstances.filter(other => 
+                    other.level === inst.level && 
+                    other.startTime === inst.startTime &&
+                    other.window.id !== inst.window.id
+                  );
+                  const allSameSlot = [inst, ...siblings].sort((a, b) => a.window.id.localeCompare(b.window.id));
+                  return allSameSlot.findIndex(s => s.window.id === inst.window.id);
                 };
-                const effectiveEndTime = instance.isPartialSlot 
-                  ? getEffectiveEndTime(instance.startTime, instance.allocatedHours)
-                  : instance.endTime;
                 
-                const topPosition = (startMinutes / 60) * hourHeight;
-                const height = (effectiveDurationMinutes / 60) * hourHeight;
+                const getSiblingCount = (inst: ExpandedPlanningInstance): number => {
+                  return dayInstances.filter(other => 
+                    other.level === inst.level && 
+                    other.startTime === inst.startTime
+                  ).length;
+                };
                 
-                // Unique key including all identifiers (add project.id and startTime to ensure uniqueness across ETC slots)
-                const projectKey = instance.project?.id || 'standalone';
-                const uniqueKey = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
-                
-                return (
-                  <div
-                    key={uniqueKey}
-                    onClick={() => onWindowSelect?.(instance.window)}
-                    className="absolute cursor-pointer"
-                    style={{ 
-                      top: `${topPosition}px`,
-                      height: `${height}px`,
-                      left: `${8 + getLevelIndentation(instance.level)}px`,
-                      right: `8px`,
-                      zIndex: 10 + instance.level, // Higher level = higher z-index
-                    }}
-                  >
-                    <div 
-                      className={`hover:opacity-80 p-3 rounded border h-full overflow-hidden flex flex-col ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
-                      style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null)}
+                return dayInstances
+                  .sort((a, b) => a.level - b.level)
+                  .map((instance) => {
+                  const startMinutes = timeToMinutes(instance.startTime);
+                  const effectiveDurationMinutes = instance.allocatedHours * 60;
+                  const getEffectiveEndTime = (startTime: string, allocatedHours: number): string => {
+                    const [startH, startM] = startTime.split(':').map(Number);
+                    const totalMinutes = startH * 60 + startM + allocatedHours * 60;
+                    const endH = Math.floor(totalMinutes / 60);
+                    const endM = Math.round(totalMinutes % 60);
+                    return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+                  };
+                  const effectiveEndTime = instance.isPartialSlot 
+                    ? getEffectiveEndTime(instance.startTime, instance.allocatedHours)
+                    : instance.endTime;
+                  
+                  const topPosition = (startMinutes / 60) * hourHeight;
+                  const height = (effectiveDurationMinutes / 60) * hourHeight;
+                  
+                  const projectKey = instance.project?.id || 'standalone';
+                  const uniqueKey = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
+                  
+                  // Sibling positioning (10 chars ≈ 70px)
+                  const siblingIndex = getSiblingIndex(instance);
+                  const siblingCount = getSiblingCount(instance);
+                  const CHAR_WIDTH = 7;
+                  const MIN_CHARS = 10;
+                  const SIBLING_OFFSET = CHAR_WIDTH * MIN_CHARS * 0.4; // 28px offset
+                  const baseLeft = 8 + getLevelIndentation(instance.level);
+                  const leftOffset = baseLeft + (siblingIndex * SIBLING_OFFSET);
+                  
+                  return (
+                    <div
+                      key={uniqueKey}
+                      onClick={() => onWindowSelect?.(instance.window)}
+                      className="absolute cursor-pointer"
+                      style={{ 
+                        top: `${topPosition}px`,
+                        height: `${height}px`,
+                        left: `${leftOffset}px`,
+                        right: `8px`,
+                        zIndex: 10 + instance.level + siblingIndex,
+                      }}
                     >
-                      <div className="font-medium truncate">
-                        {instance.window.name}
+                      <div 
+                        className={`hover:opacity-80 p-3 rounded border h-full overflow-hidden flex flex-col ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
+                        style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null)}
+                      >
+                        <div className="font-medium truncate">
+                          {instance.window.name}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
