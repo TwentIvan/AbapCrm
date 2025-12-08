@@ -132,8 +132,20 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     return hierarchy;
   }, [planningWindowsWithProject]);
 
-  // Get date range based on view
-  const getDateRange = () => {
+  // Get date range for instance generation - ALWAYS use month-wide range
+  // This ensures expandedInstances contains the same data regardless of view
+  // View switching should be purely visual, not affect data generation
+  const getInstanceGenerationRange = useMemo(() => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    return {
+      start: startOfWeek(monthStart, { weekStartsOn: 1 }),
+      end: endOfWeek(monthEnd, { weekStartsOn: 1 })
+    };
+  }, [currentDate]);
+  
+  // Helper function for view-specific date range (used only for display purposes)
+  const getViewDateRange = () => {
     switch (view) {
       case 'day':
         return {
@@ -229,11 +241,13 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     };
   };
 
-  // Expand planning windows for current view
+  // Expand planning windows - ALWAYS use month-wide range for data consistency
+  // The rendering functions filter by date as needed, but data generation is view-independent
   const expandedInstances = useMemo(() => {
     if (!planningWindowsWithProject) return [];
     
-    const { start: calendarStart, end: calendarEnd } = getDateRange();
+    // Use month-wide range regardless of current view - this ensures data consistency across views
+    const { start: calendarStart, end: calendarEnd } = getInstanceGenerationRange;
     const instances: ExpandedPlanningInstance[] = [];
     
     // Helper to check if a day is a working day
@@ -503,7 +517,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     });
     
     return Array.from(uniqueInstances.values());
-  }, [planningWindowsWithProject, currentDate, view, windowHierarchy, etcBatchData]);
+  }, [planningWindowsWithProject, getInstanceGenerationRange, windowHierarchy, etcBatchData]);
 
   // Navigation functions
   const navigate = (direction: 'prev' | 'next') => {
