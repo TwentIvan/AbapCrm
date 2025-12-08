@@ -1,11 +1,14 @@
 import { ReactNode } from "react";
 
+export type ColumnGroup = "direct" | "relation" | "computed" | "linked";
+
 export interface TableColumn {
   key: string;
   label: string;
   sortable?: boolean;
   searchable?: boolean;
-  render?: (item: any) => ReactNode;
+  group?: ColumnGroup;
+  render?: (item: any, computedData?: Record<string, any>) => ReactNode;
 }
 
 export interface BulkEditField {
@@ -50,6 +53,8 @@ export interface EntityListDescriptor {
   prepareCopyData?: (item: any) => any;
   
   relatedDataQueries?: string[];
+  
+  computedDataEndpoint?: string;
 }
 
 export interface ColumnHelpers {
@@ -59,6 +64,7 @@ export interface ColumnHelpers {
   users?: any[];
   partners?: any[];
   organizations?: any[];
+  computedData?: Record<string, any>;
 }
 
 export interface FormComponentProps {

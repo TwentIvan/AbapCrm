@@ -68,18 +68,13 @@ export function EmbeddedEntityList({
   const [showThuAiDialog, setShowThuAiDialog] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
 
-  if (!descriptor) {
-    return (
-      <div className={`p-4 text-center text-muted-foreground ${className}`}>
-        Entità "{entityKey}" non trovata nel registry
-      </div>
-    );
-  }
+  const apiBase = descriptor?.apiBase || "/api/unknown";
+  const computedDataEndpoint = descriptor?.computedDataEndpoint;
 
   const { data: items = [], isLoading } = useQuery<any[]>({
-    queryKey: [descriptor.apiBase],
+    queryKey: [apiBase],
     queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!currentOrganizationId,
+    enabled: !!currentOrganizationId && !!descriptor,
   });
 
   const { data: projects = [] } = useQuery<any[]>({
@@ -100,6 +95,12 @@ export function EmbeddedEntityList({
     enabled: !!currentOrganizationId,
   });
 
+  const { data: computedData = {} } = useQuery<Record<string, any>>({
+    queryKey: [computedDataEndpoint || ""],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId && !!computedDataEndpoint,
+  });
+
   const filteredItems = useMemo(() => {
     if (!filterField || !filterValues || filterValues.length === 0) {
       return items;
@@ -108,40 +109,40 @@ export function EmbeddedEntityList({
   }, [items, filterField, filterValues]);
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `${descriptor.apiBase}/${id}`),
+    mutationFn: (id: string) => apiRequest("DELETE", `${apiBase}/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [descriptor.apiBase] });
+      queryClient.invalidateQueries({ queryKey: [apiBase] });
       setShowDeleteDialog(false);
       setEditingItem(null);
-      toast({ title: "Eliminato", description: `${descriptor.title} eliminato con successo` });
+      toast({ title: "Eliminato", description: `${descriptor?.title || "Elemento"} eliminato con successo` });
     },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (itemsToDelete: any[]) => {
       for (const item of itemsToDelete) {
-        await apiRequest("DELETE", `${descriptor.apiBase}/${item.id}`);
+        await apiRequest("DELETE", `${apiBase}/${item.id}`);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [descriptor.apiBase] });
+      queryClient.invalidateQueries({ queryKey: [apiBase] });
       setSelectedItems([]);
       setShowBulkDeleteDialog(false);
-      toast({ title: "Eliminati", description: `${descriptor.titlePlural} eliminati con successo` });
+      toast({ title: "Eliminati", description: `${descriptor?.titlePlural || "Elementi"} eliminati con successo` });
     },
   });
 
   const bulkEditMutation = useMutation({
     mutationFn: async ({ itemsToEdit, updates }: { itemsToEdit: any[]; updates: Record<string, any> }) => {
       await Promise.all(
-        itemsToEdit.map((item) => apiRequest("PUT", `${descriptor.apiBase}/${item.id}`, updates))
+        itemsToEdit.map((item) => apiRequest("PUT", `${apiBase}/${item.id}`, updates))
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [descriptor.apiBase] });
+      queryClient.invalidateQueries({ queryKey: [apiBase] });
       setSelectedItems([]);
       setShowBulkEditDialog(false);
-      toast({ title: "Modificati", description: `${descriptor.titlePlural} modificati con successo` });
+      toast({ title: "Modificati", description: `${descriptor?.titlePlural || "Elementi"} modificati con successo` });
     },
   });
 
@@ -149,7 +150,7 @@ export function EmbeddedEntityList({
     mutationFn: async ({ itemsToCopy, addSuffix, suffix }: { itemsToCopy: any[]; addSuffix: boolean; suffix: string }) => {
       await Promise.all(
         itemsToCopy.map((item) => {
-          const copyData = descriptor.prepareCopyData
+          const copyData = descriptor?.prepareCopyData
             ? descriptor.prepareCopyData(item)
             : (() => {
                 const { id, createdAt, updatedAt, userId, organizationId, ...rest } = item;
@@ -161,15 +162,15 @@ export function EmbeddedEntityList({
             copyData[titleField] = `${item[titleField]}${suffix}`;
           }
 
-          return apiRequest("POST", descriptor.apiBase, copyData);
+          return apiRequest("POST", apiBase, copyData);
         })
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [descriptor.apiBase] });
+      queryClient.invalidateQueries({ queryKey: [apiBase] });
       setSelectedItems([]);
       setShowBulkCopyDialog(false);
-      toast({ title: "Copiati", description: `${descriptor.titlePlural} copiati con successo` });
+      toast({ title: "Copiati", description: `${descriptor?.titlePlural || "Elementi"} copiati con successo` });
     },
   });
 
@@ -185,14 +186,15 @@ export function EmbeddedEntityList({
 
   const baseColumns = useMemo(
     () =>
-      descriptor.getColumns({
+      descriptor?.getColumns({
         onEdit: handleEdit,
         onDelete: handleDelete,
         projects,
         users,
         partners,
-      }),
-    [descriptor, projects, users, partners]
+        computedData,
+      }) || [],
+    [descriptor, projects, users, partners, computedData]
   );
 
   const visibleColumns = useMemo(() => {
@@ -209,8 +211,6 @@ export function EmbeddedEntityList({
         const key = getColumnKey(col);
         if (key === "actions" || key === "timer") return false;
         const config = layout.columns[key];
-        // If column is not in saved layout, treat it as visible (new column)
-        // Only hide if explicitly set to visible: false
         if (config === undefined) return true;
         return config.visible !== false;
       })
@@ -220,7 +220,7 @@ export function EmbeddedEntityList({
         return posA - posB;
       });
 
-    if (timerColumn && descriptor.supportsTimeTracking) {
+    if (timerColumn && descriptor?.supportsTimeTracking) {
       configuredColumns.push(timerColumn);
     }
     if (actionsColumn) {
@@ -228,12 +228,20 @@ export function EmbeddedEntityList({
     }
 
     return configuredColumns;
-  }, [baseColumns, layout.columns, descriptor.supportsTimeTracking]);
+  }, [baseColumns, layout.columns, descriptor?.supportsTimeTracking]);
 
   const bulkEditFields = useMemo(
-    () => descriptor.getBulkEditFields({ projects, users, partners }),
+    () => descriptor?.getBulkEditFields({ projects, users, partners }) || [],
     [descriptor, projects, users, partners]
   );
+
+  if (!descriptor) {
+    return (
+      <div className={`p-4 text-center text-muted-foreground ${className}`}>
+        Entità "{entityKey}" non trovata nel registry
+      </div>
+    );
+  }
 
   const FormComponent = descriptor.FormComponent;
   const Icon = descriptor.icon;
@@ -332,6 +340,7 @@ export function EmbeddedEntityList({
             enableSelection={true}
             onSelectionChange={(rows) => setSelectedItems(rows)}
             onRowClick={handleEdit}
+            computedData={computedData}
           />
         )}
       </div>

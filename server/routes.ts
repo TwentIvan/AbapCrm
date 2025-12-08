@@ -913,6 +913,29 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get("/api/projects/batch-end-to-complete", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const projectsList = await storage.getProjects(req.user!.id, organizationId);
+      const results: Record<string, any> = {};
+      
+      for (const project of projectsList) {
+        try {
+          const result = await calculateEndToComplete(project.id, req.user!.id, organizationId);
+          results[project.id] = result;
+        } catch (err) {
+          results[project.id] = { error: true, state: 'error' };
+        }
+      }
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Error calculating batch end-to-complete:", error);
+      res.status(500).json({ error: "Failed to calculate batch end-to-complete" });
+    }
+  });
+
   app.get("/api/projects/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
@@ -2736,21 +2759,6 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const windows = await storage.getPlanningWindows(req.params.projectId, req.user!.id);
     res.json(windows);
-  });
-
-  app.get("/api/projects/:projectId/end-to-complete", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    try {
-      const organizationId = getOrganizationId(req);
-      const result = await calculateEndToComplete(req.params.projectId, req.user!.id, organizationId);
-      if (!result) {
-        return res.status(404).json({ error: "Project not found" });
-      }
-      res.json(result);
-    } catch (error) {
-      console.error("Error calculating end-to-complete:", error);
-      res.status(500).json({ error: "Failed to calculate end-to-complete" });
-    }
   });
 
   app.get("/api/planning-windows/:id", async (req, res) => {

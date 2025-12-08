@@ -8,7 +8,7 @@ export interface TableColumn {
   label: string;
   sortable?: boolean;
   searchable?: boolean;
-  render?: (item: any) => React.ReactNode;
+  render?: (item: any, computedData?: Record<string, any>) => React.ReactNode;
   accessor?: (item: any) => any; // Per campi nested come partner.name
 }
 
@@ -25,6 +25,7 @@ interface UniversalTableProps {
     variant?: "default" | "destructive" | "outline";
   }>;
   emptyMessage?: string;
+  computedData?: Record<string, any>;
 }
 
 const UniversalTableComponent = memo(function UniversalTable({
@@ -34,7 +35,8 @@ const UniversalTableComponent = memo(function UniversalTable({
   onSelectionChange,
   onRowClick,
   bulkActions = [],
-  emptyMessage = "Nessun elemento trovato"
+  emptyMessage = "Nessun elemento trovato",
+  computedData
 }: UniversalTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<string>("");
@@ -220,7 +222,7 @@ const UniversalTableComponent = memo(function UniversalTable({
                   {columns.map((column) => (
                     <td key={column.key} className="p-3">
                       {column.render ? 
-                        column.render(item) : 
+                        column.render(item, computedData) : 
                         String(column.accessor ? column.accessor(item) : item[column.key] || "—")
                       }
                     </td>
