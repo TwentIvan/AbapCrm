@@ -2810,14 +2810,17 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   });
 
   // Planning Windows
-  // GET all planning windows for user (with at least 1 day from today)
+  // GET all standalone planning windows for user (with at least 1 day from today)
+  // Excludes windows with projectId (old-style project windows)
   app.get("/api/planning-windows", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const allWindows = await storage.getAllPlanningWindowsForUser(req.user!.id);
-    // Filter windows with endDate >= today (at least 1 day of planning from now)
+    // Filter: standalone windows only (no projectId) with endDate >= today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const activeWindows = allWindows.filter(w => {
+      // Exclude old-style project windows (they have projectId)
+      if (w.projectId) return false;
       const endDate = new Date(w.endDate);
       endDate.setHours(0, 0, 0, 0);
       return endDate >= today;
