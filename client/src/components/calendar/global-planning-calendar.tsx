@@ -759,10 +759,12 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             console.log(`DEBUG ${dateStr} ${instance.startTime}:`, {
               windowName: instance.window.name,
               hasProject: instance.project !== null,
-              projectId: instance.project?.id,
               level: instance.level,
               slotIndex: instance.slotIndex,
-              color: getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null).backgroundColor
+              hasChildren: hasChildren,
+              opacity: hasChildren ? 0.4 : 1,
+              color: getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null).backgroundColor,
+              totalInstancesThisDay: allDayInstances.length
             });
           }
           
