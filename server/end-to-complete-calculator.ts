@@ -77,19 +77,23 @@ function getAncestorChain(
 
 function getEffectiveDateRange(
   projectWindow: PlanningWindow,
-  ancestorChain: PlanningWindow[]
+  allWindows: PlanningWindow[]
 ): { effectiveStart: Date; effectiveEnd: Date } {
   let effectiveStart = new Date(projectWindow.startDate);
   let effectiveEnd = new Date(projectWindow.endDate);
 
-  for (const ancestor of ancestorChain) {
-    const ancestorStart = new Date(ancestor.startDate);
-    const ancestorEnd = new Date(ancestor.endDate);
-    if (ancestorStart > effectiveStart) {
-      effectiveStart = ancestorStart;
-    }
-    if (ancestorEnd < effectiveEnd) {
-      effectiveEnd = ancestorEnd;
+  // Only clamp to the DIRECT parent window, not the entire ancestor chain
+  if (projectWindow.parentPlanningWindowId) {
+    const directParent = allWindows.find(w => w.id === projectWindow.parentPlanningWindowId);
+    if (directParent) {
+      const parentStart = new Date(directParent.startDate);
+      const parentEnd = new Date(directParent.endDate);
+      if (parentStart > effectiveStart) {
+        effectiveStart = parentStart;
+      }
+      if (parentEnd < effectiveEnd) {
+        effectiveEnd = parentEnd;
+      }
     }
   }
 
@@ -229,8 +233,7 @@ export async function calculateEndToComplete(
 
   const { daysOfWeek, timeSlots, workingHoursPerDay } = await getInheritedConfigFromHierarchy(projectWindow, allUserWindows);
 
-  const ancestorChain = getAncestorChain(projectWindow, allUserWindows);
-  const { effectiveStart, effectiveEnd } = getEffectiveDateRange(projectWindow, ancestorChain);
+  const { effectiveStart, effectiveEnd } = getEffectiveDateRange(projectWindow, allUserWindows);
   
   const windowStart = effectiveStart;
   const windowEnd = effectiveEnd;
