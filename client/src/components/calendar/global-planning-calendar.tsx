@@ -280,20 +280,21 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
             (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
           
-          // Use ETC effective end date as the primary limit for slot generation
+          // Use ETC effective end date as maximum limit, but also track remaining hours
           const effectiveWindowEnd = etcEffectiveEndDate 
             ? min([windowEnd, etcEffectiveEndDate]) 
             : windowEnd;
           
-          // Track remaining hours for fallback (when no ETC data available)
-          let remainingHours = estimatedHours;
+          // CRITICAL: Always track remaining hours to distribute across slots
+          // Use totalRemainingHours from ETC, fallback to estimatedHours
+          let hoursLeft: number | null = estimatedHours;
           let currentDay = new Date(windowStart);
           
           while (currentDay <= effectiveWindowEnd) {
             // Check if this is a working day
             if (isWorkingDay(currentDay, daysOfWeek)) {
-              // Stop if hours are exhausted (only if estimatedHours is set and no ETC end date)
-              if (!etcEffectiveEndDate && remainingHours !== null && remainingHours <= 0) {
+              // Stop if hours are exhausted
+              if (hoursLeft !== null && hoursLeft <= 0) {
                 break;
               }
               
@@ -302,39 +303,32 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 const slot = timeSlots[slotIdx];
                 const slotDurationHours = getSlotDurationHours(slot);
                 
-                // Check ETC limit for this slot
+                // Check ETC date/time limit for this slot (max hours available based on cutoff)
                 const etcLimit = getETCLimitedHours(currentDay, slot.startTime, slot.endTime, slotDurationHours);
                 
-                // Skip slot if it's completely beyond ETC end
+                // Skip slot if it's completely beyond ETC end date/time
                 if (etcLimit.hours <= 0) {
                   continue;
                 }
                 
-                // Calculate hours to allocate to this slot
+                // COMBINED ALLOCATION: Use minimum of (remaining hours, ETC time limit)
+                // This ensures hours flow correctly across slots AND respects the ETC cutoff
                 let allocatedHours: number;
                 let isPartialSlot: boolean;
                 
-                if (etcEffectiveEndDate) {
-                  // Use ETC-based allocation
+                if (hoursLeft === null) {
+                  // No hour tracking - use ETC time limit or full slot
                   allocatedHours = etcLimit.hours;
                   isPartialSlot = etcLimit.isPartial;
-                } else if (remainingHours === null) {
-                  // No estimated hours - use full slot duration
-                  allocatedHours = slotDurationHours;
-                  isPartialSlot = false;
-                } else if (remainingHours <= 0) {
+                } else if (hoursLeft <= 0) {
                   // Hours exhausted - skip this slot
                   break;
-                } else if (remainingHours >= slotDurationHours) {
-                  // Enough hours for full slot
-                  allocatedHours = slotDurationHours;
-                  isPartialSlot = false;
-                  remainingHours -= slotDurationHours;
                 } else {
-                  // Partial slot - use only remaining hours
-                  allocatedHours = remainingHours;
-                  isPartialSlot = true;
-                  remainingHours = 0;
+                  // COMBINE both limits: remaining hours AND ETC time cutoff
+                  const maxAvailableInSlot = etcLimit.hours; // Limited by ETC date/time
+                  allocatedHours = Math.min(hoursLeft, maxAvailableInSlot);
+                  isPartialSlot = allocatedHours < slotDurationHours;
+                  hoursLeft -= allocatedHours;
                 }
                 
                 instances.push({
@@ -351,6 +345,16 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   allocatedHours,
                   isPartialSlot
                 });
+                
+                // Exit inner loop if hours exhausted after this slot
+                if (hoursLeft !== null && hoursLeft <= 0) {
+                  break;
+                }
+              }
+              
+              // Exit day loop if hours exhausted
+              if (hoursLeft !== null && hoursLeft <= 0) {
+                break;
               }
             }
             
