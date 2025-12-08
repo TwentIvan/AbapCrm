@@ -106,8 +106,18 @@ Dynamic calculated columns for project planning visibility:
 - **computedDataEndpoint Pattern**: Descriptors declare a `computedDataEndpoint` for batch fetching calculated data
 - **EmbeddedEntityList Integration**: Fetches computed data in parallel with base collection, passes to descriptor context
 - **UniversalTable Extension**: `computedData` prop passed to column.render() as second argument
-- **ETC Columns**: State (completed/on_track/delayed/no_planning_window/no_tasks), Completion %, Remaining Hours, Effective End Date
+- **ETC Columns**: State (completed/on_track/delayed/no_planning_window/no_tasks), Completion %, Remaining Hours, Effective End Date, Deficit Hours
 - **Routing Order Critical**: Batch endpoints (`/batch-*`) MUST be registered BEFORE parameterized routes (`/:id`)
+
+### Auto-Rescheduling System
+Automatic project schedule recalculation when task completion percentage changes:
+- **Trigger**: PUT `/api/tasks/:id` when `completionPercentage` or `estimatedEffort` changes
+- **Service**: `server/project-rescheduler.ts` - `recalculateProjectScheduleForTask()` function
+- **Root Ancestor Logic**: Finds hierarchical root of planning windows to determine hard deadline
+- **Deficit Hours Calculation**: Computes hours exceeding the superior planning window (stored as `scheduleDeficitHours` - real type for fractional hours)
+- **Persistence**: Updates `calculatedEndDate` and `scheduleDeficitHours` directly on project record
+- **UI Display**: New computed column "Ore Deficit" in projects-descriptor with red badge warning when > 0
+- **Non-blocking**: Rescheduling errors don't fail the task update (wrapped in try-catch)
 
 ### Freeform Dashboard with Entity Widget System
 Customizable dashboard with drag-and-drop widget placement:
