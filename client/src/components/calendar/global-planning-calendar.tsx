@@ -569,12 +569,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
 
   // Funzione per generare gli stili inline per un progetto e livello
   // Finestre con progetto: schiarimento progressivo per livello
-  // Finestre standalone (grigio): sempre grigio scuro costante
+  // Finestre standalone (project === null): sempre grigio scuro costante
   const STANDALONE_GRAY = '#6B7280';
-  const getProjectColorStyle = (projectColor: string, level: number): { backgroundColor: string; borderColor: string; color: string } => {
-    // Per finestre standalone (grigio default), mantieni sempre il colore scuro senza schiarimento
-    const isStandalone = projectColor.toUpperCase() === STANDALONE_GRAY.toUpperCase();
-    const finalColor = isStandalone ? projectColor : getLighterColor(projectColor, level);
+  const getProjectColorStyle = (projectColor: string, level: number, hasProject: boolean): { backgroundColor: string; borderColor: string; color: string } => {
+    // Per finestre standalone (senza progetto), mantieni sempre il grigio scuro senza schiarimento
+    const finalColor = hasProject ? getLighterColor(projectColor, level) : STANDALONE_GRAY;
     const rgb = hexToRgb(finalColor);
     if (!rgb) return { backgroundColor: '#E5E7EB', borderColor: '#D1D5DB', color: '#374151' };
     
@@ -584,7 +583,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     
     return {
       backgroundColor: finalColor,
-      borderColor: projectColor,
+      borderColor: hasProject ? projectColor : STANDALONE_GRAY,
       color: textColor
     };
   };
@@ -768,7 +767,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             >
               <div 
                 className={`hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden ${hasChildren ? 'border-2 border-dashed' : ''} ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
-                style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level)}
+                style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null)}
               >
                 <div className="font-medium truncate">
                   {instance.window.name}
@@ -942,7 +941,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                       >
                         <div 
                           className={`hover:opacity-80 text-xs p-2 rounded border h-full overflow-hidden ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
-                          style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level)}
+                          style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null)}
                         >
                           <div className="font-medium truncate">
                             {instance.window.name}
@@ -1058,7 +1057,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                   >
                     <div 
                       className={`hover:opacity-80 p-3 rounded border h-full overflow-hidden flex flex-col ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
-                      style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level)}
+                      style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null)}
                     >
                       <div className="font-medium truncate">
                         {instance.window.name}
