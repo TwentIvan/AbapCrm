@@ -272,6 +272,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
         hasProject: !!project,
         hasEtcSlotAllocation: !!(projectEtcDebug?.slotAllocation?.length),
         slotAllocationCount: projectEtcDebug?.slotAllocation?.length || 0,
+        slotDates: projectEtcDebug?.slotAllocation?.map((s: any) => s.date) || [],
         isChild: !!window.parentPlanningWindowId,
         level: windowLevel,
         windowDates: `${window.startDate} - ${window.endDate}`
@@ -536,7 +537,24 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       }
     });
     
-    return Array.from(uniqueInstances.values());
+    // DEBUG: Log total instances generated
+    const finalInstances = Array.from(uniqueInstances.values());
+    console.log('INSTANCES SUMMARY:', {
+      totalBeforeDedup: instances.length,
+      totalAfterDedup: finalInstances.length,
+      byWindow: finalInstances.reduce((acc, i) => {
+        const name = i.window.name.substring(0, 20);
+        acc[name] = (acc[name] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+      byDate: finalInstances.reduce((acc, i) => {
+        const date = format(i.date, 'yyyy-MM-dd');
+        acc[date] = (acc[date] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    });
+    
+    return finalInstances;
   }, [planningWindowsWithProject, getInstanceGenerationRange, windowHierarchy, etcBatchData]);
 
   // Navigation functions
@@ -747,6 +765,26 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
         const endM = Math.round(totalMinutes % 60);
         return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
       };
+      
+      // Group siblings (same level, same slot time) to calculate horizontal offset
+      // This prevents windows with same level from completely overlapping
+      const getSiblingIndex = (instance: ExpandedPlanningInstance): number => {
+        const siblings = allDayInstances.filter(other => 
+          other.level === instance.level && 
+          other.startTime === instance.startTime &&
+          other.window.id !== instance.window.id
+        );
+        // Sort siblings by window id for consistent ordering
+        const allSameSlot = [instance, ...siblings].sort((a, b) => a.window.id.localeCompare(b.window.id));
+        return allSameSlot.findIndex(s => s.window.id === instance.window.id);
+      };
+      
+      const getSiblingCount = (instance: ExpandedPlanningInstance): number => {
+        return allDayInstances.filter(other => 
+          other.level === instance.level && 
+          other.startTime === instance.startTime
+        ).length;
+      };
 
       // Ordina per level (parents first, children on top) - stesso approccio di settimana/giorno
       return allDayInstances
@@ -770,6 +808,15 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           const projectKey = instance.project?.id || 'standalone';
           const uniqueKey = `${instance.window.id}-${projectKey}-${format(instance.date, 'yyyy-MM-dd')}-${instance.startTime}-${instance.slotIndex}-${instance.level}`;
           
+          // Calculate horizontal position for siblings (same level, same time slot)
+          const siblingIndex = getSiblingIndex(instance);
+          const siblingCount = getSiblingCount(instance);
+          const baseLeft = getLevelIndentation(instance.level);
+          // If there are siblings, divide the available width between them
+          const siblingWidthPercent = siblingCount > 1 ? (100 - baseLeft) / siblingCount : 100 - baseLeft;
+          const leftOffset = siblingCount > 1 ? baseLeft + (siblingIndex * siblingWidthPercent * 0.5) : baseLeft;
+          const rightOffset = siblingCount > 1 ? (siblingCount - 1 - siblingIndex) * siblingWidthPercent * 0.3 + 2 : 2;
+          
           return (
             <div
               key={uniqueKey}
@@ -778,9 +825,9 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               style={{ 
                 top: `${topPosition}px`,
                 height: `${height}px`,
-                left: `${getLevelIndentation(instance.level)}px`,
-                right: `2px`,
-                zIndex: hasChildren ? instance.level : 10 + instance.level
+                left: `${leftOffset}px`,
+                right: `${rightOffset}px`,
+                zIndex: hasChildren ? instance.level : 10 + instance.level + siblingIndex
               }}
             >
               <div 
