@@ -755,16 +755,19 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           
           // DEBUG: Log all instances to understand the color issue
           const dateStr = format(instance.date, 'yyyy-MM-dd');
-          if (dateStr === '2025-12-15') {
+          if (dateStr === '2025-12-08') {
             console.log(`DEBUG ${dateStr} ${instance.startTime}:`, {
               windowName: instance.window.name,
+              windowId: instance.window.id,
               hasProject: instance.project !== null,
+              projectColor: instance.project?.color,
               level: instance.level,
               slotIndex: instance.slotIndex,
               hasChildren: hasChildren,
               opacity: hasChildren ? 0.4 : 1,
               color: getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null).backgroundColor,
-              totalInstancesThisDay: allDayInstances.length
+              totalInstancesThisDay: allDayInstances.length,
+              allInstancesWindowNames: allDayInstances.map(i => i.window.name)
             });
           }
           
@@ -778,8 +781,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                 height: `${height}px`,
                 left: `${getLevelIndentation(instance.level)}px`,
                 right: `2px`,
-                zIndex: hasChildren ? instance.level : 10 + instance.level,
-                opacity: hasChildren ? 0.4 : 1
+                zIndex: hasChildren ? instance.level : 10 + instance.level
               }}
             >
               <div 
