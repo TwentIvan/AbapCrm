@@ -567,10 +567,15 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     return rgbToHex(newR, newG, newB);
   };
 
-  // Funzione per generare gli stili inline per un progetto
-  // Usa sempre il colore base senza schiarimento (semplificato)
-  const getProjectColorStyle = (projectColor: string, _level: number): { backgroundColor: string; borderColor: string; color: string } => {
-    const rgb = hexToRgb(projectColor);
+  // Funzione per generare gli stili inline per un progetto e livello
+  // Finestre con progetto: schiarimento progressivo per livello
+  // Finestre standalone (grigio): sempre grigio scuro costante
+  const STANDALONE_GRAY = '#6B7280';
+  const getProjectColorStyle = (projectColor: string, level: number): { backgroundColor: string; borderColor: string; color: string } => {
+    // Per finestre standalone (grigio default), mantieni sempre il colore scuro senza schiarimento
+    const isStandalone = projectColor.toUpperCase() === STANDALONE_GRAY.toUpperCase();
+    const finalColor = isStandalone ? projectColor : getLighterColor(projectColor, level);
+    const rgb = hexToRgb(finalColor);
     if (!rgb) return { backgroundColor: '#E5E7EB', borderColor: '#D1D5DB', color: '#374151' };
     
     // Calcola luminosità per determinare il colore del testo
@@ -578,7 +583,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
     const textColor = luminance > 0.6 ? '#374151' : '#FFFFFF';
     
     return {
-      backgroundColor: projectColor,
+      backgroundColor: finalColor,
       borderColor: projectColor,
       color: textColor
     };
