@@ -99,11 +99,21 @@ AI-powered ABAP code generation with extended context:
 - **Regenerate Flow**: After rejecting AI output, users can modify customInstructions and retry
 - **Security**: All queries enforce organizationId filtering for tenant isolation (task, project, sapSystem, comments, messages, transports)
 
+### Computed Fields System (End-to-Complete)
+Dynamic calculated columns for project planning visibility:
+- **Batch ETC Endpoint** (`GET /api/projects/batch-end-to-complete`): Returns keyed payload with ETC metrics for all projects
+- **Column Groups**: Columns organized by type - `direct` (DB fields), `related` (1:1 joins), `linked` (1:N aggregates), `computed` (API-derived)
+- **computedDataEndpoint Pattern**: Descriptors declare a `computedDataEndpoint` for batch fetching calculated data
+- **EmbeddedEntityList Integration**: Fetches computed data in parallel with base collection, passes to descriptor context
+- **UniversalTable Extension**: `computedData` prop passed to column.render() as second argument
+- **ETC Columns**: State (completed/on_track/delayed/no_planning_window/no_tasks), Completion %, Remaining Hours, Effective End Date
+- **Routing Order Critical**: Batch endpoints (`/batch-*`) MUST be registered BEFORE parameterized routes (`/:id`)
+
 ### Freeform Dashboard with Entity Widget System
 Customizable dashboard with drag-and-drop widget placement:
 - **React-RND Integration**: Uses `react-rnd` for freeform widget positioning and resizing
-- **EntityListDescriptor Pattern**: Unified interface (`client/src/lib/entity-registry.tsx`) defining columns, filters, bulk edit fields, and feature flags for each entity
-- **EmbeddedEntityList Component**: Generic shell (`client/src/components/embedded/embedded-entity-list.tsx`) that renders any entity with full CRUD, AI, config, LayoutManager, filters, and bulk operations
+- **EntityListDescriptor Pattern**: Unified interface (`client/src/lib/entity-registry.tsx`) defining columns, filters, bulk edit fields, feature flags, and **computedDataEndpoint** for each entity
+- **EmbeddedEntityList Component**: Generic shell (`client/src/components/embedded/embedded-entity-list.tsx`) that renders any entity with full CRUD, AI, config, LayoutManager, filters, bulk operations, and computed data
 - **Registered Entities**: Tasks, Projects, Partners, Deals - each with dedicated descriptor files in `client/src/lib/entities/`
 - **Widget Templates**: Pre-configured widget options including filtered views (e.g., "Task Attivi", "Progetti Attivi", "Accordi Aperti")
 - **Widget Types**: entity-list (any registered entity), stats (overview counts), timer (active time tracking)
