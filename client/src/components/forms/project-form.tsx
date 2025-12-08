@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertProjectSchema, Partner, Project, SapSystem } from "@shared/schema";
+import { insertProjectSchema, Partner, Project, SapSystem, PlanningWindow } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ const formSchema = z.object({
   clientId: z.string().optional(),
   parentProjectId: z.string().optional(),
   sapSystemId: z.string().optional(),
+  planningWindowId: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   budget: z.string().optional(),
@@ -56,6 +57,11 @@ export default function ProjectForm({ project, onSuccess, isReadOnly = false }: 
     enabled: !!user,
   });
 
+  const { data: planningWindows, isLoading: isLoadingPlanningWindows } = useQuery<PlanningWindow[]>({
+    queryKey: ["/api/planning-windows"],
+    enabled: !!user,
+  });
+
   const clients = partners?.filter(partner => partner.type === "client") || [];
   const parentProjects = projects?.filter(p => p.id !== project?.id) || []; // Exclude current project
 
@@ -68,6 +74,7 @@ export default function ProjectForm({ project, onSuccess, isReadOnly = false }: 
       clientId: project?.clientId || "no-client",
       parentProjectId: project?.parentProjectId || "no-parent",
       sapSystemId: project?.sapSystemId || "no-sap-system",
+      planningWindowId: project?.planningWindowId || "no-planning-window",
       startDate: project?.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
       endDate: project?.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "",
       budget: project?.budget || "",
@@ -84,6 +91,7 @@ export default function ProjectForm({ project, onSuccess, isReadOnly = false }: 
         clientId: data.clientId && data.clientId !== "no-client" ? data.clientId : null,
         parentProjectId: data.parentProjectId && data.parentProjectId !== "no-parent" ? data.parentProjectId : null,
         sapSystemId: data.sapSystemId && data.sapSystemId !== "no-sap-system" ? data.sapSystemId : null,
+        planningWindowId: data.planningWindowId && data.planningWindowId !== "no-planning-window" ? data.planningWindowId : null,
         startDate: data.startDate ? new Date(data.startDate).toISOString() : null,
         endDate: data.endDate ? new Date(data.endDate).toISOString() : null,
         budget: data.budget || null,
@@ -262,6 +270,39 @@ export default function ProjectForm({ project, onSuccess, isReadOnly = false }: 
                     {sapSystems?.map((sapSystem) => (
                       <SelectItem key={sapSystem.id} value={sapSystem.id}>
                         {sapSystem.name} ({sapSystem.landscape})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="planningWindowId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Finestra Pianificazione (Opzionale)</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || "no-planning-window"} disabled={isReadOnly || isLoadingPlanningWindows}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-planning-window">
+                      {isLoadingPlanningWindows ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Caricamento finestre...</span>
+                        </div>
+                      ) : (
+                        <SelectValue placeholder="Seleziona finestra pianificazione" />
+                      )}
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="no-planning-window">Nessuna finestra</SelectItem>
+                    {planningWindows?.map((window) => (
+                      <SelectItem key={window.id} value={window.id}>
+                        {window.name} ({new Date(window.startDate).toLocaleDateString()} - {new Date(window.endDate).toLocaleDateString()})
                       </SelectItem>
                     ))}
                   </SelectContent>

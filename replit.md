@@ -109,6 +109,14 @@ Dynamic calculated columns for project planning visibility:
 - **ETC Columns**: State (completed/on_track/delayed/no_planning_window/no_tasks), Completion %, Remaining Hours, Effective End Date, Deficit Hours
 - **Routing Order Critical**: Batch endpoints (`/batch-*`) MUST be registered BEFORE parameterized routes (`/:id`)
 
+### Planning Windows & Project Relationship
+Architectural design for project scheduling visibility in the global calendar:
+- **Standalone Windows**: Planning windows are independent entities with hierarchical structure (parentPlanningWindowId)
+- **Inverted Relationship**: Projects reference windows via `planningWindowId` field (project → window, not window → project)
+- **ETC Clamping**: Backend End-to-Complete calculator uses ONLY direct parent window dates for slot allocation
+- **Calendar Display**: Projects displayed under their assigned window in global planning calendar
+- **Project Form Integration**: Dropdown selector "Finestra Pianificazione" to assign window to project
+
 ### Auto-Rescheduling System
 Automatic project schedule recalculation when task completion percentage changes:
 - **Trigger**: PUT `/api/tasks/:id` when `completionPercentage` or `estimatedEffort` changes

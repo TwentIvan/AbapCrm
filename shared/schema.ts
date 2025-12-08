@@ -63,6 +63,7 @@ export const projects = pgTable("projects", {
   dealId: uuid("deal_id").references(() => deals.id), // Collegamento all'accordo per tariffe
   parentProjectId: uuid("parent_project_id"), // Self-reference for project hierarchy
   sapSystemId: uuid("sap_system_id").references(() => sapSystems.id), // Sistema SAP associato al progetto
+  planningWindowId: uuid("planning_window_id"), // Finestra di pianificazione associata (progetto punta a finestra)
   userId: uuid("user_id").references(() => users.id).notNull(),
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(), // Data segregation
   startDate: timestamp("start_date"),
