@@ -812,10 +812,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           const siblingIndex = getSiblingIndex(instance);
           const siblingCount = getSiblingCount(instance);
           const baseLeft = getLevelIndentation(instance.level);
-          // If there are siblings, divide the available width between them
-          const siblingWidthPercent = siblingCount > 1 ? (100 - baseLeft) / siblingCount : 100 - baseLeft;
-          const leftOffset = siblingCount > 1 ? baseLeft + (siblingIndex * siblingWidthPercent * 0.5) : baseLeft;
-          const rightOffset = siblingCount > 1 ? (siblingCount - 1 - siblingIndex) * siblingWidthPercent * 0.3 + 2 : 2;
+          // Fixed offset per sibling to ensure consistent ~10 char width for all windows
+          // Each sibling gets 25px horizontal offset, keeping enough space for text
+          const SIBLING_OFFSET = 25;
+          const leftOffset = baseLeft + (siblingIndex * SIBLING_OFFSET);
+          const rightOffset = 2;
           
           return (
             <div
