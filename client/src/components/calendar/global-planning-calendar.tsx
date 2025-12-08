@@ -222,6 +222,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
       const etcEndDateStr = projectETC?.storedCalculatedEndDate || projectETC?.effectiveEndDate;
       const etcEffectiveEndDate = etcEndDateStr ? new Date(etcEndDateStr) : null;
       
+      // Get the simulation start date from ETC (where backend starts allocating hours)
+      // This is max(today, windowStart) - critical for alignment with backend calculation
+      const etcSimulationStartStr = (projectETC as any)?.simulationStartDate as string | undefined;
+      const etcSimulationStartDate = etcSimulationStartStr ? new Date(etcSimulationStartStr) : null;
+      
       // CRITICAL: Child windows (with parentPlanningWindowId) should ALWAYS use 'none' expansion logic
       // to respect quota-based day generation from estimatedEffort, regardless of their recurrence_type setting
       const isChildWindow = !!window.parentPlanningWindowId;
@@ -288,7 +293,15 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           // CRITICAL: Always track remaining hours to distribute across slots
           // Use totalRemainingHours from ETC, fallback to estimatedHours
           let hoursLeft: number | null = estimatedHours;
-          let currentDay = new Date(windowStart);
+          
+          // CRITICAL: Start from ETC simulation start date (max(today, windowStart))
+          // This aligns frontend slot allocation with backend ETC calculation
+          // Without this, frontend starts from windowStart (potentially in the past)
+          // while backend starts from today, causing slot count mismatch
+          const effectiveStartDate = etcSimulationStartDate 
+            ? (etcSimulationStartDate > windowStart ? etcSimulationStartDate : windowStart)
+            : windowStart;
+          let currentDay = new Date(effectiveStartDate);
           
           while (currentDay <= effectiveWindowEnd) {
             // Check if this is a working day

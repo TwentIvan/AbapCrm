@@ -20,6 +20,7 @@ export interface EndToCompleteResult {
   plannedEndDate: string | null;
   effectiveEndDate: string | null;
   effectiveEndTime: string | null;
+  simulationStartDate: string | null;
   windowId: string | null;
   windowName: string | null;
   taskBreakdown: {
@@ -123,6 +124,7 @@ export async function calculateEndToComplete(
     plannedEndDate: null,
     effectiveEndDate: null,
     effectiveEndTime: null,
+    simulationStartDate: null,
     windowId: null,
     windowName: null,
     taskBreakdown: [],
@@ -205,6 +207,10 @@ export async function calculateEndToComplete(
   if (currentDay < windowStart) {
     currentDay = new Date(windowStart);
   }
+  
+  // Store the simulation start date (where we begin allocating hours)
+  const simulationStartDate = new Date(currentDay);
+  baseResult.simulationStartDate = simulationStartDate.toISOString();
 
   const slotAllocation: EndToCompleteResult['slotAllocation'] = [];
   let lastDate: Date | null = null;
