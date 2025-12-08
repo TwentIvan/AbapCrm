@@ -61,8 +61,11 @@ function useChartData(props: ChartWidgetProps) {
   if (props.filterField) params.set("filterField", props.filterField);
   if (props.filterValues?.length) params.set("filterValues", props.filterValues.join(","));
   
+  const paramsString = params.toString();
+  const url = `/api/widget-data/${props.entityKey}${paramsString ? `?${paramsString}` : ""}`;
+  
   return useQuery<ChartDataPoint[]>({
-    queryKey: [`/api/widget-data/${props.entityKey}`, params.toString()],
+    queryKey: [url],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId && !!props.entityKey,
   });
@@ -298,8 +301,11 @@ export function CounterWidget(props: CounterWidgetProps) {
   if (props.filterField) params.set("filterField", props.filterField);
   if (props.filterValues?.length) params.set("filterValues", props.filterValues.join(","));
   
+  const paramsString = params.toString();
+  const url = `/api/widget-data/${props.entityKey}${paramsString ? `?${paramsString}` : ""}`;
+  
   const { data, isLoading } = useQuery<ChartDataPoint[]>({
-    queryKey: [`/api/widget-data/${props.entityKey}`, params.toString()],
+    queryKey: [url],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId && !!props.entityKey,
   });
