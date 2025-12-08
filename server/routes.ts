@@ -42,6 +42,7 @@ import { CustomMetadataService } from "./custom-metadata-service";
 import { PdfService } from "./pdf-service";
 import { ObjectStorageService } from "./objectStorage";
 import { calculateEndToComplete } from "./end-to-complete-calculator";
+import { recalculateProjectScheduleForTask } from "./project-rescheduler";
 
 // Helper function to extract organizationId from request header
 function getOrganizationId(req: any): string {
@@ -1608,6 +1609,27 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const auditContext = AuditService.createContext(req);
       const task = await storage.updateTask(req.params.id, updateData, req.user!.id, organizationId, auditContext);
       if (!task) return res.sendStatus(404);
+      
+      // Auto-reschedule project when task completion percentage or estimated effort changes
+      if (task.projectId && (req.body.completionPercentage !== undefined || req.body.estimatedEffort !== undefined)) {
+        try {
+          const reschedulingResult = await recalculateProjectScheduleForTask(
+            req.params.id,
+            req.user!.id,
+            organizationId
+          );
+          
+          if (reschedulingResult && reschedulingResult.changed) {
+            console.log(`[TASK-RESCHEDULE] Project ${task.projectId} rescheduled: ` +
+              `calculatedEnd=${reschedulingResult.calculatedEndDate?.toISOString().split('T')[0] || 'null'}, ` +
+              `deficitHours=${reschedulingResult.scheduleDeficitHours}`);
+          }
+        } catch (rescheduleError) {
+          console.error("[TASK-RESCHEDULE] Error rescheduling project:", rescheduleError);
+          // Don't fail the task update if rescheduling fails
+        }
+      }
+      
       res.json(task);
     } catch (error) {
       console.error("Task update error:", error);
