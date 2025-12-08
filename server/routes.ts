@@ -1217,8 +1217,15 @@ export function registerRoutes(app: Express): Server {
         updatedAt: tasks.updatedAt,
         organizationId: tasks.organizationId,
         projectName: projects.name,
+        projectSapSystemId: projects.sapSystemId,
+        sapSystemName: sapSystems.name,
+        sapServerHost: sapSystems.serverHost,
+        sapSystemIdCode: sapSystems.systemId,
+        sapSystemNumber: sapSystems.systemNumber,
+        sapApplicationServerPort: sapSystems.applicationServerPort,
       }).from(tasks)
         .leftJoin(projects, eq(tasks.projectId, projects.id))
+        .leftJoin(sapSystems, eq(projects.sapSystemId, sapSystems.id))
         .leftJoin(users, eq(tasks.assignedTo, users.id))
         .where(inArray(tasks.organizationId, organizationIds))
         .orderBy(desc(tasks.updatedAt));
