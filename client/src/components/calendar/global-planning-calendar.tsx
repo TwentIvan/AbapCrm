@@ -285,10 +285,10 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
             isWithinInterval(windowEnd, { start: calendarStart, end: calendarEnd }) ||
             (windowStart <= calendarStart && windowEnd >= calendarEnd)) {
           
-          // Use ETC effective end date as maximum limit, but also track remaining hours
-          const effectiveWindowEnd = etcEffectiveEndDate 
-            ? min([windowEnd, etcEffectiveEndDate]) 
-            : windowEnd;
+          // Use ETC effective end date (storedCalculatedEndDate) as the authoritative end limit
+          // DO NOT use min() - the ETC end may extend beyond the original window end date
+          // when the schedule overflows, and we need to show all occupied slots
+          const effectiveWindowEnd = etcEffectiveEndDate ?? windowEnd;
           
           // Start from the planning window's start date
           // The END date uses storedCalculatedEndDate from ETC (Fine Effettiva) as the authoritative limit
