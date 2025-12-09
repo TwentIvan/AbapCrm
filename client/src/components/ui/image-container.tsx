@@ -28,8 +28,8 @@ const fallbackIcons = {
   generic: ImageIcon
 };
 
-// Cache delle URL fallite per evitare tentativi ripetuti
-const failedImageCache = new Set<string>();
+// Cache delle URL - memorizza se un'immagine è valida o meno
+const imageStatusCache = new Map<string, 'loading' | 'loaded' | 'error'>();
 
 export default function ImageContainer({
   src,
@@ -42,16 +42,34 @@ export default function ImageContainer({
   onClick,
   'data-testid': testId
 }: ImageContainerProps) {
-  // Controlla subito se l'URL è nella cache dei falliti
-  const [hasError, setHasError] = useState(() => src ? failedImageCache.has(src) : false);
+  const cachedStatus = src ? imageStatusCache.get(src) : undefined;
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>(
+    cachedStatus || (src ? 'loading' : 'error')
+  );
 
-  // Reset hasError quando src cambia (ma solo se non è nella cache)
   useEffect(() => {
-    if (src && !failedImageCache.has(src)) {
-      setHasError(false);
-    } else if (src && failedImageCache.has(src)) {
-      setHasError(true);
+    if (!src) {
+      setStatus('error');
+      return;
     }
+
+    const cached = imageStatusCache.get(src);
+    if (cached) {
+      setStatus(cached);
+      return;
+    }
+
+    // Pre-load image
+    const img = new Image();
+    img.onload = () => {
+      imageStatusCache.set(src, 'loaded');
+      setStatus('loaded');
+    };
+    img.onerror = () => {
+      imageStatusCache.set(src, 'error');
+      setStatus('error');
+    };
+    img.src = src;
   }, [src]);
 
   const FallbackIcon = fallbackIcons[fallbackType];
@@ -69,15 +87,8 @@ export default function ImageContainer({
     className
   );
 
-  const handleError = () => {
-    if (src) {
-      failedImageCache.add(src);
-    }
-    setHasError(true);
-  };
-
-  // Se non c'è src o c'è errore, mostra fallback
-  if (!src || hasError) {
+  // Mostra fallback se errore o loading
+  if (status !== 'loaded') {
     return (
       <div className={containerClasses} onClick={onClick} data-testid={testId}>
         <FallbackIcon className="w-1/2 h-1/2 text-muted-foreground" />
@@ -88,11 +99,10 @@ export default function ImageContainer({
   return (
     <div className={containerClasses} onClick={onClick} data-testid={testId}>
       <img
-        src={src}
+        src={src!}
         alt={alt}
         className={imageClasses}
         draggable={false}
-        onError={handleError}
       />
     </div>
   );
