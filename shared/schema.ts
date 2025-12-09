@@ -752,7 +752,10 @@ export const sapSystems = pgTable("sap_systems", {
   // VPN Configuration
   vpnConnectionId: uuid("vpn_connection_id").references(() => vpnConnections.id),
   
-  // Default credentials (fallback when no specific credentials are configured)
+  // Default credentials from credentials registry (preferred)
+  defaultCredentialId: uuid("default_credential_id"), // References system_credentials
+  
+  // Legacy default credentials (fallback when no credential from registry)
   defaultUsername: text("default_username"),
   defaultPassword: text("default_password"), // Encrypted in storage
   

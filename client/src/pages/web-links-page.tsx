@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Globe, MoreHorizontal, Edit, Trash2, ExternalLink, Plus } from "lucide-react";
 import { SapSystem } from "@shared/schema";
-import SapSystemForm from "../components/forms/sap-system-form";
+import WebLinkForm from "../components/forms/web-link-form";
 
 export default function WebLinksPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -250,29 +250,28 @@ export default function WebLinksPage() {
       </div>
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Nuovo Collegamento Web</DialogTitle>
           </DialogHeader>
-          <SapSystemForm
+          <WebLinkForm
             onSuccess={() => {
               queryClient.invalidateQueries({ queryKey: ["/api/sap-systems"] });
               setShowCreateDialog(false);
             }}
             onCancel={() => setShowCreateDialog(false)}
-            defaultConnectionType="weblink"
           />
         </DialogContent>
       </Dialog>
 
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Modifica Collegamento Web</DialogTitle>
           </DialogHeader>
           {selectedLink && (
-            <SapSystemForm
-              editingSystem={selectedLink}
+            <WebLinkForm
+              editingLink={selectedLink}
               onSuccess={() => {
                 queryClient.invalidateQueries({ queryKey: ["/api/sap-systems"] });
                 setShowEditDialog(false);
@@ -282,7 +281,6 @@ export default function WebLinksPage() {
                 setShowEditDialog(false);
                 setSelectedLink(null);
               }}
-              defaultConnectionType="weblink"
             />
           )}
         </DialogContent>
