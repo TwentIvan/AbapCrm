@@ -1,7 +1,31 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Users } from "lucide-react";
 import { registerEntity, EntityListDescriptor } from "../entity-registry";
 import { partnerTypeLabels, partnerTypeColors } from "../entity-constants";
+
+function PartnerLogo({ logoUrl, name }: { logoUrl?: string; name: string }) {
+  const [hasError, setHasError] = useState(false);
+  
+  if (!logoUrl || hasError) {
+    return (
+      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-medium">
+          {name?.charAt(0)?.toUpperCase() || "?"}
+        </span>
+      </div>
+    );
+  }
+  
+  return (
+    <img
+      src={logoUrl}
+      alt=""
+      className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+      onError={() => setHasError(true)}
+    />
+  );
+}
 
 const partnersDescriptor: EntityListDescriptor = {
   entityKey: "partners",
@@ -26,26 +50,7 @@ const partnersDescriptor: EntityListDescriptor = {
       searchable: true,
       render: (partner: any) => (
         <div className="flex items-center gap-2">
-          {partner.logoUrl ? (
-            <img
-              src={partner.logoUrl}
-              alt=""
-              className="w-8 h-8 rounded-full object-cover"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
-                if (placeholder) placeholder.style.display = 'flex';
-              }}
-            />
-          ) : null}
-          <div 
-            className="w-8 h-8 rounded-full bg-muted flex items-center justify-center"
-            style={{ display: partner.logoUrl ? 'none' : 'flex' }}
-          >
-            <span className="text-xs font-medium">
-              {partner.name?.charAt(0)?.toUpperCase() || "?"}
-            </span>
-          </div>
+          <PartnerLogo logoUrl={partner.logoUrl} name={partner.name} />
           <span className="font-medium" data-testid={`text-partner-name-${partner.id}`}>{partner.name}</span>
         </div>
       ),

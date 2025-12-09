@@ -265,6 +265,11 @@ export function DataTable<TData, TValue>({
     globalFilterFn: "includesString",
     enableRowSelection: enableSelection,
     getRowId: (row: any) => row.id, // Usa l'ID univoco per la selezione
+    initialState: {
+      pagination: {
+        pageSize: 50,
+      },
+    },
     state: {
       sorting,
       columnFilters,
