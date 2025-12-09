@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -7,8 +8,8 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Loader2, Globe, Building, Key } from "lucide-react";
 
 const formSchema = z.object({
@@ -30,9 +31,9 @@ export default function WebLinkForm({ editingLink, onSuccess, onCancel }: WebLin
   const queryClient = useQueryClient();
 
   const { data: partners } = useQuery<Partner[]>({
-    queryKey: ["/api/partners"],
+    queryKey: ["/api/partners/all"],
     queryFn: async () => {
-      const res = await fetch("/api/partners", { credentials: "include" });
+      const res = await fetch("/api/partners/all", { credentials: "include" });
       if (!res.ok) throw new Error('Failed to fetch partners');
       return res.json();
     },
@@ -46,6 +47,20 @@ export default function WebLinkForm({ editingLink, onSuccess, onCancel }: WebLin
       return res.json();
     },
   });
+
+  const partnerOptions = useMemo(() => {
+    const options = (partners || [])
+      .map(p => ({ value: p.id, label: p.name }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'it'));
+    return [{ value: "none", label: "Nessun partner" }, ...options];
+  }, [partners]);
+
+  const credentialOptions = useMemo(() => {
+    const options = (credentials || [])
+      .map(c => ({ value: c.id, label: `${c.systemName} - ${c.username}` }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'it'));
+    return [{ value: "none", label: "Nessuna credenziale" }, ...options];
+  }, [credentials]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,6 +77,8 @@ export default function WebLinkForm({ editingLink, onSuccess, onCancel }: WebLin
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       const payload = {
         ...data,
+        partnerId: data.partnerId === "none" ? null : data.partnerId,
+        defaultCredentialId: data.defaultCredentialId === "none" ? null : data.defaultCredentialId,
         connectionType: "weblink",
         systemId: "WEB",
         isActive: true,
@@ -95,6 +112,8 @@ export default function WebLinkForm({ editingLink, onSuccess, onCancel }: WebLin
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       const payload = {
         ...data,
+        partnerId: data.partnerId === "none" ? null : data.partnerId,
+        defaultCredentialId: data.defaultCredentialId === "none" ? null : data.defaultCredentialId,
         connectionType: "weblink",
       };
       
@@ -180,21 +199,17 @@ export default function WebLinkForm({ editingLink, onSuccess, onCancel }: WebLin
                 <Building className="h-4 w-4" />
                 Partner (opzionale)
               </FormLabel>
-              <Select onValueChange={(v) => field.onChange(v === "none" ? null : v)} value={field.value || "none"}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-partner">
-                    <SelectValue placeholder="Seleziona partner..." />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">Nessun partner</SelectItem>
-                  {partners?.map((partner) => (
-                    <SelectItem key={partner.id} value={partner.id}>
-                      {partner.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <SearchableSelect
+                  options={partnerOptions}
+                  value={field.value || "none"}
+                  onValueChange={field.onChange}
+                  placeholder="Seleziona partner..."
+                  searchPlaceholder="Cerca partner..."
+                  emptyMessage="Nessun partner trovato."
+                  data-testid="select-partner"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -209,21 +224,17 @@ export default function WebLinkForm({ editingLink, onSuccess, onCancel }: WebLin
                 <Key className="h-4 w-4" />
                 Credenziali di Default (opzionale)
               </FormLabel>
-              <Select onValueChange={(v) => field.onChange(v === "none" ? null : v)} value={field.value || "none"}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-credentials">
-                    <SelectValue placeholder="Seleziona credenziali..." />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">Nessuna credenziale</SelectItem>
-                  {credentials?.map((cred) => (
-                    <SelectItem key={cred.id} value={cred.id}>
-                      {cred.systemName} - {cred.username}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <SearchableSelect
+                  options={credentialOptions}
+                  value={field.value || "none"}
+                  onValueChange={field.onChange}
+                  placeholder="Seleziona credenziali..."
+                  searchPlaceholder="Cerca credenziali..."
+                  emptyMessage="Nessuna credenziale trovata."
+                  data-testid="select-credentials"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
