@@ -81,6 +81,8 @@ export default function WebLinkForm({ editingLink, onSuccess, onCancel }: WebLin
         defaultCredentialId: data.defaultCredentialId === "none" ? null : data.defaultCredentialId,
         connectionType: "weblink",
         systemId: "WEB",
+        serverHost: "weblink",
+        systemNumber: "00",
         isActive: true,
       };
       
