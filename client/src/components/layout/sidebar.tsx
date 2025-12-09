@@ -18,8 +18,8 @@ const getDefaultAnagraficheDirectItems = (t: any) => [
 const getDefaultSystemsItems = (t: any) => [
   { id: "s1", name: "SAP", href: "/sap-systems", icon: Server, testId: "nav-sap-systems" },
   { id: "s2", name: t("nav.vpnConnections"), href: "/vpn-connections", icon: Wifi, testId: "nav-vpn-connections" },
-  { id: "s3", name: "Credenziali", href: "/system-credentials", icon: Key, testId: "nav-system-credentials" },
-  { id: "s4", name: "Collegamenti Web", href: "/web-links", icon: GitBranch, testId: "nav-web-links" },
+  { id: "s3", name: "Collegamenti Web", href: "/web-links", icon: GitBranch, testId: "nav-web-links" },
+  { id: "s4", name: "Credenziali", href: "/system-credentials", icon: Key, testId: "nav-system-credentials" },
 ];
 
 // Progetti group (nested items)
