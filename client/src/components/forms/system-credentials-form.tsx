@@ -80,17 +80,14 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
   });
 
   const filteredSystems = useMemo(() => {
-    console.log("SAP Systems Data:", sapSystemsData?.length, "items, type:", selectedSystemType);
     if (!sapSystemsData) return [];
     
     if (selectedSystemType === "sap") {
-      const filtered = sapSystemsData.filter(s => 
+      return sapSystemsData.filter(s => 
         s.connectionType === "sapgui" || 
         s.connectionType === "cloud" || 
         s.connectionType === "citrix"
       );
-      console.log("Filtered SAP systems:", filtered.length);
-      return filtered;
     } else if (selectedSystemType === "weblink") {
       return sapSystemsData.filter(s => s.connectionType === "weblink");
     }

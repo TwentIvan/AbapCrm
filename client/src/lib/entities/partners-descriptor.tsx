@@ -31,14 +31,21 @@ const partnersDescriptor: EntityListDescriptor = {
               src={partner.logoUrl}
               alt=""
               className="w-8 h-8 rounded-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
+                if (placeholder) placeholder.style.display = 'flex';
+              }}
             />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-              <span className="text-xs font-medium">
-                {partner.name?.charAt(0)?.toUpperCase() || "?"}
-              </span>
-            </div>
-          )}
+          ) : null}
+          <div 
+            className="w-8 h-8 rounded-full bg-muted flex items-center justify-center"
+            style={{ display: partner.logoUrl ? 'none' : 'flex' }}
+          >
+            <span className="text-xs font-medium">
+              {partner.name?.charAt(0)?.toUpperCase() || "?"}
+            </span>
+          </div>
           <span className="font-medium" data-testid={`text-partner-name-${partner.id}`}>{partner.name}</span>
         </div>
       ),
