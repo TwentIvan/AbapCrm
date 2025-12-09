@@ -1193,57 +1193,11 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
-      // Alias for SAP systems table for task-based lookup only
+      // Alias for SAP systems table for partner-based lookup
+      const partnerSapSystems = aliasedTable(sapSystems, 'partner_sap_systems');
       const taskSapSystems = aliasedTable(sapSystems, 'task_sap_systems');
       
-      // Use scalar subqueries for partner's SAP system to avoid row multiplication
-      const partnerSapSystemName = sql<string>`(
-        SELECT ss.name FROM sap_systems ss 
-        WHERE ss.partner_id = ${projects.clientId} 
-        LIMIT 1
-      )`.as('partner_sap_system_name');
-      const partnerSapServerHost = sql<string>`(
-        SELECT ss.server_host FROM sap_systems ss 
-        WHERE ss.partner_id = ${projects.clientId} 
-        LIMIT 1
-      )`.as('partner_sap_server_host');
-      const partnerSapSystemIdCode = sql<string>`(
-        SELECT ss.system_id FROM sap_systems ss 
-        WHERE ss.partner_id = ${projects.clientId} 
-        LIMIT 1
-      )`.as('partner_sap_system_id_code');
-      const partnerSapSystemNumber = sql<string>`(
-        SELECT ss.system_number FROM sap_systems ss 
-        WHERE ss.partner_id = ${projects.clientId} 
-        LIMIT 1
-      )`.as('partner_sap_system_number');
-      const partnerSapAppServerPort = sql<number>`(
-        SELECT ss.application_server_port FROM sap_systems ss 
-        WHERE ss.partner_id = ${projects.clientId} 
-        LIMIT 1
-      )`.as('partner_sap_app_server_port');
-      const partnerSapConnectionType = sql<string>`(
-        SELECT ss.connection_type FROM sap_systems ss 
-        WHERE ss.partner_id = ${projects.clientId} 
-        LIMIT 1
-      )`.as('partner_sap_connection_type');
-      const partnerSapCitrixLink = sql<string>`(
-        SELECT ss.citrix_link FROM sap_systems ss 
-        WHERE ss.partner_id = ${projects.clientId} 
-        LIMIT 1
-      )`.as('partner_sap_citrix_link');
-      const partnerSapCloudLink = sql<string>`(
-        SELECT ss.cloud_link FROM sap_systems ss 
-        WHERE ss.partner_id = ${projects.clientId} 
-        LIMIT 1
-      )`.as('partner_sap_cloud_link');
-      const partnerSapWebLink = sql<string>`(
-        SELECT ss.web_link FROM sap_systems ss 
-        WHERE ss.partner_id = ${projects.clientId} 
-        LIMIT 1
-      )`.as('partner_sap_web_link');
-      
-      const tasksList = await db.select({
+      const tasksList = await db.selectDistinctOn([tasks.id], {
         id: tasks.id,
         title: tasks.title,
         description: tasks.description,
@@ -1268,23 +1222,25 @@ export function registerRoutes(app: Express): Server {
         organizationId: tasks.organizationId,
         projectName: projects.name,
         projectClientId: projects.clientId,
-        // SAP system: priority is task.sapSystemId, then partner's SAP system via subquery
-        sapSystemName: sql<string>`COALESCE(${taskSapSystems.name}, ${partnerSapSystemName})`.as('sap_system_name'),
-        sapServerHost: sql<string>`COALESCE(${taskSapSystems.serverHost}, ${partnerSapServerHost})`.as('sap_server_host'),
-        sapSystemIdCode: sql<string>`COALESCE(${taskSapSystems.systemId}, ${partnerSapSystemIdCode})`.as('sap_system_id_code'),
-        sapSystemNumber: sql<string>`COALESCE(${taskSapSystems.systemNumber}, ${partnerSapSystemNumber})`.as('sap_system_number'),
-        sapApplicationServerPort: sql<number>`COALESCE(${taskSapSystems.applicationServerPort}, ${partnerSapAppServerPort})`.as('sap_application_server_port'),
-        sapConnectionType: sql<string>`COALESCE(${taskSapSystems.connectionType}, ${partnerSapConnectionType})`.as('sap_connection_type'),
-        sapCitrixLink: sql<string>`COALESCE(${taskSapSystems.citrixLink}, ${partnerSapCitrixLink})`.as('sap_citrix_link'),
-        sapCloudLink: sql<string>`COALESCE(${taskSapSystems.cloudLink}, ${partnerSapCloudLink})`.as('sap_cloud_link'),
-        sapWebLink: sql<string>`COALESCE(${taskSapSystems.webLink}, ${partnerSapWebLink})`.as('sap_web_link'),
+        // SAP system: priority is task.sapSystemId, then partner's SAP system (project.clientId -> sapSystems.partnerId)
+        sapSystemName: sql<string>`COALESCE(${taskSapSystems.name}, ${partnerSapSystems.name})`.as('sap_system_name'),
+        sapServerHost: sql<string>`COALESCE(${taskSapSystems.serverHost}, ${partnerSapSystems.serverHost})`.as('sap_server_host'),
+        sapSystemIdCode: sql<string>`COALESCE(${taskSapSystems.systemId}, ${partnerSapSystems.systemId})`.as('sap_system_id_code'),
+        sapSystemNumber: sql<string>`COALESCE(${taskSapSystems.systemNumber}, ${partnerSapSystems.systemNumber})`.as('sap_system_number'),
+        sapApplicationServerPort: sql<number>`COALESCE(${taskSapSystems.applicationServerPort}, ${partnerSapSystems.applicationServerPort})`.as('sap_application_server_port'),
+        sapConnectionType: sql<string>`COALESCE(${taskSapSystems.connectionType}, ${partnerSapSystems.connectionType})`.as('sap_connection_type'),
+        sapCitrixLink: sql<string>`COALESCE(${taskSapSystems.citrixLink}, ${partnerSapSystems.citrixLink})`.as('sap_citrix_link'),
+        sapCloudLink: sql<string>`COALESCE(${taskSapSystems.cloudLink}, ${partnerSapSystems.cloudLink})`.as('sap_cloud_link'),
+        sapWebLink: sql<string>`COALESCE(${taskSapSystems.webLink}, ${partnerSapSystems.webLink})`.as('sap_web_link'),
       }).from(tasks)
         .leftJoin(projects, eq(tasks.projectId, projects.id))
         // Join SAP system directly on task (override)
         .leftJoin(taskSapSystems, eq(tasks.sapSystemId, taskSapSystems.id))
+        // Join SAP system via partner (project.clientId -> sapSystems.partnerId)
+        .leftJoin(partnerSapSystems, eq(projects.clientId, partnerSapSystems.partnerId))
         .leftJoin(users, eq(tasks.assignedTo, users.id))
         .where(inArray(tasks.organizationId, organizationIds))
-        .orderBy(desc(tasks.updatedAt));
+        .orderBy(tasks.id, desc(tasks.updatedAt));
       res.json(tasksList);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
