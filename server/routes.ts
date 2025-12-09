@@ -2000,29 +2000,23 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       const auditContext = AuditService.createContext(req);
       let partner = await storage.updatePartner(req.params.id, req.body, req.user!.id, organizationId, auditContext);
       
-      // If not found, check if this is the partner associated with the current organization
+      // If not found, try to find the partner in any of user's organizations
       if (!partner) {
-        const currentOrg = await db.select().from(organizations)
-          .where(eq(organizations.id, organizationId))
-          .limit(1);
+        const [existingPartner] = await db.select().from(partners)
+          .where(and(
+            eq(partners.id, req.params.id),
+            eq(partners.userId, req.user!.id)
+          ));
         
-        if (currentOrg.length > 0 && currentOrg[0].partnerId === req.params.id) {
-          // Get the partner's actual organizationId and update with that
-          const [existingPartner] = await db.select().from(partners)
-            .where(and(
-              eq(partners.id, req.params.id),
-              eq(partners.userId, req.user!.id)
-            ));
-          
-          if (existingPartner) {
-            partner = await storage.updatePartner(
-              req.params.id, 
-              req.body, 
-              req.user!.id, 
-              existingPartner.organizationId, 
-              auditContext
-            );
-          }
+        if (existingPartner) {
+          // Update with the partner's actual organizationId
+          partner = await storage.updatePartner(
+            req.params.id, 
+            req.body, 
+            req.user!.id, 
+            existingPartner.organizationId, 
+            auditContext
+          );
         }
       }
       
