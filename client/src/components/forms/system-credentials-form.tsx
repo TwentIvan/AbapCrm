@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -30,8 +30,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
-import { insertSystemCredentialsSchema, type SystemCredentials, type InsertSystemCredentials } from "@shared/schema";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { insertSystemCredentialsSchema, type SystemCredentials, type InsertSystemCredentials, type SapSystem, type VpnConnection } from "@shared/schema";
+import { apiRequest, queryClient, getQueryFn, getCurrentOrganizationId } from "@/lib/queryClient";
 
 interface SystemCredentialsFormProps {
   credential?: SystemCredentials | null;
@@ -41,12 +41,13 @@ interface SystemCredentialsFormProps {
 
 export function SystemCredentialsForm({ credential, onSuccess, onCancel }: SystemCredentialsFormProps) {
   const { toast } = useToast();
+  const currentOrganizationId = getCurrentOrganizationId();
   const isEditing = !!credential;
 
   const form = useForm<InsertSystemCredentials>({
     resolver: zodResolver(insertSystemCredentialsSchema),
     defaultValues: {
-      userId: credential?.userId || "811b4ad2-6882-4a7d-afcd-57dfb7f0af51", // Current user ID
+      userId: credential?.userId || "",
       username: credential?.username || "",
       password: credential?.password || "",
       systemType: credential?.systemType || "sap",
@@ -61,38 +62,89 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
   });
 
   const selectedSystemType = form.watch("systemType");
+  const selectedSystemId = form.watch("systemId");
 
-  // Real SAP systems with actual UUIDs from database (temporary until API 401 is fixed)
-  const sapSystems = selectedSystemType === "sap" ? [
-    // Real systems with proper UUIDs from database
-    { id: "8854f105-1e44-46ab-bc1b-c74f0d60e59e", name: "Alperia.PRD", serverHost: "10.87.158.3" },
-    { id: "1e841e98-6549-47d5-ad5d-b7033bea9da4", name: "Alperia.SBX", serverHost: "10.87.158.2" },
-    { id: "77ea9cb5-f285-4728-83fc-2418795d9737", name: "Alperia.QUA", serverHost: "10.87.158.2" },
-    { id: "445368c7-d062-4f3d-8661-ccada9b7235e", name: "Alperia.D4U", serverHost: "10.230.0.89" },
-    { id: "7f31ef3e-56b7-42ea-aa37-3a686c129512", name: "Alperia.NWC", serverHost: "192.168.202.148" },
-    { id: "acc821c3-b57c-4abc-83a3-db8b97781403", name: "Alperia.T4U", serverHost: "vhalpt4ucs.fra3.hec.corp.local" },
-    { id: "c8d2d1a7-5461-429a-a380-d6a82044b2a4", name: "Hera.PR1", serverHost: "10.11.10.26" },
-    { id: "72c41ce7-4d80-403e-ab9a-8adb3a4577b9", name: "Hera.PRQ", serverHost: "isuprq.service.intra" },
-    { id: "56307313-32bf-452b-a240-3691089e5eae", name: "Hera.PRP", serverHost: "10.11.11.47" },
-    { id: "83d9f112-8730-43bf-a4b3-426b9b37a229", name: "Hera.PQ4", serverHost: "isupq4.service.intra" },
-    { id: "349cdfec-9f8e-464c-a434-61824221f8b8", name: "Hera.SV6", serverHost: "isuse6.service.intra" }, // ECCO SV6!
-    { id: "2a17df43-bb64-47a6-98c5-02b768f81db9", name: "Edison.NUB", serverHost: "ewfdws4hal01.corp.awsedison.it" },
-    { id: "78032808-27b9-4069-800e-77c1c3ec2937", name: "Edison.NUT", serverHost: "ewfrws4hal01.corp.awsedison.it" },
-    { id: "ad8fac16-7d8f-4e47-9219-d08bd75659c6", name: "Edison.EUC", serverHost: "10.202.242.162" },
-    { id: "7481bfce-ebb6-430b-9963-b56a3d7c7cfc", name: "Enel.REP", serverHost: "10.153.99.23" },
-    { id: "ce0f902f-5fef-4586-b389-499c21b47130", name: "Enel.RED", serverHost: "10.154.133.39" },
-    { id: "0f368277-a269-47cd-8088-6d6bb5522dd2", name: "Enel.REM", serverHost: "10.154.133.116" },
-    { id: "5ab48393-911c-40d7-948e-629bf0c0d730", name: "Enel.REQ", serverHost: "12.1.1.1" },
-    { id: "1b475623-b28f-4c80-84d0-32a042fd2a90", name: "CSI.PRD", serverHost: "10.102.229.46" },
-    { id: "714f8fe3-affe-4ec6-81d1-14804a452b36", name: "CSI.DEV", serverHost: "10.102.229.63" },
-    { id: "0eb72859-3283-4414-bf19-37037139ed1d", name: "CSI.SND", serverHost: "10.102.229.69" },
-    { id: "7d3d8bb3-8da6-40ba-b1d0-415a706bc6f9", name: "Iren.SHS", serverHost: "172.25.255.223" },
-    { id: "df61cdd2-0621-4f59-84ca-7d773441aa9f", name: "Iren.SHP", serverHost: "172.25.255.222" },
-    { id: "a5f7c1ef-610e-46fc-9fe7-39758708f4fb", name: "Iren.SHC", serverHost: "saphshc02.master.local" },
-    { id: "4c223f19-7988-4908-85e1-a2fcbbb64a04", name: "Iren.SM2", serverHost: "172.25.245.142" }
-  ] : [];
-  
-  const vpnConnections: any[] = [];
+  const { data: sapSystemsData } = useQuery<SapSystem[]>({
+    queryKey: ["/api/sap-systems"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+  });
+
+  const { data: vpnConnectionsData } = useQuery<VpnConnection[]>({
+    queryKey: ["/api/vpn-connections"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId && selectedSystemType === "vpn",
+  });
+
+  const filteredSystems = useMemo(() => {
+    if (!sapSystemsData) return [];
+    
+    if (selectedSystemType === "sap") {
+      return sapSystemsData.filter(s => 
+        s.connectionType === "sapgui" || 
+        s.connectionType === "cloud" || 
+        s.connectionType === "citrix"
+      );
+    } else if (selectedSystemType === "weblink") {
+      return sapSystemsData.filter(s => s.connectionType === "weblink");
+    }
+    return [];
+  }, [sapSystemsData, selectedSystemType]);
+
+  const systemOptions = useMemo(() => {
+    if (selectedSystemType === "vpn") {
+      if (!vpnConnectionsData || vpnConnectionsData.length === 0) {
+        return [{ value: "temp-manual", label: "Inserimento manuale - aggiungi VPN", description: "Nessuna VPN trovata" }];
+      }
+      return vpnConnectionsData
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(vpn => ({
+          value: vpn.id,
+          label: vpn.name,
+          description: vpn.serverHost || ""
+        }));
+    }
+
+    if (filteredSystems.length === 0) {
+      const typeLabel = selectedSystemType === "sap" ? "SAP" : "Web";
+      return [{ value: "temp-manual", label: `Inserimento manuale - aggiungi ${typeLabel}`, description: `Nessun sistema ${typeLabel} trovato` }];
+    }
+
+    return filteredSystems
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(system => ({
+        value: system.id,
+        label: system.name,
+        description: system.serverHost || system.webLink || ""
+      }));
+  }, [selectedSystemType, filteredSystems, vpnConnectionsData]);
+
+  const selectedSystemUrl = useMemo(() => {
+    if (selectedSystemType === "weblink" && selectedSystemId && selectedSystemId !== "temp-manual") {
+      const system = filteredSystems.find(s => s.id === selectedSystemId);
+      return system?.webLink || "";
+    }
+    return "";
+  }, [selectedSystemType, selectedSystemId, filteredSystems]);
+
+  useEffect(() => {
+    if (selectedSystemId && selectedSystemId !== "temp-manual") {
+      if (selectedSystemType === "vpn") {
+        const vpn = vpnConnectionsData?.find(v => v.id === selectedSystemId);
+        if (vpn) {
+          form.setValue("systemName", vpn.name);
+        }
+      } else {
+        const system = filteredSystems.find(s => s.id === selectedSystemId);
+        if (system) {
+          form.setValue("systemName", system.name);
+          if (selectedSystemType === "weblink" && system.webLink) {
+            form.setValue("webLink", system.webLink);
+          }
+        }
+      }
+    }
+  }, [selectedSystemId, selectedSystemType, filteredSystems, vpnConnectionsData, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: InsertSystemCredentials) => {
@@ -101,10 +153,14 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
         : "/api/system-credentials";
       const method = isEditing ? "PUT" : "POST";
       
-      return apiRequest(method, url, data);
+      const payload = {
+        ...data,
+        systemId: data.systemId === "temp-manual" ? null : data.systemId,
+      };
+      
+      return apiRequest(method, url, payload);
     },
     onSuccess: () => {
-      // Invalidate cache to refresh the list
       queryClient.invalidateQueries({ queryKey: ["/api/system-credentials"] });
       
       toast({
@@ -139,7 +195,7 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
           <DialogDescription>
             {isEditing 
               ? "Modifica le credenziali esistenti per il sistema."
-              : "Aggiungi nuove credenziali per un sistema SAP o VPN."
+              : "Aggiungi nuove credenziali per un sistema SAP, VPN o Web."
             }
           </DialogDescription>
         </DialogHeader>
@@ -153,7 +209,12 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
                 <FormItem>
                   <FormLabel>Tipo Sistema</FormLabel>
                   <Select 
-                    onValueChange={field.onChange} 
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      form.setValue("systemId", undefined);
+                      form.setValue("systemName", "");
+                      form.setValue("webLink", "");
+                    }} 
                     defaultValue={field.value}
                     data-testid="select-system-type"
                   >
@@ -215,43 +276,29 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
             <FormField
               control={form.control}
               name="systemId"
-              render={({ field }) => {
-                // Prepare options for SearchableSelect
-                const systemOptions = selectedSystemType === "sap" && Array.isArray(sapSystems) && sapSystems.length > 0
-                  ? sapSystems.map((system: any) => ({
-                      value: system.id,
-                      label: system.name,
-                      description: system.serverHost
-                    }))
-                  : [{ value: "temp-manual", label: `Inserimento manuale - aggiungi ${selectedSystemType.toUpperCase()}`, description: "Nessun sistema esistente trovato" }];
-
-                return (
-                  <FormItem>
-                    <FormLabel>Sistema di Riferimento</FormLabel>
-                    <FormControl>
-                      <SearchableSelect
-                        options={systemOptions}
-                        value={field.value || undefined}
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          // Auto-fill system name from selected system
-                          const systems = selectedSystemType === "sap" ? sapSystems : vpnConnections;
-                          const selectedSystem = Array.isArray(systems) ? systems.find((s: any) => s.id === value) : null;
-                          if (selectedSystem) {
-                            form.setValue("systemName", selectedSystem.name);
-                          }
-                        }}
-                        placeholder="Seleziona sistema esistente"
-                        searchPlaceholder="Cerca sistema per nome o IP..."
-                        emptyMessage="Nessun sistema trovato con questo filtro."
-                        data-testid="searchable-select-system-reference"
-                        className="w-full"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Sistema di Riferimento 
+                    {selectedSystemType === "sap" && " (Solo sistemi SAP)"}
+                    {selectedSystemType === "vpn" && " (Solo connessioni VPN)"}
+                    {selectedSystemType === "weblink" && " (Solo collegamenti Web)"}
+                  </FormLabel>
+                  <FormControl>
+                    <SearchableSelect
+                      options={systemOptions}
+                      value={field.value || undefined}
+                      onValueChange={field.onChange}
+                      placeholder="Seleziona sistema esistente"
+                      searchPlaceholder="Cerca sistema per nome..."
+                      emptyMessage="Nessun sistema trovato con questo filtro."
+                      data-testid="searchable-select-system-reference"
+                      className="w-full"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
 
             {form.watch("systemId") === "temp-manual" && (
@@ -264,7 +311,11 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
                     <FormControl>
                       <Input 
                         {...field} 
-                        placeholder={selectedSystemType === "sap" ? "Es. PRD, DEV, QAS" : selectedSystemType === "weblink" ? "Es. Portale Cliente, Intranet" : "Es. Cliente VPN, Office VPN"}
+                        placeholder={
+                          selectedSystemType === "sap" ? "Es. PRD, DEV, QAS" : 
+                          selectedSystemType === "weblink" ? "Es. Portale Cliente, Intranet" : 
+                          "Es. Cliente VPN, Office VPN"
+                        }
                         data-testid="input-system-name"
                       />
                     </FormControl>
@@ -274,26 +325,11 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
               />
             )}
 
-            {/* Web Link field for weblink type credentials */}
-            {selectedSystemType === "weblink" && (
-              <FormField
-                control={form.control}
-                name="webLink"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>URL Link Web</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field} 
-                        type="url"
-                        placeholder="https://portale.azienda.com"
-                        data-testid="input-web-link"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            {selectedSystemType === "weblink" && selectedSystemUrl && (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">URL del sistema selezionato:</p>
+                <p className="text-sm font-medium break-all">{selectedSystemUrl}</p>
+              </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
