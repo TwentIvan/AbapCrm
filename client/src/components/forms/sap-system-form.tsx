@@ -45,10 +45,14 @@ const formSchema = z.object({
 
 interface SapSystemFormProps {
   system?: SapSystem | null;
+  editingSystem?: SapSystem | null;
   onSuccess?: () => void;
+  onCancel?: () => void;
+  defaultConnectionType?: string;
 }
 
-export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps) {
+export default function SapSystemForm({ system, editingSystem, onSuccess, onCancel, defaultConnectionType }: SapSystemFormProps) {
+  const effectiveSystem = editingSystem || system;
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -62,32 +66,32 @@ export default function SapSystemForm({ system, onSuccess }: SapSystemFormProps)
     },
   });
 
-  const existingLandscapeType = (system as any)?.landscapeType || system?.landscape || "development";
+  const existingLandscapeType = (effectiveSystem as any)?.landscapeType || effectiveSystem?.landscape || "development";
   const isCustomLandscape = !["development", "test", "quality", "pre_production", "production"].includes(existingLandscapeType);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: system?.name || "",
-      systemId: system?.systemId || "",
-      connectionType: (system as any)?.connectionType || "sapgui",
-      serverHost: system?.serverHost || "",
-      systemNumber: system?.systemNumber || "00",
-      applicationServerPort: system?.applicationServerPort || 3200,
-      landscape: system?.landscape || "development",
+      name: effectiveSystem?.name || "",
+      systemId: effectiveSystem?.systemId || "",
+      connectionType: (effectiveSystem as any)?.connectionType || defaultConnectionType || "sapgui",
+      serverHost: effectiveSystem?.serverHost || "",
+      systemNumber: effectiveSystem?.systemNumber || "00",
+      applicationServerPort: effectiveSystem?.applicationServerPort || 3200,
+      landscape: effectiveSystem?.landscape || "development",
       landscapeType: isCustomLandscape ? "other" : existingLandscapeType,
       landscapeTypeCustom: isCustomLandscape ? existingLandscapeType : "",
-      landscapeLevel: (system as any)?.landscapeLevel || null,
-      cloudLink: (system as any)?.cloudLink || "",
-      citrixLink: (system as any)?.citrixLink || "",
-      citrixAppName: (system as any)?.citrixAppName || "",
-      webLink: (system as any)?.webLink || "",
-      sapShortcutFile: (system as any)?.sapShortcutFile || "",
-      description: system?.description || "",
-      partnerId: system?.partnerId || undefined,
-      defaultUsername: system?.defaultUsername || "",
-      defaultPassword: system?.defaultPassword || "",
-      isActive: system?.isActive ?? true,
+      landscapeLevel: (effectiveSystem as any)?.landscapeLevel || null,
+      cloudLink: (effectiveSystem as any)?.cloudLink || "",
+      citrixLink: (effectiveSystem as any)?.citrixLink || "",
+      citrixAppName: (effectiveSystem as any)?.citrixAppName || "",
+      webLink: (effectiveSystem as any)?.webLink || "",
+      sapShortcutFile: (effectiveSystem as any)?.sapShortcutFile || "",
+      description: effectiveSystem?.description || "",
+      partnerId: effectiveSystem?.partnerId || undefined,
+      defaultUsername: effectiveSystem?.defaultUsername || "",
+      defaultPassword: effectiveSystem?.defaultPassword || "",
+      isActive: effectiveSystem?.isActive ?? true,
     },
   });
   

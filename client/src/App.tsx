@@ -36,6 +36,7 @@ import SapSystemsPage from "@/pages/sap-systems-page";
 import SapTransportPage from "@/pages/sap-transport-page";
 import { SystemCredentialsPage } from "@/pages/system-credentials-page";
 import VPNConnectionsPage from "@/pages/vpn-connections-page";
+import WebLinksPage from "@/pages/web-links-page";
 import EmailAccountsPage from "@/pages/email-accounts-page";
 import AccountPage from "@/pages/account-page";
 import BusinessScenariosPage from "@/pages/business-scenarios-page";
@@ -83,6 +84,7 @@ function Router() {
       <ProtectedRoute path="/system-credentials" component={SystemCredentialsPage} />
       <ProtectedRoute path="/system-credentials/new" component={SystemCredentialsPage} />
       <ProtectedRoute path="/system-credentials/:id/edit" component={SystemCredentialsPage} />
+      <ProtectedRoute path="/web-links" component={WebLinksPage} />
       <ProtectedRoute path="/email-accounts" component={EmailAccountsPage} />
       <ProtectedRoute path="/email-accounts/new" component={EmailAccountsPage} />
       <ProtectedRoute path="/email-accounts/:id/edit" component={EmailAccountsPage} />
