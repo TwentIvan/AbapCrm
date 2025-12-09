@@ -1231,6 +1231,7 @@ export function registerRoutes(app: Express): Server {
         sapConnectionType: sql<string>`COALESCE(${taskSapSystems.connectionType}, ${partnerSapSystems.connectionType})`.as('sap_connection_type'),
         sapCitrixLink: sql<string>`COALESCE(${taskSapSystems.citrixLink}, ${partnerSapSystems.citrixLink})`.as('sap_citrix_link'),
         sapCloudLink: sql<string>`COALESCE(${taskSapSystems.cloudLink}, ${partnerSapSystems.cloudLink})`.as('sap_cloud_link'),
+        sapWebLink: sql<string>`COALESCE(${taskSapSystems.webLink}, ${partnerSapSystems.webLink})`.as('sap_web_link'),
       }).from(tasks)
         .leftJoin(projects, eq(tasks.projectId, projects.id))
         // Join SAP system directly on task (override)

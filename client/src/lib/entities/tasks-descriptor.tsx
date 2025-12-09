@@ -149,10 +149,11 @@ export const tasksDescriptor: EntityListDescriptor = {
         const connectionType = task.sapConnectionType || 'sapgui';
         const hasCitrix = connectionType === 'citrix' && task.sapCitrixLink;
         const hasCloud = connectionType === 'cloud' && task.sapCloudLink;
+        const hasWebLink = connectionType === 'weblink' && task.sapWebLink;
         const hasSapGui = task.sapServerHost && task.sapSystemIdCode && task.sapSystemNumber;
         
         // No SAP system configured
-        if (!hasCitrix && !hasCloud && !hasSapGui) {
+        if (!hasCitrix && !hasCloud && !hasWebLink && !hasSapGui) {
           return <span className="text-muted-foreground text-sm">-</span>;
         }
         
@@ -192,6 +193,27 @@ export const tasksDescriptor: EntityListDescriptor = {
               onClick={handleOpenCloud}
               title={`Apri SAP Cloud per ${task.sapSystemName || 'SAP'}`}
               data-testid={`button-cloud-launch-${task.id}`}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          );
+        }
+        
+        // Web Link connection - open link in new tab
+        if (hasWebLink) {
+          const handleOpenWebLink = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            window.open(task.sapWebLink, '_blank');
+          };
+          
+          return (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+              onClick={handleOpenWebLink}
+              title={`Apri Link Web per ${task.sapSystemName || 'Sistema'}`}
+              data-testid={`button-weblink-launch-${task.id}`}
             >
               <ExternalLink className="h-4 w-4" />
             </Button>
