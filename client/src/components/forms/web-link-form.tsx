@@ -180,14 +180,14 @@ export default function WebLinkForm({ editingLink, onSuccess, onCancel }: WebLin
                 <Building className="h-4 w-4" />
                 Partner (opzionale)
               </FormLabel>
-              <Select onValueChange={field.onChange} value={field.value || ""}>
+              <Select onValueChange={(v) => field.onChange(v === "none" ? null : v)} value={field.value || "none"}>
                 <FormControl>
                   <SelectTrigger data-testid="select-partner">
                     <SelectValue placeholder="Seleziona partner..." />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">Nessun partner</SelectItem>
+                  <SelectItem value="none">Nessun partner</SelectItem>
                   {partners?.map((partner) => (
                     <SelectItem key={partner.id} value={partner.id}>
                       {partner.name}
@@ -209,14 +209,14 @@ export default function WebLinkForm({ editingLink, onSuccess, onCancel }: WebLin
                 <Key className="h-4 w-4" />
                 Credenziali di Default (opzionale)
               </FormLabel>
-              <Select onValueChange={field.onChange} value={field.value || ""}>
+              <Select onValueChange={(v) => field.onChange(v === "none" ? null : v)} value={field.value || "none"}>
                 <FormControl>
                   <SelectTrigger data-testid="select-credentials">
                     <SelectValue placeholder="Seleziona credenziali..." />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">Nessuna credenziale</SelectItem>
+                  <SelectItem value="none">Nessuna credenziale</SelectItem>
                   {credentials?.map((cred) => (
                     <SelectItem key={cred.id} value={cred.id}>
                       {cred.systemName} - {cred.username}
