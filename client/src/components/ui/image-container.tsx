@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { ImageIcon, Building, User } from "lucide-react";
 
@@ -28,6 +28,9 @@ const fallbackIcons = {
   generic: ImageIcon
 };
 
+// Cache delle URL fallite per evitare tentativi ripetuti
+const failedImageCache = new Set<string>();
+
 export default function ImageContainer({
   src,
   alt,
@@ -39,7 +42,17 @@ export default function ImageContainer({
   onClick,
   'data-testid': testId
 }: ImageContainerProps) {
-  const [hasError, setHasError] = useState(false);
+  // Controlla subito se l'URL è nella cache dei falliti
+  const [hasError, setHasError] = useState(() => src ? failedImageCache.has(src) : false);
+
+  // Reset hasError quando src cambia (ma solo se non è nella cache)
+  useEffect(() => {
+    if (src && !failedImageCache.has(src)) {
+      setHasError(false);
+    } else if (src && failedImageCache.has(src)) {
+      setHasError(true);
+    }
+  }, [src]);
 
   const FallbackIcon = fallbackIcons[fallbackType];
   
@@ -55,6 +68,13 @@ export default function ImageContainer({
     "w-full h-full object-cover",
     className
   );
+
+  const handleError = () => {
+    if (src) {
+      failedImageCache.add(src);
+    }
+    setHasError(true);
+  };
 
   // Se non c'è src o c'è errore, mostra fallback
   if (!src || hasError) {
@@ -72,7 +92,7 @@ export default function ImageContainer({
         alt={alt}
         className={imageClasses}
         draggable={false}
-        onError={() => setHasError(true)}
+        onError={handleError}
       />
     </div>
   );
