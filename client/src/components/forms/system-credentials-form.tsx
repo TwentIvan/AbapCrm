@@ -30,8 +30,12 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
-import { insertSystemCredentialsSchema, type SystemCredentials, type InsertSystemCredentials, type SapSystem, type VpnConnection } from "@shared/schema";
+import { insertSystemCredentialsSchema, type SystemCredentials, type SapSystem, type VpnConnection } from "@shared/schema";
 import { apiRequest, queryClient, getQueryFn, getCurrentOrganizationId } from "@/lib/queryClient";
+import { z } from "zod";
+
+const frontendCredentialSchema = insertSystemCredentialsSchema.omit({ userId: true });
+type FrontendCredentialData = z.infer<typeof frontendCredentialSchema>;
 
 interface SystemCredentialsFormProps {
   credential?: SystemCredentials | null;
@@ -44,10 +48,9 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
   const currentOrganizationId = getCurrentOrganizationId();
   const isEditing = !!credential;
 
-  const form = useForm<InsertSystemCredentials>({
-    resolver: zodResolver(insertSystemCredentialsSchema),
+  const form = useForm<FrontendCredentialData>({
+    resolver: zodResolver(frontendCredentialSchema),
     defaultValues: {
-      userId: credential?.userId || "",
       username: credential?.username || "",
       password: credential?.password || "",
       systemType: credential?.systemType || "sap",
@@ -147,7 +150,7 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
   }, [selectedSystemId, selectedSystemType, filteredSystems, vpnConnectionsData, form]);
 
   const mutation = useMutation({
-    mutationFn: async (data: InsertSystemCredentials) => {
+    mutationFn: async (data: FrontendCredentialData) => {
       const url = isEditing 
         ? `/api/system-credentials/${credential.id}`
         : "/api/system-credentials";
@@ -181,7 +184,7 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
     },
   });
 
-  const onSubmit = (data: InsertSystemCredentials) => {
+  const onSubmit = (data: FrontendCredentialData) => {
     console.log("Form submitted with data:", data);
     mutation.mutate(data);
   };
