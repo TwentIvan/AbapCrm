@@ -182,7 +182,12 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
   });
 
   const onSubmit = (data: InsertSystemCredentials) => {
+    console.log("Form submitted with data:", data);
     mutation.mutate(data);
+  };
+
+  const handleFormError = (errors: any) => {
+    console.log("Form validation errors:", errors);
   };
 
   return (
@@ -201,7 +206,7 @@ export function SystemCredentialsForm({ credential, onSuccess, onCancel }: Syste
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit, handleFormError)} className="space-y-6">
             <FormField
               control={form.control}
               name="systemType"
