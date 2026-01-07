@@ -1214,14 +1214,38 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/projects/:id/shares", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const project = await storage.getProject(req.params.id);
+      // Get user organizations first
+      const userOrgs = await storage.getUserOrganizations(req.user!.id);
+      const userOrgIds = userOrgs.map(org => org.id);
+      
+      // Try to find the project in any of user's organizations
+      let project = null;
+      for (const orgId of userOrgIds) {
+        const found = await storage.getProject(req.params.id, req.user!.id, orgId);
+        if (found) {
+          project = found;
+          break;
+        }
+      }
+      
+      // If not owned, check if it's a shared project
+      if (!project) {
+        const [sharedProject] = await db.select().from(projects)
+          .innerJoin(projectShares, eq(projects.id, projectShares.projectId))
+          .where(and(
+            eq(projects.id, req.params.id),
+            inArray(projectShares.targetOrganizationId, userOrgIds)
+          ));
+        if (sharedProject) {
+          project = sharedProject.projects;
+        }
+      }
+      
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
       
       // Authorization check: user must own the project or be in an organization that has access
-      const userOrgs = await storage.getUserOrganizations(req.user!.id);
-      const userOrgIds = userOrgs.map(org => org.id);
       const isOwner = project.userId === req.user!.id;
       const isInProjectOrg = userOrgIds.includes(project.organizationId);
       

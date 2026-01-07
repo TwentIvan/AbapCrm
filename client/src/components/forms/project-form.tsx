@@ -399,7 +399,11 @@ export default function ProjectForm({ project, onSuccess, isReadOnly = false }: 
 
         {project && (
           <div className="pt-4">
-            <ProjectShareManager projectId={project.id} isReadOnly={isReadOnly} />
+            <ProjectShareManager 
+              projectId={project.id} 
+              projectOrganizationId={project.organizationId}
+              isReadOnly={isReadOnly} 
+            />
           </div>
         )}
 

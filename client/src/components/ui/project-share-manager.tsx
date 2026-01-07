@@ -25,17 +25,18 @@ interface Organization {
 
 interface ProjectShareManagerProps {
   projectId: string;
+  projectOrganizationId: string;
   isReadOnly?: boolean;
 }
 
-export default function ProjectShareManager({ projectId, isReadOnly = false }: ProjectShareManagerProps) {
+export default function ProjectShareManager({ projectId, projectOrganizationId, isReadOnly = false }: ProjectShareManagerProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
 
   const { data: shares = [], isLoading: isLoadingShares } = useQuery<ProjectShare[]>({
-    queryKey: ['/api/projects', projectId, 'shares'],
+    queryKey: [`/api/projects/${projectId}/shares`],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!projectId,
   });
@@ -46,7 +47,9 @@ export default function ProjectShareManager({ projectId, isReadOnly = false }: P
     enabled: !!user,
   });
 
+  // Filter out: project's own organization and already shared organizations
   const availableOrgs = userOrgs.filter(org => 
+    org.id !== projectOrganizationId && 
     !shares.some(share => share.targetOrganizationId === org.id)
   );
 
@@ -59,7 +62,7 @@ export default function ProjectShareManager({ projectId, isReadOnly = false }: P
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/projects', projectId, 'shares'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/shares`] });
       setSelectedOrgId("");
       toast({
         title: "Progetto condiviso",
@@ -80,7 +83,7 @@ export default function ProjectShareManager({ projectId, isReadOnly = false }: P
       await apiRequest("DELETE", `/api/projects/${projectId}/shares/${targetOrganizationId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/projects', projectId, 'shares'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/shares`] });
       toast({
         title: "Condivisione rimossa",
         description: "La condivisione è stata rimossa",
