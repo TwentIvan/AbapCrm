@@ -80,6 +80,22 @@ export const projects = pgTable("projects", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Project Shares - Allow sharing projects between organizations
+export const projectSharePermissionEnum = pgEnum("project_share_permission", ["read", "edit"]);
+
+export const projectShares = pgTable("project_shares", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: 'cascade' }).notNull(),
+  sourceOrganizationId: uuid("source_organization_id").references(() => organizations.id).notNull(), // Org that owns the project
+  targetOrganizationId: uuid("target_organization_id").references(() => organizations.id).notNull(), // Org that receives access
+  sharedByUserId: uuid("shared_by_user_id").references(() => users.id).notNull(),
+  permission: projectSharePermissionEnum("permission").default("read").notNull(),
+  sharedAt: timestamp("shared_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueShare: uniqueIndex("unique_project_share").on(table.projectId, table.targetOrganizationId),
+}));
+
 export const taskStatusEnum = pgEnum("task_status", ["todo", "in_progress", "review", "completed"]);
 export const taskPriorityEnum = pgEnum("task_priority", ["low", "medium", "high", "urgent"]);
 export const taskTypeEnum = pgEnum("task_type", [
@@ -1381,6 +1397,14 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
   organizationId: true, // Auto-filled from user session
 });
 
+export const insertProjectShareSchema = createInsertSchema(projectShares).omit({
+  id: true,
+  createdAt: true,
+  sharedAt: true,
+  sourceOrganizationId: true, // Auto-filled from project
+  sharedByUserId: true, // Auto-filled from user session
+});
+
 export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
   createdAt: true,
@@ -1558,6 +1582,8 @@ export type UserOrganization = typeof userOrganizations.$inferSelect;
 export type InsertUserOrganization = z.infer<typeof insertUserOrganizationSchema>;
 export type Project = typeof projects.$inferSelect;
 export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type ProjectShare = typeof projectShares.$inferSelect;
+export type InsertProjectShare = z.infer<typeof insertProjectShareSchema>;
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Partner = typeof partners.$inferSelect;
