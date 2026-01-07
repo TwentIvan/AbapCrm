@@ -42,7 +42,7 @@ export default function ProjectShareManager({ projectId, projectOrganizationId, 
   });
 
   const { data: userOrgs = [] } = useQuery<Organization[]>({
-    queryKey: ['/api/user/organizations'],
+    queryKey: ['/api/organizations'],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!user,
   });
