@@ -3323,6 +3323,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             fromName: comment.author || 'Azure DevOps',
             fromEmail: 'devops@azure.com',
             toEmail: req.user!.username || 'user@local',
+            receivedAt: new Date(),
             sourceType: 'devops_comment',
             isProcessed: true,
             taskId: message.taskId || undefined,
