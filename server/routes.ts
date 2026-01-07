@@ -3322,6 +3322,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             htmlBody: comment.contentHtml || undefined,
             fromName: comment.author || 'Azure DevOps',
             fromEmail: 'devops@azure.com',
+            toEmail: req.user!.username || 'user@local',
             sourceType: 'devops_comment',
             isProcessed: true,
             taskId: message.taskId || undefined,
