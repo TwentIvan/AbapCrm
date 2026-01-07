@@ -53,13 +53,6 @@ export default function ProjectShareManager({ projectId, projectOrganizationId, 
     !shares.some(share => share.targetOrganizationId === org.id)
   );
 
-  // Debug
-  console.log('[ProjectShareManager] projectId:', projectId);
-  console.log('[ProjectShareManager] projectOrganizationId:', projectOrganizationId);
-  console.log('[ProjectShareManager] userOrgs:', userOrgs);
-  console.log('[ProjectShareManager] shares:', shares);
-  console.log('[ProjectShareManager] availableOrgs:', availableOrgs);
-
   const createShareMutation = useMutation({
     mutationFn: async (targetOrganizationId: string) => {
       const res = await apiRequest("POST", `/api/projects/${projectId}/shares`, {
