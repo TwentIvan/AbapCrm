@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { FolderKanban, CheckCircle2, Clock, AlertTriangle, CalendarX, HelpCircle } from "lucide-react";
+import { FolderKanban, CheckCircle2, Clock, AlertTriangle, CalendarX, HelpCircle, Share2 } from "lucide-react";
 import { registerEntity, EntityListDescriptor } from "../entity-registry";
 import { projectStatusColors, projectStatusLabels } from "../entity-constants";
 import { Link } from "wouter";
@@ -121,6 +121,19 @@ const projectsDescriptor: EntityListDescriptor = {
                 currency: "EUR",
               }).format(parseFloat(project.budget))
             : "-",
+      },
+      {
+        key: "isShared",
+        label: "Condivisione",
+        group: "direct" as const,
+        render: (project: any) => (
+          project.isShared ? (
+            <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" data-testid={`badge-shared-${project.id}`}>
+              <Share2 className="h-3 w-3 mr-1" />
+              Condiviso
+            </Badge>
+          ) : null
+        ),
       },
       {
         key: "etc_state",

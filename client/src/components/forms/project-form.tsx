@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import EndToCompleteCard from "@/components/ui/end-to-complete-card";
+import ProjectShareManager from "@/components/ui/project-share-manager";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -395,6 +396,12 @@ export default function ProjectForm({ project, onSuccess, isReadOnly = false }: 
             )}
           />
         </div>
+
+        {project && (
+          <div className="pt-4">
+            <ProjectShareManager projectId={project.id} isReadOnly={isReadOnly} />
+          </div>
+        )}
 
         {!isReadOnly && (
           <div className="flex justify-end space-x-2 pt-4">

@@ -26,7 +26,7 @@ import {
   insertTestExecutionSchema,
   type EmailConfig,
   projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
-  humanResources, sapSystems, systemCredentials, timesheets, comments, proposals,
+  humanResources, sapSystems, systemCredentials, timesheets, comments, proposals, projectShares,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users, organizations,
   customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions,
   dashboardWidgetTemplates, insertDashboardWidgetTemplateSchema
@@ -902,12 +902,34 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
-      const projectsList = await db.select().from(projects)
+      const currentOrgId = getOrganizationId(req);
+      
+      // Get owned projects
+      const ownedProjects = await db.select().from(projects)
         .where(and(
           eq(projects.userId, req.user!.id),
           inArray(projects.organizationId, organizationIds)
         ));
-      res.json(projectsList);
+      
+      // Get shared projects (projects shared with current organization)
+      const sharedProjectsData = await storage.getProjectsSharedWithOrganization(currentOrgId);
+      
+      // Mark shared projects and combine
+      const ownedWithFlag = ownedProjects.map(p => ({ ...p, isShared: false, shareInfo: null }));
+      const sharedWithFlag = sharedProjectsData.map(p => ({
+        ...p,
+        isShared: true,
+      }));
+      
+      // Combine and deduplicate (in case a project is both owned and shared)
+      const allProjects = [...ownedWithFlag];
+      for (const shared of sharedWithFlag) {
+        if (!allProjects.find(p => p.id === shared.id)) {
+          allProjects.push(shared as any);
+        }
+      }
+      
+      res.json(allProjects);
     } catch (error) {
       console.error("Error fetching projects:", error);
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
@@ -1184,6 +1206,100 @@ export function registerRoutes(app: Express): Server {
       res.sendStatus(204);
     } catch (error) {
       console.error("Cascade delete error:", error);
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // Project Shares - Get shares for a project
+  app.get("/api/projects/:id/shares", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const project = await storage.getProject(req.params.id);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Authorization check: user must own the project or be in an organization that has access
+      const userOrgs = await storage.getUserOrganizations(req.user!.id);
+      const userOrgIds = userOrgs.map(org => org.id);
+      const isOwner = project.userId === req.user!.id;
+      const isInProjectOrg = userOrgIds.includes(project.organizationId);
+      
+      // Check if user is in any org that received the share
+      const existingShares = await storage.getProjectShares(req.params.id);
+      const isShareRecipient = existingShares.some(share => userOrgIds.includes(share.targetOrganizationId));
+      
+      if (!isOwner && !isInProjectOrg && !isShareRecipient) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      // Enrich with organization names
+      const enrichedShares = await Promise.all(existingShares.map(async (share) => {
+        const targetOrg = await storage.getOrganization(share.targetOrganizationId);
+        return {
+          ...share,
+          targetOrganizationName: targetOrg?.name || 'Unknown',
+        };
+      }));
+      res.json(enrichedShares);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // Project Shares - Create a share
+  app.post("/api/projects/:id/shares", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const projectId = req.params.id;
+      
+      // Verify the user owns the project (must be in the source organization)
+      const project = await storage.getProject(projectId, req.user!.id, organizationId);
+      if (!project) {
+        return res.status(403).json({ error: 'You can only share projects you own' });
+      }
+      
+      const { targetOrganizationId, permission } = req.body;
+      if (!targetOrganizationId) {
+        return res.status(400).json({ error: 'targetOrganizationId is required' });
+      }
+      
+      // Cannot share with self
+      if (targetOrganizationId === organizationId) {
+        return res.status(400).json({ error: 'Cannot share project with its own organization' });
+      }
+      
+      const share = await storage.createProjectShare({
+        projectId,
+        targetOrganizationId,
+        permission: permission || 'read',
+      }, req.user!.id);
+      
+      res.status(201).json(share);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // Project Shares - Delete a share
+  app.delete("/api/projects/:id/shares/:targetOrgId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const projectId = req.params.id;
+      
+      // Verify the user owns the project
+      const project = await storage.getProject(projectId, req.user!.id, organizationId);
+      if (!project) {
+        return res.status(403).json({ error: 'You can only manage shares for projects you own' });
+      }
+      
+      const deleted = await storage.deleteProjectShare(projectId, req.params.targetOrgId);
+      if (!deleted) return res.sendStatus(404);
+      
+      res.sendStatus(204);
+    } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }
   });

@@ -4,7 +4,7 @@ import {
   sapSystems, sapSystemCredentials, vpnConnections, vpnCredentials, transportRequests, interventionDocuments, systemCredentials,
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
   emailVerificationTokens, organizationDomains, emailFeedbacks, customFeedbackReasons, emailTrainingSelections, proposals,
-  sapTransportRequests, sapTransportTasks, sapTransportObjects, sapObjectContent, businessScenarios,
+  sapTransportRequests, sapTransportTasks, sapTransportObjects, sapObjectContent, businessScenarios, projectShares,
   customEntities, customFields, entityCustomValues,
   chatRooms, chatMessages, chatParticipants, chatRoomEntities,
   calendars, aiLearningPatterns, devopsFieldMappings,
@@ -13,6 +13,7 @@ import {
   type UserOrganization, type InsertUserOrganization,
   type OrganizationInvitation, type InsertOrganizationInvitation,
   type Project, type InsertProject,
+  type ProjectShare, type InsertProjectShare,
   type Task, type InsertTask,
   type Partner, type InsertPartner,
   type Contact, type InsertContact,
@@ -130,6 +131,13 @@ export interface IStorage {
   createProject(project: InsertProject & { organizationId: string }): Promise<Project>;
   updateProject(id: string, project: Partial<InsertProject>, userId: string, organizationId: string): Promise<Project | undefined>;
   deleteProject(id: string, userId: string, organizationId: string): Promise<boolean>;
+  
+  // Project Shares
+  getProjectShares(projectId: string): Promise<ProjectShare[]>;
+  getProjectsSharedWithOrganization(targetOrganizationId: string): Promise<(Project & { shareInfo: ProjectShare })[]>;
+  createProjectShare(share: { projectId: string; targetOrganizationId: string; permission?: 'read' | 'edit' }, userId: string): Promise<ProjectShare>;
+  deleteProjectShare(projectId: string, targetOrganizationId: string): Promise<boolean>;
+  isProjectSharedWithOrganization(projectId: string, organizationId: string): Promise<boolean>;
 
   // Tasks
   getTasks(userId: string, organizationId: string): Promise<Task[]>;
@@ -1192,6 +1200,68 @@ export class DatabaseStorage implements IStorage {
       .delete(projects)
       .where(and(eq(projects.id, id), eq(projects.userId, userId), eq(projects.organizationId, organizationId)));
     return (result.rowCount || 0) > 0;
+  }
+
+  // Project Shares
+  async getProjectShares(projectId: string): Promise<ProjectShare[]> {
+    return await db.select().from(projectShares)
+      .where(eq(projectShares.projectId, projectId))
+      .orderBy(desc(projectShares.sharedAt));
+  }
+
+  async getProjectsSharedWithOrganization(targetOrganizationId: string): Promise<(Project & { shareInfo: ProjectShare })[]> {
+    const shares = await db.select({
+      share: projectShares,
+      project: projects,
+    }).from(projectShares)
+      .innerJoin(projects, eq(projectShares.projectId, projects.id))
+      .where(eq(projectShares.targetOrganizationId, targetOrganizationId));
+    
+    return shares.map(row => ({
+      ...row.project,
+      shareInfo: row.share,
+    }));
+  }
+
+  async createProjectShare(share: { projectId: string; targetOrganizationId: string; permission?: 'read' | 'edit' }, userId: string): Promise<ProjectShare> {
+    // Get the source organization from the project
+    const [project] = await db.select({ organizationId: projects.organizationId })
+      .from(projects)
+      .where(eq(projects.id, share.projectId));
+    
+    if (!project) {
+      throw new Error('Project not found');
+    }
+
+    const [newShare] = await db.insert(projectShares).values({
+      projectId: share.projectId,
+      sourceOrganizationId: project.organizationId,
+      targetOrganizationId: share.targetOrganizationId,
+      sharedByUserId: userId,
+      permission: share.permission || 'read',
+    }).returning();
+    
+    return newShare;
+  }
+
+  async deleteProjectShare(projectId: string, targetOrganizationId: string): Promise<boolean> {
+    const result = await db.delete(projectShares)
+      .where(and(
+        eq(projectShares.projectId, projectId),
+        eq(projectShares.targetOrganizationId, targetOrganizationId)
+      ));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async isProjectSharedWithOrganization(projectId: string, organizationId: string): Promise<boolean> {
+    const [share] = await db.select({ id: projectShares.id })
+      .from(projectShares)
+      .where(and(
+        eq(projectShares.projectId, projectId),
+        eq(projectShares.targetOrganizationId, organizationId)
+      ))
+      .limit(1);
+    return !!share;
   }
 
   // Tasks with caching
