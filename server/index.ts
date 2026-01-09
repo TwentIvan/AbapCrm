@@ -11,8 +11,12 @@ process.on('uncaughtException', (error) => {
   // Don't exit the process for email-related errors
   if (error.message?.includes('Timed out while authenticating') || 
       error.message?.includes('IMAP') ||
-      (error as any).source === 'timeout-auth') {
-    console.error('[PROCESS] Email service error caught, server continuing...');
+      error.message?.includes('socket has been ended') ||
+      error.message?.includes('writeAfterFIN') ||
+      (error as any).code === 'EPIPE' ||
+      (error as any).source === 'timeout-auth' ||
+      (error as any).source === 'socket') {
+    console.error('[PROCESS] Email/socket error caught, server continuing...');
     return;
   }
   
