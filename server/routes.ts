@@ -2984,14 +2984,16 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const windows = await storage.getAllPlanningWindowsForUser(req.user!.id);
     
-    // Enrich windows with projects using inverted relationship (project.planningWindowId -> window)
-    const organizationId = req.headers['x-organization-id'] as string | undefined;
-    const allProjects = await storage.getProjects(req.user!.id, organizationId || null);
+    // Planning windows are user-level (cross-organization), so we need to search
+    // for linked projects across ALL user organizations, not just the current one
+    const userOrganizations = await storage.getOrganizations(req.user!.id);
+    const allProjectsArrays = await Promise.all(
+      userOrganizations.map(org => storage.getProjects(req.user!.id, org.id))
+    );
+    const allProjects = allProjectsArrays.flat();
     
     const enrichedWindows = windows.map(window => {
-      // NEW: Find project that points to this window via planningWindowId (inverted relationship)
       const linkedProject = allProjects.find(p => p.planningWindowId === window.id);
-      // LEGACY: Also check old-style windows that have projectId
       const legacyProject = window.projectId 
         ? allProjects.find(p => p.id === window.projectId)
         : null;
