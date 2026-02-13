@@ -8,12 +8,20 @@ import { testDatabaseConnection, checkDatabaseHealth, closeDatabasePool, runStar
 process.on('uncaughtException', (error) => {
   console.error('[PROCESS] Uncaught Exception:', error);
   
-  // Don't exit the process for email-related errors
+  // Don't exit the process for email/IMAP/socket-related errors
   if (error.message?.includes('Timed out while authenticating') || 
       error.message?.includes('IMAP') ||
       error.message?.includes('socket has been ended') ||
       error.message?.includes('writeAfterFIN') ||
+      error.message?.includes('No mailbox is currently selected') ||
+      error.message?.includes('nonexistent namespace') ||
+      error.message?.includes('Connection ended') ||
+      error.message?.includes('Not authenticated') ||
+      error.stack?.includes('imap') ||
+      error.stack?.includes('Connection.js') ||
+      error.stack?.includes('imap-service') ||
       (error as any).code === 'EPIPE' ||
+      (error as any).code === 'ECONNRESET' ||
       (error as any).source === 'timeout-auth' ||
       (error as any).source === 'socket') {
     console.error('[PROCESS] Email/socket error caught, server continuing...');

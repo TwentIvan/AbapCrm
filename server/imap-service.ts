@@ -126,25 +126,38 @@ export class ImapEmailService {
       return;
     }
     
-    // 🔧 TEMPORARY: Full fetch for testing Plan B (normally uses UNSEEN)
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    const searchDate = ninetyDaysAgo.toISOString().split('T')[0];
-    
-    this.imap.search([['SINCE', searchDate]], (err: Error | null, results: number[]) => {
-      if (err) {
-        console.error('[IMAP] Search error:', err);
+    try {
+      if (!this.imap || this.imap.state !== 'authenticated') {
+        console.warn('[IMAP] Connection not in authenticated state, skipping check');
+        this.isConnected = false;
         return;
       }
 
-      if (results.length === 0) {
-        console.log('[IMAP] No new emails');
-        return;
-      }
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+      const searchDate = ninetyDaysAgo.toISOString().split('T')[0];
+      
+      this.imap.search([['SINCE', searchDate]], (err: Error | null, results: number[]) => {
+        if (err) {
+          console.error('[IMAP] Search error:', err.message);
+          if (err.message?.includes('No mailbox') || err.message?.includes('Not authenticated')) {
+            this.isConnected = false;
+          }
+          return;
+        }
 
-      console.log(`[IMAP] Found ${results.length} new emails`);
-      this.processEmails(results, false); // Don't mark as seen for testing
-    });
+        if (results.length === 0) {
+          console.log('[IMAP] No new emails');
+          return;
+        }
+
+        console.log(`[IMAP] Found ${results.length} new emails`);
+        this.processEmails(results, false);
+      });
+    } catch (error: any) {
+      console.error('[IMAP] checkForNewEmails error:', error?.message);
+      this.isConnected = false;
+    }
   }
 
   private processEmails(uids: number[], markSeen: boolean = true) {
