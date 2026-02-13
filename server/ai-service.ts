@@ -214,7 +214,7 @@ export class AIService {
           }
         ],
         temperature: 0.2, // Lower temperature for more consistent technical documentation
-        max_tokens: 4000 // Allow for comprehensive documentation
+        max_completion_tokens: 4000
       });
 
       const content = response.choices[0].message.content || "";
