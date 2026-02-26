@@ -21,38 +21,19 @@ export const pool = new Pool({
   allowExitOnIdle: false, // Keep pool alive even when idle
 });
 
-// Add error handling for pool connections
 pool.on('connect', (client) => {
-  console.log('[DB] New client connected to pool');
-  
-  // Add error handling for individual client connections
   client.on('error', (err) => {
-    console.error('[DB] Client error:', err);
-    // Don't throw, handle gracefully
+    console.error('[DB] Client error:', err.message);
   });
 });
 
 pool.on('error', (err, client) => {
-  console.error('[DB] Pool error:', err);
-  // Don't throw, just log the error to prevent uncaught exceptions
-  
-  // If it's a connection termination, schedule a connection test
+  console.error('[DB] Pool error:', err.message);
   if (err.message?.includes('terminating connection due to administrator command') ||
       err.message?.includes('Connection terminated') ||
       (err as any).code === '57P01') {
-    console.log('[DB] Connection terminated, scheduling recovery check...');
-    setTimeout(() => {
-      testDatabaseConnection();
-    }, 5000);
+    setTimeout(() => { testDatabaseConnection(); }, 5000);
   }
-});
-
-pool.on('acquire', (client) => {
-  console.log('[DB] Client acquired from pool');
-});
-
-pool.on('remove', (client) => {
-  console.log('[DB] Client removed from pool');
 });
 
 // Create database connection with error handling
