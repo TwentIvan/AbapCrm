@@ -369,14 +369,7 @@ export function setupAuth(app: Express) {
   app.get("/api/user", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
-    // Auto-preload on first user request if not already cached
     const userId = req.user.id;
-    if (!storage.isUserDataCached(userId)) {
-      console.log(`[AUTO-PRELOAD] Starting preload for user ${userId} on first access`);
-      storage.preloadUserData(userId).catch(error => {
-        console.error('[AUTO-PRELOAD] Failed:', error);
-      });
-    }
     
     res.json(req.user);
   });

@@ -87,8 +87,6 @@ export class ImapEmailService {
       }
       console.log(`[IMAP] Opened folder: ${this.config.folder}`);
       // First check for existing emails from the last 90 days
-      this.checkForExistingEmails();
-      // Then check for new unread emails
       this.checkForNewEmails();
     });
   }
@@ -160,66 +158,98 @@ export class ImapEmailService {
     }
   }
 
-  private processEmails(uids: number[], markSeen: boolean = true) {
-    const fetch = this.imap.fetch(uids, { bodies: '', markSeen });
+  private async processEmails(uids: number[], markSeen: boolean = true) {
+    // Process emails one at a time to limit memory usage
+    for (const uid of uids) {
+      try {
+        await this.fetchSingleEmail(uid, markSeen);
+      } catch (err) {
+        console.error(`[IMAP] Error processing email uid ${uid}:`, err);
+      }
+    }
+    console.log(`[IMAP] Done processing ${uids.length} emails`);
+  }
 
-    fetch.on('message', (msg, seqno) => {
-      let body = '';
-      let headers: any = {};
+  private fetchSingleEmail(uid: number, markSeen: boolean): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.imap || this.imap.state !== 'authenticated') {
+        resolve();
+        return;
+      }
+      const fetch = this.imap.fetch([uid], { bodies: '', markSeen });
+      let resolved = false;
 
-      msg.on('body', (stream) => {
-        stream.on('data', (chunk) => {
-          body += chunk.toString('utf8');
-        });
+      fetch.on('message', (msg) => {
+        let body = '';
 
-        stream.once('end', () => {
-          this.parseAndSaveEmail(body, seqno, this.config.folder);
+        msg.on('body', (stream) => {
+          stream.on('data', (chunk: Buffer) => {
+            body += chunk.toString('utf8');
+          });
+
+          stream.once('end', () => {
+            this.parseAndSaveEmail(body, uid, this.config.folder)
+              .then(() => { if (!resolved) { resolved = true; resolve(); } })
+              .catch((e) => { if (!resolved) { resolved = true; reject(e); } });
+          });
         });
       });
 
-      msg.once('attributes', (attrs) => {
-        console.log(`[IMAP] Email ${seqno} attributes:`, attrs.uid);
+      fetch.once('error', (err) => {
+        if (!resolved) { resolved = true; reject(err); }
       });
-    });
 
-    fetch.once('error', (err) => {
-      console.error('[IMAP] Fetch error:', err);
-    });
-
-    fetch.once('end', () => {
-      console.log('[IMAP] Done fetching emails');
+      fetch.once('end', () => {
+        setTimeout(() => { if (!resolved) { resolved = true; resolve(); } }, 500);
+      });
     });
   }
 
   private async parseAndSaveEmail(rawEmail: string, seqno: number, folderName: string) {
     try {
+      const userId = this.config.userId;
+
+      // Extract Message-ID from raw headers BEFORE expensive parsing
+      const headerMatch = rawEmail.match(/^Message-ID:\s*(.+)$/mi);
+      const quickMessageId = headerMatch ? headerMatch[1].trim() : null;
+
+      if (quickMessageId) {
+        const existingMessage = await storage.getMessageByMessageId(quickMessageId, userId);
+        if (existingMessage) {
+          console.log(`[IMAP] Email already exists, skipping: ${quickMessageId}`);
+          return;
+        }
+      }
+
       const parsed = await simpleParser(rawEmail);
       
-      // Generate messageId first
       const messageId = parsed.messageId || `imap-${Date.now()}-${seqno}`;
       
-      // Process attachments with deduplication and save content
+      // Double-check with parsed messageId if quick check used a different format
+      if (!quickMessageId || quickMessageId !== messageId) {
+        const existingMessage = await storage.getMessageByMessageId(messageId, userId);
+        if (existingMessage) {
+          console.log(`[IMAP] Email already exists, skipping: ${messageId}`);
+          return;
+        }
+      }
+
       const attachments: string[] = [];
-      const attachmentHashes = new Map<string, string>(); // hash -> filename
+      const attachmentHashes = new Map<string, string>();
       
       if (parsed.attachments && parsed.attachments.length > 0) {
         console.log(`[IMAP] Processing ${parsed.attachments.length} attachments...`);
         
         for (const attachment of parsed.attachments) {
           if (attachment.content && attachment.content.length > 0) {
-            // Calculate hash for deduplication
             const hash = crypto.createHash('md5').update(attachment.content).digest('hex');
             
-            // Check if we already have this attachment (by content hash)
             if (attachmentHashes.has(hash)) {
               const existingSavedFilename = attachmentHashes.get(hash)!;
-              console.log(`[IMAP] Duplicate attachment detected: ${attachment.filename} -> using ${existingSavedFilename}`);
-              // Use existing filename instead of saving duplicate
               if (!attachments.includes(existingSavedFilename)) {
                 attachments.push(existingSavedFilename);
               }
             } else {
-              // New unique attachment - save it
               const filename = attachment.filename || `attachment_${Date.now()}`;
               try {
                 const savedFilename = await AttachmentsService.saveAttachment(attachment, messageId);
@@ -230,15 +260,11 @@ export class ImapEmailService {
                 console.error(`[IMAP] Failed to save attachment ${filename}:`, error);
               }
             }
-          } else {
-            console.log(`[IMAP] Skipping attachment ${attachment.filename} - no content`);
           }
         }
         
         console.log(`[IMAP] Saved ${attachments.length} unique attachments (${parsed.attachments.length} total, ${parsed.attachments.length - attachments.length} duplicates removed)`);
         
-        // 🚀 PROCESSO SAP TRANSPORT REQUESTS da JSON allegati
-        // Se siamo nella cartella SAP Transport, processiamo i JSON
         const isSapTransportFolder = folderName.toLowerCase().includes('sap') || 
                                       folderName.toLowerCase().includes('transport');
         
@@ -258,16 +284,15 @@ export class ImapEmailService {
               );
               
               if (result.success) {
-                console.log(`[SAP-TR] ✅ Transport Request processata con successo: ${result.requestId}`);
+                console.log(`[SAP-TR] Transport Request processata: ${result.requestId}`);
               } else {
-                console.error(`[SAP-TR] ❌ Errore processamento TR: ${result.error}`);
+                console.error(`[SAP-TR] Errore processamento TR: ${result.error}`);
               }
             }
           }
         }
       }
 
-      // Helper to get first email address
       const getFirstAddress = (addressObj: any) => {
         if (!addressObj) return null;
         if (Array.isArray(addressObj)) return addressObj[0] || null;
@@ -275,7 +300,6 @@ export class ImapEmailService {
         return addressObj;
       };
 
-      // Helper to get all email addresses from header field
       const getAllAddresses = (addressObj: any): string[] => {
         if (!addressObj) return [];
         
@@ -296,15 +320,6 @@ export class ImapEmailService {
 
       const fromAddr = getFirstAddress(parsed.from);
       const toAddr = getFirstAddress(parsed.to);
-
-      const userId = this.config.userId; // Usa l'ID dell'utente che ha configurato questo account
-
-      // Check if message already exists to avoid duplicates
-      const existingMessage = await storage.getMessageByMessageId(messageId, userId);
-      if (existingMessage) {
-        console.log(`[IMAP] Email already exists, skipping: ${messageId}`);
-        return;
-      }
 
       // 🔧 FIX: Nuove email usano ALGORITMO BASE (no training)
       // Training viene applicato SOLO con "Riprocessa" manuale

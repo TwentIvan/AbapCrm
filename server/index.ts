@@ -4,7 +4,19 @@ import { setupVite, serveStatic, log } from "./vite";
 import { autoInitializeEmailServices } from "./email-auto-init";
 import { testDatabaseConnection, checkDatabaseHealth, closeDatabasePool, runStartupMigrations } from "./db";
 
-// Add global error handlers to prevent server crashes
+process.on('SIGTERM', () => {
+  console.error('[PROCESS] Received SIGTERM signal');
+});
+process.on('SIGINT', () => {
+  console.error('[PROCESS] Received SIGINT signal');
+});
+process.on('SIGHUP', () => {
+  console.error('[PROCESS] Received SIGHUP signal');
+});
+process.on('exit', (code) => {
+  console.error(`[PROCESS] Process exiting with code: ${code}`);
+});
+
 process.on('uncaughtException', (error) => {
   console.error('[PROCESS] Uncaught Exception:', error);
   
@@ -52,8 +64,8 @@ process.on('uncaughtException', (error) => {
     return;
   }
   
-  console.error('[PROCESS] Critical error, exiting...');
-  process.exit(1);
+  console.error('[PROCESS] Unhandled exception caught, server continuing:', error.message);
+  console.error('[PROCESS] Stack:', error.stack);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
@@ -138,10 +150,10 @@ app.use((req, res, next) => {
       await runStartupMigrations();
     }
     
-    // Auto-initialize email services after server starts
+    // Auto-initialize email services after server and Vite are fully ready
     setTimeout(async () => {
       await autoInitializeEmailServices();
-    }, 2000); // Wait 2 seconds for server to fully start
+    }, 30000);
     
     // Start periodic database health checks every 5 minutes
     const healthCheckInterval = setInterval(async () => {

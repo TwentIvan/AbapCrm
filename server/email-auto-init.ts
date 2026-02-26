@@ -3,12 +3,10 @@ import { initializeEmailService } from "./imap-service";
 import { db } from "./db";
 import { users } from "@shared/schema";
 
-// Auto-initialize email services for all active configurations on server startup
 export async function autoInitializeEmailServices() {
   try {
     console.log('[EMAIL-INIT] Checking for saved email configurations...');
     
-    // Test database connection first
     try {
       const allUsers = await db.select().from(users);
       
@@ -16,11 +14,9 @@ export async function autoInitializeEmailServices() {
         try {
           const activeConfig = await storage.getActiveEmailConfig(user.id);
           
-          // Solo configurazioni con password e non-forwarder possono avere servizi IMAP
           if (activeConfig && activeConfig.password && activeConfig.password.trim() !== '' && !activeConfig.isForwarder) {
             console.log(`[EMAIL-INIT] Restoring email service for user: ${activeConfig.email}`);
             
-            // Usa la prima cartella dall'array, o "INBOX" come default
             const firstFolder = activeConfig.folders && activeConfig.folders.length > 0 
               ? activeConfig.folders[0] 
               : "INBOX";
@@ -32,8 +28,8 @@ export async function autoInitializeEmailServices() {
               port: activeConfig.port,
               tls: activeConfig.tls,
               folder: firstFolder,
-              userId: user.id, // Associa le email all'utente che ha configurato l'account
-              organizationId: activeConfig.organizationId! // Associa le email all'organizzazione della configurazione
+              userId: user.id,
+              organizationId: activeConfig.organizationId!
             };
             
             try {
@@ -41,8 +37,9 @@ export async function autoInitializeEmailServices() {
               console.log(`[EMAIL-INIT] ✓ Email service restored for ${activeConfig.email}`);
             } catch (error) {
               console.error(`[EMAIL-INIT] ✗ Failed to restore email service for ${activeConfig.email}:`, error);
-              // Continue with other users even if one fails
             }
+
+            await new Promise(resolve => setTimeout(resolve, 15000));
           } else if (activeConfig && activeConfig.isForwarder) {
             console.log(`[EMAIL-INIT] Skipping forwarder account: ${activeConfig.email}`);
           } else if (activeConfig && (!activeConfig.password || activeConfig.password.trim() === '')) {

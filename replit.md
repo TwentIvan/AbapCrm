@@ -1,6 +1,6 @@
 # Overview
 
-This CRM application for SAP ABAP freelancers provides a unified dashboard to manage projects, tasks, business deals, partners, and calendar events. It's a full-stack web application featuring an AI-powered project agent for intelligent message analysis and semi-automatic project creation. The system also includes robust multi-organization data filtering and a metadata-driven extension layer for custom fields, entities, workflows, and permissions. It supports receiving SAP Transport Requests via API, email, or manual input, and integrates with SAP shortcuts for direct program execution.
+This CRM application for SAP ABAP freelancers offers a comprehensive dashboard for managing projects, tasks, business deals, partners, and calendar events. It's a full-stack web application designed to streamline operations with an AI-powered project agent for intelligent message analysis and semi-automatic project creation. Key capabilities include multi-organization data filtering, a metadata-driven extension layer for custom fields and workflows, and integration with SAP systems for Transport Request handling and program execution. The vision is to empower freelancers with advanced tools for efficient business management and automation.
 
 # User Preferences
 
@@ -35,138 +35,59 @@ When creating any new table/CRUD area in the application ("Usa il template stand
 
 ## Frontend Architecture
 
-The client-side uses React 18, TypeScript, `shadcn/ui` (Radix UI), `TailwindCSS`, `TanStack Query`, `Wouter` for routing, and `React Hook Form` with `Zod` for forms. `Vite` manages development and builds.
+The client-side is built with React 18, TypeScript, `shadcn/ui` (Radix UI), `TailwindCSS`, `TanStack Query`, `Wouter` for routing, and `React Hook Form` with `Zod` for form management. `Vite` is used for development and builds.
 
 ## Backend Architecture
 
-The server uses `Express.js` with TypeScript, implementing a RESTful API pattern. `Passport.js` handles local authentication with scrypt hashing, and `Express sessions` are stored in PostgreSQL. Custom middleware supports logging, JSON parsing, and authentication.
+The server uses `Express.js` with TypeScript, following a RESTful API design. `Passport.js` provides session-based authentication with scrypt hashing, and sessions are stored in PostgreSQL.
 
 ## Data Storage
 
-`PostgreSQL` is the primary database, managed with `Drizzle ORM` for type-safe operations and `Drizzle Kit` for migrations.
+`PostgreSQL` serves as the primary database, managed by `Drizzle ORM` for type-safe interactions and `Drizzle Kit` for migrations.
 
 ## Authentication & Authorization
 
-Authentication is session-based, using a local username/password strategy with scrypt hashing. Sessions are stored in PostgreSQL. Authorization is enforced via route-level middleware.
+Authentication is session-based using a local username/password strategy. Authorization is implemented via route-level middleware.
 
 ## Core Features & Design Patterns
 
-### Custom Fields & Metadata System
-A metadata-driven extension layer supports custom entities (JSONB schemas), dynamic custom fields with type validation, entity custom values, event-driven workflows, and role-based permissions. `CustomMetadataService` provides caching and Zod schema generation for runtime validation, integrated with a type-safe `EventBus`.
-
-### Multi-Organization Filtering
-The system provides intelligent cross-organization data visibility using `X-Organization-Id` and `X-Organization-Scope` headers. Users in the 'Personal' organization can view data across all their organizations, while others are restricted to their own.
-
-### AI Project Agent & Background Proposal System
-An AI-powered agent (integrating OpenAI gpt-5) analyzes messages and proposes project, partner, and task creations. This runs asynchronously, storing proposals in a dedicated `proposals` table with status tracking. A `/proposals` page allows management, with visual indicators in the UI for pending proposals.
-
-### Multi-Message Chat Normalization
-Conversations from various platforms (Teams, WhatsApp, Google Meet) are parsed and normalized into a structured format stored in a `jsonb metadata` column for rich UI display.
-
-### Freelance Engagement & Procurement System
-Manages freelance engagements with project assignments (fixed amount/hourly rate, auto PO generation), project milestones (Gantt chart with timezone-free date handling, dependencies, progress, budget tracking), purchase orders (auto-generation, vendor management, lifecycle), and vendor invoices (linking to POs/projects, payment tracking).
-
-### Business Scenarios - Organization Relationship Management
-Defines and manages many-to-many relationships between organizations with typed business contexts (e.g., `cliente_fattura`, `fornitore`, `partner`). Relationships are directional, with status tracking and notes, managed via a dedicated UI.
-
-### Bulk Operations - Mass Edit & Copy
-Comprehensive bulk editing and copying capabilities across all main entities (Projects, Tasks, Partners, Deals, Contacts, Organizations, Human Resources). `BulkEditDialog` allows selective field updates via parallel PUT requests. `BulkCopyDialog` creates entity duplicates with customizable suffixes via parallel POST requests, automatically excluding auto-generated fields. Operations include cache invalidation, toast notifications, loading states, and selection reset.
-
-### Modular Cascade Delete System
-A reusable deletion system with related data aggregation for both single and bulk deletes:
-- **useCascadeDelete Hook** (`client/src/hooks/use-cascade-delete.ts`): Manages delete state, fetches related data in parallel for all selected items, aggregates counts, and handles the delete mutation
-- **CascadeDeleteDialog Component** (`client/src/components/dialogs/cascade-delete-dialog.tsx`): Displays aggregated related data counts before deletion with proper warnings
-- **SimpleDeleteDialog Component**: For items without related data, shows simple confirmation
-- **Configuration-driven**: Each entity defines its `relationConfigs` (key/label pairs) to map backend related-data response to UI labels
-- **Backend Pattern**: `GET /api/:entity/:id/related-data` returns counts per relation type, `DELETE /api/:entity/:id/cascade` performs cascade deletion
-
-### SAP Transport Request Integration
-Supports receiving Transport Requests from SAP systems via three methods: direct API POST, email integration (processing JSON attachments from a dedicated IMAP folder), and manual JSON paste via UI. The email method offers full autonomy from client IT.
-
-### SAP Shortcut Integration
-Projects linked to an SAP system can launch the **ZTHU_DOCUMENTATION** program. The system generates a `.sap` shortcut file; users execute the ABAP program, copy its JSON output, and paste it into a dialog to automatically create and link the Transport Request.
-
-### THU AI Task Executor
-AI-powered ABAP code generation with extended context:
-- **Rich Context Collection**: Project details, DevOps work items (via externalWorkItemId), linked messages/comments (via sourceMessageIds/taskId), transport requests with objects
-- **Full DevOps Integration**: Two-step lookup strategy - first searches linked sourceMessageIds, then falls back to org-scoped search by workItemId. Extracts complete work item data including:
-  - Full HTML description with image extraction (max 5 images, skip base64 >50kb)
-  - DevOps comments (max 10) auto-created as independent messages with deduplication via hash
-  - SAP custom fields (ticketCode, wbsCode, ticketType)
-  - Work item metadata (type, state, priority, tags, iteration/area paths)
-- **DevOps Comment Auto-Creation**: During message enrichment, DevOps comments are automatically created as separate messages (sourceType='devops_comment') with deduplication via base64 hash of workItemId+author+date+content
-- **Pattern Learning**: Learns from existing ABAP code patterns (data_extraction, report_generation, interface_development, form_enhancement, workflow_automation)
-- **Regenerate Flow**: After rejecting AI output, users can modify customInstructions and retry
-- **Security**: All queries enforce organizationId filtering for tenant isolation (task, project, sapSystem, comments, messages, transports)
-
-### Computed Fields System (End-to-Complete)
-Dynamic calculated columns for project planning visibility:
-- **Batch ETC Endpoint** (`GET /api/projects/batch-end-to-complete`): Returns keyed payload with ETC metrics for all projects
-- **Column Groups**: Columns organized by type - `direct` (DB fields), `related` (1:1 joins), `linked` (1:N aggregates), `computed` (API-derived)
-- **computedDataEndpoint Pattern**: Descriptors declare a `computedDataEndpoint` for batch fetching calculated data
-- **EmbeddedEntityList Integration**: Fetches computed data in parallel with base collection, passes to descriptor context
-- **UniversalTable Extension**: `computedData` prop passed to column.render() as second argument
-- **ETC Columns**: State (completed/on_track/delayed/no_planning_window/no_tasks), Completion %, Remaining Hours, Effective End Date, Deficit Hours
-- **Routing Order Critical**: Batch endpoints (`/batch-*`) MUST be registered BEFORE parameterized routes (`/:id`)
-
-### Planning Windows & Project Relationship
-Architectural design for project scheduling visibility in the global calendar:
-- **Standalone Windows**: Planning windows are independent entities with hierarchical structure (parentPlanningWindowId)
-- **Inverted Relationship**: Projects reference windows via `planningWindowId` field (project → window, not window → project)
-- **ETC Clamping**: Backend End-to-Complete calculator uses ONLY direct parent window dates for slot allocation
-- **Calendar Display**: Projects displayed under their assigned window in global planning calendar
-- **Project Form Integration**: Dropdown selector "Finestra Pianificazione" to assign window to project
-
-### Auto-Rescheduling System
-Automatic project schedule recalculation when task completion percentage changes:
-- **Trigger**: PUT `/api/tasks/:id` when `completionPercentage` or `estimatedEffort` changes
-- **Service**: `server/project-rescheduler.ts` - `recalculateProjectScheduleForTask()` function
-- **Root Ancestor Logic**: Finds hierarchical root of planning windows to determine hard deadline
-- **Deficit Hours Calculation**: Computes hours exceeding the superior planning window (stored as `scheduleDeficitHours` - real type for fractional hours)
-- **Persistence**: Updates `calculatedEndDate` and `scheduleDeficitHours` directly on project record
-- **UI Display**: New computed column "Ore Deficit" in projects-descriptor with red badge warning when > 0
-- **Non-blocking**: Rescheduling errors don't fail the task update (wrapped in try-catch)
-
-### Freeform Dashboard with Entity Widget System
-Customizable dashboard with drag-and-drop widget placement:
-- **React-RND Integration**: Uses `react-rnd` for freeform widget positioning and resizing
-- **EntityListDescriptor Pattern**: Unified interface (`client/src/lib/entity-registry.tsx`) defining columns, filters, bulk edit fields, feature flags, and **computedDataEndpoint** for each entity
-- **EmbeddedEntityList Component**: Generic shell (`client/src/components/embedded/embedded-entity-list.tsx`) that renders any entity with full CRUD, AI, config, LayoutManager, filters, bulk operations, and computed data
-- **Registered Entities**: Tasks, Projects, Partners, Deals - each with dedicated descriptor files in `client/src/lib/entities/`
-- **Widget Templates**: Pre-configured widget options including filtered views (e.g., "Task Attivi", "Progetti Attivi", "Accordi Aperti")
-- **Widget Types**: entity-list (any registered entity), stats (overview counts), timer (active time tracking)
-- **Layout Persistence**: Widget positions (x, y, width, height, zIndex) saved in localStorage key `dashboard-freeform-v1`
-- **Configure Mode**: Toggle to enable/disable drag-resize with grid snapping and visual feedback
-
-### Address Management System
-Comprehensive address handling for partner entities with:
-- **AddressSearch Component** (`client/src/components/ui/address-search.tsx`): Autocomplete search using Nominatim API (OpenStreetMap geocoding), Italian province code extraction (100+ mappings), radio buttons for legal/operational address type selection
-- **MapPicker Component** (`client/src/components/ui/map-picker.tsx`): Interactive Leaflet map for visual location selection with draggable markers and reverse geocoding
-- **Structured Address Fields**: street, streetNumber, city, province, postalCode, country, latitude, longitude
-- **Legal/Operational Address Distinction**: `isLegalAddress` boolean with `parentPartnerId` for linking operational sites to their parent legal headquarters
-- **Database Fields**: Partners table extended with structured address columns and hierarchical relationship support
+-   **Custom Fields & Metadata System**: A metadata-driven extension layer enables dynamic custom fields, entities, event-driven workflows, and role-based permissions, supported by `CustomMetadataService` for caching and validation.
+-   **Multi-Organization Filtering**: Provides intelligent cross-organization data visibility based on `X-Organization-Id` and `X-Organization-Scope` headers.
+-   **AI Project Agent & Background Proposal System**: An AI-powered agent (integrating OpenAI gpt-5) analyzes messages to propose project, partner, and task creations asynchronously.
+-   **Multi-Message Chat Normalization**: Conversations from various platforms are parsed and stored in a structured `jsonb metadata` column for consistent UI display.
+-   **Freelance Engagement & Procurement System**: Manages freelance engagements, project assignments, milestones (with Gantt chart and budget tracking), purchase orders, and vendor invoices.
+-   **Business Scenarios - Organization Relationship Management**: Defines and manages many-to-many organization relationships with typed business contexts (e.g., `cliente_fattura`, `fornitore`, `partner`) and a dedicated UI.
+-   **Bulk Operations - Mass Edit & Copy**: Comprehensive bulk editing and copying capabilities for main entities, utilizing `BulkEditDialog` and `BulkCopyDialog` with parallel requests and cache invalidation.
+-   **Modular Cascade Delete System**: A reusable system for single and bulk deletions, aggregating related data counts via `useCascadeDelete` hook and `CascadeDeleteDialog`.
+-   **SAP Transport Request Integration**: Supports receiving Transport Requests via API POST, email parsing of JSON attachments, or manual UI input.
+-   **SAP Shortcut Integration**: Allows launching SAP ABAP programs from projects and automatically creating Transport Requests from their JSON output.
+-   **THU AI Task Executor**: AI-powered ABAP code generation with rich context collection from project details, DevOps work items, messages, and transport requests, including pattern learning and a regenerate flow.
+-   **Computed Fields System (End-to-Complete)**: Dynamic calculated columns for project planning visibility (e.g., State, Completion %, Remaining Hours), fetched via batch endpoints and integrated into tables.
+-   **Planning Windows & Project Relationship**: Architectural design for project scheduling in a global calendar, where projects reference independent planning windows for ETC clamping and display.
+-   **Auto-Rescheduling System**: Automatically recalculates project schedules and deficit hours when task completion or effort changes, persisting updates to project records.
+-   **Freeform Dashboard with Entity Widget System**: Customizable dashboard with drag-and-drop widgets using `react-rnd`, leveraging `EntityListDescriptor` and `EmbeddedEntityList` components for generic entity rendering.
+-   **Address Management System**: Comprehensive address handling for partners, including `AddressSearch` (Nominatim API), `MapPicker` (Leaflet), structured address fields, and distinction between legal and operational addresses.
 
 # External Dependencies
 
 ## Database Services
-- **Neon Database**: Serverless PostgreSQL hosting.
+-   **Neon Database**: Serverless PostgreSQL hosting.
 
 ## UI & Design System
-- **Radix UI**: Low-level UI primitives.
-- **shadcn/ui**: Component library built on Radix UI.
-- **Lucide React**: Icon library.
+-   **Radix UI**: Low-level UI primitives.
+-   **shadcn/ui**: Component library built on Radix UI.
+-   **Lucide React**: Icon library.
 
 ## Development & Build Tools
-- **Vite**: Frontend build tool.
-- **Replit Integration**: Specialized plugins for Replit environment.
-- **TypeScript**: Type safety across the stack.
+-   **Vite**: Frontend build tool.
+-   **TypeScript**: Type safety across the stack.
 
 ## Authentication & Security
-- **Passport.js**: Authentication middleware.
+-   **Passport.js**: Authentication middleware.
 
 ## Form & Data Validation
-- **Zod**: Schema validation library.
-- **React Hook Form**: Form library with validation.
+-   **Zod**: Schema validation library.
+-   **React Hook Form**: Form library with validation.
 
 ## Artificial Intelligence
-- **OpenAI**: AI model integration (gpt-5).
+-   **OpenAI**: AI model integration (gpt-5).
