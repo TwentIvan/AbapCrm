@@ -79,12 +79,22 @@ export class ImapEmailService {
     this.isConnected = false;
   }
 
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 3;
+
   private openFolder() {
     this.imap.openBox(this.config.folder, false, (err: Error | null, box: any) => {
       if (err) {
         console.error('[IMAP] Error opening folder:', err.message);
+        this.isConnected = false;
+        this.reconnectAttempts++;
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+          console.error(`[IMAP] Folder "${this.config.folder}" failed ${this.maxReconnectAttempts} times, stopping polling`);
+          this.stopPolling();
+        }
         return;
       }
+      this.reconnectAttempts = 0;
       console.log(`[IMAP] Opened folder: ${this.config.folder}`);
       // First check for existing emails from the last 90 days
       this.checkForNewEmails();
@@ -543,6 +553,14 @@ export class ImapEmailService {
       connected: this.isConnected,
       error: !this.isConnected ? 'Service not connected or credentials invalid' : undefined
     };
+  }
+
+  public stopPolling() {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+      console.log('[IMAP] Polling stopped');
+    }
   }
 
   public startPolling(intervalMinutes: number = 2) {
