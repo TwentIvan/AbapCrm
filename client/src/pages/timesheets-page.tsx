@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Clock, Calendar, Eye, List } from "lucide-react";
+import { Trash2, Clock, Calendar, Eye, List, Grid3X3 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import type { Timesheet, Project, Deal, Partner } from "@shared/schema";
