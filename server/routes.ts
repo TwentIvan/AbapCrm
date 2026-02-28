@@ -29,7 +29,9 @@ import {
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals, projectShares,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users, organizations,
   customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions,
-  dashboardWidgetTemplates, insertDashboardWidgetTemplateSchema
+  dashboardWidgetTemplates, insertDashboardWidgetTemplateSchema,
+  resourceSkills, resourceAvailability,
+  insertResourceSkillSchema, insertResourceAvailabilitySchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -395,6 +397,56 @@ function parseChatContent(content: string, platform: string): {
     summary,
     rawSource: content.trim()
   };
+}
+
+function generatePeriods(start: Date, end: Date, granularity: "day" | "week" | "month"): Array<{ start: Date; end: Date; label: string }> {
+  const periods: Array<{ start: Date; end: Date; label: string }> = [];
+  const current = new Date(start);
+  const months = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+
+  while (current < end) {
+    let periodEnd: Date;
+    let label: string;
+
+    if (granularity === "day") {
+      periodEnd = new Date(current);
+      periodEnd.setDate(periodEnd.getDate() + 1);
+      label = `${current.getDate()} ${months[current.getMonth()]}`;
+    } else if (granularity === "week") {
+      periodEnd = new Date(current);
+      periodEnd.setDate(periodEnd.getDate() + 7);
+      label = `${current.getDate()} ${months[current.getMonth()]}`;
+    } else {
+      periodEnd = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+      label = `${months[current.getMonth()]} ${current.getFullYear()}`;
+    }
+
+    if (periodEnd > end) periodEnd = new Date(end);
+    periods.push({ start: new Date(current), end: periodEnd, label });
+    current.setTime(periodEnd.getTime());
+  }
+  return periods;
+}
+
+function countWorkingDays(start: Date, end: Date): number {
+  let count = 0;
+  const current = new Date(start);
+  while (current < end) {
+    const day = current.getDay();
+    if (day !== 0 && day !== 6) count++;
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
+}
+
+function getEffectiveDailyHours(availability: Array<{ weeklyHours: number; effectiveFrom: Date | string; effectiveTo: Date | string | null }>, date: Date): number {
+  const applicable = availability.find(a => {
+    const from = new Date(a.effectiveFrom);
+    const to = a.effectiveTo ? new Date(a.effectiveTo) : null;
+    return date >= from && (!to || date <= to);
+  });
+  const weeklyHours = applicable ? applicable.weeklyHours : 40;
+  return weeklyHours / 5;
 }
 
 export function registerRoutes(app: Express): Server {
@@ -5818,6 +5870,241 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Error deleting human resource:", error);
       res.status(500).json({ error: "Failed to delete human resource" });
+    }
+  });
+
+  // Resource Skills
+  app.get("/api/human-resources/:id/skills", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const skills = await storage.getResourceSkills(req.params.id);
+      res.json(skills);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch resource skills" });
+    }
+  });
+
+  app.post("/api/human-resources/:id/skills", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const data = insertResourceSkillSchema.parse({
+        ...req.body,
+        humanResourceId: req.params.id,
+        organizationId,
+        userId: req.user!.id,
+      });
+      const skill = await storage.createResourceSkill(data);
+      res.status(201).json(skill);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid request" });
+    }
+  });
+
+  app.delete("/api/human-resources/:id/skills/:skillId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const success = await storage.deleteResourceSkill(req.params.skillId);
+      if (!success) return res.status(404).json({ error: "Skill not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete skill" });
+    }
+  });
+
+  // Resource Availability
+  app.get("/api/human-resources/:id/availability", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const availability = await storage.getResourceAvailability(req.params.id);
+      res.json(availability);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch resource availability" });
+    }
+  });
+
+  app.post("/api/human-resources/:id/availability", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const data = insertResourceAvailabilitySchema.parse({
+        ...req.body,
+        humanResourceId: req.params.id,
+        organizationId,
+        userId: req.user!.id,
+      });
+      const availability = await storage.createResourceAvailability(data);
+      res.status(201).json(availability);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid request" });
+    }
+  });
+
+  app.put("/api/human-resources/:id/availability/:availId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const updated = await storage.updateResourceAvailability(req.params.availId, req.body);
+      if (!updated) return res.status(404).json({ error: "Availability not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid request" });
+    }
+  });
+
+  app.delete("/api/human-resources/:id/availability/:availId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const success = await storage.deleteResourceAvailability(req.params.availId);
+      if (!success) return res.status(404).json({ error: "Availability not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete availability" });
+    }
+  });
+
+  // Resource Planner - Data Aggregation Endpoint
+  app.get("/api/resource-planner", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      const { startDate, endDate, granularity = "week" } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "startDate and endDate are required" });
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      const gran = granularity as "day" | "week" | "month";
+
+      const allResources = await db.select().from(humanResources)
+        .where(and(
+          eq(humanResources.userId, req.user!.id),
+          eq(humanResources.isActive, true),
+          inArray(humanResources.organizationId, organizationIds)
+        ));
+
+      const allTasks = await db.select().from(tasks)
+        .where(and(
+          eq(tasks.userId, req.user!.id),
+          inArray(tasks.organizationId, organizationIds)
+        ));
+
+      const allSkills = await db.select().from(resourceSkills)
+        .where(inArray(resourceSkills.organizationId, organizationIds));
+
+      const allAvailability = await db.select().from(resourceAvailability)
+        .where(inArray(resourceAvailability.organizationId, organizationIds));
+
+      const periods = generatePeriods(start, end, gran);
+
+      const resourceData = allResources.map(resource => {
+        const resSkills = allSkills.filter(s => s.humanResourceId === resource.id);
+        const resAvail = allAvailability.filter(a => a.humanResourceId === resource.id);
+
+        const linkedUserId = resource.linkedUserId;
+        const assignedTasks = allTasks.filter(t => {
+          if (!t.assignedTo) return false;
+          if (t.assignedTo !== linkedUserId) return false;
+          if (t.status === "completed") return false;
+          return true;
+        });
+
+        const periodsData = periods.map(period => {
+          const workingDays = countWorkingDays(period.start, period.end);
+          const dailyHours = getEffectiveDailyHours(resAvail, period.start);
+          const capacity = workingDays * dailyHours;
+
+          const periodTasks = assignedTasks.filter(t => {
+            const taskStart = t.startDate ? new Date(t.startDate) : null;
+            const taskEnd = t.dueDate ? new Date(t.dueDate) : null;
+            if (taskStart && taskEnd) {
+              return taskStart <= period.end && taskEnd >= period.start;
+            }
+            if (taskStart && !taskEnd) {
+              return taskStart <= period.end;
+            }
+            if (!taskStart && taskEnd) {
+              return taskEnd >= period.start;
+            }
+            return true;
+          });
+
+          let demand = 0;
+          periodTasks.forEach(t => {
+            const remaining = t.effectiveRemainingHours ??
+              (t.remainingEffort ?? ((t.estimatedEffort || 0) * (1 - (t.completionPercentage || 0) / 100)));
+            const taskStart = t.startDate ? new Date(t.startDate) : period.start;
+            const taskEnd = t.dueDate ? new Date(t.dueDate) : period.end;
+            const taskTotalDays = countWorkingDays(taskStart, taskEnd) || 1;
+            const overlapStart = new Date(Math.max(taskStart.getTime(), period.start.getTime()));
+            const overlapEnd = new Date(Math.min(taskEnd.getTime(), period.end.getTime()));
+            const overlapDays = countWorkingDays(overlapStart, overlapEnd);
+            const fraction = overlapDays / taskTotalDays;
+            demand += remaining * fraction;
+          });
+
+          const utilization = capacity > 0 ? (demand / capacity) * 100 : 0;
+          let status: "unavailable" | "under" | "balanced" | "over" = "unavailable";
+          if (capacity > 0) {
+            if (utilization > 100) status = "over";
+            else if (utilization >= 70) status = "balanced";
+            else status = "under";
+          }
+
+          return {
+            start: period.start.toISOString(),
+            end: period.end.toISOString(),
+            label: period.label,
+            capacity: Math.round(capacity * 10) / 10,
+            demand: Math.round(demand * 10) / 10,
+            utilization: Math.round(utilization),
+            status,
+            tasks: periodTasks.map(t => ({
+              id: t.id,
+              title: t.title,
+              projectId: t.projectId,
+              remaining: t.effectiveRemainingHours ?? (t.remainingEffort ?? ((t.estimatedEffort || 0) * (1 - (t.completionPercentage || 0) / 100))),
+              status: t.status,
+              priority: t.priority,
+            })),
+          };
+        });
+
+        return {
+          id: resource.id,
+          name: resource.name,
+          role: resource.role,
+          skillLevel: resource.skillLevel,
+          department: resource.department,
+          skills: resSkills.map(s => ({
+            id: s.id,
+            name: s.skillName,
+            level: s.proficiencyLevel,
+            isPrimary: s.isPrimary,
+          })),
+          periods: periodsData,
+        };
+      });
+
+      const summaryPeriods = periods.map((period, idx) => {
+        const totalCapacity = resourceData.reduce((sum, r) => sum + r.periods[idx].capacity, 0);
+        const totalDemand = resourceData.reduce((sum, r) => sum + r.periods[idx].demand, 0);
+        return {
+          label: period.label,
+          start: period.start.toISOString(),
+          end: period.end.toISOString(),
+          totalCapacity: Math.round(totalCapacity * 10) / 10,
+          totalDemand: Math.round(totalDemand * 10) / 10,
+          avgUtilization: totalCapacity > 0 ? Math.round((totalDemand / totalCapacity) * 100) : 0,
+          resourceCount: resourceData.length,
+        };
+      });
+
+      res.json({ resources: resourceData, summary: summaryPeriods, periods: periods.map(p => p.label) });
+    } catch (error) {
+      console.error("Error in resource planner:", error);
+      res.status(500).json({ error: "Failed to compute resource planner data" });
     }
   });
 

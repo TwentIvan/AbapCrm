@@ -1204,11 +1204,43 @@ export const partnersRelations = relations(partners, ({ one, many }) => ({
   contacts: many(contacts),
 }));
 
+export const resourceSkills = pgTable("resource_skills", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanResourceId: uuid("human_resource_id").references(() => humanResources.id).notNull(),
+  skillName: text("skill_name").notNull(),
+  proficiencyLevel: integer("proficiency_level").default(3).notNull(),
+  isPrimary: boolean("is_primary").default(false).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const resourceAvailability = pgTable("resource_availability", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  humanResourceId: uuid("human_resource_id").references(() => humanResources.id).notNull(),
+  weeklyHours: real("weekly_hours").default(40).notNull(),
+  effectiveFrom: timestamp("effective_from").notNull(),
+  effectiveTo: timestamp("effective_to"),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const humanResourcesRelations = relations(humanResources, ({ one, many }) => ({
   user: one(users, { fields: [humanResources.userId], references: [users.id] }),
   linkedUser: one(users, { fields: [humanResources.linkedUserId], references: [users.id], relationName: "linkedUser" }),
   externalOrganization: one(organizations, { fields: [humanResources.externalOrganizationId], references: [organizations.id], relationName: "externalOrgResources" }),
   projectAssignments: many(projectAssignments),
+  skills: many(resourceSkills),
+  availability: many(resourceAvailability),
+}));
+
+export const resourceSkillsRelations = relations(resourceSkills, ({ one }) => ({
+  humanResource: one(humanResources, { fields: [resourceSkills.humanResourceId], references: [humanResources.id] }),
+}));
+
+export const resourceAvailabilityRelations = relations(resourceAvailability, ({ one }) => ({
+  humanResource: one(humanResources, { fields: [resourceAvailability.humanResourceId], references: [humanResources.id] }),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({
@@ -1637,6 +1669,16 @@ export const insertHumanResourceSchema = createInsertSchema(humanResources).omit
   updatedAt: true,
 });
 
+export const insertResourceSkillSchema = createInsertSchema(resourceSkills).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertResourceAvailabilitySchema = createInsertSchema(resourceAvailability).omit({
+  id: true,
+  createdAt: true,
+});
+
 // SAP Insert Schemas
 export const insertSapSystemSchema = createInsertSchema(sapSystems).omit({
   id: true,
@@ -1740,6 +1782,10 @@ export const insertDiscoveredVpnConfigurationSchema = createInsertSchema(discove
 // All Types
 export type HumanResource = typeof humanResources.$inferSelect;
 export type InsertHumanResource = z.infer<typeof insertHumanResourceSchema>;
+export type ResourceSkill = typeof resourceSkills.$inferSelect;
+export type InsertResourceSkill = z.infer<typeof insertResourceSkillSchema>;
+export type ResourceAvailability = typeof resourceAvailability.$inferSelect;
+export type InsertResourceAvailability = z.infer<typeof insertResourceAvailabilitySchema>;
 
 export type SapSystem = typeof sapSystems.$inferSelect;
 export type InsertSapSystem = z.infer<typeof insertSapSystemSchema>;

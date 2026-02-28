@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import newLogo from "@assets/ChatGPT Image 18 ott 2025, 19_07_46_1760807285076.png";
 import ImageContainer from "@/components/ui/image-container";
@@ -29,6 +29,7 @@ const getDefaultProgettiItems = (t: any) => [
   { id: "prj3", name: "Attività", href: "/tasks", icon: CheckSquare, testId: "nav-tasks" },
   { id: "prj4", name: "Assegnazioni", href: "/project-assignments", icon: Users, testId: "nav-project-assignments" },
   { id: "prj5", name: "Gerarchia", href: "/project-hierarchy", icon: FolderTree, testId: "nav-project-hierarchy" },
+  { id: "prj6", name: "Resource Planner", href: "/resource-planner", icon: LayoutDashboard, testId: "nav-resource-planner" },
 ];
 
 // Soluzioni group

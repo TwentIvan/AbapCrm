@@ -67,6 +67,7 @@ Authentication is session-based using a local username/password strategy. Author
 -   **Auto-Rescheduling System**: Automatically recalculates project schedules and deficit hours when task completion or effort changes, persisting updates to project records.
 -   **Freeform Dashboard with Entity Widget System**: Customizable dashboard with drag-and-drop widgets using `react-rnd`, leveraging `EntityListDescriptor` and `EmbeddedEntityList` components for generic entity rendering.
 -   **Address Management System**: Comprehensive address handling for partners, including `AddressSearch` (Nominatim API), `MapPicker` (Leaflet), structured address fields, and distinction between legal and operational addresses.
+-   **Resource Planner**: Global heatmap view for team managers to visualize resource allocation across time periods (day/week/month). Shows capacity vs demand per resource with color-coded criticality (green=balanced, amber=under-allocated, red=over-allocated). Includes KPI cards, skill badges, task detail popovers, and resource detail panel. Backed by `resource_skills` and `resource_availability` tables for granular skill management and configurable availability.
 
 # External Dependencies
 

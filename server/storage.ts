@@ -68,7 +68,9 @@ import {
   testExecutions, type TestExecution, type InsertTestExecution,
   partnerEmails, type PartnerEmail, type InsertPartnerEmail,
   partnerPhones, type PartnerPhone, type InsertPartnerPhone,
-  entityFieldMetadata, type EntityFieldMetadata, type InsertEntityFieldMetadata
+  entityFieldMetadata, type EntityFieldMetadata, type InsertEntityFieldMetadata,
+  resourceSkills, type ResourceSkill, type InsertResourceSkill,
+  resourceAvailability, type ResourceAvailability, type InsertResourceAvailability
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull, inArray } from "drizzle-orm";
@@ -321,6 +323,17 @@ export interface IStorage {
   updateHumanResource(id: string, resource: Partial<InsertHumanResource>, userId: string): Promise<HumanResource | undefined>;
   deleteHumanResource(id: string, userId: string): Promise<boolean>;
   getHumanResourceByLinkedUser(userId: string, linkedUserId: string): Promise<HumanResource | undefined>;
+
+  // Resource Skills
+  getResourceSkills(humanResourceId: string): Promise<ResourceSkill[]>;
+  createResourceSkill(skill: InsertResourceSkill): Promise<ResourceSkill>;
+  deleteResourceSkill(id: string): Promise<boolean>;
+
+  // Resource Availability
+  getResourceAvailability(humanResourceId: string): Promise<ResourceAvailability[]>;
+  createResourceAvailability(availability: InsertResourceAvailability): Promise<ResourceAvailability>;
+  updateResourceAvailability(id: string, data: Partial<InsertResourceAvailability>): Promise<ResourceAvailability | undefined>;
+  deleteResourceAvailability(id: string): Promise<boolean>;
 
   // SAP Systems
   getSapSystems(userId: string): Promise<SapSystem[]>;
@@ -3222,6 +3235,46 @@ export class DatabaseStorage implements IStorage {
         eq(humanResources.linkedUserId, linkedUserId)
       ));
     return resource || undefined;
+  }
+
+  async getResourceSkills(humanResourceId: string): Promise<ResourceSkill[]> {
+    return await db.select().from(resourceSkills)
+      .where(eq(resourceSkills.humanResourceId, humanResourceId))
+      .orderBy(desc(resourceSkills.isPrimary), asc(resourceSkills.skillName));
+  }
+
+  async createResourceSkill(skill: InsertResourceSkill): Promise<ResourceSkill> {
+    const [created] = await db.insert(resourceSkills).values(skill).returning();
+    return created;
+  }
+
+  async deleteResourceSkill(id: string): Promise<boolean> {
+    const result = await db.delete(resourceSkills).where(eq(resourceSkills.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getResourceAvailability(humanResourceId: string): Promise<ResourceAvailability[]> {
+    return await db.select().from(resourceAvailability)
+      .where(eq(resourceAvailability.humanResourceId, humanResourceId))
+      .orderBy(desc(resourceAvailability.effectiveFrom));
+  }
+
+  async createResourceAvailability(availability: InsertResourceAvailability): Promise<ResourceAvailability> {
+    const [created] = await db.insert(resourceAvailability).values(availability).returning();
+    return created;
+  }
+
+  async updateResourceAvailability(id: string, data: Partial<InsertResourceAvailability>): Promise<ResourceAvailability | undefined> {
+    const [updated] = await db.update(resourceAvailability)
+      .set(data)
+      .where(eq(resourceAvailability.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteResourceAvailability(id: string): Promise<boolean> {
+    const result = await db.delete(resourceAvailability).where(eq(resourceAvailability.id, id));
+    return (result.rowCount || 0) > 0;
   }
 
   // SAP Systems

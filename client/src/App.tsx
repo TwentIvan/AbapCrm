@@ -40,6 +40,7 @@ import WebLinksPage from "@/pages/web-links-page";
 import EmailAccountsPage from "@/pages/email-accounts-page";
 import AccountPage from "@/pages/account-page";
 import BusinessScenariosPage from "@/pages/business-scenarios-page";
+import ResourcePlannerPage from "@/pages/resource-planner-page";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -91,6 +92,7 @@ function Router() {
       <ProtectedRoute path="/account" component={AccountPage} />
       <ProtectedRoute path="/account/settings" component={AccountPage} />
       <ProtectedRoute path="/business-scenarios" component={BusinessScenariosPage} />
+      <ProtectedRoute path="/resource-planner" component={ResourcePlannerPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/login" component={AuthPage} />
       <Route component={NotFound} />
