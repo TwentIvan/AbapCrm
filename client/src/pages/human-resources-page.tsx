@@ -5,20 +5,173 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { UniversalTable, createStandardColumns } from "@/components/ui/universal-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { Users, DollarSign, Calendar, User as UserIcon } from "lucide-react";
-import { HumanResource } from "@shared/schema";
+import { Users, DollarSign, Calendar, User as UserIcon, Star, Plus, Trash2, Sparkles } from "lucide-react";
+import { HumanResource, type ResourceSkill } from "@shared/schema";
 import { HumanResourceForm } from "@/components/forms/human-resource-form";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
 import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
+
+function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((level) => (
+        <button
+          key={level}
+          type="button"
+          onClick={() => onChange(level)}
+          className="p-0.5 hover:scale-110 transition-transform"
+          data-testid={`star-${level}`}
+        >
+          <Star
+            className={`h-4 w-4 ${level <= value ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ResourceSkillsManager({ resourceId }: { resourceId: string }) {
+  const [newSkillName, setNewSkillName] = useState("");
+  const [newProficiency, setNewProficiency] = useState(3);
+  const [newIsPrimary, setNewIsPrimary] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: skills = [], isLoading } = useQuery<ResourceSkill[]>({
+    queryKey: ["/api/human-resources", resourceId, "skills"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!resourceId,
+  });
+
+  const addSkillMutation = useMutation({
+    mutationFn: async (data: { skillName: string; proficiencyLevel: number; isPrimary: boolean }) => {
+      const res = await apiRequest("POST", `/api/human-resources/${resourceId}/skills`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/human-resources", resourceId, "skills"] });
+      setNewSkillName("");
+      setNewProficiency(3);
+      setNewIsPrimary(false);
+      toast({ title: "Skill aggiunta" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Errore nell'aggiunta della skill", variant: "destructive" });
+    },
+  });
+
+  const deleteSkillMutation = useMutation({
+    mutationFn: async (skillId: string) => {
+      await apiRequest("DELETE", `/api/human-resources/${resourceId}/skills/${skillId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/human-resources", resourceId, "skills"] });
+      toast({ title: "Skill rimossa" });
+    },
+  });
+
+  const handleAddSkill = () => {
+    if (!newSkillName.trim()) return;
+    addSkillMutation.mutate({ skillName: newSkillName.trim(), proficiencyLevel: newProficiency, isPrimary: newIsPrimary });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-end gap-3">
+        <div className="flex-1">
+          <Label>Nome Skill</Label>
+          <Input
+            placeholder="es. SAP ABAP, React, FICO..."
+            value={newSkillName}
+            onChange={(e) => setNewSkillName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddSkill()}
+            data-testid="input-new-skill"
+          />
+        </div>
+        <div>
+          <Label>Livello</Label>
+          <StarRating value={newProficiency} onChange={setNewProficiency} />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-xs">Primaria</Label>
+          <Switch checked={newIsPrimary} onCheckedChange={setNewIsPrimary} data-testid="switch-primary-skill" />
+        </div>
+        <Button
+          size="sm"
+          onClick={handleAddSkill}
+          disabled={!newSkillName.trim() || addSkillMutation.isPending}
+          data-testid="button-add-skill"
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          Aggiungi
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="text-sm text-muted-foreground">Caricamento skills...</div>
+      ) : skills.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p>Nessuna skill definita</p>
+          <p className="text-xs">Aggiungi le competenze di questa risorsa</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {skills.map((skill) => (
+            <div
+              key={skill.id}
+              className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+              data-testid={`skill-row-${skill.id}`}
+            >
+              <div className="flex items-center gap-3">
+                <Badge variant={skill.isPrimary ? "default" : "outline"} className="text-xs">
+                  {skill.skillName}
+                </Badge>
+                {skill.isPrimary && (
+                  <Badge variant="secondary" className="text-xs">Primaria</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <Star
+                      key={level}
+                      className={`h-3.5 w-3.5 ${level <= skill.proficiencyLevel ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                    />
+                  ))}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:text-destructive"
+                  onClick={() => deleteSkillMutation.mutate(skill.id)}
+                  disabled={deleteSkillMutation.isPending}
+                  data-testid={`delete-skill-${skill.id}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function HumanResourcesPage() {
   const [selectedResources, setSelectedResources] = useState<HumanResource[]>([]);
@@ -287,7 +440,7 @@ export default function HumanResourcesPage() {
 
           {/* Create/Edit Dialog */}
           <Dialog open={showForm} onOpenChange={setShowForm}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingResource ? "Modifica Risorsa" : "Nuova Risorsa"}
@@ -296,14 +449,41 @@ export default function HumanResourcesPage() {
                   {editingResource ? "Aggiorna" : "Crea"} una risorsa umana
                 </DialogDescription>
               </DialogHeader>
-              <HumanResourceForm
-                humanResource={editingResource}
-                onSuccess={() => {
-                  setShowForm(false);
-                  setEditingResource(null);
-                  queryClient.invalidateQueries({ queryKey: ["/api/human-resources"] });
-                }}
-              />
+              {editingResource ? (
+                <Tabs defaultValue="details">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="details" data-testid="tab-details">
+                      <UserIcon className="h-4 w-4 mr-1" />
+                      Dettagli
+                    </TabsTrigger>
+                    <TabsTrigger value="skills" data-testid="tab-skills">
+                      <Sparkles className="h-4 w-4 mr-1" />
+                      Skills
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="details">
+                    <HumanResourceForm
+                      humanResource={editingResource}
+                      onSuccess={() => {
+                        setShowForm(false);
+                        setEditingResource(null);
+                        queryClient.invalidateQueries({ queryKey: ["/api/human-resources"] });
+                      }}
+                    />
+                  </TabsContent>
+                  <TabsContent value="skills">
+                    <ResourceSkillsManager resourceId={editingResource.id} />
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                <HumanResourceForm
+                  onSuccess={() => {
+                    setShowForm(false);
+                    setEditingResource(null);
+                    queryClient.invalidateQueries({ queryKey: ["/api/human-resources"] });
+                  }}
+                />
+              )}
             </DialogContent>
           </Dialog>
 
