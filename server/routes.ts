@@ -6064,7 +6064,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         name: projects.name,
         status: projects.status,
       }).from(projects)
-        .where(inArray(projects.organizationId, organizationIds));
+        .where(and(
+          eq(projects.userId, req.user!.id),
+          inArray(projects.organizationId, organizationIds)
+        ));
 
       const allTasks = await db.select({
         id: tasks.id,
@@ -6076,7 +6079,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         estimatedEffort: tasks.estimatedEffort,
         remainingEffort: tasks.remainingEffort,
       }).from(tasks)
-        .where(inArray(tasks.organizationId, organizationIds));
+        .where(and(
+          eq(tasks.userId, req.user!.id),
+          inArray(tasks.organizationId, organizationIds)
+        ));
 
       const allRequiredSkills = await db.select().from(taskRequiredSkills)
         .where(inArray(taskRequiredSkills.organizationId, organizationIds));

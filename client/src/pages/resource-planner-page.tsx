@@ -425,7 +425,7 @@ function ActivitySidebar({
   const selectedCount = selectedTaskIds.size + selectedProjectIds.size;
 
   return (
-    <div className="w-[320px] border-l bg-muted/20 flex flex-col overflow-hidden">
+    <div className="w-[320px] border-r bg-muted/20 flex flex-col overflow-hidden">
       <div className="p-3 border-b space-y-3">
         <div className="flex items-center justify-between">
           <div className="font-semibold text-sm flex items-center gap-2">
@@ -792,6 +792,18 @@ export default function ResourcePlannerPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title="Resource Planner" subtitle="Pianificazione e allocazione risorse" />
         <div className="flex-1 flex overflow-hidden">
+          {showSidebar && (
+            <ActivitySidebar
+              selectedTaskIds={selectedTaskIds}
+              selectedProjectIds={selectedProjectIds}
+              onToggleTask={handleToggleTask}
+              onToggleProject={handleToggleProject}
+              selectedResourceIds={selectedResourceIds}
+              onToggleResource={handleToggleResource}
+              resources={data?.resources || []}
+              allRequiredSkills={allRequiredSkills}
+            />
+          )}
           <div className="flex-1 overflow-auto p-4 space-y-4">
             <div className="grid grid-cols-4 gap-3">
               <KPICard title="Risorse Attive" value={kpis.totalResources} subtitle="nel periodo selezionato" icon={Users} color="bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400" />
@@ -1022,18 +1034,6 @@ export default function ResourcePlannerPage() {
             </div>
           </div>
 
-          {showSidebar && (
-            <ActivitySidebar
-              selectedTaskIds={selectedTaskIds}
-              selectedProjectIds={selectedProjectIds}
-              onToggleTask={handleToggleTask}
-              onToggleProject={handleToggleProject}
-              selectedResourceIds={selectedResourceIds}
-              onToggleResource={handleToggleResource}
-              resources={data?.resources || []}
-              allRequiredSkills={allRequiredSkills}
-            />
-          )}
         </div>
       </div>
 
