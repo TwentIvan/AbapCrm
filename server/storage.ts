@@ -72,7 +72,10 @@ import {
   skillCatalog, type SkillCatalog, type InsertSkillCatalog,
   resourceSkills, type ResourceSkill, type InsertResourceSkill,
   resourceAvailability, type ResourceAvailability, type InsertResourceAvailability,
-  taskRequiredSkills, type TaskRequiredSkill, type InsertTaskRequiredSkill
+  taskRequiredSkills, type TaskRequiredSkill, type InsertTaskRequiredSkill,
+  resourceSkillAssessments, type ResourceSkillAssessment, type InsertResourceSkillAssessment,
+  projectSkillRequirements, type ProjectSkillRequirement, type InsertProjectSkillRequirement,
+  taskSkillRequirements, type TaskSkillRequirement, type InsertTaskSkillRequirement
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull, inArray } from "drizzle-orm";
@@ -342,6 +345,21 @@ export interface IStorage {
   createTaskRequiredSkill(skill: InsertTaskRequiredSkill): Promise<TaskRequiredSkill>;
   deleteTaskRequiredSkill(id: string): Promise<boolean>;
   getTaskRequiredSkillsByOrganization(organizationId: string): Promise<TaskRequiredSkill[]>;
+
+  // Resource Skill Assessments (new skill engine)
+  getResourceAssessments(resourceId: string): Promise<ResourceSkillAssessment[]>;
+  upsertResourceAssessment(data: InsertResourceSkillAssessment): Promise<ResourceSkillAssessment>;
+  deleteResourceAssessment(resourceId: string, skillId: string): Promise<boolean>;
+
+  // Project Skill Requirements (new skill engine)
+  getProjectSkillRequirements(projectId: string): Promise<ProjectSkillRequirement[]>;
+  upsertProjectSkillRequirement(data: InsertProjectSkillRequirement): Promise<ProjectSkillRequirement>;
+  deleteProjectSkillRequirement(projectId: string, skillId: string): Promise<boolean>;
+
+  // Task Skill Requirements v2 (new skill engine)
+  getTaskSkillRequirementsV2(taskId: string): Promise<TaskSkillRequirement[]>;
+  upsertTaskSkillRequirement(data: InsertTaskSkillRequirement): Promise<TaskSkillRequirement>;
+  deleteTaskSkillRequirementV2(taskId: string, skillId: string): Promise<boolean>;
 
   // Resource Availability
   getResourceAvailability(humanResourceId: string): Promise<ResourceAvailability[]>;
@@ -5257,6 +5275,78 @@ export class DatabaseStorage implements IStorage {
           eq(devopsFieldMappings.organizationId, organizationId)
         )
       );
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getResourceAssessments(resourceId: string): Promise<ResourceSkillAssessment[]> {
+    return db.select().from(resourceSkillAssessments).where(eq(resourceSkillAssessments.resourceId, resourceId));
+  }
+
+  async upsertResourceAssessment(data: InsertResourceSkillAssessment): Promise<ResourceSkillAssessment> {
+    const existing = await db.select().from(resourceSkillAssessments)
+      .where(and(eq(resourceSkillAssessments.resourceId, data.resourceId), eq(resourceSkillAssessments.skillId, data.skillId)));
+    if (existing.length > 0) {
+      const [updated] = await db.update(resourceSkillAssessments)
+        .set({ level: data.level, confidence: data.confidence, lastUsed: data.lastUsed, source: data.source, updatedAt: new Date() })
+        .where(eq(resourceSkillAssessments.id, existing[0].id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(resourceSkillAssessments).values({ ...data, updatedAt: new Date() }).returning();
+    return created;
+  }
+
+  async deleteResourceAssessment(resourceId: string, skillId: string): Promise<boolean> {
+    const result = await db.delete(resourceSkillAssessments)
+      .where(and(eq(resourceSkillAssessments.resourceId, resourceId), eq(resourceSkillAssessments.skillId, skillId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getProjectSkillRequirements(projectId: string): Promise<ProjectSkillRequirement[]> {
+    return db.select().from(projectSkillRequirements).where(eq(projectSkillRequirements.projectId, projectId));
+  }
+
+  async upsertProjectSkillRequirement(data: InsertProjectSkillRequirement): Promise<ProjectSkillRequirement> {
+    const existing = await db.select().from(projectSkillRequirements)
+      .where(and(eq(projectSkillRequirements.projectId, data.projectId), eq(projectSkillRequirements.skillId, data.skillId)));
+    if (existing.length > 0) {
+      const [updated] = await db.update(projectSkillRequirements)
+        .set({ requiredLevel: data.requiredLevel, mode: data.mode, weight: data.weight, updatedAt: new Date() })
+        .where(eq(projectSkillRequirements.id, existing[0].id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(projectSkillRequirements).values({ ...data, updatedAt: new Date() }).returning();
+    return created;
+  }
+
+  async deleteProjectSkillRequirement(projectId: string, skillId: string): Promise<boolean> {
+    const result = await db.delete(projectSkillRequirements)
+      .where(and(eq(projectSkillRequirements.projectId, projectId), eq(projectSkillRequirements.skillId, skillId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getTaskSkillRequirementsV2(taskId: string): Promise<TaskSkillRequirement[]> {
+    return db.select().from(taskSkillRequirements).where(eq(taskSkillRequirements.taskId, taskId));
+  }
+
+  async upsertTaskSkillRequirement(data: InsertTaskSkillRequirement): Promise<TaskSkillRequirement> {
+    const existing = await db.select().from(taskSkillRequirements)
+      .where(and(eq(taskSkillRequirements.taskId, data.taskId), eq(taskSkillRequirements.skillId, data.skillId)));
+    if (existing.length > 0) {
+      const [updated] = await db.update(taskSkillRequirements)
+        .set({ requiredLevel: data.requiredLevel, mode: data.mode, weight: data.weight, override: data.override, updatedAt: new Date() })
+        .where(eq(taskSkillRequirements.id, existing[0].id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(taskSkillRequirements).values({ ...data, updatedAt: new Date() }).returning();
+    return created;
+  }
+
+  async deleteTaskSkillRequirementV2(taskId: string, skillId: string): Promise<boolean> {
+    const result = await db.delete(taskSkillRequirements)
+      .where(and(eq(taskSkillRequirements.taskId, taskId), eq(taskSkillRequirements.skillId, skillId)));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 }

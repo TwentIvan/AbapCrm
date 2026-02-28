@@ -9649,6 +9649,286 @@ ISTRUZIONI:
     }
   });
 
+  // ============================================================
+  // Skill Engine APIs (assessments, requirements, match)
+  // ============================================================
+
+  app.get("/api/resources/:resourceId/skill-assessments", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { resourceId } = req.params;
+      const includeDerived = req.query.includeDerived === "1" || req.query.includeDerived === "true";
+      const assessments = await storage.getResourceAssessments(resourceId);
+
+      const { computeDerivedSkillLevels } = await import("./skill-engine");
+      const allOrgs = await storage.getUserOrganizations(req.user!.id);
+      const allSkills: any[] = [];
+      for (const org of allOrgs) {
+        const orgSkills = await storage.getSkillCatalog(org.organizationId);
+        allSkills.push(...orgSkills);
+      }
+
+      const enriched = assessments.map(a => {
+        const skill = allSkills.find((s: any) => s.id === a.skillId);
+        return { ...a, skillName: skill?.name || "Unknown" };
+      });
+
+      let derived: Record<string, any> | undefined;
+      if (includeDerived) {
+        const derivedMap = await computeDerivedSkillLevels(resourceId);
+        derived = {};
+        for (const [skillId, data] of derivedMap) {
+          const skill = allSkills.find((s: any) => s.id === skillId);
+          (derived as any)[skillId] = { ...data, skillName: skill?.name || skillId };
+        }
+      }
+
+      res.json({ assessments: enriched, derived });
+    } catch (error) {
+      console.error("Error fetching skill assessments:", error);
+      res.status(500).json({ error: "Failed to fetch skill assessments" });
+    }
+  });
+
+  app.put("/api/resources/:resourceId/skill-assessments", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { resourceId } = req.params;
+      const items = req.body as Array<{
+        skillId: string;
+        level: number;
+        confidence?: number;
+        lastUsed?: string;
+        source?: string;
+      }>;
+
+      const { isLeafSkill } = await import("./skill-engine");
+      const results = [];
+
+      for (const item of items) {
+        if (item.level < 0 || item.level > 5) {
+          return res.status(400).json({ error: `Level must be 0-5 for skill ${item.skillId}` });
+        }
+
+        const leaf = await isLeafSkill(item.skillId);
+        if (!leaf) {
+          return res.status(409).json({ error: `Skill ${item.skillId} is not a leaf skill. Only leaf skills can be assessed.` });
+        }
+
+        if (item.level === 0) {
+          await storage.deleteResourceAssessment(resourceId, item.skillId);
+        } else {
+          const result = await storage.upsertResourceAssessment({
+            resourceId,
+            skillId: item.skillId,
+            level: item.level,
+            confidence: item.confidence ?? 0.6,
+            lastUsed: item.lastUsed ?? null,
+            source: item.source ?? "SELF",
+            updatedAt: new Date(),
+          });
+          results.push(result);
+        }
+      }
+
+      const updated = await storage.getResourceAssessments(resourceId);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating skill assessments:", error);
+      res.status(500).json({ error: "Failed to update skill assessments" });
+    }
+  });
+
+  app.get("/api/projects/:projectId/skill-requirements", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const reqs = await storage.getProjectSkillRequirements(req.params.projectId);
+      const allOrgs = await storage.getUserOrganizations(req.user!.id);
+      const allSkills: any[] = [];
+      for (const org of allOrgs) allSkills.push(...await storage.getSkillCatalog(org.organizationId));
+      const enriched = reqs.map(r => {
+        const skill = allSkills.find((s: any) => s.id === r.skillId);
+        return { ...r, skillName: skill?.name || "Unknown" };
+      });
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching project skill requirements:", error);
+      res.status(500).json({ error: "Failed to fetch project skill requirements" });
+    }
+  });
+
+  app.put("/api/projects/:projectId/skill-requirements", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { projectId } = req.params;
+      const items = req.body as Array<{
+        skillId: string;
+        requiredLevel: number;
+        mode?: string;
+        weight?: number;
+      }>;
+
+      for (const item of items) {
+        if (item.requiredLevel < 1 || item.requiredLevel > 5) {
+          return res.status(400).json({ error: `Required level must be 1-5` });
+        }
+        if (item.weight !== undefined && item.weight <= 0) {
+          return res.status(400).json({ error: `Weight must be > 0` });
+        }
+        const validModes = ["MUST", "SCORE", "TIEBREAK"];
+        if (item.mode && !validModes.includes(item.mode)) {
+          return res.status(400).json({ error: `Mode must be one of: ${validModes.join(", ")}` });
+        }
+
+        await storage.upsertProjectSkillRequirement({
+          projectId,
+          skillId: item.skillId,
+          requiredLevel: item.requiredLevel,
+          mode: item.mode ?? "SCORE",
+          weight: item.weight ?? 1.0,
+          updatedAt: new Date(),
+        });
+      }
+
+      const updated = await storage.getProjectSkillRequirements(projectId);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating project skill requirements:", error);
+      res.status(500).json({ error: "Failed to update project skill requirements" });
+    }
+  });
+
+  app.delete("/api/projects/:projectId/skill-requirements/:skillId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      await storage.deleteProjectSkillRequirement(req.params.projectId, req.params.skillId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete project skill requirement" });
+    }
+  });
+
+  app.get("/api/tasks/:taskId/skill-requirements-v2", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const reqs = await storage.getTaskSkillRequirementsV2(req.params.taskId);
+      const allOrgs = await storage.getUserOrganizations(req.user!.id);
+      const allSkills: any[] = [];
+      for (const org of allOrgs) allSkills.push(...await storage.getSkillCatalog(org.organizationId));
+      const enriched = reqs.map(r => {
+        const skill = allSkills.find((s: any) => s.id === r.skillId);
+        return { ...r, skillName: skill?.name || "Unknown" };
+      });
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching task skill requirements v2:", error);
+      res.status(500).json({ error: "Failed to fetch task skill requirements" });
+    }
+  });
+
+  app.put("/api/tasks/:taskId/skill-requirements-v2", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { taskId } = req.params;
+      const items = req.body as Array<{
+        skillId: string;
+        requiredLevel: number;
+        mode?: string;
+        weight?: number;
+        override?: number;
+      }>;
+
+      for (const item of items) {
+        if (item.requiredLevel < 1 || item.requiredLevel > 5) {
+          return res.status(400).json({ error: `Required level must be 1-5` });
+        }
+        if (item.weight !== undefined && item.weight <= 0) {
+          return res.status(400).json({ error: `Weight must be > 0` });
+        }
+
+        await storage.upsertTaskSkillRequirement({
+          taskId,
+          skillId: item.skillId,
+          requiredLevel: item.requiredLevel,
+          mode: item.mode ?? "SCORE",
+          weight: item.weight ?? 1.0,
+          override: item.override ?? 0,
+          updatedAt: new Date(),
+        });
+      }
+
+      const updated = await storage.getTaskSkillRequirementsV2(taskId);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating task skill requirements v2:", error);
+      res.status(500).json({ error: "Failed to update task skill requirements" });
+    }
+  });
+
+  app.delete("/api/tasks/:taskId/skill-requirements-v2/:skillId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      await storage.deleteTaskSkillRequirementV2(req.params.taskId, req.params.skillId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete task skill requirement" });
+    }
+  });
+
+  app.get("/api/planner/requirements", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { projectId, taskId } = req.query as { projectId?: string; taskId?: string };
+      if (!projectId && !taskId) {
+        return res.status(400).json({ error: "projectId or taskId is required" });
+      }
+
+      const { mergeRequirements } = await import("./skill-engine");
+      const result = await mergeRequirements(projectId || null, taskId || null);
+      res.json(result);
+    } catch (error) {
+      console.error("Error computing requirements:", error);
+      res.status(500).json({ error: "Failed to compute requirements" });
+    }
+  });
+
+  app.post("/api/planner/match", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { projectId, taskId, candidateResourceIds, options } = req.body as {
+        projectId?: string | null;
+        taskId?: string | null;
+        candidateResourceIds: string[];
+        options?: { includeDerived?: boolean; lambda?: number };
+      };
+
+      if ((!projectId && !taskId) || !candidateResourceIds?.length) {
+        return res.status(400).json({ error: "projectId or taskId and candidateResourceIds are required" });
+      }
+
+      const { mergeRequirements, computeMatch } = await import("./skill-engine");
+      const requirementSet = await mergeRequirements(projectId || null, taskId || null);
+      const rankings = await computeMatch(candidateResourceIds, requirementSet, options);
+
+      res.json({ requirements: requirementSet, rankings });
+    } catch (error) {
+      console.error("Error computing match:", error);
+      res.status(500).json({ error: "Failed to compute match" });
+    }
+  });
+
+  app.get("/api/skills/tree", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { getSkillTree } = await import("./skill-engine");
+      const tree = await getSkillTree();
+      res.json(tree);
+    } catch (error) {
+      console.error("Error fetching skill tree:", error);
+      res.status(500).json({ error: "Failed to fetch skill tree" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

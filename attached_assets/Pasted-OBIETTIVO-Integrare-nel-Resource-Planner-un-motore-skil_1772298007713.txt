@@ -1,0 +1,192 @@
+OBIETTIVO
+Integrare nel Resource Planner un motore skill-based partendo dall’attuale Skill Catalog (name, description, parent, order, active) già presente in UI.
+Stack: Node.js backend + React/Vite client. Il progetto usa migrations SQL + shared/schema.ts (non introdurre Prisma/Mongo).
+
+SCOPE MVP (non implementare skill_relations/DAG in questa fase)
+1) Resource skill assessments (level 0-5) SOLO su skill foglia (nodi senza figli nell’albero)
+2) Derivazione dei livelli dei padri (computed) per reporting/matching su macro-skill
+3) Skill requirements su PROGETTO e su TASK
+4) Merge requirements (task = progetto+task) e rollup requirements (progetto = progetto + aggregazione task)
+5) Endpoint planner/match che restituisce ranking risorse + explainability
+6) UI minima: editor skills per risorsa + editor requirements progetto/task + integrazione nella pagina planner
+
+RIFERIMENTI CODICE ESISTENTE
+- UI skills: client/src/pages/skill-catalog-page.tsx
+- Tree component: client/src/components/ui/tree-view.tsx
+- Planner: client/src/pages/resource-planner-page.tsx
+- Backend routes: server/routes.ts (o struttura equivalente)
+- Schema condiviso: shared/schema.ts
+- Migrations: migrations/*.sql
+
+FASE 1 — DB (MIGRATIONS + shared/schema.ts)
+A) Creare tabella resource_skill_assessments:
+- id PK (autoincrement o uuid coerente col progetto)
+- resource_id FK verso resources
+- skill_id FK verso skills
+- level int NOT NULL (0..5)
+- confidence real NOT NULL DEFAULT 0.6 (0..1)
+- last_used text nullable (ISO date)
+- source text NOT NULL DEFAULT 'SELF' (SELF|LEAD|PROJECT|CERT)
+- updated_at text NOT NULL (ISO datetime)
+- UNIQUE(resource_id, skill_id)
+Indici: resource_id, skill_id
+
+B) Creare tabella project_skill_requirements:
+- id PK
+- project_id FK
+- skill_id FK
+- required_level int NOT NULL (1..5)
+- mode text NOT NULL DEFAULT 'SCORE' (MUST|SCORE|TIEBREAK)
+- weight real NOT NULL DEFAULT 1.0
+- updated_at text NOT NULL
+- UNIQUE(project_id, skill_id)
+Indici: project_id, skill_id
+
+C) Creare tabella task_skill_requirements:
+- id PK
+- task_id FK
+- skill_id FK
+- required_level int NOT NULL (1..5)
+- mode text NOT NULL DEFAULT 'SCORE'
+- weight real NOT NULL DEFAULT 1.0
+- override int NOT NULL DEFAULT 0
+- updated_at text NOT NULL
+- UNIQUE(task_id, skill_id)
+Indici: task_id, skill_id
+
+Aggiornare shared/schema.ts con le nuove tabelle/entità secondo lo stile già adottato.
+
+FASE 2 — SERVER: UTILITIES
+1) Implementare funzione isLeafSkill(skillId):
+- query: count(*) figli attivi in skills dove parent_id=skillId and active=1
+- leaf se count==0
+
+2) Implementare computeDerivedSkillLevels(resourceId):
+- Caricare skill tree attivo (skills)
+- Caricare assessments foglie per resourceId
+- Calcolare effectiveLevel per tutte le skill:
+  - foglie: effectiveLevel = level
+  - padri: 
+      leafTotal = # foglie nel sottoalbero
+      leafWithEvidence = # foglie con level>0
+      coverage = leafWithEvidence / leafTotal
+      proficiency = media(level foglie includendo zeri)
+      effectiveLevel = round(proficiency * sqrt(coverage)), clamp 0..5
+- Restituire mappa: {skillId: {effectiveLevel, isDerived, coverage, leafTotal, leafWithEvidence}}
+
+FASE 3 — SERVER: API
+A) Skills tree (se già esiste, adeguare):
+GET /api/skills/tree
+- return tree delle skill active=true, ordinato per order poi name, con children ricorsivi
+
+B) Resource skills assessments:
+GET /api/resources/:resourceId/skills?includeDerived=1
+- return assessments foglie + (se includeDerived=1) derived map
+
+PUT /api/resources/:resourceId/skills
+- body: array {skillId, level, confidence?, lastUsed?, source?}
+- VALIDAZIONI:
+  - level 0..5
+  - confidence 0..1 (default 0.6)
+  - isLeafSkill(skillId) deve essere true, altrimenti 409
+- UPSERT: unique (resource_id, skill_id)
+- Se level==0: cancellare record esistente (preferibile) o salvare 0 (scegli cancellazione)
+- return elenco aggiornato
+
+C) Requirements:
+GET/PUT /api/projects/:projectId/skill-requirements
+GET/PUT /api/tasks/:taskId/skill-requirements
+- PUT massivo upsert con validazioni:
+  - required_level 1..5
+  - weight >0
+  - mode enum
+  - override solo per task (0/1)
+
+D) Merge requirements per planner:
+GET /api/planner/requirements?projectId=...&taskId=...
+- Se taskId presente:
+  - carica project requirements (project del task o projectId)
+  - carica task requirements
+  - merge per skill:
+      se task.override==1 -> usa task
+      altrimenti:
+        requiredLevel = max(project, task)
+        mode = maxSeverity(MUST>SCORE>TIEBREAK)
+        weight = max(project, task)
+- Se taskId assente:
+  - rollup requirements di tutti i task del progetto (max per requiredLevel, MUST se any MUST, weight max)
+  - merge rollup + project requirements (max, maxSeverity, max)
+- return RequirementSet con origin/breakdown per ogni skill
+
+E) Match endpoint:
+POST /api/planner/match
+Body:
+{
+  projectId: string,
+  taskId?: string|null,
+  candidateResourceIds: string[],
+  options?: { includeDerived: true }
+}
+Server:
+1) Calcola RequirementSet
+2) Per ogni risorsa:
+   - carica assessments + derived (computeDerivedSkillLevels)
+   - must gating: se any MUST non soddisfatto -> eligible=false
+   - score:
+       ratio = min(effectiveLevel/requiredLevel, 1)
+       gap = max(0, requiredLevel-effectiveLevel)
+       contrib = weight*ratio
+       penalty = weight*gap^2
+     score = sum(contrib) - lambda*sum(penalty), lambda default 0.5
+   - explainability:
+       topMatches: top 5 contrib desc
+       gaps: top 5 penalty desc
+Return:
+{
+  requirements: RequirementSet,
+  rankings: [
+    { resourceId, eligible, score, mustFailures[], topMatches[], gaps[] }
+  ]
+}
+
+FASE 4 — CLIENT UI
+A) Creare pagina Resource Skills Editor:
+client/src/pages/resource-skills-page.tsx (o equivalente)
+- Selettore risorsa
+- Mostra albero skill (riuso tree-view)
+- Solo foglie editabili: dropdown o stepper livello 0..5
+- Salva con PUT /api/resources/:id/skills
+- Toggle “show derived”: se on mostra effectiveLevel sui padri (read-only)
+
+B) Requirements editor:
+- Project detail: tab “Skill requirements”
+- Task detail: tab “Skill requirements”
+Component:
+- selezione skill dal tree (consenti anche padre)
+- required_level, mode, weight
+- per task anche override toggle
+- salva via PUT massivo
+
+C) Planner integration (resource-planner-page.tsx):
+- Quando selezioni progetto/task: chiamare GET /api/planner/requirements per mostrare requirements attivi
+- Bottone “Suggest resources” -> POST /api/planner/match con candidateResourceIds (o fetch risorse disponibili)
+- Mostra lista risorse ordinate per score (eligible prima)
+- Pannello “Why” per risorsa: mustFailures, topMatches, gaps
+
+FASE 5 — QUALITY
+- Non introdurre librerie pesanti nuove
+- Aggiungere seed minimale se esiste già pattern scripts/seed
+- Aggiungere validazioni server (Zod se già usato, altrimenti manuale)
+- Aggiornare routing client per nuova pagina resource skills editor
+
+DELIVERABLE
+1) migrations SQL + schema aggiornato
+2) endpoints funzionanti con curl/postman
+3) UI editor skills risorsa
+4) UI requirements progetto/task
+5) planner ranking + explain funzionante end-to-end
+
+IMPORTANTE
+- Non implementare DAG skill_relations adesso.
+- Non cambiare il modello skills esistente (parent/order/active) salvo aggiunte non breaking.
+- Assessments solo foglie: enforce server-side.

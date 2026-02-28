@@ -1276,6 +1276,53 @@ export const taskRequiredSkillsRelations = relations(taskRequiredSkills, ({ one 
   task: one(tasks, { fields: [taskRequiredSkills.taskId], references: [tasks.id] }),
 }));
 
+export const resourceSkillAssessments = pgTable("resource_skill_assessments", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  resourceId: uuid("resource_id").references(() => humanResources.id, { onDelete: "cascade" }).notNull(),
+  skillId: uuid("skill_id").references(() => skillCatalog.id, { onDelete: "cascade" }).notNull(),
+  level: integer("level").notNull(),
+  confidence: real("confidence").default(0.6).notNull(),
+  lastUsed: text("last_used"),
+  source: text("source").default("SELF").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const resourceSkillAssessmentsRelations = relations(resourceSkillAssessments, ({ one }) => ({
+  resource: one(humanResources, { fields: [resourceSkillAssessments.resourceId], references: [humanResources.id] }),
+  skill: one(skillCatalog, { fields: [resourceSkillAssessments.skillId], references: [skillCatalog.id] }),
+}));
+
+export const projectSkillRequirements = pgTable("project_skill_requirements", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
+  skillId: uuid("skill_id").references(() => skillCatalog.id, { onDelete: "cascade" }).notNull(),
+  requiredLevel: integer("required_level").notNull(),
+  mode: text("mode").default("SCORE").notNull(),
+  weight: real("weight").default(1.0).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const projectSkillRequirementsRelations = relations(projectSkillRequirements, ({ one }) => ({
+  project: one(projects, { fields: [projectSkillRequirements.projectId], references: [projects.id] }),
+  skill: one(skillCatalog, { fields: [projectSkillRequirements.skillId], references: [skillCatalog.id] }),
+}));
+
+export const taskSkillRequirements = pgTable("task_skill_requirements", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskId: uuid("task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
+  skillId: uuid("skill_id").references(() => skillCatalog.id, { onDelete: "cascade" }).notNull(),
+  requiredLevel: integer("required_level").notNull(),
+  mode: text("mode").default("SCORE").notNull(),
+  weight: real("weight").default(1.0).notNull(),
+  override: integer("override").default(0).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const taskSkillRequirementsRelations = relations(taskSkillRequirements, ({ one }) => ({
+  task: one(tasks, { fields: [taskSkillRequirements.taskId], references: [tasks.id] }),
+  skill: one(skillCatalog, { fields: [taskSkillRequirements.skillId], references: [skillCatalog.id] }),
+}));
+
 export const dealsRelations = relations(deals, ({ one, many }) => ({
   user: one(users, { fields: [deals.userId], references: [users.id] }),
   partner: one(partners, { fields: [deals.partnerId], references: [partners.id] }),
@@ -1833,6 +1880,22 @@ export type ResourceAvailability = typeof resourceAvailability.$inferSelect;
 export type InsertResourceAvailability = z.infer<typeof insertResourceAvailabilitySchema>;
 export type TaskRequiredSkill = typeof taskRequiredSkills.$inferSelect;
 export type InsertTaskRequiredSkill = z.infer<typeof insertTaskRequiredSkillSchema>;
+
+export const insertResourceSkillAssessmentSchema = createInsertSchema(resourceSkillAssessments).omit({
+  id: true,
+});
+export const insertProjectSkillRequirementSchema = createInsertSchema(projectSkillRequirements).omit({
+  id: true,
+});
+export const insertTaskSkillRequirementSchema = createInsertSchema(taskSkillRequirements).omit({
+  id: true,
+});
+export type ResourceSkillAssessment = typeof resourceSkillAssessments.$inferSelect;
+export type InsertResourceSkillAssessment = z.infer<typeof insertResourceSkillAssessmentSchema>;
+export type ProjectSkillRequirement = typeof projectSkillRequirements.$inferSelect;
+export type InsertProjectSkillRequirement = z.infer<typeof insertProjectSkillRequirementSchema>;
+export type TaskSkillRequirement = typeof taskSkillRequirements.$inferSelect;
+export type InsertTaskSkillRequirement = z.infer<typeof insertTaskSkillRequirementSchema>;
 
 export type SapSystem = typeof sapSystems.$inferSelect;
 export type InsertSapSystem = z.infer<typeof insertSapSystemSchema>;

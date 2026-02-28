@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
@@ -14,11 +14,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { Users, DollarSign, Calendar, User as UserIcon, Star, Plus, Trash2, Sparkles } from "lucide-react";
+import { Users, DollarSign, Calendar, User as UserIcon, Star, Plus, Trash2, Sparkles, ChevronRight, ChevronDown, Eye, EyeOff, Brain } from "lucide-react";
 import { HumanResource, type ResourceSkill, type SkillCatalog } from "@shared/schema";
 import { HumanResourceForm } from "@/components/forms/human-resource-form";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
@@ -207,6 +208,217 @@ function ResourceSkillsManager({ resourceId }: { resourceId: string }) {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+interface SkillTreeNode {
+  id: string;
+  name: string;
+  parentId: string | null;
+  isActive: boolean;
+  children: SkillTreeNode[];
+}
+
+interface AssessmentData {
+  skillId: string;
+  skillName: string;
+  level: number;
+  confidence: number;
+  source: string;
+}
+
+interface DerivedData {
+  effectiveLevel: number;
+  isDerived: boolean;
+  coverage: number;
+  leafTotal: number;
+  leafWithEvidence: number;
+  skillName: string;
+}
+
+function ResourceSkillAssessmentsEditor({ resourceId }: { resourceId: string }) {
+  const [showDerived, setShowDerived] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [pendingChanges, setPendingChanges] = useState<Map<string, number>>(new Map());
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: assessmentData, isLoading } = useQuery<{ assessments: AssessmentData[]; derived?: Record<string, DerivedData> }>({
+    queryKey: ["/api/resources", resourceId, "skill-assessments", showDerived ? "derived" : "leaf"],
+    queryFn: async () => {
+      const res = await fetch(`/api/resources/${resourceId}/skill-assessments?includeDerived=${showDerived ? "1" : "0"}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!resourceId,
+  });
+
+  const { data: catalogItems = [] } = useQuery<SkillCatalog[]>({
+    queryKey: ["/api/skill-catalog"],
+    queryFn: getQueryFn({ on401: "throw" }),
+  });
+
+  const tree = useMemo(() => {
+    const nodeMap = new Map<string, SkillTreeNode>();
+    catalogItems.filter(c => c.isActive).forEach(c => nodeMap.set(c.id, { ...c, children: [] }));
+    const roots: SkillTreeNode[] = [];
+    nodeMap.forEach(node => {
+      if (node.parentId && nodeMap.has(node.parentId)) {
+        nodeMap.get(node.parentId)!.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+    return roots;
+  }, [catalogItems]);
+
+  const assessmentMap = useMemo(() => {
+    const map = new Map<string, number>();
+    assessmentData?.assessments?.forEach(a => map.set(a.skillId, a.level));
+    pendingChanges.forEach((level, skillId) => {
+      if (level === 0) map.delete(skillId);
+      else map.set(skillId, level);
+    });
+    return map;
+  }, [assessmentData, pendingChanges]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const items = Array.from(pendingChanges.entries()).map(([skillId, level]) => ({
+        skillId, level, source: "SELF",
+      }));
+      const res = await apiRequest("PUT", `/api/resources/${resourceId}/skill-assessments`, items);
+      return res.json();
+    },
+    onSuccess: () => {
+      setPendingChanges(new Map());
+      queryClient.invalidateQueries({ queryKey: ["/api/resources", resourceId, "skill-assessments"] });
+      toast({ title: "Assessments salvati" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Errore", description: err.message || "Salvataggio fallito", variant: "destructive" });
+    },
+  });
+
+  const toggleExpand = (nodeId: string) => {
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      next.has(nodeId) ? next.delete(nodeId) : next.add(nodeId);
+      return next;
+    });
+  };
+
+  const setLevel = (skillId: string, level: number) => {
+    setPendingChanges(prev => {
+      const next = new Map(prev);
+      const originalLevel = assessmentData?.assessments?.find(a => a.skillId === skillId)?.level;
+      if (originalLevel === level) {
+        next.delete(skillId);
+      } else {
+        next.set(skillId, level);
+      }
+      return next;
+    });
+  };
+
+  const isLeaf = (node: SkillTreeNode) => node.children.length === 0;
+
+  const renderNode = (node: SkillTreeNode, depth: number): JSX.Element | null => {
+    const isExpanded = expandedNodes.has(node.id);
+    const leaf = isLeaf(node);
+    const level = assessmentMap.get(node.id) || 0;
+    const derivedInfo = showDerived && assessmentData?.derived?.[node.id];
+    const hasPending = pendingChanges.has(node.id);
+
+    return (
+      <div key={node.id}>
+        <div
+          className={`flex items-center gap-2 py-1.5 px-2 hover:bg-accent/50 rounded transition-colors ${hasPending ? "bg-amber-50 dark:bg-amber-950/20" : ""}`}
+          style={{ paddingLeft: `${depth * 20 + 8}px` }}
+        >
+          {!leaf ? (
+            <button onClick={() => toggleExpand(node.id)} className="p-0.5">
+              {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            </button>
+          ) : (
+            <span className="w-4" />
+          )}
+
+          <span className={`text-sm flex-1 ${!leaf ? "font-medium" : ""}`}>{node.name}</span>
+
+          {leaf ? (
+            <div className="flex gap-0.5">
+              {[0, 1, 2, 3, 4, 5].map(l => (
+                <button
+                  key={l}
+                  onClick={() => setLevel(node.id, l)}
+                  className={`w-6 h-6 rounded text-xs font-medium transition-colors ${
+                    l === level
+                      ? l === 0
+                        ? "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                        : "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-accent text-muted-foreground"
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          ) : derivedInfo ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline" className="text-[10px]">
+                Lv.{(derivedInfo as DerivedData).effectiveLevel}
+              </Badge>
+              <span className="text-[10px]">
+                {Math.round((derivedInfo as DerivedData).coverage * 100)}% copertura
+              </span>
+            </div>
+          ) : null}
+        </div>
+        {!leaf && isExpanded && node.children.map(child => renderNode(child, depth + 1))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Brain className="h-4 w-4 text-purple-500" />
+          <span className="text-sm font-medium">Skill Assessment (Catalogo)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDerived(!showDerived)}
+            className="text-xs"
+          >
+            {showDerived ? <EyeOff className="h-3.5 w-3.5 mr-1" /> : <Eye className="h-3.5 w-3.5 mr-1" />}
+            {showDerived ? "Nascondi derivati" : "Mostra derivati"}
+          </Button>
+          {pendingChanges.size > 0 && (
+            <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+              Salva ({pendingChanges.size})
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="text-sm text-muted-foreground">Caricamento...</div>
+      ) : tree.length === 0 ? (
+        <div className="text-center py-6 text-muted-foreground">
+          <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">Nessuna skill nel catalogo.</p>
+          <p className="text-xs"><a href="/skill-catalog" className="text-primary underline">Crea il catalogo skills</a></p>
+        </div>
+      ) : (
+        <ScrollArea className="max-h-[400px] border rounded-md p-1">
+          {tree.map(node => renderNode(node, 0))}
+        </ScrollArea>
       )}
     </div>
   );
@@ -490,7 +702,7 @@ export default function HumanResourcesPage() {
               </DialogHeader>
               {editingResource ? (
                 <Tabs defaultValue="details">
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="details" data-testid="tab-details">
                       <UserIcon className="h-4 w-4 mr-1" />
                       Dettagli
@@ -498,6 +710,10 @@ export default function HumanResourcesPage() {
                     <TabsTrigger value="skills" data-testid="tab-skills">
                       <Sparkles className="h-4 w-4 mr-1" />
                       Skills
+                    </TabsTrigger>
+                    <TabsTrigger value="assessments" data-testid="tab-assessments">
+                      <Brain className="h-4 w-4 mr-1" />
+                      Assessment
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="details">
@@ -512,6 +728,9 @@ export default function HumanResourcesPage() {
                   </TabsContent>
                   <TabsContent value="skills">
                     <ResourceSkillsManager resourceId={editingResource.id} />
+                  </TabsContent>
+                  <TabsContent value="assessments">
+                    <ResourceSkillAssessmentsEditor resourceId={editingResource.id} />
                   </TabsContent>
                 </Tabs>
               ) : (

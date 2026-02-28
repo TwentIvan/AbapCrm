@@ -15,10 +15,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   ChevronLeft, ChevronRight, Users, TrendingUp, AlertTriangle,
   Clock, Filter, X, FolderOpen, ListTodo, ChevronDown,
-  Sparkles, Plus, Trash2, Star, PanelLeftClose, PanelLeft, Award
+  Sparkles, Plus, Trash2, Star, PanelLeftClose, PanelLeft, Award,
+  Brain, Zap, Search, Info, ShieldCheck, Target, Scale, ChevronUp
 } from "lucide-react";
 import { format, addDays, addWeeks, addMonths, startOfWeek, startOfMonth } from "date-fns";
 import { it } from "date-fns/locale";
@@ -370,15 +372,41 @@ function KPICard({ title, value, subtitle, icon: Icon, color }: {
   );
 }
 
-function TaskRequiredSkillsEditor({ taskId, taskTitle }: { taskId: string; taskTitle: string }) {
-  const [skillName, setSkillName] = useState("");
+interface SkillRequirement {
+  id: string;
+  skillId: string;
+  skillName: string;
+  requiredLevel: number;
+  mode: string;
+  weight: number;
+  override?: number;
+}
+
+function SkillRequirementsEditor({ entityType, entityId, entityTitle }: {
+  entityType: "project" | "task";
+  entityId: string;
+  entityTitle: string;
+}) {
+  const [selectedSkillId, setSelectedSkillId] = useState("");
   const [requiredLevel, setRequiredLevel] = useState(3);
+  const [mode, setMode] = useState("SCORE");
+  const [weight, setWeight] = useState(1.0);
+  const [override, setOverride] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: requiredSkills = [] } = useQuery<RequiredSkillInfo[]>({
-    queryKey: ["/api/tasks", taskId, "required-skills"],
-    queryFn: getQueryFn({ on401: "throw" }),
+  const apiUrl = entityType === "project"
+    ? `/api/projects/${entityId}/skill-requirements`
+    : `/api/tasks/${entityId}/skill-requirements-v2`;
+
+  const { data: requirements = [] } = useQuery<SkillRequirement[]>({
+    queryKey: [apiUrl],
+    queryFn: async () => {
+      const res = await fetch(apiUrl, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!entityId,
   });
 
   const { data: catalogItems = [] } = useQuery<SkillCatalog[]>({
@@ -386,88 +414,379 @@ function TaskRequiredSkillsEditor({ taskId, taskTitle }: { taskId: string; taskT
     queryFn: getQueryFn({ on401: "throw" }),
   });
 
-  const addMutation = useMutation({
-    mutationFn: async (data: { skillName: string; requiredLevel: number }) => {
-      const res = await apiRequest("POST", `/api/tasks/${taskId}/required-skills`, data);
+  const activeSkills = catalogItems.filter(c => c.isActive);
+
+  const saveMutation = useMutation({
+    mutationFn: async (item: any) => {
+      const res = await apiRequest("PUT", apiUrl, item);
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "required-skills"] });
+      queryClient.invalidateQueries({ queryKey: [apiUrl] });
       queryClient.invalidateQueries({ queryKey: ["/api/resource-planner/activity-tree"] });
-      setSkillName("");
+      queryClient.invalidateQueries({ queryKey: ["/api/planner/requirements"] });
+      setSelectedSkillId("");
       setRequiredLevel(3);
-      toast({ title: "Skill richiesta aggiunta" });
+      setMode("SCORE");
+      setWeight(1.0);
+      setOverride(false);
+      toast({ title: "Requisito salvato" });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (skillId: string) => {
-      await apiRequest("DELETE", `/api/tasks/${taskId}/required-skills/${skillId}`);
+      await apiRequest("DELETE", `${apiUrl}/${skillId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "required-skills"] });
+      queryClient.invalidateQueries({ queryKey: [apiUrl] });
       queryClient.invalidateQueries({ queryKey: ["/api/resource-planner/activity-tree"] });
-      toast({ title: "Skill richiesta rimossa" });
+      queryClient.invalidateQueries({ queryKey: ["/api/planner/requirements"] });
+      toast({ title: "Requisito rimosso" });
     },
   });
 
-  const activeSkills = catalogItems.filter(c => c.isActive);
+  const handleAdd = () => {
+    if (!selectedSkillId) return;
+    const item: any = { skillId: selectedSkillId, requiredLevel, mode, weight };
+    if (entityType === "task") item.override = override ? 1 : 0;
+    saveMutation.mutate(item);
+  };
+
+  const modeIcon = (m: string) => {
+    if (m === "MUST") return <ShieldCheck className="h-2.5 w-2.5 text-red-500" />;
+    if (m === "TIEBREAK") return <Scale className="h-2.5 w-2.5 text-blue-500" />;
+    return <Target className="h-2.5 w-2.5 text-green-500" />;
+  };
 
   return (
     <div className="space-y-2 p-3 bg-muted/30 rounded-lg">
-      <div className="text-xs font-medium text-muted-foreground">Skills richieste per: {taskTitle}</div>
-      {requiredSkills.map(s => (
-        <div key={s.id} className="flex items-center justify-between text-xs bg-background rounded px-2 py-1">
-          <div className="flex items-center gap-2">
-            <span>{s.skillName}</span>
-            <span className="text-[10px] text-muted-foreground">
-              Lv.{s.requiredLevel} {"★".repeat(s.requiredLevel)}{"☆".repeat(5 - s.requiredLevel)}
-            </span>
+      <div className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+        <Brain className="h-3 w-3" />
+        Requisiti skill - {entityTitle}
+      </div>
+      {requirements.map(r => (
+        <div key={r.id} className="flex items-center justify-between text-xs bg-background rounded px-2 py-1.5 gap-1">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            {modeIcon(r.mode)}
+            <span className="truncate">{r.skillName}</span>
+            <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">Lv.{r.requiredLevel}</Badge>
+            {r.weight !== 1 && (
+              <span className="text-[9px] text-muted-foreground shrink-0">×{r.weight}</span>
+            )}
+            {r.override === 1 && (
+              <Badge variant="secondary" className="text-[8px] px-0.5 py-0 shrink-0">OVR</Badge>
+            )}
           </div>
-          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => deleteMutation.mutate(s.id)}>
+          <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={() => deleteMutation.mutate(r.skillId)}>
             <Trash2 className="h-3 w-3 text-destructive" />
           </Button>
         </div>
       ))}
-      <div className="flex items-end gap-2">
-        <div className="flex-1">
-          {activeSkills.length > 0 ? (
-            <Select value={skillName} onValueChange={setSkillName}>
-              <SelectTrigger className="h-7 text-xs">
-                <SelectValue placeholder="Skill..." />
-              </SelectTrigger>
-              <SelectContent>
-                {activeSkills.map(s => (
-                  <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input
-              placeholder="Nome skill..."
-              value={skillName}
-              onChange={e => setSkillName(e.target.value)}
-              className="h-7 text-xs"
-            />
+      <div className="space-y-1.5">
+        <div className="flex items-end gap-1.5">
+          <div className="flex-1 min-w-0">
+            {activeSkills.length > 0 ? (
+              <Select value={selectedSkillId} onValueChange={setSelectedSkillId}>
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue placeholder="Skill..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeSkills.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="text-[10px] text-muted-foreground p-1">Nessuna skill nel catalogo</div>
+            )}
+          </div>
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map(lv => (
+              <button key={lv} onClick={() => setRequiredLevel(lv)} className="p-0">
+                <Star className={`h-3 w-3 ${lv <= requiredLevel ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Select value={mode} onValueChange={setMode}>
+            <SelectTrigger className="h-6 text-[10px] w-[85px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="MUST">MUST</SelectItem>
+              <SelectItem value="SCORE">SCORE</SelectItem>
+              <SelectItem value="TIEBREAK">TIEBREAK</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            type="number"
+            min={0.1}
+            max={10}
+            step={0.1}
+            value={weight}
+            onChange={e => setWeight(parseFloat(e.target.value) || 1)}
+            className="h-6 text-[10px] w-[55px]"
+            placeholder="Peso"
+          />
+          {entityType === "task" && (
+            <label className="flex items-center gap-1 text-[10px] cursor-pointer">
+              <Checkbox
+                checked={override}
+                onCheckedChange={(v) => setOverride(!!v)}
+                className="h-3 w-3"
+              />
+              OVR
+            </label>
           )}
+          <Button
+            size="sm"
+            className="h-6 text-[10px] px-2"
+            disabled={!selectedSkillId || saveMutation.isPending}
+            onClick={handleAdd}
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
         </div>
-        <div className="flex items-center gap-1">
-          {[1, 2, 3, 4, 5].map(lv => (
-            <button key={lv} onClick={() => setRequiredLevel(lv)} className="p-0">
-              <Star className={`h-3 w-3 ${lv <= requiredLevel ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
-            </button>
-          ))}
-        </div>
-        <Button
-          size="sm"
-          className="h-7 text-xs px-2"
-          disabled={!skillName.trim() || addMutation.isPending}
-          onClick={() => addMutation.mutate({ skillName: skillName.trim(), requiredLevel })}
-        >
-          <Plus className="h-3 w-3" />
-        </Button>
       </div>
     </div>
+  );
+}
+
+function TaskRequiredSkillsEditor({ taskId, taskTitle }: { taskId: string; taskTitle: string }) {
+  return <SkillRequirementsEditor entityType="task" entityId={taskId} entityTitle={taskTitle} />;
+}
+
+interface MatchResult {
+  resourceId: string;
+  resourceName: string;
+  score: number;
+  eligible: boolean;
+  mustFailures: { skillId: string; skillName: string; requiredLevel: number; actualLevel: number }[];
+  topMatches: { skillId: string; skillName: string; contribution: number; ratio: number }[];
+  gaps: { skillId: string; skillName: string; penalty: number; gap: number }[];
+}
+
+interface MergedRequirement {
+  skillId: string;
+  skillName: string;
+  requiredLevel: number;
+  mode: string;
+  weight: number;
+  origin: string;
+}
+
+function MatchPanel({
+  selectedProjectIds,
+  selectedTaskIds,
+  resources,
+  onMatchScores,
+}: {
+  selectedProjectIds: Set<string>;
+  selectedTaskIds: Set<string>;
+  resources: ResourceData[];
+  onMatchScores: (scores: Map<string, number>) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
+  const [isMatching, setIsMatching] = useState(false);
+  const [mergedReqs, setMergedReqs] = useState<MergedRequirement[]>([]);
+  const { toast } = useToast();
+
+  const projectId = selectedProjectIds.size === 1 ? Array.from(selectedProjectIds)[0] : undefined;
+  const taskId = selectedTaskIds.size === 1 ? Array.from(selectedTaskIds)[0] : undefined;
+
+  const hasSelection = projectId || taskId;
+
+  const { data: requirementsData } = useQuery<{ requirements: MergedRequirement[] }>({
+    queryKey: ["/api/planner/requirements", projectId, taskId],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (projectId) params.set("projectId", projectId);
+      if (taskId) params.set("taskId", taskId);
+      const res = await fetch(`/api/planner/requirements?${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!hasSelection,
+  });
+
+  useEffect(() => {
+    setMergedReqs(requirementsData?.requirements || []);
+  }, [requirementsData]);
+
+  const runMatch = async () => {
+    if (!hasSelection || resources.length === 0) return;
+    setIsMatching(true);
+    try {
+      const body: any = { candidateResourceIds: resources.map(r => r.id) };
+      if (projectId) body.projectId = projectId;
+      if (taskId) body.taskId = taskId;
+      const res = await apiRequest("POST", "/api/planner/match", body);
+      const data = await res.json();
+      setMatchResults(data.rankings || []);
+      const newScores = new Map<string, number>();
+      (data.rankings || []).forEach((r: MatchResult) => {
+        newScores.set(r.resourceId, Math.round(r.score * 100));
+      });
+      onMatchScores(newScores);
+    } catch (err) {
+      toast({ title: "Errore", description: "Match fallito", variant: "destructive" });
+    } finally {
+      setIsMatching(false);
+    }
+  };
+
+  if (!hasSelection) return null;
+
+  return (
+    <Card className="border-purple-200 dark:border-purple-800">
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Brain className="h-4 w-4 text-purple-500" />
+            <span className="text-sm font-medium">Skill Match Engine</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="default"
+              className="h-7 text-xs"
+              onClick={runMatch}
+              disabled={isMatching || mergedReqs.length === 0}
+            >
+              {isMatching ? (
+                <span className="animate-pulse">Analisi...</span>
+              ) : (
+                <>
+                  <Zap className="h-3 w-3 mr-1" />
+                  Suggerisci risorse
+                </>
+              )}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setExpanded(!expanded)}>
+              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </Button>
+          </div>
+        </div>
+
+        {expanded && (
+          <div className="space-y-3">
+            {mergedReqs.length > 0 && (
+              <div>
+                <div className="text-[10px] font-medium text-muted-foreground mb-1">Requisiti unificati ({mergedReqs.length})</div>
+                <div className="flex flex-wrap gap-1">
+                  {mergedReqs.map(r => (
+                    <TooltipProvider key={r.skillId}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] px-1.5 py-0 cursor-help ${
+                              r.mode === "MUST" ? "border-red-300 dark:border-red-700 text-red-700 dark:text-red-300" :
+                              r.mode === "TIEBREAK" ? "border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300" :
+                              "border-purple-300 dark:border-purple-700"
+                            }`}
+                          >
+                            {r.mode === "MUST" && <ShieldCheck className="h-2.5 w-2.5 mr-0.5" />}
+                            {r.skillName} Lv.{r.requiredLevel}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent className="text-xs">
+                          <div>Modo: {r.mode} · Peso: {r.weight}</div>
+                          <div className="text-muted-foreground">Origine: {r.origin}</div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {mergedReqs.length === 0 && (
+              <div className="text-xs text-muted-foreground text-center py-2">
+                Nessun requisito skill definito. Aggiungi requisiti a progetto o task.
+              </div>
+            )}
+
+            {matchResults.length > 0 && (
+              <div>
+                <div className="text-[10px] font-medium text-muted-foreground mb-1">Ranking risorse</div>
+                <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                  {matchResults.map((r, idx) => (
+                    <div key={r.resourceId} className={`flex items-center gap-2 text-xs rounded px-2 py-1.5 ${
+                      !r.eligible ? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800" :
+                      r.score >= 0.8 ? "bg-emerald-50 dark:bg-emerald-950/20" :
+                      r.score >= 0.5 ? "bg-amber-50 dark:bg-amber-950/20" :
+                      "bg-muted/50"
+                    }`}>
+                      <span className="text-[10px] font-bold text-muted-foreground w-4">{idx + 1}</span>
+                      <span className="flex-1 truncate font-medium">{r.resourceName}</span>
+                      {!r.eligible && (
+                        <Badge variant="destructive" className="text-[9px] px-1 py-0">BLOCCATO</Badge>
+                      )}
+                      <span className={`font-bold text-sm ${
+                        r.score >= 0.8 ? "text-emerald-600 dark:text-emerald-400" :
+                        r.score >= 0.5 ? "text-amber-600 dark:text-amber-400" :
+                        "text-red-600 dark:text-red-400"
+                      }`}>
+                        {Math.round(r.score * 100)}%
+                      </span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0">
+                            <Info className="h-3 w-3" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 p-3" align="end">
+                          <div className="space-y-2">
+                            <div className="font-medium text-xs">{r.resourceName} — Dettaglio match</div>
+                            {r.mustFailures.length > 0 && (
+                              <div>
+                                <div className="text-[10px] font-semibold text-red-600 dark:text-red-400 mb-0.5">MUST non soddisfatti</div>
+                                {r.mustFailures.map(f => (
+                                  <div key={f.skillId} className="text-[11px] flex justify-between">
+                                    <span>{f.skillName}</span>
+                                    <span className="text-red-500">richiesto Lv.{f.requiredLevel}, ha Lv.{f.actualLevel}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {r.topMatches.length > 0 && (
+                              <div>
+                                <div className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mb-0.5">Punti di forza</div>
+                                {r.topMatches.map(m => (
+                                  <div key={m.skillId} className="text-[11px] flex justify-between">
+                                    <span>{m.skillName}</span>
+                                    <span className="text-emerald-600 dark:text-emerald-400">{Math.round(m.ratio * 100)}% (+{m.contribution.toFixed(2)})</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {r.gaps.length > 0 && (
+                              <div>
+                                <div className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mb-0.5">Lacune</div>
+                                {r.gaps.map(g => (
+                                  <div key={g.skillId} className="text-[11px] flex justify-between">
+                                    <span>{g.skillName}</span>
+                                    <span className="text-amber-600 dark:text-amber-400">gap: {g.gap} (-{g.penalty.toFixed(2)})</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -486,6 +805,7 @@ function ActivitySidebar({
 }) {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [activitySearch, setActivitySearch] = useState("");
 
   const { data: treeData, isLoading } = useQuery<ActivityTreeResponse>({
@@ -580,8 +900,20 @@ function ActivitySidebar({
                       {hasSkills && (
                         <Sparkles className="h-3 w-3 text-purple-500 shrink-0" />
                       )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 shrink-0"
+                        onClick={(e) => { e.stopPropagation(); setEditingProjectId(editingProjectId === project.id ? null : project.id); }}
+                        data-testid={`edit-project-skills-${project.id}`}
+                      >
+                        <Brain className="h-3 w-3 text-purple-400" />
+                      </Button>
                       <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{project.tasks.length}</Badge>
                     </div>
+                    {editingProjectId === project.id && (
+                      <SkillRequirementsEditor entityType="project" entityId={project.id} entityTitle={project.name} />
+                    )}
                     {isExpanded && (
                       <div className="ml-4 space-y-0.5 pb-1">
                         {project.tasks.map(task => {
@@ -675,6 +1007,7 @@ export default function ResourcePlannerPage() {
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
   const [selectedResourceIds, setSelectedResourceIds] = useState<Set<string>>(new Set());
+  const [serverMatchScores, setServerMatchScores] = useState<Map<string, number>>(new Map());
   const [showSidebar, setShowSidebar] = useState(true);
   const sidebarResize = useResizable(320, 200, 500);
   const [resourceColWidth, setResourceColWidth] = useState(200);
@@ -775,6 +1108,7 @@ export default function ResourcePlannerPage() {
   }, [treeData, selectedTaskIds, selectedProjectIds]);
 
   const resourceMatchScores = useMemo(() => {
+    if (serverMatchScores.size > 0) return serverMatchScores;
     if (allRequiredSkills.length === 0 || !data?.resources) return new Map<string, number>();
     const scores = new Map<string, number>();
     data.resources.forEach(r => {
@@ -782,7 +1116,7 @@ export default function ResourcePlannerPage() {
       scores.set(r.id, match);
     });
     return scores;
-  }, [data?.resources, allRequiredSkills]);
+  }, [data?.resources, allRequiredSkills, serverMatchScores]);
 
   const handleGranularityChange = (g: Granularity) => {
     setGranularity(g);
@@ -802,6 +1136,7 @@ export default function ResourcePlannerPage() {
   };
 
   const handleToggleTask = useCallback((taskId: string) => {
+    setServerMatchScores(new Map());
     setSelectedTaskIds(prev => {
       const next = new Set(prev);
       if (next.has(taskId)) next.delete(taskId);
@@ -811,6 +1146,7 @@ export default function ResourcePlannerPage() {
   }, []);
 
   const handleToggleProject = useCallback((projectId: string, taskIds: string[]) => {
+    setServerMatchScores(new Map());
     setSelectedProjectIds(prev => {
       const next = new Set(prev);
       if (next.has(projectId)) {
@@ -895,26 +1231,12 @@ export default function ResourcePlannerPage() {
               <KPICard title="Sotto-allocazioni" value={kpis.underCount} subtitle="capacità disponibile" icon={Clock} color="bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400" />
             </div>
 
-            {allRequiredSkills.length > 0 && (
-              <Card className="border-purple-200 dark:border-purple-800">
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="h-4 w-4 text-purple-500" />
-                    <span className="text-sm font-medium">Skills richieste dalla selezione</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {allRequiredSkills.map((s, i) => (
-                      <Badge key={i} variant="outline" className="text-xs border-purple-300 dark:border-purple-700">
-                        {s.skillName}
-                        <span className="ml-1 text-[10px] text-purple-500">
-                          Lv.{s.requiredLevel} (peso: {FIBONACCI_WEIGHTS[s.requiredLevel]})
-                        </span>
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            <MatchPanel
+              selectedProjectIds={selectedProjectIds}
+              selectedTaskIds={selectedTaskIds}
+              resources={sortedFilteredResources}
+              onMatchScores={setServerMatchScores}
+            />
 
             <Card>
               <CardHeader className="py-3 px-4">
@@ -1179,31 +1501,11 @@ export default function ResourcePlannerPage() {
                     </div>
                   </div>
 
-                  {allRequiredSkills.length > 0 && (
+                  {resourceMatchScores.has(selectedResource.id) && resourceMatchScores.get(selectedResource.id)! > 0 && (
                     <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
                       <div className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">Skill Match</div>
                       <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                        {computeSkillMatch(selectedResource.skills, allRequiredSkills)}%
-                      </div>
-                      <div className="mt-2 space-y-1">
-                        {allRequiredSkills.map((req, i) => {
-                          const match = selectedResource.skills.find(
-                            s => s.name.toLowerCase().includes(req.skillName.toLowerCase()) ||
-                                 req.skillName.toLowerCase().includes(s.name.toLowerCase())
-                          );
-                          return (
-                            <div key={i} className="flex items-center justify-between text-xs">
-                              <span>{req.skillName} (Lv.{req.requiredLevel})</span>
-                              {match ? (
-                                <Badge variant="default" className="text-[10px]">
-                                  Lv.{match.level} {match.level >= req.requiredLevel ? "✓" : "↓"}
-                                </Badge>
-                              ) : (
-                                <Badge variant="destructive" className="text-[10px]">Mancante</Badge>
-                              )}
-                            </div>
-                          );
-                        })}
+                        {resourceMatchScores.get(selectedResource.id)}%
                       </div>
                     </div>
                   )}
