@@ -333,36 +333,23 @@ function ActivitySidebar({
   selectedProjectIds,
   onToggleTask,
   onToggleProject,
-  selectedResourceIds,
-  onToggleResource,
-  resources,
-  allRequiredSkills,
 }: {
   selectedTaskIds: Set<string>;
   selectedProjectIds: Set<string>;
   onToggleTask: (id: string) => void;
   onToggleProject: (id: string, taskIds: string[]) => void;
-  selectedResourceIds: Set<string>;
-  onToggleResource: (id: string) => void;
-  resources: ResourceData[];
-  allRequiredSkills: RequiredSkillInfo[];
 }) {
-  const { currentOrganizationId } = useOrganization();
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [activitySearch, setActivitySearch] = useState("");
-  const [resourceSearch, setResourceSearch] = useState("");
 
   const { data: treeData, isLoading } = useQuery<ActivityTreeResponse>({
-    queryKey: ["/api/resource-planner/activity-tree", currentOrganizationId],
+    queryKey: ["/api/resource-planner/activity-tree"],
     queryFn: async () => {
-      const headers: Record<string, string> = {};
-      if (currentOrganizationId) headers["X-Organization-Id"] = currentOrganizationId;
-      const res = await fetch("/api/resource-planner/activity-tree", { credentials: "include", headers });
+      const res = await fetch("/api/resource-planner/activity-tree", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch activity tree");
       return res.json();
     },
-    enabled: !!currentOrganizationId,
   });
 
   const toggleExpand = (projectId: string) => {
@@ -373,16 +360,6 @@ function ActivitySidebar({
       return next;
     });
   };
-
-  const resourceMatchScores = useMemo(() => {
-    if (allRequiredSkills.length === 0) return new Map<string, number>();
-    const scores = new Map<string, number>();
-    resources.forEach(r => {
-      const match = computeSkillMatch(r.skills, allRequiredSkills);
-      if (match > 0) scores.set(r.id, match);
-    });
-    return scores;
-  }, [resources, allRequiredSkills]);
 
   const filteredProjects = useMemo(() => {
     if (!treeData) return [];
@@ -402,25 +379,6 @@ function ActivitySidebar({
     const q = activitySearch.toLowerCase();
     return treeData.orphanTasks.filter(t => t.title.toLowerCase().includes(q));
   }, [treeData, activitySearch]);
-
-  const filteredResources = useMemo(() => {
-    if (!resourceSearch) return resources;
-    const q = resourceSearch.toLowerCase();
-    return resources.filter(r =>
-      r.name.toLowerCase().includes(q) ||
-      r.role.toLowerCase().includes(q) ||
-      r.skills.some(s => s.name.toLowerCase().includes(q))
-    );
-  }, [resources, resourceSearch]);
-
-  const sortedResources = useMemo(() => {
-    if (resourceMatchScores.size === 0) return filteredResources;
-    return [...filteredResources].sort((a, b) => {
-      const sa = resourceMatchScores.get(a.id) || 0;
-      const sb = resourceMatchScores.get(b.id) || 0;
-      return sb - sa;
-    });
-  }, [filteredResources, resourceMatchScores]);
 
   const selectedCount = selectedTaskIds.size + selectedProjectIds.size;
 
@@ -557,51 +515,6 @@ function ActivitySidebar({
           )}
         </div>
       </ScrollArea>
-
-      <div className="border-t p-3 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="font-semibold text-sm flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Risorse
-          </div>
-          {selectedResourceIds.size > 0 && (
-            <Badge variant="secondary" className="text-[10px]">{selectedResourceIds.size} sel.</Badge>
-          )}
-        </div>
-        <Input
-          placeholder="Cerca risorse..."
-          value={resourceSearch}
-          onChange={e => setResourceSearch(e.target.value)}
-          className="h-7 text-xs"
-          data-testid="resource-search"
-        />
-      </div>
-      <ScrollArea className="h-[200px] border-t">
-        <div className="p-2 space-y-0.5">
-          {sortedResources.map(resource => {
-            const isSelected = selectedResourceIds.has(resource.id);
-            const matchScore = resourceMatchScores.get(resource.id);
-            return (
-              <div
-                key={resource.id}
-                className={`flex items-center gap-1.5 px-2 py-1.5 hover:bg-accent/50 rounded-md transition-colors ${isSelected ? "bg-primary/10 border-l-2 border-primary" : ""} ${matchScore && matchScore >= 80 ? "ring-1 ring-emerald-400" : matchScore && matchScore >= 50 ? "ring-1 ring-amber-400" : ""}`}
-              >
-                <Checkbox
-                  checked={isSelected}
-                  onCheckedChange={() => onToggleResource(resource.id)}
-                  className="h-3.5 w-3.5"
-                  data-testid={`resource-check-${resource.id}`}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium truncate">{resource.name}</div>
-                  <div className="text-[10px] text-muted-foreground">{resource.role}</div>
-                </div>
-                {matchScore !== undefined && <MatchBadge matchPercent={matchScore} />}
-              </div>
-            );
-          })}
-        </div>
-      </ScrollArea>
     </div>
   );
 }
@@ -638,15 +551,12 @@ export default function ResourcePlannerPage() {
   });
 
   const { data: treeData } = useQuery<ActivityTreeResponse>({
-    queryKey: ["/api/resource-planner/activity-tree", currentOrganizationId],
+    queryKey: ["/api/resource-planner/activity-tree"],
     queryFn: async () => {
-      const headers: Record<string, string> = {};
-      if (currentOrganizationId) headers["X-Organization-Id"] = currentOrganizationId;
-      const res = await fetch("/api/resource-planner/activity-tree", { credentials: "include", headers });
+      const res = await fetch("/api/resource-planner/activity-tree", { credentials: "include" });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    enabled: !!currentOrganizationId,
   });
 
   const allRequiredSkills = useMemo(() => {
@@ -798,10 +708,6 @@ export default function ResourcePlannerPage() {
               selectedProjectIds={selectedProjectIds}
               onToggleTask={handleToggleTask}
               onToggleProject={handleToggleProject}
-              selectedResourceIds={selectedResourceIds}
-              onToggleResource={handleToggleResource}
-              resources={data?.resources || []}
-              allRequiredSkills={allRequiredSkills}
             />
           )}
           <div className="flex-1 overflow-auto p-4 space-y-4">

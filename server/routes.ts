@@ -6057,7 +6057,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.get("/api/resource-planner/activity-tree", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const organizationIds = await getOrganizationIdsForFilter(req);
+      const userOrgs = await storage.getUserOrganizations(req.user!.id);
+      const allUserOrgIds = userOrgs.map(o => o.id);
 
       const allProjects = await db.select({
         id: projects.id,
@@ -6066,7 +6067,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       }).from(projects)
         .where(and(
           eq(projects.userId, req.user!.id),
-          inArray(projects.organizationId, organizationIds)
+          inArray(projects.organizationId, allUserOrgIds)
         ));
 
       const allTasks = await db.select({
@@ -6081,11 +6082,11 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       }).from(tasks)
         .where(and(
           eq(tasks.userId, req.user!.id),
-          inArray(tasks.organizationId, organizationIds)
+          inArray(tasks.organizationId, allUserOrgIds)
         ));
 
       const allRequiredSkills = await db.select().from(taskRequiredSkills)
-        .where(inArray(taskRequiredSkills.organizationId, organizationIds));
+        .where(inArray(taskRequiredSkills.organizationId, allUserOrgIds));
 
       const skillsByTask = new Map<string, typeof allRequiredSkills>();
       allRequiredSkills.forEach(s => {
