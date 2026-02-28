@@ -1186,6 +1186,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   comments: many(comments),
   transportRequests: many(transportRequests),
   interventionDocuments: many(interventionDocuments),
+  requiredSkills: many(taskRequiredSkills),
 }));
 
 export const partnersRelations = relations(partners, ({ one, many }) => ({
@@ -1259,6 +1260,20 @@ export const resourceSkillsRelations = relations(resourceSkills, ({ one }) => ({
 
 export const resourceAvailabilityRelations = relations(resourceAvailability, ({ one }) => ({
   humanResource: one(humanResources, { fields: [resourceAvailability.humanResourceId], references: [humanResources.id] }),
+}));
+
+export const taskRequiredSkills = pgTable("task_required_skills", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskId: uuid("task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
+  skillName: text("skill_name").notNull(),
+  requiredLevel: integer("required_level").default(3).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const taskRequiredSkillsRelations = relations(taskRequiredSkills, ({ one }) => ({
+  task: one(tasks, { fields: [taskRequiredSkills.taskId], references: [tasks.id] }),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({
@@ -1702,6 +1717,11 @@ export const insertResourceAvailabilitySchema = createInsertSchema(resourceAvail
   createdAt: true,
 });
 
+export const insertTaskRequiredSkillSchema = createInsertSchema(taskRequiredSkills).omit({
+  id: true,
+  createdAt: true,
+});
+
 // SAP Insert Schemas
 export const insertSapSystemSchema = createInsertSchema(sapSystems).omit({
   id: true,
@@ -1811,6 +1831,8 @@ export type ResourceSkill = typeof resourceSkills.$inferSelect;
 export type InsertResourceSkill = z.infer<typeof insertResourceSkillSchema>;
 export type ResourceAvailability = typeof resourceAvailability.$inferSelect;
 export type InsertResourceAvailability = z.infer<typeof insertResourceAvailabilitySchema>;
+export type TaskRequiredSkill = typeof taskRequiredSkills.$inferSelect;
+export type InsertTaskRequiredSkill = z.infer<typeof insertTaskRequiredSkillSchema>;
 
 export type SapSystem = typeof sapSystems.$inferSelect;
 export type InsertSapSystem = z.infer<typeof insertSapSystemSchema>;

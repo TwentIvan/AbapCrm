@@ -71,7 +71,8 @@ import {
   entityFieldMetadata, type EntityFieldMetadata, type InsertEntityFieldMetadata,
   skillCatalog, type SkillCatalog, type InsertSkillCatalog,
   resourceSkills, type ResourceSkill, type InsertResourceSkill,
-  resourceAvailability, type ResourceAvailability, type InsertResourceAvailability
+  resourceAvailability, type ResourceAvailability, type InsertResourceAvailability,
+  taskRequiredSkills, type TaskRequiredSkill, type InsertTaskRequiredSkill
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNotNull, inArray } from "drizzle-orm";
@@ -335,6 +336,12 @@ export interface IStorage {
   getResourceSkills(humanResourceId: string): Promise<ResourceSkill[]>;
   createResourceSkill(skill: InsertResourceSkill): Promise<ResourceSkill>;
   deleteResourceSkill(id: string): Promise<boolean>;
+
+  // Task Required Skills
+  getTaskRequiredSkills(taskId: string): Promise<TaskRequiredSkill[]>;
+  createTaskRequiredSkill(skill: InsertTaskRequiredSkill): Promise<TaskRequiredSkill>;
+  deleteTaskRequiredSkill(id: string): Promise<boolean>;
+  getTaskRequiredSkillsByOrganization(organizationId: string): Promise<TaskRequiredSkill[]>;
 
   // Resource Availability
   getResourceAvailability(humanResourceId: string): Promise<ResourceAvailability[]>;
@@ -3307,6 +3314,28 @@ export class DatabaseStorage implements IStorage {
   async deleteResourceAvailability(id: string): Promise<boolean> {
     const result = await db.delete(resourceAvailability).where(eq(resourceAvailability.id, id));
     return (result.rowCount || 0) > 0;
+  }
+
+  async getTaskRequiredSkills(taskId: string): Promise<TaskRequiredSkill[]> {
+    return await db.select().from(taskRequiredSkills)
+      .where(eq(taskRequiredSkills.taskId, taskId))
+      .orderBy(asc(taskRequiredSkills.skillName));
+  }
+
+  async createTaskRequiredSkill(skill: InsertTaskRequiredSkill): Promise<TaskRequiredSkill> {
+    const [created] = await db.insert(taskRequiredSkills).values(skill).returning();
+    return created;
+  }
+
+  async deleteTaskRequiredSkill(id: string): Promise<boolean> {
+    const result = await db.delete(taskRequiredSkills).where(eq(taskRequiredSkills.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getTaskRequiredSkillsByOrganization(organizationId: string): Promise<TaskRequiredSkill[]> {
+    return await db.select().from(taskRequiredSkills)
+      .where(eq(taskRequiredSkills.organizationId, organizationId))
+      .orderBy(asc(taskRequiredSkills.skillName));
   }
 
   // SAP Systems

@@ -32,7 +32,8 @@ import {
   dashboardWidgetTemplates, insertDashboardWidgetTemplateSchema,
   skillCatalog, insertSkillCatalogSchema,
   resourceSkills, resourceAvailability,
-  insertResourceSkillSchema, insertResourceAvailabilitySchema
+  insertResourceSkillSchema, insertResourceAvailabilitySchema,
+  taskRequiredSkills, insertTaskRequiredSkillSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -6010,6 +6011,114 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete availability" });
+    }
+  });
+
+  // Task Required Skills
+  app.get("/api/tasks/:id/required-skills", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const skills = await storage.getTaskRequiredSkills(req.params.id);
+      res.json(skills);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch task required skills" });
+    }
+  });
+
+  app.post("/api/tasks/:id/required-skills", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const data = insertTaskRequiredSkillSchema.parse({
+        ...req.body,
+        taskId: req.params.id,
+        organizationId,
+        userId: req.user!.id,
+      });
+      const skill = await storage.createTaskRequiredSkill(data);
+      res.status(201).json(skill);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid request" });
+    }
+  });
+
+  app.delete("/api/tasks/:id/required-skills/:skillId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const success = await storage.deleteTaskRequiredSkill(req.params.skillId);
+      if (!success) return res.status(404).json({ error: "Required skill not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete required skill" });
+    }
+  });
+
+  // Resource Planner - Project/Task Tree with Required Skills
+  app.get("/api/resource-planner/activity-tree", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationIds = await getOrganizationIdsForFilter(req);
+
+      const allProjects = await db.select({
+        id: projects.id,
+        name: projects.name,
+        status: projects.status,
+      }).from(projects)
+        .where(inArray(projects.organizationId, organizationIds));
+
+      const allTasks = await db.select({
+        id: tasks.id,
+        title: tasks.title,
+        status: tasks.status,
+        priority: tasks.priority,
+        projectId: tasks.projectId,
+        assignedTo: tasks.assignedTo,
+        estimatedEffort: tasks.estimatedEffort,
+        remainingEffort: tasks.remainingEffort,
+      }).from(tasks)
+        .where(inArray(tasks.organizationId, organizationIds));
+
+      const allRequiredSkills = await db.select().from(taskRequiredSkills)
+        .where(inArray(taskRequiredSkills.organizationId, organizationIds));
+
+      const skillsByTask = new Map<string, typeof allRequiredSkills>();
+      allRequiredSkills.forEach(s => {
+        if (!skillsByTask.has(s.taskId)) skillsByTask.set(s.taskId, []);
+        skillsByTask.get(s.taskId)!.push(s);
+      });
+
+      const tree = allProjects.map(p => ({
+        ...p,
+        type: "project" as const,
+        tasks: allTasks
+          .filter(t => t.projectId === p.id)
+          .map(t => ({
+            ...t,
+            type: "task" as const,
+            requiredSkills: (skillsByTask.get(t.id) || []).map(s => ({
+              id: s.id,
+              skillName: s.skillName,
+              requiredLevel: s.requiredLevel,
+            })),
+          })),
+      }));
+
+      const orphanTasks = allTasks
+        .filter(t => !t.projectId)
+        .map(t => ({
+          ...t,
+          type: "task" as const,
+          requiredSkills: (skillsByTask.get(t.id) || []).map(s => ({
+            id: s.id,
+            skillName: s.skillName,
+            requiredLevel: s.requiredLevel,
+          })),
+        }));
+
+      res.json({ projects: tree, orphanTasks });
+    } catch (error) {
+      console.error("Activity tree error:", error);
+      res.status(500).json({ error: "Failed to fetch activity tree" });
     }
   });
 
