@@ -5812,11 +5812,11 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/human-resources", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      // Aggiungi automaticamente l'userId dell'utente autenticato e converti le date
+      const organizationId = getOrganizationId(req);
       const dataWithUserId = {
         ...req.body,
         userId: req.user!.id,
-        // Converti stringhe ISO in oggetti Date se presenti
+        organizationId,
         startDate: req.body.startDate ? new Date(req.body.startDate) : null,
         endDate: req.body.endDate ? new Date(req.body.endDate) : null,
       };
