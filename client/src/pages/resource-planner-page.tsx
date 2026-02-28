@@ -274,11 +274,16 @@ function SkillsPopover({ skills, matchScore }: { skills: ResourceSkillData[]; ma
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
           <Award className="h-3 w-3" />
           <span>{skills.length} skill{skills.length !== 1 ? "s" : ""}</span>
           {primaryCount > 0 && <span className="text-[10px] text-primary">({primaryCount} primary)</span>}
-        </button>
+        </span>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start">
         <div className="p-2 border-b">
@@ -1037,22 +1042,26 @@ export default function ResourcePlannerPage() {
                                     onCheckedChange={() => handleToggleResource(resource.id)}
                                     className="h-3.5 w-3.5 shrink-0"
                                   />
-                                  <button
-                                    onClick={() => setSelectedResource(resource)}
-                                    className="text-left flex-1 min-w-0 hover:bg-muted/50 rounded p-1 -m-1 transition-colors"
-                                    data-testid={`resource-${resource.id}`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <div className="flex-1 min-w-0">
-                                        <div className="font-medium text-sm truncate">{resource.name}</div>
-                                        <div className="text-[11px] text-muted-foreground truncate">{resource.role} · {resource.skillLevel}</div>
+                                  <div className="flex-1 min-w-0">
+                                    <div
+                                      role="button"
+                                      tabIndex={0}
+                                      onClick={() => setSelectedResource(resource)}
+                                      className="text-left hover:bg-muted/50 rounded p-1 -m-1 transition-colors cursor-pointer"
+                                      data-testid={`resource-${resource.id}`}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex-1 min-w-0">
+                                          <div className="font-medium text-sm truncate">{resource.name}</div>
+                                          <div className="text-[11px] text-muted-foreground truncate">{resource.role} · {resource.skillLevel}</div>
+                                        </div>
+                                        {matchScore !== undefined && matchScore > 0 && (
+                                          <MatchBadge matchPercent={matchScore} />
+                                        )}
                                       </div>
-                                      {matchScore !== undefined && matchScore > 0 && (
-                                        <MatchBadge matchPercent={matchScore} />
-                                      )}
                                     </div>
                                     <SkillsPopover skills={resource.skills} matchScore={matchScore} />
-                                  </button>
+                                  </div>
                                 </div>
                                 <div
                                   onMouseDown={handleResourceColMouseDown}
@@ -1203,7 +1212,14 @@ export default function ResourcePlannerPage() {
                     <div>
                       <div className="text-xs font-medium text-muted-foreground mb-2">Competenze</div>
                       <div className="flex flex-wrap gap-1.5">
-                        {selectedResource.skills.map(s => <SkillBadge key={s.id} skill={s} />)}
+                        {selectedResource.skills.map(s => {
+                          const stars = "★".repeat(s.level) + "☆".repeat(5 - s.level);
+                          return (
+                            <Badge key={s.id} variant={s.isPrimary ? "default" : "outline"} className="text-[10px] px-1.5 py-0">
+                              {s.name} <span className="ml-0.5 text-[9px]">{stars}</span>
+                            </Badge>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
