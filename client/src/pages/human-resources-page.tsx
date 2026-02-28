@@ -497,7 +497,7 @@ export default function HumanResourcesPage() {
           const { id, createdAt, updatedAt, userId, organizationId, ...resourceData } = resource;
           const newResource = {
             ...resourceData,
-            firstName: addSuffix ? `${resource.firstName}${suffix}` : resource.firstName,
+            name: addSuffix ? `${resource.name}${suffix}` : resource.name,
           };
           return apiRequest("POST", "/api/human-resources", newResource);
         })
@@ -605,10 +605,9 @@ export default function HumanResourcesPage() {
   };
 
   const columns = [
-    createStandardColumns.text("firstName", "Nome"),
-    createStandardColumns.text("lastName", "Cognome"),
-    createStandardColumns.text("email", "Email"),
+    createStandardColumns.text("name", "Nome"),
     createStandardColumns.text("role", "Ruolo"),
+    createStandardColumns.text("department", "Reparto"),
     createStandardColumns.badge("skillLevel", "Livello", {
       junior: "bg-green-100 text-green-800",
       mid: "bg-blue-100 text-blue-800", 
@@ -622,6 +621,13 @@ export default function HumanResourcesPage() {
       sortable: true,
       searchable: false,
       render: (resource: HumanResource) => resource.baseHourlyRate ? `€${resource.baseHourlyRate}/h` : "N/A"
+    },
+    {
+      key: "isActive",
+      label: "Stato",
+      sortable: true,
+      searchable: false,
+      render: (resource: HumanResource) => resource.isActive ? "Attivo" : "Inattivo"
     },
   ];
 
@@ -751,7 +757,7 @@ export default function HumanResourcesPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Elimina Risorsa</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Sei sicuro di voler eliminare "{editingResource?.firstName} {editingResource?.lastName}"? 
+                  Sei sicuro di voler eliminare "{editingResource?.name}"? 
                   Questa azione non può essere annullata.
                 </AlertDialogDescription>
               </AlertDialogHeader>
@@ -798,12 +804,12 @@ export default function HumanResourcesPage() {
             onOpenChange={setShowConfigDialog}
             tableId="human-resources"
             availableColumns={availableColumns.length > 0 ? availableColumns : [
-              { id: 'firstName', label: 'Nome' },
-              { id: 'lastName', label: 'Cognome' },
-              { id: 'email', label: 'Email' },
-              { id: 'department', label: 'Dipartimento' },
-              { id: 'position', label: 'Posizione' },
-              { id: 'salary', label: 'Stipendio' },
+              { id: 'name', label: 'Nome' },
+              { id: 'role', label: 'Ruolo' },
+              { id: 'department', label: 'Reparto' },
+              { id: 'skillLevel', label: 'Livello' },
+              { id: 'baseHourlyRate', label: 'Tariffa' },
+              { id: 'isActive', label: 'Stato' },
             ]}
             editingLayout={editingLayout}
             onSave={(layoutData) => {
