@@ -1204,6 +1204,24 @@ export const partnersRelations = relations(partners, ({ one, many }) => ({
   contacts: many(contacts),
 }));
 
+export const skillCatalog = pgTable("skill_catalog", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  parentId: uuid("parent_id"),
+  description: text("description"),
+  icon: text("icon"),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const skillCatalogRelations = relations(skillCatalog, ({ one, many }) => ({
+  parent: one(skillCatalog, { fields: [skillCatalog.parentId], references: [skillCatalog.id], relationName: "skillChildren" }),
+  children: many(skillCatalog, { relationName: "skillChildren" }),
+}));
+
 export const resourceSkills = pgTable("resource_skills", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   humanResourceId: uuid("human_resource_id").references(() => humanResources.id).notNull(),
@@ -1669,6 +1687,11 @@ export const insertHumanResourceSchema = createInsertSchema(humanResources).omit
   updatedAt: true,
 });
 
+export const insertSkillCatalogSchema = createInsertSchema(skillCatalog).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertResourceSkillSchema = createInsertSchema(resourceSkills).omit({
   id: true,
   createdAt: true,
@@ -1782,6 +1805,8 @@ export const insertDiscoveredVpnConfigurationSchema = createInsertSchema(discove
 // All Types
 export type HumanResource = typeof humanResources.$inferSelect;
 export type InsertHumanResource = z.infer<typeof insertHumanResourceSchema>;
+export type SkillCatalog = typeof skillCatalog.$inferSelect;
+export type InsertSkillCatalog = z.infer<typeof insertSkillCatalogSchema>;
 export type ResourceSkill = typeof resourceSkills.$inferSelect;
 export type InsertResourceSkill = z.infer<typeof insertResourceSkillSchema>;
 export type ResourceAvailability = typeof resourceAvailability.$inferSelect;

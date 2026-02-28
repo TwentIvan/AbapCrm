@@ -14,11 +14,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { Users, DollarSign, Calendar, User as UserIcon, Star, Plus, Trash2, Sparkles } from "lucide-react";
-import { HumanResource, type ResourceSkill } from "@shared/schema";
+import { HumanResource, type ResourceSkill, type SkillCatalog } from "@shared/schema";
 import { HumanResourceForm } from "@/components/forms/human-resource-form";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
@@ -44,8 +45,20 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   );
 }
 
+function getSkillFullPath(items: SkillCatalog[], itemId: string): string {
+  const map = new Map<string, SkillCatalog>();
+  items.forEach(i => map.set(i.id, i));
+  const parts: string[] = [];
+  let current = map.get(itemId);
+  while (current) {
+    parts.unshift(current.name);
+    current = current.parentId ? map.get(current.parentId) : undefined;
+  }
+  return parts.join(" > ");
+}
+
 function ResourceSkillsManager({ resourceId }: { resourceId: string }) {
-  const [newSkillName, setNewSkillName] = useState("");
+  const [selectedCatalogId, setSelectedCatalogId] = useState("");
   const [newProficiency, setNewProficiency] = useState(3);
   const [newIsPrimary, setNewIsPrimary] = useState(false);
   const { toast } = useToast();
@@ -57,6 +70,11 @@ function ResourceSkillsManager({ resourceId }: { resourceId: string }) {
     enabled: !!resourceId,
   });
 
+  const { data: catalogItems = [] } = useQuery<SkillCatalog[]>({
+    queryKey: ["/api/skill-catalog"],
+    queryFn: getQueryFn({ on401: "throw" }),
+  });
+
   const addSkillMutation = useMutation({
     mutationFn: async (data: { skillName: string; proficiencyLevel: number; isPrimary: boolean }) => {
       const res = await apiRequest("POST", `/api/human-resources/${resourceId}/skills`, data);
@@ -64,7 +82,7 @@ function ResourceSkillsManager({ resourceId }: { resourceId: string }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/human-resources", resourceId, "skills"] });
-      setNewSkillName("");
+      setSelectedCatalogId("");
       setNewProficiency(3);
       setNewIsPrimary(false);
       toast({ title: "Skill aggiunta" });
@@ -85,22 +103,43 @@ function ResourceSkillsManager({ resourceId }: { resourceId: string }) {
   });
 
   const handleAddSkill = () => {
-    if (!newSkillName.trim()) return;
-    addSkillMutation.mutate({ skillName: newSkillName.trim(), proficiencyLevel: newProficiency, isPrimary: newIsPrimary });
+    if (!selectedCatalogId) return;
+    const catalogEntry = catalogItems.find(c => c.id === selectedCatalogId);
+    const skillName = catalogEntry ? getSkillFullPath(catalogItems, catalogEntry.id) : selectedCatalogId;
+    addSkillMutation.mutate({ skillName, proficiencyLevel: newProficiency, isPrimary: newIsPrimary });
   };
+
+  const leafSkills = catalogItems.filter(item => {
+    const hasChildren = catalogItems.some(c => c.parentId === item.id);
+    return !hasChildren && item.isActive;
+  });
+
+  const allActiveSkills = catalogItems.filter(item => item.isActive);
+  const selectableSkills = allActiveSkills.length > 0 ? allActiveSkills : [];
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end gap-3">
-        <div className="flex-1">
-          <Label>Nome Skill</Label>
-          <Input
-            placeholder="es. SAP ABAP, React, FICO..."
-            value={newSkillName}
-            onChange={(e) => setNewSkillName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAddSkill()}
-            data-testid="input-new-skill"
-          />
+      <div className="flex items-end gap-3 flex-wrap">
+        <div className="flex-1 min-w-[200px]">
+          <Label>Skill dal Catalogo</Label>
+          {selectableSkills.length > 0 ? (
+            <Select value={selectedCatalogId} onValueChange={setSelectedCatalogId}>
+              <SelectTrigger data-testid="select-catalog-skill">
+                <SelectValue placeholder="Seleziona skill dal catalogo..." />
+              </SelectTrigger>
+              <SelectContent>
+                {selectableSkills.map(item => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {getSkillFullPath(catalogItems, item.id)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="text-xs text-muted-foreground border rounded-md p-2">
+              Nessuna skill nel catalogo. <a href="/skill-catalog" className="text-primary underline">Crea il catalogo</a>
+            </div>
+          )}
         </div>
         <div>
           <Label>Livello</Label>
@@ -113,7 +152,7 @@ function ResourceSkillsManager({ resourceId }: { resourceId: string }) {
         <Button
           size="sm"
           onClick={handleAddSkill}
-          disabled={!newSkillName.trim() || addSkillMutation.isPending}
+          disabled={!selectedCatalogId || addSkillMutation.isPending}
           data-testid="button-add-skill"
         >
           <Plus className="h-4 w-4 mr-1" />
@@ -127,7 +166,7 @@ function ResourceSkillsManager({ resourceId }: { resourceId: string }) {
         <div className="text-center py-8 text-muted-foreground">
           <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
           <p>Nessuna skill definita</p>
-          <p className="text-xs">Aggiungi le competenze di questa risorsa</p>
+          <p className="text-xs">Aggiungi le competenze di questa risorsa dal catalogo</p>
         </div>
       ) : (
         <div className="space-y-2">

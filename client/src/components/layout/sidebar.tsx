@@ -12,6 +12,7 @@ import ImageContainer from "@/components/ui/image-container";
 const getDefaultAnagraficheDirectItems = (t: any) => [
   { id: "ana1", name: t("nav.partners"), href: "/partners", icon: Handshake, testId: "nav-partners" },
   { id: "ana2", name: "Risorse", href: "/human-resources", icon: Users, testId: "nav-human-resources" },
+  { id: "ana3", name: "Catalogo Skills", href: "/skill-catalog", icon: FolderTree, testId: "nav-skill-catalog" },
 ];
 
 // Systems group (nested under Anagrafiche)

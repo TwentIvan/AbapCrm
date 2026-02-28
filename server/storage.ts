@@ -69,6 +69,7 @@ import {
   partnerEmails, type PartnerEmail, type InsertPartnerEmail,
   partnerPhones, type PartnerPhone, type InsertPartnerPhone,
   entityFieldMetadata, type EntityFieldMetadata, type InsertEntityFieldMetadata,
+  skillCatalog, type SkillCatalog, type InsertSkillCatalog,
   resourceSkills, type ResourceSkill, type InsertResourceSkill,
   resourceAvailability, type ResourceAvailability, type InsertResourceAvailability
 } from "@shared/schema";
@@ -323,6 +324,12 @@ export interface IStorage {
   updateHumanResource(id: string, resource: Partial<InsertHumanResource>, userId: string): Promise<HumanResource | undefined>;
   deleteHumanResource(id: string, userId: string): Promise<boolean>;
   getHumanResourceByLinkedUser(userId: string, linkedUserId: string): Promise<HumanResource | undefined>;
+
+  // Skill Catalog
+  getSkillCatalog(organizationId: string): Promise<SkillCatalog[]>;
+  createSkillCatalogEntry(entry: InsertSkillCatalog): Promise<SkillCatalog>;
+  updateSkillCatalogEntry(id: string, data: Partial<InsertSkillCatalog>): Promise<SkillCatalog | undefined>;
+  deleteSkillCatalogEntry(id: string): Promise<boolean>;
 
   // Resource Skills
   getResourceSkills(humanResourceId: string): Promise<ResourceSkill[]>;
@@ -3235,6 +3242,31 @@ export class DatabaseStorage implements IStorage {
         eq(humanResources.linkedUserId, linkedUserId)
       ));
     return resource || undefined;
+  }
+
+  async getSkillCatalog(organizationId: string): Promise<SkillCatalog[]> {
+    return await db.select().from(skillCatalog)
+      .where(eq(skillCatalog.organizationId, organizationId))
+      .orderBy(asc(skillCatalog.sortOrder), asc(skillCatalog.name));
+  }
+
+  async createSkillCatalogEntry(entry: InsertSkillCatalog): Promise<SkillCatalog> {
+    const [created] = await db.insert(skillCatalog).values(entry).returning();
+    return created;
+  }
+
+  async updateSkillCatalogEntry(id: string, data: Partial<InsertSkillCatalog>): Promise<SkillCatalog | undefined> {
+    const [updated] = await db.update(skillCatalog)
+      .set(data)
+      .where(eq(skillCatalog.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteSkillCatalogEntry(id: string): Promise<boolean> {
+    await db.update(skillCatalog).set({ parentId: null }).where(eq(skillCatalog.parentId, id));
+    const result = await db.delete(skillCatalog).where(eq(skillCatalog.id, id));
+    return (result.rowCount || 0) > 0;
   }
 
   async getResourceSkills(humanResourceId: string): Promise<ResourceSkill[]> {

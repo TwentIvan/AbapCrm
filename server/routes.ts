@@ -30,6 +30,7 @@ import {
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users, organizations,
   customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions,
   dashboardWidgetTemplates, insertDashboardWidgetTemplateSchema,
+  skillCatalog, insertSkillCatalogSchema,
   resourceSkills, resourceAvailability,
   insertResourceSkillSchema, insertResourceAvailabilitySchema
 } from "@shared/schema";
@@ -5874,6 +5875,56 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   });
 
   // Resource Skills
+  // Skill Catalog CRUD
+  app.get("/api/skill-catalog", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const entries = await storage.getSkillCatalog(organizationId);
+      res.json(entries);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch skill catalog" });
+    }
+  });
+
+  app.post("/api/skill-catalog", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const data = insertSkillCatalogSchema.parse({
+        ...req.body,
+        organizationId,
+        userId: req.user!.id,
+      });
+      const entry = await storage.createSkillCatalogEntry(data);
+      res.status(201).json(entry);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid request" });
+    }
+  });
+
+  app.put("/api/skill-catalog/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const updated = await storage.updateSkillCatalogEntry(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ error: "Skill not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update skill" });
+    }
+  });
+
+  app.delete("/api/skill-catalog/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const success = await storage.deleteSkillCatalogEntry(req.params.id);
+      if (!success) return res.status(404).json({ error: "Skill not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete skill" });
+    }
+  });
+
   app.get("/api/human-resources/:id/skills", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
