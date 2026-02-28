@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOrganization } from "@/contexts/organization-context";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ChevronLeft, ChevronRight, Users, TrendingUp, AlertTriangle,
   Clock, Filter, X, FolderOpen, ListTodo, ChevronDown,
-  Sparkles, Plus, Trash2, Star, PanelLeftClose, PanelLeft
+  Sparkles, Plus, Trash2, Star, PanelLeftClose, PanelLeft, Award
 } from "lucide-react";
 import { format, addDays, addWeeks, addMonths, startOfWeek, startOfMonth } from "date-fns";
 import { it } from "date-fns/locale";
@@ -179,12 +179,150 @@ function StatusCell({ period, onClick }: { period: ResourcePeriod; onClick: () =
   );
 }
 
-function SkillBadge({ skill }: { skill: ResourceSkillData }) {
-  const stars = "★".repeat(skill.level) + "☆".repeat(5 - skill.level);
+function useResizable(initialWidth: number, minWidth: number, maxWidth: number) {
+  const [width, setWidth] = useState(initialWidth);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    isDragging.current = true;
+    startX.current = e.clientX;
+    startWidth.current = width;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      const delta = e.clientX - startX.current;
+      const newWidth = Math.min(maxWidth, Math.max(minWidth, startWidth.current + delta));
+      setWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, [width, minWidth, maxWidth]);
+
+  return { width, handleMouseDown };
+}
+
+function ResizeDivider({ onMouseDown, orientation = "vertical" }: { onMouseDown: (e: React.MouseEvent) => void; orientation?: "vertical" | "horizontal" }) {
   return (
-    <Badge variant={skill.isPrimary ? "default" : "outline"} className="text-[10px] px-1.5 py-0">
-      {skill.name} <span className="ml-0.5 text-[9px]">{stars}</span>
-    </Badge>
+    <div
+      onMouseDown={onMouseDown}
+      className={`${orientation === "vertical" ? "w-1.5 cursor-col-resize hover:bg-primary/20 active:bg-primary/30" : "h-1.5 cursor-row-resize hover:bg-primary/20 active:bg-primary/30"} flex items-center justify-center group transition-colors flex-shrink-0`}
+    >
+      <div className={`${orientation === "vertical" ? "w-0.5 h-8" : "h-0.5 w-8"} bg-border group-hover:bg-primary/40 rounded-full transition-colors`} />
+    </div>
+  );
+}
+
+function SkillsPopover({ skills, matchScore }: { skills: ResourceSkillData[]; matchScore?: number }) {
+  const { data: catalogItems = [] } = useQuery<SkillCatalog[]>({
+    queryKey: ["/api/skill-catalog"],
+    queryFn: getQueryFn({ on401: "throw" }),
+  });
+
+  const grouped = useMemo(() => {
+    const catalogMap = new Map<string, SkillCatalog>();
+    catalogItems.forEach(c => catalogMap.set(c.name.toLowerCase(), c));
+
+    const parentGroups = new Map<string, { parent: string; children: { skill: ResourceSkillData; catalogEntry?: SkillCatalog }[] }>();
+    const ungrouped: { skill: ResourceSkillData; catalogEntry?: SkillCatalog }[] = [];
+
+    skills.forEach(skill => {
+      const entry = catalogMap.get(skill.name.toLowerCase());
+      if (entry?.parentId) {
+        const parentEntry = catalogItems.find(c => c.id === entry.parentId);
+        if (parentEntry) {
+          const key = parentEntry.id;
+          if (!parentGroups.has(key)) {
+            parentGroups.set(key, { parent: parentEntry.name, children: [] });
+          }
+          parentGroups.get(key)!.children.push({ skill, catalogEntry: entry });
+          return;
+        }
+      }
+      const asParent = catalogItems.find(c => c.name.toLowerCase() === skill.name.toLowerCase() && !c.parentId);
+      if (asParent) {
+        const key = asParent.id;
+        if (!parentGroups.has(key)) {
+          parentGroups.set(key, { parent: asParent.name, children: [] });
+        }
+        parentGroups.get(key)!.children.push({ skill, catalogEntry: entry });
+      } else {
+        ungrouped.push({ skill, catalogEntry: entry });
+      }
+    });
+
+    return { parentGroups: Array.from(parentGroups.values()), ungrouped };
+  }, [skills, catalogItems]);
+
+  if (skills.length === 0) return null;
+
+  const primaryCount = skills.filter(s => s.isPrimary).length;
+  const stars = (level: number) => "★".repeat(level) + "☆".repeat(5 - level);
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+          <Award className="h-3 w-3" />
+          <span>{skills.length} skill{skills.length !== 1 ? "s" : ""}</span>
+          {primaryCount > 0 && <span className="text-[10px] text-primary">({primaryCount} primary)</span>}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-0" align="start">
+        <div className="p-2 border-b">
+          <div className="font-medium text-xs">Skills ({skills.length})</div>
+          {matchScore !== undefined && matchScore > 0 && (
+            <MatchBadge matchPercent={matchScore} />
+          )}
+        </div>
+        <ScrollArea className="max-h-[280px]">
+          <div className="p-2 space-y-2">
+            {grouped.parentGroups.map(group => (
+              <div key={group.parent}>
+                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{group.parent}</div>
+                {group.children.map(({ skill }) => (
+                  <div key={skill.id} className="flex items-center justify-between py-0.5 pl-2">
+                    <span className="text-xs flex items-center gap-1">
+                      {skill.isPrimary && <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500" />}
+                      {skill.name}
+                    </span>
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400">{stars(skill.level)}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+            {grouped.ungrouped.length > 0 && (
+              <div>
+                {grouped.parentGroups.length > 0 && (
+                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Altre</div>
+                )}
+                {grouped.ungrouped.map(({ skill }) => (
+                  <div key={skill.id} className="flex items-center justify-between py-0.5">
+                    <span className="text-xs flex items-center gap-1">
+                      {skill.isPrimary && <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500" />}
+                      {skill.name}
+                    </span>
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400">{stars(skill.level)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -333,11 +471,13 @@ function ActivitySidebar({
   selectedProjectIds,
   onToggleTask,
   onToggleProject,
+  width,
 }: {
   selectedTaskIds: Set<string>;
   selectedProjectIds: Set<string>;
   onToggleTask: (id: string) => void;
   onToggleProject: (id: string, taskIds: string[]) => void;
+  width: number;
 }) {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -383,7 +523,7 @@ function ActivitySidebar({
   const selectedCount = selectedTaskIds.size + selectedProjectIds.size;
 
   return (
-    <div className="w-[320px] border-r bg-muted/20 flex flex-col overflow-hidden">
+    <div style={{ width: `${width}px` }} className="border-r bg-muted/20 flex flex-col overflow-hidden flex-shrink-0">
       <div className="p-3 border-b space-y-3">
         <div className="flex items-center justify-between">
           <div className="font-semibold text-sm flex items-center gap-2">
@@ -531,6 +671,34 @@ export default function ResourcePlannerPage() {
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
   const [selectedResourceIds, setSelectedResourceIds] = useState<Set<string>>(new Set());
   const [showSidebar, setShowSidebar] = useState(true);
+  const sidebarResize = useResizable(320, 200, 500);
+  const [resourceColWidth, setResourceColWidth] = useState(200);
+  const resourceColDrag = useRef(false);
+  const resourceColStartX = useRef(0);
+  const resourceColStartW = useRef(0);
+
+  const handleResourceColMouseDown = useCallback((e: React.MouseEvent) => {
+    resourceColDrag.current = true;
+    resourceColStartX.current = e.clientX;
+    resourceColStartW.current = resourceColWidth;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const onMove = (ev: MouseEvent) => {
+      if (!resourceColDrag.current) return;
+      const delta = ev.clientX - resourceColStartX.current;
+      setResourceColWidth(Math.min(400, Math.max(120, resourceColStartW.current + delta)));
+    };
+    const onUp = () => {
+      resourceColDrag.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [resourceColWidth]);
 
   const startStr = format(dateRange.start, "yyyy-MM-dd");
   const endStr = format(dateRange.end, "yyyy-MM-dd");
@@ -703,12 +871,16 @@ export default function ResourcePlannerPage() {
         <Header title="Resource Planner" subtitle="Pianificazione e allocazione risorse" />
         <div className="flex-1 flex overflow-hidden">
           {showSidebar && (
-            <ActivitySidebar
-              selectedTaskIds={selectedTaskIds}
-              selectedProjectIds={selectedProjectIds}
-              onToggleTask={handleToggleTask}
-              onToggleProject={handleToggleProject}
-            />
+            <>
+              <ActivitySidebar
+                selectedTaskIds={selectedTaskIds}
+                selectedProjectIds={selectedProjectIds}
+                onToggleTask={handleToggleTask}
+                onToggleProject={handleToggleProject}
+                width={sidebarResize.width}
+              />
+              <ResizeDivider onMouseDown={sidebarResize.handleMouseDown} />
+            </>
           )}
           <div className="flex-1 overflow-auto p-4 space-y-4">
             <div className="grid grid-cols-4 gap-3">
@@ -828,8 +1000,16 @@ export default function ResourcePlannerPage() {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b">
-                          <th className="sticky left-0 bg-background z-10 text-left p-2 min-w-[250px] text-xs font-medium text-muted-foreground border-r">
-                            Risorsa
+                          <th className="sticky left-0 bg-background z-10 text-left p-2 text-xs font-medium text-muted-foreground" style={{ width: `${resourceColWidth}px`, minWidth: `${resourceColWidth}px`, maxWidth: `${resourceColWidth}px` }}>
+                            <div className="flex items-center justify-between">
+                              <span>Risorsa</span>
+                              <div
+                                onMouseDown={handleResourceColMouseDown}
+                                className="w-1 h-full cursor-col-resize hover:bg-primary/30 absolute right-0 top-0 bottom-0 flex items-center"
+                              >
+                                <div className="w-px h-4 bg-border mx-auto" />
+                              </div>
+                            </div>
                           </th>
                           {data.periods.map((label, idx) => (
                             <th key={idx} className="text-center p-1.5 text-[11px] font-medium text-muted-foreground min-w-[80px]">
@@ -850,7 +1030,7 @@ export default function ResourcePlannerPage() {
 
                           return (
                             <tr key={resource.id} className={`border-b hover:bg-muted/30 ${rowHighlight} ${isSelected ? "ring-1 ring-inset ring-primary" : ""}`}>
-                              <td className={`sticky left-0 z-10 p-2 border-r ${rowHighlight || "bg-background"}`}>
+                              <td className={`sticky left-0 z-10 p-2 relative ${rowHighlight || "bg-background"}`} style={{ width: `${resourceColWidth}px`, minWidth: `${resourceColWidth}px`, maxWidth: `${resourceColWidth}px` }}>
                                 <div className="flex items-center gap-2">
                                   <Checkbox
                                     checked={isSelected}
@@ -865,24 +1045,19 @@ export default function ResourcePlannerPage() {
                                     <div className="flex items-center gap-2">
                                       <div className="flex-1 min-w-0">
                                         <div className="font-medium text-sm truncate">{resource.name}</div>
-                                        <div className="text-[11px] text-muted-foreground">{resource.role} · {resource.skillLevel}</div>
+                                        <div className="text-[11px] text-muted-foreground truncate">{resource.role} · {resource.skillLevel}</div>
                                       </div>
                                       {matchScore !== undefined && matchScore > 0 && (
                                         <MatchBadge matchPercent={matchScore} />
                                       )}
                                     </div>
-                                    {resource.skills.length > 0 && (
-                                      <div className="flex flex-wrap gap-0.5 mt-1">
-                                        {resource.skills.slice(0, 3).map(s => (
-                                          <SkillBadge key={s.id} skill={s} />
-                                        ))}
-                                        {resource.skills.length > 3 && (
-                                          <Badge variant="secondary" className="text-[9px] px-1 py-0">+{resource.skills.length - 3}</Badge>
-                                        )}
-                                      </div>
-                                    )}
+                                    <SkillsPopover skills={resource.skills} matchScore={matchScore} />
                                   </button>
                                 </div>
+                                <div
+                                  onMouseDown={handleResourceColMouseDown}
+                                  className="w-1 cursor-col-resize hover:bg-primary/30 absolute right-0 top-0 bottom-0"
+                                />
                               </td>
                               {resource.periods.map((period, idx) => (
                                 <td key={idx} className="p-0.5">
@@ -896,7 +1071,7 @@ export default function ResourcePlannerPage() {
                           );
                         })}
                         <tr className="bg-muted/50 border-t-2">
-                          <td className="sticky left-0 bg-muted/50 z-10 p-2 border-r font-medium text-xs">
+                          <td className="sticky left-0 bg-muted/50 z-10 p-2 border-r font-medium text-xs" style={{ width: `${resourceColWidth}px`, minWidth: `${resourceColWidth}px`, maxWidth: `${resourceColWidth}px` }}>
                             Totale
                           </td>
                           {data.summary.map((s, idx) => {
