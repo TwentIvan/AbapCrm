@@ -1,0 +1,1663 @@
+{
+  "version": "1.0",
+  "generatedAt": "2026-02-28T17:31:45.297086",
+  "notes": "SAP skill taxonomy for The Hub Up. 'key' and 'parentKey' are stable import identifiers; map them to DB ids during import.",
+  "skills": [
+    {
+      "key": "SAP",
+      "name": "SAP",
+      "description": "Root node for SAP skill taxonomy.",
+      "parentKey": null,
+      "order": 0,
+      "active": true,
+      "category": "ROOT"
+    },
+    {
+      "key": "SAP_CORE",
+      "name": "SAP Core & Platform",
+      "description": "Cross-cutting SAP platform topics.",
+      "parentKey": "SAP",
+      "order": 10,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SAP_DEV",
+      "name": "Development",
+      "description": "Development technologies and extensibility.",
+      "parentKey": "SAP",
+      "order": 20,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SAP_INT",
+      "name": "Integration",
+      "description": "Integration technologies and patterns.",
+      "parentKey": "SAP",
+      "order": 30,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SAP_DATA",
+      "name": "Data, Analytics & HANA",
+      "description": "Data modeling, analytics, and SAP HANA topics.",
+      "parentKey": "SAP",
+      "order": 40,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SAP_SEC",
+      "name": "Security & Authorizations",
+      "description": "Authorization concepts and security.",
+      "parentKey": "SAP",
+      "order": 50,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SAP_ALM",
+      "name": "ALM, Transport & DevOps",
+      "description": "Lifecycle management, transports, testing, CI/CD.",
+      "parentKey": "SAP",
+      "order": 60,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SAP_FUN",
+      "name": "Functional Domains (Modules)",
+      "description": "SAP functional modules and industry solutions.",
+      "parentKey": "SAP",
+      "order": 70,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SAP_FORMS",
+      "name": "Output, Forms & Communication",
+      "description": "Print, forms, correspondence, output management.",
+      "parentKey": "SAP",
+      "order": 80,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SAP_OPER",
+      "name": "Operations & Support",
+      "description": "Incident/problem/change support, performance, monitoring.",
+      "parentKey": "SAP",
+      "order": 90,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SAP_CORE_BASIS",
+      "name": "SAP Basis Fundamentals",
+      "description": "System basics, clients, RFC destinations, etc.",
+      "parentKey": "SAP_CORE",
+      "order": 10,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SAP_CORE_BASIS_CLIENTS",
+      "name": "Clients & Mandants",
+      "description": "Client concepts, client copy, SCC* basics.",
+      "parentKey": "SAP_CORE_BASIS",
+      "order": 1,
+      "active": true,
+      "category": "CORE"
+    },
+    {
+      "key": "SAP_CORE_BASIS_RFC",
+      "name": "RFC Destinations",
+      "description": "SM59, RFC types, troubleshooting.",
+      "parentKey": "SAP_CORE_BASIS",
+      "order": 2,
+      "active": true,
+      "category": "CORE"
+    },
+    {
+      "key": "SAP_CORE_BASIS_JOBS",
+      "name": "Background Jobs",
+      "description": "SM36/SM37 scheduling, variants, events.",
+      "parentKey": "SAP_CORE_BASIS",
+      "order": 3,
+      "active": true,
+      "category": "CORE"
+    },
+    {
+      "key": "SAP_CORE_BASIS_SPOOL",
+      "name": "Spool & Output",
+      "description": "SP01, device types, spool troubleshooting.",
+      "parentKey": "SAP_CORE_BASIS",
+      "order": 4,
+      "active": true,
+      "category": "CORE"
+    },
+    {
+      "key": "SAP_CORE_BASIS_LOGS",
+      "name": "System Logs",
+      "description": "SM21, ST22 dumps, SLG1 application log.",
+      "parentKey": "SAP_CORE_BASIS",
+      "order": 5,
+      "active": true,
+      "category": "CORE"
+    },
+    {
+      "key": "SAP_CORE_BASIS_PERF",
+      "name": "System Performance Basics",
+      "description": "ST03N, ST12 basics, workload, sizing hints.",
+      "parentKey": "SAP_CORE_BASIS",
+      "order": 6,
+      "active": true,
+      "category": "CORE"
+    },
+    {
+      "key": "SAP_CORE_UI",
+      "name": "SAP UI Technologies",
+      "description": "SAP GUI, Fiori, UI integration.",
+      "parentKey": "SAP_CORE",
+      "order": 20,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SAP_CORE_UI_SAPGUI",
+      "name": "SAP GUI",
+      "description": "SAP GUI usage, settings, logon, shortcuts.",
+      "parentKey": "SAP_CORE_UI",
+      "order": 1,
+      "active": true,
+      "category": "CORE"
+    },
+    {
+      "key": "SAP_CORE_UI_FIORI",
+      "name": "SAP Fiori",
+      "description": "Fiori concepts, catalogs, roles, tiles.",
+      "parentKey": "SAP_CORE_UI",
+      "order": 2,
+      "active": true,
+      "category": "CORE"
+    },
+    {
+      "key": "SAP_CORE_UI_UI5",
+      "name": "SAPUI5 Basics",
+      "description": "UI5 components, OData binding basics.",
+      "parentKey": "SAP_CORE_UI",
+      "order": 3,
+      "active": true,
+      "category": "CORE"
+    },
+    {
+      "key": "SAP_CORE_UI_LAUNCHPAD",
+      "name": "Fiori Launchpad",
+      "description": "FLP configuration basics, troubleshooting.",
+      "parentKey": "SAP_CORE_UI",
+      "order": 4,
+      "active": true,
+      "category": "CORE"
+    },
+    {
+      "key": "SAP_DEV_ABAP",
+      "name": "ABAP",
+      "description": "ABAP development skills.",
+      "parentKey": "SAP_DEV",
+      "order": 10,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SAP_DEV_ABAP_LANG",
+      "name": "ABAP Language",
+      "description": "Core ABAP language constructs.",
+      "parentKey": "SAP_DEV_ABAP",
+      "order": 10,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "ABAP_LANG_OPENSQL",
+      "name": "Open SQL",
+      "description": "SELECT/INSERT/UPDATE, joins, FAE, new syntax, performance.",
+      "parentKey": "SAP_DEV_ABAP_LANG",
+      "order": 1,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_LANG_INTERNAL",
+      "name": "Internal Tables",
+      "description": "Standard/sorted/hashed, key access, COLLECT, grouping.",
+      "parentKey": "SAP_DEV_ABAP_LANG",
+      "order": 2,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_LANG_RANGES",
+      "name": "Ranges & Select-Options",
+      "description": "RANGES tables, dynamic filters, IN operator.",
+      "parentKey": "SAP_DEV_ABAP_LANG",
+      "order": 3,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_LANG_FIELDMAPS",
+      "name": "Structures & Mapping",
+      "description": "MOVE-CORRESPONDING, CORRESPONDING #( ), mapping patterns.",
+      "parentKey": "SAP_DEV_ABAP_LANG",
+      "order": 4,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_LANG_FS",
+      "name": "Field-Symbols & Data Refs",
+      "description": "ASSIGN, references, RTTI/RTTS basics.",
+      "parentKey": "SAP_DEV_ABAP_LANG",
+      "order": 5,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_LANG_EXC",
+      "name": "Exceptions & Messages",
+      "description": "Class-based exceptions, message handling patterns.",
+      "parentKey": "SAP_DEV_ABAP_LANG",
+      "order": 6,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_LANG_UNICODE",
+      "name": "Unicode & Codepage",
+      "description": "String handling, conversions, codepage pitfalls.",
+      "parentKey": "SAP_DEV_ABAP_LANG",
+      "order": 7,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_LANG_REGEX",
+      "name": "Regular Expressions",
+      "description": "FIND/REPLACE REGEX, CL_ABAP_REGEX.",
+      "parentKey": "SAP_DEV_ABAP_LANG",
+      "order": 8,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "SAP_DEV_ABAP_OO",
+      "name": "ABAP OO",
+      "description": "Classes, interfaces, OO design.",
+      "parentKey": "SAP_DEV_ABAP",
+      "order": 20,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "ABAP_OO_CLASSES",
+      "name": "Classes & Interfaces",
+      "description": "SE24, visibility, inheritance, interfaces.",
+      "parentKey": "SAP_DEV_ABAP_OO",
+      "order": 1,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_OO_EVENTS",
+      "name": "Events & Handlers",
+      "description": "DEFINE EVENT, SET HANDLER, event-driven patterns.",
+      "parentKey": "SAP_DEV_ABAP_OO",
+      "order": 2,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_OO_FACTORY",
+      "name": "Factory & Patterns",
+      "description": "Factory, strategy, adapter patterns in ABAP.",
+      "parentKey": "SAP_DEV_ABAP_OO",
+      "order": 3,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_OO_UNIT",
+      "name": "ABAP Unit",
+      "description": "Unit tests, test doubles basics.",
+      "parentKey": "SAP_DEV_ABAP_OO",
+      "order": 4,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_OO_CLEAN",
+      "name": "Clean ABAP",
+      "description": "Readable code, naming, modularization guidelines.",
+      "parentKey": "SAP_DEV_ABAP_OO",
+      "order": 5,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "SAP_DEV_ABAP_DDIC",
+      "name": "Data Dictionary (DDIC)",
+      "description": "Tables, views, domains, data elements.",
+      "parentKey": "SAP_DEV_ABAP",
+      "order": 30,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "DDIC_TABLES",
+      "name": "Tables",
+      "description": "SE11 tables, keys, technical settings.",
+      "parentKey": "SAP_DEV_ABAP_DDIC",
+      "order": 1,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "DDIC_VIEWS",
+      "name": "Views",
+      "description": "Database views, CDS vs classic views.",
+      "parentKey": "SAP_DEV_ABAP_DDIC",
+      "order": 2,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "DDIC_DOMAINS",
+      "name": "Domains",
+      "description": "Value ranges, conversions.",
+      "parentKey": "SAP_DEV_ABAP_DDIC",
+      "order": 3,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "DDIC_DATAELEM",
+      "name": "Data Elements",
+      "description": "Field labels, documentation.",
+      "parentKey": "SAP_DEV_ABAP_DDIC",
+      "order": 4,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "DDIC_SE11_LOCKS",
+      "name": "Lock Objects",
+      "description": "ENQUEUE/DEQUEUE, lock troubleshooting.",
+      "parentKey": "SAP_DEV_ABAP_DDIC",
+      "order": 5,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "SAP_DEV_ABAP_ALV",
+      "name": "ALV Reporting",
+      "description": "ALV grids and reporting.",
+      "parentKey": "SAP_DEV_ABAP",
+      "order": 40,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "ALV_REUSE",
+      "name": "REUSE_ALV_*",
+      "description": "Classic ALV function modules (REUSE_ALV_GRID_DISPLAY etc.).",
+      "parentKey": "SAP_DEV_ABAP_ALV",
+      "order": 1,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ALV_SALV",
+      "name": "CL_SALV_*",
+      "description": "Simple ALV OO framework.",
+      "parentKey": "SAP_DEV_ABAP_ALV",
+      "order": 2,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ALV_GUI",
+      "name": "CL_GUI_ALV_GRID",
+      "description": "Full ALV grid with events & edit.",
+      "parentKey": "SAP_DEV_ABAP_ALV",
+      "order": 3,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ALV_VARIANTS",
+      "name": "Layout Variants",
+      "description": "Saving/loading layouts, variants, user-specific settings.",
+      "parentKey": "SAP_DEV_ABAP_ALV",
+      "order": 4,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ALV_EXPORT",
+      "name": "Export to Excel",
+      "description": "Standard export button, formatting considerations.",
+      "parentKey": "SAP_DEV_ABAP_ALV",
+      "order": 5,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "SAP_DEV_ABAP_ENH",
+      "name": "Enhancements & BAdIs",
+      "description": "Enhancement framework.",
+      "parentKey": "SAP_DEV_ABAP",
+      "order": 50,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "ENH_CLASSIC",
+      "name": "User Exits & Enhancements",
+      "description": "SMOD/CMOD, implicit/explicit enhancements.",
+      "parentKey": "SAP_DEV_ABAP_ENH",
+      "order": 1,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ENH_BADI_CLASSIC",
+      "name": "Classic BAdIs",
+      "description": "SE18/SE19, filters basics.",
+      "parentKey": "SAP_DEV_ABAP_ENH",
+      "order": 2,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ENH_BADI_SPOT",
+      "name": "Enhancement Spots",
+      "description": "Spot BAdIs, implementations, filters.",
+      "parentKey": "SAP_DEV_ABAP_ENH",
+      "order": 3,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ENH_IMPLICIT",
+      "name": "Implicit Enhancements",
+      "description": "Implicit points in forms/classes/includes.",
+      "parentKey": "SAP_DEV_ABAP_ENH",
+      "order": 4,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ENH_SWITCH",
+      "name": "Switch Framework",
+      "description": "Business functions/switches basics.",
+      "parentKey": "SAP_DEV_ABAP_ENH",
+      "order": 5,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "SAP_DEV_ABAP_API",
+      "name": "APIs, IDocs & RFC in ABAP",
+      "description": "Calling remote and standard APIs.",
+      "parentKey": "SAP_DEV_ABAP",
+      "order": 60,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "ABAP_BAPI",
+      "name": "BAPIs",
+      "description": "BAPI usage patterns, commit/rollback, error handling.",
+      "parentKey": "SAP_DEV_ABAP_API",
+      "order": 1,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_IDOC",
+      "name": "IDoc Processing",
+      "description": "Inbound/outbound processing, segments, status handling.",
+      "parentKey": "SAP_DEV_ABAP_API",
+      "order": 2,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_RFC",
+      "name": "RFC Programming",
+      "description": "CALL FUNCTION DESTINATION, tRFC/qRFC basics.",
+      "parentKey": "SAP_DEV_ABAP_API",
+      "order": 3,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_WEBSRV",
+      "name": "SOAP/Web Services",
+      "description": "Consumer/provider basics in ABAP.",
+      "parentKey": "SAP_DEV_ABAP_API",
+      "order": 4,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "ABAP_OAUTH",
+      "name": "OAuth/SAML Concepts",
+      "description": "Token flows at conceptual level for integrations.",
+      "parentKey": "SAP_DEV_ABAP_API",
+      "order": 5,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "SAP_DEV_EXT",
+      "name": "Extensibility (S/4)",
+      "description": "Modern extensibility options.",
+      "parentKey": "SAP_DEV",
+      "order": 20,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "EXT_KEYUSER",
+      "name": "Key User Extensibility",
+      "description": "Custom fields, custom logic, in-app extensibility concepts.",
+      "parentKey": "SAP_DEV_EXT",
+      "order": 1,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "EXT_BTP_SIDE",
+      "name": "Side-by-side Extensibility (BTP)",
+      "description": "Extension apps/services on BTP.",
+      "parentKey": "SAP_DEV_EXT",
+      "order": 2,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "EXT_RAP",
+      "name": "RAP (ABAP RESTful)",
+      "description": "RAP concepts, BO, behavior definitions.",
+      "parentKey": "SAP_DEV_EXT",
+      "order": 3,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "EXT_CAP",
+      "name": "CAP (Cloud Application Programming)",
+      "description": "CAP concepts for side-by-side apps.",
+      "parentKey": "SAP_DEV_EXT",
+      "order": 4,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "SAP_INT_TECH",
+      "name": "Integration Technologies",
+      "description": "Protocols and SAP integration tech.",
+      "parentKey": "SAP_INT",
+      "order": 10,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "INT_IDOC_ALE",
+      "name": "IDoc & ALE",
+      "description": "Partner profiles, ports, distribution model, monitoring.",
+      "parentKey": "SAP_INT_TECH",
+      "order": 1,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "INT_RFC_QRFC",
+      "name": "RFC/tRFC/qRFC",
+      "description": "Destinations, queues, error handling.",
+      "parentKey": "SAP_INT_TECH",
+      "order": 2,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "INT_OData",
+      "name": "OData",
+      "description": "OData concepts, CRUD, service activation.",
+      "parentKey": "SAP_INT_TECH",
+      "order": 3,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "INT_SOAP",
+      "name": "SOAP",
+      "description": "WSDL, SOAP runtime, troubleshooting.",
+      "parentKey": "SAP_INT_TECH",
+      "order": 4,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "INT_REST",
+      "name": "REST/HTTP",
+      "description": "HTTP basics, REST patterns for SAP integrations.",
+      "parentKey": "SAP_INT_TECH",
+      "order": 5,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "INT_CPI",
+      "name": "SAP Integration Suite (CPI)",
+      "description": "iFlows, adapters, monitoring basics.",
+      "parentKey": "SAP_INT_TECH",
+      "order": 6,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "INT_PI_PO",
+      "name": "SAP PI/PO",
+      "description": "Interface design, mappings, monitoring basics.",
+      "parentKey": "SAP_INT_TECH",
+      "order": 7,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "INT_EVENT_MESH",
+      "name": "Event Mesh / Events",
+      "description": "Pub-sub concepts, events integration.",
+      "parentKey": "SAP_INT_TECH",
+      "order": 8,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "SAP_INT_PATTERNS",
+      "name": "Integration Patterns",
+      "description": "Patterns and good practices.",
+      "parentKey": "SAP_INT",
+      "order": 20,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "INT_SYNC_ASYNC",
+      "name": "Sync vs Async",
+      "description": "Choosing sync/async, retries, idempotency.",
+      "parentKey": "SAP_INT_PATTERNS",
+      "order": 1,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "INT_MAPPING",
+      "name": "Message Mapping",
+      "description": "Field mapping, transformations, validations.",
+      "parentKey": "SAP_INT_PATTERNS",
+      "order": 2,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "INT_MONITORING",
+      "name": "Interface Monitoring",
+      "description": "AIF/monitoring concepts, error triage.",
+      "parentKey": "SAP_INT_PATTERNS",
+      "order": 3,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "INT_SECURITY",
+      "name": "Integration Security",
+      "description": "Certificates, basic auth, OAuth, allowlists.",
+      "parentKey": "SAP_INT_PATTERNS",
+      "order": 4,
+      "active": true,
+      "category": "TECH"
+    },
+    {
+      "key": "SAP_DATA_HANA",
+      "name": "SAP HANA",
+      "description": "SAP HANA fundamentals for developers/functional.",
+      "parentKey": "SAP_DATA",
+      "order": 10,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "HANA_MODEL",
+      "name": "Modeling Concepts",
+      "description": "Schemas, views, calculation views basics.",
+      "parentKey": "SAP_DATA_HANA",
+      "order": 1,
+      "active": true,
+      "category": "DATA"
+    },
+    {
+      "key": "HANA_SQL",
+      "name": "SQL on HANA",
+      "description": "SQL fundamentals, performance considerations.",
+      "parentKey": "SAP_DATA_HANA",
+      "order": 2,
+      "active": true,
+      "category": "DATA"
+    },
+    {
+      "key": "HANA_PERF",
+      "name": "HANA Performance Basics",
+      "description": "Explain plans, indexes basics, pushdown principles.",
+      "parentKey": "SAP_DATA_HANA",
+      "order": 3,
+      "active": true,
+      "category": "DATA"
+    },
+    {
+      "key": "SAP_DATA_CDS",
+      "name": "CDS & Data Modeling",
+      "description": "Core Data Services and semantic layers.",
+      "parentKey": "SAP_DATA",
+      "order": 20,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "CDS_BASIC",
+      "name": "CDS Views Basics",
+      "description": "DDLS, annotations basics.",
+      "parentKey": "SAP_DATA_CDS",
+      "order": 1,
+      "active": true,
+      "category": "DATA"
+    },
+    {
+      "key": "CDS_ASSOC",
+      "name": "Associations",
+      "description": "Associations, path expressions, joins.",
+      "parentKey": "SAP_DATA_CDS",
+      "order": 2,
+      "active": true,
+      "category": "DATA"
+    },
+    {
+      "key": "CDS_AUTH",
+      "name": "Access Control (DCL)",
+      "description": "CDS roles, authorization checks.",
+      "parentKey": "SAP_DATA_CDS",
+      "order": 3,
+      "active": true,
+      "category": "DATA"
+    },
+    {
+      "key": "CDS_EXT",
+      "name": "CDS Extensions",
+      "description": "Extend views with fields/associations.",
+      "parentKey": "SAP_DATA_CDS",
+      "order": 4,
+      "active": true,
+      "category": "DATA"
+    },
+    {
+      "key": "SAP_DATA_ANALYTICS",
+      "name": "Analytics",
+      "description": "Reporting and analytics.",
+      "parentKey": "SAP_DATA",
+      "order": 30,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "ANL_EMBEDDED",
+      "name": "Embedded Analytics",
+      "description": "S/4 embedded analytics concepts.",
+      "parentKey": "SAP_DATA_ANALYTICS",
+      "order": 1,
+      "active": true,
+      "category": "DATA"
+    },
+    {
+      "key": "ANL_BW",
+      "name": "BW Concepts",
+      "description": "Extractors, InfoProviders basics.",
+      "parentKey": "SAP_DATA_ANALYTICS",
+      "order": 2,
+      "active": true,
+      "category": "DATA"
+    },
+    {
+      "key": "ANL_SAC",
+      "name": "SAP Analytics Cloud (SAC)",
+      "description": "Stories, models, live connections basics.",
+      "parentKey": "SAP_DATA_ANALYTICS",
+      "order": 3,
+      "active": true,
+      "category": "DATA"
+    },
+    {
+      "key": "SAP_SEC_AUTH",
+      "name": "Authorizations",
+      "description": "Roles, objects, and checks.",
+      "parentKey": "SAP_SEC",
+      "order": 10,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SEC_PFCG",
+      "name": "Roles (PFCG)",
+      "description": "Role maintenance, profiles, composites.",
+      "parentKey": "SAP_SEC_AUTH",
+      "order": 1,
+      "active": true,
+      "category": "SEC"
+    },
+    {
+      "key": "SEC_AUTHOBJ",
+      "name": "Authorization Objects",
+      "description": "SU21/SU24 basics, objects and fields.",
+      "parentKey": "SAP_SEC_AUTH",
+      "order": 2,
+      "active": true,
+      "category": "SEC"
+    },
+    {
+      "key": "SEC_TRACE",
+      "name": "Authorization Trace",
+      "description": "ST01/SU53 troubleshooting.",
+      "parentKey": "SAP_SEC_AUTH",
+      "order": 3,
+      "active": true,
+      "category": "SEC"
+    },
+    {
+      "key": "SEC_USERS",
+      "name": "User Administration",
+      "description": "SU01 basics, user types, lock/unlock.",
+      "parentKey": "SAP_SEC_AUTH",
+      "order": 4,
+      "active": true,
+      "category": "SEC"
+    },
+    {
+      "key": "SAP_SEC_IDM",
+      "name": "Identity & SSO",
+      "description": "Single sign-on and identity concepts.",
+      "parentKey": "SAP_SEC",
+      "order": 20,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SEC_SSO",
+      "name": "SSO Concepts",
+      "description": "Kerberos/SAML/OAuth overview and when used.",
+      "parentKey": "SAP_SEC_IDM",
+      "order": 1,
+      "active": true,
+      "category": "SEC"
+    },
+    {
+      "key": "SEC_CERTS",
+      "name": "Certificates",
+      "description": "STRUST, cert chains, renewal basics.",
+      "parentKey": "SAP_SEC_IDM",
+      "order": 2,
+      "active": true,
+      "category": "SEC"
+    },
+    {
+      "key": "SAP_ALM_TRANSPORT",
+      "name": "Transports (CTS)",
+      "description": "CTS, requests, landscape.",
+      "parentKey": "SAP_ALM",
+      "order": 10,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "ALM_CTS",
+      "name": "CTS Fundamentals",
+      "description": "SE09/SE10, object directory, release/import basics.",
+      "parentKey": "SAP_ALM_TRANSPORT",
+      "order": 1,
+      "active": true,
+      "category": "ALM"
+    },
+    {
+      "key": "ALM_CTS_PLUS",
+      "name": "CTS+ / Non-ABAP",
+      "description": "CTS+ concepts for non-ABAP objects.",
+      "parentKey": "SAP_ALM_TRANSPORT",
+      "order": 2,
+      "active": true,
+      "category": "ALM"
+    },
+    {
+      "key": "ALM_TR_CONTENT",
+      "name": "Transport Analysis",
+      "description": "Analyze TR contents, dependencies, conflict handling.",
+      "parentKey": "SAP_ALM_TRANSPORT",
+      "order": 3,
+      "active": true,
+      "category": "ALM"
+    },
+    {
+      "key": "SAP_ALM_TEST",
+      "name": "Testing & Quality",
+      "description": "Testing approaches.",
+      "parentKey": "SAP_ALM",
+      "order": 20,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "ALM_UNIT",
+      "name": "Unit Testing",
+      "description": "ABAP Unit/Unit tests general principles.",
+      "parentKey": "SAP_ALM_TEST",
+      "order": 1,
+      "active": true,
+      "category": "ALM"
+    },
+    {
+      "key": "ALM_INTEGRATION_TEST",
+      "name": "Integration Testing",
+      "description": "Test planning, data setup, E2E basics.",
+      "parentKey": "SAP_ALM_TEST",
+      "order": 2,
+      "active": true,
+      "category": "ALM"
+    },
+    {
+      "key": "ALM_UAT",
+      "name": "UAT Support",
+      "description": "UAT triage, defect management.",
+      "parentKey": "SAP_ALM_TEST",
+      "order": 3,
+      "active": true,
+      "category": "ALM"
+    },
+    {
+      "key": "SAP_ALM_DEVOPS",
+      "name": "DevOps & CI/CD",
+      "description": "Automation, pipelines.",
+      "parentKey": "SAP_ALM",
+      "order": 30,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "ALM_GIT",
+      "name": "Git Basics",
+      "description": "Branching, PRs, code review workflow.",
+      "parentKey": "SAP_ALM_DEVOPS",
+      "order": 1,
+      "active": true,
+      "category": "ALM"
+    },
+    {
+      "key": "ALM_PIPELINES",
+      "name": "CI/CD Pipelines",
+      "description": "Azure DevOps/GitHub Actions concepts.",
+      "parentKey": "SAP_ALM_DEVOPS",
+      "order": 2,
+      "active": true,
+      "category": "ALM"
+    },
+    {
+      "key": "ALM_GCTS",
+      "name": "gCTS",
+      "description": "Git-enabled CTS concepts.",
+      "parentKey": "SAP_ALM_DEVOPS",
+      "order": 3,
+      "active": true,
+      "category": "ALM"
+    },
+    {
+      "key": "SAP_FORMS_TECH",
+      "name": "Forms Technologies",
+      "description": "SAP forms and output.",
+      "parentKey": "SAP_FORMS",
+      "order": 10,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "FORMS_SMARTFORMS",
+      "name": "SmartForms",
+      "description": "Design, conditions, windowing, troubleshooting.",
+      "parentKey": "SAP_FORMS_TECH",
+      "order": 1,
+      "active": true,
+      "category": "FORMS"
+    },
+    {
+      "key": "FORMS_SAPSCRIPT",
+      "name": "SAPscript",
+      "description": "Layout sets, includes, legacy prints.",
+      "parentKey": "SAP_FORMS_TECH",
+      "order": 2,
+      "active": true,
+      "category": "FORMS"
+    },
+    {
+      "key": "FORMS_ADOBE",
+      "name": "Adobe Forms",
+      "description": "SFP forms, interface, lifecycle.",
+      "parentKey": "SAP_FORMS_TECH",
+      "order": 3,
+      "active": true,
+      "category": "FORMS"
+    },
+    {
+      "key": "FORMS_OUTPUT_MGMT",
+      "name": "Output Management",
+      "description": "S/4 output management concepts.",
+      "parentKey": "SAP_FORMS_TECH",
+      "order": 4,
+      "active": true,
+      "category": "FORMS"
+    },
+    {
+      "key": "FORMS_EMAIL",
+      "name": "Email Output",
+      "description": "SCOT basics, templates, attachments.",
+      "parentKey": "SAP_FORMS_TECH",
+      "order": 5,
+      "active": true,
+      "category": "FORMS"
+    },
+    {
+      "key": "SAP_OPER_SUPPORT",
+      "name": "Support & Troubleshooting",
+      "description": "Incident management skills.",
+      "parentKey": "SAP_OPER",
+      "order": 10,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "OPS_DEBUG",
+      "name": "Debugging",
+      "description": "ABAP debugger, external breakpoints, analysis.",
+      "parentKey": "SAP_OPER_SUPPORT",
+      "order": 1,
+      "active": true,
+      "category": "OPS"
+    },
+    {
+      "key": "OPS_PERF_ABAP",
+      "name": "ABAP Performance",
+      "description": "ST05, SAT/ST12 basics, SQL tuning.",
+      "parentKey": "SAP_OPER_SUPPORT",
+      "order": 2,
+      "active": true,
+      "category": "OPS"
+    },
+    {
+      "key": "OPS_MONITOR_IDOC",
+      "name": "IDoc Monitoring",
+      "description": "WE02/WE05, BD87 reprocessing.",
+      "parentKey": "SAP_OPER_SUPPORT",
+      "order": 3,
+      "active": true,
+      "category": "OPS"
+    },
+    {
+      "key": "OPS_MONITOR_ALE",
+      "name": "ALE Monitoring",
+      "description": "SM58/SMQ1/SMQ2, queue handling.",
+      "parentKey": "SAP_OPER_SUPPORT",
+      "order": 4,
+      "active": true,
+      "category": "OPS"
+    },
+    {
+      "key": "OPS_LOGGING",
+      "name": "Application Logging",
+      "description": "SLG1, log design patterns.",
+      "parentKey": "SAP_OPER_SUPPORT",
+      "order": 5,
+      "active": true,
+      "category": "OPS"
+    },
+    {
+      "key": "SAP_FUN_FIN",
+      "name": "Finance (FI/CO)",
+      "description": "Financial accounting and controlling.",
+      "parentKey": "SAP_FUN",
+      "order": 10,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "FIN_FI_GL",
+      "name": "FI-GL Basics",
+      "description": "General Ledger basics.",
+      "parentKey": "SAP_FUN_FIN",
+      "order": 1,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "FIN_FI_APAR",
+      "name": "FI-AP/AR Basics",
+      "description": "Accounts payable/receivable basics.",
+      "parentKey": "SAP_FUN_FIN",
+      "order": 2,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "FIN_FI_AA",
+      "name": "FI-AA Asset Accounting",
+      "description": "Asset accounting basics.",
+      "parentKey": "SAP_FUN_FIN",
+      "order": 3,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "FIN_CO",
+      "name": "CO Basics",
+      "description": "Cost centers, internal orders basics.",
+      "parentKey": "SAP_FUN_FIN",
+      "order": 4,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "SAP_FUN_LOG",
+      "name": "Logistics (MM/SD/PP)",
+      "description": "Materials, sales, planning.",
+      "parentKey": "SAP_FUN",
+      "order": 20,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "LOG_MM",
+      "name": "MM Basics",
+      "description": "Purchasing, inventory, master data basics.",
+      "parentKey": "SAP_FUN_LOG",
+      "order": 1,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "LOG_SD",
+      "name": "SD Basics",
+      "description": "Sales cycle basics, pricing concepts.",
+      "parentKey": "SAP_FUN_LOG",
+      "order": 2,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "LOG_PP",
+      "name": "PP Basics",
+      "description": "Planning basics, BOM/routings concepts.",
+      "parentKey": "SAP_FUN_LOG",
+      "order": 3,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "SAP_FUN_WM",
+      "name": "Warehouse (WM/EWM)",
+      "description": "Warehouse management.",
+      "parentKey": "SAP_FUN",
+      "order": 30,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "WM_WM",
+      "name": "WM Basics",
+      "description": "Classic WM concepts.",
+      "parentKey": "SAP_FUN_WM",
+      "order": 1,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "WM_EWM",
+      "name": "EWM Basics",
+      "description": "EWM concepts, waves, HU basics.",
+      "parentKey": "SAP_FUN_WM",
+      "order": 2,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "SAP_FUN_PM",
+      "name": "Plant Maintenance (PM)",
+      "description": "Maintenance management.",
+      "parentKey": "SAP_FUN",
+      "order": 40,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "PM_PM",
+      "name": "PM Basics",
+      "description": "Equipment, notifications, orders basics.",
+      "parentKey": "SAP_FUN_PM",
+      "order": 1,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "SAP_FUN_ISU",
+      "name": "Utilities (IS-U)",
+      "description": "SAP IS-U domain.",
+      "parentKey": "SAP_FUN",
+      "order": 50,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "ISU_MD",
+      "name": "IS-U Master Data",
+      "description": "Master data objects, installations, devices.",
+      "parentKey": "SAP_FUN_ISU",
+      "order": 10,
+      "active": true,
+      "category": "DOMAIN_GROUP"
+    },
+    {
+      "key": "ISU_BILL",
+      "name": "IS-U Billing & Invoicing",
+      "description": "Billing/invoicing processes and enhancements.",
+      "parentKey": "SAP_FUN_ISU",
+      "order": 20,
+      "active": true,
+      "category": "DOMAIN_GROUP"
+    },
+    {
+      "key": "ISU_DM",
+      "name": "IS-U Device Management",
+      "description": "Device mgmt, meter reading, installations.",
+      "parentKey": "SAP_FUN_ISU",
+      "order": 30,
+      "active": true,
+      "category": "DOMAIN_GROUP"
+    },
+    {
+      "key": "ISU_IDEX",
+      "name": "IS-U IDEX & Market Communication",
+      "description": "IDEX processes, message monitoring.",
+      "parentKey": "SAP_FUN_ISU",
+      "order": 40,
+      "active": true,
+      "category": "DOMAIN_GROUP"
+    },
+    {
+      "key": "ISU_CIC",
+      "name": "IS-U CIC / Customer Service",
+      "description": "Customer interaction center concepts.",
+      "parentKey": "SAP_FUN_ISU",
+      "order": 50,
+      "active": true,
+      "category": "DOMAIN_GROUP"
+    },
+    {
+      "key": "ISU_MD_BP",
+      "name": "Business Partner (IS-U)",
+      "description": "BP integration basics for utilities.",
+      "parentKey": "ISU_MD",
+      "order": 1,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_MD_CA",
+      "name": "Contract Account",
+      "description": "Contract accounts concepts and lifecycle.",
+      "parentKey": "ISU_MD",
+      "order": 2,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_MD_CONTRACT",
+      "name": "Contracts",
+      "description": "Contract objects and move-in/out basics.",
+      "parentKey": "ISU_MD",
+      "order": 3,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_MD_INSTALL",
+      "name": "Installation & Premise",
+      "description": "Premise, connection objects, installation basics.",
+      "parentKey": "ISU_MD",
+      "order": 4,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_BILL_BILLING",
+      "name": "Billing Run",
+      "description": "Billing execution, common issues.",
+      "parentKey": "ISU_BILL",
+      "order": 1,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_BILL_INVOICING",
+      "name": "Invoicing",
+      "description": "Invoicing process, print docs, errors.",
+      "parentKey": "ISU_BILL",
+      "order": 2,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_BILL_RATES",
+      "name": "Rates & Operands",
+      "description": "Rate categories, operands, rate steps concepts.",
+      "parentKey": "ISU_BILL",
+      "order": 3,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_BILL_TAXES",
+      "name": "Taxes & Surcharges",
+      "description": "Tax handling concepts in billing.",
+      "parentKey": "ISU_BILL",
+      "order": 4,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_BILL_ENH",
+      "name": "Billing Enhancements (ABAP)",
+      "description": "Enhancements/BAdIs in billing/invoicing.",
+      "parentKey": "ISU_BILL",
+      "order": 5,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_DM_DEVICES",
+      "name": "Devices",
+      "description": "Device categories, register groups basics.",
+      "parentKey": "ISU_DM",
+      "order": 1,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_DM_INSTALL",
+      "name": "Device Installation",
+      "description": "Install/remove, device location basics.",
+      "parentKey": "ISU_DM",
+      "order": 2,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_DM_MR",
+      "name": "Meter Reading",
+      "description": "Meter reading order, uploads, checks.",
+      "parentKey": "ISU_DM",
+      "order": 3,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_DM_IMEX",
+      "name": "Device Data Import/Export",
+      "description": "File-based and interface-based DM data exchange.",
+      "parentKey": "ISU_DM",
+      "order": 4,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_IDEX_PROC",
+      "name": "IDEX Processes",
+      "description": "Common market processes basics.",
+      "parentKey": "ISU_IDEX",
+      "order": 1,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_IDEX_MON",
+      "name": "IDEX Monitoring",
+      "description": "Monitoring, error handling and reprocessing.",
+      "parentKey": "ISU_IDEX",
+      "order": 2,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_IDEX_MSG",
+      "name": "Message Types",
+      "description": "Message types, formats, partner basics.",
+      "parentKey": "ISU_IDEX",
+      "order": 3,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "ISU_CIC_UI",
+      "name": "CIC Screens & Processes",
+      "description": "CIC interaction, processes basics.",
+      "parentKey": "ISU_CIC",
+      "order": 1,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "SAP_FUN_FICA",
+      "name": "Contract Accounts (FI-CA)",
+      "description": "SAP FI-CA domain.",
+      "parentKey": "SAP_FUN",
+      "order": 60,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "FICA_CA",
+      "name": "FI-CA Core",
+      "description": "Core FI-CA concepts.",
+      "parentKey": "SAP_FUN_FICA",
+      "order": 10,
+      "active": true,
+      "category": "DOMAIN_GROUP"
+    },
+    {
+      "key": "FICA_POST",
+      "name": "Posting & Clearing",
+      "description": "Posting/cash desk/clearing basics.",
+      "parentKey": "SAP_FUN_FICA",
+      "order": 20,
+      "active": true,
+      "category": "DOMAIN_GROUP"
+    },
+    {
+      "key": "FICA_DUNN",
+      "name": "Dunning & Collections",
+      "description": "Dunning run, collection processes basics.",
+      "parentKey": "SAP_FUN_FICA",
+      "order": 30,
+      "active": true,
+      "category": "DOMAIN_GROUP"
+    },
+    {
+      "key": "FICA_INT",
+      "name": "Integration (FI-CA)",
+      "description": "Integration with IS-U/GL, events.",
+      "parentKey": "SAP_FUN_FICA",
+      "order": 40,
+      "active": true,
+      "category": "DOMAIN_GROUP"
+    },
+    {
+      "key": "FICA_CA_ACCOUNT",
+      "name": "Contract Accounts Basics",
+      "description": "Account structure, events basics.",
+      "parentKey": "FICA_CA",
+      "order": 1,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "FICA_CA_DOCUMENTS",
+      "name": "Documents",
+      "description": "Document structure, main/sub transactions.",
+      "parentKey": "FICA_CA",
+      "order": 2,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "FICA_CA_EVENTS",
+      "name": "Events",
+      "description": "Event control concepts.",
+      "parentKey": "FICA_CA",
+      "order": 3,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "FICA_POST_POSTING",
+      "name": "Posting",
+      "description": "Postings, posting area basics.",
+      "parentKey": "FICA_POST",
+      "order": 1,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "FICA_POST_CLEAR",
+      "name": "Clearing",
+      "description": "Clearing rules, clearing steps basics.",
+      "parentKey": "FICA_POST",
+      "order": 2,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "FICA_POST_PAYMENTS",
+      "name": "Payments",
+      "description": "Payment lots, incoming payments basics.",
+      "parentKey": "FICA_POST",
+      "order": 3,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "FICA_DUNN_RUN",
+      "name": "Dunning Run",
+      "description": "Run setup, levels basics.",
+      "parentKey": "FICA_DUNN",
+      "order": 1,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "FICA_DUNN_COLLECTION",
+      "name": "Collections",
+      "description": "Collections process basics.",
+      "parentKey": "FICA_DUNN",
+      "order": 2,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "FICA_INT_GL",
+      "name": "FI-CA to FI-GL Integration",
+      "description": "Reconciliation, integration points.",
+      "parentKey": "FICA_INT",
+      "order": 1,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "FICA_INT_ISU",
+      "name": "FI-CA with IS-U",
+      "description": "Integration points and typical flows.",
+      "parentKey": "FICA_INT",
+      "order": 2,
+      "active": true,
+      "category": "DOMAIN"
+    },
+    {
+      "key": "SOFT",
+      "name": "Soft Skills (Consulting)",
+      "description": "Soft skills relevant to SAP consulting.",
+      "parentKey": "SAP",
+      "order": 95,
+      "active": true,
+      "category": "GROUP"
+    },
+    {
+      "key": "SOFT_COMM",
+      "name": "Communication",
+      "description": "Stakeholder updates, clarity, documentation quality.",
+      "parentKey": "SOFT",
+      "order": 1,
+      "active": true,
+      "category": "SOFT"
+    },
+    {
+      "key": "SOFT_OWN",
+      "name": "Ownership",
+      "description": "Accountability, follow-through, proactive risk management.",
+      "parentKey": "SOFT",
+      "order": 2,
+      "active": true,
+      "category": "SOFT"
+    },
+    {
+      "key": "SOFT_TEAM",
+      "name": "Teamwork",
+      "description": "Collaboration, feedback, conflict management.",
+      "parentKey": "SOFT",
+      "order": 3,
+      "active": true,
+      "category": "SOFT"
+    },
+    {
+      "key": "SOFT_CLIENT",
+      "name": "Client Management",
+      "description": "Workshops, expectation setting, negotiation.",
+      "parentKey": "SOFT",
+      "order": 4,
+      "active": true,
+      "category": "SOFT"
+    },
+    {
+      "key": "SOFT_PROB",
+      "name": "Problem Solving",
+      "description": "Root cause analysis, structured thinking.",
+      "parentKey": "SOFT",
+      "order": 5,
+      "active": true,
+      "category": "SOFT"
+    }
+  ]
+}
