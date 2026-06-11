@@ -1,0 +1,88 @@
+OBIETTIVO FASE 3: i task possono usare tool da server MCP configurati. Il backend è il CLIENT MCP: raccoglie i tool dai server e li espone a qualsiasi modello come function calling standard. In questa fase SOLO LETTURA: i tool classificati come scrittura non vengono mai eseguiti. Si costruisce sopra ai-gateway (Fase 1) e budget/costi (Fase 2).
+
+DIPENDENZA: npm install @modelcontextprotocol/sdk
+
+1. SCHEMA (shared/schema.ts)
+
+mcp_catalog:
+- id uuid PK
+- name text not null
+- source text not null  -- "registry" | "custom"
+- repo_url text
+- category text  -- "abap_adt" | "sap_gui" | "odata" | "docs" | "hana" | "integration" | "other"
+- description text
+- transport text not null  -- "http" | "stdio"
+- auth_model text  -- "none" | "basic" | "token" | "oauth"
+- write_capable boolean default false
+- maturity jsonb default '{}'  -- { stars, lastChange, license }
+- synced_at timestamp
+
+mcp_server_configs:
+- id uuid PK
+- organization_id uuid FK -> organizations not null
+- catalog_id uuid FK -> mcp_catalog not null
+- sap_system_id uuid FK -> sap_systems (nullable)
+- project_id uuid FK -> projects (nullable; null = tutta l'org)
+- name text not null  -- alias, es. "ARC-1 su DEV cliente X"
+- endpoint text not null  -- URL http(s) del server MCP
+- credentials_ref uuid  -- FK -> system_credentials (vault esistente), nullable
+- tool_allowlist text[] default '{}'  -- vuoto = tutti i tool
+- read_only boolean default true not null
+- environment text default 'DEV'  -- "DEV" | "QAS" | "PRD"
+- enabled boolean default true
+- last_health jsonb  -- { status: "ok"|"error", checkedAt, latencyMs, toolCount, error? }
+
+Su tasks aggiungi: mcp_config_ids uuid[] default '{}'.
+
+REGOLA NON NEGOZIABILE: se environment = 'PRD', read_only è forzato a true a livello API (qualsiasi tentativo di impostare read_only=false su PRD → 400).
+
+2. CLIENT MCP (server/mcp-client.ts)
+
+Usa @modelcontextprotocol/sdk (Client + StreamableHTTPClientTransport; supporta anche SSEClientTransport come fallback se la connessione streamable fallisce). Funzioni:
+
+- connectAndListTools(config): si connette all'endpoint (header Authorization da credentials_ref se presente), fa l'handshake initialize e tools/list. Ritorna { tools: [{ name, description, inputSchema }], latencyMs }. Timeout 10s.
+- healthCheck(configId): esegue connectAndListTools e aggiorna last_health. 
+- callTool(config, toolName, args): esegue tools/call e ritorna il risultato come testo (concatena i content block di tipo text; per altri tipi ritorna un placeholder descrittivo). Timeout 60s. Tronca il risultato a 20.000 caratteri con nota "[troncato]".
+- classifyTool(toolName, description): ritorna "read" | "write". Euristica write se il nome o la descrizione contengono: create, update, delete, write, insert, modify, activate, deploy, transport, execute, run, set, submit, release, lock, unlock. In caso di dubbio: "write" (fail-safe).
+
+3. LOOP TOOL NELL'EXECUTOR (server/ai-task-executor.ts + estensione server/ai-gateway.ts)
+
+a) Estendi ai-gateway: GatewayCompleteResult deve includere toolCalls: Array<{ id, name, arguments }> e GatewayMessage deve supportare i ruoli "tool" e assistant con tool_calls (formato OpenAI-compatible). NON cambiare la firma esistente per i chiamanti attuali.
+
+b) Nell'executor, se il task ha mcp_config_ids non vuoto:
+- Connettiti alle config abilitate, raccogli i tool (applicando tool_allowlist), FILTRA VIA tutti i tool classificati "write" (in questa fase non vengono nemmeno presentati al modello).
+- Converti i tool in formato function calling: name = "mcp__{configId_short}__{toolName}", description, parameters = inputSchema.
+- Loop agentico: chiama aiGateway.complete con i tools; se la risposta contiene toolCalls, esegui ognuna via callTool, appendi i risultati come messaggi role:"tool", richiama il modello. MAX 8 iterazioni, poi forza una risposta finale senza tools.
+- AUDIT: per OGNI tool call registra in audit_logs (riusa audit-service.ts): configId, toolName, args (JSON troncato a 2000 char), esito ok/errore, durata, taskId, executionId.
+
+c) BUDGET CUMULATIVO (recupero dalla Fase 2): mantieni il costo cumulato EUR dell'esecuzione, aggiornato dopo OGNI chiamata al gateway. Se il task ha budget_cap_eur: al superamento dell'80% emetti UNA SOLA VOLTA un evento sull'event_bus esistente (tipo "ai_budget", payload { taskId, executionId, level: "warning80", spentEur, capEur }); al raggiungimento del 100% interrompi il loop, stato "paused_budget", evento level: "stopped". La resume (già esistente) deve riprendere il loop dal contesto salvato o, se troppo complesso, rilanciare da capo l'esecuzione: scegli la via semplice e documentala.
+
+4. SYNC CATALOGO (server/mcp-registry-sync.ts)
+
+- Scarica https://raw.githubusercontent.com/marianfoo/sap-ai-mcp-servers/main/data/ : prima leggi l'elenco file via https://api.github.com/repos/marianfoo/sap-ai-mcp-servers/contents/data e poi i singoli JSON. Mappa i campi disponibili (name, repo, purpose/description, categoria dalla sezione) su mcp_catalog con source='registry', upsert per (name, repo_url). Imposta write_capable=true se la descrizione contiene parole di scrittura (riusa classifyTool).
+- Se la struttura dei file in data/ è diversa dal previsto, adattati a ciò che trovi e documenta il mapping in un commento.
+- Endpoint POST /api/mcp/catalog/sync (solo admin org) che lancia il sync e ritorna { inserted, updated, total }.
+
+5. API (tutte autenticate, scoping per organization come le altre route)
+
+- GET /api/mcp/catalog?category=...
+- CRUD /api/mcp/configs (POST valida: catalog esistente, endpoint http(s), regola PRD)
+- POST /api/mcp/configs/:id/health → esegue healthCheck e ritorna last_health
+- GET /api/mcp/configs?projectId=...&sapSystemId=... → per popolare il form task
+
+6. UI
+
+a) Nuova pagina /mcp-library (sidebar, vicino a AI Analytics): due tab. Tab "Catalogo": tabella da GET catalog con filtro categoria, badge write_capable, pulsante "Sincronizza" (admin). Tab "Configurazioni": lista config con stato salute (pallino verde/rosso da last_health + pulsante refresh), form crea/modifica (select dal catalogo, endpoint, select sistema SAP, select progetto, environment, read_only — disabilitato e forzato ON se PRD, allowlist come campo testo separato da virgole).
+b) Form task: sezione "Tool MCP" sotto "Agente AI": multiselect delle config disponibili per il progetto del task (GET configs filtrata), con badge ambiente e stato salute.
+c) Vista esecuzione/task: timeline delle tool call eseguite (da audit o da un campo jsonb tool_calls_log su ai_task_executions: scegli la via più semplice e coerente con l'esistente).
+
+CRITERI DI ACCETTAZIONE
+- Sync catalogo: dopo POST sync, GET catalog ritorna decine di server con categorie valorizzate.
+- Creo una config con endpoint fittizio: health check fallisce con pallino rosso e errore leggibile, l'app non crasha.
+- Config su environment PRD con read_only=false → 400.
+- Task con mcp_config_ids e config non raggiungibile: l'esecuzione procede comunque SENZA tool, loggando l'errore di connessione (degradazione elegante, non blocco).
+- Con un server MCP raggiungibile (anche un echo server di test locale creato ad hoc in scripts/test-mcp-server.ts con 1 tool read e 1 tool write): il modello riceve SOLO il tool read, la tool call viene eseguita, il risultato influenza la risposta, e in audit_logs c'è la riga della chiamata.
+- Budget: con cap basso, evento warning80 emesso una volta sola e stop a paused_budget durante il loop.
+- npm run check non introduce nuovi errori TypeScript.
+
+Al termine: elenco file, esito criteri, e istruzioni per avviare scripts/test-mcp-server.ts.

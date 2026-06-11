@@ -167,6 +167,8 @@ export const tasks = pgTable("tasks", {
   estimateCostMaxEur: decimal("estimate_cost_max_eur", { precision: 10, scale: 4 }),
   estimateComputedAt: timestamp("estimate_computed_at"),
   budgetCapEur: decimal("budget_cap_eur", { precision: 10, scale: 4 }),
+  // MCP Tool Use (Phase 3) — IDs dei mcp_server_configs da usare in esecuzione AI
+  mcpConfigIds: uuid("mcp_config_ids").array().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -3360,6 +3362,8 @@ export const aiTaskExecutions = pgTable("ai_task_executions", {
   // Timing
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
+  // MCP tool call log (Phase 3) — array di {toolName, configId, args, result, ok, durationMs, ts}
+  toolCallsLog: jsonb("tool_calls_log").default([]),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -3561,6 +3565,49 @@ export type AiAbapPattern = typeof aiAbapPatterns.$inferSelect;
 export type InsertAiAbapPattern = z.infer<typeof insertAiAbapPatternSchema>;
 export type AiTaskExecution = typeof aiTaskExecutions.$inferSelect;
 export type InsertAiTaskExecution = z.infer<typeof insertAiTaskExecutionSchema>;
+
+// ========== MCP (Model Context Protocol) — Phase 3 ==========
+
+export const mcpCatalog = pgTable("mcp_catalog", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  source: text("source").notNull().default("registry"),
+  repoUrl: text("repo_url"),
+  category: text("category"),
+  description: text("description"),
+  transport: text("transport").notNull().default("http"),
+  authModel: text("auth_model").default("none"),
+  writeCapable: boolean("write_capable").default(false),
+  maturity: jsonb("maturity").default({}),
+  syncedAt: timestamp("synced_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const mcpServerConfigs = pgTable("mcp_server_configs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }).notNull(),
+  catalogId: uuid("catalog_id").references(() => mcpCatalog.id),
+  sapSystemId: uuid("sap_system_id").references(() => sapSystems.id),
+  projectId: uuid("project_id").references(() => projects.id),
+  name: text("name").notNull(),
+  endpoint: text("endpoint").notNull(),
+  credentialsRef: uuid("credentials_ref").references(() => systemCredentials.id),
+  toolAllowlist: text("tool_allowlist").array().default([]),
+  readOnly: boolean("read_only").notNull().default(true),
+  environment: text("environment").notNull().default("DEV"),
+  enabled: boolean("enabled").default(true),
+  lastHealth: jsonb("last_health"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertMcpCatalogSchema = createInsertSchema(mcpCatalog).omit({ id: true, createdAt: true });
+export const insertMcpServerConfigSchema = createInsertSchema(mcpServerConfigs).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type McpCatalog = typeof mcpCatalog.$inferSelect;
+export type InsertMcpCatalog = z.infer<typeof insertMcpCatalogSchema>;
+export type McpServerConfig = typeof mcpServerConfigs.$inferSelect;
+export type InsertMcpServerConfig = z.infer<typeof insertMcpServerConfigSchema>;
 
 // ========== Generated File Type for AI Task Executions ==========
 export interface AiGeneratedFile {

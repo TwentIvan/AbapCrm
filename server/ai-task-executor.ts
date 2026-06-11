@@ -2,6 +2,9 @@
 // Uses learned patterns from sapObjectContent and aiAbapPatterns
 
 import { aiGateway, getDefaultModelKey } from "./ai-gateway";
+import type { GatewayMessage } from "./ai-gateway";
+import { connectAndListTools, callTool } from "./mcp-client";
+import { EventBus } from "./event-bus";
 import { db } from "./db";
 import { eq, and, sql, desc, or, ilike, inArray } from "drizzle-orm";
 import { getUsdEurRate, usdToEur } from "./fx";
@@ -15,6 +18,8 @@ import {
   aiAbapPatterns,
   aiTaskExecutions,
   aiModels,
+  mcpServerConfigs,
+  auditLogs,
   messages,
   messageLinks,
   comments,
@@ -1206,20 +1211,229 @@ export async function executeTaskWithAI(
         }
       }
 
-      const gwResult = await aiGateway.complete({
-        modelKey,
-        messages: [
-          { role: "system", content: "Sei un esperto sviluppatore SAP ABAP. Rispondi sempre in italiano. Output SOLO JSON valido." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.3,
-        maxTokens: 8000,
-        organizationId,
-        caller: "ai-task-executor/executeTask",
-      });
+      // ── MCP Tool Use — Phase 3 ──────────────────────────────────────────────
+      // Load enabled configs linked to this task, collect only read-only tools.
+      // Graceful degradation: unreachable servers are logged and skipped — never block execution.
+      const mcpConfigIdList: string[] = (taskData as any).mcpConfigIds ?? [];
+      const availableMcpTools: Array<{
+        tool: { type: string; function: { name: string; description: string; parameters: any } };
+        configId: string;
+        config: typeof mcpServerConfigs.$inferSelect;
+      }> = [];
 
-      const content = gwResult.content || '';
-      const response = { usage: { prompt_tokens: gwResult.promptTokens, completion_tokens: gwResult.completionTokens } };
+      if (mcpConfigIdList.length > 0) {
+        const linkedConfigs = await db
+          .select()
+          .from(mcpServerConfigs)
+          .where(and(
+            inArray(mcpServerConfigs.id, mcpConfigIdList),
+            eq(mcpServerConfigs.organizationId, organizationId),
+          ));
+
+        for (const cfg of linkedConfigs) {
+          if (cfg.enabled === false) continue; // explicitly disabled
+          // PRD guardrail: production configs must always be read-only
+          if (cfg.environment === "PRD" && !cfg.readOnly) {
+            console.warn(`[MCP] Config ${cfg.id} (${cfg.name}) is PRD but readOnly=false — coerced to read-only`);
+          }
+          if (!cfg.readOnly && cfg.environment !== "PRD") {
+            console.warn(`[MCP] Config ${cfg.id} (${cfg.name}) is not read-only — skipping (Phase 3 only exposes read tools)`);
+            continue;
+          }
+          try {
+            const { tools } = await connectAndListTools(cfg);
+            const allowlist: string[] = (cfg.toolAllowlist as string[] | null) ?? [];
+            for (const t of tools) {
+              if (t.classification !== "read") continue; // only read-classified tools reach the model
+              if (allowlist.length > 0 && !allowlist.includes(t.name)) continue; // allowlist filter
+              availableMcpTools.push({
+                tool: {
+                  type: "function",
+                  function: {
+                    name: t.name,
+                    description: t.description ?? "",
+                    parameters: t.inputSchema ?? { type: "object", properties: {} },
+                  },
+                },
+                configId: cfg.id,
+                config: cfg,
+              });
+            }
+            console.log(`[MCP] Config "${cfg.name}": ${availableMcpTools.length} read tool(s) collected`);
+          } catch (mcpErr: any) {
+            // Graceful degradation: server unreachable → warn + skip, do NOT abort execution
+            console.warn(`[MCP] Config ${cfg.id} (${cfg.name}) unreachable: ${mcpErr?.message ?? mcpErr}. Skipping.`);
+          }
+        }
+      }
+
+      // Agentic loop — max 8 iterations, supports tool calls when MCP tools are available.
+      // Falls back to single call when no tools are present (backward compatible).
+      const MCP_MAX_ITER = 8;
+      const toolCallsLog: Array<{
+        toolName: string; configId: string; args: any;
+        result: string; ok: boolean; durationMs: number; ts: string;
+      }> = [];
+      let cumulativePromptTokens = 0;
+      let cumulativeCompletionTokens = 0;
+      let warning80Emitted = false;
+      let budgetExceededInLoop = false;
+      let finalContent = "";
+      let lastIterResult: Awaited<ReturnType<typeof aiGateway.complete>> | null = null;
+
+      const loopMessages: GatewayMessage[] = [
+        { role: "system", content: "Sei un esperto sviluppatore SAP ABAP. Rispondi sempre in italiano. Output SOLO JSON valido." },
+        { role: "user", content: prompt },
+      ];
+
+      for (let iter = 0; iter < MCP_MAX_ITER; iter++) {
+        const iterOpts: Parameters<typeof aiGateway.complete>[0] = {
+          modelKey,
+          messages: loopMessages,
+          temperature: 0.3,
+          maxTokens: 8000,
+          organizationId,
+          caller: `ai-task-executor/executeTask/iter${iter}`,
+          ...(availableMcpTools.length > 0 ? { tools: availableMcpTools.map((t) => t.tool) } : {}),
+        };
+
+        const iterResult = await aiGateway.complete(iterOpts);
+        lastIterResult = iterResult;
+        cumulativePromptTokens += iterResult.promptTokens;
+        cumulativeCompletionTokens += iterResult.completionTokens;
+
+        // Cumulative budget check after each gateway call
+        if (budgetCapEur !== null) {
+          const fxLoop = await getUsdEurRate(organizationId);
+          const [mPricingLoop] = await db
+            .select({ inputPricePerMToken: aiModels.inputPricePerMToken, outputPricePerMToken: aiModels.outputPricePerMToken })
+            .from(aiModels)
+            .where(eq(aiModels.modelKey, modelKey))
+            .limit(1);
+          const iL = mPricingLoop?.inputPricePerMToken ? parseFloat(mPricingLoop.inputPricePerMToken as string) : 2.5;
+          const oL = mPricingLoop?.outputPricePerMToken ? parseFloat(mPricingLoop.outputPricePerMToken as string) : 10.0;
+          const cumulativeCostEur = usdToEur(
+            (cumulativePromptTokens / 1_000_000) * iL + (cumulativeCompletionTokens / 1_000_000) * oL,
+            fxLoop
+          );
+
+          // 80% budget warning (emitted once per execution)
+          if (!warning80Emitted && cumulativeCostEur >= budgetCapEur * 0.8) {
+            warning80Emitted = true;
+            EventBus.emit("ai_budget", {
+              entityKey: "ai_task_executions",
+              recordId: execution.id,
+              userId,
+              organizationId,
+              record: { executionId: execution.id, taskId, cumulativeCostEur, capEur: budgetCapEur, pctReached: 80 },
+            });
+            console.warn(`[MCP] Budget 80% warning: €${cumulativeCostEur.toFixed(4)} / €${budgetCapEur} (iter ${iter})`);
+          }
+
+          // 100% cap: pause execution
+          if (cumulativeCostEur >= budgetCapEur) {
+            await db.update(aiTaskExecutions).set({
+              status: "paused_budget",
+              completedAt: new Date(),
+              modelKey,
+              toolCallsLog: toolCallsLog as any,
+              analysisResult: { reason: "Budget cap reached during MCP loop", capEur: budgetCapEur, cumulativeCostEur, iter },
+            }).where(eq(aiTaskExecutions.id, execution.id));
+            results.push({
+              success: false,
+              executionId: execution.id,
+              analysis: { taskType: 'unknown', complexity: 'low', suggestedApproach: '', sapModules: [], requiredObjects: [] },
+              generatedFiles: [],
+              suggestedActions: [{ action: 'raise_budget', priority: 'high', description: `Budget cap di €${budgetCapEur} raggiunto durante esecuzione MCP (iter ${iter}). Alzare il tetto di spesa.` }],
+              patternsUsed: patterns.map(p => p.id),
+              error: `Esecuzione sospesa: budget cap €${budgetCapEur} raggiunto`,
+            });
+            budgetExceededInLoop = true;
+            break;
+          }
+        }
+
+        // No tool calls → model produced its final answer, exit loop
+        if (!iterResult.toolCalls?.length) {
+          finalContent = iterResult.content || "";
+          break;
+        }
+
+        // Model requested tool calls: append assistant message and execute them
+        loopMessages.push({
+          role: "assistant",
+          content: iterResult.content ?? null,
+          tool_calls: iterResult.toolCalls.map((tc) => ({
+            id: tc.id,
+            type: "function" as const,
+            function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
+          })),
+        });
+
+        for (const tc of iterResult.toolCalls) {
+          const toolEntry = availableMcpTools.find((t) => t.tool.function.name === tc.name);
+          if (!toolEntry) {
+            loopMessages.push({ role: "tool", content: `Tool "${tc.name}" not available`, tool_call_id: tc.id });
+            continue;
+          }
+
+          let toolResult: { ok: boolean; text: string; durationMs: number };
+          try {
+            toolResult = await callTool(toolEntry.config, tc.name, tc.arguments ?? {});
+          } catch (callErr: any) {
+            toolResult = { ok: false, text: `Error calling tool: ${callErr?.message ?? callErr}`, durationMs: 0 };
+          }
+
+          // Append to in-memory log
+          toolCallsLog.push({
+            toolName: tc.name,
+            configId: toolEntry.configId,
+            args: tc.arguments,
+            result: toolResult.text.slice(0, 2000),
+            ok: toolResult.ok,
+            durationMs: toolResult.durationMs,
+            ts: new Date().toISOString(),
+          });
+
+          // Audit via Drizzle standard insert — no raw SQL, all values are bound parameters
+          await db.insert(auditLogs).values({
+            tableName: "mcp_tool_calls",
+            recordId: execution.id,
+            action: "CREATE",
+            newValues: {
+              taskId,
+              configId: toolEntry.configId,
+              toolName: tc.name,
+              args: JSON.stringify(tc.arguments ?? {}).slice(0, 2000),
+              result: toolResult.text.slice(0, 2000),
+              ok: toolResult.ok,
+              durationMs: toolResult.durationMs,
+            } as any,
+            changedFields: [tc.name],
+            userId,
+            organizationId,
+          });
+
+          loopMessages.push({ role: "tool", content: toolResult.text, tool_call_id: tc.id });
+          console.log(`[MCP] iter=${iter} tool=${tc.name} ok=${toolResult.ok} ${toolResult.durationMs}ms`);
+        }
+      }
+
+      // Budget exceeded mid-loop → skip to next task in the outer for-of
+      if (budgetExceededInLoop) continue;
+
+      // MAX_ITER reached with tool calls every iteration → use last response content
+      if (!finalContent) finalContent = lastIterResult?.content ?? "";
+
+      // Persist toolCallsLog if any tool calls were executed
+      if (toolCallsLog.length > 0) {
+        await db.update(aiTaskExecutions)
+          .set({ toolCallsLog: toolCallsLog as any })
+          .where(eq(aiTaskExecutions.id, execution.id));
+      }
+
+      const content = finalContent;
+      const response = { usage: { prompt_tokens: cumulativePromptTokens, completion_tokens: cumulativeCompletionTokens } };
       
       // Parse AI response
       let aiResult: any;

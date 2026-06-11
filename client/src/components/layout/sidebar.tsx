@@ -61,6 +61,7 @@ const getDefaultTimeManagementItems = (t: any) => [
 // AI Tools section (direct items)
 const getDefaultAiToolsItems = (t: any) => [
   { id: "ai1", name: "AI Analytics", href: "/ai-analytics", icon: Brain, testId: "nav-ai-analytics" },
+  { id: "ai2", name: "MCP Library", href: "/mcp-library", icon: Server, testId: "nav-mcp-library" },
 ];
 
 // Parent sections

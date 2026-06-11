@@ -8,8 +8,77 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageHistory } from "@/components/ui/message-history";
 import AuditHistory from "@/components/ui/audit-history";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Edit, MessageSquare, History, Brain, AlertTriangle } from "lucide-react";
+import { Edit, MessageSquare, History, Brain, AlertTriangle, Zap, CheckCircle2, XCircle } from "lucide-react";
 import type { Task } from "@shared/schema";
+
+function ToolCallsPanel({ task }: { task: Task }) {
+  const { data: executions } = useQuery<any[]>({
+    queryKey: ["/api/ai-task-executor/history", task.id],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!task.id,
+  });
+
+  const lastWithTools = executions?.find((e: any) => Array.isArray(e.toolCallsLog) && e.toolCallsLog.length > 0);
+  const toolCalls: any[] = lastWithTools?.toolCallsLog ?? [];
+
+  if (!executions) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">Caricamento...</CardContent>
+      </Card>
+    );
+  }
+
+  if (toolCalls.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          Nessuna chiamata tool MCP registrata per questo task. Le tool call appaiono dopo una esecuzione AI che utilizza server MCP configurati.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Zap className="h-4 w-4 text-primary" />
+          Tool Calls — ultima esecuzione MCP
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="divide-y text-sm">
+          {toolCalls.map((tc: any, i: number) => (
+            <div key={i} className="py-3 space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {tc.ok
+                  ? <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                  : <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />}
+                <code className="font-mono text-xs font-semibold bg-muted px-1.5 py-0.5 rounded">{tc.toolName}</code>
+                {tc.durationMs != null && (
+                  <span className="text-xs text-muted-foreground">{tc.durationMs}ms</span>
+                )}
+                {tc.ts && (
+                  <span className="text-xs text-muted-foreground">{new Date(tc.ts).toLocaleTimeString()}</span>
+                )}
+              </div>
+              {tc.args && Object.keys(tc.args).length > 0 && (
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Args</summary>
+                  <pre className="bg-muted rounded p-2 mt-1 overflow-auto max-h-24">{JSON.stringify(tc.args, null, 2)}</pre>
+                </details>
+              )}
+              {tc.result && (
+                <pre className="text-xs bg-muted rounded p-2 overflow-auto max-h-28 whitespace-pre-wrap">{tc.result}</pre>
+              )}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function AiCostsPanel({ task }: { task: Task }) {
   const { data: executions } = useQuery<any[]>({
@@ -221,7 +290,7 @@ export default function TaskFormContainer({
       {isEditing ? (
         // Editing mode with tabs (details, messages, history, ai costs)
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="details" className="flex items-center space-x-2">
               <Edit className="h-4 w-4" />
               <span>Dettagli</span>
@@ -237,6 +306,10 @@ export default function TaskFormContainer({
             <TabsTrigger value="ai-costs" className="flex items-center space-x-2">
               <Brain className="h-4 w-4" />
               <span>Costi AI</span>
+            </TabsTrigger>
+            <TabsTrigger value="tool-calls" className="flex items-center space-x-2" data-testid="tab-tool-calls">
+              <Zap className="h-4 w-4" />
+              <span>Tool Calls</span>
             </TabsTrigger>
           </TabsList>
           
@@ -265,6 +338,10 @@ export default function TaskFormContainer({
 
           <TabsContent value="ai-costs" className="mt-6">
             <AiCostsPanel task={task as Task} />
+          </TabsContent>
+
+          <TabsContent value="tool-calls" className="mt-6">
+            <ToolCallsPanel task={task as Task} />
           </TabsContent>
         </Tabs>
       ) : (

@@ -34,7 +34,8 @@ import {
   resourceSkills, resourceAvailability,
   insertResourceSkillSchema, insertResourceAvailabilitySchema,
   taskRequiredSkills, insertTaskRequiredSkillSchema,
-  aiProviders, aiModels, userOrganizations
+  aiProviders, aiModels, userOrganizations,
+  mcpCatalog, mcpServerConfigs, insertMcpServerConfigSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -10222,6 +10223,144 @@ ISTRUZIONI:
     } catch (error: any) {
       console.error("Error resuming execution:", error);
       return res.status(500).json({ error: "Failed to resume execution" });
+    }
+  });
+
+  // ── MCP Catalog & Server Configs — Phase 3 ────────────────────────────────
+
+  // GET /api/mcp/catalog — list catalog entries, optional ?category= filter
+  app.get("/api/mcp/catalog", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    try {
+      const { category } = req.query;
+      const rows = category && typeof category === "string"
+        ? await db.select().from(mcpCatalog).where(eq(mcpCatalog.category, category)).orderBy(asc(mcpCatalog.name))
+        : await db.select().from(mcpCatalog).orderBy(asc(mcpCatalog.name));
+      return res.json(rows);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/mcp/catalog/sync — sync from GitHub registry
+  app.post("/api/mcp/catalog/sync", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    try {
+      const { syncMcpCatalog } = await import("./mcp-registry-sync");
+      const result = await syncMcpCatalog();
+      return res.json(result);
+    } catch (err: any) {
+      console.error("[MCP] Registry sync error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/mcp/configs — list server configs for current org
+  app.get("/api/mcp/configs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    if (!organizationId) return res.status(400).json({ error: "Missing X-Organization-Id header" });
+    try {
+      const { projectId, sapSystemId } = req.query;
+      const conditions: any[] = [eq(mcpServerConfigs.organizationId, organizationId)];
+      if (projectId && typeof projectId === "string") conditions.push(eq(mcpServerConfigs.projectId, projectId));
+      if (sapSystemId && typeof sapSystemId === "string") conditions.push(eq(mcpServerConfigs.sapSystemId, sapSystemId));
+      const rows = await db.select().from(mcpServerConfigs).where(and(...conditions)).orderBy(asc(mcpServerConfigs.name));
+      return res.json(rows);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/mcp/configs — create new server config
+  app.post("/api/mcp/configs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    if (!organizationId) return res.status(400).json({ error: "Missing X-Organization-Id header" });
+    try {
+      const body = req.body;
+      // PRD guardrail: environment=PRD must always have readOnly=true
+      if (body.environment === "PRD" && body.readOnly === false) {
+        return res.status(400).json({ error: "Configs with environment=PRD must have readOnly=true" });
+      }
+      const validated = insertMcpServerConfigSchema.parse({ ...body, organizationId });
+      const [created] = await db.insert(mcpServerConfigs).values(validated).returning();
+      return res.status(201).json(created);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // GET /api/mcp/configs/:id — get single config
+  app.get("/api/mcp/configs/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    try {
+      const [row] = await db.select().from(mcpServerConfigs)
+        .where(and(eq(mcpServerConfigs.id, req.params.id), eq(mcpServerConfigs.organizationId, organizationId)))
+        .limit(1);
+      if (!row) return res.status(404).json({ error: "Not found" });
+      return res.json(row);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // PATCH /api/mcp/configs/:id — update config
+  app.patch("/api/mcp/configs/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    try {
+      const body = req.body;
+      // PRD guardrail
+      if (body.environment === "PRD" && body.readOnly === false) {
+        return res.status(400).json({ error: "Configs with environment=PRD must have readOnly=true" });
+      }
+      const [existing] = await db.select().from(mcpServerConfigs)
+        .where(and(eq(mcpServerConfigs.id, req.params.id), eq(mcpServerConfigs.organizationId, organizationId)))
+        .limit(1);
+      if (!existing) return res.status(404).json({ error: "Not found" });
+      const [updated] = await db.update(mcpServerConfigs)
+        .set({ ...body, updatedAt: new Date() })
+        .where(eq(mcpServerConfigs.id, req.params.id))
+        .returning();
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // DELETE /api/mcp/configs/:id — delete config
+  app.delete("/api/mcp/configs/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    try {
+      const [existing] = await db.select().from(mcpServerConfigs)
+        .where(and(eq(mcpServerConfigs.id, req.params.id), eq(mcpServerConfigs.organizationId, organizationId)))
+        .limit(1);
+      if (!existing) return res.status(404).json({ error: "Not found" });
+      await db.delete(mcpServerConfigs).where(eq(mcpServerConfigs.id, req.params.id));
+      return res.status(204).send();
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/mcp/configs/:id/health — run health check against server
+  app.post("/api/mcp/configs/:id/health", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    try {
+      const [existing] = await db.select().from(mcpServerConfigs)
+        .where(and(eq(mcpServerConfigs.id, req.params.id), eq(mcpServerConfigs.organizationId, organizationId)))
+        .limit(1);
+      if (!existing) return res.status(404).json({ error: "Not found" });
+      const { healthCheck } = await import("./mcp-client");
+      const result = await healthCheck(req.params.id);
+      return res.json(result);
+    } catch (err: any) {
+      console.error("[MCP] Health check error:", err);
+      return res.status(500).json({ error: err.message });
     }
   });
 

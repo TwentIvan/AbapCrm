@@ -43,6 +43,7 @@ import BusinessScenariosPage from "@/pages/business-scenarios-page";
 import ResourcePlannerPage from "@/pages/resource-planner-page";
 import SkillCatalogPage from "@/pages/skill-catalog-page";
 import AiAnalyticsPage from "@/pages/ai-analytics-page";
+import McpLibraryPage from "@/pages/mcp-library-page";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -97,6 +98,7 @@ function Router() {
       <ProtectedRoute path="/resource-planner" component={ResourcePlannerPage} />
       <ProtectedRoute path="/skill-catalog" component={SkillCatalogPage} />
       <ProtectedRoute path="/ai-analytics" component={AiAnalyticsPage} />
+      <ProtectedRoute path="/mcp-library" component={McpLibraryPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/login" component={AuthPage} />
       <Route component={NotFound} />

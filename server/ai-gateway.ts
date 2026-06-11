@@ -9,10 +9,21 @@ import { aiModels, organizations } from "@shared/schema";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-export interface GatewayMessage {
-  role: "system" | "user" | "assistant";
-  content: string | Array<{ type: string; text?: string; image_url?: { url: string; detail?: string } }>;
-}
+export type GatewayMessage =
+  | {
+      role: "system" | "user";
+      content: string | Array<{ type: string; text?: string; image_url?: { url: string; detail?: string } }>;
+    }
+  | {
+      role: "assistant";
+      content?: string | null;
+      tool_calls?: Array<{ id: string; type: "function"; function: { name: string; arguments: string } }>;
+    }
+  | {
+      role: "tool";
+      content: string;
+      tool_call_id: string;
+    };
 
 export interface GatewayCompleteOptions {
   modelKey?: string;
@@ -33,6 +44,8 @@ export interface GatewayCompleteResult {
   completionTokens: number;
   totalCostUsd: number;
   durationMs: number;
+  /** Tool calls requested by the model (present when the model chose to invoke tools) */
+  toolCalls?: Array<{ id: string; name: string; arguments: any }>;
 }
 
 // ── Default model resolution ───────────────────────────────────────────────────
@@ -154,6 +167,17 @@ class AiGateway {
         ` cost=$${totalCostUsd.toFixed(6)} duration=${durationMs}ms`
     );
 
+    // Extract tool calls requested by the model (MCP Phase 3)
+    const rawToolCalls = response.choices[0]?.message?.tool_calls;
+    const toolCalls = rawToolCalls?.map((tc) => ({
+      id: tc.id,
+      name: tc.function.name,
+      arguments: (() => {
+        try { return JSON.parse(tc.function.arguments); }
+        catch { return tc.function.arguments; }
+      })(),
+    }));
+
     return {
       content: response.choices[0]?.message?.content || "",
       modelKey,
@@ -161,6 +185,7 @@ class AiGateway {
       completionTokens,
       totalCostUsd,
       durationMs,
+      ...(toolCalls?.length ? { toolCalls } : {}),
     };
   }
 }
