@@ -12,6 +12,8 @@ import {
   aiAbapPatterns,
 } from "@shared/schema";
 import { getUsdEurRate, usdToEur } from "./fx";
+import { countTokens as _countTokens } from "./tokens";
+import { assembleContext } from "./context-assembler";
 
 export const OUTPUT_MULTIPLIERS: Record<string, number> = {
   development: 2.0,
@@ -26,9 +28,8 @@ export const OUTPUT_MULTIPLIERS: Record<string, number> = {
   other: 1.2,
 };
 
-export function countTokens(text: string): number {
-  return Math.ceil(text.length / 4);
-}
+export { countTokens } from "./tokens";
+const countTokens = _countTokens;
 
 function median(nums: number[]): number {
   if (nums.length === 0) return 0;
@@ -155,8 +156,21 @@ export async function estimateTaskCost({
   const promptText = parts.filter(Boolean).join("\n");
 
   const PROMPT_OVERHEAD_CHARS = 5200;
-  const inputTokens =
+  const baseInputTokens =
     countTokens(promptText) + Math.ceil(PROMPT_OVERHEAD_CHARS / 4);
+
+  // Add assembled context tokens (same budget as ai-task-executor).
+  // Non-fatal: if assembleContext fails or the task has no project, proceed
+  // with base tokens only — matches the executor's own fallback behaviour.
+  let contextTokens = 0;
+  try {
+    const ctx = await assembleContext({ taskId, tokenBudget: 4000 });
+    contextTokens = ctx.tokensUsed;
+  } catch {
+    // ignore — non-fatal
+  }
+
+  const inputTokens = baseInputTokens + contextTokens;
 
   const effectiveModelKey = requestedModelKey || "openai/gpt-4o";
 

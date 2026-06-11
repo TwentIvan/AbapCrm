@@ -5,7 +5,7 @@
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { tasks, projects, contextPacks, organizations } from "@shared/schema";
-import { countTokens } from "./cost-estimator";
+import { countTokens } from "./tokens";
 
 export interface AssembledContext {
   text: string;
