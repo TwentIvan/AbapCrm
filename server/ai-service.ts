@@ -1,12 +1,9 @@
-import OpenAI from "openai";
 import { storage } from "./storage";
 import { MessageLogService } from "./message-log-service";
+import { aiGateway, getDefaultModelKey } from "./ai-gateway";
 import type { Project, Task, Partner, Message } from "@shared/schema";
 
 const messageLogService = new MessageLogService();
-
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 interface AISuggestion {
   type: 'project' | 'task' | 'partner';
@@ -109,8 +106,9 @@ export class AIService {
         Il bestMatch deve avere la confidenza più alta.
       `;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5",
+      const modelKey = await getDefaultModelKey(organizationId);
+      const gwResult = await aiGateway.complete({
+        modelKey,
         messages: [
           {
             role: "system",
@@ -121,11 +119,13 @@ export class AIService {
             content: prompt
           }
         ],
-        response_format: { type: "json_object" },
-        temperature: 0.3
+        responseFormat: { type: "json_object" },
+        temperature: 0.3,
+        organizationId,
+        caller: "ai-service/analyzeMessage",
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{"suggestions": []}');
+      const result = JSON.parse(gwResult.content || '{"suggestions": []}');
       
       // Validate and filter results
       const validSuggestions = (result.suggestions || [])
@@ -201,8 +201,9 @@ export class AIService {
 
   async generateDocumentation(prompt: string): Promise<{ content: string; confidence: number }> {
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      const modelKey = await getDefaultModelKey();
+      const gwResult = await aiGateway.complete({
+        modelKey,
         messages: [
           {
             role: "system",
@@ -213,11 +214,12 @@ export class AIService {
             content: prompt
           }
         ],
-        temperature: 0.2, // Lower temperature for more consistent technical documentation
-        max_completion_tokens: 4000
+        temperature: 0.2,
+        maxTokens: 4000,
+        caller: "ai-service/generateDocumentation",
       });
 
-      const content = response.choices[0].message.content || "";
+      const content = gwResult.content || "";
       
       // Calculate confidence based on content quality indicators
       let confidence = 0.7; // Base confidence

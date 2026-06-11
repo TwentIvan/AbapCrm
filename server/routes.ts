@@ -33,7 +33,8 @@ import {
   skillCatalog, insertSkillCatalogSchema,
   resourceSkills, resourceAvailability,
   insertResourceSkillSchema, insertResourceAvailabilitySchema,
-  taskRequiredSkills, insertTaskRequiredSkillSchema
+  taskRequiredSkills, insertTaskRequiredSkillSchema,
+  aiProviders, aiModels, userOrganizations
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -4306,7 +4307,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             existingProjects,
             existingPartners,
             existingTasks,
-            learningContext
+            learningContext,
+            organizationId
           );
           
           // Update proposal with results
@@ -9099,9 +9101,8 @@ Format the response as professional documentation suitable for client delivery.`
         }
       }
       
-      const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      
+      const { aiGateway, getDefaultModelKey } = await import('./ai-gateway');
+
       // Extract images from DevOps work item for vision API
       // Images are stored as strings (data URLs like "data:image/png;base64,..." or regular URLs)
       const imageUrls: { url: string; alt?: string }[] = [];
@@ -9251,24 +9252,29 @@ ISTRUZIONI:
       const totalImages = userMessageContent.filter((c: any) => c.type === 'image_url').length;
       console.log(`[AI-CHAT] Sending to OpenAI: ${totalImages} images, text length: ${userMessageContent[0]?.text?.length || 0}`);
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+      const organizationId = getOrganizationId(req);
+      // Default to gpt-4o for vision chat (supports vision + good context window)
+      // Org-level settings and AI_DEFAULT_MODEL_KEY env var still take precedence
+      const modelKey = await getDefaultModelKey(organizationId, "openai/gpt-4o");
+      const gwResult = await aiGateway.complete({
+        modelKey,
         messages,
         temperature: 0.7,
-        max_completion_tokens: 2000,
+        maxTokens: 2000,
+        organizationId,
+        caller: "routes/ai-chat",
       });
-      
-      const aiResponse = response.choices[0]?.message?.content;
-      const finishReason = response.choices[0]?.finish_reason;
-      
-      console.log(`[AI-CHAT] OpenAI response: finish_reason=${finishReason}, content length=${aiResponse?.length || 0}`);
-      
+
+      const aiResponse = gwResult.content;
+
+      console.log(`[AI-CHAT] Gateway response: model=${modelKey} content length=${aiResponse?.length || 0}`);
+
       if (!aiResponse) {
-        console.error(`[AI-CHAT] Empty response from OpenAI, finish_reason: ${finishReason}`);
+        console.error(`[AI-CHAT] Empty response from gateway`);
         res.json({ response: "Mi dispiace, l'AI non ha restituito una risposta. Riprova con meno immagini o un messaggio più breve." });
         return;
       }
-      
+
       res.json({ response: aiResponse });
     } catch (error: any) {
       console.error("[AI-CHAT] Error in AI chat:", error?.message || error);
@@ -9926,6 +9932,103 @@ ISTRUZIONI:
     } catch (error) {
       console.error("Error fetching skill tree:", error);
       res.status(500).json({ error: "Failed to fetch skill tree" });
+    }
+  });
+
+  // ── AI Gateway routes ────────────────────────────────────────────────────────
+
+  app.get("/api/ai/models", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const models = await db
+        .select({
+          id: aiModels.id,
+          modelKey: aiModels.modelKey,
+          modelId: aiModels.modelId,
+          displayName: aiModels.displayName,
+          inputPricePerMToken: aiModels.inputPricePerMToken,
+          outputPricePerMToken: aiModels.outputPricePerMToken,
+          capabilities: aiModels.capabilities,
+          status: aiModels.status,
+          providerName: aiProviders.name,
+          providerSlug: aiProviders.slug,
+          providerStatus: aiProviders.status,
+        })
+        .from(aiModels)
+        .innerJoin(aiProviders, eq(aiModels.providerId, aiProviders.id))
+        .where(eq(aiModels.status, "active"));
+      res.json(models);
+    } catch (error) {
+      console.error("Error fetching AI models:", error);
+      res.status(500).json({ error: "Failed to fetch AI models" });
+    }
+  });
+
+  app.get("/api/ai/providers", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const providers = await db
+        .select()
+        .from(aiProviders)
+        .where(eq(aiProviders.status, "enabled"));
+      res.json(providers);
+    } catch (error) {
+      console.error("Error fetching AI providers:", error);
+      res.status(500).json({ error: "Failed to fetch AI providers" });
+    }
+  });
+
+  app.patch("/api/organizations/:id/settings", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { id } = req.params;
+      const userId = (req.user as any).id;
+
+      // Verify the user has admin or owner role in this org
+      const userOrgs = await storage.getUserOrganizations(userId);
+      const membership = userOrgs.find((o: any) => o.id === id);
+      if (!membership) return res.status(403).json({ error: "Not a member of this organization" });
+
+      const userOrgRows = await db
+        .select({ role: userOrganizations.role })
+        .from(userOrganizations)
+        .where(
+          and(
+            eq(userOrganizations.userId, userId),
+            eq(userOrganizations.organizationId, id)
+          )
+        )
+        .limit(1);
+
+      const role = userOrgRows[0]?.role;
+      if (role !== "admin" && role !== "owner") {
+        return res.status(403).json({ error: "Only admins and owners can change organization settings" });
+      }
+
+      // Merge-patch the settings jsonb field
+      const patch = req.body as Record<string, any>;
+
+      // Fetch current settings
+      const [org] = await db
+        .select({ settings: organizations.settings })
+        .from(organizations)
+        .where(eq(organizations.id, id))
+        .limit(1);
+
+      if (!org) return res.status(404).json({ error: "Organization not found" });
+
+      const merged = { ...(org.settings as Record<string, any> || {}), ...patch };
+
+      const [updated] = await db
+        .update(organizations)
+        .set({ settings: merged, updatedAt: new Date() })
+        .where(eq(organizations.id, id))
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating organization settings:", error);
+      res.status(500).json({ error: "Failed to update organization settings" });
     }
   });
 

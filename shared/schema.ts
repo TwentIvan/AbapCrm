@@ -34,6 +34,36 @@ export const organizations = pgTable("organizations", {
   theme: text("theme").default("blue").notNull(), // Theme color
   logoUrl: text("logo_url"), // Organization logo URL
   partnerId: uuid("partner_id"), // Optional partner reference
+  settings: jsonb("settings").$type<Record<string, any>>(), // Organization settings (e.g. aiDefaultModelKey)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ========== AI Gateway Tables ==========
+
+export const aiProviderStatusEnum = pgEnum("ai_provider_status", ["enabled", "disabled"]);
+export const aiModelStatusEnum = pgEnum("ai_model_status", ["active", "deprecated", "beta"]);
+
+export const aiProviders = pgTable("ai_providers", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(), // e.g. "openai", "anthropic"
+  baseUrl: text("base_url"), // Optional override base URL
+  status: aiProviderStatusEnum("status").default("enabled").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const aiModels = pgTable("ai_models", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  providerId: uuid("provider_id").references(() => aiProviders.id).notNull(),
+  modelKey: text("model_key").notNull().unique(), // e.g. "openai/gpt-5", "anthropic/claude-3-5-sonnet"
+  modelId: text("model_id").notNull(), // Raw model ID sent to the API e.g. "gpt-5"
+  displayName: text("display_name").notNull(),
+  inputPricePerMToken: decimal("input_price_per_mtoken", { precision: 10, scale: 6 }), // USD per million tokens
+  outputPricePerMToken: decimal("output_price_per_mtoken", { precision: 10, scale: 6 }),
+  capabilities: jsonb("capabilities").$type<{ toolUse?: boolean; vision?: boolean; json?: boolean; maxContextTokens?: number }>(),
+  status: aiModelStatusEnum("status").default("active").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -3470,6 +3500,25 @@ export type AiLearningPattern = typeof aiLearningPatterns.$inferSelect;
 export type InsertAiLearningPattern = z.infer<typeof insertAiLearningPatternSchema>;
 export type DevopsFieldMapping = typeof devopsFieldMappings.$inferSelect;
 export type InsertDevopsFieldMapping = z.infer<typeof insertDevopsFieldMappingSchema>;
+
+// ========== Insert Schemas & Types for AI Gateway ==========
+
+export const insertAiProviderSchema = createInsertSchema(aiProviders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAiModelSchema = createInsertSchema(aiModels).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AiProvider = typeof aiProviders.$inferSelect;
+export type InsertAiProvider = z.infer<typeof insertAiProviderSchema>;
+export type AiModel = typeof aiModels.$inferSelect;
+export type InsertAiModel = z.infer<typeof insertAiModelSchema>;
 
 // ========== Insert Schemas & Types for AI ABAP Patterns & Task Executions ==========
 

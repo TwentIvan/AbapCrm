@@ -1,7 +1,7 @@
 // AI Task Executor - Generates ABAP code and operational assistance for tasks
 // Uses learned patterns from sapObjectContent and aiAbapPatterns
 
-import OpenAI from "openai";
+import { aiGateway, getDefaultModelKey } from "./ai-gateway";
 import { db } from "./db";
 import { eq, and, sql, desc, or, ilike, inArray } from "drizzle-orm";
 import {
@@ -72,8 +72,6 @@ interface ExtendedTaskContext extends AiTaskContext {
     objects: string[];
   }>;
 }
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Result from AI task execution
 export interface TaskExecutionResult {
@@ -1159,17 +1157,23 @@ export async function executeTaskWithAI(
       // Build prompt and call AI
       const prompt = buildTaskExecutionPrompt(context, patterns, codeExamples);
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+      // Default to gpt-4o for code generation (larger context, better code quality)
+      // Org-level settings and AI_DEFAULT_MODEL_KEY env var still take precedence
+      const modelKey = await getDefaultModelKey(organizationId, "openai/gpt-4o");
+      const gwResult = await aiGateway.complete({
+        modelKey,
         messages: [
           { role: "system", content: "Sei un esperto sviluppatore SAP ABAP. Rispondi sempre in italiano. Output SOLO JSON valido." },
           { role: "user", content: prompt }
         ],
         temperature: 0.3,
-        max_completion_tokens: 8000,
+        maxTokens: 8000,
+        organizationId,
+        caller: "ai-task-executor/executeTask",
       });
 
-      const content = response.choices[0]?.message?.content || '';
+      const content = gwResult.content || '';
+      const response = { usage: { prompt_tokens: gwResult.promptTokens, completion_tokens: gwResult.completionTokens } };
       
       // Parse AI response
       let aiResult: any;

@@ -1,11 +1,7 @@
 // AI Project Agent - Analyzes messages and proposes projects, partners, and tasks
-// Using OpenAI integration from blueprint:javascript_openai
 
-import OpenAI from "openai";
+import { aiGateway, getDefaultModelKey } from "./ai-gateway";
 import type { Message, Project, Partner, Task, AiLearningPattern, Calendar } from "@shared/schema";
-
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export interface ProjectProposal {
   project: {
@@ -112,7 +108,8 @@ export async function analyzeMessageForProject(
   existingProjects: Project[],
   existingPartners: Partner[],
   existingTasks: Task[],
-  learningContext?: LearningContext
+  learningContext?: LearningContext,
+  organizationId?: string
 ): Promise<ProjectProposal> {
   const systemPrompt = `You are an intelligent project management assistant for a SAP ABAP freelancer CRM system.
 
@@ -421,16 +418,19 @@ Based on the message content and existing context above:
 Respond with VALID JSON ONLY (no markdown, no explanations outside JSON).`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5",
+    const modelKey = await getDefaultModelKey(organizationId);
+    const gwResult = await aiGateway.complete({
+      modelKey,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      response_format: { type: "json_object" },
+      responseFormat: { type: "json_object" },
+      organizationId,
+      caller: "ai-project-agent/analyzeMessageForProject",
     });
 
-    const proposal = JSON.parse(response.choices[0].message.content || "{}");
+    const proposal = JSON.parse(gwResult.content || "{}");
     
     console.log('[AI-AGENT] Generated proposal:', JSON.stringify(proposal, null, 2));
     
