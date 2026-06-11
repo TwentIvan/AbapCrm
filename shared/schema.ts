@@ -159,6 +159,14 @@ export const tasks = pgTable("tasks", {
   effectiveRemainingHours: real("effective_remaining_hours"), // Manual override: actual remaining hours for planning
   completionPercentage: integer("completion_percentage").default(0).notNull(), // 0-100
   sourceMessageIds: text("source_message_ids").array().default([]), // IDs dei messaggi da cui è stato creato
+  // AI Agent assignment & cost estimation (Phase 2)
+  agentModelId: uuid("agent_model_id").references(() => aiModels.id),
+  estimateTokensMin: integer("estimate_tokens_min"),
+  estimateTokensMax: integer("estimate_tokens_max"),
+  estimateCostMinEur: decimal("estimate_cost_min_eur", { precision: 10, scale: 4 }),
+  estimateCostMaxEur: decimal("estimate_cost_max_eur", { precision: 10, scale: 4 }),
+  estimateComputedAt: timestamp("estimate_computed_at"),
+  budgetCapEur: decimal("budget_cap_eur", { precision: 10, scale: 4 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -3308,12 +3316,13 @@ export const aiAbapPatterns = pgTable("ai_abap_patterns", {
 
 // AI Task Execution Results - Risultati delle esecuzioni AI sui task
 export const aiTaskExecutionStatusEnum = pgEnum("ai_task_execution_status", [
-  "pending",      // In attesa di elaborazione
-  "processing",   // In elaborazione
-  "completed",    // Completato con successo
-  "failed",       // Fallito
-  "approved",     // Approvato dall'utente
-  "rejected"      // Rifiutato dall'utente
+  "pending",        // In attesa di elaborazione
+  "processing",     // In elaborazione
+  "completed",      // Completato con successo
+  "failed",         // Fallito
+  "approved",       // Approvato dall'utente
+  "rejected",       // Rifiutato dall'utente
+  "paused_budget",  // Sospeso per superamento budget cap
 ]);
 
 export const aiTaskExecutions = pgTable("ai_task_executions", {
@@ -3338,9 +3347,11 @@ export const aiTaskExecutions = pgTable("ai_task_executions", {
   
   // AI metadata
   aiModel: text("ai_model").default("gpt-4o").notNull(),
+  modelKey: text("model_key"),
   promptTokens: integer("prompt_tokens"),
   completionTokens: integer("completion_tokens"),
   totalCost: decimal("total_cost", { precision: 10, scale: 6 }),
+  totalCostEur: decimal("total_cost_eur", { precision: 10, scale: 6 }),
   
   // Feedback utente
   userFeedback: text("user_feedback"), // Feedback testuale

@@ -1,1 +1,2 @@
 - [Schema drift & db:push](schema-drift-dbpush.md) — DB intentionally drifts from shared/schema.ts; never run unattended `drizzle-kit push`, apply schema via direct SQL.
+- [AI Gateway Phase 2 Architecture](ai-gateway-phase2.md) — cost estimation, budget guardrail, model resolution pattern for ai-task-executor.

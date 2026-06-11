@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch, LayoutDashboard } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch, LayoutDashboard, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import newLogo from "@assets/ChatGPT Image 18 ott 2025, 19_07_46_1760807285076.png";
 import ImageContainer from "@/components/ui/image-container";
@@ -56,6 +56,11 @@ const getDefaultAcquistiItems = (t: any) => [
 const getDefaultTimeManagementItems = (t: any) => [
   { id: "t1", name: t("nav.timeEntries"), href: "/timesheet", icon: Clock, testId: "nav-timesheet" },
   { id: "t2", name: t("nav.timesheets"), href: "/timesheets", icon: Clock, testId: "nav-timesheets" },
+];
+
+// AI Tools section (direct items)
+const getDefaultAiToolsItems = (t: any) => [
+  { id: "ai1", name: "AI Analytics", href: "/ai-analytics", icon: Brain, testId: "nav-ai-analytics" },
 ];
 
 // Parent sections
@@ -198,6 +203,7 @@ export default function Sidebar() {
   const systemsItems = getDefaultSystemsItems(t);
   const timeManagementItems = getDefaultTimeManagementItems(t);
   const parentItems = getDefaultParentItems(t);
+  const aiToolsItems = getDefaultAiToolsItems(t);
   const [anagraficheManual, setAnagraficheManual] = useState<'open' | 'closed' | null>(null);
   const [progettiManual, setProgettiManual] = useState<'open' | 'closed' | null>(null);
   const [isSoluzioniOpen, setIsSoluzioniOpen] = useState(false);
@@ -376,6 +382,20 @@ export default function Sidebar() {
             );
           })}
       </nav>
+
+      {/* AI Tools section */}
+      <div className="px-4 pb-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
+          AI
+        </p>
+        {aiToolsItems.map((item) => (
+          <NavItem
+            key={item.id}
+            item={item}
+            isActive={location === item.href}
+          />
+        ))}
+      </div>
 
       {/* User Profile */}
       <div className="p-6 border-t border-border">

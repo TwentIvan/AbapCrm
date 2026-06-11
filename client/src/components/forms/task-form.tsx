@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -10,9 +10,31 @@ import { insertTaskSchema, Project, Task, SapSystem, ProjectMilestone } from "@s
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Bot } from "lucide-react";
+
+interface AiModelOption {
+  id: string;
+  modelKey: string;
+  displayName: string;
+  inputPricePerMToken: string | null;
+  outputPricePerMToken: string | null;
+  providerName: string;
+  providerSlug: string;
+  status: string;
+}
+
+interface CostEstimate {
+  tokensMin: number;
+  tokensMax: number;
+  costMinEur: number;
+  costMaxEur: number;
+  basis: "historical" | "heuristic";
+  sampleSize: number;
+}
 
 const formSchema = insertTaskSchema.omit({
   userId: true,
@@ -26,6 +48,8 @@ const formSchema = insertTaskSchema.omit({
   completionPercentage: z.string().optional(),
   sapSystemId: z.string().optional(),
   assignedTo: z.string().optional(),
+  agentModelId: z.string().optional(),
+  budgetCapEur: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -40,40 +64,57 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [selectedProvider, setSelectedProvider] = useState<string>("all");
+  const [estimate, setEstimate] = useState<CostEstimate | null>(null);
+  const [estimating, setEstimating] = useState(false);
+
   const { data: projects, isLoading: projectsLoading, error: projectsError } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
     queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!user, // Only fetch when user is authenticated
+    enabled: !!user,
     retry: 3,
   });
 
   const { data: tasks } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
     queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!user, // Only fetch when user is authenticated
+    enabled: !!user,
   });
 
   const { data: sapSystems } = useQuery<SapSystem[]>({
     queryKey: ["/api/sap-systems"],
     queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!user, // Only fetch when user is authenticated
+    enabled: !!user,
   });
 
   const { data: milestones } = useQuery<ProjectMilestone[]>({
     queryKey: ["/api/project-milestones"],
     queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!user, // Only fetch when user is authenticated
+    enabled: !!user,
   });
 
-  const { data: users } = useQuery<any[]>({
+  const { data: usersList } = useQuery<any[]>({
     queryKey: ["/api/users"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!user,
   });
 
+  const { data: aiModels } = useQuery<AiModelOption[]>({
+    queryKey: ["/api/ai/models"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!user,
+  });
+
   const activeProjects = projects?.filter(project => project.status !== "completed") || [];
-  
   const parentTasks = tasks?.filter(t => t.id !== task?.id) || [];
+
+  const uniqueProviders = Array.from(
+    new Set((aiModels || []).map(m => m.providerSlug))
+  );
+
+  const filteredModels = selectedProvider === "all"
+    ? (aiModels || [])
+    : (aiModels || []).filter(m => m.providerSlug === selectedProvider);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -91,10 +132,11 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       completionPercentage: task?.completionPercentage?.toString() || "0",
       sapSystemId: task?.sapSystemId || "none",
       assignedTo: task?.assignedTo || "none",
+      agentModelId: (task as any)?.agentModelId || "none",
+      budgetCapEur: (task as any)?.budgetCapEur?.toString() || "",
     },
   });
 
-  // Reset form when task changes
   useEffect(() => {
     if (task) {
       form.reset({
@@ -111,19 +153,40 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         completionPercentage: task.completionPercentage?.toString() || "0",
         sapSystemId: task.sapSystemId || "none",
         assignedTo: task.assignedTo || "none",
+        agentModelId: (task as any)?.agentModelId || "none",
+        budgetCapEur: (task as any)?.budgetCapEur?.toString() || "",
       });
+      setEstimate(null);
     }
   }, [task, form]);
 
-  // Watch projectId to filter SAP systems by partner
   const selectedProjectId = form.watch("projectId");
   const selectedProject = projects?.find(p => p.id === selectedProjectId);
-  
-  // Filter SAP systems by the partner associated with the selected project
+
   const filteredSapSystems = sapSystems?.filter(sys => {
-    if (!selectedProject?.clientId) return true; // Show all if no project selected
+    if (!selectedProject?.clientId) return true;
     return sys.partnerId === selectedProject.clientId;
   }) || [];
+
+  const handleEstimate = async () => {
+    if (!task?.id) return;
+    setEstimating(true);
+    try {
+      const currentModelId = form.getValues("agentModelId");
+      const selectedModel = currentModelId && currentModelId !== "none"
+        ? aiModels?.find(m => m.id === currentModelId)
+        : null;
+      const res = await apiRequest("POST", `/api/tasks/${task.id}/estimate`, {
+        modelKey: selectedModel?.modelKey,
+      });
+      const data: CostEstimate = await res.json();
+      setEstimate(data);
+    } catch (err: any) {
+      toast({ title: "Errore preventivo", description: err.message, variant: "destructive" });
+    } finally {
+      setEstimating(false);
+    }
+  };
 
   const saveTaskMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -139,14 +202,14 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         estimatedEffort: data.estimatedEffort ? parseFloat(data.estimatedEffort) : null,
         completionPercentage: data.completionPercentage ? Math.min(100, Math.max(0, Math.round(parseFloat(data.completionPercentage)))) : 0,
         assignedTo: data.assignedTo && data.assignedTo !== "none" ? data.assignedTo : null,
+        agentModelId: data.agentModelId && data.agentModelId !== "none" ? data.agentModelId : null,
+        budgetCapEur: data.budgetCapEur ? data.budgetCapEur : null,
       };
-      
+
       if (task) {
-        // Edit existing task
         const res = await apiRequest("PUT", `/api/tasks/${task.id}`, taskData);
         return res.json();
       } else {
-        // Create new task
         const res = await apiRequest("POST", "/api/tasks", taskData);
         return res.json();
       }
@@ -156,21 +219,19 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       if (task) {
         queryClient.invalidateQueries({ queryKey: ["/api/tasks", task.id] });
       }
-      // Invalidate project-related queries to refresh ETC calculations after task update
       queryClient.invalidateQueries({ queryKey: ["/api/projects/batch-end-to-complete"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      // Invalidate specific project ETC if task has a project
       const projectId = updatedTask?.projectId || task?.projectId;
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "end-to-complete"] });
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
       }
-      toast({ title: task ? "Task updated successfully" : "Task created successfully" });
+      toast({ title: task ? "Task aggiornato" : "Task creato" });
       onSuccess?.();
     },
     onError: (error: Error) => {
       toast({
-        title: task ? "Failed to update task" : "Failed to create task",
+        title: task ? "Errore aggiornamento" : "Errore creazione",
         description: error.message,
         variant: "destructive",
       });
@@ -193,18 +254,18 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
             {saveTaskMutation.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {task ? "Update Task" : "Create Task"}
+            {task ? "Aggiorna Task" : "Crea Task"}
           </Button>
         </div>
-        
+
         <FormField
           control={form.control}
           name="title"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Task Title</FormLabel>
+              <FormLabel>Titolo Task</FormLabel>
               <FormControl>
-                <Input {...field} data-testid="input-task-title" placeholder="Enter task title" />
+                <Input {...field} data-testid="input-task-title" placeholder="Inserisci il titolo del task" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -219,8 +280,8 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
               <FormItem>
                 <FormLabel>Ore Stimate</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
+                  <Input
+                    {...field}
                     type="number"
                     min="0"
                     step="0.5"
@@ -240,8 +301,8 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
               <FormItem>
                 <FormLabel>Completamento %</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
+                  <Input
+                    {...field}
                     type="number"
                     min="0"
                     max="100"
@@ -261,13 +322,13 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description (Optional)</FormLabel>
+              <FormLabel>Descrizione (Opzionale)</FormLabel>
               <FormControl>
-                <Textarea 
-                  {...field} 
+                <Textarea
+                  {...field}
                   value={field.value || ""}
                   data-testid="input-task-description"
-                  placeholder="Describe the task..."
+                  placeholder="Descrivi il task..."
                   rows={3}
                 />
               </FormControl>
@@ -286,7 +347,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger data-testid="select-task-status">
-                      <SelectValue placeholder="Select status" />
+                      <SelectValue placeholder="Seleziona status" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -306,11 +367,11 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
             name="priority"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Priority</FormLabel>
+                <FormLabel>Priorità</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger data-testid="select-task-priority">
-                      <SelectValue placeholder="Select priority" />
+                      <SelectValue placeholder="Seleziona priorità" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -340,7 +401,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="none">Non assegnato</SelectItem>
-                  {users?.map(u => (
+                  {usersList?.map(u => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.firstName} {u.lastName} ({u.username})
                     </SelectItem>
@@ -357,25 +418,25 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
           name="projectId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Project (Optional)</FormLabel>
+              <FormLabel>Progetto (Opzionale)</FormLabel>
               <Select onValueChange={field.onChange} value={field.value || "none"}>
                 <FormControl>
                   <SelectTrigger data-testid="select-task-project">
                     <SelectValue placeholder={
-                      projectsLoading ? "Loading projects..." : 
-                      projectsError ? "Error loading projects" :
-                      "Select project"
+                      projectsLoading ? "Caricamento..." :
+                      projectsError ? "Errore caricamento" :
+                      "Seleziona progetto"
                     } />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="none">No project</SelectItem>
+                  <SelectItem value="none">Nessun progetto</SelectItem>
                   {projectsLoading ? (
-                    <SelectItem value="loading" disabled>Loading projects...</SelectItem>
+                    <SelectItem value="loading" disabled>Caricamento progetti...</SelectItem>
                   ) : projectsError ? (
-                    <SelectItem value="error" disabled>Error loading projects</SelectItem>
+                    <SelectItem value="error" disabled>Errore caricamento progetti</SelectItem>
                   ) : activeProjects.length === 0 ? (
-                    <SelectItem value="no-projects" disabled>No active projects found</SelectItem>
+                    <SelectItem value="no-projects" disabled>Nessun progetto attivo</SelectItem>
                   ) : (
                     activeProjects.map((project) => (
                       <SelectItem key={project.id} value={project.id}>
@@ -395,11 +456,11 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
           name="milestoneId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Milestone (Optional)</FormLabel>
+              <FormLabel>Milestone (Opzionale)</FormLabel>
               <Select onValueChange={field.onChange} value={field.value || "none"}>
                 <FormControl>
                   <SelectTrigger data-testid="select-task-milestone">
-                    <SelectValue placeholder="Select milestone" />
+                    <SelectValue placeholder="Seleziona milestone" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -421,17 +482,19 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
           name="sapSystemId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>SAP System (Optional)</FormLabel>
+              <FormLabel>Sistema SAP (Opzionale)</FormLabel>
               <Select onValueChange={field.onChange} value={field.value || "none"}>
                 <FormControl>
                   <SelectTrigger data-testid="select-task-sap-system">
-                    <SelectValue placeholder="Select SAP system" />
+                    <SelectValue placeholder="Seleziona sistema SAP" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="none">No SAP system</SelectItem>
+                  <SelectItem value="none">Nessun sistema SAP</SelectItem>
                   {filteredSapSystems.length === 0 && selectedProject?.clientId && (
-                    <SelectItem value="no-systems" disabled>Nessun sistema SAP per questo partner</SelectItem>
+                    <SelectItem value="no-systems" disabled>
+                      Nessun sistema SAP per questo partner
+                    </SelectItem>
                   )}
                   {filteredSapSystems.map((sapSystem) => (
                     <SelectItem key={sapSystem.id} value={sapSystem.id}>
@@ -450,15 +513,15 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
           name="parentTaskId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Parent Task (Optional)</FormLabel>
+              <FormLabel>Task Padre (Opzionale)</FormLabel>
               <Select onValueChange={field.onChange} value={field.value || "no-parent"}>
                 <FormControl>
                   <SelectTrigger data-testid="select-parent-task">
-                    <SelectValue placeholder="Select parent task" />
+                    <SelectValue placeholder="Seleziona task padre" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="no-parent">No parent task</SelectItem>
+                  <SelectItem value="no-parent">Nessun task padre</SelectItem>
                   {parentTasks.map((parentTask) => (
                     <SelectItem key={parentTask.id} value={parentTask.id}>
                       {parentTask.title}
@@ -477,10 +540,10 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
             name="startDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Data Inizio (Optional)</FormLabel>
+                <FormLabel>Data Inizio (Opzionale)</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
+                  <Input
+                    {...field}
                     type="datetime-local"
                     data-testid="input-task-start-date"
                   />
@@ -495,12 +558,136 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
             name="dueDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Data Fine (Optional)</FormLabel>
+                <FormLabel>Data Fine (Opzionale)</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
+                  <Input
+                    {...field}
                     type="datetime-local"
                     data-testid="input-task-due-date"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* ─── Sezione Agente AI ─── */}
+        <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+          <h3 className="text-sm font-medium flex items-center gap-2 text-foreground">
+            <Bot className="h-4 w-4 text-primary" />
+            Agente AI
+          </h3>
+
+          {/* Provider filter + Model select */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm">Provider</Label>
+              <Select value={selectedProvider} onValueChange={setSelectedProvider}>
+                <SelectTrigger data-testid="select-ai-provider">
+                  <SelectValue placeholder="Tutti i provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti</SelectItem>
+                  {uniqueProviders.map(p => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <FormField
+              control={form.control}
+              name="agentModelId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Modello AI</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || "none"}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-agent-model">
+                        <SelectValue placeholder="Default organizzazione" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Default organizzazione</SelectItem>
+                      {filteredModels.map(m => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.displayName}
+                          {m.inputPricePerMToken
+                            ? ` — $${parseFloat(m.inputPricePerMToken).toFixed(2)}/$${parseFloat(m.outputPricePerMToken || "0").toFixed(2)} /Mtok`
+                            : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {/* Estimate */}
+          {task ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEstimate}
+                  disabled={estimating}
+                  data-testid="button-calculate-estimate"
+                >
+                  {estimating && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                  Calcola Preventivo
+                </Button>
+                {estimate && (
+                  <Badge variant={estimate.basis === "historical" ? "default" : "secondary"}>
+                    {estimate.basis === "historical"
+                      ? `storico (${estimate.sampleSize} exec.)`
+                      : "euristica"}
+                  </Badge>
+                )}
+              </div>
+
+              {estimate && (
+                <div className="bg-background border rounded p-3 text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Token stimati</span>
+                    <span className="tabular-nums">
+                      {estimate.tokensMin.toLocaleString()} – {estimate.tokensMax.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Costo EUR stimato</span>
+                    <span className="tabular-nums font-medium">
+                      €{estimate.costMinEur.toFixed(4)} – €{estimate.costMaxEur.toFixed(4)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Salva il task prima di calcolare il preventivo AI.
+            </p>
+          )}
+
+          {/* Budget cap */}
+          <FormField
+            control={form.control}
+            name="budgetCapEur"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tetto di Spesa EUR (opzionale)</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    placeholder="es. 0.500"
+                    data-testid="input-budget-cap"
                   />
                 </FormControl>
                 <FormMessage />

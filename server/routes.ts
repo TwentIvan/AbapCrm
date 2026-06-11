@@ -10008,6 +10008,15 @@ ISTRUZIONI:
       // Merge-patch the settings jsonb field
       const patch = req.body as Record<string, any>;
 
+      const ALLOWED_SETTINGS_KEYS = ['aiDefaultModelKey', 'fxUsdEur'];
+      const unknownKeys = Object.keys(patch).filter(k => !ALLOWED_SETTINGS_KEYS.includes(k));
+      if (unknownKeys.length > 0) {
+        return res.status(400).json({
+          error: `Chiavi settings non ammesse: ${unknownKeys.join(', ')}`,
+          allowed: ALLOWED_SETTINGS_KEYS,
+        });
+      }
+
       // Fetch current settings
       const [org] = await db
         .select({ settings: organizations.settings })
@@ -10029,6 +10038,190 @@ ISTRUZIONI:
     } catch (error) {
       console.error("Error updating organization settings:", error);
       res.status(500).json({ error: "Failed to update organization settings" });
+    }
+  });
+
+  // POST /api/tasks/:id/estimate - Calculate cost estimate for a task
+  app.post("/api/tasks/:id/estimate", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { id } = req.params;
+      const { modelKey } = req.body;
+      const organizationId = getOrganizationId(req);
+      const { estimateTaskCost } = await import("./cost-estimator");
+      const estimate = await estimateTaskCost({ taskId: id, modelKey, organizationId });
+      await db
+        .update(tasks)
+        .set({
+          estimateTokensMin: estimate.tokensMin,
+          estimateTokensMax: estimate.tokensMax,
+          estimateCostMinEur: estimate.costMinEur.toFixed(4),
+          estimateCostMaxEur: estimate.costMaxEur.toFixed(4),
+          estimateComputedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(tasks.id, id));
+      return res.json(estimate);
+    } catch (error: any) {
+      console.error("Error estimating task cost:", error);
+      return res.status(500).json({ error: error.message || "Failed to estimate cost" });
+    }
+  });
+
+  // GET /api/ai/analytics - AI usage analytics (last 90 days)
+  app.get("/api/ai/analytics", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
+      const execs = await db
+        .select({
+          modelKey: aiTaskExecutions.modelKey,
+          totalCostEur: aiTaskExecutions.totalCostEur,
+          userRating: aiTaskExecutions.userRating,
+          taskId: aiTaskExecutions.taskId,
+        })
+        .from(aiTaskExecutions)
+        .where(
+          and(
+            eq(aiTaskExecutions.organizationId, organizationId),
+            eq(aiTaskExecutions.status, "completed"),
+            sql`${aiTaskExecutions.completedAt} >= ${since}`,
+            sql`${aiTaskExecutions.totalCostEur} IS NOT NULL`
+          )
+        );
+
+      const totalSpendEur = execs.reduce(
+        (s, e) => s + parseFloat(e.totalCostEur as string || "0"),
+        0
+      );
+
+      // By model
+      const byModelMap: Record<string, { spendEur: number; executions: number; ratings: number[] }> = {};
+      for (const e of execs) {
+        const key = e.modelKey || "unknown";
+        if (!byModelMap[key]) byModelMap[key] = { spendEur: 0, executions: 0, ratings: [] };
+        byModelMap[key].spendEur += parseFloat(e.totalCostEur as string || "0");
+        byModelMap[key].executions += 1;
+        if (e.userRating) byModelMap[key].ratings.push(e.userRating);
+      }
+      const byModel = Object.entries(byModelMap)
+        .map(([modelKey, v]) => ({
+          modelKey,
+          spendEur: parseFloat(v.spendEur.toFixed(4)),
+          executions: v.executions,
+          avgRating: v.ratings.length
+            ? parseFloat((v.ratings.reduce((a, b) => a + b, 0) / v.ratings.length).toFixed(1))
+            : null,
+        }))
+        .sort((a, b) => b.spendEur - a.spendEur);
+
+      // By task type
+      const execsWithType = await db
+        .select({ taskType: tasks.taskType, totalCostEur: aiTaskExecutions.totalCostEur })
+        .from(aiTaskExecutions)
+        .innerJoin(tasks, eq(aiTaskExecutions.taskId, tasks.id))
+        .where(
+          and(
+            eq(aiTaskExecutions.organizationId, organizationId),
+            eq(aiTaskExecutions.status, "completed"),
+            sql`${aiTaskExecutions.completedAt} >= ${since}`,
+            sql`${aiTaskExecutions.totalCostEur} IS NOT NULL`
+          )
+        );
+      const byTypeMap: Record<string, { spendEur: number; executions: number }> = {};
+      for (const e of execsWithType) {
+        const key = e.taskType || "other";
+        if (!byTypeMap[key]) byTypeMap[key] = { spendEur: 0, executions: 0 };
+        byTypeMap[key].spendEur += parseFloat(e.totalCostEur as string || "0");
+        byTypeMap[key].executions += 1;
+      }
+      const byTaskType = Object.entries(byTypeMap)
+        .map(([taskType, v]) => ({ taskType, spendEur: parseFloat(v.spendEur.toFixed(4)), executions: v.executions }))
+        .sort((a, b) => b.spendEur - a.spendEur);
+
+      // By project
+      const execsWithProj = await db
+        .select({
+          projectId: tasks.projectId,
+          projectName: projects.name,
+          totalCostEur: aiTaskExecutions.totalCostEur,
+        })
+        .from(aiTaskExecutions)
+        .innerJoin(tasks, eq(aiTaskExecutions.taskId, tasks.id))
+        .leftJoin(projects, eq(tasks.projectId, projects.id))
+        .where(
+          and(
+            eq(aiTaskExecutions.organizationId, organizationId),
+            eq(aiTaskExecutions.status, "completed"),
+            sql`${aiTaskExecutions.completedAt} >= ${since}`,
+            sql`${aiTaskExecutions.totalCostEur} IS NOT NULL`
+          )
+        );
+      const byProjMap: Record<string, { name: string; spendEur: number }> = {};
+      for (const e of execsWithProj) {
+        const key = e.projectId || "no-project";
+        if (!byProjMap[key]) byProjMap[key] = { name: e.projectName || "Senza progetto", spendEur: 0 };
+        byProjMap[key].spendEur += parseFloat(e.totalCostEur as string || "0");
+      }
+      const byProject = Object.entries(byProjMap)
+        .map(([projectId, v]) => ({ projectId, name: v.name, spendEur: parseFloat(v.spendEur.toFixed(4)) }))
+        .sort((a, b) => b.spendEur - a.spendEur);
+
+      return res.json({
+        totalSpendEur: parseFloat(totalSpendEur.toFixed(4)),
+        byModel,
+        byTaskType,
+        byProject,
+      });
+    } catch (error: any) {
+      console.error("Error fetching AI analytics:", error);
+      return res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  // POST /api/executions/:id/resume - Resume a paused_budget execution
+  app.post("/api/executions/:id/resume", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { id } = req.params;
+      const userId = (req.user as any).id;
+      const organizationId = getOrganizationId(req);
+
+      const [execution] = await db
+        .select()
+        .from(aiTaskExecutions)
+        .where(eq(aiTaskExecutions.id, id))
+        .limit(1);
+      if (!execution) return res.status(404).json({ error: "Execution not found" });
+      if (execution.status !== "paused_budget") {
+        return res.status(400).json({ error: "Execution is not in paused_budget state" });
+      }
+
+      const [task] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, execution.taskId))
+        .limit(1);
+      if (!task) return res.status(404).json({ error: "Task not found" });
+
+      const analysisResult = execution.analysisResult as any;
+      const previousCapEur = analysisResult?.capEur ?? null;
+      const currentCapEur = task.budgetCapEur ? parseFloat(task.budgetCapEur as string) : null;
+
+      if (currentCapEur !== null && previousCapEur !== null && currentCapEur <= previousCapEur) {
+        return res.status(400).json({
+          error: "Aumentare o rimuovere il budget_cap_eur prima di riprendere",
+        });
+      }
+
+      const { executeTaskWithAI } = await import("./ai-task-executor");
+      const results = await executeTaskWithAI([execution.taskId], userId, organizationId);
+      return res.json({ success: true, newExecutionId: results[0]?.executionId, result: results[0] });
+    } catch (error: any) {
+      console.error("Error resuming execution:", error);
+      return res.status(500).json({ error: "Failed to resume execution" });
     }
   });
 

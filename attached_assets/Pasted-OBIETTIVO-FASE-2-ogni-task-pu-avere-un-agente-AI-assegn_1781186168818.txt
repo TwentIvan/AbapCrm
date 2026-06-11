@@ -1,0 +1,59 @@
+OBIETTIVO FASE 2: ogni task può avere un agente AI assegnato (modello dal registry), un preventivo di costo calcolato PRIMA dell'esecuzione, e un tetto di spesa. Si costruisce sopra il gateway della Fase 1 (server/ai-gateway.ts), che NON va modificato nella sua interfaccia esistente, solo eventualmente esteso.
+
+PICCOLA CORREZIONE EREDITATA DALLA FASE 1
+In PATCH /api/organizations/:id/settings: accetta solo chiavi whitelistate nel merge (per ora: "aiDefaultModelKey", "fxUsdEur"). Chiavi sconosciute → 400 con elenco chiavi ammesse.
+
+1. SCHEMA — nuove colonne su tasks (shared/schema.ts)
+
+- agent_model_id uuid FK -> ai_models (nullable; null = usa default org)
+- estimate_tokens_min integer
+- estimate_tokens_max integer
+- estimate_cost_min_eur decimal(10,4)
+- estimate_cost_max_eur decimal(10,4)
+- estimate_computed_at timestamp
+- budget_cap_eur decimal(10,4) (nullable = nessun tetto)
+
+Su ai_task_executions aggiungi (se mancanti): model_key text, total_cost_eur decimal(10,6).
+
+2. CONVERSIONE VALUTA (server/fx.ts)
+
+getUsdEurRate(organizationId): legge org.settings.fxUsdEur, poi env FX_USD_EUR_OVERRIDE, poi default 0.92. Funzione usdToEur(amount, rate). Tutti i valori mostrati all'utente sono in EUR; in USD restano solo i prezzi unitari in ai_models.
+
+3. STIMATORE (server/cost-estimator.ts)
+
+export async function estimateTaskCost({ taskId, modelKey, organizationId }):
+  Promise<{ tokensMin, tokensMax, costMinEur, costMaxEur, basis: "historical" | "heuristic", sampleSize }>
+
+Logica:
+a) Assembla l'input previsto come fa oggi ai-task-executor (titolo, descrizione, contesto progetto, work item DevOps, messaggi collegati) SENZA chiamare l'AI, e conta i token di input. Usa una funzione countTokens(text) con stima Math.ceil(chars/4) (niente dipendenze native pesanti).
+b) Token output stimati = inputTokens × moltiplicatore per taskType. Seed in una costante esportata OUTPUT_MULTIPLIERS: development 2.0, analysis 1.2, design 1.3, testing 1.5, documentation 1.5, support 1.0, maintenance 1.5, consulting 1.0, meeting 0.5, other 1.2.
+c) CALIBRAZIONE STORICA: query su ai_task_executions joinata a tasks, filtrata per (tasks.taskType, model_key, status completed, organization corrente). Se sampleSize >= 5: usa mediana come stima centrale e P90 come max dei token reali (prompt+completion), basis="historical". Altrimenti basis="heuristic" con forchetta = stima ±30%.
+d) Converte in EUR con i prezzi di ai_models e il cambio di fx.ts.
+
+4. INTEGRAZIONE NELL'EXECUTOR (server/ai-task-executor.ts)
+
+- Il modello usato è risolto in quest'ordine: tasks.agent_model_id → default org → env → fallback. Persisti SEMPRE in ai_task_executions: model_key, prompt_tokens, completion_tokens, total_cost (USD), total_cost_eur.
+- GUARDRAIL BUDGET: se il task ha budget_cap_eur, prima di OGNI chiamata AI dell'esecuzione calcola il costo cumulato dell'esecuzione corrente; se costo cumulato + stima della prossima chiamata supera il cap, interrompi con stato "paused_budget" (aggiungi il valore all'enum di stato esistente delle esecuzioni) e registra il motivo in analysis_result. Emetti evento sul event_bus esistente: tipo "ai_budget", payload { taskId, executionId, level: "warning80" | "stopped" }. Il warning80 va emesso una sola volta quando il cumulato supera l'80% del cap.
+- API POST /api/executions/:id/resume → riprende un'esecuzione paused_budget SOLO se l'utente nel frattempo ha alzato o rimosso budget_cap_eur sul task.
+
+5. API
+
+- POST /api/tasks/:id/estimate  body: { modelKey?: string } → risultato stimatore; salva anche i campi estimate_* sul task.
+- GET /api/ai/analytics?organizationId=... → { totalSpendEur, byModel: [{modelKey, spendEur, executions, avgRating}], byTaskType: [...], byProject: [{projectId, name, spendEur}] } calcolato da ai_task_executions degli ultimi 90 giorni.
+
+6. UI
+
+a) Form creazione/modifica task (componente esistente): nuova sezione "Agente AI" con: select Provider → select Modello (popolata da GET /api/ai/models, mostra prezzo €/Mtok input/output accanto al nome); pannello "Preventivo" con pulsante "Calcola" che chiama POST estimate e mostra forchetta token e EUR + badge "stima storica (N esecuzioni)" o "stima euristica"; campo "Tetto di spesa (EUR)" opzionale.
+b) Vista dettaglio task: card "Costi AI" con preventivo vs consuntivo (somma esecuzioni) e scostamento %.
+c) Nuova pagina /ai-analytics (aggiungi a sidebar, sezione admin): tre tabelle/cards da GET /api/ai/analytics. Grafici non necessari in questa fase, bastano tabelle ordinate per spesa.
+d) Toast/notifica su evento ai_budget (riusa il meccanismo di notifiche esistente se presente, altrimenti toast su polling esecuzione).
+
+CRITERI DI ACCETTAZIONE
+- Creo un task tipo "development", scelgo un modello, clicco Calcola: vedo forchetta token+EUR coerente con i prezzi del registry.
+- Eseguo il task con l'AI: in ai_task_executions trovo model_key e total_cost_eur valorizzati; la vista task mostra preventivo vs consuntivo.
+- Imposto budget_cap_eur ridicolmente basso (es. 0.0001) e rilancio: l'esecuzione si ferma in paused_budget senza completare; alzando il cap e chiamando resume riparte.
+- Dopo >=5 esecuzioni dello stesso (taskType, modello) il preventivo passa a basis="historical".
+- PATCH settings rifiuta chiavi non whitelistate con 400.
+- npm run check non introduce nuovi errori TypeScript rispetto a prima.
+
+Al termine, elenca file modificati/creati e l'esito di ogni criterio di accettazione.

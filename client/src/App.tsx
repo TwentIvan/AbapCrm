@@ -42,6 +42,7 @@ import AccountPage from "@/pages/account-page";
 import BusinessScenariosPage from "@/pages/business-scenarios-page";
 import ResourcePlannerPage from "@/pages/resource-planner-page";
 import SkillCatalogPage from "@/pages/skill-catalog-page";
+import AiAnalyticsPage from "@/pages/ai-analytics-page";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -95,6 +96,7 @@ function Router() {
       <ProtectedRoute path="/business-scenarios" component={BusinessScenariosPage} />
       <ProtectedRoute path="/resource-planner" component={ResourcePlannerPage} />
       <ProtectedRoute path="/skill-catalog" component={SkillCatalogPage} />
+      <ProtectedRoute path="/ai-analytics" component={AiAnalyticsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/login" component={AuthPage} />
       <Route component={NotFound} />

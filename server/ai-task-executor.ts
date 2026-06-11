@@ -4,6 +4,7 @@
 import { aiGateway, getDefaultModelKey } from "./ai-gateway";
 import { db } from "./db";
 import { eq, and, sql, desc, or, ilike, inArray } from "drizzle-orm";
+import { getUsdEurRate, usdToEur } from "./fx";
 import {
   tasks,
   projects,
@@ -13,6 +14,7 @@ import {
   sapObjectContent,
   aiAbapPatterns,
   aiTaskExecutions,
+  aiModels,
   messages,
   messageLinks,
   comments,
@@ -1157,9 +1159,53 @@ export async function executeTaskWithAI(
       // Build prompt and call AI
       const prompt = buildTaskExecutionPrompt(context, patterns, codeExamples);
 
-      // Default to gpt-4o for code generation (larger context, better code quality)
-      // Org-level settings and AI_DEFAULT_MODEL_KEY env var still take precedence
-      const modelKey = await getDefaultModelKey(organizationId, "openai/gpt-4o");
+      // Model resolution: task.agentModelId → org default → env → fallback
+      let modelKey: string;
+      if ((taskData as any).agentModelId) {
+        const [assignedModel] = await db
+          .select({ modelKey: aiModels.modelKey })
+          .from(aiModels)
+          .where(eq(aiModels.id, (taskData as any).agentModelId))
+          .limit(1);
+        modelKey = assignedModel?.modelKey || await getDefaultModelKey(organizationId, "openai/gpt-4o");
+      } else {
+        modelKey = await getDefaultModelKey(organizationId, "openai/gpt-4o");
+      }
+
+      // Budget guardrail: check cap before AI call
+      const budgetCapEur = (taskData as any).budgetCapEur
+        ? parseFloat((taskData as any).budgetCapEur as string)
+        : null;
+      if (budgetCapEur !== null) {
+        const [mPricingGuard] = await db
+          .select({ inputPricePerMToken: aiModels.inputPricePerMToken, outputPricePerMToken: aiModels.outputPricePerMToken })
+          .from(aiModels)
+          .where(eq(aiModels.modelKey, modelKey))
+          .limit(1);
+        const fxGuard = await getUsdEurRate(organizationId);
+        const iG = mPricingGuard?.inputPricePerMToken ? parseFloat(mPricingGuard.inputPricePerMToken as string) : 2.5;
+        const oG = mPricingGuard?.outputPricePerMToken ? parseFloat(mPricingGuard.outputPricePerMToken as string) : 10.0;
+        const estimatedCostEur = usdToEur((10000 / 1_000_000) * (iG * 0.4 + oG * 0.6), fxGuard);
+        if (estimatedCostEur >= budgetCapEur) {
+          await db.update(aiTaskExecutions).set({
+            status: "paused_budget",
+            completedAt: new Date(),
+            modelKey,
+            analysisResult: { reason: "Budget cap reached", capEur: budgetCapEur, estimatedCostEur },
+          }).where(eq(aiTaskExecutions.id, execution.id));
+          results.push({
+            success: false,
+            executionId: execution.id,
+            analysis: { taskType: 'unknown', complexity: 'low', suggestedApproach: '', sapModules: [], requiredObjects: [] },
+            generatedFiles: [],
+            suggestedActions: [{ action: 'raise_budget', priority: 'high', description: `Budget cap di €${budgetCapEur} raggiunto. Alzare il tetto di spesa e riprendere l'esecuzione.` }],
+            patternsUsed: patterns.map(p => p.id),
+            error: `Esecuzione sospesa: budget cap €${budgetCapEur} raggiunto`,
+          });
+          continue;
+        }
+      }
+
       const gwResult = await aiGateway.complete({
         modelKey,
         messages: [
@@ -1287,7 +1333,20 @@ export async function executeTaskWithAI(
         continue;
       }
 
-      // Update execution with results
+      // Calculate costs and update execution with results
+      const promptTkns = response.usage?.prompt_tokens || 0;
+      const completionTkns = response.usage?.completion_tokens || 0;
+      const [mPricingFinal] = await db
+        .select({ inputPricePerMToken: aiModels.inputPricePerMToken, outputPricePerMToken: aiModels.outputPricePerMToken })
+        .from(aiModels)
+        .where(eq(aiModels.modelKey, modelKey))
+        .limit(1);
+      const iF = mPricingFinal?.inputPricePerMToken ? parseFloat(mPricingFinal.inputPricePerMToken as string) : 2.5;
+      const oF = mPricingFinal?.outputPricePerMToken ? parseFloat(mPricingFinal.outputPricePerMToken as string) : 10.0;
+      const totalCostUsd = (promptTkns / 1_000_000) * iF + (completionTkns / 1_000_000) * oF;
+      const fxFinal = await getUsdEurRate(organizationId);
+      const totalCostEurVal = usdToEur(totalCostUsd, fxFinal);
+
       await db
         .update(aiTaskExecutions)
         .set({
@@ -1296,8 +1355,12 @@ export async function executeTaskWithAI(
           generatedFiles: aiResult.generatedFiles || [],
           analysisResult: aiResult.analysis,
           suggestedActions: aiResult.suggestedActions || [],
-          promptTokens: response.usage?.prompt_tokens,
-          completionTokens: response.usage?.completion_tokens,
+          aiModel: modelKey,
+          modelKey: modelKey,
+          promptTokens: promptTkns,
+          completionTokens: completionTkns,
+          totalCost: totalCostUsd.toFixed(6),
+          totalCostEur: totalCostEurVal.toFixed(6),
         })
         .where(eq(aiTaskExecutions.id, execution.id));
 
