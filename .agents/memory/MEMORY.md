@@ -1,0 +1,1 @@
+- [Schema drift & db:push](schema-drift-dbpush.md) — DB intentionally drifts from shared/schema.ts; never run unattended `drizzle-kit push`, apply schema via direct SQL.
