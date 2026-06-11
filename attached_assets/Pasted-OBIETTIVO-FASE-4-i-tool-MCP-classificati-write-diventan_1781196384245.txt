@@ -1,0 +1,64 @@
+OBIETTIVO FASE 4: i tool MCP classificati "write" diventano eseguibili, ma SOLO previa approvazione umana esplicita, mai su PRD. In più: wizard per registrare server MCP proprietari nel catalogo. Si costruisce sul loop agentico della Fase 3.
+
+0. CORREZIONI EREDITATE DALLA FASE 3 (obbligatorie)
+a) NAMESPACE TOOL: i tool esposti al modello devono chiamarsi mcp__{primi8CharDelConfigId}__{toolName}. Mantieni una mappa name→(config, originalToolName) per l'esecuzione. Risolve le collisioni tra server che espongono tool omonimi.
+b) DIFESA IN PROFONDITÀ: in callTool (o subito prima), ri-verifica SEMPRE: il tool richiesto esiste nella lista raccolta per quella config, la sua classification è compatibile con read_only della config, e l'ambiente non è PRD se è write. Mai fidarsi del solo filtro a monte.
+
+1. ESPOSIZIONE CONDIZIONATA DEI TOOL WRITE
+Nell'executor, la regola di esposizione diventa:
+- config.environment === 'PRD' → SOLO tool read (invariato, nessuna eccezione)
+- config.read_only === true → SOLO tool read
+- config.read_only === false (e non PRD) → anche i tool write, MA marcati internamente come requiresApproval.
+
+2. SCHEMA
+
+ai_pending_actions:
+- id uuid PK
+- execution_id uuid FK -> ai_task_executions not null
+- task_id uuid FK -> tasks not null
+- organization_id uuid FK not null
+- config_id uuid FK -> mcp_server_configs not null
+- tool_name text not null            -- nome originale
+- tool_args jsonb not null
+- model_rationale text               -- il testo con cui il modello ha motivato la chiamata, se presente
+- status text default 'pending'      -- pending | approved | rejected | expired
+- decided_by uuid FK -> users (nullable)
+- decided_at timestamp
+- created_at timestamp default now()
+
+Su ai_task_executions aggiungi: loop_state jsonb (per riprendere il loop: messaggi accumulati, iterazione corrente, tool raccolti).
+
+Aggiungi all'enum stato esecuzioni: "awaiting_approval".
+
+3. FLUSSO DI APPROVAZIONE NELL'EXECUTOR
+Quando il modello propone una tool call write (requiresApproval):
+a) NON eseguirla. Salva ai_pending_actions (una riga per ogni write proposta nell'iterazione), serializza lo stato del loop in loop_state, metti l'esecuzione in "awaiting_approval", emetti evento event_bus tipo "ai_approval" payload { executionId, taskId, pendingActionIds }.
+b) Le eventuali tool call READ della stessa iterazione possono essere eseguite subito; i loro risultati vanno inclusi nel loop_state salvato.
+c) API POST /api/executions/:id/decide  body { actionId, decision: "approved" | "rejected", note? }:
+   - verifica che l'utente appartenga all'org e che l'azione sia pending;
+   - registra decisione (decided_by, decided_at) + riga in audit_logs (insert Drizzle parametrizzato, come in Fase 3);
+   - quando TUTTE le pending della stessa esecuzione sono decise: riprendi il loop da loop_state — per le approvate esegui callTool e appendi i risultati come messaggi role:"tool"; per le rifiutate appendi un messaggio role:"tool" con testo "AZIONE RIFIUTATA DALL'UTENTE" + eventuale note, così il modello ne tiene conto;
+   - il loop riprende rispettando il conteggio iterazioni e il budget cumulativo già spesi (ripristinali da loop_state).
+d) Scadenza: pending più vecchie di 24h → status "expired", esecuzione → "failed" con motivo chiaro. Implementa come check lazy (alla lettura/decisione), niente cron.
+
+4. WIZARD SERVER CUSTOM
+a) POST /api/mcp/custom/validate  body { endpoint, credentialsRef? } → esegue connectAndListTools e ritorna { ok, transport, tools: [{name, description, classification}] } senza salvare nulla. Errori di handshake → { ok:false, error } con messaggio leggibile.
+b) POST /api/mcp/custom/register  body { name, description, endpoint, category, credentialsRef?, toolOverrides? } → crea riga in mcp_catalog (source='custom', write_capable derivato dai tool) + prima mcp_server_config collegata. toolOverrides: jsonb { toolName: "read"|"write" } salvato sulla CONFIG (nuova colonna tool_classification_overrides jsonb default '{}') — gli override possono solo IRRIGIDIRE (read→write sì, write→read NO: rifiuta con 400).
+c) UI in /mcp-library, tab Configurazioni: pulsante "Registra server custom" → wizard in 3 step: (1) endpoint+credenziali con pulsante "Testa connessione" che chiama validate e mostra i tool trovati con la loro classificazione; (2) metadati (nome, descrizione, categoria) e revisione classificazioni con eventuale override (solo verso write); (3) conferma → register.
+
+5. UI APPROVAZIONI
+a) Componente "Azioni in attesa di approvazione" nella vista task/esecuzione: per ogni pending mostra server, nome tool originale, argomenti formattati JSON, rationale del modello, pulsanti Approva / Rifiuta (con campo nota). Aggiornamento su evento ai_approval o polling.
+b) Badge/contatore approvazioni pendenti nella sidebar o header (riusa il pattern notifiche esistente se c'è).
+c) Nel tab Tool Calls (Fase 3): le azioni write appaiono nella timeline con stato (in attesa / approvata da X / rifiutata da X).
+
+CRITERI DI ACCETTAZIONE (usa scripts/test-mcp-server.ts della Fase 3)
+- Config DEV con read_only=false: il modello riceve sia sap_ping (namespaced) sia sap_create_transport (namespaced).
+- Il modello propone sap_create_transport → esecuzione in awaiting_approval, riga in ai_pending_actions, evento emesso, UI mostra l'azione con argomenti.
+- Approvo → il tool viene eseguito sul test server, il loop riprende e completa, audit_logs contiene sia la decisione sia la chiamata.
+- Rifiuto → il loop riprende, il modello riceve il rifiuto, l'esecuzione completa senza eseguire il tool.
+- Stessa config ma environment=PRD: sap_create_transport NON è mai esposto, qualunque sia read_only.
+- Due config che espongono lo stesso nome tool: nessuna collisione (nomi namespaced distinti, esecuzione sulla config giusta).
+- Wizard custom: registro il test server via UI, appare nel catalogo come source=custom e in configurazioni; override write→read viene rifiutato con 400.
+- npm run check: zero nuovi errori.
+
+Al termine: elenco file, esito per criterio, e nota su come hai implementato la ripresa del loop da loop_state.

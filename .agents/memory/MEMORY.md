@@ -1,3 +1,4 @@
 - [Schema drift & db:push](schema-drift-dbpush.md) — DB intentionally drifts from shared/schema.ts; never run unattended `drizzle-kit push`, apply schema via direct SQL.
 - [AI Gateway Phase 2 Architecture](ai-gateway-phase2.md) — cost estimation, budget guardrail, model resolution pattern for ai-task-executor.
 - [MCP Phase 3 Architecture](mcp-phase3.md) — read-only guardrail, agentic loop MAX_ITER=8, EventBus capital-E, Drizzle insert for audit (no raw SQL).
+- [MCP Phase 4 Approval Loop](mcp-phase4-approval.md) — write tool calls pause execution (awaiting_approval); resume via POST /api/executions/:id/decide; PRD defense in depth (collection + callTool/resume).

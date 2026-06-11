@@ -14,7 +14,8 @@ export type EventType =
   | "entity.updated"
   | "entity.deleted"
   | "field.changed"
-  | "ai_budget";
+  | "ai_budget"
+  | "ai_approval";
 
 export interface EventContext {
   // Entity information

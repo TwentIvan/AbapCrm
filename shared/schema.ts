@@ -3325,6 +3325,7 @@ export const aiTaskExecutionStatusEnum = pgEnum("ai_task_execution_status", [
   "approved",       // Approvato dall'utente
   "rejected",       // Rifiutato dall'utente
   "paused_budget",  // Sospeso per superamento budget cap
+  "awaiting_approval", // In attesa di approvazione umana per tool write MCP
 ]);
 
 export const aiTaskExecutions = pgTable("ai_task_executions", {
@@ -3364,6 +3365,8 @@ export const aiTaskExecutions = pgTable("ai_task_executions", {
   completedAt: timestamp("completed_at"),
   // MCP tool call log (Phase 3) — array di {toolName, configId, args, result, ok, durationMs, ts}
   toolCallsLog: jsonb("tool_calls_log").default([]),
+  // Phase 4: serialized loop state for approval resume
+  loopState: jsonb("loop_state"),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -3597,6 +3600,8 @@ export const mcpServerConfigs = pgTable("mcp_server_configs", {
   environment: text("environment").notNull().default("DEV"),
   enabled: boolean("enabled").default(true),
   lastHealth: jsonb("last_health"),
+  // Phase 4: per-tool classification overrides { toolName: "read"|"write" } — only read→write is valid
+  toolClassificationOverrides: jsonb("tool_classification_overrides").default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -3608,6 +3613,28 @@ export type McpCatalog = typeof mcpCatalog.$inferSelect;
 export type InsertMcpCatalog = z.infer<typeof insertMcpCatalogSchema>;
 export type McpServerConfig = typeof mcpServerConfigs.$inferSelect;
 export type InsertMcpServerConfig = z.infer<typeof insertMcpServerConfigSchema>;
+
+// Phase 4: Pending human-approval MCP write-tool actions
+export const aiPendingActions = pgTable("ai_pending_actions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  executionId: uuid("execution_id").notNull().references(() => aiTaskExecutions.id, { onDelete: "cascade" }),
+  taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  configId: uuid("config_id").notNull().references(() => mcpServerConfigs.id),
+  toolName: text("tool_name").notNull(),
+  toolArgs: jsonb("tool_args").notNull().default({}),
+  modelRationale: text("model_rationale"),
+  // pending | approved | rejected | expired
+  status: text("status").notNull().default("pending"),
+  decidedBy: uuid("decided_by").references(() => users.id),
+  decidedAt: timestamp("decided_at"),
+  decisionNote: text("decision_note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAiPendingActionSchema = createInsertSchema(aiPendingActions).omit({ id: true, createdAt: true });
+export type AiPendingAction = typeof aiPendingActions.$inferSelect;
+export type InsertAiPendingAction = z.infer<typeof insertAiPendingActionSchema>;
 
 // ========== Generated File Type for AI Task Executions ==========
 export interface AiGeneratedFile {

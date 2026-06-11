@@ -19,6 +19,7 @@ import {
   aiTaskExecutions,
   aiModels,
   mcpServerConfigs,
+  aiPendingActions,
   auditLogs,
   messages,
   messageLinks,
@@ -1211,15 +1212,24 @@ export async function executeTaskWithAI(
         }
       }
 
-      // ── MCP Tool Use — Phase 3 ──────────────────────────────────────────────
-      // Load enabled configs linked to this task, collect only read-only tools.
+      // ── MCP Tool Use — Phase 4 ──────────────────────────────────────────────
+      // PRD or readOnly=true  → only read tools exposed (Phase 3 behaviour, unchanged).
+      // readOnly=false && !PRD → read + write tools exposed; write marked requiresApproval.
       // Graceful degradation: unreachable servers are logged and skipped — never block execution.
       const mcpConfigIdList: string[] = (taskData as any).mcpConfigIds ?? [];
-      const availableMcpTools: Array<{
-        tool: { type: string; function: { name: string; description: string; parameters: any } };
+
+      type ToolRegistryEntry = {
+        namespacedName: string;
+        originalName: string;
         configId: string;
         config: typeof mcpServerConfigs.$inferSelect;
-      }> = [];
+        classification: "read" | "write";
+        requiresApproval: boolean;
+        description: string;
+        parameters: any;
+      };
+      const toolRegistry = new Map<string, ToolRegistryEntry>();
+      const availableMcpToolDefs: Array<{ type: string; function: { name: string; description: string; parameters: any } }> = [];
 
       if (mcpConfigIdList.length > 0) {
         const linkedConfigs = await db
@@ -1231,53 +1241,58 @@ export async function executeTaskWithAI(
           ));
 
         for (const cfg of linkedConfigs) {
-          if (cfg.enabled === false) continue; // explicitly disabled
-          // PRD guardrail: production configs must always be read-only
-          if (cfg.environment === "PRD" && !cfg.readOnly) {
+          if (cfg.enabled === false) continue;
+          const isPrd = cfg.environment === "PRD";
+          const isReadOnly = cfg.readOnly;
+          if (isPrd && !isReadOnly) {
             console.warn(`[MCP] Config ${cfg.id} (${cfg.name}) is PRD but readOnly=false — coerced to read-only`);
           }
-          if (!cfg.readOnly && cfg.environment !== "PRD") {
-            console.warn(`[MCP] Config ${cfg.id} (${cfg.name}) is not read-only — skipping (Phase 3 only exposes read tools)`);
-            continue;
-          }
           try {
-            const { tools } = await connectAndListTools(cfg);
+            const { tools } = await connectAndListTools(cfg); // overrides applied inside
             const allowlist: string[] = (cfg.toolAllowlist as string[] | null) ?? [];
             for (const t of tools) {
-              if (t.classification !== "read") continue; // only read-classified tools reach the model
-              if (allowlist.length > 0 && !allowlist.includes(t.name)) continue; // allowlist filter
-              availableMcpTools.push({
-                tool: {
-                  type: "function",
-                  function: {
-                    name: t.name,
-                    description: t.description ?? "",
-                    parameters: t.inputSchema ?? { type: "object", properties: {} },
-                  },
-                },
+              if (allowlist.length > 0 && !allowlist.includes(t.name)) continue;
+              if (isPrd && t.classification === "write") continue;   // PRD: never write
+              if (isReadOnly && t.classification === "write") continue; // readOnly: never write
+              const requiresApproval = t.classification === "write";
+              toolRegistry.set(t.namespacedName, {
+                namespacedName: t.namespacedName,
+                originalName: t.name,
                 configId: cfg.id,
                 config: cfg,
+                classification: t.classification,
+                requiresApproval,
+                description: t.description ?? "",
+                parameters: t.inputSchema ?? { type: "object", properties: {} },
+              });
+              availableMcpToolDefs.push({
+                type: "function",
+                function: {
+                  name: t.namespacedName,
+                  description: `[${cfg.name}] ${t.description ?? ""}`,
+                  parameters: t.inputSchema ?? { type: "object", properties: {} },
+                },
               });
             }
-            console.log(`[MCP] Config "${cfg.name}": ${availableMcpTools.length} read tool(s) collected`);
+            const readCnt = Array.from(toolRegistry.values()).filter(e => e.configId === cfg.id && !e.requiresApproval).length;
+            const writeCnt = Array.from(toolRegistry.values()).filter(e => e.configId === cfg.id && e.requiresApproval).length;
+            console.log(`[MCP] Config "${cfg.name}": read=${readCnt} write=${writeCnt} (${isPrd || isReadOnly ? "read-only mode" : "read+write mode"})`);
           } catch (mcpErr: any) {
-            // Graceful degradation: server unreachable → warn + skip, do NOT abort execution
             console.warn(`[MCP] Config ${cfg.id} (${cfg.name}) unreachable: ${mcpErr?.message ?? mcpErr}. Skipping.`);
           }
         }
       }
 
       // Agentic loop — max 8 iterations, supports tool calls when MCP tools are available.
+      // Phase 4: write tool calls pause the loop for human approval (awaiting_approval).
       // Falls back to single call when no tools are present (backward compatible).
       const MCP_MAX_ITER = 8;
-      const toolCallsLog: Array<{
-        toolName: string; configId: string; args: any;
-        result: string; ok: boolean; durationMs: number; ts: string;
-      }> = [];
+      const toolCallsLog: Array<Record<string, any>> = [];
       let cumulativePromptTokens = 0;
       let cumulativeCompletionTokens = 0;
       let warning80Emitted = false;
       let budgetExceededInLoop = false;
+      let awaitingApprovalBreak = false;
       let finalContent = "";
       let lastIterResult: Awaited<ReturnType<typeof aiGateway.complete>> | null = null;
 
@@ -1294,7 +1309,7 @@ export async function executeTaskWithAI(
           maxTokens: 8000,
           organizationId,
           caller: `ai-task-executor/executeTask/iter${iter}`,
-          ...(availableMcpTools.length > 0 ? { tools: availableMcpTools.map((t) => t.tool) } : {}),
+          ...(availableMcpToolDefs.length > 0 ? { tools: availableMcpToolDefs } : {}),
         };
 
         const iterResult = await aiGateway.complete(iterOpts);
@@ -1359,65 +1374,157 @@ export async function executeTaskWithAI(
           break;
         }
 
-        // Model requested tool calls: append assistant message and execute them
+        // Phase 4: separate read (execute immediately) from write (pause for human approval)
+        const allToolCalls = iterResult.toolCalls;
+
         loopMessages.push({
           role: "assistant",
           content: iterResult.content ?? null,
-          tool_calls: iterResult.toolCalls.map((tc) => ({
+          tool_calls: allToolCalls.map((tc) => ({
             id: tc.id,
             type: "function" as const,
             function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
           })),
         });
 
-        for (const tc of iterResult.toolCalls) {
-          const toolEntry = availableMcpTools.find((t) => t.tool.function.name === tc.name);
-          if (!toolEntry) {
-            loopMessages.push({ role: "tool", content: `Tool "${tc.name}" not available`, tool_call_id: tc.id });
+        const readTcs = allToolCalls.filter(tc => {
+          const e = toolRegistry.get(tc.name);
+          return e && !e.requiresApproval;
+        });
+        const writeTcs = allToolCalls.filter(tc => toolRegistry.get(tc.name)?.requiresApproval === true);
+        const unknownTcs = allToolCalls.filter(tc => !toolRegistry.has(tc.name));
+
+        for (const tc of unknownTcs) {
+          loopMessages.push({ role: "tool", content: `Tool "${tc.name}" not available`, tool_call_id: tc.id });
+        }
+
+        // Execute READ calls immediately
+        for (const tc of readTcs) {
+          const entry = toolRegistry.get(tc.name)!;
+          // Defense in depth: re-verify not write and not PRD
+          if (entry.classification === "write" || entry.config.environment === "PRD") {
+            loopMessages.push({ role: "tool", content: `[DEFENSE] Blocked: classification/env mismatch`, tool_call_id: tc.id });
+            console.error(`[MCP-DEFENSE] Blocked ${tc.name}: class=${entry.classification} env=${entry.config.environment}`);
             continue;
           }
-
           let toolResult: { ok: boolean; text: string; durationMs: number };
           try {
-            toolResult = await callTool(toolEntry.config, tc.name, tc.arguments ?? {});
+            toolResult = await callTool(entry.config, entry.originalName, tc.arguments ?? {});
           } catch (callErr: any) {
-            toolResult = { ok: false, text: `Error calling tool: ${callErr?.message ?? callErr}`, durationMs: 0 };
+            toolResult = { ok: false, text: `Error: ${callErr?.message ?? callErr}`, durationMs: 0 };
           }
-
-          // Append to in-memory log
           toolCallsLog.push({
-            toolName: tc.name,
-            configId: toolEntry.configId,
+            toolName: entry.originalName,
+            namespacedName: entry.namespacedName,
+            configId: entry.configId,
             args: tc.arguments,
             result: toolResult.text.slice(0, 2000),
             ok: toolResult.ok,
             durationMs: toolResult.durationMs,
             ts: new Date().toISOString(),
+            requiresApproval: false,
           });
-
-          // Audit via Drizzle standard insert — no raw SQL, all values are bound parameters
           await db.insert(auditLogs).values({
             tableName: "mcp_tool_calls",
             recordId: execution.id,
             action: "CREATE",
             newValues: {
-              taskId,
-              configId: toolEntry.configId,
-              toolName: tc.name,
+              taskId, configId: entry.configId, toolName: entry.originalName,
+              namespacedName: entry.namespacedName,
               args: JSON.stringify(tc.arguments ?? {}).slice(0, 2000),
               result: toolResult.text.slice(0, 2000),
-              ok: toolResult.ok,
-              durationMs: toolResult.durationMs,
+              ok: toolResult.ok, durationMs: toolResult.durationMs,
             } as any,
-            changedFields: [tc.name],
+            changedFields: [entry.originalName],
+            userId, organizationId,
+          });
+          loopMessages.push({ role: "tool", content: toolResult.text, tool_call_id: tc.id });
+          console.log(`[MCP] iter=${iter} read="${entry.originalName}" ok=${toolResult.ok} ${toolResult.durationMs}ms`);
+        }
+
+        // WRITE calls → save to ai_pending_actions, serialize loop state, pause for approval
+        if (writeTcs.length > 0) {
+          const pendingCallIds: Record<string, string> = {};
+          for (const tc of writeTcs) {
+            const entry = toolRegistry.get(tc.name)!;
+            // Defense: never execute write on PRD even if it somehow reached here
+            if (entry.config.environment === "PRD") {
+              loopMessages.push({ role: "tool", content: `[DEFENSE] Write tool blocked on PRD`, tool_call_id: tc.id });
+              console.error(`[MCP-DEFENSE] Blocked write on PRD: ${entry.originalName}`);
+              continue;
+            }
+            const [action] = await db.insert(aiPendingActions).values({
+              executionId: execution.id,
+              taskId,
+              organizationId,
+              configId: entry.configId,
+              toolName: entry.originalName,
+              toolArgs: tc.arguments ?? {},
+              modelRationale: iterResult.content ?? null,
+              status: "pending",
+            }).returning();
+            pendingCallIds[action.id] = tc.id;
+            toolCallsLog.push({
+              toolName: entry.originalName,
+              namespacedName: entry.namespacedName,
+              configId: entry.configId,
+              args: tc.arguments,
+              result: null, ok: null, durationMs: null,
+              ts: new Date().toISOString(),
+              requiresApproval: true,
+              pendingActionId: action.id,
+              status: "pending",
+            });
+            console.log(`[MCP] iter=${iter} write="${entry.originalName}" → pending action ${action.id}`);
+          }
+          // Serialize loop state for resume after approval
+          const loopStateSnap = {
+            messages: loopMessages,       // includes assistant msg + any read results already appended
+            iter,
+            cumulativePromptTokens,
+            cumulativeCompletionTokens,
+            warning80Emitted,
+            toolCallsLog,
+            toolRegistry: Array.from(toolRegistry.values()).map(e => ({
+              namespacedName: e.namespacedName,
+              originalName: e.originalName,
+              configId: e.configId,
+              classification: e.classification,
+              requiresApproval: e.requiresApproval,
+              description: e.description,
+              parameters: e.parameters,
+            })),
+            pendingCallIds,               // ai_pending_action.id → openai tool_call.id
+            taskId, organizationId, userId, modelKey, budgetCapEur,
+          };
+          await db.update(aiTaskExecutions).set({
+            status: "awaiting_approval",
+            loopState: loopStateSnap as any,
+            toolCallsLog: toolCallsLog as any,
+          }).where(eq(aiTaskExecutions.id, execution.id));
+          EventBus.emit("ai_approval", {
+            entityKey: "ai_task_executions",
+            recordId: execution.id,
             userId,
             organizationId,
+            record: { executionId: execution.id, taskId, pendingActionIds: Object.keys(pendingCallIds) },
           });
-
-          loopMessages.push({ role: "tool", content: toolResult.text, tool_call_id: tc.id });
-          console.log(`[MCP] iter=${iter} tool=${tc.name} ok=${toolResult.ok} ${toolResult.durationMs}ms`);
+          results.push({
+            success: false,
+            executionId: execution.id,
+            analysis: { taskType: 'unknown', complexity: 'low', suggestedApproach: '', sapModules: [], requiredObjects: [] },
+            generatedFiles: [],
+            suggestedActions: [{ action: 'approve_tools', priority: 'high', description: `${writeTcs.length} azioni write richiedono approvazione umana. Approva o rifiuta nel pannello Tool Calls del task.` }],
+            patternsUsed: patterns.map(p => p.id),
+            error: `Esecuzione sospesa: ${writeTcs.length} azioni write in attesa di approvazione`,
+          });
+          awaitingApprovalBreak = true;
+          break;
         }
       }
+
+      // Awaiting human approval → skip post-processing, execution already saved with awaiting_approval status
+      if (awaitingApprovalBreak) continue;
 
       // Budget exceeded mid-loop → skip to next task in the outer for-of
       if (budgetExceededInLoop) continue;
@@ -1798,4 +1905,317 @@ export async function getOrganizationPatterns(
     .from(aiAbapPatterns)
     .where(and(...conditions))
     .orderBy(desc(aiAbapPatterns.qualityScore), desc(aiAbapPatterns.usageCount));
+}
+
+// ── Phase 4: Resume after approval ───────────────────────────────────────────
+
+/**
+ * Parse AI content and save the final execution result.
+ * Used both by the main executor and by resumeExecutionAfterApproval.
+ */
+async function parseAndSaveResumedResult(params: {
+  executionId: string;
+  content: string;
+  promptTokens: number;
+  completionTokens: number;
+  modelKey: string;
+  organizationId: string;
+  patternsUsed: string[];
+}): Promise<void> {
+  const { executionId, content, promptTokens, completionTokens, modelKey, organizationId, patternsUsed } = params;
+
+  let aiResult: any;
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found");
+    let jsonStr = jsonMatch[0];
+    jsonStr = jsonStr.replace(/:\s*"([^"]*?)(?<!\\)\n([^"]*?)"/g, (_, before, after) => `: "${before}\\n${after}"`);
+    jsonStr = jsonStr.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+    jsonStr = jsonStr.replace(/[\x00-\x1F\x7F]/g, (c) => c === '\n' ? '\\n' : c === '\r' ? '\\r' : c === '\t' ? '\\t' : '');
+    aiResult = JSON.parse(jsonStr);
+  } catch {
+    aiResult = {
+      analysis: { taskType: 'resumed', complexity: 'medium', suggestedApproach: 'Esecuzione ripresa dopo approvazione tool write', sapModules: [], requiredObjects: [] },
+      generatedFiles: extractGeneratedFilesFromRaw(content),
+      suggestedActions: [],
+    };
+  }
+
+  const [mP] = await db
+    .select({ inputPricePerMToken: aiModels.inputPricePerMToken, outputPricePerMToken: aiModels.outputPricePerMToken })
+    .from(aiModels).where(eq(aiModels.modelKey, modelKey)).limit(1);
+  const iF = mP?.inputPricePerMToken ? parseFloat(mP.inputPricePerMToken as string) : 2.5;
+  const oF = mP?.outputPricePerMToken ? parseFloat(mP.outputPricePerMToken as string) : 10.0;
+  const totalCostUsd = (promptTokens / 1_000_000) * iF + (completionTokens / 1_000_000) * oF;
+  const fx = await getUsdEurRate(organizationId);
+  const totalCostEurVal = usdToEur(totalCostUsd, fx);
+
+  await db.update(aiTaskExecutions).set({
+    status: "completed",
+    completedAt: new Date(),
+    generatedFiles: aiResult.generatedFiles || [],
+    analysisResult: aiResult.analysis,
+    suggestedActions: aiResult.suggestedActions || [],
+    aiModel: modelKey,
+    modelKey,
+    promptTokens,
+    completionTokens,
+    totalCost: totalCostUsd.toFixed(6),
+    totalCostEur: totalCostEurVal.toFixed(6),
+    loopState: null, // clear loop state after completion
+    updatedAt: new Date(),
+  }).where(eq(aiTaskExecutions.id, executionId));
+
+  for (const patternId of patternsUsed) {
+    await db.update(aiAbapPatterns)
+      .set({ usageCount: sql`${aiAbapPatterns.usageCount} + 1`, lastUsedAt: new Date() })
+      .where(eq(aiAbapPatterns.id, patternId));
+  }
+}
+
+/**
+ * Resume an execution that is in awaiting_approval status.
+ * Called by the /decide endpoint once all pending actions for an execution are decided.
+ *
+ * Flow:
+ *  1. Expiry check: pending actions > 24h → expire + fail.
+ *  2. If any still pending → return "awaiting_approval" (caller did not decide all yet).
+ *  3. Apply decisions: approved → callTool, rejected → rejection message.
+ *  4. Continue agentic loop from saved iter+1.
+ *  5. If another write tool arises: save new pending actions, return "awaiting_approval".
+ *  6. On loop completion: parse + save result, return "completed".
+ */
+export async function resumeExecutionAfterApproval(executionId: string): Promise<{
+  status: "completed" | "failed" | "awaiting_approval" | "processing";
+  error?: string;
+}> {
+  const [execution] = await db.select().from(aiTaskExecutions)
+    .where(eq(aiTaskExecutions.id, executionId)).limit(1);
+  if (!execution) return { status: "failed", error: "Execution not found" };
+  if (execution.status !== "awaiting_approval") return { status: execution.status as any };
+
+  // Load all pending actions
+  const pendingActions = await db.select().from(aiPendingActions)
+    .where(eq(aiPendingActions.executionId, executionId));
+
+  // Lazy expiry check: pending > 24h → expire + fail
+  const expiryThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  for (const action of pendingActions) {
+    if (action.status === "pending" && action.createdAt < expiryThreshold) {
+      await db.update(aiPendingActions).set({ status: "expired" }).where(eq(aiPendingActions.id, action.id));
+      await db.update(aiTaskExecutions).set({
+        status: "failed",
+        completedAt: new Date(),
+        analysisResult: { reason: "pending_action_expired", actionId: action.id, toolName: action.toolName, expiredAt: new Date().toISOString() },
+        updatedAt: new Date(),
+      }).where(eq(aiTaskExecutions.id, executionId));
+      return { status: "failed", error: `Azione "${action.toolName}" scaduta (creata il ${action.createdAt.toISOString()})` };
+    }
+  }
+
+  // Check all pending are decided (none still in "pending" status)
+  const stillPending = pendingActions.filter(a => a.status === "pending");
+  if (stillPending.length > 0) return { status: "awaiting_approval" };
+
+  // Load loop state
+  const loopState = execution.loopState as any;
+  if (!loopState) {
+    await db.update(aiTaskExecutions).set({
+      status: "failed", completedAt: new Date(),
+      analysisResult: { reason: "missing_loop_state" }, updatedAt: new Date(),
+    }).where(eq(aiTaskExecutions.id, executionId));
+    return { status: "failed", error: "loop_state mancante" };
+  }
+
+  const {
+    messages: savedMessages, iter: savedIter,
+    cumulativePromptTokens: savedPromptTkns, cumulativeCompletionTokens: savedCompletionTkns,
+    warning80Emitted: savedWarning80, toolCallsLog: savedToolCallsLog,
+    toolRegistry: savedRegistry, pendingCallIds,
+    taskId, organizationId, userId, modelKey, budgetCapEur,
+  } = loopState;
+
+  // Re-fetch configs from DB (fresh state)
+  const configIdList: string[] = Array.from(new Set((savedRegistry as any[]).map((r: any) => r.configId)));
+  const configs = configIdList.length > 0
+    ? await db.select().from(mcpServerConfigs).where(inArray(mcpServerConfigs.id, configIdList))
+    : [];
+  const configMap = new Map(configs.map(c => [c.id, c]));
+
+  // Reconstruct tool registry
+  type ResumedEntry = { namespacedName: string; originalName: string; configId: string; config: typeof mcpServerConfigs.$inferSelect; classification: "read" | "write"; requiresApproval: boolean; description: string; parameters: any };
+  const toolRegistry = new Map<string, ResumedEntry>();
+  for (const entry of (savedRegistry as any[])) {
+    const cfg = configMap.get(entry.configId);
+    if (cfg) toolRegistry.set(entry.namespacedName, { ...entry, config: cfg });
+  }
+
+  const loopMessages: GatewayMessage[] = [...(savedMessages as GatewayMessage[])];
+  let toolCallsLog: Array<Record<string, any>> = [...(savedToolCallsLog ?? [])];
+
+  // Apply decisions: append tool result messages to loopMessages
+  for (const action of pendingActions) {
+    const openaiCallId = (pendingCallIds as Record<string, string>)[action.id];
+    if (!openaiCallId) continue;
+
+    if (action.status === "approved") {
+      const entry = Array.from(toolRegistry.values()).find(e => e.originalName === action.toolName && e.configId === action.configId);
+      if (!entry) {
+        loopMessages.push({ role: "tool", content: "Errore: tool non trovato nel registry", tool_call_id: openaiCallId });
+        continue;
+      }
+      // Defense: PRD check even after approval
+      if (entry.config.environment === "PRD") {
+        loopMessages.push({ role: "tool", content: "[DEFENSE] Bloccato: ambiente PRD non consente tool write", tool_call_id: openaiCallId });
+        console.error(`[MCP-DEFENSE] Approved write blocked on PRD: ${action.toolName}`);
+        continue;
+      }
+      let toolResult: { ok: boolean; text: string; durationMs: number };
+      try {
+        toolResult = await callTool(entry.config, action.toolName, action.toolArgs as Record<string, unknown>);
+      } catch (err: any) {
+        toolResult = { ok: false, text: `Errore: ${err?.message ?? err}`, durationMs: 0 };
+      }
+      const logIdx = toolCallsLog.findIndex((l: any) => l.pendingActionId === action.id);
+      if (logIdx >= 0) {
+        toolCallsLog[logIdx] = { ...toolCallsLog[logIdx], result: toolResult.text.slice(0, 2000), ok: toolResult.ok, durationMs: toolResult.durationMs, status: "approved", decidedBy: action.decidedBy, decidedAt: action.decidedAt?.toISOString() };
+      }
+      await db.insert(auditLogs).values({
+        tableName: "mcp_tool_calls",
+        recordId: executionId,
+        action: "CREATE",
+        newValues: { taskId, configId: action.configId, toolName: action.toolName, args: JSON.stringify(action.toolArgs ?? {}).slice(0, 2000), result: toolResult.text.slice(0, 2000), ok: toolResult.ok, durationMs: toolResult.durationMs, approvedBy: action.decidedBy } as any,
+        changedFields: [action.toolName],
+        userId: action.decidedBy ?? userId,
+        organizationId,
+      });
+      loopMessages.push({ role: "tool", content: toolResult.text, tool_call_id: openaiCallId });
+      console.log(`[MCP-RESUME] approved tool="${action.toolName}" ok=${toolResult.ok} ${toolResult.durationMs}ms`);
+
+    } else if (action.status === "rejected") {
+      const note = action.decisionNote ?? "";
+      const rejMsg = `AZIONE RIFIUTATA DALL'UTENTE${note ? `: ${note}` : ""}`;
+      const logIdx = toolCallsLog.findIndex((l: any) => l.pendingActionId === action.id);
+      if (logIdx >= 0) {
+        toolCallsLog[logIdx] = { ...toolCallsLog[logIdx], result: rejMsg, ok: false, status: "rejected", decidedBy: action.decidedBy, decidedAt: action.decidedAt?.toISOString() };
+      }
+      loopMessages.push({ role: "tool", content: rejMsg, tool_call_id: openaiCallId });
+      console.log(`[MCP-RESUME] rejected tool="${action.toolName}" by ${action.decidedBy}`);
+    }
+  }
+
+  // Set back to processing
+  await db.update(aiTaskExecutions).set({ status: "processing", updatedAt: new Date() }).where(eq(aiTaskExecutions.id, executionId));
+
+  // Reconstruct tool defs for model
+  const availableMcpToolDefs = Array.from(toolRegistry.values()).map(e => ({
+    type: "function",
+    function: { name: e.namespacedName, description: `[${e.config?.name ?? e.configId}] ${e.description}`, parameters: e.parameters },
+  }));
+
+  // Continue loop from savedIter + 1
+  const MCP_MAX_ITER = 8;
+  let cumulativePromptTokens: number = savedPromptTkns;
+  let cumulativeCompletionTokens: number = savedCompletionTkns;
+  let warning80Emitted: boolean = savedWarning80;
+  let finalContent = "";
+  let lastIterResult: Awaited<ReturnType<typeof aiGateway.complete>> | null = null;
+
+  for (let iter = (savedIter as number) + 1; iter < MCP_MAX_ITER; iter++) {
+    const iterResult = await aiGateway.complete({
+      modelKey,
+      messages: loopMessages,
+      temperature: 0.3,
+      maxTokens: 8000,
+      organizationId,
+      caller: `ai-task-executor/resumeExecution/iter${iter}`,
+      ...(availableMcpToolDefs.length > 0 ? { tools: availableMcpToolDefs as any[] } : {}),
+    });
+    lastIterResult = iterResult;
+    cumulativePromptTokens += iterResult.promptTokens;
+    cumulativeCompletionTokens += iterResult.completionTokens;
+
+    // Budget check
+    if (budgetCapEur !== null) {
+      const fxLoop = await getUsdEurRate(organizationId);
+      const [mP] = await db.select({ inputPricePerMToken: aiModels.inputPricePerMToken, outputPricePerMToken: aiModels.outputPricePerMToken })
+        .from(aiModels).where(eq(aiModels.modelKey, modelKey)).limit(1);
+      const iL = mP?.inputPricePerMToken ? parseFloat(mP.inputPricePerMToken as string) : 2.5;
+      const oL = mP?.outputPricePerMToken ? parseFloat(mP.outputPricePerMToken as string) : 10.0;
+      const cumCostEur = usdToEur((cumulativePromptTokens / 1_000_000) * iL + (cumulativeCompletionTokens / 1_000_000) * oL, fxLoop);
+      if (!warning80Emitted && cumCostEur >= budgetCapEur * 0.8) {
+        warning80Emitted = true;
+        EventBus.emit("ai_budget", { entityKey: "ai_task_executions", recordId: executionId, userId, organizationId, record: { executionId, taskId, cumCostEur, capEur: budgetCapEur, pctReached: 80 } });
+      }
+      if (cumCostEur >= budgetCapEur) {
+        await db.update(aiTaskExecutions).set({ status: "paused_budget", completedAt: new Date(), toolCallsLog: toolCallsLog as any, updatedAt: new Date() }).where(eq(aiTaskExecutions.id, executionId));
+        return { status: "failed", error: `Budget cap €${budgetCapEur} raggiunto durante resume (iter ${iter})` };
+      }
+    }
+
+    if (!iterResult.toolCalls?.length) {
+      finalContent = iterResult.content || "";
+      break;
+    }
+
+    const allTc = iterResult.toolCalls;
+    loopMessages.push({
+      role: "assistant",
+      content: iterResult.content ?? null,
+      tool_calls: allTc.map(tc => ({ id: tc.id, type: "function" as const, function: { name: tc.name, arguments: JSON.stringify(tc.arguments) } })),
+    });
+
+    const readTcs2 = allTc.filter(tc => !toolRegistry.get(tc.name)?.requiresApproval);
+    const writeTcs2 = allTc.filter(tc => toolRegistry.get(tc.name)?.requiresApproval === true);
+    const unknownTcs2 = allTc.filter(tc => !toolRegistry.has(tc.name));
+
+    for (const tc of unknownTcs2) {
+      loopMessages.push({ role: "tool", content: `Tool "${tc.name}" not available`, tool_call_id: tc.id });
+    }
+    for (const tc of readTcs2) {
+      const entry = toolRegistry.get(tc.name)!;
+      if (entry.config.environment === "PRD") { loopMessages.push({ role: "tool", content: "[DEFENSE] Blocked on PRD", tool_call_id: tc.id }); continue; }
+      let tr: any;
+      try { tr = await callTool(entry.config, entry.originalName, tc.arguments ?? {}); }
+      catch (e: any) { tr = { ok: false, text: `Error: ${e?.message}`, durationMs: 0 }; }
+      toolCallsLog.push({ toolName: entry.originalName, namespacedName: entry.namespacedName, configId: entry.configId, args: tc.arguments, result: tr.text.slice(0, 2000), ok: tr.ok, durationMs: tr.durationMs, ts: new Date().toISOString(), requiresApproval: false });
+      loopMessages.push({ role: "tool", content: tr.text, tool_call_id: tc.id });
+      console.log(`[MCP-RESUME] iter=${iter} read="${entry.originalName}" ok=${tr.ok}`);
+    }
+
+    if (writeTcs2.length > 0) {
+      const newPendingCallIds: Record<string, string> = {};
+      for (const tc of writeTcs2) {
+        const entry = toolRegistry.get(tc.name)!;
+        if (entry.config.environment === "PRD") { loopMessages.push({ role: "tool", content: "[DEFENSE] Write blocked on PRD", tool_call_id: tc.id }); continue; }
+        const [action] = await db.insert(aiPendingActions).values({ executionId, taskId, organizationId, configId: entry.configId, toolName: entry.originalName, toolArgs: tc.arguments ?? {}, modelRationale: iterResult.content ?? null, status: "pending" }).returning();
+        newPendingCallIds[action.id] = tc.id;
+        toolCallsLog.push({ toolName: entry.originalName, namespacedName: entry.namespacedName, configId: entry.configId, args: tc.arguments, result: null, ok: null, durationMs: null, ts: new Date().toISOString(), requiresApproval: true, pendingActionId: action.id, status: "pending" });
+        console.log(`[MCP-RESUME] iter=${iter} write="${entry.originalName}" → pending ${action.id}`);
+      }
+      const newLoopState = {
+        messages: loopMessages, iter, cumulativePromptTokens, cumulativeCompletionTokens, warning80Emitted, toolCallsLog,
+        toolRegistry: Array.from(toolRegistry.values()).map(e => ({ namespacedName: e.namespacedName, originalName: e.originalName, configId: e.configId, classification: e.classification, requiresApproval: e.requiresApproval, description: e.description, parameters: e.parameters })),
+        pendingCallIds: newPendingCallIds, taskId, organizationId, userId, modelKey, budgetCapEur,
+      };
+      await db.update(aiTaskExecutions).set({ status: "awaiting_approval", loopState: newLoopState as any, toolCallsLog: toolCallsLog as any, updatedAt: new Date() }).where(eq(aiTaskExecutions.id, executionId));
+      EventBus.emit("ai_approval", { entityKey: "ai_task_executions", recordId: executionId, userId, organizationId, record: { executionId, taskId, pendingActionIds: Object.keys(newPendingCallIds) } });
+      return { status: "awaiting_approval" };
+    }
+  }
+
+  if (!finalContent) finalContent = lastIterResult?.content ?? "";
+  await db.update(aiTaskExecutions).set({ toolCallsLog: toolCallsLog as any, updatedAt: new Date() }).where(eq(aiTaskExecutions.id, executionId));
+
+  await parseAndSaveResumedResult({
+    executionId,
+    content: finalContent,
+    promptTokens: cumulativePromptTokens,
+    completionTokens: cumulativeCompletionTokens,
+    modelKey,
+    organizationId,
+    patternsUsed: execution.patternsUsed as string[] ?? [],
+  });
+
+  return { status: "completed" };
 }

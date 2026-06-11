@@ -10364,6 +10364,154 @@ ISTRUZIONI:
     }
   });
 
+  // ── Phase 4: Pending Actions & Approval ────────────────────────────────────
+
+  // GET /api/mcp/pending-actions/count — count all pending approvals for badge (org-wide)
+  app.get("/api/mcp/pending-actions/count", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    try {
+      const { aiPendingActions } = await import("@shared/schema");
+      const rows = await db.select({ id: aiPendingActions.id })
+        .from(aiPendingActions)
+        .where(and(
+          eq(aiPendingActions.organizationId, organizationId),
+          eq(aiPendingActions.status, "pending"),
+        ));
+      return res.json({ count: rows.length });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/executions/:id/pending-actions — list pending actions for an execution
+  app.get("/api/executions/:id/pending-actions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    try {
+      const { aiPendingActions } = await import("@shared/schema");
+      const rows = await db.select().from(aiPendingActions)
+        .where(and(
+          eq(aiPendingActions.executionId, req.params.id),
+          eq(aiPendingActions.organizationId, organizationId),
+        ))
+        .orderBy(asc(aiPendingActions.createdAt));
+      return res.json(rows);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/executions/:id/decide — decide pending actions (approve/reject), then try to resume
+  app.post("/api/executions/:id/decide", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    const userId = (req.user as any)?.id as string;
+    const executionId = req.params.id;
+
+    const bodySchema = z.object({
+      decisions: z.array(z.object({
+        actionId: z.string().uuid(),
+        decision: z.enum(["approved", "rejected"]),
+        decisionNote: z.string().optional(),
+      })),
+    });
+
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid body", details: parsed.error.issues });
+
+    try {
+      const { aiPendingActions, aiTaskExecutions } = await import("@shared/schema");
+
+      // Verify execution belongs to this org
+      const [execution] = await db.select().from(aiTaskExecutions)
+        .where(and(eq(aiTaskExecutions.id, executionId), eq(aiTaskExecutions.organizationId, organizationId)))
+        .limit(1);
+      if (!execution) return res.status(404).json({ error: "Execution not found" });
+
+      // Apply each decision
+      const now = new Date();
+      for (const d of parsed.data.decisions) {
+        const [action] = await db.select().from(aiPendingActions)
+          .where(and(eq(aiPendingActions.id, d.actionId), eq(aiPendingActions.executionId, executionId)))
+          .limit(1);
+        if (!action) continue;
+        if (action.status !== "pending") continue; // already decided — skip silently
+        await db.update(aiPendingActions).set({
+          status: d.decision,
+          decidedBy: userId,
+          decidedAt: now,
+          decisionNote: d.decisionNote ?? null,
+        }).where(eq(aiPendingActions.id, d.actionId));
+      }
+
+      // Try to resume if all decided
+      const { resumeExecutionAfterApproval } = await import("./ai-task-executor");
+      const resumeResult = await resumeExecutionAfterApproval(executionId);
+
+      return res.json({ ok: true, status: resumeResult.status, error: resumeResult.error });
+    } catch (err: any) {
+      console.error("[MCP-DECIDE]", err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/mcp/custom/validate — validate a custom MCP server endpoint (no DB write)
+  app.post("/api/mcp/custom/validate", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const bodySchema = z.object({
+      endpoint: z.string().url(),
+      toolClassificationOverrides: z.record(z.enum(["read", "write"])).optional().default({}),
+    });
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid body", details: parsed.error.issues });
+    try {
+      const { connectAndListToolsRaw } = await import("./mcp-client");
+      const result = await connectAndListToolsRaw(parsed.data.endpoint, parsed.data.toolClassificationOverrides);
+      return res.json({
+        ok: true,
+        transport: result.transport,
+        toolCount: result.tools.length,
+        readCount: result.tools.filter(t => t.classification === "read").length,
+        writeCount: result.tools.filter(t => t.classification === "write").length,
+        tools: result.tools.map(t => ({ name: t.name, description: t.description, classification: t.classification })),
+      });
+    } catch (err: any) {
+      return res.status(422).json({ ok: false, error: err.message });
+    }
+  });
+
+  // POST /api/mcp/custom/register — register validated custom MCP server
+  app.post("/api/mcp/custom/register", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    const bodySchema = z.object({
+      name: z.string().min(1),
+      endpoint: z.string().url(),
+      description: z.string().optional().default(""),
+      environment: z.enum(["DEV", "QAS", "PRD"]).default("DEV"),
+      readOnly: z.boolean().default(true),
+      toolClassificationOverrides: z.record(z.enum(["read", "write"])).optional().default({}),
+      toolAllowlist: z.array(z.string()).optional().default([]),
+      projectId: z.string().uuid().optional().nullable(),
+      sapSystemId: z.string().uuid().optional().nullable(),
+    });
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid body", details: parsed.error.issues });
+    try {
+      const [created] = await db.insert(mcpServerConfigs).values({
+        ...parsed.data,
+        organizationId,
+        enabled: true,
+      }).returning();
+      // Run initial health check async (don't block response)
+      import("./mcp-client").then(({ healthCheck }) => healthCheck(created.id).catch(() => {}));
+      return res.status(201).json(created);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

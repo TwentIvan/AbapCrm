@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useParams } from "wouter";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getQueryFn } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getQueryFn, apiRequest } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
 import FormContainer, { useFormRouting } from "./form-container";
 import TaskForm from "./task-form";
@@ -8,9 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageHistory } from "@/components/ui/message-history";
 import AuditHistory from "@/components/ui/audit-history";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Edit, MessageSquare, History, Brain, AlertTriangle, Zap, CheckCircle2, XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Edit, MessageSquare, History, Brain, AlertTriangle, Zap, CheckCircle2, XCircle, ShieldAlert, ShieldCheck, ShieldX, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import type { Task } from "@shared/schema";
 
+// ── Tool Calls Panel (Phase 4: write tools show approval status) ──────────────
 function ToolCallsPanel({ task }: { task: Task }) {
   const { data: executions } = useQuery<any[]>({
     queryKey: ["/api/ai-task-executor/history", task.id],
@@ -18,6 +24,7 @@ function ToolCallsPanel({ task }: { task: Task }) {
     enabled: !!task.id,
   });
 
+  // Prefer the last execution with tool calls (could be awaiting_approval or completed)
   const lastWithTools = executions?.find((e: any) => Array.isArray(e.toolCallsLog) && e.toolCallsLog.length > 0);
   const toolCalls: any[] = lastWithTools?.toolCallsLog ?? [];
 
@@ -45,6 +52,9 @@ function ToolCallsPanel({ task }: { task: Task }) {
         <CardTitle className="text-sm flex items-center gap-2">
           <Zap className="h-4 w-4 text-primary" />
           Tool Calls — ultima esecuzione MCP
+          {lastWithTools?.status === "awaiting_approval" && (
+            <Badge variant="secondary" className="text-xs ml-auto text-amber-600">In attesa approvazione</Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -52,10 +62,24 @@ function ToolCallsPanel({ task }: { task: Task }) {
           {toolCalls.map((tc: any, i: number) => (
             <div key={i} className="py-3 space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
-                {tc.ok
-                  ? <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
-                  : <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />}
-                <code className="font-mono text-xs font-semibold bg-muted px-1.5 py-0.5 rounded">{tc.toolName}</code>
+                {tc.requiresApproval ? (
+                  tc.status === "approved" ? <ShieldCheck className="h-3.5 w-3.5 text-green-600 shrink-0" /> :
+                  tc.status === "rejected" ? <ShieldX className="h-3.5 w-3.5 text-red-500 shrink-0" /> :
+                  <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                ) : (
+                  tc.ok != null ? (
+                    tc.ok ? <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" /> :
+                             <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                  ) : null
+                )}
+                <code className="font-mono text-xs font-semibold bg-muted px-1.5 py-0.5 rounded">
+                  {tc.toolName ?? tc.namespacedName}
+                </code>
+                {tc.requiresApproval && (
+                  <Badge variant="outline" className="text-xs">
+                    {tc.status === "approved" ? "approvato" : tc.status === "rejected" ? "rifiutato" : "pending"}
+                  </Badge>
+                )}
                 {tc.durationMs != null && (
                   <span className="text-xs text-muted-foreground">{tc.durationMs}ms</span>
                 )}
@@ -80,6 +104,193 @@ function ToolCallsPanel({ task }: { task: Task }) {
   );
 }
 
+// ── Pending Actions Panel (Phase 4 — approve / reject write tool calls) ───────
+function PendingActionsPanel({ task }: { task: Task }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({});
+
+  const { data: executions = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/ai-task-executor/history", task.id],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!task.id,
+    refetchInterval: 4000,
+  });
+
+  const awaitingExecution = executions.find((e: any) => e.status === "awaiting_approval");
+
+  const { data: pendingActions = [] } = useQuery<any[]>({
+    queryKey: ["/api/executions", awaitingExecution?.id, "pending-actions"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!awaitingExecution?.id,
+    refetchInterval: 4000,
+  });
+
+  const decideMutation = useMutation({
+    mutationFn: async ({ executionId, decisions }: { executionId: string; decisions: any[] }) => {
+      const res = await apiRequest("POST", `/api/executions/${executionId}/decide`, { decisions });
+      return res.json();
+    },
+    onSuccess: (data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-task-executor/history", task.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/executions", vars.executionId, "pending-actions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mcp/pending-actions/count"] });
+      const msg = data.status === "completed" ? "Esecuzione completata!" :
+                  data.status === "awaiting_approval" ? "Altre azioni in attesa..." :
+                  "Decisione registrata";
+      toast({ title: msg });
+    },
+    onError: (err: any) => toast({ title: "Errore", description: err.message, variant: "destructive" }),
+  });
+
+  const handleDecide = (actionId: string, decision: "approved" | "rejected") => {
+    if (!awaitingExecution) return;
+    decideMutation.mutate({
+      executionId: awaitingExecution.id,
+      decisions: [{ actionId, decision, decisionNote: decisionNotes[actionId] }],
+    });
+  };
+
+  const handleDecideAll = (decision: "approved" | "rejected") => {
+    if (!awaitingExecution) return;
+    const pendingOnly = pendingActions.filter((a: any) => a.status === "pending");
+    if (pendingOnly.length === 0) return;
+    decideMutation.mutate({
+      executionId: awaitingExecution.id,
+      decisions: pendingOnly.map((a: any) => ({ actionId: a.id, decision, decisionNote: decisionNotes[a.id] })),
+    });
+  };
+
+  if (isLoading) {
+    return <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">Caricamento...</CardContent></Card>;
+  }
+
+  if (!awaitingExecution) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground space-y-1">
+          <ShieldAlert className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+          <p>Nessuna esecuzione in attesa di approvazione.</p>
+          <p className="text-xs">Quando l'AI richiede di eseguire tool write su server MCP non read-only, le azioni appaiono qui per la tua approvazione.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const pending = pendingActions.filter((a: any) => a.status === "pending");
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+          <ShieldAlert className="h-4 w-4" />
+          <span className="font-medium text-sm">
+            Esecuzione sospesa — {pending.length} azione{pending.length !== 1 ? "i" : ""} write in attesa
+          </span>
+        </div>
+        <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+          Esamina ogni azione. Approva per eseguirla sul server MCP o rifiuta per interrompere. L'esecuzione riprende automaticamente quando tutte sono decise.
+        </p>
+      </div>
+
+      {pending.length > 1 && (
+        <div className="flex gap-2 justify-end">
+          <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:border-red-400"
+            onClick={() => handleDecideAll("rejected")} disabled={decideMutation.isPending}>
+            <ShieldX className="h-3.5 w-3.5 mr-1" />Rifiuta tutte
+          </Button>
+          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white"
+            onClick={() => handleDecideAll("approved")} disabled={decideMutation.isPending}>
+            <ShieldCheck className="h-3.5 w-3.5 mr-1" />Approva tutte
+          </Button>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {pendingActions.map((action: any) => (
+          <Card key={action.id} className={
+            action.status === "approved" ? "border-green-300 dark:border-green-800" :
+            action.status === "rejected" ? "border-red-300 dark:border-red-800" :
+            "border-amber-300 dark:border-amber-700"
+          }>
+            <CardContent className="pt-4 pb-4 space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                {action.status === "approved" ? <ShieldCheck className="h-4 w-4 text-green-600 shrink-0" /> :
+                 action.status === "rejected" ? <ShieldX className="h-4 w-4 text-red-500 shrink-0" /> :
+                 <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />}
+                <code className="font-mono text-xs font-semibold bg-muted px-1.5 py-0.5 rounded">{action.toolName}</code>
+                <Badge variant={
+                  action.status === "approved" ? "default" :
+                  action.status === "rejected" ? "destructive" : "secondary"
+                } className="text-xs">
+                  {action.status === "approved" ? "Approvato" :
+                   action.status === "rejected" ? "Rifiutato" : "In attesa"}
+                </Badge>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {new Date(action.createdAt).toLocaleTimeString("it-IT")}
+                </span>
+              </div>
+
+              {action.modelRationale && (
+                <div className="text-xs text-muted-foreground bg-muted/60 rounded p-2 leading-relaxed">
+                  <span className="font-medium text-foreground">Motivazione AI: </span>
+                  {action.modelRationale.slice(0, 300)}{action.modelRationale.length > 300 ? "…" : ""}
+                </div>
+              )}
+
+              {action.toolArgs && Object.keys(action.toolArgs).length > 0 && (
+                <details>
+                  <summary className="text-xs cursor-pointer text-muted-foreground hover:text-foreground">
+                    Parametri ({Object.keys(action.toolArgs).length})
+                  </summary>
+                  <pre className="text-xs bg-muted rounded p-2 mt-1 overflow-auto max-h-32">{JSON.stringify(action.toolArgs, null, 2)}</pre>
+                </details>
+              )}
+
+              {action.status === "pending" && (
+                <div className="space-y-2 pt-1">
+                  <Input
+                    placeholder="Nota decisione (opzionale)"
+                    className="h-8 text-xs"
+                    value={decisionNotes[action.id] ?? ""}
+                    onChange={e => setDecisionNotes(prev => ({ ...prev, [action.id]: e.target.value }))}
+                    data-testid={`decision-note-${action.id}`}
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-400"
+                      onClick={() => handleDecide(action.id, "rejected")}
+                      disabled={decideMutation.isPending}
+                      data-testid={`btn-reject-${action.id}`}>
+                      <ShieldX className="h-3.5 w-3.5 mr-1" />Rifiuta
+                    </Button>
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => handleDecide(action.id, "approved")}
+                      disabled={decideMutation.isPending}
+                      data-testid={`btn-approve-${action.id}`}>
+                      {decideMutation.isPending
+                        ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        : <ShieldCheck className="h-3.5 w-3.5 mr-1" />}
+                      Approva
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {action.status !== "pending" && action.decidedAt && (
+                <p className="text-xs text-muted-foreground pt-1 border-t">
+                  Deciso il {new Date(action.decidedAt).toLocaleString("it-IT")}
+                  {action.decisionNote ? <> — <em>"{action.decisionNote}"</em></> : ""}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── AI Costs Panel ─────────────────────────────────────────────────────────────
 function AiCostsPanel({ task }: { task: Task }) {
   const { data: executions } = useQuery<any[]>({
     queryKey: ["/api/ai-task-executor/history", task.id],
@@ -210,12 +421,9 @@ function AiCostsPanel({ task }: { task: Task }) {
 }
 
 interface TaskFormContainerProps {
-  // Dialog mode props
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   editingTask?: Task | null;
-  
-  // Callbacks
   onSuccess?: () => void;
 }
 
@@ -228,27 +436,22 @@ export default function TaskFormContainer({
   const params = useParams();
   const { currentOrganizationId } = useOrganization();
   const queryClient = useQueryClient();
-  
-  // Form routing
+
   const { routes, navigation, currentRoute } = useFormRouting("/tasks", params.id);
-  
-  // For full-page mode, fetch task data from route params
+
   const { data: fullPageTask } = useQuery({
     queryKey: ["/api/tasks", params.id],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!params.id && currentRoute.isEdit,
   });
-  
-  // Determine which task to use
+
   const task = currentRoute.isFullPage ? fullPageTask : editingTask;
   const isEditing = !!task;
-  
-  // Type safety check - show loading instead of null
+
   if (currentRoute.isEdit && !task && currentRoute.isFullPage) {
     return <div className="p-8 text-center">Caricamento task...</div>;
   }
-  
-  // Handle success callback
+
   const handleSuccess = () => {
     if (currentRoute.isFullPage) {
       navigation.toList();
@@ -257,8 +460,7 @@ export default function TaskFormContainer({
     }
     queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
   };
-  
-  // Handle container close
+
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen && currentRoute.isFullPage) {
       navigation.toList();
@@ -266,18 +468,16 @@ export default function TaskFormContainer({
       onOpenChange?.(newOpen);
     }
   };
-  
-  // Only return null if we're in full page mode but not on a valid route
-  // In dialog mode, we always render regardless of route
+
   if (currentRoute.isFullPage && !currentRoute.isCreate && !currentRoute.isEdit) {
     return null;
   }
-  
+
   const title = isEditing ? "Modifica Task" : "Nuovo Task";
-  const description = isEditing 
-    ? `Modifica i dettagli del task "${(task as Task)?.title}"` 
+  const description = isEditing
+    ? `Modifica i dettagli del task "${(task as Task)?.title}"`
     : "Crea un nuovo task per la tua organizzazione";
-  
+
   return (
     <FormContainer
       open={open}
@@ -288,9 +488,8 @@ export default function TaskFormContainer({
       maxWidth="max-w-4xl"
     >
       {isEditing ? (
-        // Editing mode with tabs (details, messages, history, ai costs)
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="details" className="flex items-center space-x-2">
               <Edit className="h-4 w-4" />
               <span>Dettagli</span>
@@ -311,26 +510,27 @@ export default function TaskFormContainer({
               <Zap className="h-4 w-4" />
               <span>Tool Calls</span>
             </TabsTrigger>
+            <TabsTrigger value="approvals" className="flex items-center space-x-2" data-testid="tab-approvals">
+              <ShieldAlert className="h-4 w-4" />
+              <span>Approvazioni</span>
+            </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="details" className="mt-6">
-            <TaskForm 
-              task={task as Task}
-              onSuccess={handleSuccess}
-            />
+            <TaskForm task={task as Task} onSuccess={handleSuccess} />
           </TabsContent>
-          
+
           <TabsContent value="messages" className="mt-6">
-            <MessageHistory 
-              tableName="tasks" 
+            <MessageHistory
+              tableName="tasks"
               recordId={(task as Task)?.id || ""}
               title="Storico Messaggi Task"
             />
           </TabsContent>
-          
+
           <TabsContent value="history" className="mt-6">
-            <AuditHistory 
-              tableName="tasks" 
+            <AuditHistory
+              tableName="tasks"
               recordId={(task as Task)?.id || ""}
               title="Storico Modifiche Task"
             />
@@ -343,13 +543,13 @@ export default function TaskFormContainer({
           <TabsContent value="tool-calls" className="mt-6">
             <ToolCallsPanel task={task as Task} />
           </TabsContent>
+
+          <TabsContent value="approvals" className="mt-6">
+            <PendingActionsPanel task={task as Task} />
+          </TabsContent>
         </Tabs>
       ) : (
-        // Creation mode - just the form
-        <TaskForm 
-          task={task as Task}
-          onSuccess={handleSuccess}
-        />
+        <TaskForm task={task as Task} onSuccess={handleSuccess} />
       )}
     </FormContainer>
   );

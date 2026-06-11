@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock, Settings, LogOut, Globe, Eye, Sparkles, Plus } from "lucide-react";
+import { Search, Mail, Calendar, FolderTree, Building, User, ChevronDown, Check, Users, X, FolderOpen, CheckSquare, Handshake, FileText, DollarSign, Server, Key, Wifi, Clock, Settings, LogOut, Globe, Eye, Sparkles, Plus, ShieldAlert } from "lucide-react";
 import { ThemeSelector } from "@/components/theme/theme-selector";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -57,6 +57,14 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
     queryKey: ['/api/proposals/pending-count'],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganization,
+  });
+
+  // Query per conteggio approvazioni MCP in sospeso (Phase 4)
+  const { data: pendingApprovals } = useQuery<{ count: number }>({
+    queryKey: ['/api/mcp/pending-actions/count'],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganization,
+    refetchInterval: 10000,
   });
 
   // Query per partner associato all'organizzazione corrente
@@ -292,6 +300,28 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 )}
               </Button>
             </Link>
+
+            {/* Phase 4: MCP pending approvals badge */}
+            {(pendingApprovals?.count ?? 0) > 0 && (
+              <Link href="/mcp-library">
+                <Button
+                  variant="ghost"
+                  className="flex items-center bg-amber-50 dark:bg-amber-950/30 relative"
+                  style={{ border: '2px solid rgba(245, 158, 11, 0.4)' }}
+                  data-testid="button-pending-approvals"
+                >
+                  <div className="relative">
+                    <ShieldAlert className="h-6 w-6 text-amber-500" />
+                    <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
+                      {(pendingApprovals?.count ?? 0) > 9 ? '9+' : pendingApprovals?.count}
+                    </span>
+                  </div>
+                  <span className="ml-2 text-amber-700 dark:text-amber-400 font-medium text-xs whitespace-nowrap">
+                    Approvazioni
+                  </span>
+                </Button>
+              </Link>
+            )}
 
             <Link href="/messages">
               <Button 
