@@ -39,6 +39,16 @@ export interface ProjectProposal {
     taskType: "development" | "analysis" | "design" | "testing" | "consulting" | "meeting" | "documentation" | "maintenance" | "support" | "other";
     estimatedEffort?: number; // hours
     dueDate?: string;
+    // AI Spec (Phase 5) — structured spec produced by the intake agent
+    aiSpec?: {
+      objective: string;
+      inputs: string[];
+      acceptanceCriteria: string[];
+      requiredMcpCategories: string[];
+      complexity: "S" | "M" | "L";
+      openQuestions: string[];
+      confidence: number; // 0.0-1.0
+    };
   }>;
   calendar?: {
     id?: string; // Existing calendar ID
@@ -331,7 +341,16 @@ Return valid JSON ONLY with this exact structure (with ITALIAN content):
       "priority": "low|medium|high|urgent",
       "taskType": "development|analysis|design|testing|consulting|meeting|documentation|maintenance|support|other",
       "estimatedEffort": hours_number (OBBLIGATORIO - la somma deve corrispondere al progetto!),
-      "dueDate": "YYYY-MM-DD if mentioned"
+      "dueDate": "YYYY-MM-DD if mentioned",
+      "aiSpec": {
+        "objective": "ITALIAN: Obiettivo del task in una frase",
+        "inputs": ["riferimento concreto a email/work item/oggetto citato nel messaggio"],
+        "acceptanceCriteria": ["ITALIAN: criterio verificabile 1", "criterio verificabile 2"],
+        "requiredMcpCategories": ["abap_adt|sap_gui|odata|docs|..." - solo se chiaramente deducibile],
+        "complexity": "S|M|L",
+        "openQuestions": ["ITALIAN: domanda SOLO se l'input è ambiguo o mancante — ometti array se tutto è chiaro"],
+        "confidence": 0.0-1.0 (0.9+ se tutto chiaro, <0.7 se ambiguità significative o domande aperte)
+      }
     }
   ],
   "calendar": {

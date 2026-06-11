@@ -49,6 +49,37 @@ import { PdfService } from "./pdf-service";
 import { ObjectStorageService } from "./objectStorage";
 import { calculateEndToComplete } from "./end-to-complete-calculator";
 import { recalculateProjectScheduleForTask } from "./project-rescheduler";
+import { assembleContext } from "./context-assembler";
+import { contextPacks } from "@shared/schema";
+
+// Phase 5: compute suggested model key from analytics (min 5 completed executions for taskType)
+async function computeSuggestedModelKey(organizationId: string, taskType: string): Promise<string | null> {
+  try {
+    const rows = await db.execute(sql`
+      SELECT ate.model_key, count(*)::int as cnt,
+             avg(ate.user_rating) as avg_rating,
+             avg(ate.total_cost_eur::float) as avg_cost
+      FROM ai_task_executions ate
+      INNER JOIN tasks t ON t.id = ate.task_id
+      WHERE ate.organization_id = ${organizationId}
+        AND ate.status = 'completed'
+        AND t.task_type = ${taskType}
+        AND ate.model_key IS NOT NULL
+      GROUP BY ate.model_key
+      HAVING count(*) >= 5
+    `);
+    const qualified = (rows.rows || []) as { model_key: string; cnt: number; avg_rating: number | null; avg_cost: number | null }[];
+    if (!qualified.length) return null;
+    qualified.sort((a, b) => {
+      const ratingDiff = (b.avg_rating ?? 0) - (a.avg_rating ?? 0);
+      if (Math.abs(ratingDiff) > 0.1) return ratingDiff;
+      return (a.avg_cost ?? 0) - (b.avg_cost ?? 0);
+    });
+    return qualified[0].model_key || null;
+  } catch {
+    return null;
+  }
+}
 
 // Helper function to extract organizationId from request header
 function getOrganizationId(req: any): string {
@@ -4485,6 +4516,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       if (proposalData.tasks && Array.isArray(proposalData.tasks)) {
         for (const taskProposal of proposalData.tasks) {
           if (taskProposal.isNew) {
+            const taskSpec = (taskProposal as any).aiSpec || null;
+            const isDraft = taskSpec && (taskSpec.confidence < 0.7 || (taskSpec.openQuestions?.length ?? 0) > 0);
             const taskData: any = {
               title: taskProposal.title,
               description: taskProposal.description,
@@ -4494,10 +4527,21 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
               dueDate: taskProposal.dueDate ? new Date(taskProposal.dueDate) : undefined,
               projectId: results.project?.id,
               sourceMessageIds: [proposal.messageId],
+              status: isDraft ? "draft" : "todo",
+              aiSpec: taskSpec,
               userId,
               organizationId
             };
             const task = await storage.createTask(taskData, { userId });
+            // Phase 5: compute and store suggestedModelKey in aiSpec
+            if (taskSpec && task?.id) {
+              const suggestedModelKey = await computeSuggestedModelKey(organizationId, taskProposal.taskType);
+              if (suggestedModelKey) {
+                const updatedSpec = { ...taskSpec, suggestedModelKey };
+                await db.update(tasks).set({ aiSpec: updatedSpec }).where(eq(tasks.id, task.id));
+                (task as any).aiSpec = updatedSpec;
+              }
+            }
             results.tasks.push(task);
           } else if (taskProposal.existingId) {
             const task = await storage.getTask(taskProposal.existingId, userId, organizationId);
@@ -4670,6 +4714,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       if (proposal.tasks && proposal.tasks.length > 0) {
         for (const taskProposal of proposal.tasks) {
           if (taskProposal.isNew) {
+            const taskSpec = (taskProposal as any).aiSpec || null;
+            const isDraft = taskSpec && (taskSpec.confidence < 0.7 || (taskSpec.openQuestions?.length ?? 0) > 0);
             const taskData: any = {
               title: taskProposal.title,
               description: taskProposal.description,
@@ -4679,10 +4725,21 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
               dueDate: taskProposal.dueDate ? new Date(taskProposal.dueDate) : undefined,
               projectId: results.project?.id,
               sourceMessageIds: [req.params.id],
+              status: isDraft ? "draft" : "todo",
+              aiSpec: taskSpec,
               userId,
               organizationId
             };
             const task = await storage.createTask(taskData, { userId });
+            // Phase 5: compute and store suggestedModelKey in aiSpec
+            if (taskSpec && task?.id) {
+              const suggestedModelKey = await computeSuggestedModelKey(organizationId, taskProposal.taskType);
+              if (suggestedModelKey) {
+                const updatedSpec = { ...taskSpec, suggestedModelKey };
+                await db.update(tasks).set({ aiSpec: updatedSpec }).where(eq(tasks.id, task.id));
+                (task as any).aiSpec = updatedSpec;
+              }
+            }
             results.tasks.push(task);
           } else if (taskProposal.existingId) {
             // Add messageId to existing task's sourceMessageIds if not already there
@@ -10316,6 +10373,14 @@ ISTRUZIONI:
       if (body.environment === "PRD" && body.readOnly === false) {
         return res.status(400).json({ error: "Configs with environment=PRD must have readOnly=true" });
       }
+      // Phase 5 fix: override write→read not allowed
+      if (body.toolClassificationOverrides && typeof body.toolClassificationOverrides === "object") {
+        const badOverrides = Object.entries(body.toolClassificationOverrides as Record<string, string>)
+          .filter(([, v]) => v === "read");
+        if (badOverrides.length > 0) {
+          return res.status(400).json({ error: "Gli override possono solo irrigidire la classificazione (read→write)", invalidKeys: badOverrides.map(([k]) => k) });
+        }
+      }
       const [existing] = await db.select().from(mcpServerConfigs)
         .where(and(eq(mcpServerConfigs.id, req.params.id), eq(mcpServerConfigs.organizationId, organizationId)))
         .limit(1);
@@ -10498,6 +10563,12 @@ ISTRUZIONI:
     });
     const parsed = bodySchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid body", details: parsed.error.issues });
+    // Phase 5 fix: override write→read not allowed
+    const overrides = parsed.data.toolClassificationOverrides ?? {};
+    const badKeys = Object.entries(overrides).filter(([, v]) => v === "read").map(([k]) => k);
+    if (badKeys.length > 0) {
+      return res.status(400).json({ error: "Gli override possono solo irrigidire la classificazione (read→write)", invalidKeys: badKeys });
+    }
     try {
       const [created] = await db.insert(mcpServerConfigs).values({
         ...parsed.data,
@@ -10507,6 +10578,97 @@ ISTRUZIONI:
       // Run initial health check async (don't block response)
       import("./mcp-client").then(({ healthCheck }) => healthCheck(created.id).catch(() => {}));
       return res.status(201).json(created);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Phase 5: Context Packs ────────────────────────────────────────────────
+
+  // GET /api/context-packs/:scopeType/:scopeId? — read context pack
+  app.get("/api/context-packs/:scopeType/:scopeId?", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    const { scopeType, scopeId } = req.params;
+    if (!["organization", "project"].includes(scopeType)) {
+      return res.status(400).json({ error: "scopeType must be 'organization' or 'project'" });
+    }
+    try {
+      const conditions = [
+        eq(contextPacks.organizationId, organizationId),
+        eq(contextPacks.scopeType, scopeType),
+      ];
+      if (scopeId) conditions.push(eq(contextPacks.scopeId, scopeId));
+      else conditions.push(sql`${contextPacks.scopeId} IS NULL`);
+      const [pack] = await db.select().from(contextPacks).where(and(...conditions)).limit(1);
+      if (!pack) return res.status(404).json({ error: "Not found" });
+      return res.json(pack);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // PUT /api/context-packs/:scopeType/:scopeId? — upsert context pack (manual edit)
+  app.put("/api/context-packs/:scopeType/:scopeId?", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    const userId = (req.user as any).id;
+    const { scopeType, scopeId } = req.params;
+    if (!["organization", "project"].includes(scopeType)) {
+      return res.status(400).json({ error: "scopeType must be 'organization' or 'project'" });
+    }
+    if (scopeType === "project" && !scopeId) {
+      return res.status(400).json({ error: "scopeId required when scopeType=project" });
+    }
+    const bodySchema = z.object({
+      brief: z.string().optional(),
+      conventions: z.string().optional().nullable(),
+      glossary: z.record(z.string()).optional(),
+      decisions: z.array(z.object({ date: z.string(), text: z.string(), sourceTaskId: z.string().optional() })).optional(),
+    });
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid body", details: parsed.error.issues });
+    try {
+      const updates: Record<string, any> = { updatedAt: new Date(), updatedBy: userId };
+      if (parsed.data.brief !== undefined) updates.brief = parsed.data.brief;
+      if (parsed.data.conventions !== undefined) updates.conventions = parsed.data.conventions;
+      if (parsed.data.glossary !== undefined) updates.glossary = parsed.data.glossary;
+      if (parsed.data.decisions !== undefined) updates.decisions = parsed.data.decisions;
+
+      // Try update first
+      const conditions = [
+        eq(contextPacks.organizationId, organizationId),
+        eq(contextPacks.scopeType, scopeType),
+      ];
+      if (scopeId) conditions.push(eq(contextPacks.scopeId, scopeId));
+      else conditions.push(sql`${contextPacks.scopeId} IS NULL`);
+
+      const [existing] = await db.select({ id: contextPacks.id }).from(contextPacks).where(and(...conditions)).limit(1);
+      let result;
+      if (existing) {
+        [result] = await db.update(contextPacks).set(updates).where(eq(contextPacks.id, existing.id)).returning();
+      } else {
+        [result] = await db.insert(contextPacks).values({
+          organizationId,
+          scopeType,
+          scopeId: scopeId || null,
+          ...updates,
+          decisions: updates.decisions ?? [],
+          glossary: updates.glossary ?? {},
+        }).returning();
+      }
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/tasks/:id/assembled-context — preview assembled context for a task
+  app.get("/api/tasks/:id/assembled-context", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    try {
+      const ctx = await assembleContext({ taskId: req.params.id, tokenBudget: 8000 });
+      return res.json(ctx);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

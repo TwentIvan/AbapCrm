@@ -364,10 +364,11 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="todo">To Do</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="review">Review</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="draft">Bozza</SelectItem>
+                    <SelectItem value="todo">Da Fare</SelectItem>
+                    <SelectItem value="in_progress">In Corso</SelectItem>
+                    <SelectItem value="review">In Revisione</SelectItem>
+                    <SelectItem value="completed">Completato</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -612,30 +613,55 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
             <FormField
               control={form.control}
               name="agentModelId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Modello AI</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || "none"}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-agent-model">
-                        <SelectValue placeholder="Default organizzazione" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Default organizzazione</SelectItem>
-                      {filteredModels.map(m => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.displayName}
-                          {m.inputPricePerMToken
-                            ? ` — $${parseFloat(m.inputPricePerMToken).toFixed(2)}/$${parseFloat(m.outputPricePerMToken || "0").toFixed(2)} /Mtok`
-                            : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const aiSpec = (task as any)?.aiSpec as any;
+                const suggestedKey = aiSpec?.suggestedModelKey;
+                const suggestedModel = suggestedKey
+                  ? (aiModels || []).find(m => m.modelKey === suggestedKey)
+                  : null;
+                const currentModel = field.value && field.value !== "none"
+                  ? (aiModels || []).find(m => m.id === field.value)
+                  : null;
+                const showHint = suggestedModel && currentModel?.modelKey !== suggestedKey;
+                return (
+                  <FormItem>
+                    <FormLabel>Modello AI</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || "none"}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-agent-model">
+                          <SelectValue placeholder="Default organizzazione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Default organizzazione</SelectItem>
+                        {filteredModels.map(m => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.displayName}
+                            {m.inputPricePerMToken
+                              ? ` — $${parseFloat(m.inputPricePerMToken).toFixed(2)}/$${parseFloat(m.outputPricePerMToken || "0").toFixed(2)} /Mtok`
+                              : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {showHint && (
+                      <div className="flex items-center gap-2 mt-1 text-xs text-purple-700 dark:text-purple-400">
+                        <span>💡 Suggerito: <strong>{suggestedModel!.displayName}</strong> (basato su cronologia esecuzioni)</span>
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-xs text-purple-700 dark:text-purple-400 underline"
+                          onClick={() => field.onChange(suggestedModel!.id)}
+                        >
+                          Applica
+                        </Button>
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
           </div>
 

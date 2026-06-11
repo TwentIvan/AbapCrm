@@ -7,7 +7,7 @@ import Header from "@/components/layout/header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckSquare, Edit, MoreHorizontal, ExternalLink, Clock } from "lucide-react";
+import { CheckSquare, Edit, MoreHorizontal, ExternalLink, Clock, CheckCheck } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { Task, Project } from "@shared/schema";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
@@ -573,6 +573,16 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
                 <Edit className="mr-2 h-4 w-4" />
                 Modifica
               </DropdownMenuItem>
+              {(task as any).status === "draft" && (
+                <DropdownMenuItem
+                  onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "todo" } })}
+                  data-testid={`menu-confirm-draft-${task.id}`}
+                  className="text-purple-700 focus:text-purple-700"
+                >
+                  <CheckCheck className="mr-2 h-4 w-4" />
+                  Conferma Bozza
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

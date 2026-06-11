@@ -126,7 +126,7 @@ export const projectShares = pgTable("project_shares", {
   uniqueShare: uniqueIndex("unique_project_share").on(table.projectId, table.targetOrganizationId),
 }));
 
-export const taskStatusEnum = pgEnum("task_status", ["todo", "in_progress", "review", "completed"]);
+export const taskStatusEnum = pgEnum("task_status", ["todo", "in_progress", "review", "completed", "draft"]);
 export const taskPriorityEnum = pgEnum("task_priority", ["low", "medium", "high", "urgent"]);
 export const taskTypeEnum = pgEnum("task_type", [
   "development", "analysis", "design", "testing", "consulting", 
@@ -169,6 +169,8 @@ export const tasks = pgTable("tasks", {
   budgetCapEur: decimal("budget_cap_eur", { precision: 10, scale: 4 }),
   // MCP Tool Use (Phase 3) — IDs dei mcp_server_configs da usare in esecuzione AI
   mcpConfigIds: uuid("mcp_config_ids").array().default([]),
+  // AI Spec (Phase 5) — structured task spec from intake agent
+  aiSpec: jsonb("ai_spec"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -3637,6 +3639,39 @@ export type AiPendingAction = typeof aiPendingActions.$inferSelect;
 export type InsertAiPendingAction = z.infer<typeof insertAiPendingActionSchema>;
 
 // ========== Generated File Type for AI Task Executions ==========
+// ========== Context Packs (Phase 5) ==========
+export const contextPacks = pgTable("context_packs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  scopeType: text("scope_type").notNull(), // "organization" | "project"
+  scopeId: uuid("scope_id"), // projects.id if scopeType=project, null if organization
+  brief: text("brief"),
+  decisions: jsonb("decisions").notNull().default([]),
+  glossary: jsonb("glossary").notNull().default({}),
+  conventions: text("conventions"),
+  updatedAt: timestamp("updated_at"),
+  updatedBy: text("updated_by"), // "agent" | userId
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  uniqScope: uniqueIndex("context_packs_unique_scope").on(t.organizationId, t.scopeType, t.scopeId),
+}));
+
+export const insertContextPackSchema = createInsertSchema(contextPacks).omit({ id: true, createdAt: true });
+export type ContextPack = typeof contextPacks.$inferSelect;
+export type InsertContextPack = z.infer<typeof insertContextPackSchema>;
+
+// ========== AI Spec interface (Phase 5) ==========
+export interface AiTaskSpec {
+  objective: string;
+  inputs: string[];
+  acceptanceCriteria: string[];
+  requiredMcpCategories: string[];
+  complexity: "S" | "M" | "L";
+  openQuestions: string[];
+  confidence: number; // 0.0-1.0
+  suggestedModelKey?: string; // analytics-driven, never auto-applied
+}
+
 export interface AiGeneratedFile {
   filename: string;
   content: string;

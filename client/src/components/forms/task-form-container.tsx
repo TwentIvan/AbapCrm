@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Edit, MessageSquare, History, Brain, AlertTriangle, Zap, CheckCircle2, XCircle, ShieldAlert, ShieldCheck, ShieldX, Loader2 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Edit, MessageSquare, History, Brain, AlertTriangle, Zap, CheckCircle2, XCircle, ShieldAlert, ShieldCheck, ShieldX, Loader2, FileText, ExternalLink, CheckCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Task } from "@shared/schema";
 
@@ -420,6 +421,180 @@ function AiCostsPanel({ task }: { task: Task }) {
   );
 }
 
+// ── AI Spec Panel (Phase 5) ────────────────────────────────────────────────
+function AiSpecPanel({ task }: { task: Task }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const confirmDraftMutation = useMutation({
+    mutationFn: () => apiRequest("PUT", `/api/tasks/${task.id}`, { status: "todo" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      toast({ title: "Task confermato — stato impostato a 'Da fare'" });
+    },
+  });
+
+  const { data: assembledCtx, isLoading: ctxLoading } = useQuery<any>({
+    queryKey: ["/api/tasks", task.id, "assembled-context"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!task.id,
+  });
+
+  const spec = (task as any).aiSpec as any;
+
+  if (!spec) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          Nessuna AI Spec disponibile per questo task. Le spec vengono generate automaticamente dall'agente AI durante la creazione della proposta.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const confidenceNum = typeof spec.confidence === "number" ? spec.confidence : null;
+  const confidencePct = confidenceNum !== null ? Math.round(confidenceNum * 100) : null;
+  const confidenceColor =
+    confidenceNum === null ? "secondary"
+    : confidenceNum >= 0.7 ? "default"
+    : "destructive";
+
+  return (
+    <div className="space-y-4">
+      {/* Header row: status + confidence + confirm button */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {(task as any).status === "draft" && (
+          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+            Bozza
+          </Badge>
+        )}
+        {confidencePct !== null && (
+          <Badge variant={confidenceColor as any}>
+            Confidenza: {confidencePct}%
+          </Badge>
+        )}
+        {(task as any).status === "draft" && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => confirmDraftMutation.mutate()}
+            disabled={confirmDraftMutation.isPending}
+            data-testid="button-confirm-draft"
+            className="border-purple-400 text-purple-700 hover:bg-purple-50 dark:text-purple-300"
+          >
+            {confirmDraftMutation.isPending
+              ? <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+              : <CheckCheck className="mr-2 h-3 w-3" />}
+            Conferma Bozza
+          </Button>
+        )}
+      </div>
+
+      {/* Summary */}
+      {spec.summary && (
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-medium">Sommario</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 text-sm">{spec.summary}</CardContent>
+        </Card>
+      )}
+
+      {/* Objective */}
+      {spec.objective && (
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-medium">Obiettivo</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 text-sm">{spec.objective}</CardContent>
+        </Card>
+      )}
+
+      {/* Deliverables */}
+      {Array.isArray(spec.deliverables) && spec.deliverables.length > 0 && (
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-medium">Deliverable</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <ul className="list-disc pl-4 space-y-1 text-sm">
+              {spec.deliverables.map((d: string, i: number) => <li key={i}>{d}</li>)}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Acceptance Criteria */}
+      {Array.isArray(spec.acceptanceCriteria) && spec.acceptanceCriteria.length > 0 && (
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-medium">Criteri di Accettazione</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <ul className="list-disc pl-4 space-y-1 text-sm">
+              {spec.acceptanceCriteria.map((c: string, i: number) => <li key={i}>{c}</li>)}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Open Questions */}
+      {Array.isArray(spec.openQuestions) && spec.openQuestions.length > 0 && (
+        <Card className="border-yellow-200 dark:border-yellow-800">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
+              <AlertTriangle className="h-4 w-4" />
+              Domande Aperte ({spec.openQuestions.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <ul className="list-decimal pl-4 space-y-1 text-sm text-yellow-800 dark:text-yellow-300">
+              {spec.openQuestions.map((q: string, i: number) => <li key={i}>{q}</li>)}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      <Separator />
+
+      {/* Assembled Context Preview */}
+      <Card>
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Brain className="h-4 w-4 text-primary" />
+            Contesto Assemblato per AI
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          {ctxLoading ? (
+            <p className="text-sm text-muted-foreground">Caricamento...</p>
+          ) : assembledCtx ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Sezioni incluse</span>
+                <span className="font-medium text-foreground">
+                  {Object.keys(assembledCtx.sections || {}).filter(k => assembledCtx.sections[k]).length}
+                </span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Token stimati</span>
+                <span className="font-medium text-foreground tabular-nums">
+                  {(assembledCtx.totalTokens || 0).toLocaleString()}
+                </span>
+              </div>
+              {assembledCtx.truncated && (
+                <Badge variant="secondary" className="text-xs">Troncato al budget</Badge>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Contesto non disponibile.</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 interface TaskFormContainerProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -489,10 +664,14 @@ export default function TaskFormContainer({
     >
       {isEditing ? (
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="details" className="flex items-center space-x-2">
               <Edit className="h-4 w-4" />
               <span>Dettagli</span>
+            </TabsTrigger>
+            <TabsTrigger value="ai-spec" className="flex items-center space-x-2" data-testid="tab-ai-spec">
+              <FileText className="h-4 w-4" />
+              <span>Spec AI</span>
             </TabsTrigger>
             <TabsTrigger value="messages" className="flex items-center space-x-2">
               <MessageSquare className="h-4 w-4" />
@@ -518,6 +697,10 @@ export default function TaskFormContainer({
 
           <TabsContent value="details" className="mt-6">
             <TaskForm task={task as Task} onSuccess={handleSuccess} />
+          </TabsContent>
+
+          <TabsContent value="ai-spec" className="mt-6">
+            <AiSpecPanel task={task as Task} />
           </TabsContent>
 
           <TabsContent value="messages" className="mt-6">

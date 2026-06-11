@@ -1,0 +1,79 @@
+OBIETTIVO FASE 5: l'agente di intake (email/DevOps → progetti/task) produce task spec strutturate con soglia di confidenza, e ogni esecuzione AI riceve un contesto assemblato dalla gerarchia organizzazione → progetti padre → progetto → task, con brief auto-mantenuti. Si costruisce su ai-project-agent.ts (intake), ai-task-executor.ts e l'analytics della Fase 2.
+
+0. CORREZIONE EREDITATA DALLA FASE 4
+POST /api/mcp/custom/register e PATCH config: se toolClassificationOverrides contiene un override write→read (rispetto alla classificazione automatica dei tool rilevati), rispondi 400 con messaggio esplicito "Gli override possono solo irrigidire la classificazione (read→write)". Il comportamento runtime resta invariato (già fail-safe).
+
+1. SCHEMA
+
+Su tasks aggiungi: ai_spec jsonb (nullable).
+
+context_packs:
+- id uuid PK
+- organization_id uuid FK not null
+- scope_type text not null      -- "organization" | "project"
+- scope_id uuid                  -- projects.id se scope_type=project, null se organization
+- brief text                     -- sintesi curata, target max ~2000 token
+- decisions jsonb default '[]'   -- [{ date, text, sourceTaskId }] max 30 voci, FIFO
+- glossary jsonb default '{}'    -- { termine: definizione }
+- conventions text               -- convenzioni tecniche
+- updated_at timestamp, updated_by text  -- "agent" | userId
+- UNIQUE(organization_id, scope_type, scope_id)
+
+2. TASK SPEC NELL'INTAKE (server/ai-project-agent.ts)
+
+Estendi il prompt e lo schema di output: per ogni task proposto il modello deve produrre anche:
+{
+  "objective": "una frase",
+  "inputs": ["riferimenti concreti a email/work item/oggetti citati"],
+  "acceptanceCriteria": ["criteri verificabili"],
+  "requiredMcpCategories": ["abap_adt" | "sap_gui" | "odata" | "docs" | ...],
+  "complexity": "S" | "M" | "L",
+  "openQuestions": ["domande SOLO se l'input è ambiguo"],
+  "confidence": 0.0-1.0
+}
+Salva l'oggetto in tasks.ai_spec. REGOLA: se confidence < 0.7 OPPURE openQuestions non vuoto → il task viene creato con status "draft" (se l'enum stato esistente non lo prevede, aggiungilo) e NON entra nei flussi di esecuzione finché un utente non lo conferma.
+SUGGERIMENTO AGENTE: dopo la creazione, calcola il modello suggerito interrogando la stessa logica dell'analytics Fase 2 (miglior rapporto costo/rating per quel taskType, minimo 5 esecuzioni; altrimenti default org) e salvalo in ai_spec.suggestedModelKey — NON impostare agent_model_id automaticamente, è solo un suggerimento mostrato in UI.
+
+3. CONTEXT ASSEMBLER (server/context-assembler.ts)
+
+export async function assembleContext({ taskId, tokenBudget = 6000 }): Promise<{ text, sections, tokensUsed }>
+
+Risale la gerarchia: task → project → parentProject* (ricorsivo, max 5 livelli) → organization. Per ogni livello produce una sezione testuale con header chiaro e budget:
+- task (sempre incluso, fuori budget): ai_spec se presente, altrimenti titolo+descrizione
+- progetto diretto: brief + ultime 5 decisions + conventions (max 2000 token)
+- ogni progetto padre: solo brief (max 800 token ciascuno)
+- organizzazione: conventions + glossary (max 500 token)
+Tronca SEMPRE per sezione (riusa countTokens del cost-estimator), livelli più vicini hanno priorità se il budget totale non basta. Se un context_pack non esiste, salta il livello senza errori.
+
+INTEGRAZIONE: ai-task-executor usa assembleContext per arricchire il prompt di esecuzione (sezione "CONTESTO DI PROGETTO" prima del contesto attuale). Anche il cost-estimator (Fase 2) deve includere il contesto assemblato nel conteggio dei token di input, così il preventivo resta onesto.
+
+4. BRIEF AUTO-MANTENUTI (server/context-maintainer.ts)
+
+Trigger: quando un'esecuzione AI passa a "completed" (aggancia il punto esistente di update stato o l'event_bus). Azione, in background senza bloccare la risposta:
+- carica il context_pack del progetto del task (crealo se non esiste);
+- chiama aiGateway.complete con un modello economico FISSO da env CONTEXT_MAINTAINER_MODEL_KEY (default "openai/gpt-4o-mini"), prompt: "Aggiorna questo brief di progetto (max 300 parole) integrando l'esito del task appena completato. Aggiungi al massimo 1 decisione se rilevante. Rispondi SOLO JSON { brief, newDecision? }";
+- aggiorna brief e accoda newDecision a decisions (FIFO 30), updated_by="agent";
+- errori: logga e ignora (non deve MAI far fallire il flusso principale);
+- protezione: max 1 aggiornamento per progetto ogni 10 minuti (in-memory è sufficiente).
+
+5. API
+
+- GET/PUT /api/context-packs/:scopeType/:scopeId? → lettura/modifica manuale (PUT valida: scope_type in enum, scope coerente con l'org)
+- GET /api/tasks/:id/assembled-context → anteprima del contesto assemblato (per trasparenza/debug in UI)
+
+6. UI
+
+a) Task in stato draft: badge "Bozza — richiede conferma" nella lista task; nel dettaglio, card "Domande aperte" con le openQuestions e le risposte inseribili come commento/descrizione + pulsante "Conferma task" (draft → todo/stato iniziale standard).
+b) Nel form task, accanto alla select del modello: se ai_spec.suggestedModelKey esiste, mostra "Suggerito: {nome} (basato su N esecuzioni)" con click per applicarlo.
+c) Pagina progetto: tab o sezione "Contesto AI" con editor di brief/conventions/glossary, lista decisions (sola lettura + delete), indicazione ultimo aggiornamento e da chi; nota se aggiornato dall'agente.
+d) Vista task: link "Vedi contesto che l'AI riceverà" che apre l'anteprima da assembled-context.
+
+CRITERI DI ACCETTAZIONE
+- Email ambigua processata dall'intake → task in draft con openQuestions visibili e confidence < 0.7; email chiara → task normale con ai_spec completa.
+- Task di progetto con gerarchia a 2 livelli (figlio→padre): assembled-context contiene le sezioni di entrambi i livelli + org, nei limiti di budget; il preventivo del task include quei token.
+- Completo un task con esecuzione AI: entro pochi secondi il brief del progetto risulta aggiornato con updated_by="agent"; un secondo completamento entro 10 minuti NON riaggiorna.
+- Modifico a mano il brief da UI: updated_by = mio userId.
+- Override write→read in register/PATCH → 400.
+- npm run check: zero nuovi errori.
+
+Al termine: elenco file, esito per criterio.
