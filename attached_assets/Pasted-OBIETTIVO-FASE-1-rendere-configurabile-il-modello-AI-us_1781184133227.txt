@@ -1,0 +1,82 @@
+OBIETTIVO FASE 1: rendere configurabile il modello AI usato dall'applicazione, introducendo un layer gateway multi-provider e un registry dei modelli. NESSUN cambiamento di comportamento funzionale: a fine fase l'app deve funzionare esattamente come oggi.
+
+VINCOLI GENERALI
+- Non toccare codice non correlato a questa fase.
+- Non modificare la UI esistente, salvo quanto indicato.
+- Usa Drizzle per le nuove tabelle (shared/schema.ts + drizzle-kit push).
+- Tutte le chiavi API restano server-side in variabili d'ambiente.
+
+1. NUOVE TABELLE (shared/schema.ts)
+
+ai_providers:
+- id uuid PK default gen_random_uuid()
+- name text not null (es. "OpenAI", "Anthropic", "Google", "DeepSeek")
+- gateway_prefix text (es. "openai/", "anthropic/")
+- enabled boolean default true
+
+ai_models:
+- id uuid PK
+- provider_id uuid FK -> ai_providers
+- model_key text not null unique (es. "openai/gpt-5", "anthropic/claude-sonnet-4-6")
+- display_name text not null
+- version text
+- price_input_per_mtok decimal(10,4)  -- USD per milione di token input
+- price_output_per_mtok decimal(10,4)
+- context_window integer
+- capabilities jsonb default '{}'  -- { "toolUse": true, "vision": true }
+- status text default 'active'  -- active | deprecated
+- synced_at timestamp
+
+Crea uno script di seed (scripts/seed-ai-models.ts) che popola i 4 provider e almeno 8 modelli rappresentativi (2 per provider) con prezzi indicativi e capabilities. I prezzi sono placeholder aggiornabili.
+
+2. GATEWAY CLIENT (server/ai-gateway.ts)
+
+Crea un modulo unico per tutte le chiamate LLM con questa interfaccia:
+
+  aiGateway.complete({
+    modelKey: string,            // es. "openai/gpt-5"
+    messages: ChatMessage[],
+    responseFormat?: "json" | "text",
+    tools?: ToolDefinition[],    // formato function calling OpenAI-compatible
+    maxTokens?: number
+  }): Promise<{
+    content: string,
+    toolCalls: ToolCall[],
+    usage: { promptTokens, completionTokens, totalCostUsd }
+  }>
+
+Comportamento:
+- Se è definita la env AI_GATEWAY_BASE_URL: usa il client OpenAI SDK puntato a quella base URL con AI_GATEWAY_API_KEY, passando modelKey come model (è un proxy LiteLLM, API OpenAI-compatible).
+- ALTRIMENTI (fallback, deve funzionare da subito): se modelKey inizia con "openai/", chiama direttamente OpenAI con OPENAI_API_KEY rimuovendo il prefisso. Per altri prefissi senza gateway configurato, lancia un errore chiaro: "Gateway non configurato: il modello X richiede AI_GATEWAY_BASE_URL".
+- Calcola totalCostUsd da usage e dai prezzi in ai_models (lookup per modelKey).
+- Logga ogni chiamata: modelKey, token, costo, durata, servizio chiamante.
+
+3. MIGRAZIONE DEI SERVIZI ESISTENTI
+
+Migra a aiGateway.complete() eliminando ogni "new OpenAI(...)" e ogni modello hardcoded da:
+- server/ai-project-agent.ts (oggi usa "gpt-5")
+- server/ai-task-executor.ts
+- server/ai-service.ts
+
+Il modello da usare arriva da una nuova funzione di configurazione getDefaultModelKey(organizationId) che legge, in ordine: impostazione organizzazione (aggiungi campo settings jsonb su organizations se non esiste, chiave "aiDefaultModelKey"), poi env AI_DEFAULT_MODEL_KEY, poi fallback "openai/gpt-5". Il comportamento di default deve restare identico a oggi.
+
+4. API
+
+- GET /api/ai/models → elenco ai_models attivi con provider, prezzi, capabilities (autenticata, per popolare le select della UI nelle fasi successive)
+- GET /api/ai/providers → elenco provider
+- PATCH /api/organizations/:id/settings → permette di salvare aiDefaultModelKey (solo admin org)
+
+5. VARIABILI D'AMBIENTE (documenta in .env.example)
+
+AI_GATEWAY_BASE_URL=   (opzionale in questa fase)
+AI_GATEWAY_API_KEY=
+AI_DEFAULT_MODEL_KEY=openai/gpt-5
+
+CRITERI DI ACCETTAZIONE
+- L'analisi email → proposta progetto/task funziona identica a prima senza alcuna env nuova configurata.
+- Cambiando aiDefaultModelKey in "openai/gpt-4o" via API, le chiamate successive usano quel modello (verificabile dai log).
+- GET /api/ai/models restituisce il seed completo.
+- Nessun riferimento residuo diretto a "new OpenAI" fuori da server/ai-gateway.ts.
+- tsc passa senza errori (npm run check).
+
+Al termine, elenca i file modificati/creati e come hai verificato i criteri di accettazione.
