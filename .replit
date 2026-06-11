@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "postgresql-16", "python-3.11"]
+modules = ["nodejs-20", "web", "python-3.11", "postgresql-16"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -46,3 +46,7 @@ integrations = ["javascript_database:1.0.0"]
 
 [objectStorage]
 defaultBucketID = "replit-objstore-47363b0b-9618-4d3a-a89c-b13cbb06a2e9"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
