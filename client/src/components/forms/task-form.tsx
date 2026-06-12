@@ -14,8 +14,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Bot, Server } from "lucide-react";
+import { Loader2, Bot, Server, AlertCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useOrganization } from "@/contexts/organization-context";
 
 interface AiModelOption {
@@ -114,6 +115,16 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
   });
+
+  const { data: mcpCatalog = [] } = useQuery<any[]>({
+    queryKey: ["/api/mcp/catalog"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+  });
+
+  const catalogValidationMap = new Map<string, boolean>(
+    mcpCatalog.map((c: any) => [c.id, c.validated ?? false])
+  );
 
   const activeProjects = projects?.filter(project => project.status !== "completed") || [];
   const parentTasks = tasks?.filter(t => t.id !== task?.id) || [];
@@ -735,55 +746,83 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
           />
 
           {/* MCP Tool Servers */}
-          <div className="space-y-2">
-            <Label className="text-sm flex items-center gap-1.5">
-              <Server className="h-3.5 w-3.5 text-primary" />
-              Server MCP per Tool Use
-            </Label>
-            {mcpConfigs.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                Nessun server MCP configurato.{" "}
-                <a href="/mcp-library" className="underline hover:text-primary">
-                  Aggiungi configurazioni
-                </a>{" "}
-                nella MCP Library.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {mcpConfigs.map((cfg: any) => {
-                  const ids: string[] = form.watch("mcpConfigIds") ?? [];
-                  const checked = ids.includes(cfg.id);
-                  return (
-                    <div key={cfg.id} className="flex items-center gap-2">
-                      <Checkbox
-                        id={`mcp-${cfg.id}`}
-                        checked={checked}
-                        onCheckedChange={(v) => {
-                          const current = form.getValues("mcpConfigIds") ?? [];
-                          if (v) {
-                            form.setValue("mcpConfigIds", [...current, cfg.id]);
-                          } else {
-                            form.setValue("mcpConfigIds", current.filter((id: string) => id !== cfg.id));
-                          }
-                        }}
-                        data-testid={`mcp-config-check-${cfg.id}`}
-                      />
-                      <label htmlFor={`mcp-${cfg.id}`} className="text-sm cursor-pointer flex items-center gap-1.5">
-                        {cfg.name}
-                        <Badge
-                          variant={cfg.environment === "PRD" ? "destructive" : cfg.environment === "QAS" ? "secondary" : "outline"}
-                          className="text-xs"
+          <TooltipProvider>
+            <div className="space-y-2">
+              <Label className="text-sm flex items-center gap-1.5">
+                <Server className="h-3.5 w-3.5 text-primary" />
+                Server MCP per Tool Use
+              </Label>
+              {mcpConfigs.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Nessun server MCP configurato.{" "}
+                  <a href="/mcp-library" className="underline hover:text-primary">
+                    Aggiungi configurazioni
+                  </a>{" "}
+                  nella MCP Library.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {mcpConfigs.map((cfg: any) => {
+                    const ids: string[] = form.watch("mcpConfigIds") ?? [];
+                    const checked = ids.includes(cfg.id);
+                    const isValidated = cfg.catalogId
+                      ? (catalogValidationMap.get(cfg.catalogId) ?? false)
+                      : true;
+                    const isDisabled = !isValidated;
+                    return (
+                      <div key={cfg.id} className={`flex items-center gap-2 ${isDisabled ? "opacity-50" : ""}`}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Checkbox
+                                id={`mcp-${cfg.id}`}
+                                checked={checked}
+                                disabled={isDisabled}
+                                onCheckedChange={(v) => {
+                                  if (isDisabled) return;
+                                  const current = form.getValues("mcpConfigIds") ?? [];
+                                  if (v) {
+                                    form.setValue("mcpConfigIds", [...current, cfg.id]);
+                                  } else {
+                                    form.setValue("mcpConfigIds", current.filter((id: string) => id !== cfg.id));
+                                  }
+                                }}
+                                data-testid={`mcp-config-check-${cfg.id}`}
+                              />
+                            </span>
+                          </TooltipTrigger>
+                          {isDisabled && (
+                            <TooltipContent>Server non validato — validarlo dalla MCP Library prima dell'uso</TooltipContent>
+                          )}
+                        </Tooltip>
+                        <label
+                          htmlFor={isDisabled ? undefined : `mcp-${cfg.id}`}
+                          className={`text-sm flex items-center gap-1.5 ${isDisabled ? "cursor-not-allowed" : "cursor-pointer"}`}
                         >
-                          {cfg.environment}
-                        </Badge>
-                        {cfg.readOnly && <Badge variant="outline" className="text-xs text-green-600">read</Badge>}
-                      </label>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                          {cfg.name}
+                          <Badge
+                            variant={cfg.environment === "PRD" ? "destructive" : cfg.environment === "QAS" ? "secondary" : "outline"}
+                            className="text-xs"
+                          >
+                            {cfg.environment}
+                          </Badge>
+                          {cfg.readOnly && <Badge variant="outline" className="text-xs text-green-600">read</Badge>}
+                          {isDisabled && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertCircle className="h-3 w-3 text-amber-500" />
+                              </TooltipTrigger>
+                              <TooltipContent>Server non validato</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </TooltipProvider>
         </div>
       </form>
     </Form>

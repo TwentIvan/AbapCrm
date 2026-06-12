@@ -35,7 +35,7 @@ import {
   insertResourceSkillSchema, insertResourceAvailabilitySchema,
   taskRequiredSkills, insertTaskRequiredSkillSchema,
   aiProviders, aiModels, userOrganizations,
-  mcpCatalog, mcpServerConfigs, insertMcpServerConfigSchema
+  mcpCatalog, mcpServerConfigs, insertMcpServerConfigSchema, mcpCatalogValidations
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -10285,15 +10285,118 @@ ISTRUZIONI:
 
   // ── MCP Catalog & Server Configs — Phase 3 ────────────────────────────────
 
-  // GET /api/mcp/catalog — list catalog entries, optional ?category= filter
+  // GET /api/mcp/catalog — list catalog entries with per-org validation status
   app.get("/api/mcp/catalog", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string | undefined;
     try {
-      const { category } = req.query;
-      const rows = category && typeof category === "string"
+      const { category, validatedOnly } = req.query;
+
+      let rows = category && typeof category === "string"
         ? await db.select().from(mcpCatalog).where(eq(mcpCatalog.category, category)).orderBy(asc(mcpCatalog.name))
         : await db.select().from(mcpCatalog).orderBy(asc(mcpCatalog.name));
-      return res.json(rows);
+
+      // Attach per-org validation status
+      let validationMap = new Map<string, boolean>();
+      if (organizationId) {
+        const vals = await db
+          .select({ catalogId: mcpCatalogValidations.catalogId, validated: mcpCatalogValidations.validated })
+          .from(mcpCatalogValidations)
+          .where(eq(mcpCatalogValidations.organizationId, organizationId));
+        vals.forEach(v => validationMap.set(v.catalogId, v.validated));
+      }
+
+      const result = rows.map(r => ({ ...r, validated: validationMap.get(r.id) ?? false }));
+
+      if (validatedOnly === "true") {
+        return res.json(result.filter(r => r.validated));
+      }
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/mcp/catalog/:id/details — full entry + README (with 7-day cache)
+  app.get("/api/mcp/catalog/:id/details", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string | undefined;
+    try {
+      const [entry] = await db.select().from(mcpCatalog).where(eq(mcpCatalog.id, req.params.id)).limit(1);
+      if (!entry) return res.status(404).json({ error: "Not found" });
+
+      let readmeMd = entry.readmeMd;
+      const fetchedAt = entry.readmeFetchedAt ? new Date(entry.readmeFetchedAt) : null;
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const needsRefresh = !fetchedAt || fetchedAt < sevenDaysAgo;
+
+      if (needsRefresh && entry.repoUrl) {
+        // extract owner/repo from https://github.com/owner/repo
+        const match = entry.repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+        if (match) {
+          const ownerRepo = match[1].replace(/\.git$/, "");
+          let fetchedReadme: string | null = null;
+          for (const branch of ["main", "master"]) {
+            try {
+              const r = await fetch(
+                `https://raw.githubusercontent.com/${ownerRepo}/${branch}/README.md`,
+                { headers: { "User-Agent": "crm-backend/1.0" }, signal: AbortSignal.timeout(8000) }
+              );
+              if (r.ok) {
+                const text = await r.text();
+                fetchedReadme = text.slice(0, 102400); // 100KB cap
+                break;
+              }
+            } catch { /* try next branch */ }
+          }
+          // save (even if null — to avoid hammering on 404s)
+          await db.update(mcpCatalog)
+            .set({ readmeMd: fetchedReadme, readmeFetchedAt: new Date() })
+            .where(eq(mcpCatalog.id, entry.id));
+          readmeMd = fetchedReadme;
+        }
+      }
+
+      // Attach validation status
+      let validated = false;
+      if (organizationId) {
+        const [val] = await db.select({ validated: mcpCatalogValidations.validated })
+          .from(mcpCatalogValidations)
+          .where(and(
+            eq(mcpCatalogValidations.organizationId, organizationId),
+            eq(mcpCatalogValidations.catalogId, entry.id),
+          ))
+          .limit(1);
+        validated = val?.validated ?? false;
+      }
+
+      return res.json({ ...entry, readmeMd, validated });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // PATCH /api/mcp/catalog/:id/validate — set per-org validation
+  app.patch("/api/mcp/catalog/:id/validate", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    if (!organizationId) return res.status(400).json({ error: "Missing X-Organization-Id header" });
+    const { validated } = req.body;
+    if (typeof validated !== "boolean") return res.status(400).json({ error: "validated must be boolean" });
+    try {
+      const [entry] = await db.select({ id: mcpCatalog.id }).from(mcpCatalog).where(eq(mcpCatalog.id, req.params.id)).limit(1);
+      if (!entry) return res.status(404).json({ error: "Catalog entry not found" });
+
+      const userId = (req.user as any)?.id;
+      await db.execute(sql`
+        INSERT INTO mcp_catalog_validations (organization_id, catalog_id, validated, validated_by, validated_at)
+        VALUES (${organizationId}, ${entry.id}, ${validated}, ${userId ?? null}, ${validated ? new Date() : null})
+        ON CONFLICT (organization_id, catalog_id) DO UPDATE SET
+          validated    = EXCLUDED.validated,
+          validated_by = EXCLUDED.validated_by,
+          validated_at = EXCLUDED.validated_at
+      `);
+      return res.json({ ok: true, catalogId: entry.id, validated });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }
@@ -10547,6 +10650,7 @@ ISTRUZIONI:
   });
 
   // POST /api/mcp/custom/register — register validated custom MCP server
+  // Creates a mcp_catalog entry (source="custom") + links it — so validation works uniformly.
   app.post("/api/mcp/custom/register", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
     const organizationId = req.headers["x-organization-id"] as string;
@@ -10570,9 +10674,20 @@ ISTRUZIONI:
       return res.status(400).json({ error: "Gli override possono solo irrigidire la classificazione (read→write)", invalidKeys: badKeys });
     }
     try {
+      // Create a catalog entry (source="custom") for uniform validation flow — born unvalidated
+      const [catalogEntry] = await db.insert(mcpCatalog).values({
+        name: parsed.data.name,
+        source: "custom",
+        description: parsed.data.description || null,
+        transport: "http",
+        stale: false,
+        syncedAt: new Date(),
+      }).returning();
+
       const [created] = await db.insert(mcpServerConfigs).values({
         ...parsed.data,
         organizationId,
+        catalogId: catalogEntry.id,
         enabled: true,
       }).returning();
       // Run initial health check async (don't block response)

@@ -21,6 +21,7 @@ import {
   aiTaskExecutions,
   aiModels,
   mcpServerConfigs,
+  mcpCatalogValidations,
   aiPendingActions,
   auditLogs,
   messages,
@@ -1252,8 +1253,32 @@ export async function executeTaskWithAI(
             eq(mcpServerConfigs.organizationId, organizationId),
           ));
 
+        // Load per-org validation status for all catalog IDs in one query
+        const catalogIds = linkedConfigs
+          .map(c => c.catalogId)
+          .filter((id): id is string => !!id);
+        const validationMap = new Map<string, boolean>();
+        if (catalogIds.length > 0) {
+          const vals = await db
+            .select({ catalogId: mcpCatalogValidations.catalogId, validated: mcpCatalogValidations.validated })
+            .from(mcpCatalogValidations)
+            .where(and(
+              eq(mcpCatalogValidations.organizationId, organizationId),
+              inArray(mcpCatalogValidations.catalogId, catalogIds),
+            ));
+          vals.forEach(v => validationMap.set(v.catalogId, v.validated));
+        }
+
         for (const cfg of linkedConfigs) {
           if (cfg.enabled === false) continue;
+          // Validation enforcement: skip if catalog entry exists but is not validated for this org
+          if (cfg.catalogId) {
+            const isValidated = validationMap.get(cfg.catalogId) ?? false;
+            if (!isValidated) {
+              console.log(`[MCP] Config ${cfg.id} (${cfg.name}) skipped: catalog entry not validated`);
+              continue;
+            }
+          }
           const isPrd = cfg.environment === "PRD";
           const isReadOnly = cfg.readOnly;
           if (isPrd && !isReadOnly) {

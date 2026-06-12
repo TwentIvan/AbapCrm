@@ -1,0 +1,42 @@
+CORREZIONE + ESTENSIONE MCP LIBRARY (bug sync + flag validazione + dettaglio)
+
+BUG 1 — IL SYNC IMPORTA I FILE INVECE DEL CONTENUTO
+Il sync attuale legge l'elenco della cartella data/ del repo marianfoo/sap-ai-mcp-servers e crea una voce per file ("catalog", "overrides"). SBAGLIATO. La struttura reale è:
+- data/catalog.json = { meta, categories: [ { id, title, entries: [ { type, name, repo, purpose, notes } ] } ], skills, claudePlugins, adjacentTools, referenceLinks }
+- data/overrides.json = { _comment, repos: { "owner/nome": { license, ... } } }
+
+Riscrivi mcp-registry-sync.ts così:
+1. Scarica https://raw.githubusercontent.com/marianfoo/sap-ai-mcp-servers/main/data/catalog.json e .../overrides.json (2 fetch, niente listing della cartella).
+2. Itera SOLO categories[].entries[] (61 voci attese; ignora skills, claudePlugins, adjacentTools, referenceLinks: non sono server MCP). Mappa:
+   - name = entry.name
+   - repo_url = "https://github.com/" + entry.repo
+   - category = category.id (salva category.title in maturity.categoryTitle)
+   - description = entry.purpose + (entry.notes ? " — " + entry.notes : "")
+   - source = "registry"; transport = "http" di default
+   - maturity = { type: entry.type, license: overrides.repos[entry.repo]?.license, registryCategoryTitle: category.title }
+   - write_capable: euristica classifyTool su name+purpose+notes (invariata)
+3. Upsert su (name, repo_url). PRIMA del sync: elimina le 2 righe spurie esistenti ("catalog", "overrides") con una cleanup mirata (source='registry' AND repo_url IS NULL o name IN ('catalog','overrides')).
+4. Le voci registry non più presenti nel JSON → status/flag "stale" (aggiungi colonna stale boolean default false), MAI cancellate (potrebbero avere configurazioni collegate).
+
+NOVITÀ 2 — FLAG DI VALIDAZIONE (affidabilità)
+- Colonna su mcp_catalog: validated boolean not null default false, validated_by uuid nullable, validated_at timestamp nullable.
+- PATCH /api/mcp/catalog/:id/validate  body { validated: boolean } — SOLO admin/owner dell'org... ATTENZIONE: mcp_catalog è condiviso, non per-org. Quindi la validazione va per organizzazione: crea tabella mcp_catalog_validations (organization_id, catalog_id, validated boolean, validated_by, validated_at, UNIQUE(organization_id, catalog_id)). L'API la scrive lì.
+- ENFORCEMENT (il punto che conta):
+  a) ai-task-executor: quando carica le config del task, joina il catalogo e la validazione dell'org: config la cui voce di catalogo NON è validata → SKIP con log "[MCP] Config X skipped: catalog entry not validated". Nessuna eccezione.
+  b) Form task: il multiselect mostra solo config con catalogo validato (le altre visibili ma disabilitate con tooltip "Server non validato").
+  c) ai-project-agent (suggerimenti requiredMcpCategories): irrilevante lato prompt, ma qualsiasi auto-collegamento futuro deve filtrare per validated.
+- I server custom registrati via wizard NASCONO non validati: l'admin li valida esplicitamente dopo (anche il proprio bridge: coerenza).
+
+NOVITÀ 3 — DETTAGLIO VOCE DI CATALOGO
+- Colonna su mcp_catalog: readme_md text nullable, readme_fetched_at timestamp.
+- GET /api/mcp/catalog/:id/details → ritorna la voce completa + README: se readme_fetched_at è più vecchio di 7 giorni o nullo, fetch server-side di https://raw.githubusercontent.com/{owner}/{repo}/main/README.md (fallback branch master; fallback HEAD via redirect), salva in readme_md (tronca a 100KB) e ritorna. Errori → ritorna la voce senza README con nota.
+- UI: ogni riga del catalogo diventa cliccabile → dialog/pagina di dettaglio con: nome, badge categoria e type (SAP / Community SAP), descrizione completa, licenza, link al repo GitHub, badge validato/non validato con toggle (solo admin), stato stale se presente, e il README renderizzato in markdown (usa il renderer markdown già presente nel progetto se esiste, altrimenti react-markdown).
+- Nella lista: colonna/badge "Validato" con check verde, filtro "solo validati".
+
+CRITERI DI ACCETTAZIONE
+- Sync → 61 voci (±, secondo lo stato del registry), categorie reali (sap-mcp-server, sap-docs-mcp-server, community-sap-mcp-server, ...), niente voci "catalog"/"overrides".
+- Secondo sync consecutivo → 0 duplicati (upsert funziona).
+- Click su una voce → dettaglio con README renderizzato e link GitHub.
+- Valido una voce come admin → l'executor la usa; voce non validata collegata a un task → skippata con log; multiselect del form la mostra disabilitata.
+- Server custom appena registrato → non validato di default.
+- npm run check: zero nuovi errori.

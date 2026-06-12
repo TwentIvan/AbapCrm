@@ -1,5 +1,3 @@
-- [Schema drift & db:push](schema-drift-dbpush.md) — DB intentionally drifts from shared/schema.ts; never run unattended `drizzle-kit push`, apply schema via direct SQL.
-- [AI Gateway Phase 2 Architecture](ai-gateway-phase2.md) — cost estimation, budget guardrail, model resolution pattern for ai-task-executor.
-- [MCP Phase 3 Architecture](mcp-phase3.md) — read-only guardrail, agentic loop MAX_ITER=8, EventBus capital-E, Drizzle insert for audit (no raw SQL).
-- [MCP Phase 4 Approval Loop](mcp-phase4-approval.md) — write tool calls pause execution (awaiting_approval); resume via POST /api/executions/:id/decide; PRD defense in depth (collection + callTool/resume).
-- [Phase 5 context packs & draft tasks](phase5-context-packs.md) — context_packs scope pattern, getQueryFn URL join, draft task flow, AiSpecPanel + ContextPackPanel inline components.
+- [MCP validation flow](mcp-validation.md) — mcp_catalog_validations is per-org; custom servers get a catalog entry (source="custom") at registration so validation is uniform; executor skips non-validated catalogId configs with log.
+- [MCP registry sync](mcp-registry-sync.md) — fetches catalog.json+overrides.json directly (no folder listing); iterates categories[].entries[]; stale marking: collect seenIds from RETURNING, then batch-update by UUID array.
+- [Import graph rule](import-graph.md) — tokens.ts←context-assembler.ts and cost-estimator.ts (no cycle); countTokens extracted to break the cycle.

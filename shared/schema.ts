@@ -3584,8 +3584,20 @@ export const mcpCatalog = pgTable("mcp_catalog", {
   authModel: text("auth_model").default("none"),
   writeCapable: boolean("write_capable").default(false),
   maturity: jsonb("maturity").default({}),
+  stale: boolean("stale").notNull().default(false),
+  readmeMd: text("readme_md"),
+  readmeFetchedAt: timestamp("readme_fetched_at"),
   syncedAt: timestamp("synced_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const mcpCatalogValidations = pgTable("mcp_catalog_validations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  catalogId: uuid("catalog_id").notNull().references(() => mcpCatalog.id, { onDelete: "cascade" }),
+  validated: boolean("validated").notNull().default(false),
+  validatedBy: uuid("validated_by").references(() => users.id),
+  validatedAt: timestamp("validated_at"),
 });
 
 export const mcpServerConfigs = pgTable("mcp_server_configs", {
@@ -3610,11 +3622,15 @@ export const mcpServerConfigs = pgTable("mcp_server_configs", {
 
 export const insertMcpCatalogSchema = createInsertSchema(mcpCatalog).omit({ id: true, createdAt: true });
 export const insertMcpServerConfigSchema = createInsertSchema(mcpServerConfigs).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertMcpCatalogValidationSchema = createInsertSchema(mcpCatalogValidations).omit({ id: true });
 
 export type McpCatalog = typeof mcpCatalog.$inferSelect;
 export type InsertMcpCatalog = z.infer<typeof insertMcpCatalogSchema>;
 export type McpServerConfig = typeof mcpServerConfigs.$inferSelect;
 export type InsertMcpServerConfig = z.infer<typeof insertMcpServerConfigSchema>;
+export type McpCatalogValidation = typeof mcpCatalogValidations.$inferSelect;
+
+export type McpCatalogWithValidation = McpCatalog & { validated: boolean };
 
 // Phase 4: Pending human-approval MCP write-tool actions
 export const aiPendingActions = pgTable("ai_pending_actions", {
