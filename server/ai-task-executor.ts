@@ -1271,13 +1271,16 @@ export async function executeTaskWithAI(
 
         for (const cfg of linkedConfigs) {
           if (cfg.enabled === false) continue;
-          // Validation enforcement: skip if catalog entry exists but is not validated for this org
-          if (cfg.catalogId) {
-            const isValidated = validationMap.get(cfg.catalogId) ?? false;
-            if (!isValidated) {
-              console.log(`[MCP] Config ${cfg.id} (${cfg.name}) skipped: catalog entry not validated`);
-              continue;
-            }
+          // Security: default-deny — no catalog entry means no validation possible → skip
+          if (!cfg.catalogId) {
+            console.log(`[MCP] Config ${cfg.id} (${cfg.name}) skipped: no catalog entry (validation required)`);
+            continue;
+          }
+          // Validation enforcement: catalog entry must be validated for this org
+          const isValidated = validationMap.get(cfg.catalogId) ?? false;
+          if (!isValidated) {
+            console.log(`[MCP] Config ${cfg.id} (${cfg.name}) skipped: catalog entry not validated`);
+            continue;
           }
           const isPrd = cfg.environment === "PRD";
           const isReadOnly = cfg.readOnly;

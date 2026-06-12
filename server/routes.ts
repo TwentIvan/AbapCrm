@@ -10376,7 +10376,7 @@ ISTRUZIONI:
     }
   });
 
-  // PATCH /api/mcp/catalog/:id/validate — set per-org validation
+  // PATCH /api/mcp/catalog/:id/validate — set per-org validation (admin/owner only)
   app.patch("/api/mcp/catalog/:id/validate", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
     const organizationId = req.headers["x-organization-id"] as string;
@@ -10384,10 +10384,22 @@ ISTRUZIONI:
     const { validated } = req.body;
     if (typeof validated !== "boolean") return res.status(400).json({ error: "validated must be boolean" });
     try {
+      const userId = (req.user as any)?.id;
+
+      // Role check: only admin or owner of the org can validate catalog entries
+      const userOrgRows = await db
+        .select({ role: userOrganizations.role })
+        .from(userOrganizations)
+        .where(and(eq(userOrganizations.userId, userId), eq(userOrganizations.organizationId, organizationId)))
+        .limit(1);
+      const role = userOrgRows[0]?.role;
+      if (role !== "admin" && role !== "owner") {
+        return res.status(403).json({ error: "Only admins and owners can validate catalog entries" });
+      }
+
       const [entry] = await db.select({ id: mcpCatalog.id }).from(mcpCatalog).where(eq(mcpCatalog.id, req.params.id)).limit(1);
       if (!entry) return res.status(404).json({ error: "Catalog entry not found" });
 
-      const userId = (req.user as any)?.id;
       await db.execute(sql`
         INSERT INTO mcp_catalog_validations (organization_id, catalog_id, validated, validated_by, validated_at)
         VALUES (${organizationId}, ${entry.id}, ${validated}, ${userId ?? null}, ${validated ? new Date() : null})
@@ -10432,13 +10444,23 @@ ISTRUZIONI:
     }
   });
 
-  // POST /api/mcp/configs — create new server config
+  // POST /api/mcp/configs — create new server config (catalogId required)
   app.post("/api/mcp/configs", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
     const organizationId = req.headers["x-organization-id"] as string;
     if (!organizationId) return res.status(400).json({ error: "Missing X-Organization-Id header" });
     try {
       const body = req.body;
+
+      // Security: catalogId is mandatory — no config may exist without a cataloged and validatable entry
+      if (!body.catalogId) {
+        return res.status(400).json({ error: "catalogId is required: every MCP config must reference a catalog entry" });
+      }
+      const [catalogEntry] = await db.select({ id: mcpCatalog.id }).from(mcpCatalog).where(eq(mcpCatalog.id, body.catalogId)).limit(1);
+      if (!catalogEntry) {
+        return res.status(400).json({ error: "catalogId references a non-existent catalog entry" });
+      }
+
       // PRD guardrail: environment=PRD must always have readOnly=true
       if (body.environment === "PRD" && body.readOnly === false) {
         return res.status(400).json({ error: "Configs with environment=PRD must have readOnly=true" });

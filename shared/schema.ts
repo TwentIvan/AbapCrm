@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, decimal, real, pgEnum, boolean, uuid, time, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, decimal, real, pgEnum, boolean, uuid, time, jsonb, index, uniqueIndex, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -3598,7 +3598,9 @@ export const mcpCatalogValidations = pgTable("mcp_catalog_validations", {
   validated: boolean("validated").notNull().default(false),
   validatedBy: uuid("validated_by").references(() => users.id),
   validatedAt: timestamp("validated_at"),
-});
+}, (t) => ({
+  orgCatalogUnique: unique().on(t.organizationId, t.catalogId),
+}));
 
 export const mcpServerConfigs = pgTable("mcp_server_configs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
