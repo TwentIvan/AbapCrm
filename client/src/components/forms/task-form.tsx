@@ -54,6 +54,7 @@ const formSchema = insertTaskSchema.omit({
   agentModelId: z.string().optional(),
   budgetCapEur: z.string().optional(),
   mcpConfigIds: z.array(z.string()).optional(),
+  connectionWorkflowId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -156,6 +157,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       agentModelId: (task as any)?.agentModelId || "none",
       budgetCapEur: (task as any)?.budgetCapEur?.toString() || "",
       mcpConfigIds: (task as any)?.mcpConfigIds ?? [],
+      connectionWorkflowId: (task as any)?.connectionWorkflowId || "none",
     },
   });
 
@@ -178,6 +180,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
         agentModelId: (task as any)?.agentModelId || "none",
         budgetCapEur: (task as any)?.budgetCapEur?.toString() || "",
         mcpConfigIds: (task as any)?.mcpConfigIds ?? [],
+        connectionWorkflowId: (task as any)?.connectionWorkflowId || "none",
       });
       setEstimate(null);
     }
@@ -185,11 +188,24 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
 
   const selectedProjectId = form.watch("projectId");
   const selectedProject = projects?.find(p => p.id === selectedProjectId);
+  const watchSapSystemId = form.watch("sapSystemId");
 
   const filteredSapSystems = sapSystems?.filter(sys => {
     if (!selectedProject?.clientId) return true;
     return sys.partnerId === selectedProject.clientId;
   }) || [];
+
+  const { data: connectionWorkflowsForTask = [] } = useQuery<any[]>({
+    queryKey: ["/api/connection-workflows", { sapSystemId: watchSapSystemId }],
+    queryFn: async () => {
+      const params = watchSapSystemId && watchSapSystemId !== "none"
+        ? `?sapSystemId=${watchSapSystemId}` : "";
+      const r = await fetch(`/api/connection-workflows${params}`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+    enabled: !!currentOrganizationId,
+  });
 
   const handleEstimate = async () => {
     if (!task?.id) return;
@@ -524,6 +540,33 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                   {filteredSapSystems.map((sapSystem) => (
                     <SelectItem key={sapSystem.id} value={sapSystem.id}>
                       {sapSystem.name} - {sapSystem.serverHost}:{sapSystem.applicationServerPort}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Connection Workflow override */}
+        <FormField
+          control={form.control}
+          name="connectionWorkflowId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Connection Workflow (Opzionale)</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || "none"}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-connection-workflow">
+                    <SelectValue placeholder="Default del sistema SAP" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">— Default del sistema SAP —</SelectItem>
+                  {connectionWorkflowsForTask.map((wf: any) => (
+                    <SelectItem key={wf.id} value={wf.id}>
+                      {wf.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

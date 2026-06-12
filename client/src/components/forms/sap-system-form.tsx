@@ -30,6 +30,11 @@ const formSchema = z.object({
   citrixAppName: z.string().optional().nullable(),
   webLink: z.string().url("URL non valido").optional().nullable().or(z.literal("")),
   sapShortcutFile: z.string().optional().nullable(),
+  // Portal Cookie fields
+  portalUrl: z.string().url("URL non valido").optional().nullable().or(z.literal("")),
+  shortcutPattern: z.string().optional().nullable(),
+  cookieTargetPath: z.string().optional().nullable(),
+  cookieSystemMatch: z.string().optional().nullable(),
   description: z.string().optional(),
   partnerId: z.string().optional().nullable(),
   systemType: z.string().optional(),
@@ -87,6 +92,10 @@ export default function SapSystemForm({ system, editingSystem, onSuccess, onCanc
       citrixAppName: (effectiveSystem as any)?.citrixAppName || "",
       webLink: (effectiveSystem as any)?.webLink || "",
       sapShortcutFile: (effectiveSystem as any)?.sapShortcutFile || "",
+      portalUrl: (effectiveSystem as any)?.portalUrl || "",
+      shortcutPattern: (effectiveSystem as any)?.shortcutPattern || "tx*.sap",
+      cookieTargetPath: (effectiveSystem as any)?.cookieTargetPath || "",
+      cookieSystemMatch: (effectiveSystem as any)?.cookieSystemMatch || "",
       description: effectiveSystem?.description || "",
       partnerId: effectiveSystem?.partnerId || undefined,
       defaultUsername: effectiveSystem?.defaultUsername || "",
@@ -434,6 +443,12 @@ export default function SapSystemForm({ system, editingSystem, onSuccess, onCanc
                             Link Web
                           </div>
                         </SelectItem>
+                        <SelectItem value="portal_cookie">
+                          <div className="flex items-center gap-2">
+                            <Globe className="h-4 w-4" />
+                            Portal + Cookie
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormDescription>
@@ -670,6 +685,103 @@ export default function SapSystemForm({ system, editingSystem, onSuccess, onCanc
                     </FormItem>
                   )}
                 />
+              )}
+
+              {/* Portal + Cookie Connection Fields */}
+              {watchConnectionType === "portal_cookie" && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="portalUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Globe className="h-4 w-4" />
+                          URL Portale
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="url"
+                            placeholder="https://portale.cliente.com/sap"
+                            {...field}
+                            value={field.value || ''}
+                            data-testid="input-portal-url"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          URL del portale web da cui scaricare il file shortcut .sap
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="shortcutPattern"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Pattern file shortcut (glob)</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="tx*.sap"
+                            {...field}
+                            value={field.value || ''}
+                            data-testid="input-shortcut-pattern"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Pattern glob per identificare il file .sap scaricato (es. tx*.sap, HTS*.sap)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="cookieTargetPath"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Percorso cookie di destinazione</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="C:\\Users\\user\\AppData\\Local\\SAP\\cookies\\"
+                            {...field}
+                            value={field.value || ''}
+                            data-testid="input-cookie-target-path"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Percorso locale dove il cookie estratto viene scritto
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="cookieSystemMatch"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Filtro [System] Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="HTS"
+                            {...field}
+                            value={field.value || ''}
+                            data-testid="input-cookie-system-match"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Valore da cercare nel campo [System] Name= dello shortcut per identificare il sistema
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
               )}
 
               <FormField

@@ -21,6 +21,7 @@ const getDefaultSystemsItems = (t: any) => [
   { id: "s2", name: t("nav.vpnConnections"), href: "/vpn-connections", icon: Wifi, testId: "nav-vpn-connections" },
   { id: "s3", name: "Collegamenti Web", href: "/web-links", icon: GitBranch, testId: "nav-web-links" },
   { id: "s4", name: "Credenziali", href: "/system-credentials", icon: Key, testId: "nav-system-credentials" },
+  { id: "s5", name: "Connection Workflows", href: "/connection-workflows", icon: GitBranch, testId: "nav-connection-workflows" },
 ];
 
 // Progetti group (nested items)

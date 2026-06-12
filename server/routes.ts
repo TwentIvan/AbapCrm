@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { db } from "./db";
-import { sql, inArray, eq, and, desc, asc, isNull, aliasedTable } from "drizzle-orm";
+import { sql, inArray, eq, and, or, desc, asc, isNull, aliasedTable } from "drizzle-orm";
 import { generateVPNAutomationScript, discoverVPNConnections, discoverAvailableVPNSoftware, testVPNConnection } from "./vpn-automation";
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
@@ -35,7 +35,8 @@ import {
   insertResourceSkillSchema, insertResourceAvailabilitySchema,
   taskRequiredSkills, insertTaskRequiredSkillSchema,
   aiProviders, aiModels, userOrganizations,
-  mcpCatalog, mcpServerConfigs, insertMcpServerConfigSchema, mcpCatalogValidations
+  mcpCatalog, mcpServerConfigs, insertMcpServerConfigSchema, mcpCatalogValidations,
+  connectionWorkflows, insertConnectionWorkflowSchema
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -10806,6 +10807,126 @@ ISTRUZIONI:
     try {
       const ctx = await assembleContext({ taskId: req.params.id, tokenBudget: 8000 });
       return res.json(ctx);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Connection Workflows ──────────────────────────────────────────────────
+
+  // GET /api/connection-workflows
+  app.get("/api/connection-workflows", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    if (!organizationId) return res.status(400).json({ error: "Missing X-Organization-Id" });
+    try {
+      const sapSystemId = req.query.sapSystemId as string | undefined;
+      let rows;
+      if (sapSystemId) {
+        rows = await db.select().from(connectionWorkflows)
+          .where(and(
+            eq(connectionWorkflows.organizationId, organizationId),
+            or(eq(connectionWorkflows.sapSystemId, sapSystemId), isNull(connectionWorkflows.sapSystemId))
+          ))
+          .orderBy(connectionWorkflows.createdAt);
+      } else {
+        rows = await db.select().from(connectionWorkflows)
+          .where(eq(connectionWorkflows.organizationId, organizationId))
+          .orderBy(connectionWorkflows.createdAt);
+      }
+      return res.json(rows);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/connection-workflows
+  app.post("/api/connection-workflows", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    if (!organizationId) return res.status(400).json({ error: "Missing X-Organization-Id" });
+    try {
+      const parsed = insertConnectionWorkflowSchema.safeParse({ ...req.body, organizationId });
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+      const [created] = await db.insert(connectionWorkflows).values(parsed.data).returning();
+      return res.status(201).json(created);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // PATCH /api/connection-workflows/:id
+  app.patch("/api/connection-workflows/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    try {
+      const [existing] = await db.select().from(connectionWorkflows)
+        .where(and(eq(connectionWorkflows.id, req.params.id), eq(connectionWorkflows.organizationId, organizationId)));
+      if (!existing) return res.status(404).json({ error: "Not found" });
+      const parsed = insertConnectionWorkflowSchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+      const [updated] = await db.update(connectionWorkflows)
+        .set({ ...parsed.data, updatedAt: new Date() })
+        .where(eq(connectionWorkflows.id, req.params.id))
+        .returning();
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // DELETE /api/connection-workflows/:id
+  app.delete("/api/connection-workflows/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    try {
+      const [existing] = await db.select().from(connectionWorkflows)
+        .where(and(eq(connectionWorkflows.id, req.params.id), eq(connectionWorkflows.organizationId, organizationId)));
+      if (!existing) return res.status(404).json({ error: "Not found" });
+      await db.delete(connectionWorkflows).where(eq(connectionWorkflows.id, req.params.id));
+      return res.status(204).send();
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/tasks/:id/connection-plan — resolve workflow → step plan with autoExecutable flag
+  app.get("/api/tasks/:id/connection-plan", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    try {
+      const [task] = await db.select().from(tasks).where(eq(tasks.id, req.params.id));
+      if (!task) return res.status(404).json({ error: "Task not found" });
+
+      let workflow: typeof connectionWorkflows.$inferSelect | null = null;
+
+      if ((task as any).connectionWorkflowId) {
+        const [wf] = await db.select().from(connectionWorkflows)
+          .where(eq(connectionWorkflows.id, (task as any).connectionWorkflowId));
+        if (wf) workflow = wf;
+      }
+
+      if (!workflow && task.sapSystemId) {
+        const [wf] = await db.select().from(connectionWorkflows)
+          .where(eq(connectionWorkflows.sapSystemId, task.sapSystemId))
+          .orderBy(connectionWorkflows.createdAt)
+          .limit(1);
+        if (wf) workflow = wf;
+      }
+
+      if (!workflow) {
+        return res.json({ workflow: null, steps: [], source: "none" });
+      }
+
+      const steps = ((workflow.steps as any[]) || []).map((s: any) => ({
+        ...s,
+        autoExecutable: s.actor === "auto",
+      }));
+
+      return res.json({
+        workflow: { id: workflow.id, name: workflow.name },
+        source: (task as any).connectionWorkflowId ? "task-override" : "sap-system",
+        steps,
+      });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

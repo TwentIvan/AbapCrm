@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Edit, MessageSquare, History, Brain, AlertTriangle, Zap, CheckCircle2, XCircle, ShieldAlert, ShieldCheck, ShieldX, Loader2, FileText, ExternalLink, CheckCheck } from "lucide-react";
+import { Edit, MessageSquare, History, Brain, AlertTriangle, Zap, CheckCircle2, XCircle, ShieldAlert, ShieldCheck, ShieldX, Loader2, FileText, ExternalLink, CheckCheck, Wifi, Bot, User, GitBranch, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Task } from "@shared/schema";
 
@@ -106,6 +106,110 @@ function ToolCallsPanel({ task }: { task: Task }) {
 }
 
 // ── Pending Actions Panel (Phase 4 — approve / reject write tool calls) ───────
+// ── Connection Plan Panel ─────────────────────────────────────────────────────
+const STEP_TYPE_LABELS: Record<string, string> = {
+  vpn_connect: "VPN Connect",
+  open_url_await_download: "Apri URL / Attendi download",
+  extract_cookie_from_shortcut: "Estrai cookie da shortcut",
+  launch_process: "Avvia processo",
+  run_local_script: "Esegui script locale",
+  mcp_health_check: "MCP Health Check",
+  manual_confirm: "Conferma manuale",
+};
+
+function ConnectionPlanPanel({ task }: { task: Task }) {
+  const { data: plan, isLoading, error, refetch } = useQuery<any>({
+    queryKey: ["/api/tasks", task.id, "connection-plan"],
+    queryFn: async () => {
+      const r = await fetch(`/api/tasks/${task.id}/connection-plan`, { credentials: "include" });
+      if (!r.ok) throw new Error("Errore caricamento piano");
+      return r.json();
+    },
+    enabled: !!task.id,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-muted-foreground py-8">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span>Caricamento piano di connessione...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 text-destructive py-8">
+        <AlertCircle className="h-4 w-4" />
+        <span>Errore nel caricamento del piano di connessione</span>
+        <Button variant="ghost" size="sm" onClick={() => refetch()}>Riprova</Button>
+      </div>
+    );
+  }
+
+  if (!plan || !plan.workflow) {
+    return (
+      <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+        <GitBranch className="h-8 w-8 mx-auto mb-2 opacity-40" />
+        <p className="text-sm font-medium">Nessun Connection Workflow configurato</p>
+        <p className="text-xs mt-1">
+          Assegna un workflow al task (tab Dettagli) o configura un sistema SAP con workflow associato.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <GitBranch className="h-4 w-4 text-primary" />
+            {plan.workflow.name}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Sorgente: {plan.source === "task-override" ? "Override task" : "Sistema SAP"} ·{" "}
+            {plan.steps.length} passo{plan.steps.length !== 1 ? "i" : ""}
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => refetch()}>
+          <Loader2 className="h-3 w-3 mr-1" />Aggiorna
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        {plan.steps.map((step: any, i: number) => (
+          <div key={step.id || i}
+            className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-xs font-mono shrink-0 mt-0.5">
+              {i + 1}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium">{step.label}</span>
+                <Badge variant={step.actor === "auto" ? "default" : "secondary"} className="text-xs gap-1 shrink-0">
+                  {step.actor === "auto"
+                    ? <Bot className="h-3 w-3" />
+                    : <User className="h-3 w-3" />}
+                  {step.autoExecutable ? "automatico" : "manuale"}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {STEP_TYPE_LABELS[step.type] ?? step.type}
+              </p>
+              {step.onFailure && step.onFailure !== "abort" && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                  In caso di errore: {step.onFailure === "retry" ? "riprova" : "chiedi all'utente"}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PendingActionsPanel({ task }: { task: Task }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -664,7 +768,7 @@ export default function TaskFormContainer({
     >
       {isEditing ? (
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="details" className="flex items-center space-x-2">
               <Edit className="h-4 w-4" />
               <span>Dettagli</span>
@@ -692,6 +796,10 @@ export default function TaskFormContainer({
             <TabsTrigger value="approvals" className="flex items-center space-x-2" data-testid="tab-approvals">
               <ShieldAlert className="h-4 w-4" />
               <span>Approvazioni</span>
+            </TabsTrigger>
+            <TabsTrigger value="connection-plan" className="flex items-center space-x-2" data-testid="tab-connection-plan">
+              <Wifi className="h-4 w-4" />
+              <span>Connessione</span>
             </TabsTrigger>
           </TabsList>
 
@@ -729,6 +837,10 @@ export default function TaskFormContainer({
 
           <TabsContent value="approvals" className="mt-6">
             <PendingActionsPanel task={task as Task} />
+          </TabsContent>
+
+          <TabsContent value="connection-plan" className="mt-6">
+            <ConnectionPlanPanel task={task as Task} />
           </TabsContent>
         </Tabs>
       ) : (

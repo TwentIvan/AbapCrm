@@ -1,3 +1,4 @@
 - [MCP validation flow](mcp-validation.md) — mcp_catalog_validations is per-org; custom servers get a catalog entry (source="custom") at registration so validation is uniform; executor skips non-validated catalogId configs with log.
 - [MCP registry sync](mcp-registry-sync.md) — fetches catalog.json+overrides.json directly (no folder listing); iterates categories[].entries[]; stale marking: collect seenIds from RETURNING, then batch-update by UUID array.
 - [Import graph rule](import-graph.md) — tokens.ts←context-assembler.ts and cost-estimator.ts (no cycle); countTokens extracted to break the cycle.
+- [Connection Workflows pattern](connection-workflows.md) — forward-ref in tasks→connectionWorkflows works with arrow fn; form.watch() must go AFTER useForm(); Header requires title+subtitle props.

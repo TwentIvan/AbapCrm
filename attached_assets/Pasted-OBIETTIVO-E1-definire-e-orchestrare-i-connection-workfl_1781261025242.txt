@@ -1,0 +1,61 @@
+OBIETTIVO E1: definire e orchestrare i "connection workflow" — sequenze di passi tipizzati che portano un sistema SAP allo stato "pronto" per un task. In questa fase si costruisce SOLO lo strato di DEFINIZIONE e ORCHESTRAZIONE (schema, editor, risoluzione per-task, generazione del piano-passi). L'ESECUZIONE LOCALE dei passi (VPN, launch processi, cookie) NON va implementata qui: sarà eseguita dal companion (fase E3). Riusa lo strato esistente, non duplicarlo.
+
+RIUSO OBBLIGATORIO (già nel repo, NON ricreare): sap_systems (connectionType, sapShortcutFile, vpnConnectionId, defaultCredentialId), vpn_connections, vpn_credentials, system_credentials, server/vpn-automation.ts, client/src/lib/sap-shortcut.ts.
+
+1. SCHEMA (shared/schema.ts)
+
+connection_workflows:
+- id uuid PK
+- organization_id uuid FK -> organizations not null
+- name text not null
+- sap_system_id uuid FK -> sap_systems (nullable; null = template riusabile)
+- steps jsonb not null default '[]'   -- array ordinato di passi (vedi punto 2)
+- created_at, updated_at
+
+Estendi sap_systems:
+- aggiungi "portal_cookie" ai valori ammessi di connection_type (oggi: sapgui, cloud, citrix, weblink)
+- portal_url text (nullable)
+- shortcut_pattern text (nullable, default 'tx*.sap')
+- cookie_target_path text (nullable)
+- cookie_system_match text (nullable)   -- filtro [System] Name=, es. "HTS"
+
+Estendi tasks:
+- connection_workflow_id uuid FK -> connection_workflows (nullable; override del workflow di sistema)
+
+2. MODELLO DEI PASSI (TypeScript type in shared, + validazione)
+
+type ConnectionStep = {
+  id: string;
+  type: "vpn_connect" | "open_url_await_download" | "extract_cookie_from_shortcut"
+      | "launch_process" | "run_local_script" | "mcp_health_check" | "manual_confirm";
+  actor: "auto" | "human";
+  label: string;                 -- testo mostrato all'operatore
+  params: Record<string, any>;   -- parametri specifici del tipo (es. vpnConnectionId, url, pattern, command, mcpConfigId)
+  onFailure: "abort" | "retry" | "ask_user";
+}
+Valida che params contenga i campi attesi per ciascun type (es. vpn_connect richiede vpnConnectionId esistente; mcp_health_check richiede mcpConfigId; open_url_await_download richiede url + pattern).
+
+3. API (autenticate, scoping organization come le altre)
+- CRUD /api/connection-workflows
+- GET /api/connection-workflows?sapSystemId=...   -- per popolare la scelta nel task/sistema
+- GET /api/tasks/:id/connection-plan  -> risolve il workflow del task (task.connection_workflow_id, altrimenti workflow del sap_system del task) e ritorna il PIANO: lista ordinata di passi con { type, actor, label, autoExecutable: boolean }. NIENTE esecuzione: solo il piano, per anteprima e per il companion futuro.
+
+4. UI
+a) Pagina/sezione "Connection Workflows" (vicino a Sistemi SAP): lista + editor visuale dei passi. L'editor è un costruttore di sequenza: aggiungi passo, scegli type, actor, compila params con select che attingono alle entità esistenti (vpn_connections per vpn_connect, mcp_server_configs per mcp_health_check, ecc.), riordina con drag o frecce. Salva su connection_workflows.steps.
+b) Form sistema SAP: quando connection_type = "portal_cookie", mostra i nuovi campi (portal_url, shortcut_pattern, cookie_target_path, cookie_system_match) con help inline.
+c) Form task: select "Connection workflow" (opzionale, override) popolata da GET workflows del sistema del task.
+d) Vista task: card "Piano di connessione" che mostra il piano da GET connection-plan, con icona auto/human per passo. Sola lettura in questa fase.
+
+5. SEED/ESEMPIO
+Crea (via UI o seed) il workflow esempio Telepass su un sistema portal_cookie: [vpn_connect FortiClient (human)] -> [open_url_await_download portal (human)] -> [extract_cookie_from_shortcut match HTS (auto)] -> [launch_process vsp.exe (auto)] -> [mcp_health_check ADT (auto)].
+
+NOTA: l'esecutore del passo extract_cookie_from_shortcut è un componente LOCALE fornito separatamente (helper cookie) — qui modella solo il passo e i suoi params, non implementarne l'esecuzione.
+
+CRITERI DI ACCETTAZIONE
+- Creo un sistema portal_cookie con i nuovi campi; creo un workflow con i 5 passi esempio; lo collego al sistema.
+- GET /api/tasks/:id/connection-plan su un task di quel sistema ritorna i 5 passi ordinati con flag auto/human corretti.
+- Override sul task: assegno un workflow diverso al task -> il piano cambia di conseguenza.
+- L'editor permette di riordinare i passi e di scegliere params dalle entità esistenti (vpn_connections, mcp_server_configs).
+- npm run check: zero nuovi errori.
+
+Al termine: elenco file, esito per criterio.

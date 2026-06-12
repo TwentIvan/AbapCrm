@@ -169,6 +169,8 @@ export const tasks = pgTable("tasks", {
   budgetCapEur: decimal("budget_cap_eur", { precision: 10, scale: 4 }),
   // MCP Tool Use (Phase 3) — IDs dei mcp_server_configs da usare in esecuzione AI
   mcpConfigIds: uuid("mcp_config_ids").array().default([]),
+  // Connection Workflow override (null = usa il workflow del sap_system del task)
+  connectionWorkflowId: uuid("connection_workflow_id").references(() => connectionWorkflows.id, { onDelete: "set null" }),
   // AI Spec (Phase 5) — structured task spec from intake agent
   aiSpec: jsonb("ai_spec"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -806,6 +808,11 @@ export const sapSystems = pgTable("sap_systems", {
   citrixAppName: text("citrix_app_name"), // Nome applicazione Citrix pubblicata
   webLink: text("web_link"), // Link generico per accesso web (portali, webapp, etc.)
   sapShortcutFile: text("sap_shortcut_file"), // File .sap shortcut allegato
+  // Portal Cookie connection fields (portal_cookie type)
+  portalUrl: text("portal_url"),
+  shortcutPattern: text("shortcut_pattern"), // glob per download cookie, es. tx*.sap
+  cookieTargetPath: text("cookie_target_path"), // percorso locale dove il cookie viene scritto
+  cookieSystemMatch: text("cookie_system_match"), // filtro [System] Name= nel shortcut, es. "HTS"
   
   // VPN Configuration
   vpnConnectionId: uuid("vpn_connection_id").references(() => vpnConnections.id),
@@ -819,6 +826,17 @@ export const sapSystems = pgTable("sap_systems", {
   
   notes: text("notes"),
   isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Connection Workflows — sequenze di passi per portare un sistema SAP allo stato "pronto"
+export const connectionWorkflows = pgTable("connection_workflows", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  sapSystemId: uuid("sap_system_id").references(() => sapSystems.id, { onDelete: "set null" }),
+  steps: jsonb("steps").notNull().default(sql`'[]'::jsonb`),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -3710,4 +3728,65 @@ export interface AiTaskContext {
   customInstructions?: string;
   chatClarifications?: string;
 }
+
+// ── Connection Workflows — step model ───────────────────────────────────────
+
+export const connectionStepTypeSchema = z.enum([
+  "vpn_connect",
+  "open_url_await_download",
+  "extract_cookie_from_shortcut",
+  "launch_process",
+  "run_local_script",
+  "mcp_health_check",
+  "manual_confirm",
+]);
+export type ConnectionStepType = z.infer<typeof connectionStepTypeSchema>;
+
+// Per-type params validation
+const vpnConnectParams = z.object({ vpnConnectionId: z.string().uuid() });
+const openUrlParams = z.object({ url: z.string().url(), pattern: z.string().min(1) });
+const extractCookieParams = z.object({ pattern: z.string().optional(), systemMatch: z.string().optional() });
+const launchProcessParams = z.object({ command: z.string().min(1), args: z.array(z.string()).optional() });
+const runScriptParams = z.object({ script: z.string().min(1), scriptType: z.string().optional() });
+const mcpHealthParams = z.object({ mcpConfigId: z.string().uuid() });
+const manualConfirmParams = z.object({ message: z.string().optional() });
+
+const stepParamsValidator: Record<ConnectionStepType, z.ZodTypeAny> = {
+  vpn_connect: vpnConnectParams,
+  open_url_await_download: openUrlParams,
+  extract_cookie_from_shortcut: extractCookieParams,
+  launch_process: launchProcessParams,
+  run_local_script: runScriptParams,
+  mcp_health_check: mcpHealthParams,
+  manual_confirm: manualConfirmParams,
+};
+
+export const connectionStepSchema = z.object({
+  id: z.string().min(1),
+  type: connectionStepTypeSchema,
+  actor: z.enum(["auto", "human"]),
+  label: z.string().min(1),
+  params: z.record(z.any()),
+  onFailure: z.enum(["abort", "retry", "ask_user"]),
+}).superRefine((step, ctx) => {
+  const validator = stepParamsValidator[step.type];
+  if (validator) {
+    const result = validator.safeParse(step.params);
+    if (!result.success) {
+      result.error.issues.forEach(issue => {
+        ctx.addIssue({ ...issue, path: ["params", ...issue.path] });
+      });
+    }
+  }
+});
+export type ConnectionStep = z.infer<typeof connectionStepSchema>;
+
+export const insertConnectionWorkflowSchema = createInsertSchema(connectionWorkflows).omit({
+  id: true, createdAt: true, updatedAt: true,
+}).extend({
+  steps: z.array(connectionStepSchema).default([]),
+});
+
+export type ConnectionWorkflow = typeof connectionWorkflows.$inferSelect;
+export type InsertConnectionWorkflow = z.infer<typeof insertConnectionWorkflowSchema>;
 
