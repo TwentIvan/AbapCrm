@@ -100,6 +100,13 @@ export async function runStartupMigrations(): Promise<boolean> {
     
     await client.query(migrationSQL);
     console.log('[DB] ✓ Email training selection columns added successfully');
+
+    // Add organization_id to vpn_connections if missing
+    await client.query(`
+      ALTER TABLE vpn_connections
+        ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id);
+    `);
+    console.log('[DB] ✓ vpn_connections.organization_id ensured');
     
     client.release();
     return true;

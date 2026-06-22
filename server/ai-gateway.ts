@@ -1,8 +1,9 @@
 // AI Gateway - Multi-provider AI client with model registry and cost tracking
 // All AI calls in this application should go through this gateway.
-// No other file should instantiate OpenAI directly.
+// No other file should instantiate OpenAI or Anthropic directly.
 
 import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { aiModels, organizations } from "@shared/schema";
@@ -118,48 +119,64 @@ class AiGateway {
     });
   }
 
-  async complete(opts: GatewayCompleteOptions): Promise<GatewayCompleteResult> {
-    const modelKey = opts.modelKey || (await getDefaultModelKey(opts.organizationId));
-    const caller = opts.caller || "unknown";
-    const startMs = Date.now();
+  private getAnthropicClient(): Anthropic {
+    return new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+  }
 
-    let client: OpenAI;
-    let rawModelId: string;
+  private async completeWithAnthropic(
+    opts: GatewayCompleteOptions,
+    rawModelId: string,
+    modelKey: string,
+    caller: string,
+    startMs: number
+  ): Promise<GatewayCompleteResult> {
+    const client = this.getAnthropicClient();
 
-    // Route: explicit AI_GATEWAY_BASE_URL overrides everything
-    if (process.env.AI_GATEWAY_BASE_URL) {
-      client = this.getOpenAIClient(
-        process.env.AI_GATEWAY_BASE_URL,
-        process.env.AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY
-      );
-      // When using a gateway, pass the full modelKey as-is (the gateway handles routing)
-      rawModelId = modelKey;
-    } else if (modelKey.startsWith("openai/")) {
-      // Direct OpenAI call — strip the prefix
-      client = this.getOpenAIClient();
-      rawModelId = modelKey.slice("openai/".length);
-    } else {
-      throw new Error(
-        `[AI-GATEWAY] Cannot route model "${modelKey}": provider requires AI_GATEWAY_BASE_URL to be set.`
-      );
+    // Separate system messages from the rest
+    const systemParts: string[] = [];
+    const anthropicMessages: Anthropic.MessageParam[] = [];
+
+    for (const msg of opts.messages) {
+      if (msg.role === "system") {
+        const content = Array.isArray(msg.content)
+          ? msg.content.map((c: any) => c.text || "").join("\n")
+          : (msg.content as string);
+        systemParts.push(content);
+      } else if (msg.role === "user" || msg.role === "assistant") {
+        const content = Array.isArray(msg.content)
+          ? msg.content.map((c: any) => c.text || c.image_url?.url || "").join("\n")
+          : ((msg as any).content as string) || "";
+        anthropicMessages.push({ role: msg.role as "user" | "assistant", content });
+      }
     }
 
-    // Build request params
-    const params: any = {
-      model: rawModelId,
-      messages: opts.messages,
-    };
-    if (opts.responseFormat) params.response_format = opts.responseFormat;
-    if (opts.tools) params.tools = opts.tools;
-    if (opts.maxTokens) params.max_completion_tokens = opts.maxTokens;
-    if (opts.temperature !== undefined) params.temperature = opts.temperature;
+    // For JSON mode, append instruction to system prompt
+    let systemPrompt = systemParts.join("\n\n");
+    if (opts.responseFormat?.type === "json_object") {
+      systemPrompt += "\n\nRespond with valid JSON only. Do not include markdown code blocks or any text outside the JSON object.";
+    }
 
-    const response = await client.chat.completions.create(params);
+    const params: Anthropic.MessageCreateParamsNonStreaming = {
+      model: rawModelId,
+      max_tokens: opts.maxTokens || 8096,
+      messages: anthropicMessages,
+      ...(systemPrompt ? { system: systemPrompt } : {}),
+      ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+    };
+
+    const response = await client.messages.create(params);
 
     const durationMs = Date.now() - startMs;
-    const promptTokens = response.usage?.prompt_tokens || 0;
-    const completionTokens = response.usage?.completion_tokens || 0;
+    const promptTokens = response.usage?.input_tokens || 0;
+    const completionTokens = response.usage?.output_tokens || 0;
     const totalCostUsd = await computeCost(modelKey, promptTokens, completionTokens);
+
+    const content = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => (b as Anthropic.TextBlock).text)
+      .join("");
 
     console.log(
       `[AI-GATEWAY] caller=${caller} model=${modelKey}` +
@@ -167,26 +184,119 @@ class AiGateway {
         ` cost=$${totalCostUsd.toFixed(6)} duration=${durationMs}ms`
     );
 
-    // Extract tool calls requested by the model (MCP Phase 3)
-    const rawToolCalls = response.choices[0]?.message?.tool_calls;
-    const toolCalls = rawToolCalls?.map((tc) => ({
-      id: tc.id,
-      name: tc.function.name,
-      arguments: (() => {
-        try { return JSON.parse(tc.function.arguments); }
-        catch { return tc.function.arguments; }
-      })(),
-    }));
+    return { content, modelKey, promptTokens, completionTokens, totalCostUsd, durationMs };
+  }
 
-    return {
-      content: response.choices[0]?.message?.content || "",
-      modelKey,
-      promptTokens,
-      completionTokens,
-      totalCostUsd,
-      durationMs,
-      ...(toolCalls?.length ? { toolCalls } : {}),
-    };
+  async complete(opts: GatewayCompleteOptions): Promise<GatewayCompleteResult> {
+    const modelKey = opts.modelKey || (await getDefaultModelKey(opts.organizationId));
+    const caller = opts.caller || "unknown";
+    const startMs = Date.now();
+
+    // Route: explicit AI_GATEWAY_BASE_URL overrides everything (proxy mode)
+    if (process.env.AI_GATEWAY_BASE_URL) {
+      const client = this.getOpenAIClient(
+        process.env.AI_GATEWAY_BASE_URL,
+        process.env.AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY
+      );
+      const rawModelId = modelKey;
+
+      const params: any = {
+        model: rawModelId,
+        messages: opts.messages,
+      };
+      if (opts.responseFormat) params.response_format = opts.responseFormat;
+      if (opts.tools) params.tools = opts.tools;
+      if (opts.maxTokens) params.max_completion_tokens = opts.maxTokens;
+      if (opts.temperature !== undefined) params.temperature = opts.temperature;
+
+      const response = await client.chat.completions.create(params);
+      const durationMs = Date.now() - startMs;
+      const promptTokens = response.usage?.prompt_tokens || 0;
+      const completionTokens = response.usage?.completion_tokens || 0;
+      const totalCostUsd = await computeCost(modelKey, promptTokens, completionTokens);
+
+      console.log(
+        `[AI-GATEWAY] caller=${caller} model=${modelKey}` +
+          ` prompt_tokens=${promptTokens} completion_tokens=${completionTokens}` +
+          ` cost=$${totalCostUsd.toFixed(6)} duration=${durationMs}ms`
+      );
+
+      const rawToolCalls = response.choices[0]?.message?.tool_calls;
+      const toolCalls = rawToolCalls?.map((tc) => ({
+        id: tc.id,
+        name: tc.function.name,
+        arguments: (() => {
+          try { return JSON.parse(tc.function.arguments); }
+          catch { return tc.function.arguments; }
+        })(),
+      }));
+
+      return {
+        content: response.choices[0]?.message?.content || "",
+        modelKey,
+        promptTokens,
+        completionTokens,
+        totalCostUsd,
+        durationMs,
+        ...(toolCalls?.length ? { toolCalls } : {}),
+      };
+    }
+
+    // Route by provider prefix
+    if (modelKey.startsWith("openai/")) {
+      const client = this.getOpenAIClient();
+      const rawModelId = modelKey.slice("openai/".length);
+
+      const params: any = {
+        model: rawModelId,
+        messages: opts.messages,
+      };
+      if (opts.responseFormat) params.response_format = opts.responseFormat;
+      if (opts.tools) params.tools = opts.tools;
+      if (opts.maxTokens) params.max_completion_tokens = opts.maxTokens;
+      if (opts.temperature !== undefined) params.temperature = opts.temperature;
+
+      const response = await client.chat.completions.create(params);
+      const durationMs = Date.now() - startMs;
+      const promptTokens = response.usage?.prompt_tokens || 0;
+      const completionTokens = response.usage?.completion_tokens || 0;
+      const totalCostUsd = await computeCost(modelKey, promptTokens, completionTokens);
+
+      console.log(
+        `[AI-GATEWAY] caller=${caller} model=${modelKey}` +
+          ` prompt_tokens=${promptTokens} completion_tokens=${completionTokens}` +
+          ` cost=$${totalCostUsd.toFixed(6)} duration=${durationMs}ms`
+      );
+
+      const rawToolCalls = response.choices[0]?.message?.tool_calls;
+      const toolCalls = rawToolCalls?.map((tc) => ({
+        id: tc.id,
+        name: tc.function.name,
+        arguments: (() => {
+          try { return JSON.parse(tc.function.arguments); }
+          catch { return tc.function.arguments; }
+        })(),
+      }));
+
+      return {
+        content: response.choices[0]?.message?.content || "",
+        modelKey,
+        promptTokens,
+        completionTokens,
+        totalCostUsd,
+        durationMs,
+        ...(toolCalls?.length ? { toolCalls } : {}),
+      };
+    }
+
+    if (modelKey.startsWith("anthropic/")) {
+      const rawModelId = modelKey.slice("anthropic/".length);
+      return this.completeWithAnthropic(opts, rawModelId, modelKey, caller, startMs);
+    }
+
+    throw new Error(
+      `[AI-GATEWAY] Cannot route model "${modelKey}": unknown provider. Supported prefixes: openai/, anthropic/. For google/ or deepseek/ set AI_GATEWAY_BASE_URL.`
+    );
   }
 }
 

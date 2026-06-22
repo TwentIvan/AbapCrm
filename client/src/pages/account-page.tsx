@@ -8,20 +8,23 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import EmailConfig from "@/components/email-config";
 import { EmailSendDialog } from "@/components/email-send-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Send, Upload, Trash2, Clock } from "lucide-react";
+import { Send, Upload, Trash2, Clock, Bot, CheckCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useOrganization } from "@/contexts/organization-context";
+import { Badge } from "@/components/ui/badge";
 
 export default function AccountPage() {
   const [location] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { currentOrganizationId, currentOrganization } = useOrganization();
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,6 +38,38 @@ export default function AccountPage() {
   const [calendarScrollHour, setCalendarScrollHour] = useState<number>(
     user?.calendarScrollHour ?? 9
   );
+
+  // AI model selection state
+  const [selectedModelKey, setSelectedModelKey] = useState<string>("");
+
+  const { data: aiModels = [] } = useQuery<any[]>({
+    queryKey: ["/api/ai/models"],
+    queryFn: getQueryFn({ on401: "throw" }),
+  });
+
+  const { data: orgData } = useQuery<any>({
+    queryKey: ["/api/organizations", currentOrganizationId],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+  });
+
+  // Sync selected model from org settings when org data loads
+  const currentOrgModelKey = orgData?.settings?.aiDefaultModelKey || "";
+
+  const saveAiModelMutation = useMutation({
+    mutationFn: async (modelKey: string) => {
+      return await apiRequest("PATCH", `/api/organizations/${currentOrganizationId}/settings`, {
+        aiDefaultModelKey: modelKey,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations", currentOrganizationId] });
+      toast({ title: "Salvato", description: "Modello AI aggiornato per questa organizzazione" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile salvare il modello AI", variant: "destructive" });
+    },
+  });
 
   const userInitials = user?.firstName && user?.lastName 
     ? `${user.firstName[0]}${user.lastName[0]}` 
@@ -215,6 +250,7 @@ export default function AccountPage() {
                     <TabsTrigger value="account">Account</TabsTrigger>
                     <TabsTrigger value="email">Email</TabsTrigger>
                     <TabsTrigger value="preferences">Preferenze</TabsTrigger>
+                    <TabsTrigger value="ai">Modello AI</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="account" className="space-y-4">
@@ -388,6 +424,84 @@ export default function AccountPage() {
                               ))}
                             </SelectContent>
                           </Select>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="ai" className="space-y-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Bot className="h-5 w-5" />
+                          Modello AI predefinito
+                        </CardTitle>
+                        <CardDescription>
+                          Scegli il modello usato dall'agente AI per analizzare messaggi e generare proposte. La scelta si applica all'organizzazione corrente: <strong>{currentOrganization?.name || currentOrganizationId}</strong>.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {currentOrgModelKey && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            Modello attuale: <Badge variant="secondary">{currentOrgModelKey}</Badge>
+                          </div>
+                        )}
+                        {!currentOrgModelKey && (
+                          <div className="text-sm text-muted-foreground">
+                            Nessun modello impostato — verrà usato il default del sistema (<code>openai/gpt-5</code>).
+                          </div>
+                        )}
+                        <div className="space-y-2">
+                          <Label>Seleziona modello</Label>
+                          <Select
+                            value={selectedModelKey || currentOrgModelKey || ""}
+                            onValueChange={setSelectedModelKey}
+                            data-testid="select-ai-model"
+                          >
+                            <SelectTrigger className="w-full max-w-sm" data-testid="select-trigger-ai-model">
+                              <SelectValue placeholder="Seleziona un modello..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(
+                                aiModels.reduce((acc: Record<string, any[]>, m: any) => {
+                                  const prov = m.providerName || m.providerSlug || "Altro";
+                                  if (!acc[prov]) acc[prov] = [];
+                                  acc[prov].push(m);
+                                  return acc;
+                                }, {})
+                              ).map(([provider, models]) => (
+                                <div key={provider}>
+                                  <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                    {provider}
+                                  </div>
+                                  {(models as any[]).map((m: any) => (
+                                    <SelectItem key={m.modelKey} value={m.modelKey}>
+                                      {m.displayName}
+                                    </SelectItem>
+                                  ))}
+                                </div>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button
+                          onClick={() => saveAiModelMutation.mutate(selectedModelKey || currentOrgModelKey)}
+                          disabled={saveAiModelMutation.isPending || !(selectedModelKey || currentOrgModelKey)}
+                          data-testid="button-save-ai-model"
+                        >
+                          {saveAiModelMutation.isPending ? "Salvataggio..." : "Salva modello"}
+                        </Button>
+
+                        <div className="mt-4 p-3 bg-muted rounded-md text-sm space-y-1">
+                          <p className="font-medium">Chiavi API richieste per provider:</p>
+                          <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                            <li><code>OPENAI_API_KEY</code> — per modelli OpenAI (GPT-4o, GPT-5)</li>
+                            <li><code>ANTHROPIC_API_KEY</code> — per modelli Anthropic (Claude)</li>
+                          </ul>
+                          <p className="text-muted-foreground pt-1">
+                            Le chiavi API sono configurate come variabili d'ambiente dell'applicazione.
+                          </p>
                         </div>
                       </CardContent>
                     </Card>
