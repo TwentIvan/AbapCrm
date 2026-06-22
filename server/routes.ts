@@ -10207,6 +10207,94 @@ ISTRUZIONI:
     }
   });
 
+  // GET all AI models (all statuses) - for admin management
+  app.get("/api/ai/models/all", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const models = await db
+        .select({
+          id: aiModels.id,
+          modelKey: aiModels.modelKey,
+          modelId: aiModels.modelId,
+          displayName: aiModels.displayName,
+          inputPricePerMToken: aiModels.inputPricePerMToken,
+          outputPricePerMToken: aiModels.outputPricePerMToken,
+          capabilities: aiModels.capabilities,
+          status: aiModels.status,
+          providerId: aiModels.providerId,
+          providerName: aiProviders.name,
+          providerSlug: aiProviders.slug,
+        })
+        .from(aiModels)
+        .innerJoin(aiProviders, eq(aiModels.providerId, aiProviders.id))
+        .orderBy(aiProviders.name, aiModels.displayName);
+      res.json(models);
+    } catch (error) {
+      console.error("Error fetching all AI models:", error);
+      res.status(500).json({ error: "Failed to fetch AI models" });
+    }
+  });
+
+  // POST /api/ai/models - create new model
+  app.post("/api/ai/models", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { providerId, modelKey, modelId, displayName, inputPricePerMToken, outputPricePerMToken, status, capabilities } = req.body;
+      if (!providerId || !modelKey || !modelId || !displayName) {
+        return res.status(400).json({ error: "providerId, modelKey, modelId, displayName sono obbligatori" });
+      }
+      const [created] = await db.insert(aiModels).values({
+        providerId,
+        modelKey,
+        modelId,
+        displayName,
+        inputPricePerMToken: inputPricePerMToken?.toString() || null,
+        outputPricePerMToken: outputPricePerMToken?.toString() || null,
+        status: status || "active",
+        capabilities: capabilities || null,
+      }).returning();
+      res.json(created);
+    } catch (error: any) {
+      if (error?.code === "23505") return res.status(409).json({ error: "model_key già esistente" });
+      console.error("Error creating AI model:", error);
+      res.status(500).json({ error: "Failed to create AI model" });
+    }
+  });
+
+  // PATCH /api/ai/models/:id - update model
+  app.patch("/api/ai/models/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { id } = req.params;
+      const { displayName, modelId, inputPricePerMToken, outputPricePerMToken, status } = req.body;
+      const patch: Record<string, any> = { updatedAt: new Date() };
+      if (displayName !== undefined) patch.displayName = displayName;
+      if (modelId !== undefined) patch.modelId = modelId;
+      if (inputPricePerMToken !== undefined) patch.inputPricePerMToken = inputPricePerMToken?.toString() || null;
+      if (outputPricePerMToken !== undefined) patch.outputPricePerMToken = outputPricePerMToken?.toString() || null;
+      if (status !== undefined) patch.status = status;
+      const [updated] = await db.update(aiModels).set(patch).where(eq(aiModels.id, id)).returning();
+      if (!updated) return res.status(404).json({ error: "Modello non trovato" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating AI model:", error);
+      res.status(500).json({ error: "Failed to update AI model" });
+    }
+  });
+
+  // DELETE /api/ai/models/:id - delete model
+  app.delete("/api/ai/models/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { id } = req.params;
+      await db.delete(aiModels).where(eq(aiModels.id, id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting AI model:", error);
+      res.status(500).json({ error: "Failed to delete AI model" });
+    }
+  });
+
   app.patch("/api/organizations/:id/settings", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
