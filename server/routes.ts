@@ -4352,9 +4352,32 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             patterns,
             calendars
           };
+
+          // Enrich message body with extracted attachment text (Excel, CSV, TXT)
+          let enrichedMessage = { ...message };
+          if (message.attachments && message.attachments.length > 0) {
+            const attachmentSections: string[] = [];
+            for (const filename of message.attachments) {
+              try {
+                const text = await AttachmentsService.extractTextContent(message.id, filename);
+                if (text) {
+                  attachmentSections.push(`\n\n--- ALLEGATO: ${filename} ---\n${text}\n--- FINE ALLEGATO ---`);
+                  console.log(`[AI] Extracted text from attachment: ${filename} (${text.length} chars)`);
+                }
+              } catch (e) {
+                console.warn(`[AI] Could not extract text from attachment ${filename}:`, e);
+              }
+            }
+            if (attachmentSections.length > 0) {
+              enrichedMessage = {
+                ...message,
+                body: (message.body || '') + attachmentSections.join(''),
+              };
+            }
+          }
           
           const analysisResult = await analyzeMessageForProject(
-            message,
+            enrichedMessage,
             existingProjects,
             existingPartners,
             existingTasks,
