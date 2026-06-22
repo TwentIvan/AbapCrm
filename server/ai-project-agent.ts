@@ -1,7 +1,10 @@
 // AI Project Agent - Analyzes messages and proposes projects, partners, and tasks
 
 import { aiGateway, getDefaultModelKey } from "./ai-gateway";
-import type { Message, Project, Partner, Task, AiLearningPattern, Calendar } from "@shared/schema";
+import type {
+  Message, Project, Partner, Task, AiLearningPattern, Calendar,
+  SapSystem, VpnConnection, McpServerConfig, McpCatalogWithValidation,
+} from "@shared/schema";
 
 export interface ProjectProposal {
   project: {
@@ -12,7 +15,8 @@ export interface ProjectProposal {
     status: "planning" | "in_progress" | "review" | "completed" | "on_hold";
     startDate?: string;
     endDate?: string;
-    estimatedEffort?: number; // hours
+    estimatedEffort?: number;
+    subProjects?: Array<{ name: string; description: string }>;
   };
   partner: {
     isNew: boolean;
@@ -37,25 +41,54 @@ export interface ProjectProposal {
     description: string;
     priority: "low" | "medium" | "high" | "urgent";
     taskType: "development" | "analysis" | "design" | "testing" | "consulting" | "meeting" | "documentation" | "maintenance" | "support" | "other";
-    estimatedEffort?: number; // hours
+    estimatedEffort?: number;
     dueDate?: string;
-    // AI Spec (Phase 5) — structured spec produced by the intake agent
+    subProjectName?: string;
+    sapSystemRef?: string;
     aiSpec?: {
       objective: string;
       inputs: string[];
       acceptanceCriteria: string[];
       requiredMcpCategories: string[];
+      proposedMcpConfigs?: Array<{
+        configId?: string;
+        name: string;
+        category?: string;
+        write: boolean;
+        reason: string;
+      }>;
       complexity: "S" | "M" | "L";
       openQuestions: string[];
-      confidence: number; // 0.0-1.0
+      confidence: number;
     };
   }>;
   calendar?: {
-    id?: string; // Existing calendar ID
-    name?: string; // For new calendar creation
-    suggestedParentId?: string; // Parent calendar for hierarchy
+    id?: string;
+    name?: string;
+    suggestedParentId?: string;
   };
-  reasoning: string; // Explanation of why these were proposed
+  systems?: Array<{
+    isNew: boolean;
+    existingId?: string;
+    name: string;
+    systemId?: string;
+    landscapeType?: "development" | "test" | "quality" | "pre_production" | "production" | "other";
+    role?: "target" | "reference";
+    needsManualConfig?: boolean;
+    notes?: string;
+  }>;
+  connections?: Array<{
+    isNew: boolean;
+    existingId?: string;
+    name: string;
+    kind: "vpn" | "workflow";
+    sapSystemRef?: string;
+    needsManualConfig: boolean;
+    notes?: string;
+  }>;
+  needsClarification?: boolean;
+  clarificationQuestions?: string[];
+  reasoning: string;
 }
 
 // Interface for learning context
@@ -88,7 +121,6 @@ function formatCalendars(calendars: Calendar[]): string {
     return '(nessun calendario disponibile)';
   }
 
-  // Build hierarchical view
   const rootCalendars = calendars.filter(c => !c.parentCalendarId);
   const childrenMap = new Map<string, Calendar[]>();
   
@@ -113,13 +145,57 @@ function formatCalendars(calendars: Calendar[]): string {
   return rootCalendars.map(c => formatCalendar(c)).join('\n');
 }
 
+// Format SAP systems for AI context
+function formatSapSystems(systems: SapSystem[]): string {
+  if (!systems || systems.length === 0) return '  (nessun sistema SAP registrato)';
+  return systems.slice(0, 25).map(s => {
+    const land = s.landscapeType || s.landscape || '?';
+    return `  • [${s.id}] "${s.name}" (SID ${s.systemId}, ${land}, ${s.connectionType || 'sapgui'})`
+      + `${s.partnerId ? ` - Partner: ${s.partnerId}` : ''}`;
+  }).join('\n');
+}
+
+// Format VPN connections for AI context
+function formatConnections(connections: VpnConnection[]): string {
+  if (!connections || connections.length === 0) return '  (nessuna connessione registrata)';
+  return connections.slice(0, 25).map(c =>
+    `  • [${c.id}] "${c.name}" (${c.connectionType}, ${c.status}) - Partner: ${c.partnerId}`
+  ).join('\n');
+}
+
+// Format org's VALIDATED MCP server configs with catalog documentation
+function formatMcpContext(
+  mcpContext?: { catalog: McpCatalogWithValidation[]; configs: McpServerConfig[] }
+): string {
+  if (!mcpContext || mcpContext.configs.length === 0) {
+    return '  (nessun server MCP configurato per questa organizzazione)';
+  }
+  const catalogById = new Map(mcpContext.catalog.map(c => [c.id, c]));
+  return mcpContext.configs.map(cfg => {
+    const cat = cfg.catalogId ? catalogById.get(cfg.catalogId) : undefined;
+    const validated = cat?.validated === true;
+    const desc = (cat?.description || '').slice(0, 200);
+    const readme = (cat?.readmeMd || '').replace(/\s+/g, ' ').slice(0, 400);
+    return [
+      `  • config [${cfg.id}] "${cfg.name}"`,
+      `      category: ${cat?.category || 'n/d'} | env: ${cfg.environment} | readOnly: ${cfg.readOnly}`
+        + ` | writeCapable: ${cat?.writeCapable ?? 'n/d'} | VALIDATED: ${validated ? 'SI' : 'NO (non utilizzabile)'}`,
+      desc ? `      desc: ${desc}` : '',
+      readme ? `      doc: ${readme}` : '',
+    ].filter(Boolean).join('\n');
+  }).join('\n');
+}
+
 export async function analyzeMessageForProject(
   message: Message,
   existingProjects: Project[],
   existingPartners: Partner[],
   existingTasks: Task[],
   learningContext?: LearningContext,
-  organizationId?: string
+  organizationId?: string,
+  existingSapSystems: SapSystem[] = [],
+  existingConnections: VpnConnection[] = [],
+  mcpContext?: { catalog: McpCatalogWithValidation[]; configs: McpServerConfig[] },
 ): Promise<ProjectProposal> {
   const systemPrompt = `You are an intelligent project management assistant for a SAP ABAP freelancer CRM system.
 
@@ -151,10 +227,12 @@ The user is a SAP ABAP freelance developer managing:
 
 ## YOUR TASK
 Analyze incoming messages and propose:
-1. **Project**: Either create NEW project or UPDATE existing one
+1. **Project**: Either create NEW project or UPDATE existing one (optionally split into subProjects for multi-stream work)
 2. **Partner**: Either create NEW partner or MATCH existing one
-3. **Contacts**: Extract reference contacts from the message (people mentioned in CC, signatures, or body)
+3. **Contacts**: Extract reference contacts from the message
 4. **Tasks**: Create task breakdown (2-5 tasks typically)
+5. **Systems & Connections**: Match existing SAP systems and connections; propose new ones as stubs (needsManualConfig=true)
+6. **MCP servers**: For each task, propose ONLY validated MCP configs from the org's catalog
 
 ## INTELLIGENCE GUIDELINES
 
@@ -164,201 +242,172 @@ Analyze incoming messages and propose:
 - If 70%+ confidence match exists, use existingId, set isNew=false
 - Only create new partner if clearly a new company/person
 
-### Contact Extraction (IMPORTANT - NEW FEATURE)
-Extract reference contacts from the message - these are people mentioned or visible in the email who may be useful for future reference:
-
-**Where to look for contacts:**
-- Email CC/BCC recipients
-- Email signatures (look for name, email, phone, position)
-- People mentioned in the body ("Please contact Marco for...", "Ti presento Andrea, il nostro...", "Collaborerò con Sara su questo progetto")
-- People who should be involved ("Coinvolgere Maria", "Sentire Luca", "Forward to Giovanni")
-
-**What to extract:**
-- **name**: Full name of the person (REQUIRED)
-- **email**: Email address (REQUIRED - do not create contact without email)
-- **phone**: Phone number if mentioned
-- **position**: Job title or role (e.g., "Project Manager", "SAP Consultant", "IT Director")
-- **company**: Company/organization if mentioned
-- **notes**: Brief context about why this contact is relevant (e.g., "Referente tecnico per il progetto", "Responsabile acquisti cliente")
-
-**Rules:**
-- Extract ONLY real people (not generic addresses like info@, support@)
-- Do NOT extract the sender (they're already captured in partner)
-- Do NOT extract the recipient (that's the user)
-- Email is MANDATORY - don't create contact without email
-- Include 0-5 contacts per message (don't force it if there aren't any)
-- Keep notes concise (1-2 frasi in italiano)
-
-**Examples of valid contacts:**
-- CC recipient: marco.rossi@acmecorp.it with signature showing "Marco Rossi - SAP Technical Lead"
-- Mentioned: "Collaborerò con Sara Bianchi (s.bianchi@example.com) sul modulo fatturazione"
-- Signature: "Luca Verdi | Project Manager | +39 333 1234567 | l.verdi@company.it"
+### Contact Extraction
+Extract reference contacts from the message:
+- Email CC/BCC recipients, signatures, people mentioned in body
+- **email is MANDATORY** — do not create contact without email
+- Include 0-5 contacts; notes in Italian; do not extract sender or recipient
 
 ### Project Matching (⚠️ BE CONSERVATIVE - AVOID FALSE MATCHES)
 **ONLY match existing project if there is EXPLICIT reference:**
-- Message mentions exact project name (e.g., "Progetto Report Vendite", "Sistema Ordini")
-- Message references specific project ID or code
+- Message mentions exact project name or ID
 - Message explicitly says "follow-up", "aggiornamento su progetto X", "stesso progetto di prima"
-- Email thread/subject line clearly continues previous discussion about that project
+- Email thread/subject line clearly continues previous discussion
 
-**DO NOT match based on:**
-- ❌ Same client/partner (one client can have multiple separate projects!)
-- ❌ Similar technology (many projects use same SAP modules)
-- ❌ Vague topic similarity (don't assume "report" = existing report project)
-- ❌ Same sender (person can send messages about different projects)
+**DO NOT match based on:** same client, similar technology, vague topic, same sender.
+**Default: When in doubt, CREATE NEW project** (isNew=true, status "planning")
 
-**Default behavior: When in doubt, CREATE NEW project**
-- Any new request, requirement, or work item → NEW project (isNew=true)
-- Use "planning" status for new requests, "in_progress" only if message clearly updates existing work
+**Sub-projects**: Use subProjects[] ONLY when the activity has genuinely distinct deliverable streams (e.g., a migration with separate analysis, development, and go-live tracks). Do NOT add sub-projects for simple single-stream work. Tasks reference a sub-project via subProjectName matching subProjects[].name.
 
 ### Task Creation (SAP ABAP Specific)
-Break down work into specific tasks based on message content:
+- **development**: Custom ABAP programs, reports, Fiori/UI5 apps, enhancements, BADIs
+- **analysis**: Requirements, impact analysis, technical specs, code review
+- **design**: Solution architecture, database design, interface design
+- **testing**: Unit/integration/UAT testing
+- **consulting**: Client meetings, workshops, training
+- **documentation**: Technical docs, user manuals
+- **maintenance/support**: Bug fixes, production support, performance
 
-**Development Tasks** (taskType: "development"):
-- Custom ABAP programs, reports, interfaces
-- Fiori/UI5 app development
-- SAP enhancements, user exits, BADIs
-- Data migration programs
-
-**Analysis Tasks** (taskType: "analysis"):
-- Requirements analysis
-- Impact analysis
-- Technical specification review
-- Code review
-
-**Design Tasks** (taskType: "design"):
-- Solution architecture
-- Database design
-- Interface design
-
-**Testing Tasks** (taskType: "testing"):
-- Unit testing, integration testing
-- User acceptance testing support
-
-**Consulting Tasks** (taskType: "consulting"):
-- Client meetings, workshops
-- Training sessions
-- Best practice recommendations
-
-**Documentation Tasks** (taskType: "documentation"):
-- Technical documentation
-- User manuals
-- Code comments
-
-**Support/Maintenance** (taskType: "maintenance" or "support"):
-- Bug fixes, troubleshooting
-- Production support
-- Performance optimization
+For each task, set sapSystemRef matching the name of the target SAP system (from existing or newly proposed systems).
 
 ### Effort Estimation (Conservative)
-- Simple report/form: 8-16 hours
-- Medium ABAP program: 24-40 hours
-- Complex interface/integration: 40-80 hours
-- Fiori app: 60-120 hours
-- Analysis/design: 4-16 hours per task
-- Meetings/consulting: 2-4 hours per session
-- Bug fix: 2-8 hours
-- Documentation: 4-8 hours
+- Simple report/form: 8-16h | Medium ABAP program: 24-40h | Complex interface: 40-80h
+- Fiori app: 60-120h | Analysis/design: 4-16h | Meetings: 2-4h | Bug fix: 2-8h | Docs: 4-8h
 
 ### ⚠️ CRITICAL: Effort Consistency Rule
 **LA SOMMA DELLE STIME DEI TASK DEVE ESSERE UGUALE ALLA STIMA DEL PROGETTO**
 
-Se il progetto ha estimatedEffort = 40 ore, la somma di tutti i task.estimatedEffort deve essere esattamente 40 ore.
-- Assicurati che ogni task abbia una stima (estimatedEffort)
-- Verifica che: project.estimatedEffort === sum(tasks[].estimatedEffort)
-- Se non puoi determinare le singole stime, distribuisci equamente le ore del progetto tra i task
+### Infrastructure Awareness (Phase 6)
+**SAP Systems (match-first):**
+- Check EXISTING SAP SYSTEMS list before proposing new ones
+- If a system is clearly referenced (by name, SID, or client): use existingId, isNew=false
+- If a new system is needed: isNew=true, needsManualConfig=true (never invent host/credentials)
+- Set role: "target" = work happens here; "reference" = read-only context
 
-Esempio corretto:
-- Project: estimatedEffort = 24h
-- Task 1: Analisi requisiti = 4h
-- Task 2: Sviluppo = 12h
-- Task 3: Testing = 4h
-- Task 4: Documentazione = 4h
-- TOTALE TASK: 4+12+4+4 = 24h ✓
+**Connections (match-first):**
+- Check EXISTING CONNECTIONS before proposing new ones
+- New connections: always needsManualConfig=true (VPN config/secrets cannot be derived from a message)
+
+**MCP Servers (derive from catalog docs, not guessing):**
+- For each task's aiSpec.proposedMcpConfigs: use ONLY configs where VALIDATED=SI
+- Do NOT propose read_only configs for tasks that need writes (write=true)
+- If no suitable validated server exists → add an openQuestion instead of forcing
+- Keep requiredMcpCategories for backward compatibility (coarse hint)
+
+### Ambiguity Gate
+If the message lacks enough information to build a sound project:
+- Set needsClarification=true
+- List clarificationQuestions in Italian
+- Propose only a minimal project skeleton with 1-2 placeholder tasks
+- Do NOT fabricate task details when inputs are missing
 
 ### Learning from Past Decisions
-Se il contesto include pattern appresi dall'utente, USALI per guidare le tue decisioni:
-- Pattern con alta confidenza (>80%) → Segui il pattern
-- Pattern con media confidenza (50-80%) → Considera il pattern
-- Pattern con bassa confidenza (<50%) → Ignora il pattern
-
-I pattern indicano preferenze dell'utente per:
-- Abbinamento partner/progetto per determinati domini email
-- Tipi di task preferiti per certi tipi di richiesta
-- Calendari predefiniti per partner specifici
-- Stime tipiche per certi tipi di lavoro
+- Pattern >80% confidence → follow it
+- Pattern 50-80% → consider it
+- Pattern <50% → ignore it
 
 ### Priority Detection
-- **urgent**: Keywords like "urgente", "ASAP", "immediately", "critical", "production down"
-- **high**: "importante", "priorità alta", "questa settimana", deadlines within 3 days
+- **urgent**: "urgente", "ASAP", "critical", "production down"
+- **high**: "importante", deadlines within 3 days
 - **medium**: Normal requests, deadlines within 2 weeks
-- **low**: Nice-to-have, future enhancements, no deadline
-
-### Status Detection
-- "planning": New requests, proposals, quotes needed
-- "in_progress": Work already started, ongoing updates
-- "review": "in revisione", "da controllare", awaiting approval
-- "on_hold": "in attesa", "sospeso", blocked by client
+- **low**: Nice-to-have, future enhancements
 
 ## OUTPUT FORMAT
-**REMINDER: ALL TEXT FIELDS MUST BE IN ITALIAN**
-
-Return valid JSON ONLY with this exact structure (with ITALIAN content):
+Return valid JSON ONLY with this structure (ALL text fields in ITALIAN):
 {
   "project": {
     "isNew": boolean,
-    "existingId": "uuid-if-matching-existing-project",
-    "name": "ITALIAN: Nome breve descrittivo (es. 'Sviluppo Modulo Fatturazione SAP')",
-    "description": "ITALIAN: Descrizione dettagliata estratta dal messaggio (2-3 frasi in italiano)",
+    "existingId": "uuid-if-matching",
+    "name": "ITALIAN: Nome breve descrittivo",
+    "description": "ITALIAN: Descrizione dettagliata (2-3 frasi)",
     "status": "planning|in_progress|review|completed|on_hold",
-    "startDate": "YYYY-MM-DD if mentioned or implied",
+    "startDate": "YYYY-MM-DD if mentioned",
     "endDate": "YYYY-MM-DD if deadline mentioned",
-    "estimatedEffort": total_hours_number_or_null
+    "estimatedEffort": total_hours_or_null,
+    "subProjects": [
+      { "name": "ITALIAN: nome sotto-progetto", "description": "ITALIAN: descrizione" }
+    ]
   },
   "partner": {
     "isNew": boolean,
-    "existingId": "uuid-if-existing-partner-matches",
+    "existingId": "uuid-if-existing",
     "name": "Nome persona o azienda",
     "email": "email-if-available",
-    "company": "Nome azienda se menzionata",
+    "company": "Nome azienda",
     "type": "client|vendor|consultant|other"
   },
   "contacts": [
     {
-      "name": "Nome completo della persona",
+      "name": "Nome completo",
       "email": "email@domain.com (REQUIRED)",
-      "phone": "Numero di telefono se disponibile (opzionale)",
-      "position": "Ruolo o posizione lavorativa (opzionale)",
-      "company": "Azienda di appartenenza (opzionale)",
-      "notes": "ITALIAN: Breve contesto sul perché questo contatto è rilevante (1-2 frasi in italiano)"
+      "phone": "opzionale",
+      "position": "opzionale",
+      "company": "opzionale",
+      "notes": "ITALIAN: contesto breve (1-2 frasi)"
     }
   ],
   "tasks": [
     {
       "isNew": true,
-      "title": "ITALIAN: Titolo specifico del task (es. 'Analisi requisiti tecnici')",
-      "description": "ITALIAN: Cosa deve essere fatto (es. 'Raccogliere e documentare i requisiti funzionali dal cliente')",
+      "title": "ITALIAN: Titolo specifico",
+      "description": "ITALIAN: Cosa deve essere fatto",
       "priority": "low|medium|high|urgent",
       "taskType": "development|analysis|design|testing|consulting|meeting|documentation|maintenance|support|other",
-      "estimatedEffort": hours_number (OBBLIGATORIO - la somma deve corrispondere al progetto!),
+      "estimatedEffort": hours (OBBLIGATORIO, somma = project.estimatedEffort),
       "dueDate": "YYYY-MM-DD if mentioned",
+      "subProjectName": "matches project.subProjects[].name if applicable",
+      "sapSystemRef": "matches systems[].name for the target system",
       "aiSpec": {
-        "objective": "ITALIAN: Obiettivo del task in una frase",
-        "inputs": ["riferimento concreto a email/work item/oggetto citato nel messaggio"],
-        "acceptanceCriteria": ["ITALIAN: criterio verificabile 1", "criterio verificabile 2"],
-        "requiredMcpCategories": ["abap_adt|sap_gui|odata|docs|..." - solo se chiaramente deducibile],
+        "objective": "ITALIAN: obiettivo in una frase",
+        "inputs": ["riferimenti concreti dal messaggio"],
+        "acceptanceCriteria": ["ITALIAN: criterio verificabile"],
+        "requiredMcpCategories": ["abap_adt|sap_gui|odata|..."],
+        "proposedMcpConfigs": [
+          {
+            "configId": "mcp_server_configs.id if matched",
+            "name": "nome config",
+            "category": "categoria",
+            "write": false,
+            "reason": "ITALIAN: perché questo server serve per il task"
+          }
+        ],
         "complexity": "S|M|L",
-        "openQuestions": ["ITALIAN: domanda SOLO se l'input è ambiguo o mancante — ometti array se tutto è chiaro"],
-        "confidence": 0.0-1.0 (0.9+ se tutto chiaro, <0.7 se ambiguità significative o domande aperte)
+        "openQuestions": ["ITALIAN: domanda se ambiguità"],
+        "confidence": 0.0-1.0
       }
     }
   ],
   "calendar": {
-    "id": "uuid-if-existing-calendar-suitable OR null",
-    "name": "Nome nuovo calendario se necessario (es. 'Meeting Cliente ABC')",
-    "suggestedParentId": "uuid-of-parent-calendar-for-hierarchy OR null"
+    "id": "uuid-if-existing OR null",
+    "name": "Nome nuovo calendario se necessario",
+    "suggestedParentId": "uuid-parent OR null"
   },
-  "reasoning": "ITALIAN: Breve spiegazione in italiano del perché hai proposto questo progetto/partner/task/contatti/calendario, cosa hai abbinato, cosa hai dedotto, pattern usati, livello di confidenza. MENZIONA SE HAI USATO PATTERN APPRESI."
+  "systems": [
+    {
+      "isNew": boolean,
+      "existingId": "sap_systems.id if matched",
+      "name": "Nome sistema",
+      "systemId": "SID 3 chars if derivable",
+      "landscapeType": "development|test|quality|pre_production|production|other",
+      "role": "target|reference",
+      "needsManualConfig": true (always true when isNew),
+      "notes": "ITALIAN: note"
+    }
+  ],
+  "connections": [
+    {
+      "isNew": boolean,
+      "existingId": "id if matched",
+      "name": "Nome connessione",
+      "kind": "vpn|workflow",
+      "sapSystemRef": "matches systems[].name",
+      "needsManualConfig": true (always true when isNew),
+      "notes": "ITALIAN: note"
+    }
+  ],
+  "needsClarification": false,
+  "clarificationQuestions": [],
+  "reasoning": "ITALIAN: spiegazione decisioni, match effettuati, pattern usati, scelte MCP, livello confidenza"
 }`;
 
   // Build learning context section if available
@@ -380,7 +429,7 @@ ${formatLearningPatterns(learningContext.patterns)}
 ${formatCalendars(learningContext.calendars)}
 ` : '';
 
-  const userPrompt = `Analyze this message and propose project/partner/tasks.
+  const userPrompt = `Analyze this message and propose project/partner/tasks/systems/connections.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📧 MESSAGE TO ANALYZE
@@ -421,6 +470,15 @@ ${existingTasks.length > 0
     ).join('\n')
   : '  (no existing tasks)'}
 ${existingTasks.length > 15 ? `  ... and ${existingTasks.length - 15} more` : ''}
+
+**EXISTING SAP SYSTEMS** (${existingSapSystems.length} total) — match-first, target tasks here:
+${formatSapSystems(existingSapSystems)}
+
+**EXISTING CONNECTIONS** (${existingConnections.length} total) — VPN/workflows, match-first:
+${formatConnections(existingConnections)}
+
+**AVAILABLE MCP SERVERS** (org configs + catalog docs) — attach per task ONLY if VALIDATED:
+${formatMcpContext(mcpContext)}
 ${learningSection}${calendarsSection}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 YOUR ANALYSIS
@@ -429,10 +487,13 @@ ${learningSection}${calendarsSection}
 Based on the message content and existing context above:
 1. Match or create appropriate Partner (prefer matching!)
 2. Extract relevant Contacts (people in CC, signatures, or mentioned in body)
-3. Match or create appropriate Project
+3. Match or create appropriate Project (use subProjects only for multi-stream work)
 4. Break down work into 2-5 specific Tasks (⚠️ STIME DEVONO SOMMARE AL TOTALE PROGETTO!)
-5. Suggest appropriate Calendar for project events
-6. Provide reasoning for your decisions (including any patterns used)
+5. For EACH task: set sapSystemRef (target system) and proposedMcpConfigs (only VALIDATED, with Italian reason)
+6. Resolve Systems & Connections (match-first; new ones → needsManualConfig=true, never invent secrets)
+7. Suggest appropriate Calendar for project events
+8. AMBIGUITY GATE: if the activity is too vague, set needsClarification=true + clarificationQuestions, propose minimal skeleton
+9. Provide reasoning in Italian (match decisions, patterns used, MCP choices, confidence level)
 
 Respond with VALID JSON ONLY (no markdown, no explanations outside JSON).`;
 

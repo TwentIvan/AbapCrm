@@ -4327,6 +4327,24 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
           // Fetch learning context for AI
           const patterns = await storage.getAiLearningPatterns(organizationId);
           const calendars = await storage.getCalendars(userId, organizationId);
+
+          // Phase 6 — infrastructure & MCP awareness
+          const sapSystems = await storage.getSapSystems(userId);
+          const vpnConnections = await storage.getVpnConnections(userId);
+
+          const mcpConfigs = await db.select().from(mcpServerConfigs)
+            .where(and(
+              eq(mcpServerConfigs.organizationId, organizationId),
+              eq(mcpServerConfigs.enabled, true),
+            ));
+          const catalogRows = await db.select().from(mcpCatalog);
+          const validations = await db.select().from(mcpCatalogValidations)
+            .where(eq(mcpCatalogValidations.organizationId, organizationId));
+          const validatedSet = new Set(validations.filter(v => v.validated).map(v => v.catalogId));
+          const aiMcpContext = {
+            catalog: catalogRows.map(c => ({ ...c, validated: validatedSet.has(c.id) })),
+            configs: mcpConfigs,
+          };
           
           const { analyzeMessageForProject } = await import('./ai-project-agent');
           
@@ -4341,7 +4359,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             existingPartners,
             existingTasks,
             learningContext,
-            organizationId
+            organizationId,
+            sapSystems,
+            vpnConnections,
+            aiMcpContext,
           );
           
           // Update proposal with results
@@ -4512,6 +4533,70 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
           }
         }
       }
+
+      // 2b. Phase 6 — create sub-projects (if any) and build name→id map
+      const subProjectNameToId = new Map<string, string>();
+      if (results.project?.id && Array.isArray(proposalData.project?.subProjects)) {
+        for (const sp of proposalData.project.subProjects) {
+          if (!sp.name) continue;
+          const spData: any = {
+            name: sp.name,
+            description: sp.description || null,
+            status: proposalData.project.status || "planning",
+            clientId: results.partner?.id,
+            parentProjectId: results.project.id,
+            sourceMessageIds: [proposal.messageId],
+            userId,
+            organizationId
+          };
+          try {
+            const created = await storage.createProject(spData, { userId });
+            subProjectNameToId.set(sp.name, created.id);
+            results.subProjects = results.subProjects || [];
+            results.subProjects.push(created);
+            console.log(`[PROPOSAL APPLY] Created sub-project: ${created.name}`);
+          } catch (e) {
+            console.warn(`[PROPOSAL APPLY] Failed to create sub-project "${sp.name}":`, e);
+          }
+        }
+      }
+
+      // 2c. Phase 6 — resolve SAP systems and build name→id map for task linking
+      const systemNameToId = new Map<string, string>();
+      results.systems = [];
+      if (Array.isArray(proposalData.systems)) {
+        for (const sysProposal of proposalData.systems) {
+          if (!sysProposal.isNew && sysProposal.existingId) {
+            // Match existing — record the mapping
+            systemNameToId.set(sysProposal.name, sysProposal.existingId);
+            const existing = await storage.getSapSystem(sysProposal.existingId, userId);
+            if (existing) results.systems.push(existing);
+          } else if (sysProposal.isNew) {
+            // Create stub system — only if minimum required fields are satisfiable
+            const sid = (sysProposal.systemId || sysProposal.name || 'TBC').substring(0, 3).toUpperCase();
+            try {
+              const sysData: any = {
+                name: sysProposal.name,
+                systemId: sid,
+                description: sysProposal.notes || `Proposto dall'agente AI — da configurare (host, credenziali, ecc.)`,
+                serverHost: 'TBC',
+                systemNumber: '00',
+                landscapeType: sysProposal.landscapeType || 'other',
+                partnerId: results.partner?.id || null,
+                notes: `needsManualConfig=true. ${sysProposal.notes || ''}`.trim(),
+                userId,
+                organizationId
+              };
+              const created = await storage.createSapSystem(sysData);
+              systemNameToId.set(sysProposal.name, created.id);
+              results.systems.push(created);
+              console.log(`[PROPOSAL APPLY] Created stub SAP system: ${created.name} (${sid}) — needs manual config`);
+            } catch (e) {
+              console.warn(`[PROPOSAL APPLY] Failed to create stub SAP system "${sysProposal.name}":`, e);
+            }
+          }
+        }
+      }
       
       // 3. Create tasks
       if (proposalData.tasks && Array.isArray(proposalData.tasks)) {
@@ -4519,6 +4604,23 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
           if (taskProposal.isNew) {
             const taskSpec = (taskProposal as any).aiSpec || null;
             const isDraft = taskSpec && (taskSpec.confidence < 0.7 || (taskSpec.openQuestions?.length ?? 0) > 0);
+
+            // Phase 6: resolve target project (sub-project takes priority over main project)
+            const subProjId = taskProposal.subProjectName
+              ? (subProjectNameToId.get(taskProposal.subProjectName) ?? null)
+              : null;
+
+            // Phase 6: resolve SAP system from sapSystemRef
+            const resolvedSapSystemId = taskProposal.sapSystemRef
+              ? (systemNameToId.get(taskProposal.sapSystemRef) ?? null)
+              : null;
+
+            // Phase 6: collect mcpConfigIds from proposedMcpConfigs
+            const proposedConfigs: Array<{ configId?: string }> = taskSpec?.proposedMcpConfigs || [];
+            const mcpConfigIds = proposedConfigs
+              .map(c => c.configId)
+              .filter((id): id is string => !!id);
+
             const taskData: any = {
               title: taskProposal.title,
               description: taskProposal.description,
@@ -4526,10 +4628,12 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
               taskType: taskProposal.taskType,
               estimatedEffort: taskProposal.estimatedEffort,
               dueDate: taskProposal.dueDate ? new Date(taskProposal.dueDate) : undefined,
-              projectId: results.project?.id,
+              projectId: subProjId || results.project?.id,
               sourceMessageIds: [proposal.messageId],
               status: isDraft ? "draft" : "todo",
               aiSpec: taskSpec,
+              sapSystemId: resolvedSapSystemId || undefined,
+              mcpConfigIds: mcpConfigIds.length > 0 ? mcpConfigIds : undefined,
               userId,
               organizationId
             };
@@ -4588,6 +4692,48 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         }
       }
       
+      // 5. Phase 6 — resolve/create VPN connections from proposal
+      results.connections = [];
+      if (Array.isArray(proposalData.connections)) {
+        for (const connProposal of proposalData.connections) {
+          if (!connProposal.isNew && connProposal.existingId) {
+            // Match existing VPN connection
+            try {
+              const existing = await storage.getVpnConnection(connProposal.existingId, userId);
+              if (existing) results.connections.push(existing);
+            } catch (e) {
+              console.warn(`[PROPOSAL APPLY] Could not fetch VPN connection ${connProposal.existingId}:`, e);
+            }
+          } else if (connProposal.isNew && connProposal.kind === "vpn") {
+            // Only create stub VPN if we have a partner (partnerId is NOT NULL)
+            if (!results.partner?.id) {
+              console.warn(`[PROPOSAL APPLY] Skipping stub VPN "${connProposal.name}" — no partner resolved`);
+              continue;
+            }
+            try {
+              const connData: any = {
+                name: connProposal.name,
+                description: connProposal.notes || `Proposto dall'agente AI — da configurare`,
+                connectionType: 'openvpn',
+                status: 'active',
+                serverHost: 'TBC',
+                serverPort: 1194,
+                protocol: 'udp',
+                partnerId: results.partner.id,
+                notes: `needsManualConfig=true. ${connProposal.notes || ''}`.trim(),
+                organizationId,
+              };
+              const created = await storage.createVpnConnection(connData, userId);
+              results.connections.push(created);
+              console.log(`[PROPOSAL APPLY] Created stub VPN connection: ${created.name} — needs manual config`);
+            } catch (e) {
+              console.warn(`[PROPOSAL APPLY] Failed to create stub VPN connection "${connProposal.name}":`, e);
+            }
+          }
+          // kind === "workflow" connections are managed via connection_workflows table — skip auto-creation
+        }
+      }
+
       // Update proposal status
       await storage.updateProposal(req.params.id, {
         status: 'accepted',

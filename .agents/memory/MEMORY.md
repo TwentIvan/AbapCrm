@@ -2,3 +2,4 @@
 - [MCP registry sync](mcp-registry-sync.md) — fetches catalog.json+overrides.json directly (no folder listing); iterates categories[].entries[]; stale marking: collect seenIds from RETURNING, then batch-update by UUID array.
 - [Import graph rule](import-graph.md) — tokens.ts←context-assembler.ts and cost-estimator.ts (no cycle); countTokens extracted to break the cycle.
 - [Connection Workflows pattern](connection-workflows.md) — forward-ref in tasks→connectionWorkflows works with arrow fn; form.watch() must go AFTER useForm(); Header requires title+subtitle props.
+- [AI agent Phase 6 pattern](ai-agent-phase6.md) — backticks inside TS template literal system prompts must be written without backtick (or escaped); vpnConnections.partnerId is NOT NULL so stub VPN creation requires a resolved partner.
