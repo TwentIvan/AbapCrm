@@ -939,7 +939,8 @@ export async function executeTaskWithAI(
   organizationId: string,
   customInstructions?: string,
   chatClarifications?: string,
-  patternIds?: string[]
+  patternIds?: string[],
+  modelKeyOverride?: string,
 ): Promise<TaskExecutionResult[]> {
   const results: TaskExecutionResult[] = [];
 
@@ -1180,7 +1181,9 @@ export async function executeTaskWithAI(
 
       // Model resolution: task.agentModelId → org default → env → fallback
       let modelKey: string;
-      if ((taskData as any).agentModelId) {
+      if (modelKeyOverride) {
+        modelKey = modelKeyOverride;
+      } else if ((taskData as any).agentModelId) {
         const [assignedModel] = await db
           .select({ modelKey: aiModels.modelKey })
           .from(aiModels)

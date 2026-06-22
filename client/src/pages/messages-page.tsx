@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { AiModelPickerDialog } from "@/components/dialogs/ai-model-picker-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DOMPurify from 'dompurify';
 import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
@@ -152,6 +153,8 @@ export default function MessagesPage() {
   // AI Project Agent states
   const [showProposalDialog, setShowProposalDialog] = useState(false);
   const [currentProposal, setCurrentProposal] = useState<any>(null);
+  const [showAiModelPicker, setShowAiModelPicker] = useState(false);
+  const pendingAnalyzeIdsRef = useRef<string[]>([]);
 
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
@@ -467,8 +470,8 @@ export default function MessagesPage() {
 
   // AI Project Agent mutations
   const analyzeProjectMutation = useMutation({
-    mutationFn: async (messageId: string) => {
-      const response = await apiRequest("POST", `/api/messages/${messageId}/analyze-project`, {});
+    mutationFn: async ({ messageId, modelKey }: { messageId: string; modelKey?: string }) => {
+      const response = await apiRequest("POST", `/api/messages/${messageId}/analyze-project`, { modelKey });
       return await response.json();
     },
     onSuccess: (data) => {
@@ -953,7 +956,8 @@ export default function MessagesPage() {
                                 ? selectedMessageIds 
                                 : (selectedMessage ? [selectedMessage.id] : []);
                               if (messagesToAnalyze.length > 0) {
-                                messagesToAnalyze.forEach(id => analyzeProjectMutation.mutate(id));
+                                pendingAnalyzeIdsRef.current = messagesToAnalyze;
+                              setShowAiModelPicker(true);
                               }
                             }}
                             disabled={analyzeProjectMutation.isPending || (!selectedMessage && selectedMessageIds.length === 0)}
@@ -3135,6 +3139,25 @@ export default function MessagesPage() {
       )}
     </DialogContent>
   </Dialog>
+
+  {/* AI Model Picker Dialog */}
+  <AiModelPickerDialog
+    open={showAiModelPicker}
+    onClose={() => setShowAiModelPicker(false)}
+    onConfirm={(modelKey) => {
+      setShowAiModelPicker(false);
+      pendingAnalyzeIdsRef.current.forEach(id =>
+        analyzeProjectMutation.mutate({ messageId: id, modelKey })
+      );
+      pendingAnalyzeIdsRef.current = [];
+    }}
+    estimatedInputChars={
+      pendingAnalyzeIdsRef.current.length > 0
+        ? (selectedMessage?.body?.length || 500) * pendingAnalyzeIdsRef.current.length
+        : selectedMessage?.body?.length || 500
+    }
+    operationLabel="Analisi messaggio → proposta progetto"
+  />
 
   {/* AI Project Proposal Dialog */}
   <ProjectProposalDialog

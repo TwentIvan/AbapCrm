@@ -196,6 +196,7 @@ export async function analyzeMessageForProject(
   existingSapSystems: SapSystem[] = [],
   existingConnections: VpnConnection[] = [],
   mcpContext?: { catalog: McpCatalogWithValidation[]; configs: McpServerConfig[] },
+  modelKeyOverride?: string,
 ): Promise<ProjectProposal> {
   const systemPrompt = `You are an intelligent project management assistant for a SAP ABAP freelancer CRM system.
 
@@ -498,7 +499,7 @@ Based on the message content and existing context above:
 Respond with VALID JSON ONLY (no markdown, no explanations outside JSON).`;
 
   try {
-    const modelKey = await getDefaultModelKey(organizationId);
+    const modelKey = modelKeyOverride || await getDefaultModelKey(organizationId);
     const gwResult = await aiGateway.complete({
       modelKey,
       messages: [

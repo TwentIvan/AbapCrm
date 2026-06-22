@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { AiModelPickerDialog } from "@/components/dialogs/ai-model-picker-dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -144,6 +145,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
   const [activeTab, setActiveTab] = useState("analisi");
   const [customInstructions, setCustomInstructions] = useState("");
   const [results, setResults] = useState<TaskExecutionResult[]>([]);
+  const [showAiModelPicker, setShowAiModelPicker] = useState(false);
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [feedback, setFeedback] = useState<{ [key: string]: { approved?: boolean; rating?: number } }>({});
   
@@ -298,7 +300,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
   }, [chatMessages, isChatLoading]);
 
   const executeMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (modelKey?: string) => {
       // Include chat clarifications as additional context for regeneration
       const chatClarifications = chatMessages.length > 0 
         ? chatMessages.map(m => `[${m.role === 'user' ? 'Utente' : 'AI'}]: ${m.content}`).join('\n')
@@ -309,6 +311,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
         customInstructions: customInstructions || undefined,
         chatClarifications,
         patternIds: selectedPatternIds.length > 0 ? selectedPatternIds : undefined,
+        modelKey: modelKey || undefined,
       });
       return response.json();
     },
@@ -755,7 +758,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                 )}
 
                 <Button
-                  onClick={() => executeMutation.mutate()}
+                  onClick={() => setShowAiModelPicker(true)}
                   disabled={executeMutation.isPending || selectedTasks.length === 0}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   data-testid="button-execute-ai"
@@ -1448,6 +1451,22 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* AI Model Picker Dialog */}
+      <AiModelPickerDialog
+        open={showAiModelPicker}
+        onClose={() => setShowAiModelPicker(false)}
+        onConfirm={(modelKey) => {
+          setShowAiModelPicker(false);
+          executeMutation.mutate(modelKey);
+        }}
+        estimatedInputChars={
+          selectedTasks.reduce((acc, t) => acc + ((t as any).description?.length || 0) + ((t as any).title?.length || 0), 0)
+          + (customInstructions?.length || 0)
+          + 1500
+        }
+        operationLabel={`Generazione ABAP per ${selectedTasks.length} task`}
+      />
     </Dialog>
   );
 }
