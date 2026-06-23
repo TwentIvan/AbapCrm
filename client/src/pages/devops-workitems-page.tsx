@@ -27,7 +27,8 @@ import {
   Bug,
   FileText,
   Star,
-  Clock
+  Clock,
+  ClipboardList
 } from "lucide-react";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -599,7 +600,7 @@ export default function DevOpsWorkItemsPage() {
                 <div>
                   <label className="text-sm font-medium">Nome:</label>
                   <code className="block bg-muted p-2 rounded text-sm mt-1">
-                    📋 Estrai Work Item DevOps
+                    <ClipboardList className="h-4 w-4 inline mr-1" />Estrai Work Item DevOps
                   </code>
                 </div>
                 <div>

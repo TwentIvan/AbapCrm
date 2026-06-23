@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Clock, Calendar, Eye, List, Grid3X3 } from "lucide-react";
+import { Trash2, Clock, Calendar, Eye, List, Grid3X3, Building, Check } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import type { Timesheet, Project, Deal, Partner } from "@shared/schema";
@@ -961,10 +961,10 @@ function TimesheetGroupRow({
               </div>
               <div className="text-xs text-muted-foreground space-y-0.5">
                 {groupInfo.Project && (
-                  <div>🏗️ {groupInfo.Project}</div>
+                  <div><Building className="h-4 w-4 inline mr-1" />{groupInfo.Project}</div>
                 )}
                 {groupInfo.Date && (
-                  <div>📅 {groupInfo.Date}</div>
+                  <div><Calendar className="h-4 w-4 inline mr-1" />{groupInfo.Date}</div>
                 )}
                 {groupInfo.description && groupInfo.description !== 'Unknown' && (
                   <div>{groupInfo.description}</div>
@@ -1008,7 +1008,7 @@ function TimesheetGroupRow({
                   }}
                   className="h-5 w-5 p-0 text-success"
                 >
-                  ✓
+                  <Check className="h-4 w-4" />
                 </Button>
                 <Button
                   size="sm"
@@ -1134,7 +1134,7 @@ function TimesheetEntryCard({
           </div>
           
           <div className="text-xs text-muted-foreground">
-            ⏰ {formatTime(entry.startTime)} - {formatTime(entry.endTime)}
+            <Clock className="h-4 w-4 inline mr-1" />{formatTime(entry.startTime)} - {formatTime(entry.endTime)}
           </div>
 
           {isEditing ? (
@@ -1163,7 +1163,7 @@ function TimesheetEntryCard({
           ) : (
             <div className="space-y-1">
               <div className="text-xs bg-primary/5 px-2 py-1 rounded w-fit">
-                ⏱️ {formatDuration(calculateEntryDuration(entry))}
+                <Clock className="h-4 w-4 inline mr-1" />{formatDuration(calculateEntryDuration(entry))}
               </div>
               {entry.description && (
                 <div className="text-xs text-muted-foreground">
@@ -1183,7 +1183,7 @@ function TimesheetEntryCard({
                 onClick={handleSave}
                 className="h-6 w-6 p-0 text-success"
               >
-                ✓
+                <Check className="h-4 w-4" />
               </Button>
               <Button 
                 size="sm" 

@@ -51,7 +51,17 @@ import {
   GitBranch,
   Clipboard,
   ExternalLink,
-  Smartphone
+  Smartphone,
+  Pencil,
+  Tag,
+  CheckCircle2,
+  Paperclip,
+  Link2,
+  Phone,
+  Lightbulb,
+  Target,
+  Bug,
+  Video
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { BarChart3, TrendingUp, Database, Image, Inbox } from "lucide-react";
@@ -1919,7 +1929,7 @@ export default function MessagesPage() {
                               <Collapsible defaultOpen>
                                 <CollapsibleTrigger asChild>
                                   <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
-                                    <span className="text-muted-foreground text-sm">📝 Descrizione</span>
+                                    <span className="text-muted-foreground text-sm"><Pencil className="h-4 w-4 inline mr-1" />Descrizione</span>
                                     <ChevronDown className="h-4 w-4" />
                                   </Button>
                                 </CollapsibleTrigger>
@@ -1941,7 +1951,7 @@ export default function MessagesPage() {
                             {(externalMeta.ticketCode || externalMeta.wbsCode || externalMeta.ticketType || (externalMeta.customFields && Object.keys(externalMeta.customFields).length > 0)) && (
                               <div className="bg-warning/10 border border-warning/30 rounded-lg p-3">
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-warning font-medium text-sm">🏷️ Altri dati</span>
+                                  <span className="text-warning font-medium text-sm"><Tag className="h-4 w-4 inline mr-1" />Altri dati</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                   {externalMeta.ticketCode && (
@@ -1994,7 +2004,7 @@ export default function MessagesPage() {
                               <Collapsible>
                                 <CollapsibleTrigger asChild>
                                   <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
-                                    <span className="text-muted-foreground text-sm">✅ Criteri di Accettazione</span>
+                                    <span className="text-muted-foreground text-sm"><CheckCircle2 className="h-4 w-4 inline mr-1" />Criteri di Accettazione</span>
                                     <ChevronDown className="h-4 w-4" />
                                   </Button>
                                 </CollapsibleTrigger>
@@ -2017,7 +2027,7 @@ export default function MessagesPage() {
                               <Collapsible>
                                 <CollapsibleTrigger asChild>
                                   <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
-                                    <span className="text-muted-foreground text-sm">🐛 Passi per Riprodurre</span>
+                                    <span className="text-muted-foreground text-sm"><Bug className="h-4 w-4 inline mr-1" />Passi per Riprodurre</span>
                                     <ChevronDown className="h-4 w-4" />
                                   </Button>
                                 </CollapsibleTrigger>
@@ -2041,7 +2051,7 @@ export default function MessagesPage() {
                                 <CollapsibleTrigger asChild>
                                   <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
                                     <span className="text-muted-foreground text-sm">
-                                      💬 Commenti ({externalMeta.workItemComments.length})
+                                      <MessageSquare className="h-4 w-4 inline mr-1" />Commenti ({externalMeta.workItemComments.length})
                                     </span>
                                     <ChevronDown className="h-4 w-4" />
                                   </Button>
@@ -2082,7 +2092,7 @@ export default function MessagesPage() {
                                 <CollapsibleTrigger asChild>
                                   <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
                                     <span className="text-muted-foreground text-sm">
-                                      📎 Allegati ({externalMeta.workItemAttachments.length})
+                                      <Paperclip className="h-4 w-4 inline mr-1" />Allegati ({externalMeta.workItemAttachments.length})
                                     </span>
                                     <ChevronDown className="h-4 w-4" />
                                   </Button>
@@ -2112,7 +2122,7 @@ export default function MessagesPage() {
                                 <CollapsibleTrigger asChild>
                                   <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
                                     <span className="text-muted-foreground text-sm">
-                                      🔗 Collegamenti ({externalMeta.workItemLinkedItems.length})
+                                      <Link2 className="h-4 w-4 inline mr-1" />Collegamenti ({externalMeta.workItemLinkedItems.length})
                                     </span>
                                     <ChevronDown className="h-4 w-4" />
                                   </Button>
@@ -2245,7 +2255,7 @@ export default function MessagesPage() {
                         {externalMeta.calendarType === 'teams' && (
                           <div className="bg-background dark:bg-card rounded-lg p-3 border space-y-2">
                             <div className="text-sm font-medium text-purple-700 dark:text-purple-400">
-                              📞 Dettagli Microsoft Teams
+                              <Phone className="h-4 w-4 inline mr-1" />Dettagli Microsoft Teams
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-sm">
                               {externalMeta.teamsMeetingId && (
@@ -2280,7 +2290,7 @@ export default function MessagesPage() {
                         {externalMeta.calendarType === 'zoom' && (
                           <div className="bg-background dark:bg-card rounded-lg p-3 border space-y-2">
                             <div className="text-sm font-medium text-primary">
-                              📹 Dettagli Zoom
+                              <Video className="h-4 w-4 inline mr-1" />Dettagli Zoom
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-sm">
                               {externalMeta.zoomMeetingId && (
@@ -2463,7 +2473,7 @@ export default function MessagesPage() {
                     {isTrainingMode && (
                       <>
                         <div className="mt-3 text-xs text-muted-foreground">
-                          💡 Seleziona il testo nell'email per classificarlo. Verde = contenuto da mantenere, Rosso = header da rimuovere, Giallo = thread da compattare.
+                          <Lightbulb className="h-4 w-4 inline mr-1" />Seleziona il testo nell'email per classificarlo. Verde = contenuto da mantenere, Rosso = header da rimuovere, Giallo = thread da compattare.
                         </div>
                         
                         {/* Current selections panel */}
@@ -2571,7 +2581,7 @@ export default function MessagesPage() {
                     {isTrainingMode ? (
                       <div className="space-y-4">
                         <div className="text-sm text-primary bg-primary/5 border border-primary/20 rounded p-3 mb-4">
-                          🎯 <strong>Modalità Training</strong> - Stai visualizzando l'HTML originale completo del messaggio. Seleziona il testo per addestrare l'algoritmo.
+                          <Target className="h-4 w-4 inline mr-1" /><strong>Modalità Training</strong> - Stai visualizzando l'HTML originale completo del messaggio. Seleziona il testo per addestrare l'algoritmo.
                         </div>
                         <div 
                           className="training-selection-area select-text cursor-pointer border border-dashed border-primary/30 rounded" 
