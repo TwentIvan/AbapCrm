@@ -156,7 +156,7 @@ function getDefaultRange(granularity: Granularity): { start: Date; end: Date } {
 function StatusCell({ period, onClick }: { period: ResourcePeriod; onClick: () => void }) {
   const bgColor = {
     unavailable: "bg-muted dark:bg-card text-muted-foreground",
-    under: "bg-warning/10 text-warning border-warning/30 dark:border-amber-800",
+    under: "bg-warning/10 text-warning border-warning/30",
     balanced: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
     over: "bg-destructive/10 text-destructive dark:text-destructive border-destructive/30 dark:border-red-800",
   }[period.status];

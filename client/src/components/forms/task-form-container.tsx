@@ -286,7 +286,7 @@ function PendingActionsPanel({ task }: { task: Task }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-warning/10 border border-warning/30 dark:border-amber-800 rounded-lg p-4">
+      <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
         <div className="flex items-center gap-2 text-warning">
           <ShieldAlert className="h-4 w-4" />
           <span className="font-medium text-sm">
@@ -414,7 +414,7 @@ function AiCostsPanel({ task }: { task: Task }) {
   return (
     <div className="space-y-4">
       {lastPaused && (
-        <div className="bg-warning/10 border border-warning/30 dark:border-amber-800 rounded-lg p-4">
+        <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
           <div className="flex items-center gap-2 text-warning">
             <AlertTriangle className="h-4 w-4" />
             <span className="font-medium text-sm">Esecuzione sospesa per budget</span>

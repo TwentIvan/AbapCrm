@@ -1939,7 +1939,7 @@ export default function MessagesPage() {
                             
                             {/* Altri dati */}
                             {(externalMeta.ticketCode || externalMeta.wbsCode || externalMeta.ticketType || (externalMeta.customFields && Object.keys(externalMeta.customFields).length > 0)) && (
-                              <div className="bg-warning/10 border border-warning/30 dark:border-amber-800 rounded-lg p-3">
+                              <div className="bg-warning/10 border border-warning/30 rounded-lg p-3">
                                 <div className="flex items-center gap-2 mb-2">
                                   <span className="text-warning font-medium text-sm">🏷️ Altri dati</span>
                                 </div>
@@ -2599,7 +2599,7 @@ export default function MessagesPage() {
                         <>
                           {/* Parsing failure warning - MUST be shown before messages check */}
                           {renderedContent.metadata?.parsingFailed && (
-                            <div className="bg-warning/10 border border-warning/30 dark:border-yellow-800 rounded-lg p-4 mb-4" data-testid="warning-parsing-failed">
+                            <div className="bg-warning/10 border border-warning/30 rounded-lg p-4 mb-4" data-testid="warning-parsing-failed">
                               <div className="flex items-start gap-3">
                                 <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
                                 <div className="flex-1">
