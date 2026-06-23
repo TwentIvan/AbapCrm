@@ -492,7 +492,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
       case "low": return "bg-success";
       case "medium": return "bg-yellow-500";
       case "high": return "bg-red-500";
-      default: return "bg-gray-500";
+      default: return "bg-muted-foreground";
     }
   };
 
@@ -514,7 +514,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
               <span className="text-lg font-black text-primary">T</span>
               <span className="text-xl font-black text-primary">H</span>
               <span className="text-xl font-black text-primary">U</span>
-              <span className="text-sm font-bold text-purple-500 ml-1">AI</span>
+              <span className="text-sm font-bold text-agent ml-1">AI</span>
             </div>
             <span className="text-muted-foreground">- Assistente Operativo</span>
           </DialogTitle>
@@ -552,7 +552,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
               <div className="space-y-4">
                 <div className="rounded-lg border p-4 bg-muted/50">
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-purple-500" />
+                    <Sparkles className="h-4 w-4 text-agent" />
                     Task Selezionati ({selectedTasks.length})
                   </h3>
                   <ScrollArea className="h-32">
@@ -760,7 +760,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                 <Button
                   onClick={() => setShowAiModelPicker(true)}
                   disabled={executeMutation.isPending || selectedTasks.length === 0}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  className="w-full bg-gradient-to-r from-blue-600 to-agent hover:from-blue-700 hover:to-agent"
                   data-testid="button-execute-ai"
                 >
                   {executeMutation.isPending ? (
@@ -1069,7 +1069,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                                   <Badge variant="secondary" className="text-xs">{result.contextSummary.devOpsWorkItem.state}</Badge>
                                 )}
                                 {result.contextSummary.devOpsWorkItem.commentsCount ? (
-                                  <Badge className="text-xs bg-purple-500">{result.contextSummary.devOpsWorkItem.commentsCount} commenti</Badge>
+                                  <Badge className="text-xs bg-agent">{result.contextSummary.devOpsWorkItem.commentsCount} commenti</Badge>
                                 ) : null}
                                 {result.contextSummary.devOpsWorkItem.hasImages && (
                                   <Badge className="text-xs bg-success flex items-center gap-1">
@@ -1117,8 +1117,8 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
 
                         {/* Task Comments */}
                         {result.contextSummary.taskComments.length > 0 && (
-                          <div className="mb-4 p-3 bg-warning/10 dark:bg-yellow-950 rounded-lg">
-                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-warning dark:text-yellow-300">
+                          <div className="mb-4 p-3 bg-warning/10 rounded-lg">
+                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-warning">
                               <MessageSquare className="h-3 w-3" />
                               Commenti Task ({result.contextSummary.taskComments.length})
                             </h5>

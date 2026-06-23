@@ -241,7 +241,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 <div className="relative">
                   <Sparkles className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
                   {(pendingProposals?.count ?? 0) > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 bg-agent text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                       {(pendingProposals?.count ?? 0) > 9 ? '9+' : pendingProposals?.count}
                     </span>
                   )}
@@ -259,7 +259,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <Link href="/mcp-library">
                 <Button
                   variant="ghost"
-                  className="flex items-center bg-warning/10 dark:bg-amber-950/30 relative"
+                  className="flex items-center bg-warning/10 relative"
                   style={{ border: '2px solid rgba(245, 158, 11, 0.4)' }}
                   data-testid="button-pending-approvals"
                 >
@@ -269,7 +269,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                       {(pendingApprovals?.count ?? 0) > 9 ? '9+' : pendingApprovals?.count}
                     </span>
                   </div>
-                  <span className="ml-2 text-warning dark:text-amber-400 font-medium text-xs whitespace-nowrap">
+                  <span className="ml-2 text-warning font-medium text-xs whitespace-nowrap">
                     Approvazioni
                   </span>
                 </Button>

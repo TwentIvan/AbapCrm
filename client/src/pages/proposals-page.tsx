@@ -152,9 +152,9 @@ export default function ProposalsPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { label: "In sospeso", icon: Clock, className: "bg-warning/10 text-warning dark:bg-yellow-900 dark:text-yellow-200" },
+      pending: { label: "In sospeso", icon: Clock, className: "bg-warning/10 text-warning" },
       accepted: { label: "Accettata", icon: Check, className: "bg-success/10 text-success" },
-      rejected: { label: "Rigettata", icon: X, className: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-200" },
+      rejected: { label: "Rigettata", icon: X, className: "bg-destructive/10 text-destructive" },
       partially_accepted: { label: "Parzialmente accettata", icon: AlertCircle, className: "bg-primary/10 text-primary" },
     };
 
@@ -354,9 +354,9 @@ export default function ProposalsPage() {
 
         {/* Chiarimenti richiesti */}
         {proposalData.needsClarification && proposalData.clarificationQuestions?.length > 0 && (
-          <Card className="border-warning/30 bg-warning/10 dark:bg-amber-950/30">
+          <Card className="border-warning/30 bg-warning/10">
             <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2 text-warning dark:text-amber-400">
+              <CardTitle className="text-sm flex items-center gap-2 text-warning">
                 <Sparkles className="w-4 h-4" />
                 Chiarimenti necessari
               </CardTitle>

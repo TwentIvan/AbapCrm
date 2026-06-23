@@ -141,9 +141,9 @@ export default function ProjectMilestonesPage() {
 
   const statusColors = {
     planned: "bg-primary/10 text-primary",
-    in_progress: "bg-warning/10 text-warning dark:bg-yellow-900 dark:text-yellow-300",
+    in_progress: "bg-warning/10 text-warning",
     completed: "bg-success/10 text-success dark:text-success",
-    cancelled: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-300"
+    cancelled: "bg-destructive/10 text-destructive"
   };
 
   const statusLabels = {

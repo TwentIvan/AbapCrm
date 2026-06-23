@@ -460,9 +460,9 @@ export default function AuthPage() {
                       )}
                       
                       {resetError && (
-                        <Alert className="bg-destructive/10 border-destructive/30 dark:bg-red-900/20 dark:border-red-800">
+                        <Alert className="bg-destructive/10 border-destructive/30 dark:border-red-800">
                           <AlertCircle className="h-4 w-4 text-destructive" />
-                          <AlertDescription className="text-destructive dark:text-red-300">
+                          <AlertDescription className="text-destructive">
                             {resetError}
                           </AlertDescription>
                         </Alert>

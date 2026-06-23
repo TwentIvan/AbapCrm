@@ -156,9 +156,9 @@ function getDefaultRange(granularity: Granularity): { start: Date; end: Date } {
 function StatusCell({ period, onClick }: { period: ResourcePeriod; onClick: () => void }) {
   const bgColor = {
     unavailable: "bg-muted dark:bg-card text-muted-foreground",
-    under: "bg-warning/10 dark:bg-amber-950/30 text-warning dark:text-amber-400 border-warning/30 dark:border-amber-800",
+    under: "bg-warning/10 text-warning border-warning/30",
     balanced: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
-    over: "bg-destructive/10 dark:bg-red-950/30 text-destructive dark:text-destructive border-destructive/30 dark:border-red-800",
+    over: "bg-destructive/10 text-destructive dark:text-destructive border-destructive/30 dark:border-red-800",
   }[period.status];
 
   const intensityClass = period.status === "over"
@@ -305,7 +305,7 @@ function SkillsPopover({ skills, matchScore }: { skills: ResourceSkillData[]; ma
                       {skill.isPrimary && <Star className="h-2.5 w-2.5 text-warning fill-yellow-500" />}
                       {skill.name}
                     </span>
-                    <span className="text-[10px] text-warning dark:text-amber-400">{stars(skill.level)}</span>
+                    <span className="text-[10px] text-warning">{stars(skill.level)}</span>
                   </div>
                 ))}
               </div>
@@ -321,7 +321,7 @@ function SkillsPopover({ skills, matchScore }: { skills: ResourceSkillData[]; ma
                       {skill.isPrimary && <Star className="h-2.5 w-2.5 text-warning fill-yellow-500" />}
                       {skill.name}
                     </span>
-                    <span className="text-[10px] text-warning dark:text-amber-400">{stars(skill.level)}</span>
+                    <span className="text-[10px] text-warning">{stars(skill.level)}</span>
                   </div>
                 ))}
               </div>
@@ -338,8 +338,8 @@ function MatchBadge({ matchPercent }: { matchPercent: number }) {
   const color = matchPercent >= 80
     ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
     : matchPercent >= 50
-      ? "bg-warning/10 text-warning dark:bg-amber-900 dark:text-warning border-warning/30 dark:border-amber-700"
-      : "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-300 border-destructive/30 dark:border-red-700";
+      ? "bg-warning/10 text-warning dark:text-warning border-warning/30"
+      : "bg-destructive/10 text-destructive border-destructive/30 dark:border-red-700";
   return (
     <Badge className={`text-[10px] px-1.5 py-0 font-bold border ${color}`}>
       {matchPercent}% match
@@ -641,11 +641,11 @@ function MatchPanel({
   if (!hasSelection) return null;
 
   return (
-    <Card className="border-purple-200 dark:border-purple-800">
+    <Card className="border-agent/30">
       <CardContent className="p-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <Brain className="h-4 w-4 text-purple-500" />
+            <Brain className="h-4 w-4 text-agent" />
             <span className="text-sm font-medium">Skill Match Engine</span>
           </div>
           <div className="flex items-center gap-1">
@@ -684,9 +684,9 @@ function MatchPanel({
                           <Badge
                             variant="outline"
                             className={`text-[10px] px-1.5 py-0 cursor-help ${
-                              r.mode === "MUST" ? "border-destructive/30 dark:border-red-700 text-destructive dark:text-red-300" :
+                              r.mode === "MUST" ? "border-destructive/30 dark:border-red-700 text-destructive" :
                               r.mode === "TIEBREAK" ? "border-primary/30 text-primary" :
-                              "border-purple-300 dark:border-purple-700"
+                              "border-agent/30"
                             }`}
                           >
                             {r.mode === "MUST" && <ShieldCheck className="h-2.5 w-2.5 mr-0.5" />}
@@ -716,9 +716,9 @@ function MatchPanel({
                 <div className="space-y-1 max-h-[200px] overflow-y-auto">
                   {matchResults.map((r, idx) => (
                     <div key={r.resourceId} className={`flex items-center gap-2 text-xs rounded px-2 py-1.5 ${
-                      !r.eligible ? "bg-destructive/10 dark:bg-red-950/20 border border-destructive/30 dark:border-red-800" :
+                      !r.eligible ? "bg-destructive/10 border border-destructive/30 dark:border-red-800" :
                       r.score >= 0.8 ? "bg-emerald-50 dark:bg-emerald-950/20" :
-                      r.score >= 0.5 ? "bg-warning/10 dark:bg-amber-950/20" :
+                      r.score >= 0.5 ? "bg-warning/10" :
                       "bg-muted/50"
                     }`}>
                       <span className="text-[10px] font-bold text-muted-foreground w-4">{idx + 1}</span>
@@ -728,7 +728,7 @@ function MatchPanel({
                       )}
                       <span className={`font-bold text-sm ${
                         r.score >= 0.8 ? "text-emerald-600 dark:text-emerald-400" :
-                        r.score >= 0.5 ? "text-warning dark:text-amber-400" :
+                        r.score >= 0.5 ? "text-warning" :
                         "text-destructive dark:text-destructive"
                       }`}>
                         {Math.round(r.score * 100)}%
@@ -766,11 +766,11 @@ function MatchPanel({
                             )}
                             {r.gaps.length > 0 && (
                               <div>
-                                <div className="text-[10px] font-semibold text-warning dark:text-amber-400 mb-0.5">Lacune</div>
+                                <div className="text-[10px] font-semibold text-warning mb-0.5">Lacune</div>
                                 {r.gaps.map(g => (
                                   <div key={g.skillId} className="text-[11px] flex justify-between">
                                     <span>{g.skillName}</span>
-                                    <span className="text-warning dark:text-amber-400">gap: {g.gap} (-{g.penalty.toFixed(2)})</span>
+                                    <span className="text-warning">gap: {g.gap} (-{g.penalty.toFixed(2)})</span>
                                   </div>
                                 ))}
                               </div>
@@ -898,7 +898,7 @@ function ActivitySidebar({
                       <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" />
                       <span className="text-xs truncate flex-1 font-medium">{project.name}</span>
                       {hasSkills && (
-                        <Sparkles className="h-3 w-3 text-purple-500 shrink-0" />
+                        <Sparkles className="h-3 w-3 text-agent shrink-0" />
                       )}
                       <Button
                         variant="ghost"
@@ -907,7 +907,7 @@ function ActivitySidebar({
                         onClick={(e) => { e.stopPropagation(); setEditingProjectId(editingProjectId === project.id ? null : project.id); }}
                         data-testid={`edit-project-skills-${project.id}`}
                       >
-                        <Brain className="h-3 w-3 text-purple-400" />
+                        <Brain className="h-3 w-3 text-agent" />
                       </Button>
                       <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{project.tasks.length}</Badge>
                     </div>
@@ -941,7 +941,7 @@ function ActivitySidebar({
                                   onClick={(e) => { e.stopPropagation(); setEditingTaskId(editingTaskId === task.id ? null : task.id); }}
                                   data-testid={`edit-skills-${task.id}`}
                                 >
-                                  <Sparkles className="h-3 w-3 text-purple-400" />
+                                  <Sparkles className="h-3 w-3 text-agent" />
                                 </Button>
                               </div>
                               {editingTaskId === task.id && (
@@ -977,7 +977,7 @@ function ActivitySidebar({
                           <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0"
                             onClick={() => setEditingTaskId(editingTaskId === task.id ? null : task.id)}
                           >
-                            <Sparkles className="h-3 w-3 text-purple-400" />
+                            <Sparkles className="h-3 w-3 text-agent" />
                           </Button>
                         </div>
                         {editingTaskId === task.id && (
@@ -1227,8 +1227,8 @@ export default function ResourcePlannerPage() {
             <div className="grid grid-cols-4 gap-3">
               <KPICard title="Risorse Attive" value={kpis.totalResources} subtitle="nel periodo selezionato" icon={Users} color="bg-primary/10 text-primary" />
               <KPICard title="Utilizzo Medio" value={`${kpis.avgUtilization}%`} subtitle="capacità impegnata" icon={TrendingUp} color="bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400" />
-              <KPICard title="Sovra-allocazioni" value={kpis.overCount} subtitle="celle in criticità" icon={AlertTriangle} color="bg-destructive/10 dark:bg-red-900 text-destructive dark:text-destructive" />
-              <KPICard title="Sotto-allocazioni" value={kpis.underCount} subtitle="capacità disponibile" icon={Clock} color="bg-warning/10 dark:bg-amber-900 text-warning dark:text-amber-400" />
+              <KPICard title="Sovra-allocazioni" value={kpis.overCount} subtitle="celle in criticità" icon={AlertTriangle} color="bg-destructive/10 text-destructive dark:text-destructive" />
+              <KPICard title="Sotto-allocazioni" value={kpis.underCount} subtitle="capacità disponibile" icon={Clock} color="bg-warning/10 text-warning" />
             </div>
 
             <MatchPanel
@@ -1351,8 +1351,8 @@ export default function ResourcePlannerPage() {
                           const isSelected = selectedResourceIds.has(resource.id);
                           const rowHighlight = matchScore !== undefined && matchScore > 0
                             ? matchScore >= 80 ? "bg-emerald-50/50 dark:bg-emerald-950/20" :
-                              matchScore >= 50 ? "bg-warning/10/50 dark:bg-amber-950/20" :
-                              "bg-destructive/10/30 dark:bg-red-950/10"
+                              matchScore >= 50 ? "bg-warning/10/50" :
+                              "bg-destructive/10/30"
                             : "";
 
                           return (
@@ -1410,7 +1410,7 @@ export default function ResourcePlannerPage() {
                               ? "text-destructive dark:text-destructive"
                               : s.avgUtilization >= 70
                                 ? "text-emerald-600 dark:text-emerald-400"
-                                : "text-warning dark:text-amber-400";
+                                : "text-warning";
                             return (
                               <td key={idx} className="p-1.5 text-center">
                                 <div className="text-[11px] font-semibold">{s.totalDemand}h/{s.totalCapacity}h</div>
@@ -1432,7 +1432,7 @@ export default function ResourcePlannerPage() {
                 Bilanciato (70-100%)
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-warning/20 dark:bg-amber-800 border border-warning/30 dark:border-amber-700" />
+                <div className="w-3 h-3 rounded bg-warning/20 dark:bg-amber-800 border border-warning/30" />
                 Sotto-allocato (&lt;70%)
               </div>
               <div className="flex items-center gap-1.5">
@@ -1502,9 +1502,9 @@ export default function ResourcePlannerPage() {
                   </div>
 
                   {resourceMatchScores.has(selectedResource.id) && resourceMatchScores.get(selectedResource.id)! > 0 && (
-                    <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
-                      <div className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">Skill Match</div>
-                      <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                    <div className="p-3 rounded-lg bg-agent/10 border border-agent/30">
+                      <div className="text-xs font-medium text-agent mb-2">Skill Match</div>
+                      <div className="text-2xl font-bold text-agent">
                         {resourceMatchScores.get(selectedResource.id)}%
                       </div>
                     </div>

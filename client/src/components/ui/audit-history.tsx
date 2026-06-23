@@ -53,7 +53,7 @@ const actionConfig = {
   DELETE: {
     icon: Trash,
     label: "Eliminazione",
-    color: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-200",
+    color: "bg-destructive/10 text-destructive",
   },
 };
 
@@ -141,7 +141,7 @@ function AuditEntry({ entry }: { entry: AuditLogEntry }) {
               <div className="text-xs space-y-1">
                 <div className="flex items-start space-x-2">
                   <span className="text-muted-foreground min-w-0 flex-shrink-0">Da:</span>
-                  <span className="font-mono bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-200 px-2 py-1 rounded text-xs break-all">
+                  <span className="font-mono bg-destructive/10 text-destructive px-2 py-1 rounded text-xs break-all">
                     {change.oldValue || "vuoto"}
                   </span>
                 </div>

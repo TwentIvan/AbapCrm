@@ -115,7 +115,7 @@ export default function ProjectAssignmentsPage() {
     assigned: "bg-primary/10 text-primary",
     active: "bg-success/10 text-success dark:text-success",
     completed: "bg-muted text-foreground dark:bg-card",
-    cancelled: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-300"
+    cancelled: "bg-destructive/10 text-destructive"
   };
 
   const statusLabels = {
