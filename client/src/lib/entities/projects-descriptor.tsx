@@ -7,7 +7,7 @@ import { Link } from "wouter";
 const etcStateConfig: Record<string, { label: string; color: string; icon: any }> = {
   completed: { label: "Completato", color: "bg-success/10 text-success dark:text-success", icon: CheckCircle2 },
   on_track: { label: "In Tempo", color: "bg-primary/10 text-primary", icon: Clock },
-  delayed: { label: "In Ritardo", color: "bg-destructive/10 text-destructive dark:bg-red-900/30 dark:text-destructive", icon: AlertTriangle },
+  delayed: { label: "In Ritardo", color: "bg-destructive/10 text-destructive dark:text-destructive", icon: AlertTriangle },
   no_planning_window: { label: "No Pianificazione", color: "bg-warning/10 text-warning", icon: CalendarX },
   no_tasks: { label: "No Task", color: "bg-muted text-muted-foreground dark:bg-card/30 dark:text-muted-foreground", icon: HelpCircle },
 };
@@ -240,7 +240,7 @@ const projectsDescriptor: EntityListDescriptor = {
           
           return (
             <span 
-              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive dark:bg-red-900/30 dark:text-destructive"
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive dark:text-destructive"
               data-testid={`text-deficit-hours-${project.id}`}
               title={`Servono ${deficitHours.toFixed(1)} ore aggiuntive oltre la finestra pianificata`}
             >

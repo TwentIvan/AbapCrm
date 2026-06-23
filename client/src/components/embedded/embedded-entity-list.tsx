@@ -267,8 +267,8 @@ export function EmbeddedEntityList({
               onClick={() => setShowThuAiDialog(true)}
               disabled={selectedItems.length === 0}
               variant="ghost"
-              className={`relative flex flex-col items-center justify-center w-12 h-9 rounded-lg border-2 border-purple-300/30 dark:border-purple-600/30 bg-sidebar-accent shadow-sm hover:shadow-md transition-all ${
-                selectedItems.length === 0 ? "opacity-40" : "opacity-100 hover:border-purple-400 dark:hover:border-purple-500"
+              className={`relative flex flex-col items-center justify-center w-12 h-9 rounded-lg border-2 border-agent/30 bg-sidebar-accent shadow-sm hover:shadow-md transition-all ${
+                selectedItems.length === 0 ? "opacity-40" : "opacity-100 hover:border-agent"
               }`}
               data-testid="button-ai-tasks-embedded"
             >
@@ -278,16 +278,16 @@ export function EmbeddedEntityList({
                   <span className="text-sm font-black text-primary">H</span>
                   <span className="text-sm font-black text-primary">U</span>
                 </div>
-                <span className="text-[8px] font-bold text-purple-500 dark:text-purple-400 -mt-0.5">AI</span>
+                <span className="text-[8px] font-bold text-agent -mt-0.5">AI</span>
               </div>
               {selectedItems.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-agent text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                   {selectedItems.length > 9 ? "9+" : selectedItems.length}
                 </span>
               )}
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="bg-purple-500 text-white">
+          <TooltipContent side="bottom" className="bg-agent text-white">
             <p>
               {selectedItems.length > 0
                 ? `Assistenza AI per ${selectedItems.length} task`

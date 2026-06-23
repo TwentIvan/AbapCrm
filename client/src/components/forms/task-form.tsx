@@ -699,13 +699,13 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                       </SelectContent>
                     </Select>
                     {showHint && (
-                      <div className="flex items-center gap-2 mt-1 text-xs text-purple-700 dark:text-purple-400">
+                      <div className="flex items-center gap-2 mt-1 text-xs text-agent">
                         <span className="flex items-center gap-1"><Lightbulb className="h-3 w-3" /> Suggerito: <strong>{suggestedModel!.displayName}</strong> (basato su cronologia esecuzioni)</span>
                         <Button
                           type="button"
                           variant="link"
                           size="sm"
-                          className="h-auto p-0 text-xs text-purple-700 dark:text-purple-400 underline"
+                          className="h-auto p-0 text-xs text-agent underline"
                           onClick={() => field.onChange(suggestedModel!.id)}
                         >
                           Applica

@@ -152,9 +152,9 @@ export default function ProposalsPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { label: "In sospeso", icon: Clock, className: "bg-warning/10 text-warning dark:bg-yellow-900 dark:text-yellow-200" },
+      pending: { label: "In sospeso", icon: Clock, className: "bg-warning/10 text-warning" },
       accepted: { label: "Accettata", icon: Check, className: "bg-success/10 text-success" },
-      rejected: { label: "Rigettata", icon: X, className: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-200" },
+      rejected: { label: "Rigettata", icon: X, className: "bg-destructive/10 text-destructive" },
       partially_accepted: { label: "Parzialmente accettata", icon: AlertCircle, className: "bg-primary/10 text-primary" },
     };
 

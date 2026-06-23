@@ -386,7 +386,7 @@ function ResourceSkillAssessmentsEditor({ resourceId }: { resourceId: string }) 
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Brain className="h-4 w-4 text-purple-500" />
+          <Brain className="h-4 w-4 text-agent" />
           <span className="text-sm font-medium">Skill Assessment (Catalogo)</span>
         </div>
         <div className="flex items-center gap-2">

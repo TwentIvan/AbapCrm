@@ -64,7 +64,7 @@ const statusColors = {
   modifiable: "bg-primary/10 text-primary",
   released: "bg-success/10 text-success",
   imported: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100",
-  error: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-100",
+  error: "bg-destructive/10 text-destructive",
 };
 
 const statusLabels = {

@@ -48,7 +48,7 @@ function providerColor(slug: string): string {
     case "anthropic": return "bg-warning/10 text-warning";
     case "google": return "bg-primary/10 text-primary";
     case "deepseek": return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-    default: return "bg-muted text-foreground dark:bg-card dark:text-gray-200";
+    default: return "bg-muted text-foreground dark:bg-card";
   }
 }
 

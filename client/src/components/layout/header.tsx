@@ -241,7 +241,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 <div className="relative">
                   <Sparkles className="flex-shrink-0" style={{ width: '2rem', height: '2rem', color: '#6b7280' }} />
                   {(pendingProposals?.count ?? 0) > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 bg-agent text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                       {(pendingProposals?.count ?? 0) > 9 ? '9+' : pendingProposals?.count}
                     </span>
                   )}

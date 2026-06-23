@@ -110,7 +110,7 @@ export default function PurchaseOrdersPage() {
     approved: "bg-primary/10 text-primary",
     sent: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
     received: "bg-success/10 text-success dark:text-success",
-    cancelled: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-300"
+    cancelled: "bg-destructive/10 text-destructive"
   };
 
   const statusLabels = {

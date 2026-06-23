@@ -60,6 +60,10 @@ export default {
           DEFAULT: "hsl(var(--info) / <alpha-value>)",
           foreground: "hsl(var(--info-foreground) / <alpha-value>)",
         },
+        agent: {
+          DEFAULT: "hsl(var(--agent) / <alpha-value>)",
+          foreground: "hsl(var(--agent-foreground) / <alpha-value>)",
+        },
         chart: {
           "1": "hsl(var(--chart-1) / <alpha-value>)",
           "2": "hsl(var(--chart-2) / <alpha-value>)",

@@ -106,7 +106,7 @@ export default function VendorInvoicesPage() {
     received: "bg-primary/10 text-primary",
     approved: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
     paid: "bg-success/10 text-success dark:text-success",
-    cancelled: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-300"
+    cancelled: "bg-destructive/10 text-destructive"
   };
 
   const statusLabels = {
