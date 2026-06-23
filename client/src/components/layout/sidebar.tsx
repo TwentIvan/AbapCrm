@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch, LayoutDashboard, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import htuLogo from "@assets/HTU-logo-512_(1)_1782240207188.png";
-import { Wordmark } from "@/components/brand/Wordmark";
 
 // Anagrafiche direct items
 const getDefaultAnagraficheDirectItems = (t: any) => [
@@ -259,9 +258,13 @@ export default function Sidebar() {
     <aside className="w-80 bg-card flex flex-col">
       {/* Logo Box - Same total height as both headers combined: py-2 + py-4 = py-6 */}
       <div className="px-6 py-6">
-        <div className="flex items-center justify-center gap-3 py-2" data-testid="img-app-logo">
-          <img src={htuLogo} alt="HTU Logo" className="h-11 w-11 object-contain flex-shrink-0" />
-          <Wordmark height={38} />
+        <div className="flex justify-center items-center">
+          <img
+            src={htuLogo}
+            alt="HTU Logo"
+            className="w-60 h-40 object-contain"
+            data-testid="img-app-logo"
+          />
         </div>
       </div>
 
