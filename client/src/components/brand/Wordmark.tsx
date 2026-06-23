@@ -11,12 +11,12 @@ export function Wordmark({ height = 40, className }: WordmarkProps) {
       height={height}
       width={Math.round(height * (300 / 72))}
       role="img"
-      aria-label="the HUB UP"
+      aria-label="The HUB UP"
       className={className}
       style={{ display: "block", color: "hsl(var(--brand, 213 100% 47%))" }}
     >
       <text x="2" y="56" fontFamily="Inter, system-ui, sans-serif" fontWeight={800} fontSize={48} letterSpacing="0.5">
-        <tspan fontSize={23} fontWeight={400} style={{ fill: "hsl(var(--muted-foreground, 220 9% 46%))" }}>the </tspan>
+        <tspan fontSize={23} fontWeight={400} style={{ fill: "hsl(var(--muted-foreground, 220 9% 46%))" }}>The </tspan>
         <tspan fill="currentColor">HUB</tspan>
         <tspan
           stroke="currentColor"
