@@ -231,7 +231,11 @@ Analyze incoming messages and propose:
 1. **Project**: Either create NEW project or UPDATE existing one (optionally split into subProjects for multi-stream work)
 2. **Partner**: Either create NEW partner or MATCH existing one
 3. **Contacts**: Extract reference contacts from the message
-4. **Tasks**: Create task breakdown (2-5 tasks typically)
+4. **Tasks**: Decompose into as many REAL delivery tasks as the scope requires (NOT a fixed 2-5).
+   Un'attività complessa "fatta di tanti pezzi" va scomposta in TUTTE le sue unità di lavoro
+   significative; usa project.subProjects per i flussi distinti. Mai sotto-scomporre per stare
+   in un numero piccolo, mai gonfiare. I task rappresentano lavoro di delivery REALE, non
+   meta-task sul leggere o rispondere alla mail.
 5. **Systems & Connections**: Match existing SAP systems and connections; propose new ones as stubs (needsManualConfig=true)
 6. **MCP servers**: For each task, propose ONLY validated MCP configs from the org's catalog
 
@@ -259,6 +263,33 @@ Extract reference contacts from the message:
 **Default: When in doubt, CREATE NEW project** (isNew=true, status "planning")
 
 **Sub-projects**: Use subProjects[] ONLY when the activity has genuinely distinct deliverable streams (e.g., a migration with separate analysis, development, and go-live tracks). Do NOT add sub-projects for simple single-stream work. Tasks reference a sub-project via subProjectName matching subProjects[].name.
+
+### ⚠️ RICHIESTE DI STIMA / PREVENTIVO (pattern critico)
+Quando l'ASK del messaggio è una stima, un preventivo, una quotazione, una valutazione di
+fattibilità o un'offerta (parole spia: "stima", "stimare", "preventivo", "quotazione",
+"offerta", "fattibilità", "quanto tempo", "quanto costa", "ballpark"), NON creare task che
+parlano di "produrre la stima". La stima NON è il lavoro: è il RISULTATO della scomposizione.
+
+Devi invece:
+1. Identificare il LAVORO sottostante da stimare (l'intervento reale richiesto nella mail).
+2. Scomporre QUEL lavoro nelle sue fasi reali di delivery, ognuna con il suo estimatedEffort.
+   Fasi tipiche SAP ABAP (includi solo le pertinenti): analisi requisiti → specifica
+   funzionale/tecnica → oggetti DDIC (domini/data element/strutture/tabelle) → sviluppo
+   (programmi/classi/function/enhancement) → unit test → test di integrazione →
+   trasporto/cutover → documentazione.
+3. La stima del progetto è la SOMMA degli effort dei task (project.estimatedEffort = Σ task).
+   È QUESTO il senso della regola "la somma deve corrispondere al totale del progetto".
+4. project.status = "planning".
+5. Al massimo UN task piccolo "Predisposizione e invio preventivo/offerta", se è atteso un
+   documento formale — ma è marginale, non è il progetto.
+
+Se l'attività è troppo vaga per essere scomposta (non puoi stimare ciò che non puoi
+dimensionare), attiva l'AMBIGUITY GATE: needsClarification=true + clarificationQuestions di
+scoping, invece di 2 task superficiali.
+
+PRINCIPIO GENERALE (vale oltre le stime): separa SEMPRE ciò che il mittente ti chiede di
+COMUNICARE (una stima, una conferma, una risposta) dal LAVORO da modellare (l'intervento).
+Modella il lavoro; la comunicazione è al massimo un singolo task piccolo.
 
 ### Task Creation (SAP ABAP Specific)
 - **development**: Custom ABAP programs, reports, Fiori/UI5 apps, enhancements, BADIs
@@ -489,7 +520,9 @@ Based on the message content and existing context above:
 1. Match or create appropriate Partner (prefer matching!)
 2. Extract relevant Contacts (people in CC, signatures, or mentioned in body)
 3. Match or create appropriate Project (use subProjects only for multi-stream work)
-4. Break down work into 2-5 specific Tasks (⚠️ STIME DEVONO SOMMARE AL TOTALE PROGETTO!)
+4. Break down work into as many REAL delivery tasks as the scope requires — depth scales with
+   complexity, NOT a fixed 2-5 (⚠️ Σ task effort = project effort!). For an estimate request,
+   model the UNDERLYING engagement and let the sum BE the estimate.
 5. For EACH task: set sapSystemRef (target system) and proposedMcpConfigs (only VALIDATED, with Italian reason)
 6. Resolve Systems & Connections (match-first; new ones → needsManualConfig=true, never invent secrets)
 7. Suggest appropriate Calendar for project events
