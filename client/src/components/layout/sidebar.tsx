@@ -5,8 +5,7 @@ import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch, LayoutDashboard, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
-import newLogo from "@assets/ChatGPT Image 18 ott 2025, 19_07_46_1760807285076.png";
-import ImageContainer from "@/components/ui/image-container";
+import { Wordmark } from "@/components/ui/wordmark";
 
 // Anagrafiche direct items
 const getDefaultAnagraficheDirectItems = (t: any) => [
@@ -259,13 +258,8 @@ export default function Sidebar() {
     <aside className="w-80 bg-card flex flex-col">
       {/* Logo Box - Same total height as both headers combined: py-2 + py-4 = py-6 */}
       <div className="px-6 py-6">
-        <div className="flex justify-center items-center">
-          <img
-            src={newLogo}
-            alt="App Logo"
-            className="w-48 h-32 object-contain"
-            data-testid="img-app-logo"
-          />
+        <div className="flex justify-center items-center py-2">
+          <Wordmark height={38} data-testid="img-app-logo" />
         </div>
       </div>
 

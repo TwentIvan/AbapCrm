@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, Users, Calendar, TrendingUp, Shield, Zap, Mail, CheckCircle } from "lucide-react";
+import { Wordmark } from "@/components/ui/wordmark";
 import { SiGoogle } from "react-icons/si";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -128,16 +129,14 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       <div className="container flex items-center justify-center min-h-screen px-4 py-8">
         <div className="w-full max-w-6xl">
           <div className="grid lg:grid-cols-2 gap-8 items-center">
             {/* Hero Section */}
             <div className="hidden lg:block space-y-8">
               <div className="space-y-4">
-                <h1 className="text-4xl font-bold text-foreground dark:text-white">
-                  CRM SAP Freelancer
-                </h1>
+                <Wordmark height={46} />
                 <p className="text-xl text-muted-foreground">
                   Il hub completo per la gestione della tua attività di freelancer SAP ABAP
                 </p>

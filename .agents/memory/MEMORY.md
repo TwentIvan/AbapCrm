@@ -3,3 +3,5 @@
 - [Import graph rule](import-graph.md) — tokens.ts←context-assembler.ts and cost-estimator.ts (no cycle); countTokens extracted to break the cycle.
 - [Connection Workflows pattern](connection-workflows.md) — forward-ref in tasks→connectionWorkflows works with arrow fn; form.watch() must go AFTER useForm(); Header requires title+subtitle props.
 - [AI agent Phase 6 pattern](ai-agent-phase6.md) — backticks inside TS template literal system prompts must be written without backtick (or escaped); vpnConnections.partnerId is NOT NULL so stub VPN creation requires a resolved partner.
+- [CSS token format](css-token-format.md) — tokens use channel format `h s% l%` (not `hsl()`), enabling `/10` opacity modifiers; tailwind uses `hsl(var(--token) / <alpha-value>)`
+- [Wordmark component](wordmark.md) — SVG brand at `client/src/components/ui/wordmark.tsx`; uses --brand/--card/--muted-foreground; placed in sidebar + auth hero
