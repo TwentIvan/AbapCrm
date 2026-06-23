@@ -290,6 +290,54 @@ export default function ProposalsPage() {
                           <Badge variant="outline">{task.taskType}</Badge>
                           {task.estimatedEffort && <Badge variant="outline">{task.estimatedEffort}h</Badge>}
                         </div>
+                        {task.aiSpec && (
+                          <div className="mt-2 space-y-1 text-xs">
+                            {task.aiSpec.objective && (
+                              <div>
+                                <span className="text-muted-foreground">Obiettivo:</span> {task.aiSpec.objective}
+                              </div>
+                            )}
+                            {task.aiSpec.complexity && (
+                              <Badge variant="outline">Complessità {task.aiSpec.complexity}</Badge>
+                            )}
+                            {task.aiSpec.proposedMcpConfigs?.length > 0 ? (
+                              <div>
+                                <span className="text-muted-foreground">Server MCP proposti:</span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {task.aiSpec.proposedMcpConfigs.map((m: any, i: number) => (
+                                    <Badge key={i} variant="secondary" title={m.reason}>
+                                      {m.name}
+                                      {m.category ? ` · ${m.category}` : ""}
+                                      {m.write ? " · write" : " · read"}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : task.aiSpec.requiredMcpCategories?.length > 0 ? (
+                              <div>
+                                <span className="text-muted-foreground">Categorie MCP:</span>{" "}
+                                {task.aiSpec.requiredMcpCategories.join(", ")}
+                              </div>
+                            ) : (
+                              <div className="text-muted-foreground italic">Nessun server MCP proposto</div>
+                            )}
+                            {task.aiSpec.acceptanceCriteria?.length > 0 && (
+                              <div>
+                                <span className="text-muted-foreground">Criteri di accettazione:</span>
+                                <ul className="list-disc ml-4">
+                                  {task.aiSpec.acceptanceCriteria.map((c: string, i: number) => (
+                                    <li key={i}>{c}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {task.aiSpec.openQuestions?.length > 0 && (
+                              <div className="text-amber-600">
+                                Domande aperte: {task.aiSpec.openQuestions.join(" · ")}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       {task.isNew ? (
                         <Badge variant="secondary" className="ml-2">Nuovo</Badge>
@@ -297,6 +345,80 @@ export default function ProposalsPage() {
                         <Badge variant="secondary" className="ml-2">Esistente</Badge>
                       )}
                     </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Chiarimenti richiesti */}
+        {proposalData.needsClarification && proposalData.clarificationQuestions?.length > 0 && (
+          <Card className="border-amber-400 bg-amber-50 dark:bg-amber-950/30">
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <Sparkles className="w-4 h-4" />
+                Chiarimenti necessari
+              </CardTitle>
+              <CardDescription>
+                L'AI non ha abbastanza informazioni per scomporre il lavoro. Rispondere a queste domande prima di applicare la proposta.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc ml-4 space-y-1 text-sm">
+                {proposalData.clarificationQuestions.map((q: string, i: number) => (
+                  <li key={i} className="text-amber-800 dark:text-amber-300">{q}</li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Sistemi SAP */}
+        {proposalData.systems && proposalData.systems.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Sistemi SAP ({proposalData.systems.length})</CardTitle>
+              <CardDescription>Sistemi coinvolti nella proposta</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {proposalData.systems.map((sys: any, i: number) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    {sys.needsManualConfig ? (
+                      <Badge variant="outline" className="text-amber-600 border-amber-400">Nuovo</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-green-600 border-green-400">Esistente</Badge>
+                    )}
+                    <span className="font-medium">{sys.name || sys.systemId}</span>
+                    {sys.type && <span className="text-muted-foreground">· {sys.type}</span>}
+                    {sys.environment && <span className="text-muted-foreground">· {sys.environment}</span>}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Connessioni */}
+        {proposalData.connections && proposalData.connections.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Connessioni ({proposalData.connections.length})</CardTitle>
+              <CardDescription>Connessioni tecniche richieste per i task</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {proposalData.connections.map((conn: any, i: number) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    {conn.needsManualConfig ? (
+                      <Badge variant="outline" className="text-amber-600 border-amber-400">Da configurare</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-green-600 border-green-400">Configurata</Badge>
+                    )}
+                    <span className="font-medium">{conn.name || conn.connectionId}</span>
+                    {conn.type && <span className="text-muted-foreground">· {conn.type}</span>}
+                    {conn.reason && <span className="text-muted-foreground italic">— {conn.reason}</span>}
                   </div>
                 ))}
               </div>
