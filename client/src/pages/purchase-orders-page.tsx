@@ -199,13 +199,20 @@ export default function PurchaseOrdersPage() {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header 
+      <main className="flex-1 overflow-auto">
+        <Header
           title="Ordini d'Acquisto"
           subtitle="Gestisci gli ordini d'acquisto e il procurement"
           onNewClick={handleAdd}
         />
-        <main className="p-6 space-y-6">
+        <div
+          className="p-6 rounded-t-lg min-h-full"
+          style={{
+            borderTop: '2px solid rgba(30, 64, 175, 0.3)',
+            borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
+            borderRight: '2px solid rgba(30, 64, 175, 0.3)'
+          }}
+        >
           <ListViewToolbar
             currentLayoutName={currentLayoutName}
             savedLayouts={savedLayouts}
@@ -315,8 +322,8 @@ export default function PurchaseOrdersPage() {
             }}
             onCancel={() => setShowConfigDialog(false)}
           />
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

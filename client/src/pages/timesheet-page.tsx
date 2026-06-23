@@ -367,7 +367,14 @@ export default function TimesheetPage() {
           onNewClick={() => {}}
         />
         
-        <div className="p-6 space-y-6">
+        <div
+          className="p-6 rounded-t-lg min-h-full"
+          style={{
+            borderTop: '2px solid rgba(30, 64, 175, 0.3)',
+            borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
+            borderRight: '2px solid rgba(30, 64, 175, 0.3)'
+          }}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold">Time Tracking Overview</h2>

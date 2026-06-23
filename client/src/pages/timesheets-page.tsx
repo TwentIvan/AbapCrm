@@ -442,7 +442,14 @@ export default function TimesheetsPage() {
             subtitle="Gestisci i tuoi timesheet salvati"
             onNewClick={() => {}}
           />
-          <div className="p-6 space-y-4">
+          <div
+            className="p-6 rounded-t-lg min-h-full"
+            style={{
+              borderTop: '2px solid rgba(30, 64, 175, 0.3)',
+              borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
+              borderRight: '2px solid rgba(30, 64, 175, 0.3)'
+            }}
+          >
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-16 w-full" />
             ))}
@@ -461,7 +468,14 @@ export default function TimesheetsPage() {
           subtitle="Gestisci i tuoi timesheet salvati"
         />
         
-        <div className="p-6 space-y-6">
+        <div
+          className="p-6 rounded-t-lg min-h-full"
+          style={{
+            borderTop: '2px solid rgba(30, 64, 175, 0.3)',
+            borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
+            borderRight: '2px solid rgba(30, 64, 175, 0.3)'
+          }}
+        >
           <ListViewToolbar
             currentLayoutName={currentLayoutName}
             savedLayouts={savedLayouts}
