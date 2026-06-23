@@ -9,7 +9,7 @@
   --card-foreground: 220 15% 20%;
   --popover: 0 0% 100%;
   --popover-foreground: 220 15% 20%;
-  --primary: 221.2 83.2% 53.3%;
+  --primary: 213 100% 47%;
   --primary-foreground: 210 40% 98%;
   --secondary: 210 40% 96%;
   --secondary-foreground: 222.2 84% 4.9%;
@@ -21,7 +21,7 @@
   --destructive-foreground: 0 0% 100%;
   --border: 220 15% 88%;
   --input: 220 15% 88%;
-  --ring: 220 100% 47%;
+  --ring: 213 100% 47%;
   /* Semantic tokens */
   --brand: 213 100% 47%;
   --brand-foreground: 0 0% 100%;
@@ -34,7 +34,7 @@
   --agent: 270 60% 50%;
   --agent-foreground: 0 0% 100%;
   /* Charts */
-  --chart-1: 220 100% 47%;
+  --chart-1: 213 100% 47%;
   --chart-2: 151 63% 32%;
   --chart-3: 32 100% 47%;
   --chart-4: 202 67% 71%;
@@ -42,12 +42,12 @@
   /* Sidebar */
   --sidebar: 220 15% 95%;
   --sidebar-foreground: 220 15% 20%;
-  --sidebar-primary: 220 100% 47%;
+  --sidebar-primary: 213 100% 47%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 220 80% 95%;
+  --sidebar-accent: 213 80% 95%;
   --sidebar-accent-foreground: 220 15% 20%;
   --sidebar-border: 220 15% 88%;
-  --sidebar-ring: 220 100% 47%;
+  --sidebar-ring: 213 100% 47%;
   /* Typography */
   --font-sans: 'Roboto', sans-serif;
   --font-serif: 'Roboto', sans-serif;
