@@ -189,7 +189,7 @@ function CustomServerWizard({ open, onClose, projects, sapSystems }: {
               <Input value={endpoint} onChange={e => setEndpoint(e.target.value)} placeholder="http://localhost:9090/mcp" data-testid="wizard-endpoint" onKeyDown={e => e.key === "Enter" && handleValidate()} />
               <p className="text-xs text-muted-foreground">Il server deve esporre un endpoint Streamable HTTP o SSE compatibile con MCP.</p>
             </div>
-            <div className="bg-warning/10 border border-warning/30 rounded p-3 text-xs text-warning">
+            <div className="bg-warning/10 border border-warning/30 dark:border-amber-800 rounded p-3 text-xs text-warning">
               <AlertCircle className="h-3.5 w-3.5 inline mr-1" />
               I server custom nascono <strong>non validati</strong>. L'admin dovrà validarli dalla MCP Library prima che siano usabili dall'executor AI.
             </div>

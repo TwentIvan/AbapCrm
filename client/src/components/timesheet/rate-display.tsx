@@ -209,7 +209,7 @@ export function RateDisplay({
 
         {/* Minimum Hours Warning */}
         {resolvedRate.minimumHours && timeLoggedHours < parseFloat(resolvedRate.minimumHours) && (
-          <div className="bg-warning/10 border border-warning/30 rounded-md p-2">
+          <div className="bg-warning/10 border border-warning/30 dark:border-yellow-800 rounded-md p-2">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-3 w-3 text-warning" />
               <span className="text-xs text-warning">
