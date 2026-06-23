@@ -25,6 +25,7 @@ import { useOrganization } from "@/contexts/organization-context";
 import { useTranslation, Language } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 import htuLogo from "@assets/HTU-logo-512_(1)_1782240207188.png";
 
 interface HeaderProps {
