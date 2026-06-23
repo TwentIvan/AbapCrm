@@ -241,8 +241,8 @@ function StepRow({
             <Select value={step.actor} onValueChange={v => onChange({ ...step, actor: v as "auto" | "human" })}>
               <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="auto">🤖 Auto</SelectItem>
-                <SelectItem value="human">👤 Human</SelectItem>
+                <SelectItem value="auto"><Bot className="h-4 w-4 inline mr-1" />Auto</SelectItem>
+                <SelectItem value="human"><User className="h-4 w-4 inline mr-1" />Human</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
-import { Brain, TrendingUp, Cpu, FolderOpen, Loader2 } from "lucide-react";
+import { Brain, TrendingUp, Cpu, FolderOpen, Loader2, Star } from "lucide-react";
 
 interface ModelRow {
   modelKey: string;
@@ -130,7 +130,7 @@ export default function AiAnalyticsPage() {
                             <TableCell className="text-right">{row.executions}</TableCell>
                             <TableCell className="text-right">
                               {row.avgRating != null ? (
-                                <Badge variant="outline">{row.avgRating.toFixed(1)} ⭐</Badge>
+                                <Badge variant="outline">{row.avgRating.toFixed(1)} <Star className="h-4 w-4 inline ml-1" /></Badge>
                               ) : (
                                 <span className="text-muted-foreground">—</span>
                               )}

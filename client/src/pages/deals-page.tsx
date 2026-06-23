@@ -413,7 +413,7 @@ export default function DealsPage() {
                   <h3 className="text-lg font-semibold text-foreground mb-4">Active Deals</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {activeDeals.map((deal) => (
-                      <Card key={deal.id} className="hover:shadow-lg transition-shadow" data-testid={`card-deal-${deal.id}`}>
+                      <Card key={deal.id} className="transition-shadow" data-testid={`card-deal-${deal.id}`}>
                         <CardHeader>
                           <div className="flex items-start justify-between">
                             <div>

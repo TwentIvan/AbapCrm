@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
-import { Check, X, Clock, AlertCircle, Eye, Sparkles, Mail, Loader2, RefreshCw, Brain, TrendingUp, Trash2 } from "lucide-react";
+import { Check, X, Clock, AlertCircle, Eye, Sparkles, Mail, Loader2, RefreshCw, Brain, TrendingUp, Trash2, Link2 } from "lucide-react";
 import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -200,7 +200,7 @@ export default function ProposalsPage() {
             <CardHeader>
               <CardTitle className="text-sm">Partner</CardTitle>
               <CardDescription>
-                {proposalData.partner.isNew ? "🆕 Nuovo partner da creare" : "🔗 Partner esistente"}
+                {proposalData.partner.isNew ? <><Link2 className="h-4 w-4 inline mr-1" />Nuovo partner da creare</> : <><Link2 className="h-4 w-4 inline mr-1" />Partner esistente</>}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -260,7 +260,7 @@ export default function ProposalsPage() {
             <CardHeader>
               <CardTitle className="text-sm">Progetto</CardTitle>
               <CardDescription>
-                {proposalData.project.isNew ? "🆕 Nuovo progetto da creare" : "🔗 Progetto esistente"}
+                {proposalData.project.isNew ? <><Link2 className="h-4 w-4 inline mr-1" />Nuovo progetto da creare</> : <><Link2 className="h-4 w-4 inline mr-1" />Progetto esistente</>}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">

@@ -51,7 +51,17 @@ import {
   GitBranch,
   Clipboard,
   ExternalLink,
-  Smartphone
+  Smartphone,
+  Pencil,
+  Tag,
+  CheckCircle2,
+  Paperclip,
+  Link2,
+  Phone,
+  Lightbulb,
+  Target,
+  Bug,
+  Video
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { BarChart3, TrendingUp, Database, Image, Inbox } from "lucide-react";
@@ -1052,7 +1062,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="all" 
                           data-testid="tab-all"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-slate-400 dark:hover:border-slate-500 transition-all data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:border-slate-600 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-slate-400 dark:hover:border-slate-500 transition-all data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:border-slate-600"
                         >
                           <Inbox className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-slate-600 text-white rounded px-1 mt-0.5">
@@ -1076,7 +1086,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="email" 
                           data-testid="tab-email"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-primary/30 dark:hover:border-blue-600 transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:border-primary/50 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-primary/30 dark:hover:border-blue-600 transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:border-primary/50"
                         >
                           <Mail className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-primary text-white rounded px-1 mt-0.5">
@@ -1100,7 +1110,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="chat" 
                           data-testid="tab-chat"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-success/30 dark:hover:border-green-600 transition-all data-[state=active]:bg-success data-[state=active]:text-white data-[state=active]:border-success/30 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-success/30 dark:hover:border-green-600 transition-all data-[state=active]:bg-success data-[state=active]:text-white data-[state=active]:border-success/30"
                         >
                           <MessageSquare className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-success text-white rounded px-1 mt-0.5">
@@ -1124,7 +1134,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="sms" 
                           data-testid="tab-sms"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-warning/30 dark:hover:border-yellow-500 transition-all data-[state=active]:bg-yellow-500 data-[state=active]:text-white data-[state=active]:border-yellow-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-warning/30 dark:hover:border-yellow-500 transition-all data-[state=active]:bg-yellow-500 data-[state=active]:text-white data-[state=active]:border-yellow-500"
                         >
                           <Smartphone className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-yellow-500 text-white rounded px-1 mt-0.5">
@@ -1148,7 +1158,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="devops" 
                           data-testid="tab-devops"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-warning/30 dark:hover:border-orange-600 transition-all data-[state=active]:bg-warning data-[state=active]:text-white data-[state=active]:border-warning/50 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-warning/30 dark:hover:border-orange-600 transition-all data-[state=active]:bg-warning data-[state=active]:text-white data-[state=active]:border-warning/50"
                         >
                           <GitBranch className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-warning text-white rounded px-1 mt-0.5">
@@ -1172,7 +1182,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="calendar" 
                           data-testid="tab-calendar"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:border-purple-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:border-purple-500"
                         >
                           <Calendar className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-purple-500 text-white rounded px-1 mt-0.5">
@@ -1196,7 +1206,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="other" 
                           data-testid="tab-other"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-500 transition-all data-[state=active]:bg-muted-foreground data-[state=active]:text-white data-[state=active]:border-gray-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-500 transition-all data-[state=active]:bg-muted-foreground data-[state=active]:text-white data-[state=active]:border-gray-500"
                         >
                           <FileText className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-muted-foreground text-white rounded px-1 mt-0.5">
@@ -1919,7 +1929,7 @@ export default function MessagesPage() {
                               <Collapsible defaultOpen>
                                 <CollapsibleTrigger asChild>
                                   <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
-                                    <span className="text-muted-foreground text-sm">📝 Descrizione</span>
+                                    <span className="text-muted-foreground text-sm"><Pencil className="h-4 w-4 inline mr-1" />Descrizione</span>
                                     <ChevronDown className="h-4 w-4" />
                                   </Button>
                                 </CollapsibleTrigger>
@@ -1941,7 +1951,7 @@ export default function MessagesPage() {
                             {(externalMeta.ticketCode || externalMeta.wbsCode || externalMeta.ticketType || (externalMeta.customFields && Object.keys(externalMeta.customFields).length > 0)) && (
                               <div className="bg-warning/10 border border-warning/30 rounded-lg p-3">
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-warning font-medium text-sm">🏷️ Altri dati</span>
+                                  <span className="text-warning font-medium text-sm"><Tag className="h-4 w-4 inline mr-1" />Altri dati</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                   {externalMeta.ticketCode && (
@@ -1994,7 +2004,7 @@ export default function MessagesPage() {
                               <Collapsible>
                                 <CollapsibleTrigger asChild>
                                   <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
-                                    <span className="text-muted-foreground text-sm">✅ Criteri di Accettazione</span>
+                                    <span className="text-muted-foreground text-sm"><CheckCircle2 className="h-4 w-4 inline mr-1" />Criteri di Accettazione</span>
                                     <ChevronDown className="h-4 w-4" />
                                   </Button>
                                 </CollapsibleTrigger>
@@ -2017,7 +2027,7 @@ export default function MessagesPage() {
                               <Collapsible>
                                 <CollapsibleTrigger asChild>
                                   <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
-                                    <span className="text-muted-foreground text-sm">🐛 Passi per Riprodurre</span>
+                                    <span className="text-muted-foreground text-sm"><Bug className="h-4 w-4 inline mr-1" />Passi per Riprodurre</span>
                                     <ChevronDown className="h-4 w-4" />
                                   </Button>
                                 </CollapsibleTrigger>
@@ -2041,7 +2051,7 @@ export default function MessagesPage() {
                                 <CollapsibleTrigger asChild>
                                   <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
                                     <span className="text-muted-foreground text-sm">
-                                      💬 Commenti ({externalMeta.workItemComments.length})
+                                      <MessageSquare className="h-4 w-4 inline mr-1" />Commenti ({externalMeta.workItemComments.length})
                                     </span>
                                     <ChevronDown className="h-4 w-4" />
                                   </Button>
@@ -2082,7 +2092,7 @@ export default function MessagesPage() {
                                 <CollapsibleTrigger asChild>
                                   <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
                                     <span className="text-muted-foreground text-sm">
-                                      📎 Allegati ({externalMeta.workItemAttachments.length})
+                                      <Paperclip className="h-4 w-4 inline mr-1" />Allegati ({externalMeta.workItemAttachments.length})
                                     </span>
                                     <ChevronDown className="h-4 w-4" />
                                   </Button>
@@ -2112,7 +2122,7 @@ export default function MessagesPage() {
                                 <CollapsibleTrigger asChild>
                                   <Button variant="ghost" size="sm" className="w-full justify-between text-left h-auto py-1">
                                     <span className="text-muted-foreground text-sm">
-                                      🔗 Collegamenti ({externalMeta.workItemLinkedItems.length})
+                                      <Link2 className="h-4 w-4 inline mr-1" />Collegamenti ({externalMeta.workItemLinkedItems.length})
                                     </span>
                                     <ChevronDown className="h-4 w-4" />
                                   </Button>
@@ -2245,7 +2255,7 @@ export default function MessagesPage() {
                         {externalMeta.calendarType === 'teams' && (
                           <div className="bg-background dark:bg-card rounded-lg p-3 border space-y-2">
                             <div className="text-sm font-medium text-purple-700 dark:text-purple-400">
-                              📞 Dettagli Microsoft Teams
+                              <Phone className="h-4 w-4 inline mr-1" />Dettagli Microsoft Teams
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-sm">
                               {externalMeta.teamsMeetingId && (
@@ -2280,7 +2290,7 @@ export default function MessagesPage() {
                         {externalMeta.calendarType === 'zoom' && (
                           <div className="bg-background dark:bg-card rounded-lg p-3 border space-y-2">
                             <div className="text-sm font-medium text-primary">
-                              📹 Dettagli Zoom
+                              <Video className="h-4 w-4 inline mr-1" />Dettagli Zoom
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-sm">
                               {externalMeta.zoomMeetingId && (
@@ -2463,7 +2473,7 @@ export default function MessagesPage() {
                     {isTrainingMode && (
                       <>
                         <div className="mt-3 text-xs text-muted-foreground">
-                          💡 Seleziona il testo nell'email per classificarlo. Verde = contenuto da mantenere, Rosso = header da rimuovere, Giallo = thread da compattare.
+                          <Lightbulb className="h-4 w-4 inline mr-1" />Seleziona il testo nell'email per classificarlo. Verde = contenuto da mantenere, Rosso = header da rimuovere, Giallo = thread da compattare.
                         </div>
                         
                         {/* Current selections panel */}
@@ -2571,7 +2581,7 @@ export default function MessagesPage() {
                     {isTrainingMode ? (
                       <div className="space-y-4">
                         <div className="text-sm text-primary bg-primary/5 border border-primary/20 rounded p-3 mb-4">
-                          🎯 <strong>Modalità Training</strong> - Stai visualizzando l'HTML originale completo del messaggio. Seleziona il testo per addestrare l'algoritmo.
+                          <Target className="h-4 w-4 inline mr-1" /><strong>Modalità Training</strong> - Stai visualizzando l'HTML originale completo del messaggio. Seleziona il testo per addestrare l'algoritmo.
                         </div>
                         <div 
                           className="training-selection-area select-text cursor-pointer border border-dashed border-primary/30 rounded" 
@@ -3107,7 +3117,7 @@ export default function MessagesPage() {
   {/* Floating Action Button for new message */}
   <Button
     onClick={() => setShowNewMessageDialog(true)}
-    className="fixed bottom-8 right-8 h-16 w-16 rounded-full shadow-lg z-50"
+    className="fixed bottom-8 right-8 h-16 w-16 rounded-full shadow-md z-50"
     size="icon"
     data-testid="button-add-message"
   >
