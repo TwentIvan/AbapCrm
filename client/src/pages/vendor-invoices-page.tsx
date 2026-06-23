@@ -102,11 +102,11 @@ export default function VendorInvoicesPage() {
   };
 
   const statusColors = {
-    draft: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
-    received: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+    draft: "bg-muted text-foreground dark:bg-card",
+    received: "bg-primary/10 text-primary",
     approved: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-    paid: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-    cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+    paid: "bg-success/10 text-success dark:text-success",
+    cancelled: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-300"
   };
 
   const statusLabels = {
@@ -153,7 +153,7 @@ export default function VendorInvoicesPage() {
           <div className="text-sm">
             <div>Fattura: {invoiceDate}</div>
             <div className="text-muted-foreground">Scadenza: {dueDate}</div>
-            {invoice.paidDate && <div className="text-green-600 dark:text-green-400">Pagata: {paidDate}</div>}
+            {invoice.paidDate && <div className="text-success dark:text-success">Pagata: {paidDate}</div>}
           </div>
         );
       }

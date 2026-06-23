@@ -30,7 +30,7 @@ export function ThemeSelector() {
           >
             <div className="flex items-center">
               <div 
-                className="w-4 h-4 rounded-full mr-2 border border-gray-300"
+                className="w-4 h-4 rounded-full mr-2 border border-border"
                 style={{ backgroundColor: theme.primary }}
               />
               {theme.label}

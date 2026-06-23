@@ -17,10 +17,10 @@ import { VpnSystems } from "@shared/schema";
 import VpnSystemForm from "@/components/forms/vpn-system-form";
 
 const statusColors = {
-  active: "bg-green-100 text-green-800",
-  inactive: "bg-gray-100 text-gray-800",
-  error: "bg-red-100 text-red-800",
-  connecting: "bg-yellow-100 text-yellow-800",
+  active: "bg-success/10 text-success",
+  inactive: "bg-muted text-foreground",
+  error: "bg-destructive/10 text-destructive",
+  connecting: "bg-warning/10 text-warning",
 };
 
 const statusLabels = {
@@ -120,7 +120,7 @@ export default function VpnSystemsPage() {
       searchable: true,
       render: (item: VpnSystems) => (
         <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-blue-600" />
+          <Shield className="h-4 w-4 text-primary" />
           <span className="font-medium">{item.name}</span>
         </div>
       )
@@ -133,7 +133,7 @@ export default function VpnSystemsPage() {
       render: (item: VpnSystems) => (
         <div className="font-mono text-sm">
           {item.serverHost}
-          {item.serverPort && <span className="text-gray-500">:{item.serverPort}</span>}
+          {item.serverPort && <span className="text-muted-foreground">:{item.serverPort}</span>}
         </div>
       )
     },
@@ -156,9 +156,9 @@ export default function VpnSystemsPage() {
       render: (item: VpnSystems) => (
         <div className="flex items-center gap-2">
           {item.status === "active" ? (
-            <Wifi className="h-4 w-4 text-green-600" />
+            <Wifi className="h-4 w-4 text-success" />
           ) : (
-            <WifiOff className="h-4 w-4 text-gray-400" />
+            <WifiOff className="h-4 w-4 text-muted-foreground" />
           )}
           <Badge 
             variant="secondary" 
@@ -181,11 +181,11 @@ export default function VpnSystemsPage() {
             <div>
               <div className="font-medium">{(item as any).partner.name}</div>
               {(item as any).partner.company && (
-                <div className="text-sm text-gray-500">{(item as any).partner.company}</div>
+                <div className="text-sm text-muted-foreground">{(item as any).partner.company}</div>
               )}
             </div>
           ) : (
-            <span className="text-gray-400">-</span>
+            <span className="text-muted-foreground">-</span>
           )}
         </div>
       )
@@ -209,11 +209,11 @@ export default function VpnSystemsPage() {
               )}
               <div>
                 <div className="font-medium">{(item as any).vpnSoftware.name}</div>
-                <div className="text-sm text-gray-500">{(item as any).vpnSoftware.vendor}</div>
+                <div className="text-sm text-muted-foreground">{(item as any).vpnSoftware.vendor}</div>
               </div>
             </div>
           ) : (
-            <span className="text-gray-400">-</span>
+            <span className="text-muted-foreground">-</span>
           )}
         </div>
       )
@@ -224,7 +224,7 @@ export default function VpnSystemsPage() {
       sortable: true,
       searchable: false,
       render: (item: VpnSystems) => (
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-muted-foreground">
           {item.lastConnected 
             ? new Date(item.lastConnected).toLocaleDateString('it-IT', {
                 year: 'numeric',

@@ -103,12 +103,12 @@ interface SelectionRecord {
 
 // ✅ MODULAR: Type metadata for consistent display
 const selectionTypeConfig = {
-  body: { label: 'Da mantenere (Body)', color: 'green', bgColor: 'bg-green-50', borderColor: 'border-green-200', textColor: 'text-green-600' },
-  header: { label: 'Da eliminare (Header)', color: 'red', bgColor: 'bg-red-50', borderColor: 'border-red-200', textColor: 'text-red-600' },
-  thread: { label: 'Da compattare (Thread)', color: 'yellow', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200', textColor: 'text-yellow-600' },
-  signatureBody: { label: 'Da conservare (Firma Body)', color: 'blue', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', textColor: 'text-blue-600' },
+  body: { label: 'Da mantenere (Body)', color: 'green', bgColor: 'bg-success/10', borderColor: 'border-success/30', textColor: 'text-success' },
+  header: { label: 'Da eliminare (Header)', color: 'red', bgColor: 'bg-destructive/10', borderColor: 'border-destructive/30', textColor: 'text-destructive' },
+  thread: { label: 'Da compattare (Thread)', color: 'yellow', bgColor: 'bg-warning/10', borderColor: 'border-warning/30', textColor: 'text-warning' },
+  signatureBody: { label: 'Da conservare (Firma Body)', color: 'blue', bgColor: 'bg-primary/5', borderColor: 'border-primary/20', textColor: 'text-primary' },
   signatureHeader: { label: 'Da eliminare (Firma Header)', color: 'purple', bgColor: 'bg-purple-50', borderColor: 'border-purple-200', textColor: 'text-purple-600' },
-  mailThread: { label: 'Da compattare (Mail Thread)', color: 'orange', bgColor: 'bg-orange-50', borderColor: 'border-orange-200', textColor: 'text-orange-600' }
+  mailThread: { label: 'Da compattare (Mail Thread)', color: 'orange', bgColor: 'bg-warning/5', borderColor: 'border-warning/20', textColor: 'text-warning' }
 } as const;
 
 // ✅ MODULAR: Helper to group selections by type
@@ -559,35 +559,35 @@ export default function MessagesPage() {
   const getTypeIcon = (type: string, sourceType?: string) => {
     // Check for DevOps
     if (sourceType === 'email_devops_workitem') {
-      return <GitBranch className="h-6 w-6 text-orange-500" />;
+      return <GitBranch className="h-6 w-6 text-warning" />;
     }
     // Check for Calendar
     if (sourceType === 'email_calendar_event') {
       return <Calendar className="h-6 w-6 text-purple-500" />;
     }
     switch (type) {
-      case 'email': return <Mail className="h-6 w-6 text-blue-500" />;
-      case 'chat': return <MessageSquare className="h-6 w-6 text-green-500" />;
-      case 'sms': return <Smartphone className="h-6 w-6 text-yellow-500" />;
-      case 'other': return <FileText className="h-6 w-6 text-gray-500" />;
+      case 'email': return <Mail className="h-6 w-6 text-primary" />;
+      case 'chat': return <MessageSquare className="h-6 w-6 text-success" />;
+      case 'sms': return <Smartphone className="h-6 w-6 text-warning" />;
+      case 'other': return <FileText className="h-6 w-6 text-muted-foreground" />;
       default: return <Inbox className="h-6 w-6 text-slate-600" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'unread': return 'bg-blue-500';
+      case 'unread': return 'bg-primary';
       case 'read': return 'bg-gray-500';
-      case 'processed': return 'bg-green-500';
+      case 'processed': return 'bg-success';
       case 'archived': return 'bg-yellow-500';
       default: return 'bg-gray-500';
     }
   };
 
   const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return 'text-green-600';
-    if (confidence >= 0.6) return 'text-yellow-600';
-    return 'text-red-600';
+    if (confidence >= 0.8) return 'text-success';
+    if (confidence >= 0.6) return 'text-warning';
+    return 'text-destructive';
   };
 
   const getFileType = (filename: string): { isImage: boolean; icon: string; type: string } => {
@@ -936,13 +936,13 @@ export default function MessagesPage() {
                             onClick={() => syncMutation.mutate()}
                             disabled={syncMutation.isPending}
                             variant="outline"
-                            className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-green-200 dark:border-green-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all"
+                            className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-success/30 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-success/30 dark:hover:border-success/30 hover:bg-success/10 dark:hover:bg-green-900/20 transition-all"
                             data-testid="button-sync-emails"
                           >
-                            <RefreshCw className={`h-6 w-6 text-green-600 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                            <RefreshCw className={`h-6 w-6 text-success ${syncMutation.isPending ? 'animate-spin' : ''}`} />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent side="bottom" className="bg-green-600 text-white">
+                        <TooltipContent side="bottom" className="bg-success text-white">
                           <p>Sincronizza Email</p>
                         </TooltipContent>
                       </Tooltip>
@@ -962,16 +962,16 @@ export default function MessagesPage() {
                             }}
                             disabled={analyzeProjectMutation.isPending || (!selectedMessage && selectedMessageIds.length === 0)}
                             variant="ghost"
-                            className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-blue-300/30 dark:border-blue-600/30 bg-sidebar-accent shadow-sm hover:shadow-md transition-all ${
+                            className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-primary/30/30/30 bg-sidebar-accent shadow-sm hover:shadow-md transition-all ${
                               (!selectedMessage && selectedMessageIds.length === 0) ? 'opacity-40' : 'opacity-100 hover:border-purple-400 dark:hover:border-purple-500'
                             }`}
                             data-testid="button-analyze-project"
                           >
                             <div className="relative flex flex-col items-end">
                               <div className="flex items-baseline space-x-0">
-                                <span className="text-lg font-black text-blue-600 dark:text-blue-400">T</span>
-                                <span className="text-2xl font-black text-blue-500 dark:text-blue-300">H</span>
-                                <span className="text-2xl font-black text-blue-600 dark:text-blue-400">U</span>
+                                <span className="text-lg font-black text-primary">T</span>
+                                <span className="text-2xl font-black text-primary">H</span>
+                                <span className="text-2xl font-black text-primary">U</span>
                               </div>
                               <span className="text-xs font-bold text-purple-500 dark:text-purple-400 -mt-1">AI</span>
                             </div>
@@ -999,12 +999,12 @@ export default function MessagesPage() {
                               <Button
                                 disabled={selectedMessageIds.length === 0}
                                 variant="outline"
-                                className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-red-200 dark:border-red-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-red-400 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all ${
+                                className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-destructive/30 dark:border-red-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-destructive/30 dark:hover:border-red-500 hover:bg-destructive/10 dark:hover:bg-red-900/20 transition-all ${
                                   selectedMessageIds.length === 0 ? 'opacity-40' : 'opacity-100'
                                 }`}
                                 data-testid="button-delete-selected"
                               >
-                                <Trash2 className="h-6 w-6 text-red-500" />
+                                <Trash2 className="h-6 w-6 text-destructive" />
                                 {selectedMessageIds.length > 0 && (
                                   <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1 shadow-md">
                                     {selectedMessageIds.length}
@@ -1044,7 +1044,7 @@ export default function MessagesPage() {
                     </div>
                     
                     {/* Filter Tabs Box */}
-                    <div className="flex gap-2 p-2 bg-blue-50/80 dark:bg-blue-900/20 rounded-lg">
+                    <div className="flex gap-2 p-2 bg-primary/5 rounded-lg">
                     
                     {/* All */}
                     <Tooltip>
@@ -1052,7 +1052,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="all" 
                           data-testid="tab-all"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-slate-400 dark:hover:border-slate-500 transition-all data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:border-slate-600 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-slate-400 dark:hover:border-slate-500 transition-all data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:border-slate-600 data-[state=active]:shadow-lg"
                         >
                           <Inbox className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-slate-600 text-white rounded px-1 mt-0.5">
@@ -1076,10 +1076,10 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="email" 
                           data-testid="tab-email"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:border-blue-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-primary/30 dark:hover:border-blue-600 transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:border-primary/50 data-[state=active]:shadow-lg"
                         >
                           <Mail className="h-5 w-5" />
-                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded px-1 mt-0.5">
+                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-primary text-white rounded px-1 mt-0.5">
                             {typeCounts.email}
                           </span>
                           {unreadCounts.email > 0 && (
@@ -1089,7 +1089,7 @@ export default function MessagesPage() {
                           )}
                         </TabsTrigger>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom" className="bg-blue-600 text-white">
+                      <TooltipContent side="bottom" className="bg-primary text-white">
                         <p>Email ({typeCounts.email})</p>
                       </TooltipContent>
                     </Tooltip>
@@ -1100,10 +1100,10 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="chat" 
                           data-testid="tab-chat"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-green-300 dark:hover:border-green-600 transition-all data-[state=active]:bg-green-500 data-[state=active]:text-white data-[state=active]:border-green-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-success/30 dark:hover:border-green-600 transition-all data-[state=active]:bg-success data-[state=active]:text-white data-[state=active]:border-success/30 data-[state=active]:shadow-lg"
                         >
                           <MessageSquare className="h-5 w-5" />
-                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-green-500 text-white rounded px-1 mt-0.5">
+                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-success text-white rounded px-1 mt-0.5">
                             {typeCounts.chat}
                           </span>
                           {unreadCounts.chat > 0 && (
@@ -1113,7 +1113,7 @@ export default function MessagesPage() {
                           )}
                         </TabsTrigger>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom" className="bg-green-500 text-white">
+                      <TooltipContent side="bottom" className="bg-success text-white">
                         <p>Chat ({typeCounts.chat})</p>
                       </TooltipContent>
                     </Tooltip>
@@ -1124,7 +1124,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="sms" 
                           data-testid="tab-sms"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-yellow-400 dark:hover:border-yellow-500 transition-all data-[state=active]:bg-yellow-500 data-[state=active]:text-white data-[state=active]:border-yellow-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-warning/30 dark:hover:border-yellow-500 transition-all data-[state=active]:bg-yellow-500 data-[state=active]:text-white data-[state=active]:border-yellow-500 data-[state=active]:shadow-lg"
                         >
                           <Smartphone className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-yellow-500 text-white rounded px-1 mt-0.5">
@@ -1148,10 +1148,10 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="devops" 
                           data-testid="tab-devops"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-orange-300 dark:hover:border-orange-600 transition-all data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:border-orange-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-warning/30 dark:hover:border-orange-600 transition-all data-[state=active]:bg-warning data-[state=active]:text-white data-[state=active]:border-warning/50 data-[state=active]:shadow-lg"
                         >
                           <GitBranch className="h-5 w-5" />
-                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-orange-500 text-white rounded px-1 mt-0.5">
+                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-warning text-white rounded px-1 mt-0.5">
                             {typeCounts.devops}
                           </span>
                           {unreadCounts.devops > 0 && (
@@ -1161,7 +1161,7 @@ export default function MessagesPage() {
                           )}
                         </TabsTrigger>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom" className="bg-orange-500 text-white">
+                      <TooltipContent side="bottom" className="bg-warning text-white">
                         <p>DevOps ({typeCounts.devops})</p>
                       </TooltipContent>
                     </Tooltip>
@@ -1172,7 +1172,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="calendar" 
                           data-testid="tab-calendar"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:border-purple-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:border-purple-500 data-[state=active]:shadow-lg"
                         >
                           <Calendar className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-purple-500 text-white rounded px-1 mt-0.5">
@@ -1196,7 +1196,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="other" 
                           data-testid="tab-other"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-500 transition-all data-[state=active]:bg-gray-500 data-[state=active]:text-white data-[state=active]:border-gray-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-500 transition-all data-[state=active]:bg-gray-500 data-[state=active]:text-white data-[state=active]:border-gray-500 data-[state=active]:shadow-lg"
                         >
                           <FileText className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-gray-500 text-white rounded px-1 mt-0.5">
@@ -1360,7 +1360,7 @@ export default function MessagesPage() {
                                             data-testid={`message-item-${message.id}`}
                                             className={`cursor-pointer transition-colors border-l-4 border-l-primary/30 ml-8 ${
                                               selectedMessage?.id === message.id ? 'bg-muted' : ''
-                                            } ${message.status === 'unread' ? 'border-l-blue-500' : ''}`}
+                                            } ${message.status === 'unread' ? 'border-l-primary' : ''}`}
                                             onClick={() => handleSelectMessage(message)}
                                           >
                                             {filterType === 'all' && (
@@ -1443,7 +1443,7 @@ export default function MessagesPage() {
                                 data-testid={`message-item-${message.id}`}
                                 className={`cursor-pointer transition-colors ${
                                   selectedMessage?.id === message.id ? 'bg-muted' : ''
-                                } ${selectedMessageIds.includes(message.id) ? 'bg-purple-50 dark:bg-purple-900/20' : ''} ${message.status === 'unread' ? 'border-l-4 border-l-blue-500' : ''}`}
+                                } ${selectedMessageIds.includes(message.id) ? 'bg-purple-50 dark:bg-purple-900/20' : ''} ${message.status === 'unread' ? 'border-l-4 border-l-primary' : ''}`}
                                 onClick={() => handleSelectMessage(message)}
                               >
                                 {/* Colonna Checkbox */}
@@ -1583,8 +1583,8 @@ export default function MessagesPage() {
                                     variant="outline" 
                                     className={`text-sm ${
                                       isCurrentUser 
-                                        ? 'bg-green-50 text-green-700 border-green-200' 
-                                        : 'bg-blue-50 text-blue-700 border-blue-200'
+                                        ? 'bg-success/10 text-success border-success/30' 
+                                        : 'bg-primary/5 text-primary border-primary/20'
                                     }`}
                                   >
                                     <User className="h-3 w-3 mr-1" />
@@ -1607,8 +1607,8 @@ export default function MessagesPage() {
                                   variant="outline" 
                                   className={`text-sm ${
                                     isCurrentUser 
-                                      ? 'bg-green-50 text-green-700 border-green-200' 
-                                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                                      ? 'bg-success/10 text-success border-success/30' 
+                                      : 'bg-warning/10 text-warning border-warning/30'
                                   }`}
                                 >
                                   <User className="h-3 w-3 mr-1" />
@@ -1692,17 +1692,17 @@ export default function MessagesPage() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <GitBranch className="h-5 w-5 text-blue-600" />
+                            <GitBranch className="h-5 w-5 text-primary" />
                             <div>
                               <div className="flex items-center gap-2">
-                                <Badge className="bg-blue-600 text-white">Azure DevOps</Badge>
+                                <Badge className="bg-primary text-white">Azure DevOps</Badge>
                                 {workItemType && (
-                                  <Badge variant="outline" className="text-blue-700 border-blue-300">
+                                  <Badge variant="outline" className="text-primary border-primary/30">
                                     {workItemType}
                                   </Badge>
                                 )}
                                 {workItemId > 0 && (
-                                  <Badge variant="outline" className="text-blue-700 border-blue-300">
+                                  <Badge variant="outline" className="text-primary border-primary/30">
                                     #{workItemId}
                                   </Badge>
                                 )}
@@ -1716,7 +1716,7 @@ export default function MessagesPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             {externalMeta.workItemState && (
-                              <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50">
+                              <Badge variant="outline" className="text-success border-success/30 bg-success/10">
                                 {externalMeta.workItemState}
                               </Badge>
                             )}
@@ -1733,7 +1733,7 @@ export default function MessagesPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => window.open(displayUrl, '_blank')}
-                                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                                className="text-primary border-primary/30 hover:bg-primary/10"
                                 data-testid="button-open-workitem"
                               >
                                 <ExternalLink className="h-4 w-4 mr-1" />
@@ -1758,7 +1758,7 @@ export default function MessagesPage() {
                                   });
                                 }
                               }}
-                              className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                              className="text-warning border-warning/30 hover:bg-warning/5"
                               data-testid="button-copy-bookmarklet"
                             >
                               <Sparkles className="h-4 w-4 mr-1" />
@@ -1837,7 +1837,7 @@ export default function MessagesPage() {
                                 }
                               }}
                               disabled={enrichDevOpsMutation.isPending}
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              className="bg-primary hover:bg-primary/90 text-white"
                               data-testid="button-paste-workitem"
                             >
                               <Clipboard className="h-4 w-4 mr-1" />
@@ -1848,9 +1848,9 @@ export default function MessagesPage() {
                         
                         {/* Dettagli arricchiti */}
                         {externalMeta.enrichedAt && (
-                          <div className="mt-3 pt-3 border-t border-blue-200 space-y-3">
+                          <div className="mt-3 pt-3 border-t border-primary/20 space-y-3">
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 text-xs text-blue-600">
+                              <div className="flex items-center gap-2 text-xs text-primary">
                                 <CheckCircle className="h-3 w-3" />
                                 Arricchito il {new Date(externalMeta.enrichedAt).toLocaleString('it-IT')}
                                 {externalMeta.bookmarkletVersion && (
@@ -1925,7 +1925,7 @@ export default function MessagesPage() {
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
                                   <div 
-                                    className="mt-1 text-sm bg-white dark:bg-gray-800 rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
+                                    className="mt-1 text-sm bg-background dark:bg-card rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
                                     dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(externalMeta.workItemDescriptionHtml || externalMeta.description || '', {
                                       ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody'],
                                       ALLOWED_ATTR: ['href', 'src', 'alt', 'class'],
@@ -1939,27 +1939,27 @@ export default function MessagesPage() {
                             
                             {/* Altri dati */}
                             {(externalMeta.ticketCode || externalMeta.wbsCode || externalMeta.ticketType || (externalMeta.customFields && Object.keys(externalMeta.customFields).length > 0)) && (
-                              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                              <div className="bg-warning/10 dark:bg-amber-900/20 border border-warning/30 dark:border-amber-800 rounded-lg p-3">
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-amber-700 dark:text-amber-400 font-medium text-sm">🏷️ Altri dati</span>
+                                  <span className="text-warning dark:text-amber-400 font-medium text-sm">🏷️ Altri dati</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                   {externalMeta.ticketCode && (
                                     <div>
                                       <span className="text-muted-foreground">N. Ticket:</span>{' '}
-                                      <span className="font-medium text-amber-800 dark:text-amber-300">{externalMeta.ticketCode}</span>
+                                      <span className="font-medium text-warning dark:text-warning">{externalMeta.ticketCode}</span>
                                     </div>
                                   )}
                                   {externalMeta.wbsCode && (
                                     <div>
                                       <span className="text-muted-foreground">WBS:</span>{' '}
-                                      <span className="font-medium text-amber-800 dark:text-amber-300">{externalMeta.wbsCode}</span>
+                                      <span className="font-medium text-warning dark:text-warning">{externalMeta.wbsCode}</span>
                                     </div>
                                   )}
                                   {externalMeta.ticketType && (
                                     <div>
                                       <span className="text-muted-foreground">Tipo Ticket:</span>{' '}
-                                      <span className="font-medium text-amber-800 dark:text-amber-300">{externalMeta.ticketType}</span>
+                                      <span className="font-medium text-warning dark:text-warning">{externalMeta.ticketType}</span>
                                     </div>
                                   )}
                                 </div>
@@ -1979,7 +1979,7 @@ export default function MessagesPage() {
                                         {Object.entries(externalMeta.customFields).map(([key, value]: [string, any]) => (
                                           <div key={key}>
                                             <span className="text-muted-foreground">{key}:</span>{' '}
-                                            <span className="font-medium text-amber-800 dark:text-amber-300">{String(value)}</span>
+                                            <span className="font-medium text-warning dark:text-warning">{String(value)}</span>
                                           </div>
                                         ))}
                                       </div>
@@ -2000,7 +2000,7 @@ export default function MessagesPage() {
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
                                   <div 
-                                    className="mt-1 text-sm bg-white dark:bg-gray-800 rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
+                                    className="mt-1 text-sm bg-background dark:bg-card rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
                                     dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(externalMeta.workItemAcceptanceCriteriaHtml, {
                                       ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody'],
                                       ALLOWED_ATTR: ['href', 'src', 'alt', 'class'],
@@ -2023,7 +2023,7 @@ export default function MessagesPage() {
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
                                   <div 
-                                    className="mt-1 text-sm bg-white dark:bg-gray-800 rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
+                                    className="mt-1 text-sm bg-background dark:bg-card rounded p-3 max-h-60 overflow-y-auto border prose prose-sm max-w-none"
                                     dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(externalMeta.workItemReproStepsHtml, {
                                       ALLOWED_TAGS: ['p', 'div', 'span', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'a', 'img', 'table', 'tr', 'td', 'th', 'thead', 'tbody'],
                                       ALLOWED_ATTR: ['href', 'src', 'alt', 'class'],
@@ -2049,7 +2049,7 @@ export default function MessagesPage() {
                                 <CollapsibleContent>
                                   <div className="mt-1 space-y-2 max-h-60 overflow-y-auto">
                                     {externalMeta.workItemComments.map((comment: any, idx: number) => (
-                                      <div key={idx} className="bg-white dark:bg-gray-800 rounded p-2 border text-sm">
+                                      <div key={idx} className="bg-background dark:bg-card rounded p-2 border text-sm">
                                         <div className="flex items-center justify-between mb-1">
                                           <span className="font-medium text-xs">{comment.author}</span>
                                           {comment.date && (
@@ -2090,12 +2090,12 @@ export default function MessagesPage() {
                                 <CollapsibleContent>
                                   <div className="mt-1 space-y-1">
                                     {externalMeta.workItemAttachments.map((att: any, idx: number) => (
-                                      <div key={idx} className="flex items-center gap-2 text-sm bg-white rounded p-2 border">
+                                      <div key={idx} className="flex items-center gap-2 text-sm bg-background rounded p-2 border">
                                         <FileText className="h-4 w-4 text-muted-foreground" />
                                         <span className="flex-1 truncate">{att.name}</span>
                                         {att.size && <span className="text-xs text-muted-foreground">{att.size}</span>}
                                         {att.url && (
-                                          <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
+                                          <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs">
                                             Apri
                                           </a>
                                         )}
@@ -2120,7 +2120,7 @@ export default function MessagesPage() {
                                 <CollapsibleContent>
                                   <div className="mt-1 space-y-1">
                                     {externalMeta.workItemLinkedItems.map((link: any, idx: number) => (
-                                      <div key={idx} className="flex items-center gap-2 text-sm bg-white rounded p-2 border">
+                                      <div key={idx} className="flex items-center gap-2 text-sm bg-background rounded p-2 border">
                                         <Badge variant="outline" className="text-xs">{link.type}</Badge>
                                         {link.workItemId && <span className="font-mono text-xs">#{link.workItemId}</span>}
                                         {link.title && <span className="flex-1 truncate">{link.title}</span>}
@@ -2243,7 +2243,7 @@ export default function MessagesPage() {
                         
                         {/* Dettagli Teams */}
                         {externalMeta.calendarType === 'teams' && (
-                          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border space-y-2">
+                          <div className="bg-background dark:bg-card rounded-lg p-3 border space-y-2">
                             <div className="text-sm font-medium text-purple-700 dark:text-purple-400">
                               📞 Dettagli Microsoft Teams
                             </div>
@@ -2278,8 +2278,8 @@ export default function MessagesPage() {
                         
                         {/* Dettagli Zoom */}
                         {externalMeta.calendarType === 'zoom' && (
-                          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border space-y-2">
-                            <div className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                          <div className="bg-background dark:bg-card rounded-lg p-3 border space-y-2">
+                            <div className="text-sm font-medium text-primary">
                               📹 Dettagli Zoom
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-sm">
@@ -2317,7 +2317,7 @@ export default function MessagesPage() {
                                 onClick={() => setSelectionMode('body')}
                                 variant={selectionMode === 'body' ? "default" : "outline"}
                                 size="sm"
-                                className={selectionMode === 'body' ? "bg-green-600 hover:bg-green-700" : ""}
+                                className={selectionMode === 'body' ? "bg-success hover:bg-success/90" : ""}
                                 data-testid="button-select-body"
                               >
                                 Mantenere (Body)
@@ -2348,7 +2348,7 @@ export default function MessagesPage() {
                                 onClick={() => setSelectionMode('signatureBody')}
                                 variant={selectionMode === 'signatureBody' ? "default" : "outline"}
                                 size="sm"
-                                className={selectionMode === 'signatureBody' ? "bg-blue-600 hover:bg-blue-700" : ""}
+                                className={selectionMode === 'signatureBody' ? "bg-primary hover:bg-primary/90" : ""}
                                 data-testid="button-select-signature-body"
                               >
                                 Conservare (Firma Body)
@@ -2570,11 +2570,11 @@ export default function MessagesPage() {
                     })()}
                     {isTrainingMode ? (
                       <div className="space-y-4">
-                        <div className="text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded p-3 mb-4">
+                        <div className="text-sm text-primary bg-primary/5 border border-primary/20 rounded p-3 mb-4">
                           🎯 <strong>Modalità Training</strong> - Stai visualizzando l'HTML originale completo del messaggio. Seleziona il testo per addestrare l'algoritmo.
                         </div>
                         <div 
-                          className="training-selection-area select-text cursor-pointer border border-dashed border-blue-300 rounded" 
+                          className="training-selection-area select-text cursor-pointer border border-dashed border-primary/30 rounded" 
                           data-selection-mode={selectionMode} 
                           onMouseUp={handleTextSelection} 
                           data-testid="email-content-training"
@@ -2599,12 +2599,12 @@ export default function MessagesPage() {
                         <>
                           {/* Parsing failure warning - MUST be shown before messages check */}
                           {renderedContent.metadata?.parsingFailed && (
-                            <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4" data-testid="warning-parsing-failed">
+                            <div className="bg-warning/10 dark:bg-yellow-950 border border-warning/30 dark:border-yellow-800 rounded-lg p-4 mb-4" data-testid="warning-parsing-failed">
                               <div className="flex items-start gap-3">
-                                <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                                <AlertTriangle className="h-5 w-5 text-warning dark:text-yellow-400 mt-0.5" />
                                 <div className="flex-1">
-                                  <h4 className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">Formato non riconosciuto</h4>
-                                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                                  <h4 className="font-medium text-warning dark:text-yellow-200 mb-1">Formato non riconosciuto</h4>
+                                  <p className="text-sm text-warning dark:text-yellow-300">
                                     Il contenuto incollato non corrisponde al formato atteso per {renderedContent.metadata.platform || 'questa piattaforma'}. 
                                     Il testo originale è visualizzato sotto. Assicurati di copiare solo la conversazione senza menu o elementi dell'interfaccia.
                                   </p>
@@ -2619,7 +2619,7 @@ export default function MessagesPage() {
                               {/* Platform badge and summary */}
                               <div className="flex items-center justify-between mb-2">
                                 {renderedContent.metadata.platform && (
-                                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
+                                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/5 text-primary rounded-full text-sm font-medium">
                                     <MessageSquare className="h-4 w-4" />
                                     {renderedContent.metadata.platform.charAt(0).toUpperCase() + renderedContent.metadata.platform.slice(1)}
                                   </div>
@@ -2697,7 +2697,7 @@ export default function MessagesPage() {
                                     if (group.type === 'date') {
                                       return (
                                         <div key={`date-${groupIdx}`} className="flex items-center justify-center py-3">
-                                          <div className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-medium">
+                                          <div className="bg-primary dark:bg-primary text-white px-4 py-1 rounded-full text-sm font-medium">
                                             {group.date}
                                           </div>
                                         </div>
@@ -2705,12 +2705,12 @@ export default function MessagesPage() {
                                     }
                                     
                                     return (
-                                      <div key={`group-${groupIdx}`} className="border-2 border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-900" data-testid={`chat-group-${groupIdx}`}>
+                                      <div key={`group-${groupIdx}`} className="border-2 border-border rounded-lg p-4 bg-background dark:bg-card" data-testid={`chat-group-${groupIdx}`}>
                                         {/* Header: Name, Time, ID */}
-                                        <div className="flex items-center gap-3 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-                                          <span className="font-bold text-base text-blue-600 dark:text-blue-400">{group.senderName}</span>
+                                        <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
+                                          <span className="font-bold text-base text-primary">{group.senderName}</span>
                                           {group.timestamp && (
-                                            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs font-mono">
+                                            <span className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-mono">
                                               {group.timestamp}
                                             </span>
                                           )}
@@ -2722,7 +2722,7 @@ export default function MessagesPage() {
                                         {/* Messages in group */}
                                         <div className="space-y-1">
                                           {group.messages?.map((msg, msgIdx) => (
-                                            <div key={msg.id} className="text-sm whitespace-pre-wrap leading-snug bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded">
+                                            <div key={msg.id} className="text-sm whitespace-pre-wrap leading-snug bg-muted dark:bg-card px-2 py-1 rounded">
                                               {msg.text === 'immagine' ? (
                                                 <div className="inline-flex items-center gap-1 text-muted-foreground italic">
                                                   <Image className="h-4 w-4" />
@@ -3040,7 +3040,7 @@ export default function MessagesPage() {
                                   {/* Anteprima immagine o icona file */}
                                   <div className="text-center flex-shrink-0">
                                     {fileInfo.isImage ? (
-                                      <div className="w-12 h-12 border rounded overflow-hidden bg-gray-100">
+                                      <div className="w-12 h-12 border rounded overflow-hidden bg-muted">
                                         <img 
                                           src={`/api/messages/${selectedMessage.id}/attachments/${encodeURIComponent(fullFilename)}`}
                                           alt={displayFilename}

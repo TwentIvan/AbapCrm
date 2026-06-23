@@ -61,10 +61,10 @@ interface SapTransportObject {
 }
 
 const statusColors = {
-  modifiable: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100",
-  released: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
+  modifiable: "bg-primary/10 text-primary",
+  released: "bg-success/10 text-success",
   imported: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100",
-  error: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
+  error: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-100",
 };
 
 const statusLabels = {
@@ -215,7 +215,7 @@ export default function SapTransportPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex h-screen bg-muted dark:bg-card">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header title="SAP Transport" subtitle="Gestione transport request" />
@@ -231,7 +231,7 @@ export default function SapTransportPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-muted dark:bg-card">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title="SAP Transport" subtitle="Gestione transport request" />
@@ -239,17 +239,17 @@ export default function SapTransportPage() {
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white" data-testid="heading-sap-transport">
+                <h1 className="text-3xl font-bold text-foreground dark:text-white" data-testid="heading-sap-transport">
                   SAP Transport Requests
                 </h1>
-                <p className="text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-muted-foreground dark:text-muted-foreground mt-1">
                   Gestisci le transport request ricevute dai sistemi SAP
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <Button
                   onClick={() => setShowSyncDialog(true)}
-                  className="bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900 dark:hover:bg-green-800 dark:text-green-100 shadow-md"
+                  className="bg-success/10 hover:bg-success/10 text-success dark:hover:bg-green-800 shadow-md"
                   data-testid="button-sync-odata"
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
@@ -257,7 +257,7 @@ export default function SapTransportPage() {
                 </Button>
                 <Button
                   onClick={() => setShowPasteDialog(true)}
-                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-100 shadow-md"
+                  className="bg-primary/5 hover:bg-primary/15 text-primary dark:hover:bg-primary/80 shadow-md"
                   data-testid="button-paste-json"
                 >
                   <ClipboardPaste className="h-4 w-4 mr-2" />
@@ -272,11 +272,11 @@ export default function SapTransportPage() {
             {requests.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Package className="h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground dark:text-white mb-2">
                     Nessuna Transport Request
                   </h3>
-                  <p className="text-gray-500 dark:text-gray-400 text-center max-w-md">
+                  <p className="text-muted-foreground dark:text-muted-foreground text-center max-w-md">
                     Le transport request inviate dai report ABAP appariranno qui. 
                     Usa l'endpoint API per inviare i dati dal sistema SAP.
                   </p>
@@ -328,7 +328,7 @@ export default function SapTransportPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleDelete(request)}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-destructive hover:text-destructive"
                             data-testid={`button-delete-${request.id}`}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -341,41 +341,41 @@ export default function SapTransportPage() {
                       <CardContent className="pt-0">
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                           <div>
-                            <p className="text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                            <p className="text-muted-foreground dark:text-muted-foreground flex items-center gap-2">
                               <User className="h-4 w-4" />
                               Owner
                             </p>
-                            <p className="font-medium text-gray-900 dark:text-white" data-testid={`text-owner-${request.id}`}>
+                            <p className="font-medium text-foreground dark:text-white" data-testid={`text-owner-${request.id}`}>
                               {request.owner}
                             </p>
                           </div>
                           {request.targetSystem && (
                             <div>
-                              <p className="text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                              <p className="text-muted-foreground dark:text-muted-foreground flex items-center gap-2">
                                 <Package className="h-4 w-4" />
                                 Sistema Target
                               </p>
-                              <p className="font-medium text-gray-900 dark:text-white">
+                              <p className="font-medium text-foreground dark:text-white">
                                 {request.targetSystem}
                               </p>
                             </div>
                           )}
                           <div>
-                            <p className="text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                            <p className="text-muted-foreground dark:text-muted-foreground flex items-center gap-2">
                               <Calendar className="h-4 w-4" />
                               Creata
                             </p>
-                            <p className="font-medium text-gray-900 dark:text-white">
+                            <p className="font-medium text-foreground dark:text-white">
                               {format(new Date(request.createdAt), "dd/MM/yyyy HH:mm")}
                             </p>
                           </div>
                           {request.releasedDate && (
                             <div>
-                              <p className="text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                              <p className="text-muted-foreground dark:text-muted-foreground flex items-center gap-2">
                                 <Calendar className="h-4 w-4" />
                                 Rilasciata
                               </p>
-                              <p className="font-medium text-gray-900 dark:text-white">
+                              <p className="font-medium text-foreground dark:text-white">
                                 {format(new Date(request.releasedDate), "dd/MM/yyyy HH:mm")}
                               </p>
                             </div>
@@ -416,11 +416,11 @@ export default function SapTransportPage() {
                   <TabsContent value="info" className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Request Number</label>
-                        <p className="text-lg font-semibold text-gray-900 dark:text-white">{selectedRequest.requestNumber}</p>
+                        <label className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Request Number</label>
+                        <p className="text-lg font-semibold text-foreground dark:text-white">{selectedRequest.requestNumber}</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
+                        <label className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Status</label>
                         <div className="mt-1">
                           <Badge className={statusColors[selectedRequest.status]}>
                             {statusLabels[selectedRequest.status]}
@@ -428,35 +428,35 @@ export default function SapTransportPage() {
                         </div>
                       </div>
                       <div className="col-span-2">
-                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Descrizione</label>
-                        <p className="text-gray-900 dark:text-white">{selectedRequest.description}</p>
+                        <label className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Descrizione</label>
+                        <p className="text-foreground dark:text-white">{selectedRequest.description}</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Owner</label>
-                        <p className="text-gray-900 dark:text-white">{selectedRequest.owner}</p>
+                        <label className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Owner</label>
+                        <p className="text-foreground dark:text-white">{selectedRequest.owner}</p>
                       </div>
                       {selectedRequest.targetSystem && (
                         <div>
-                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Sistema Target</label>
-                          <p className="text-gray-900 dark:text-white">{selectedRequest.targetSystem}</p>
+                          <label className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Sistema Target</label>
+                          <p className="text-foreground dark:text-white">{selectedRequest.targetSystem}</p>
                         </div>
                       )}
                       {selectedRequest.category && (
                         <div>
-                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Categoria</label>
-                          <p className="text-gray-900 dark:text-white">{selectedRequest.category}</p>
+                          <label className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Categoria</label>
+                          <p className="text-foreground dark:text-white">{selectedRequest.category}</p>
                         </div>
                       )}
                       <div>
-                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data Creazione</label>
-                        <p className="text-gray-900 dark:text-white">
+                        <label className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Data Creazione</label>
+                        <p className="text-foreground dark:text-white">
                           {format(new Date(selectedRequest.createdAt), "dd/MM/yyyy HH:mm:ss")}
                         </p>
                       </div>
                       {selectedRequest.releasedDate && (
                         <div>
-                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data Rilascio</label>
-                          <p className="text-gray-900 dark:text-white">
+                          <label className="text-sm font-medium text-muted-foreground dark:text-muted-foreground">Data Rilascio</label>
+                          <p className="text-foreground dark:text-white">
                             {format(new Date(selectedRequest.releasedDate), "dd/MM/yyyy HH:mm:ss")}
                           </p>
                         </div>
@@ -466,7 +466,7 @@ export default function SapTransportPage() {
                   
                   <TabsContent value="tasks">
                     {tasks.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      <div className="text-center py-8 text-muted-foreground dark:text-muted-foreground">
                         Nessun task associato a questa transport request
                       </div>
                     ) : (
@@ -503,7 +503,7 @@ export default function SapTransportPage() {
                   
                   <TabsContent value="objects">
                     {objects.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      <div className="text-center py-8 text-muted-foreground dark:text-muted-foreground">
                         Nessun oggetto associato a questa transport request
                       </div>
                     ) : (
@@ -590,7 +590,7 @@ export default function SapTransportPage() {
                     className="font-mono text-sm"
                     data-testid="input-odata-url"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-muted-foreground dark:text-muted-foreground">
                     Esempio: https://vhgivds4ci.rise.givagroup.it:44300/sap/opu/odata/SAP/ZTHU_DOC_SRV/TransportSet?$format=json
                   </p>
                 </div>
@@ -635,7 +635,7 @@ export default function SapTransportPage() {
                   <Button
                     onClick={() => syncOdataMutation.mutate()}
                     disabled={syncOdataMutation.isPending || !syncOdataUrl.trim()}
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-success hover:bg-success/90"
                     data-testid="button-start-sync"
                   >
                     {syncOdataMutation.isPending ? (

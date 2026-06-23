@@ -206,14 +206,14 @@ export default function VPNConnectionsPage() {
           <div className="flex items-center gap-2">
             {hasScript ? (
               <>
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-success" />
                 <Badge variant="outline" className="text-xs">
                   {scriptType}
                 </Badge>
               </>
             ) : (
               <>
-                <XCircle className="h-4 w-4 text-gray-400" />
+                <XCircle className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Non configurata</span>
               </>
             )}

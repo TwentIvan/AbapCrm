@@ -163,7 +163,7 @@ export function ProjectProposalDialog({
             <div className="flex items-center justify-between gap-2 mb-2">
               <div className="flex items-center gap-2">
                 {currentProposal.project.isNew ? (
-                  <Badge variant="default" className="bg-green-500">Nuovo Progetto</Badge>
+                  <Badge variant="default" className="bg-success">Nuovo Progetto</Badge>
                 ) : (
                   <Badge variant="secondary">Modifica Progetto Esistente</Badge>
                 )}
@@ -276,7 +276,7 @@ export function ProjectProposalDialog({
             <div className="flex items-center justify-between gap-2 mb-2">
               <div className="flex items-center gap-2">
                 {currentProposal.partner.isNew ? (
-                  <Badge variant="default" className="bg-green-500">Nuovo Partner</Badge>
+                  <Badge variant="default" className="bg-success">Nuovo Partner</Badge>
                 ) : (
                   <Badge variant="secondary">Partner Esistente</Badge>
                 )}
@@ -363,7 +363,7 @@ export function ProjectProposalDialog({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {task.isNew ? (
-                      <Badge variant="default" className="bg-green-500">Nuovo Task</Badge>
+                      <Badge variant="default" className="bg-success">Nuovo Task</Badge>
                     ) : (
                       <Badge variant="secondary">Modifica Task</Badge>
                     )}

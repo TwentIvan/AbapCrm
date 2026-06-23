@@ -173,19 +173,19 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
 
   const getLandscapeBadgeColor = (landscape: string) => {
     switch (landscape) {
-      case "development": return "bg-blue-100 text-blue-800";
-      case "test": return "bg-yellow-100 text-yellow-800";
-      case "production": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "development": return "bg-primary/10 text-primary";
+      case "test": return "bg-warning/10 text-warning";
+      case "production": return "bg-destructive/10 text-destructive";
+      default: return "bg-muted text-foreground";
     }
   };
 
   const getSystemTypeBadgeColor = (systemType: string) => {
     switch (systemType) {
-      case "s4hana": return "bg-green-100 text-green-800";
-      case "ecc": return "bg-indigo-100 text-indigo-800";
+      case "s4hana": return "bg-success/10 text-success";
+      case "ecc": return "bg-info/10 text-info";
       case "bw": return "bg-purple-100 text-purple-800";
-      default: return "bg-gray-100 text-gray-800";
+      default: return "bg-muted text-foreground";
     }
   };
 
@@ -267,12 +267,12 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
                 <CardContent>
                   <div className="space-y-3">
                     {partnersCreated.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div className="flex items-center gap-3">
-                          <Building className="h-4 w-4 text-blue-600" />
+                          <Building className="h-4 w-4 text-primary" />
                           <div>
                             <div className="font-medium">{item.partner.name}</div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-muted-foreground">
                               Gruppo: {item.groupName}
                             </div>
                           </div>
@@ -360,8 +360,8 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
                                     
                                     {system.partnerId && (
                                       <div className="mt-2 flex items-center gap-2">
-                                        <Building className="h-3 w-3 text-green-600" />
-                                        <span className="text-sm text-green-600 font-medium">
+                                        <Building className="h-3 w-3 text-success" />
+                                        <span className="text-sm text-success font-medium">
                                           Partner automatico assegnato
                                         </span>
                                       </div>
@@ -420,7 +420,7 @@ export default function SapLandscapeImport({ onSuccess }: SapLandscapeImportProp
               {importMutation.isPending ? (
                 <AlertCircle className="h-5 w-5 animate-spin" />
               ) : (
-                <CheckCircle className="h-5 w-5 text-green-600" />
+                <CheckCircle className="h-5 w-5 text-success" />
               )}
               Import in Progress
             </CardTitle>

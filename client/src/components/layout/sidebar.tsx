@@ -97,11 +97,11 @@ function NavItem({ item, isActive }: { item: any; isActive: boolean }) {
         }}
       >
         <div className="p-1.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.3)' }}>
-          <Icon className="h-5 w-5 flex-shrink-0 text-blue-600" />
+          <Icon className="h-5 w-5 flex-shrink-0 text-primary" />
         </div>
         <span className={cn(
           "text-sm font-medium flex-1",
-          isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
+          isActive ? "text-primary" : "text-foreground"
         )}>{item.name}</span>
       </div>
     </div>
@@ -133,13 +133,13 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
           </div>
           <span className={cn(
             "text-sm font-medium flex-1",
-            hasActiveChild ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
+            hasActiveChild ? "text-primary" : "text-foreground"
           )}>{item.name}</span>
           <button 
             onClick={onToggle}
             className={cn(
               "ml-2 w-7 h-7 rounded-md hover:bg-sidebar-accent dark:hover:bg-sidebar-accent transition-colors flex items-center justify-center",
-              "text-blue-600 dark:text-blue-400"
+              "text-primary"
             )}
           >
             {isOpen ? (
@@ -185,7 +185,7 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
           </div>
           <span className={cn(
             "text-sm font-medium flex-1",
-            isActive ? "text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"
+            isActive ? "text-primary" : "text-foreground"
           )}>{item.name}</span>
         </div>
       </div>

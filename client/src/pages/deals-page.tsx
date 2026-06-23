@@ -26,12 +26,12 @@ import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
 import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 
 const stageColors = {
-  prospecting: "bg-blue-100 text-blue-800",
-  proposal: "bg-yellow-100 text-yellow-800",
-  negotiation: "bg-orange-100 text-orange-800", 
+  prospecting: "bg-primary/10 text-primary",
+  proposal: "bg-warning/10 text-warning",
+  negotiation: "bg-warning/10 text-warning", 
   closing: "bg-purple-100 text-purple-800",
-  won: "bg-green-100 text-green-800",
-  lost: "bg-red-100 text-red-800",
+  won: "bg-success/10 text-success",
+  lost: "bg-destructive/10 text-destructive",
 };
 
 const stageLabels = {
@@ -336,7 +336,7 @@ export default function DealsPage() {
                       €{totalValue.toLocaleString()}
                     </p>
                   </div>
-                  <TrendingUp className="h-8 w-8 text-blue-600" />
+                  <TrendingUp className="h-8 w-8 text-primary" />
                 </div>
               </CardContent>
             </Card>
@@ -350,7 +350,7 @@ export default function DealsPage() {
                       {activeDeals?.length || 0}
                     </p>
                   </div>
-                  <Handshake className="h-8 w-8 text-green-600" />
+                  <Handshake className="h-8 w-8 text-success" />
                 </div>
               </CardContent>
             </Card>

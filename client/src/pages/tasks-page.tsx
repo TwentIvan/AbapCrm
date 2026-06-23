@@ -487,7 +487,7 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
         const dueDate = new Date(task.dueDate);
         const isOverdue = dueDate < new Date() && task.status !== 'completed';
         return (
-          <div className={isOverdue ? 'text-red-600 font-medium' : ''}>
+          <div className={isOverdue ? 'text-destructive font-medium' : ''}>
             {dueDate.toLocaleDateString('it-IT')}
           </div>
         );
@@ -553,7 +553,7 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
               size="sm"
               onClick={() => handleLaunchConnections(task)}
               data-testid={`button-launch-connections-${task.id}`}
-              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              className="text-primary hover:text-primary hover:bg-primary/10"
             >
               <ExternalLink className="h-4 w-4 mr-1" />
               Avvia
@@ -686,9 +686,9 @@ Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
                     >
                       <div className="relative flex flex-col items-center">
                         <div className="flex items-baseline space-x-0">
-                          <span className="text-xs font-black text-blue-600 dark:text-blue-400">T</span>
-                          <span className="text-sm font-black text-blue-500 dark:text-blue-300">H</span>
-                          <span className="text-sm font-black text-blue-600 dark:text-blue-400">U</span>
+                          <span className="text-xs font-black text-primary">T</span>
+                          <span className="text-sm font-black text-primary">H</span>
+                          <span className="text-sm font-black text-primary">U</span>
                         </div>
                         <span className="text-[8px] font-bold text-purple-500 dark:text-purple-400 -mt-0.5">AI</span>
                       </div>

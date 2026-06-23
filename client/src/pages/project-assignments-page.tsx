@@ -112,10 +112,10 @@ export default function ProjectAssignmentsPage() {
   };
 
   const statusColors = {
-    assigned: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-    active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-    completed: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
-    cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+    assigned: "bg-primary/10 text-primary",
+    active: "bg-success/10 text-success dark:text-success",
+    completed: "bg-muted text-foreground dark:bg-card",
+    cancelled: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-300"
   };
 
   const statusLabels = {

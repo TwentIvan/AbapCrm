@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Bot, Server, AlertCircle } from "lucide-react";
+import { Loader2, Bot, Server, AlertCircle, Lightbulb } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useOrganization } from "@/contexts/organization-context";
@@ -700,7 +700,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                     </Select>
                     {showHint && (
                       <div className="flex items-center gap-2 mt-1 text-xs text-purple-700 dark:text-purple-400">
-                        <span>💡 Suggerito: <strong>{suggestedModel!.displayName}</strong> (basato su cronologia esecuzioni)</span>
+                        <span className="flex items-center gap-1"><Lightbulb className="h-3 w-3" /> Suggerito: <strong>{suggestedModel!.displayName}</strong> (basato su cronologia esecuzioni)</span>
                         <Button
                           type="button"
                           variant="link"
@@ -849,11 +849,11 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                           >
                             {cfg.environment}
                           </Badge>
-                          {cfg.readOnly && <Badge variant="outline" className="text-xs text-green-600">read</Badge>}
+                          {cfg.readOnly && <Badge variant="outline" className="text-xs text-success">read</Badge>}
                           {isDisabled && (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <AlertCircle className="h-3 w-3 text-amber-500" />
+                                <AlertCircle className="h-3 w-3 text-warning" />
                               </TooltipTrigger>
                               <TooltipContent>Server non validato</TooltipContent>
                             </Tooltip>

@@ -273,13 +273,13 @@ export default function SalesOrderItemsEditor({
   if (isReadOnly) {
     return (
       <div className="space-y-4">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-800 text-sm">
+        <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 text-warning text-sm">
           <strong>Attenzione:</strong> L'ordine non è in stato "Bozza" - le righe sono in sola lettura.
         </div>
         <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50">
+              <TableRow className="bg-muted">
                 <TableHead className="w-10">#</TableHead>
                 <TableHead className="w-28">Tipo</TableHead>
                 <TableHead className="w-40">Progetto</TableHead>
@@ -294,7 +294,7 @@ export default function SalesOrderItemsEditor({
             <TableBody>
               {items.map((item, index) => (
                 <TableRow key={item.id || index}>
-                  <TableCell className="font-medium text-gray-500">{item.lineNumber}</TableCell>
+                  <TableCell className="font-medium text-muted-foreground">{item.lineNumber}</TableCell>
                   <TableCell>{getItemTypeLabel(item.itemType)}</TableCell>
                   <TableCell>{getProjectName(item.projectId)}</TableCell>
                   <TableCell>{item.description}</TableCell>
@@ -310,13 +310,13 @@ export default function SalesOrderItemsEditor({
         </div>
 
         <div className="flex justify-end">
-          <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm min-w-[200px]">
+          <div className="bg-muted p-4 rounded-lg space-y-1 text-sm min-w-[200px]">
             <div className="flex justify-between">
-              <span className="text-gray-600">Imponibile:</span>
+              <span className="text-muted-foreground">Imponibile:</span>
               <span className="font-medium">€{items.reduce((sum, item) => sum + parseFloat(item.lineTotal || "0"), 0).toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">IVA:</span>
+              <span className="text-muted-foreground">IVA:</span>
               <span className="font-medium">€{items.reduce((sum, item) => sum + parseFloat(item.vatAmount || "0"), 0).toFixed(2)}</span>
             </div>
             <div className="flex justify-between pt-2 border-t">
@@ -341,14 +341,14 @@ export default function SalesOrderItemsEditor({
       </div>
 
       {items.length === 0 ? (
-        <div className="p-8 text-center text-gray-500 border-2 border-dashed rounded-lg">
+        <div className="p-8 text-center text-muted-foreground border-2 border-dashed rounded-lg">
           Nessuna riga. Clicca "Nuova Riga" per iniziare.
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50">
+              <TableRow className="bg-muted">
                 <TableHead className="w-10">#</TableHead>
                 <TableHead className="w-28">Tipo</TableHead>
                 <TableHead className="w-40">Progetto</TableHead>
@@ -365,9 +365,9 @@ export default function SalesOrderItemsEditor({
               {items.map((item, index) => (
                 <TableRow 
                   key={item.id || index}
-                  className={item.isModified || item.isNew ? "bg-yellow-50" : ""}
+                  className={item.isModified || item.isNew ? "bg-warning/10" : ""}
                 >
-                  <TableCell className="font-medium text-gray-500">{item.lineNumber}</TableCell>
+                  <TableCell className="font-medium text-muted-foreground">{item.lineNumber}</TableCell>
                   <TableCell>
                     <Select 
                       value={item.itemType} 
@@ -460,7 +460,7 @@ export default function SalesOrderItemsEditor({
                           className="h-7 w-7"
                           data-testid={`button-save-item-${index}`}
                         >
-                          <Save className="h-3.5 w-3.5 text-green-600" />
+                          <Save className="h-3.5 w-3.5 text-success" />
                         </Button>
                       )}
                       <Button
@@ -471,7 +471,7 @@ export default function SalesOrderItemsEditor({
                         className="h-7 w-7"
                         data-testid={`button-delete-item-${index}`}
                       >
-                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
                       </Button>
                     </div>
                   </TableCell>

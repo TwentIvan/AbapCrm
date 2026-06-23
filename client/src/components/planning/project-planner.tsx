@@ -332,7 +332,7 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
                     <div 
                       key={window.id} 
                       className={`p-4 border rounded-lg ${
-                        window.isActive ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20' : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/20'
+                        window.isActive ? 'border-success/30 bg-success/10' : 'border-border bg-muted dark:bg-card/20'
                       }`}
                     >
                       <div className="flex items-start justify-between">
@@ -473,20 +473,20 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
               <div className="flex items-center gap-2">
                 {overdueTasksCount > 0 ? (
                   <>
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                    <span className="text-sm text-red-600">
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                    <span className="text-sm text-destructive">
                       {overdueTasksCount} tasks overdue
                     </span>
                   </>
                 ) : requiredWorkingDays <= projectDays ? (
                   <>
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span className="text-sm text-green-600">On schedule</span>
+                    <CheckCircle className="h-4 w-4 text-success" />
+                    <span className="text-sm text-success">On schedule</span>
                   </>
                 ) : (
                   <>
-                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                    <span className="text-sm text-yellow-600">Tight schedule</span>
+                    <AlertTriangle className="h-4 w-4 text-warning" />
+                    <span className="text-sm text-warning">Tight schedule</span>
                   </>
                 )}
               </div>
@@ -521,7 +521,7 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
                   type="checkbox"
                   checked={autoSchedule}
                   onChange={(e) => setAutoSchedule(e.target.checked)}
-                  className="rounded border-gray-300"
+                  className="rounded border-border"
                 />
                 <span className="text-sm">Auto-schedule tasks</span>
               </label>
@@ -554,9 +554,9 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
                 <div 
                   key={task.id} 
                   className={`p-4 border rounded-lg transition-colors ${
-                    task.isOverdue ? 'border-red-200 bg-red-50' : 
-                    !task.canStart ? 'border-gray-200 bg-gray-50' :
-                    'border-green-200 bg-green-50'
+                    task.isOverdue ? 'border-destructive/30 bg-destructive/10' : 
+                    !task.canStart ? 'border-border bg-muted' :
+                    'border-success/30 bg-success/10'
                   }`}
                 >
                   <div className="flex items-start justify-between">
@@ -580,7 +580,7 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
                         <div>
                           <span className="text-muted-foreground">Scheduled: </span>
                           {task.scheduledStartDate && task.scheduledEndDate ? (
-                            <span className={task.isOverdue ? 'text-red-600' : 'text-foreground'}>
+                            <span className={task.isOverdue ? 'text-destructive' : 'text-foreground'}>
                               {format(task.scheduledStartDate, 'MMM dd')} - {format(task.scheduledEndDate, 'MMM dd')}
                             </span>
                           ) : (
@@ -610,13 +610,13 @@ export default function ProjectPlanner({ projectId }: ProjectPlannerProps) {
                     
                     <div className="flex items-center gap-2 ml-4">
                       {task.isOverdue && (
-                        <AlertTriangle className="h-4 w-4 text-red-500" />
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
                       )}
                       {task.status === 'completed' && (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <CheckCircle className="h-4 w-4 text-success" />
                       )}
                       {task.status === 'in_progress' && (
-                        <PlayCircle className="h-4 w-4 text-blue-500" />
+                        <PlayCircle className="h-4 w-4 text-primary" />
                       )}
                     </div>
                   </div>

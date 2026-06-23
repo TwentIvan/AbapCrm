@@ -44,11 +44,11 @@ function formatCost(usd: number): string {
 
 function providerColor(slug: string): string {
   switch (slug) {
-    case "openai": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-    case "anthropic": return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
-    case "google": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+    case "openai": return "bg-success/10 text-success";
+    case "anthropic": return "bg-warning/10 text-warning";
+    case "google": return "bg-primary/10 text-primary";
     case "deepseek": return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-    default: return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
+    default: return "bg-muted text-foreground dark:bg-card dark:text-gray-200";
   }
 }
 
@@ -139,10 +139,10 @@ export function AiModelPickerDialog({ open, onClose, onConfirm, estimatedInputCh
 
         {estimatedInputChars > 0 && (
           <div className="flex items-center gap-2 text-sm bg-muted px-3 py-2 rounded-md">
-            <Zap className="h-4 w-4 text-yellow-500 shrink-0" />
+            <Zap className="h-4 w-4 text-warning shrink-0" />
             <span>Stima input: <strong>~{estimatedInputTokens.toLocaleString()} token</strong> ({Math.round(estimatedInputChars / 1000)}k caratteri)</span>
             {costEstimate !== null && (
-              <span className="ml-auto font-medium text-green-700 dark:text-green-400">
+              <span className="ml-auto font-medium text-success dark:text-success">
                 {formatCost(costEstimate)} con modello selezionato
               </span>
             )}
@@ -178,7 +178,7 @@ export function AiModelPickerDialog({ open, onClose, onConfirm, estimatedInputCh
                               {m.providerSlug}
                             </Badge>
                             {isCheapest && estimatedInputChars > 0 && (
-                              <Badge variant="outline" className="text-xs px-1.5 py-0 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                              <Badge variant="outline" className="text-xs px-1.5 py-0 bg-success/10 text-success dark:text-success">
                                 più economico
                               </Badge>
                             )}

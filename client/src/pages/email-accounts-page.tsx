@@ -23,9 +23,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmailSendDialog } from "@/components/email-send-dialog";
 
 const statusColors = {
-  active: "bg-green-100 text-green-800",
-  inactive: "bg-red-100 text-red-800",
-  testing: "bg-yellow-100 text-yellow-800",
+  active: "bg-success/10 text-success",
+  inactive: "bg-destructive/10 text-destructive",
+  testing: "bg-warning/10 text-warning",
 };
 
 const statusLabels = {

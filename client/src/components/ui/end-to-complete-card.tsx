@@ -95,8 +95,8 @@ export default function EndToCompleteCard({ projectId, compact = false }: EndToC
   if (etcData.state === 'no_planning_window') {
     if (compact) return null;
     return (
-      <Alert className="mb-4 border-orange-200 bg-orange-50/30 dark:border-orange-900 dark:bg-orange-950/10">
-        <CalendarX className="h-4 w-4 text-orange-500" />
+      <Alert className="mb-4 border-warning/20 bg-warning/5/30 dark:border-warning/30">
+        <CalendarX className="h-4 w-4 text-warning" />
         <AlertTitle>Nessuna Finestra di Pianificazione</AlertTitle>
         <AlertDescription>
           {etcData.hasTasks ? (
@@ -136,13 +136,13 @@ export default function EndToCompleteCard({ projectId, compact = false }: EndToC
           <TooltipTrigger asChild>
             <div className="flex items-center gap-2 text-sm">
               {isCompleted ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <CheckCircle2 className="h-4 w-4 text-success" />
               ) : isOnTrack ? (
-                <CalendarCheck className="h-4 w-4 text-blue-500" />
+                <CalendarCheck className="h-4 w-4 text-primary" />
               ) : (
-                <AlertTriangle className="h-4 w-4 text-orange-500" />
+                <AlertTriangle className="h-4 w-4 text-warning" />
               )}
-              <span className={isCompleted ? "text-green-600" : isOnTrack ? "text-blue-600" : "text-orange-600"}>
+              <span className={isCompleted ? "text-success" : isOnTrack ? "text-primary" : "text-warning"}>
                 {isCompleted ? "Completato" : effectiveEnd ? formatDate(effectiveEnd) : "-"}
               </span>
             </div>
@@ -163,15 +163,15 @@ export default function EndToCompleteCard({ projectId, compact = false }: EndToC
   }
 
   return (
-    <Card className={`border-l-4 ${isCompleted ? 'border-l-green-500 bg-green-50/30 dark:bg-green-950/10' : isOnTrack ? 'border-l-blue-500 bg-blue-50/30 dark:bg-blue-950/10' : 'border-l-orange-500 bg-orange-50/30 dark:bg-orange-950/10'}`}>
+    <Card className={`border-l-4 ${isCompleted ? 'border-l-success bg-success/10/30' : isOnTrack ? 'border-l-primary bg-primary/5' : 'border-l-orange-500 bg-warning/5/30'}`}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           {isCompleted ? (
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
+            <CheckCircle2 className="h-4 w-4 text-success" />
           ) : isOnTrack ? (
-            <CalendarCheck className="h-4 w-4 text-blue-500" />
+            <CalendarCheck className="h-4 w-4 text-primary" />
           ) : (
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            <AlertTriangle className="h-4 w-4 text-warning" />
           )}
           Fine Effettiva (End-to-Complete)
           <Badge variant={isCompleted ? "default" : isOnTrack ? "secondary" : "destructive"} className="ml-auto">

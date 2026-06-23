@@ -202,7 +202,7 @@ export default function SalesOrderForm({ salesOrder, onSuccess }: SalesOrderForm
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {!isBillable && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center gap-2 text-red-800">
+          <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 flex items-center gap-2 text-destructive">
             <AlertCircle className="h-5 w-5" />
             <span className="text-sm font-medium">
               Questo ordine non è fatturabile (l'offerta collegata non è più in stato "accettata")

@@ -145,16 +145,16 @@ function StatsWidget() {
       value: projects?.filter((p: any) => p.status === "active" || p.status === "in_progress")?.length || 0,
       total: projects?.length || 0,
       icon: FolderKanban,
-      color: "text-blue-500",
-      bg: "bg-blue-50 dark:bg-blue-950/30"
+      color: "text-primary",
+      bg: "bg-primary/5"
     },
     { 
       label: "Task Aperti", 
       value: tasks?.filter((t: any) => t.status === "todo" || t.status === "in_progress")?.length || 0,
       total: tasks?.length || 0,
       icon: CheckSquare,
-      color: "text-green-500",
-      bg: "bg-green-50 dark:bg-green-950/30"
+      color: "text-success",
+      bg: "bg-success/10"
     },
     { 
       label: "Partner", 
@@ -167,8 +167,8 @@ function StatsWidget() {
       label: "Deals", 
       value: deals?.length || 0,
       icon: Handshake,
-      color: "text-orange-500",
-      bg: "bg-orange-50 dark:bg-orange-950/30"
+      color: "text-warning",
+      bg: "bg-warning/5"
     },
   ];
 
@@ -232,7 +232,7 @@ function TimerWidget() {
 
   return (
     <div className="flex flex-col items-center justify-center h-full p-4">
-      <div className="text-5xl font-mono font-bold text-green-600 dark:text-green-400 mb-4">
+      <div className="text-5xl font-mono font-bold text-success dark:text-success mb-4">
         {formatTime(elapsed)}
       </div>
       <div className="text-lg font-medium mb-1 text-center px-4 truncate max-w-full">
@@ -584,12 +584,12 @@ export default function DashboardPage() {
                         onChange={(e) => handleUpdateTitle(widget.id, e.target.value)}
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
-                        className="font-medium text-sm bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-md border-0 outline-none focus:ring-2 focus:ring-blue-400 min-w-[100px]"
+                        className="font-medium text-sm bg-primary/10 text-primary px-2.5 py-1 rounded-md border-0 outline-none focus:ring-2 focus:ring-blue-400 min-w-[100px]"
                         data-testid={`input-widget-title-${widget.id}`}
                       />
                     ) : (
                       <span 
-                        className="font-medium text-sm bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-md"
+                        className="font-medium text-sm bg-primary/10 text-primary px-2.5 py-1 rounded-md"
                         data-testid={`badge-widget-title-${widget.id}`}
                       >
                         {widget.title}

@@ -6,10 +6,10 @@ import { Deal } from "@shared/schema";
 import { Link } from "wouter";
 
 const stageColors = {
-  prospecting: "bg-blue-500",
+  prospecting: "bg-primary",
   proposal: "bg-yellow-500",
-  negotiation: "bg-orange-500",
-  closing: "bg-green-500",
+  negotiation: "bg-warning",
+  closing: "bg-success",
 };
 
 const stageLabels = {

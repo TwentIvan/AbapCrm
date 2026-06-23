@@ -1625,7 +1625,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                   <MapPin className="h-5 w-5" />
                   Sedi Operative Collegate
                   {operativeLocations && operativeLocations.length > 0 && (
-                    <Badge className="ml-2 bg-blue-100 text-blue-800">
+                    <Badge className="ml-2 bg-primary/10 text-primary">
                       {operativeLocations.length}
                     </Badge>
                   )}
@@ -1644,17 +1644,17 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                       <div 
                         key={location.id}
                         className={cn(
-                          "flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200 transition-all",
-                          onEditLocation && "cursor-pointer hover:bg-blue-100 hover:border-blue-400 hover:shadow-sm"
+                          "flex items-start gap-3 p-3 bg-primary/5 rounded-lg border border-primary/20 transition-all",
+                          onEditLocation && "cursor-pointer hover:bg-primary/15 hover:border-primary/40 hover:shadow-sm"
                         )}
                         onClick={() => onEditLocation?.(location)}
                         data-testid={`location-${location.id}`}
                       >
-                        <div className="w-3 h-3 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                        <div className="w-3 h-3 rounded-full bg-primary mt-1.5 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium truncate">{location.name}</span>
-                            <Badge className="bg-blue-100 text-blue-800 text-xs shrink-0">
+                            <Badge className="bg-primary/10 text-primary text-xs shrink-0">
                               Sede Operativa
                             </Badge>
                             {onEditLocation && (
@@ -1664,8 +1664,8 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                             )}
                           </div>
                           {location.address && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              📍 {location.address}
+                            <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                              <MapPin className="h-3 w-3 shrink-0" /> {location.address}
                             </p>
                           )}
                           {(location.city || location.province) && (
@@ -1704,7 +1704,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Cerca Aziende</DialogTitle>
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="text-sm text-muted-foreground mt-2">
               Ricerca tramite Google Places (qualsiasi azienda) + database aziende italiane famose. Se non trovi risultati, compila i dati manualmente.
             </p>
           </DialogHeader>
@@ -1766,7 +1766,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                       type="button"
                       onClick={createMultiplePartners}
                       disabled={isCreatingMultiple || legalHeadquartersIndex === null}
-                      className="bg-green-600 hover:bg-green-700"
+                      className="bg-success hover:bg-success/90"
                       data-testid="button-create-multiple-partners"
                     >
                       {isCreatingMultiple ? (
@@ -1787,20 +1787,20 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
 
                 {/* Legenda selezione */}
                 {selectedCompanyIndices.size > 0 && (
-                  <div className="flex items-center gap-4 px-2 text-xs text-gray-500">
+                  <div className="flex items-center gap-4 px-2 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                      <span className="w-3 h-3 rounded-full bg-success"></span>
                       Sede Legale (clicca radio per impostare)
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                      <span className="w-3 h-3 rounded-full bg-primary"></span>
                       Sede Operativa
                     </span>
                   </div>
                 )}
 
                 {/* Lista risultati */}
-                <div className="border border-gray-200 rounded-lg max-h-80 overflow-y-auto">
+                <div className="border border-border rounded-lg max-h-80 overflow-y-auto">
                   {companySuggestions.map((company, index) => {
                     const isSelected = selectedCompanyIndices.has(index);
                     const isLegalHQ = legalHeadquartersIndex === index;
@@ -1810,8 +1810,8 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                         key={index}
                         className={cn(
                           "w-full px-4 py-4 text-left border-b border-gray-100 last:border-b-0 transition-colors",
-                          isLegalHQ ? "bg-green-50 border-l-4 border-l-green-500" : 
-                          isSelected ? "bg-blue-50 border-l-4 border-l-blue-500" : "hover:bg-gray-50"
+                          isLegalHQ ? "bg-success/10 border-l-4 border-l-success" : 
+                          isSelected ? "bg-primary/5 border-l-4 border-l-primary" : "hover:bg-muted"
                         )}
                       >
                         <div className="flex items-start gap-3">
@@ -1831,14 +1831,14 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                                 className={cn(
                                   "w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors",
                                   isLegalHQ 
-                                    ? "border-green-600 bg-green-600" 
-                                    : "border-gray-300 hover:border-green-400"
+                                    ? "border-green-600 bg-success" 
+                                    : "border-border hover:border-success/30"
                                 )}
                                 title={isLegalHQ ? "Sede legale" : "Imposta come sede legale"}
                                 data-testid={`radio-legal-${index}`}
                               >
                                 {isLegalHQ && (
-                                  <span className="w-2 h-2 rounded-full bg-white"></span>
+                                  <span className="w-2 h-2 rounded-full bg-background"></span>
                                 )}
                               </button>
                             )}
@@ -1856,31 +1856,31 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className="font-medium text-base">{company.name}</span>
                                   {isLegalHQ && (
-                                    <Badge className="bg-green-100 text-green-800 text-xs">
+                                    <Badge className="bg-success/10 text-success text-xs">
                                       Sede Legale
                                     </Badge>
                                   )}
                                   {isSelected && !isLegalHQ && (
-                                    <Badge className="bg-blue-100 text-blue-800 text-xs">
+                                    <Badge className="bg-primary/10 text-primary text-xs">
                                       Sede Operativa
                                     </Badge>
                                   )}
                                 </div>
                                 {company.legalName && company.legalName !== company.name && (
-                                  <div className="text-sm text-gray-600 mb-1">{company.legalName}</div>
+                                  <div className="text-sm text-muted-foreground mb-1">{company.legalName}</div>
                                 )}
-                                <div className="flex items-center gap-4 text-sm text-gray-500">
-                                  {company.address && <span>📍 {company.address}</span>}
-                                  {company.sector && <span>🏢 {company.sector}</span>}
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                  {company.address && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{company.address}</span>}
+                                  {company.sector && <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{company.sector}</span>}
                                 </div>
                                 {company.description && (
-                                  <div className="text-sm text-gray-600 mt-2 line-clamp-2">
+                                  <div className="text-sm text-muted-foreground mt-2 line-clamp-2">
                                     {company.description}
                                   </div>
                                 )}
                               </div>
                               {company.logoUrl && (
-                                <div className="w-12 h-12 bg-gray-100 rounded-lg p-1 ml-4">
+                                <div className="w-12 h-12 bg-muted rounded-lg p-1 ml-4">
                                   <img 
                                     src={company.logoUrl} 
                                     alt={`Logo ${company.name}`}
@@ -1897,7 +1897,7 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
                 </div>
                 
                 {/* Info selezione */}
-                <p className="text-xs text-gray-500 text-center">
+                <p className="text-xs text-muted-foreground text-center">
                   Seleziona le sedi con il checkbox, poi clicca il radio per indicare la sede legale principale. Clicca sul nome per popolare direttamente il form.
                 </p>
               </div>
@@ -1906,8 +1906,8 @@ export default function AdvancedPartnerForm({ onSuccess, existingPartner, onEdit
             {!isSearchingCompany && companySuggestions.length === 0 && searchQuery && (
               <div className="text-center py-8">
                 <Building2 className="mx-auto h-12 w-12 mb-4 text-gray-300" />
-                <p className="text-gray-600 mb-2">Nessuna azienda trovata per "{searchQuery}"</p>
-                <p className="text-sm text-gray-500 mb-4">Prova con un nome diverso o più specifico</p>
+                <p className="text-muted-foreground mb-2">Nessuna azienda trovata per "{searchQuery}"</p>
+                <p className="text-sm text-muted-foreground mb-4">Prova con un nome diverso o più specifico</p>
                 <Button 
                   onClick={() => setShowSearchDialog(false)}
                   variant="outline"

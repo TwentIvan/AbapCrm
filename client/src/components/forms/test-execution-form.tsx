@@ -112,13 +112,13 @@ export default function TestExecutionForm({ execution, projectId, onSuccess, onC
   const getResultIcon = (result: string) => {
     switch (result) {
       case "success":
-        return <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />;
+        return <CheckCircle2 className="h-4 w-4 text-success dark:text-success" />;
       case "failed":
-        return <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />;
+        return <XCircle className="h-4 w-4 text-destructive dark:text-destructive" />;
       case "partial":
-        return <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />;
+        return <AlertCircle className="h-4 w-4 text-warning dark:text-yellow-400" />;
       case "blocked":
-        return <Ban className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
+        return <Ban className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />;
       default:
         return null;
     }

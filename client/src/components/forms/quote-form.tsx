@@ -319,24 +319,24 @@ export default function QuoteForm({ quote, onSuccess }: QuoteFormProps) {
             </div>
 
             {quote && (
-              <div className="p-3 bg-blue-50 rounded-lg text-sm">
+              <div className="p-3 bg-primary/5 rounded-lg text-sm">
                 <span className="font-medium">Offerta #{quote.quoteNumber}</span>
-                <span className="ml-4 text-gray-500">v{quote.version}</span>
+                <span className="ml-4 text-muted-foreground">v{quote.version}</span>
               </div>
             )}
 
-            <div className="p-4 bg-gray-50 rounded-lg">
+            <div className="p-4 bg-muted rounded-lg">
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
-                  <span className="text-gray-500">Imponibile:</span>
+                  <span className="text-muted-foreground">Imponibile:</span>
                   <span className="ml-2 font-medium">€{subtotal.toFixed(2)}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">IVA:</span>
+                  <span className="text-muted-foreground">IVA:</span>
                   <span className="ml-2 font-medium">€{taxes.toFixed(2)}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Totale:</span>
+                  <span className="text-muted-foreground">Totale:</span>
                   <span className="ml-2 font-bold text-lg">€{total.toFixed(2)}</span>
                 </div>
               </div>

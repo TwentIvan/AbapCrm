@@ -236,7 +236,7 @@ export default function EmailConfig() {
                 <div
                   key={config.id}
                   className={`p-4 border rounded-lg ${
-                    config.isActive ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+                    config.isActive ? 'bg-success/10 border-success/30' : 'bg-muted border-border'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -245,7 +245,7 @@ export default function EmailConfig() {
                         <div className="font-medium">{config.email}</div>
                         <Badge 
                           variant={config.isActive ? "default" : "secondary"}
-                          className={config.isActive ? "bg-green-500" : ""}
+                          className={config.isActive ? "bg-success" : ""}
                         >
                           {config.isActive ? (
                             <>
@@ -267,7 +267,7 @@ export default function EmailConfig() {
                         <div className="flex items-center gap-2">
                           Password: 
                           {showPasswords[config.id] ? (
-                            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                            <span className="font-mono text-xs bg-muted px-2 py-1 rounded">
                               {config.password}
                             </span>
                           ) : (
@@ -315,7 +315,7 @@ export default function EmailConfig() {
                         size="sm"
                         onClick={() => setConfigToDelete(config)}
                         data-testid={`button-delete-${config.id}`}
-                        className="text-red-600 hover:text-red-700"
+                        className="text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

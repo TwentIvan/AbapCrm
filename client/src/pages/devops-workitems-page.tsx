@@ -61,12 +61,12 @@ const WORK_ITEM_TYPE_ICONS: Record<string, typeof Bug> = {
 };
 
 const WORK_ITEM_STATE_COLORS: Record<string, string> = {
-  new: 'bg-blue-100 text-blue-800',
-  active: 'bg-yellow-100 text-yellow-800',
-  resolved: 'bg-green-100 text-green-800',
-  closed: 'bg-gray-100 text-gray-800',
-  removed: 'bg-red-100 text-red-800',
-  default: 'bg-gray-100 text-gray-800'
+  new: 'bg-primary/10 text-primary',
+  active: 'bg-warning/10 text-warning',
+  resolved: 'bg-success/10 text-success',
+  closed: 'bg-muted text-foreground',
+  removed: 'bg-destructive/10 text-destructive',
+  default: 'bg-muted text-foreground'
 };
 
 function getWorkItemIcon(type?: string) {
@@ -216,7 +216,7 @@ export default function DevOpsWorkItemsPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <GitBranch className="h-5 w-5 text-blue-600" />
+                  <GitBranch className="h-5 w-5 text-primary" />
                   Azure DevOps Work Items
                 </CardTitle>
                 <CardDescription>
@@ -285,7 +285,7 @@ export default function DevOpsWorkItemsPage() {
                             data-testid={`row-workitem-${item.id}`}
                           >
                             <TableCell>
-                              <Icon className="h-4 w-4 text-blue-600" />
+                              <Icon className="h-4 w-4 text-primary" />
                             </TableCell>
                             <TableCell className="font-mono text-sm">
                               #{meta.workItemId || '?'}
@@ -309,12 +309,12 @@ export default function DevOpsWorkItemsPage() {
                             <TableCell>
                               <div className="flex items-center gap-1">
                                 {isEnriched(item) ? (
-                                  <Badge variant="outline" className="text-green-600 border-green-200">
+                                  <Badge variant="outline" className="text-success border-success/30">
                                     <CheckCircle className="h-3 w-3 mr-1" />
                                     Arricchito
                                   </Badge>
                                 ) : (
-                                  <Badge variant="outline" className="text-yellow-600 border-yellow-200">
+                                  <Badge variant="outline" className="text-warning border-warning/30">
                                     <Clock className="h-3 w-3 mr-1" />
                                     Da arricchire
                                   </Badge>
@@ -387,7 +387,7 @@ export default function DevOpsWorkItemsPage() {
                       href={selectedWorkItem.externalMetadata.workItemUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
+                      className="text-primary hover:underline"
                     >
                       <ExternalLink className="h-4 w-4" />
                     </a>
@@ -497,7 +497,7 @@ export default function DevOpsWorkItemsPage() {
                 data-testid="input-bookmarklet-json"
               />
               {jsonError && (
-                <p className="text-sm text-red-500 mt-1">{jsonError}</p>
+                <p className="text-sm text-destructive mt-1">{jsonError}</p>
               )}
             </div>
           </div>
@@ -627,8 +627,8 @@ export default function DevOpsWorkItemsPage() {
               </ol>
             </div>
 
-            <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded border border-blue-200 dark:border-blue-800">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
+            <div className="bg-primary/5 p-3 rounded border border-primary/20">
+              <p className="text-sm text-primary">
                 <strong>Nota:</strong> Il bookmarklet funziona solo su pagine Azure DevOps autenticate. 
                 Non può accedere a dati che non sono visibili nella pagina.
               </p>

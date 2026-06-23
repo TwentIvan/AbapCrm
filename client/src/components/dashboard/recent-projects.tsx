@@ -8,11 +8,11 @@ import { Project } from "@shared/schema";
 import { Link } from "wouter";
 
 const statusColors = {
-  planning: "bg-blue-100 text-blue-800",
-  in_progress: "bg-green-100 text-green-800", 
-  review: "bg-yellow-100 text-yellow-800",
-  completed: "bg-gray-100 text-gray-800",
-  on_hold: "bg-red-100 text-red-800",
+  planning: "bg-primary/10 text-primary",
+  in_progress: "bg-success/10 text-success", 
+  review: "bg-warning/10 text-warning",
+  completed: "bg-muted text-foreground",
+  on_hold: "bg-destructive/10 text-destructive",
 };
 
 const statusLabels = {

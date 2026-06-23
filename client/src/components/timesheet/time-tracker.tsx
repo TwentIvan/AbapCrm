@@ -285,11 +285,11 @@ export function TimeTracker({ task }: TimeTrackerProps) {
           />
 
           {progressPercentage > 0 && (
-            <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
+            <div className="bg-primary/5 p-3 rounded-lg">
               <div className="text-sm text-muted-foreground mb-2">Task Progress</div>
               <div className="space-y-2">
                 <Progress value={progressPercentage} className="h-2" />
-                <div className="text-lg font-semibold text-blue-700 dark:text-blue-300">
+                <div className="text-lg font-semibold text-primary">
                   {progressPercentage}% Complete
                 </div>
               </div>
@@ -297,9 +297,9 @@ export function TimeTracker({ task }: TimeTrackerProps) {
           )}
 
           {estimatedHours > 0 && (
-            <div className="bg-green-50 dark:bg-green-950 p-3 rounded-lg">
+            <div className="bg-success/10 p-3 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <TrendingUp className="h-4 w-4 text-success dark:text-success" />
                 <div className="text-sm text-muted-foreground">Effort Tracking</div>
               </div>
               <div className="space-y-1">
@@ -313,7 +313,7 @@ export function TimeTracker({ task }: TimeTrackerProps) {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Original Remaining:</span>
-                  <span className="font-medium text-green-600 dark:text-green-400">
+                  <span className="font-medium text-success dark:text-success">
                     {formatDuration(remainingHours * 60)}
                   </span>
                 </div>
@@ -321,20 +321,20 @@ export function TimeTracker({ task }: TimeTrackerProps) {
                 {calculatedRemainingHours > 0 && progressPercentage > 0 && (
                   <div className="flex justify-between text-sm">
                     <span>Calculated Remaining:</span>
-                    <span className="font-medium text-blue-600 dark:text-blue-400">
+                    <span className="font-medium text-primary">
                       {formatDuration(calculatedRemainingHours * 60)}
                     </span>
                   </div>
                 )}
                 
                 {remainingTimeData && (
-                  <div className="pt-2 border-t border-green-200 dark:border-green-800">
+                  <div className="pt-2 border-t border-success/30">
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Projected Remaining:</span>
                       <span className={`font-medium ${
                         remainingTimeData.projected > remainingTimeData.original 
-                          ? 'text-amber-600 dark:text-amber-400' 
-                          : 'text-green-600 dark:text-green-400'
+                          ? 'text-warning dark:text-amber-400' 
+                          : 'text-success dark:text-success'
                       }`}>
                         {formatDuration(remainingTimeData.projected * 60)}
                       </span>
@@ -343,8 +343,8 @@ export function TimeTracker({ task }: TimeTrackerProps) {
                       <span>Efficiency:</span>
                       <span className={`font-medium ${
                         remainingTimeData.efficiency < 1 
-                          ? 'text-red-600 dark:text-red-400' 
-                          : 'text-green-600 dark:text-green-400'
+                          ? 'text-destructive dark:text-destructive' 
+                          : 'text-success dark:text-success'
                       }`}>
                         {(remainingTimeData.efficiency * 100).toFixed(0)}%
                       </span>

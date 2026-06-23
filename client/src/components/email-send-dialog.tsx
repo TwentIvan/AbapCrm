@@ -351,8 +351,8 @@ export function EmailSendDialog({ open, onOpenChange }: EmailSendDialogProps) {
                   {lastSentResult && (
                     <div className={`p-3 rounded-lg border ${
                       lastSentResult.success 
-                        ? "bg-green-50 border-green-200 text-green-800" 
-                        : "bg-red-50 border-red-200 text-red-800"
+                        ? "bg-success/10 border-success/30 text-success" 
+                        : "bg-destructive/10 border-destructive/30 text-destructive"
                     }`}>
                       <div className="flex items-center gap-2">
                         {lastSentResult.success ? (
@@ -377,8 +377,8 @@ export function EmailSendDialog({ open, onOpenChange }: EmailSendDialogProps) {
                 <CardContent>
                   {sendersLoading ? (
                     <div className="space-y-2">
-                      <div className="h-4 bg-gray-200 rounded animate-pulse" />
-                      <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
+                      <div className="h-4 bg-muted rounded animate-pulse" />
+                      <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
                     </div>
                   ) : senders && senders.length > 0 ? (
                     <div className="space-y-2">

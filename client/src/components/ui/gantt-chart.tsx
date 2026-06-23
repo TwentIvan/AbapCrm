@@ -243,9 +243,9 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
   };
 
   const statusColors = {
-    planned: "bg-blue-500",
+    planned: "bg-primary",
     in_progress: "bg-yellow-500",
-    completed: "bg-green-500",
+    completed: "bg-success",
     cancelled: "bg-red-500"
   };
 
@@ -270,7 +270,7 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
           <span>{formatDateStr(minDateStr, 'long')}</span>
           <span>{formatDateStr(maxDateStr, 'long')}</span>
         </div>
-        <div className="relative h-2 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        <div className="relative h-2 bg-muted rounded"></div>
       </div>
 
       {Object.entries(milestonesByProject).map(([projectId, projectMilestones]) => {
@@ -353,9 +353,9 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
 
                   const taskStatusColors: Record<string, string> = {
                     todo: "bg-gray-400 dark:bg-gray-600",
-                    in_progress: "bg-blue-500 dark:bg-blue-600",
+                    in_progress: "bg-primary dark:bg-primary",
                     review: "bg-yellow-500 dark:bg-yellow-600",
-                    completed: "bg-green-500 dark:bg-green-600"
+                    completed: "bg-success dark:bg-success"
                   };
 
                   const milestoneRow = (
@@ -455,18 +455,18 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                               className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize bg-black/0 hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
                               onMouseDown={(e) => handleMouseDown(e, milestone, 'resize-start')}
                             >
-                              <div className="w-1 h-6 bg-white/80 rounded-full" />
+                              <div className="w-1 h-6 bg-background/80 rounded-full" />
                             </div>
                             
                             <div className="px-3 h-full flex items-center justify-center pointer-events-none">
-                              <Progress value={milestone.progress || 0} className="h-1.5 bg-white/30" />
+                              <Progress value={milestone.progress || 0} className="h-1.5 bg-background/30" />
                             </div>
 
                             <div
                               className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize bg-black/0 hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
                               onMouseDown={(e) => handleMouseDown(e, milestone, 'resize-end')}
                             >
-                              <div className="w-1 h-6 bg-white/80 rounded-full" />
+                              <div className="w-1 h-6 bg-background/80 rounded-full" />
                             </div>
                           </div>
 
@@ -494,7 +494,7 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                           <div className="w-44 flex-shrink-0 flex items-center gap-1">
                             <button
                               onClick={() => toggleOwnerExpansion(ownerKey)}
-                              className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+                              className="p-0.5 hover:bg-muted dark:hover:bg-gray-700 rounded"
                               data-testid={`toggle-owner-${ownerKey}`}
                             >
                               {isExpanded ? (
@@ -504,7 +504,7 @@ export function GanttChart({ milestones, projects, tasks = [], onMilestoneClick,
                               )}
                             </button>
                             <div className="flex-1">
-                              <div className="text-xs font-medium text-blue-600">
+                              <div className="text-xs font-medium text-primary">
                                 {ownerName}
                               </div>
                               {!isExpanded && (

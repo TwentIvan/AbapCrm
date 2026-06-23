@@ -54,7 +54,7 @@ function ToolCallsPanel({ task }: { task: Task }) {
           <Zap className="h-4 w-4 text-primary" />
           Tool Calls — ultima esecuzione MCP
           {lastWithTools?.status === "awaiting_approval" && (
-            <Badge variant="secondary" className="text-xs ml-auto text-amber-600">In attesa approvazione</Badge>
+            <Badge variant="secondary" className="text-xs ml-auto text-warning">In attesa approvazione</Badge>
           )}
         </CardTitle>
       </CardHeader>
@@ -64,13 +64,13 @@ function ToolCallsPanel({ task }: { task: Task }) {
             <div key={i} className="py-3 space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
                 {tc.requiresApproval ? (
-                  tc.status === "approved" ? <ShieldCheck className="h-3.5 w-3.5 text-green-600 shrink-0" /> :
-                  tc.status === "rejected" ? <ShieldX className="h-3.5 w-3.5 text-red-500 shrink-0" /> :
-                  <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                  tc.status === "approved" ? <ShieldCheck className="h-3.5 w-3.5 text-success shrink-0" /> :
+                  tc.status === "rejected" ? <ShieldX className="h-3.5 w-3.5 text-destructive shrink-0" /> :
+                  <ShieldAlert className="h-3.5 w-3.5 text-warning shrink-0" />
                 ) : (
                   tc.ok != null ? (
-                    tc.ok ? <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" /> :
-                             <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                    tc.ok ? <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" /> :
+                             <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
                   ) : null
                 )}
                 <code className="font-mono text-xs font-semibold bg-muted px-1.5 py-0.5 rounded">
@@ -198,7 +198,7 @@ function ConnectionPlanPanel({ task }: { task: Task }) {
                 {STEP_TYPE_LABELS[step.type] ?? step.type}
               </p>
               {step.onFailure && step.onFailure !== "abort" && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                <p className="text-xs text-warning dark:text-amber-400 mt-0.5">
                   In caso di errore: {step.onFailure === "retry" ? "riprova" : "chiedi all'utente"}
                 </p>
               )}
@@ -286,25 +286,25 @@ function PendingActionsPanel({ task }: { task: Task }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+      <div className="bg-warning/10 dark:bg-amber-950/20 border border-warning/30 dark:border-amber-800 rounded-lg p-4">
+        <div className="flex items-center gap-2 text-warning dark:text-amber-400">
           <ShieldAlert className="h-4 w-4" />
           <span className="font-medium text-sm">
             Esecuzione sospesa — {pending.length} azione{pending.length !== 1 ? "i" : ""} write in attesa
           </span>
         </div>
-        <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+        <p className="text-xs text-warning dark:text-warning mt-1">
           Esamina ogni azione. Approva per eseguirla sul server MCP o rifiuta per interrompere. L'esecuzione riprende automaticamente quando tutte sono decise.
         </p>
       </div>
 
       {pending.length > 1 && (
         <div className="flex gap-2 justify-end">
-          <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:border-red-400"
+          <Button size="sm" variant="outline" className="text-destructive border-destructive/30 hover:border-destructive/30"
             onClick={() => handleDecideAll("rejected")} disabled={decideMutation.isPending}>
             <ShieldX className="h-3.5 w-3.5 mr-1" />Rifiuta tutte
           </Button>
-          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white"
+          <Button size="sm" className="bg-success hover:bg-success/90 text-white"
             onClick={() => handleDecideAll("approved")} disabled={decideMutation.isPending}>
             <ShieldCheck className="h-3.5 w-3.5 mr-1" />Approva tutte
           </Button>
@@ -314,15 +314,15 @@ function PendingActionsPanel({ task }: { task: Task }) {
       <div className="space-y-3">
         {pendingActions.map((action: any) => (
           <Card key={action.id} className={
-            action.status === "approved" ? "border-green-300 dark:border-green-800" :
-            action.status === "rejected" ? "border-red-300 dark:border-red-800" :
-            "border-amber-300 dark:border-amber-700"
+            action.status === "approved" ? "border-success/30" :
+            action.status === "rejected" ? "border-destructive/30 dark:border-red-800" :
+            "border-warning/30 dark:border-amber-700"
           }>
             <CardContent className="pt-4 pb-4 space-y-3">
               <div className="flex items-center gap-2 flex-wrap">
-                {action.status === "approved" ? <ShieldCheck className="h-4 w-4 text-green-600 shrink-0" /> :
-                 action.status === "rejected" ? <ShieldX className="h-4 w-4 text-red-500 shrink-0" /> :
-                 <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />}
+                {action.status === "approved" ? <ShieldCheck className="h-4 w-4 text-success shrink-0" /> :
+                 action.status === "rejected" ? <ShieldX className="h-4 w-4 text-destructive shrink-0" /> :
+                 <ShieldAlert className="h-4 w-4 text-warning shrink-0" />}
                 <code className="font-mono text-xs font-semibold bg-muted px-1.5 py-0.5 rounded">{action.toolName}</code>
                 <Badge variant={
                   action.status === "approved" ? "default" :
@@ -362,13 +362,13 @@ function PendingActionsPanel({ task }: { task: Task }) {
                     data-testid={`decision-note-${action.id}`}
                   />
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-400"
+                    <Button size="sm" variant="outline" className="text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/30"
                       onClick={() => handleDecide(action.id, "rejected")}
                       disabled={decideMutation.isPending}
                       data-testid={`btn-reject-${action.id}`}>
                       <ShieldX className="h-3.5 w-3.5 mr-1" />Rifiuta
                     </Button>
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white"
+                    <Button size="sm" className="bg-success hover:bg-success/90 text-white"
                       onClick={() => handleDecide(action.id, "approved")}
                       disabled={decideMutation.isPending}
                       data-testid={`btn-approve-${action.id}`}>
@@ -414,12 +414,12 @@ function AiCostsPanel({ task }: { task: Task }) {
   return (
     <div className="space-y-4">
       {lastPaused && (
-        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+        <div className="bg-warning/10 dark:bg-amber-950/20 border border-warning/30 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-warning dark:text-amber-400">
             <AlertTriangle className="h-4 w-4" />
             <span className="font-medium text-sm">Esecuzione sospesa per budget</span>
           </div>
-          <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+          <p className="text-xs text-warning dark:text-warning mt-1">
             Alzare il Budget Cap nel tab Dettagli e usare "Riprendi esecuzione" per continuare.
           </p>
         </div>
@@ -499,8 +499,8 @@ function AiCostsPanel({ task }: { task: Task }) {
                         className={
                           parseFloat(lastCompleted.totalCostEur) <=
                           parseFloat((task.estimateCostMaxEur as string) || "0")
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-500"
+                            ? "text-success dark:text-success"
+                            : "text-destructive"
                         }
                       >
                         {parseFloat((task.estimateCostMaxEur as string) || "0") > 0
@@ -644,15 +644,15 @@ function AiSpecPanel({ task }: { task: Task }) {
 
       {/* Open Questions */}
       {Array.isArray(spec.openQuestions) && spec.openQuestions.length > 0 && (
-        <Card className="border-yellow-200 dark:border-yellow-800">
+        <Card className="border-warning/30 dark:border-yellow-800">
           <CardHeader className="py-3 px-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-warning dark:text-yellow-400">
               <AlertTriangle className="h-4 w-4" />
               Domande Aperte ({spec.openQuestions.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <ul className="list-decimal pl-4 space-y-1 text-sm text-yellow-800 dark:text-yellow-300">
+            <ul className="list-decimal pl-4 space-y-1 text-sm text-warning dark:text-yellow-300">
               {spec.openQuestions.map((q: string, i: number) => <li key={i}>{q}</li>)}
             </ul>
           </CardContent>

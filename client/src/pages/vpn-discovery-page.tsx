@@ -206,43 +206,43 @@ export default function VPNDiscoveryPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'configured':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
+        return <CheckCircle className="h-4 w-4 text-success" />;
       case 'available':
-        return <Info className="h-4 w-4 text-blue-600" />;
+        return <Info className="h-4 w-4 text-primary" />;
       case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
+        return <AlertCircle className="h-4 w-4 text-destructive" />;
       default:
-        return <Info className="h-4 w-4 text-gray-600" />;
+        return <Info className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   const getSoftwareIcon = (software: string) => {
     switch (software) {
       case 'forticlient':
-        return <Shield className="h-5 w-5 text-orange-600" />;
+        return <Shield className="h-5 w-5 text-warning" />;
       case 'cisco_anyconnect':
-        return <Network className="h-5 w-5 text-blue-600" />;
+        return <Network className="h-5 w-5 text-primary" />;
       case 'azure_vpn':
-        return <Network className="h-5 w-5 text-blue-600" />;
+        return <Network className="h-5 w-5 text-primary" />;
       case 'native':
-        return <Settings className="h-5 w-5 text-gray-600" />;
+        return <Settings className="h-5 w-5 text-muted-foreground" />;
       case 'openvpn':
-        return <Terminal className="h-5 w-5 text-green-600" />;
+        return <Terminal className="h-5 w-5 text-success" />;
       default:
-        return <Network className="h-5 w-5 text-gray-600" />;
+        return <Network className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
   const getAutomationTypeIcon = (automationType: string) => {
     switch (automationType) {
       case 'full':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
+        return <CheckCircle className="h-4 w-4 text-success" />;
       case 'credentials':
-        return <Key className="h-4 w-4 text-blue-600" />;
+        return <Key className="h-4 w-4 text-primary" />;
       case 'manual':
-        return <Settings className="h-4 w-4 text-gray-600" />;
+        return <Settings className="h-4 w-4 text-muted-foreground" />;
       default:
-        return <Info className="h-4 w-4 text-gray-600" />;
+        return <Info className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -285,21 +285,21 @@ export default function VPNDiscoveryPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex items-center gap-3">
-                  <CheckCircle className="h-8 w-8 text-green-600 bg-green-100 p-2 rounded" />
+                  <CheckCircle className="h-8 w-8 text-success bg-success/10 p-2 rounded" />
                   <div>
                     <div className="font-medium">Automazione Completa</div>
                     <div className="text-sm text-muted-foreground">Profili leggibili + script automatici</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Key className="h-8 w-8 text-blue-600 bg-blue-100 p-2 rounded" />
+                  <Key className="h-8 w-8 text-primary bg-primary/10 p-2 rounded" />
                   <div>
                     <div className="font-medium">Automazione Credenziali</div>
                     <div className="text-sm text-muted-foreground">Form + clipboard automatico</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Settings className="h-8 w-8 text-gray-600 bg-gray-100 p-2 rounded" />
+                  <Settings className="h-8 w-8 text-muted-foreground bg-muted p-2 rounded" />
                   <div>
                     <div className="font-medium">Configurazione Manuale</div>
                     <div className="text-sm text-muted-foreground">Istruzioni step-by-step</div>
@@ -323,7 +323,7 @@ export default function VPNDiscoveryPage() {
             <CardContent>
               {isLoadingSoftware ? (
                 <div className="animate-pulse">
-                  <div className="h-10 bg-gray-200 rounded w-full"></div>
+                  <div className="h-10 bg-muted rounded w-full"></div>
                 </div>
               ) : availableSoftware?.length === 0 ? (
                 <div className="text-center py-8">
@@ -385,7 +385,7 @@ export default function VPNDiscoveryPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <CheckCircle className="h-5 w-5 text-success" />
                       Profili VPN Configurati
                     </CardTitle>
                     <CardDescription>
@@ -397,7 +397,7 @@ export default function VPNDiscoveryPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {[...Array(2)].map((_, i) => (
                           <div key={i} className="animate-pulse">
-                            <div className="h-20 bg-gray-200 rounded"></div>
+                            <div className="h-20 bg-muted rounded"></div>
                           </div>
                         ))}
                       </div>
@@ -412,7 +412,7 @@ export default function VPNDiscoveryPage() {
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {vpnConnections?.map((connection) => (
-                          <Card key={connection.id} className="border border-green-200">
+                          <Card key={connection.id} className="border border-success/30">
                             <CardHeader className="pb-3">
                               <CardTitle className="flex items-center justify-between text-sm">
                                 <div className="flex items-center gap-2">
@@ -420,9 +420,9 @@ export default function VPNDiscoveryPage() {
                                   <span className="truncate">{connection.name}</span>
                                 </div>
                                 {connection.configured ? (
-                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                  <CheckCircle className="h-4 w-4 text-success" />
                                 ) : (
-                                  <Info className="h-4 w-4 text-blue-600" />
+                                  <Info className="h-4 w-4 text-primary" />
                                 )}
                               </CardTitle>
                             </CardHeader>
@@ -470,7 +470,7 @@ export default function VPNDiscoveryPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Key className="h-5 w-5 text-blue-600" />
+                      <Key className="h-5 w-5 text-primary" />
                       Automazione Credenziali
                     </CardTitle>
                     <CardDescription>
@@ -574,12 +574,12 @@ export default function VPNDiscoveryPage() {
                       </div>
                     </div>
                     
-                    <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
                       <div className="flex items-start gap-3">
-                        <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <Info className="h-5 w-5 text-primary mt-0.5" />
                         <div>
                           <h4 className="font-medium text-blue-900 mb-1">Come funziona l'automazione credenziali</h4>
-                          <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                          <ol className="text-sm text-primary space-y-1 list-decimal list-inside">
                             <li>Compila i campi sopra con le tue credenziali VPN</li>
                             <li>Usa i pulsanti "Copia" per copiare ogni campo negli appunti</li>
                             <li>Apri {getCurrentSoftware()?.name} e incolla le credenziali nei campi appropriati</li>
@@ -596,7 +596,7 @@ export default function VPNDiscoveryPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Settings className="h-5 w-5 text-gray-600" />
+                      <Settings className="h-5 w-5 text-muted-foreground" />
                       Configurazione Manuale
                     </CardTitle>
                     <CardDescription>
@@ -605,14 +605,14 @@ export default function VPNDiscoveryPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-6">
-                      <div className="p-4 bg-gray-50 rounded-lg border">
+                      <div className="p-4 bg-muted rounded-lg border">
                         <div className="flex items-start gap-3">
-                          <Settings className="h-5 w-5 text-gray-600 mt-1" />
+                          <Settings className="h-5 w-5 text-muted-foreground mt-1" />
                           <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Istruzioni per {getCurrentSoftware()?.name}</h4>
+                            <h4 className="font-medium text-foreground mb-2">Istruzioni per {getCurrentSoftware()?.name}</h4>
                             
                             {selectedSoftware === 'native' && (
-                              <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
+                              <ol className="text-sm text-foreground space-y-2 list-decimal list-inside">
                                 <li>Apri Preferenze di Sistema → Rete</li>
                                 <li>Clicca il pulsante "+" per aggiungere una nuova interfaccia</li>
                                 <li>Seleziona "VPN" come interfaccia</li>
@@ -623,10 +623,10 @@ export default function VPNDiscoveryPage() {
                             )}
                             
                             {selectedSoftware === 'openvpn' && (
-                              <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
+                              <ol className="text-sm text-foreground space-y-2 list-decimal list-inside">
                                 <li>Assicurati di avere il file di configurazione .ovpn</li>
                                 <li>Apri il Terminale</li>
-                                <li>Esegui: <code className="bg-gray-200 px-1 rounded">sudo openvpn /path/to/config.ovpn</code></li>
+                                <li>Esegui: <code className="bg-muted px-1 rounded">sudo openvpn /path/to/config.ovpn</code></li>
                                 <li>Inserisci le credenziali quando richiesto</li>
                                 <li>Premi Ctrl+C per disconnettere</li>
                               </ol>
@@ -635,12 +635,12 @@ export default function VPNDiscoveryPage() {
                         </div>
                       </div>
                       
-                      <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div className="p-4 bg-warning/10 rounded-lg border border-warning/30">
                         <div className="flex items-start gap-3">
-                          <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                          <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
                           <div>
                             <h4 className="font-medium text-yellow-900 mb-1">Importante</h4>
-                            <p className="text-sm text-yellow-800">
+                            <p className="text-sm text-warning">
                               La configurazione manuale richiede l'intervento dell'utente per ogni connessione. 
                               Considera l'installazione di software VPN con supporto per automazione per un'esperienza migliore.
                             </p>

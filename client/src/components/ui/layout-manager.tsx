@@ -162,10 +162,10 @@ export function LayoutManager({
                       >
                         {layout.name}
                         {layout.name === currentLayoutName && (
-                          <span className="ml-2 text-xs text-green-600">(corrente)</span>
+                          <span className="ml-2 text-xs text-success">(corrente)</span>
                         )}
                         {layout.isDefault && (
-                          <span className="ml-2 text-xs text-blue-600">(default)</span>
+                          <span className="ml-2 text-xs text-primary">(default)</span>
                         )}
                       </button>
                       <div className="text-xs text-muted-foreground">

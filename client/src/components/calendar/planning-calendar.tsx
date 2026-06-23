@@ -215,10 +215,10 @@ export default function PlanningCalendar({ planningWindows, project, onWindowSel
                 className={`
                   min-h-[100px] p-2 border border-border/50 
                   ${!isInCurrentMonth ? 'bg-muted/30 text-muted-foreground' : 'bg-background'}
-                  ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800' : ''}
+                  ${isTodayDate ? 'bg-primary/5 border-primary/30' : ''}
                 `}
               >
-                <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+                <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-primary' : ''}`}>
                   {format(day, 'd')}
                 </div>
                 

@@ -322,7 +322,7 @@ export default function OrganizationsPage() {
                           data-testid={`img-org-badge-${item.id}`}
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center text-white text-lg font-semibold">
+                        <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white text-lg font-semibold">
                           {item.name.charAt(0).toUpperCase()}
                         </div>
                       )}
@@ -346,7 +346,7 @@ export default function OrganizationsPage() {
                       <span className="text-sm text-muted-foreground">Tema:</span>
                       <div className="flex items-center">
                         <div 
-                          className="w-4 h-4 rounded-full mr-2 border border-gray-300"
+                          className="w-4 h-4 rounded-full mr-2 border border-border"
                           style={{ backgroundColor: getThemeColor(item.theme) }}
                         />
                         <span className="text-sm capitalize">{getThemeLabel(item.theme)}</span>
@@ -356,8 +356,8 @@ export default function OrganizationsPage() {
                       <span className="text-sm text-muted-foreground">Stato:</span>
                       <div className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${
                         item.isActive !== false
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-success/10 text-success' 
+                          : 'bg-destructive/10 text-destructive'
                       }`}>
                         {item.isActive !== false ? 'Attiva' : 'Inattiva'}
                       </div>

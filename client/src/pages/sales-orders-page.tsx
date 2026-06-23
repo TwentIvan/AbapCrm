@@ -19,12 +19,12 @@ import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-
 import SalesOrderForm from "@/components/forms/sales-order-form";
 
 const statusColors: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-800",
-  sent: "bg-blue-100 text-blue-800", 
-  accepted: "bg-green-100 text-green-800",
+  draft: "bg-muted text-foreground",
+  sent: "bg-primary/10 text-primary", 
+  accepted: "bg-success/10 text-success",
   invoiced: "bg-purple-100 text-purple-800",
   paid: "bg-emerald-100 text-emerald-800",
-  cancelled: "bg-red-100 text-red-800",
+  cancelled: "bg-destructive/10 text-destructive",
 };
 
 const statusLabels: Record<string, string> = {
@@ -157,12 +157,12 @@ export default function SalesOrdersPage() {
       searchable: true,
       render: (order: SalesOrder) => (
         <div className="flex items-center gap-2">
-          <Badge className={statusColors[order.status] || "bg-gray-100"}>
+          <Badge className={statusColors[order.status] || "bg-muted"}>
             {statusLabels[order.status] || order.status}
           </Badge>
           {!order.isBillable && (
             <span title="Non fatturabile">
-              <AlertCircle className="h-4 w-4 text-red-500" />
+              <AlertCircle className="h-4 w-4 text-destructive" />
             </span>
           )}
         </div>

@@ -158,7 +158,7 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
                 <img 
                   src={logoPreview} 
                   alt="Logo" 
-                  className="w-20 h-20 object-contain border rounded-lg bg-white"
+                  className="w-20 h-20 object-contain border rounded-lg bg-background"
                 />
                 <Button
                   type="button"
@@ -222,7 +222,7 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
             <SelectTrigger data-testid="select-organization-theme">
               <div className="flex items-center">
                 <div 
-                  className="w-4 h-4 rounded-full mr-2 border border-gray-300"
+                  className="w-4 h-4 rounded-full mr-2 border border-border"
                   style={{ backgroundColor: getThemeColor(formData.theme) }}
                 />
                 <SelectValue placeholder="Seleziona tema" />
@@ -231,61 +231,61 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
             <SelectContent>
               <SelectItem value="blue">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("blue") }} />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-border" style={{ backgroundColor: getThemeColor("blue") }} />
                   Blu
                 </div>
               </SelectItem>
               <SelectItem value="green">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("green") }} />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-border" style={{ backgroundColor: getThemeColor("green") }} />
                   Verde
                 </div>
               </SelectItem>
               <SelectItem value="purple">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("purple") }} />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-border" style={{ backgroundColor: getThemeColor("purple") }} />
                   Viola
                 </div>
               </SelectItem>
               <SelectItem value="orange">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("orange") }} />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-border" style={{ backgroundColor: getThemeColor("orange") }} />
                   Arancione
                 </div>
               </SelectItem>
               <SelectItem value="red">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("red") }} />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-border" style={{ backgroundColor: getThemeColor("red") }} />
                   Rosso
                 </div>
               </SelectItem>
               <SelectItem value="pink">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("pink") }} />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-border" style={{ backgroundColor: getThemeColor("pink") }} />
                   Rosa
                 </div>
               </SelectItem>
               <SelectItem value="yellow">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("yellow") }} />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-border" style={{ backgroundColor: getThemeColor("yellow") }} />
                   Giallo
                 </div>
               </SelectItem>
               <SelectItem value="teal">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("teal") }} />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-border" style={{ backgroundColor: getThemeColor("teal") }} />
                   Teal
                 </div>
               </SelectItem>
               <SelectItem value="indigo">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("indigo") }} />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-border" style={{ backgroundColor: getThemeColor("indigo") }} />
                   Indaco
                 </div>
               </SelectItem>
               <SelectItem value="gray">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 rounded-full mr-2 border border-gray-300" style={{ backgroundColor: getThemeColor("gray") }} />
+                  <div className="w-4 h-4 rounded-full mr-2 border border-border" style={{ backgroundColor: getThemeColor("gray") }} />
                   Grigio
                 </div>
               </SelectItem>
@@ -307,7 +307,7 @@ export default function OrganizationForm({ organization, onSuccess, onCancel }: 
               {partners.map((partner: any) => (
                 <SelectItem key={partner.id} value={partner.id}>
                   <div className="flex items-center">
-                    <div className="w-4 h-4 rounded-full mr-2 bg-blue-500 flex items-center justify-center text-white text-xs">
+                    <div className="w-4 h-4 rounded-full mr-2 bg-primary flex items-center justify-center text-white text-xs">
                       {partner.name?.charAt(0)?.toUpperCase() || "P"}
                     </div>
                     <span>{partner.name} {partner.surname ? `${partner.surname}` : ""}</span>

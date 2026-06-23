@@ -152,7 +152,7 @@ export function RateDisplay({
         <CardTitle className="text-sm flex items-center gap-2">
           <DollarSign className="h-4 w-4" />
           Tariffa Applicata
-          <Zap className="h-3 w-3 text-green-600" />
+          <Zap className="h-3 w-3 text-success" />
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -184,7 +184,7 @@ export function RateDisplay({
         {showValueCalculation && timeLoggedMinutes > 0 && (
           <div className="border-t pt-3">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-green-600" />
+              <TrendingUp className="h-4 w-4 text-success" />
               <span className="text-sm font-medium">Valore Calcolato</span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -199,7 +199,7 @@ export function RateDisplay({
               </div>
               <div>
                 <span className="text-muted-foreground">Valore:</span>
-                <div className="text-green-600 font-semibold" data-testid="text-estimated-value">
+                <div className="text-success font-semibold" data-testid="text-estimated-value">
                   €{estimatedValue.toFixed(2)}
                 </div>
               </div>
@@ -209,10 +209,10 @@ export function RateDisplay({
 
         {/* Minimum Hours Warning */}
         {resolvedRate.minimumHours && timeLoggedHours < parseFloat(resolvedRate.minimumHours) && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-2">
+          <div className="bg-warning/10 dark:bg-yellow-900/20 border border-warning/30 dark:border-yellow-800 rounded-md p-2">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-3 w-3 text-yellow-600" />
-              <span className="text-xs text-yellow-700 dark:text-yellow-300">
+              <AlertCircle className="h-3 w-3 text-warning" />
+              <span className="text-xs text-warning dark:text-yellow-300">
                 Ore minime richieste: {resolvedRate.minimumHours}h
               </span>
             </div>

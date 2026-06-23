@@ -109,10 +109,10 @@ function PartnerDealsCount({ partnerId, currentOrganizationId }: { partnerId: st
 }
 
 const typeColors = {
-  client: "bg-blue-100 text-blue-800",
-  vendor: "bg-green-100 text-green-800",
+  client: "bg-primary/10 text-primary",
+  vendor: "bg-success/10 text-success",
   consultant: "bg-purple-100 text-purple-800",
-  other: "bg-gray-100 text-gray-800",
+  other: "bg-muted text-foreground",
 };
 
 const typeLabels = {

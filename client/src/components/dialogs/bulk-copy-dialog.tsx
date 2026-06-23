@@ -98,7 +98,7 @@ export function BulkCopyDialog({
             )}
           </div>
 
-          <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-3 rounded border border-blue-200 dark:border-blue-800">
+          <div className="text-xs text-muted-foreground bg-primary/5 p-3 rounded border border-primary/20">
             <strong>Nota:</strong> Le copie manterranno tutti i dati degli originali ad eccezione degli ID e delle date di creazione/aggiornamento che verranno generati automaticamente.
           </div>
         </div>
@@ -115,7 +115,7 @@ export function BulkCopyDialog({
           <Button
             onClick={handleCopy}
             disabled={isPending}
-            className="bg-green-600 hover:bg-green-700"
+            className="bg-success hover:bg-success/90"
             data-testid="button-confirm-bulk-copy"
           >
             {isPending ? "Copiando..." : `Copia ${selectedCount} elemento${selectedCount > 1 ? 'i' : ''}`}

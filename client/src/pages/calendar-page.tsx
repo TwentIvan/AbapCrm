@@ -11,11 +11,11 @@ import { Calendar as CalendarIcon, Clock, MapPin, User } from "lucide-react";
 import { CalendarEvent } from "@shared/schema";
 
 const typeColors = {
-  meeting: "bg-blue-100 text-blue-800",
-  call: "bg-green-100 text-green-800",
-  deadline: "bg-red-100 text-red-800",
-  reminder: "bg-yellow-100 text-yellow-800",
-  other: "bg-gray-100 text-gray-800",
+  meeting: "bg-primary/10 text-primary",
+  call: "bg-success/10 text-success",
+  deadline: "bg-destructive/10 text-destructive",
+  reminder: "bg-warning/10 text-warning",
+  other: "bg-muted text-foreground",
 };
 
 const typeLabels = {

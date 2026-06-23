@@ -818,7 +818,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               }}
             >
               <div 
-                className={`hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden ${hasChildren ? 'border-2 border-dashed' : ''} ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
+                className={`hover:opacity-80 text-xs p-1 rounded border h-full overflow-hidden ${hasChildren ? 'border-2 border-dashed' : ''} ${instance.isPartialSlot ? 'border-warning/40 border-2' : ''}`}
                 style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null)}
               >
                 <div className="font-medium truncate">
@@ -855,11 +855,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               className={`
                 p-2 border border-border/50 relative
                 ${!isInCurrentMonth ? 'bg-muted/30 text-muted-foreground' : 'bg-background'}
-                ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800' : ''}
+                ${isTodayDate ? 'bg-primary/5 border-primary/30' : ''}
               `}
               style={{ height: `${FIXED_DAY_HEIGHT}px` }}
             >
-              <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+              <div className={`text-sm font-medium mb-1 ${isTodayDate ? 'text-primary' : ''}`}>
                 {format(day, 'd')}
               </div>
               
@@ -940,7 +940,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               const isTodayDate = isSameDay(day, new Date());
               
               return (
-                <div key={dateKey} className={`relative ${isTodayDate ? 'bg-blue-50 dark:bg-blue-950/20' : 'bg-background'}`}>
+                <div key={dateKey} className={`relative ${isTodayDate ? 'bg-primary/5' : 'bg-background'}`}>
                   {/* Griglia di background */}
                   {hours.map(hour => (
                     <div 
@@ -1013,7 +1013,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                           }}
                         >
                           <div 
-                            className={`hover:opacity-80 text-xs p-2 rounded border h-full overflow-hidden ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
+                            className={`hover:opacity-80 text-xs p-2 rounded border h-full overflow-hidden ${instance.isPartialSlot ? 'border-warning/40 border-2' : ''}`}
                             style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null)}
                           >
                             <div className="font-medium truncate">
@@ -1148,7 +1148,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
                       }}
                     >
                       <div 
-                        className={`hover:opacity-80 p-3 rounded border h-full overflow-hidden flex flex-col ${instance.isPartialSlot ? 'border-orange-400 border-2' : ''}`}
+                        className={`hover:opacity-80 p-3 rounded border h-full overflow-hidden flex flex-col ${instance.isPartialSlot ? 'border-warning/40 border-2' : ''}`}
                         style={getProjectColorStyle(getProjectHierarchyColor(instance.project), instance.level, instance.project !== null)}
                       >
                         <div className="font-medium truncate">
@@ -1259,11 +1259,11 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
           <h4 className="text-sm font-medium mb-2">Legenda Gerarchia Progetti:</h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-blue-200 border border-blue-300"></div>
+              <div className="w-3 h-3 rounded bg-blue-200 border border-primary/30"></div>
               <span>Progetti Principali</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-green-200 border border-green-300"></div>
+              <div className="w-3 h-3 rounded bg-success/20 border border-success/30"></div>
               <span>Sotto-progetti (Livello 1)</span>
             </div>
             <div className="flex items-center gap-2">
@@ -1271,7 +1271,7 @@ export default function GlobalPlanningCalendar({ onWindowSelect, onAddNew }: Glo
               <span>Sotto-progetti (Livello 2)</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-orange-200 border border-orange-300"></div>
+              <div className="w-3 h-3 rounded bg-warning/20 border border-warning/30"></div>
               <span>Sotto-progetti (Livello 3+)</span>
             </div>
           </div>

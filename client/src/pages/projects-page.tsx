@@ -37,20 +37,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
 
 const statusColors = {
-  planning: "bg-blue-100 text-blue-800",
-  in_progress: "bg-green-100 text-green-800", 
-  review: "bg-yellow-100 text-yellow-800",
-  completed: "bg-gray-100 text-gray-800",
-  on_hold: "bg-red-100 text-red-800",
+  planning: "bg-primary/10 text-primary",
+  in_progress: "bg-success/10 text-success", 
+  review: "bg-warning/10 text-warning",
+  completed: "bg-muted text-foreground",
+  on_hold: "bg-destructive/10 text-destructive",
 };
 
 // Configurazione stati ETC (End-to-Complete)
 const etcStateConfig: Record<string, { label: string; color: string; icon: any }> = {
-  completed: { label: "Completato", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400", icon: CheckCircle2 },
-  on_track: { label: "In Tempo", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", icon: Clock },
-  delayed: { label: "In Ritardo", color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400", icon: AlertTriangle },
-  no_planning_window: { label: "No Pianificazione", color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400", icon: CalendarX },
-  no_tasks: { label: "No Task", color: "bg-gray-100 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400", icon: HelpCircle },
+  completed: { label: "Completato", color: "bg-success/10 text-success dark:text-success", icon: CheckCircle2 },
+  on_track: { label: "In Tempo", color: "bg-primary/10 text-primary", icon: Clock },
+  delayed: { label: "In Ritardo", color: "bg-destructive/10 text-destructive dark:bg-red-900/30 dark:text-destructive", icon: AlertTriangle },
+  no_planning_window: { label: "No Pianificazione", color: "bg-warning/10 text-warning", icon: CalendarX },
+  no_tasks: { label: "No Task", color: "bg-muted text-muted-foreground dark:bg-card/30 dark:text-muted-foreground", icon: HelpCircle },
 };
 
 // Type for project relationships response
@@ -597,7 +597,7 @@ export default function ProjectsPage() {
         const isDelayed = projectEtc.state === "delayed";
         return (
           <span 
-            className={`text-sm ${isDelayed ? "text-red-600 font-medium" : ""}`}
+            className={`text-sm ${isDelayed ? "text-destructive font-medium" : ""}`}
             data-testid={`text-effective-end-${project.id}`}
             title={`Fine effettiva calcolata: ${effectiveDate.toLocaleDateString("it-IT")}`}
           >

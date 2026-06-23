@@ -135,10 +135,10 @@ export default function AuthPage() {
             {/* Hero Section */}
             <div className="hidden lg:block space-y-8">
               <div className="space-y-4">
-                <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-4xl font-bold text-foreground dark:text-white">
                   CRM SAP Freelancer
                 </h1>
-                <p className="text-xl text-gray-600 dark:text-gray-300">
+                <p className="text-xl text-muted-foreground">
                   Il hub completo per la gestione della tua attività di freelancer SAP ABAP
                 </p>
               </div>
@@ -169,7 +169,7 @@ export default function AuthPage() {
                 />
               </div>
               
-              <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground dark:text-muted-foreground">
                 <Zap className="h-4 w-4" />
                 <span>Progettato specificamente per professionisti SAP ABAP</span>
               </div>
@@ -177,9 +177,9 @@ export default function AuthPage() {
 
             {/* Form Section */}
             <div className="w-full max-w-md mx-auto lg:mx-0">
-              <Card className="shadow-xl border-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm">
+              <Card className="border bg-background/95 backdrop-blur-sm">
                 <CardHeader className="space-y-4 text-center">
-                  <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center mx-auto">
+                  <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center mx-auto">
                     <Shield className="h-8 w-8 text-white" />
                   </div>
                   <div>
@@ -187,7 +187,7 @@ export default function AuthPage() {
                       {activeTab === "login" ? "Accedi" : 
                        activeTab === "register" ? "Registrati" : "Reset Password"}
                     </CardTitle>
-                    <CardDescription className="text-gray-500 dark:text-gray-400">
+                    <CardDescription className="text-muted-foreground dark:text-muted-foreground">
                       {activeTab === "login" 
                         ? "Accedi al tuo account" 
                         : activeTab === "register"
@@ -199,9 +199,9 @@ export default function AuthPage() {
                 
                 <CardContent className="space-y-6">
                   {registrationSuccess && (
-                    <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <AlertDescription className="text-green-700 dark:text-green-300">
+                    <Alert className="bg-success/10 border-success/30">
+                      <CheckCircle className="h-4 w-4 text-success" />
+                      <AlertDescription className="text-success dark:text-success">
                         Registrazione completata! Controlla la tua email per confermare l'account.
                       </AlertDescription>
                     </Alert>
@@ -233,7 +233,7 @@ export default function AuthPage() {
                             name="email"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-gray-700 dark:text-gray-300">Username o Email</FormLabel>
+                                <FormLabel className="text-foreground">Username o Email</FormLabel>
                                 <FormControl>
                                   <Input 
                                     {...field} 
@@ -256,7 +256,7 @@ export default function AuthPage() {
                             name="password"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-gray-700 dark:text-gray-300">Password</FormLabel>
+                                <FormLabel className="text-foreground">Password</FormLabel>
                                 <FormControl>
                                   <Input 
                                     {...field} 
@@ -287,10 +287,10 @@ export default function AuthPage() {
                       
                       <div className="relative">
                         <div className="absolute inset-0 flex items-center">
-                          <span className="w-full border-t border-gray-200 dark:border-gray-700" />
+                          <span className="w-full border-t border-border" />
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-white dark:bg-gray-800 px-2 text-gray-500">
+                          <span className="bg-background dark:bg-card px-2 text-muted-foreground">
                             oppure
                           </span>
                         </div>
@@ -319,7 +319,7 @@ export default function AuthPage() {
                               name="firstName"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-gray-700 dark:text-gray-300">Nome</FormLabel>
+                                  <FormLabel className="text-foreground">Nome</FormLabel>
                                   <FormControl>
                                     <Input 
                                       value={field.value}
@@ -343,7 +343,7 @@ export default function AuthPage() {
                               name="lastName"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-gray-700 dark:text-gray-300">Cognome</FormLabel>
+                                  <FormLabel className="text-foreground">Cognome</FormLabel>
                                   <FormControl>
                                     <Input 
                                       value={field.value}
@@ -368,7 +368,7 @@ export default function AuthPage() {
                             name="email"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-gray-700 dark:text-gray-300">
+                                <FormLabel className="text-foreground">
                                   <span className="flex items-center gap-2">
                                     <Mail className="h-4 w-4" />
                                     Email
@@ -396,7 +396,7 @@ export default function AuthPage() {
                             name="password"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-gray-700 dark:text-gray-300">Password</FormLabel>
+                                <FormLabel className="text-foreground">Password</FormLabel>
                                 <FormControl>
                                   <Input 
                                     {...field} 
@@ -427,10 +427,10 @@ export default function AuthPage() {
                       
                       <div className="relative">
                         <div className="absolute inset-0 flex items-center">
-                          <span className="w-full border-t border-gray-200 dark:border-gray-700" />
+                          <span className="w-full border-t border-border" />
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-white dark:bg-gray-800 px-2 text-gray-500">
+                          <span className="bg-background dark:bg-card px-2 text-muted-foreground">
                             oppure
                           </span>
                         </div>
@@ -452,18 +452,18 @@ export default function AuthPage() {
                     
                     <TabsContent value="reset" className="space-y-4">
                       {resetSuccess && (
-                        <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          <AlertDescription className="text-green-700 dark:text-green-300">
+                        <Alert className="bg-success/10 border-success/30">
+                          <CheckCircle className="h-4 w-4 text-success" />
+                          <AlertDescription className="text-success dark:text-success">
                             Se l'email esiste nel sistema, riceverai un link per il reset della password.
                           </AlertDescription>
                         </Alert>
                       )}
                       
                       {resetError && (
-                        <Alert className="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
-                          <AlertCircle className="h-4 w-4 text-red-600" />
-                          <AlertDescription className="text-red-700 dark:text-red-300">
+                        <Alert className="bg-destructive/10 border-destructive/30 dark:bg-red-900/20 dark:border-red-800">
+                          <AlertCircle className="h-4 w-4 text-destructive" />
+                          <AlertDescription className="text-destructive dark:text-red-300">
                             {resetError}
                           </AlertDescription>
                         </Alert>
@@ -476,7 +476,7 @@ export default function AuthPage() {
                             name="email"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-gray-700 dark:text-gray-300">
+                                <FormLabel className="text-foreground">
                                   <span className="flex items-center gap-2">
                                     <Mail className="h-4 w-4" />
                                     Email
@@ -511,12 +511,12 @@ export default function AuthPage() {
                       </Form>
                       
                       <div className="text-center">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <p className="text-sm text-muted-foreground dark:text-muted-foreground">
                           Ricordi la password?{" "}
                           <button
                             type="button"
                             onClick={() => setActiveTab("login")}
-                            className="text-blue-600 hover:text-blue-500 dark:text-blue-400 font-medium"
+                            className="text-primary hover:text-primary font-medium"
                             data-testid="link-back-to-login"
                           >
                             Torna al login
@@ -544,14 +544,14 @@ interface FeatureItemProps {
 function FeatureItem({ icon, title, description }: FeatureItemProps) {
   return (
     <div className="flex items-start space-x-3">
-      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-        <div className="text-blue-600 dark:text-blue-400">
+      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+        <div className="text-primary">
           {icon}
         </div>
       </div>
       <div className="space-y-1">
-        <h3 className="font-medium text-gray-900 dark:text-white">{title}</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
+        <h3 className="font-medium text-foreground dark:text-white">{title}</h3>
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground">{description}</p>
       </div>
     </div>
   );

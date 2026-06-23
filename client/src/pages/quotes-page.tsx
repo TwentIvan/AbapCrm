@@ -188,12 +188,12 @@ export default function QuotesPage() {
   };
 
   const statusColors: Record<string, string> = {
-    draft: "bg-gray-100 text-gray-800",
-    sent: "bg-blue-100 text-blue-800",
-    accepted: "bg-green-100 text-green-800",
-    rejected: "bg-red-100 text-red-800",
-    expired: "bg-orange-100 text-orange-800",
-    cancelled: "bg-gray-100 text-gray-500"
+    draft: "bg-muted text-foreground",
+    sent: "bg-primary/10 text-primary",
+    accepted: "bg-success/10 text-success",
+    rejected: "bg-destructive/10 text-destructive",
+    expired: "bg-warning/10 text-warning",
+    cancelled: "bg-muted text-muted-foreground"
   };
 
   const statusLabels: Record<string, string> = {
@@ -283,7 +283,7 @@ export default function QuotesPage() {
       searchable: false,
       render: (quote: Quote) => {
         if (quote.convertedToOrderId) {
-          return <Badge variant="outline" className="bg-green-50">Convertita</Badge>;
+          return <Badge variant="outline" className="bg-success/10">Convertita</Badge>;
         }
         if (quote.status === 'accepted') {
           return (

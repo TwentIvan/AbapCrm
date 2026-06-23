@@ -43,17 +43,17 @@ const actionConfig = {
   CREATE: {
     icon: Plus,
     label: "Creazione",
-    color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    color: "bg-success/10 text-success",
   },
   UPDATE: {
     icon: Edit,
     label: "Modifica",
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    color: "bg-primary/10 text-primary",
   },
   DELETE: {
     icon: Trash,
     label: "Eliminazione",
-    color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    color: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-200",
   },
 };
 
@@ -81,13 +81,13 @@ function FieldChange({ field, oldValue, newValue }: { field: string; oldValue: a
       <div className="text-xs space-y-1">
         <div className="flex items-start space-x-2">
           <span className="text-muted-foreground min-w-0 flex-shrink-0">Prima:</span>
-          <span className="text-red-600 dark:text-red-400 break-words">
+          <span className="text-destructive dark:text-destructive break-words">
             {formatValue(oldValue)}
           </span>
         </div>
         <div className="flex items-start space-x-2">
           <span className="text-muted-foreground min-w-0 flex-shrink-0">Dopo:</span>
-          <span className="text-green-600 dark:text-green-400 break-words">
+          <span className="text-success dark:text-success break-words">
             {formatValue(newValue)}
           </span>
         </div>
@@ -141,13 +141,13 @@ function AuditEntry({ entry }: { entry: AuditLogEntry }) {
               <div className="text-xs space-y-1">
                 <div className="flex items-start space-x-2">
                   <span className="text-muted-foreground min-w-0 flex-shrink-0">Da:</span>
-                  <span className="font-mono bg-red-50 text-red-800 dark:bg-red-900 dark:text-red-200 px-2 py-1 rounded text-xs break-all">
+                  <span className="font-mono bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-200 px-2 py-1 rounded text-xs break-all">
                     {change.oldValue || "vuoto"}
                   </span>
                 </div>
                 <div className="flex items-start space-x-2">
                   <span className="text-muted-foreground min-w-0 flex-shrink-0">A:</span>
-                  <span className="font-mono bg-green-50 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-1 rounded text-xs break-all">
+                  <span className="font-mono bg-success/10 text-success px-2 py-1 rounded text-xs break-all">
                     {change.newValue || "vuoto"}
                   </span>
                 </div>
@@ -189,7 +189,7 @@ export default function AuditHistory({ tableName, recordId, title = "Storico Mod
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-red-600">Errore</CardTitle>
+          <CardTitle className="text-destructive">Errore</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">

@@ -43,8 +43,8 @@ export default function RecentActivity() {
         title: `Project "${project.name}" ${project.status === "completed" ? "completed" : "created"}`,
         timestamp: new Date(project.updatedAt),
         icon: project.status === "completed" ? Check : Plus,
-        iconColor: project.status === "completed" ? "text-green-600" : "text-blue-600",
-        iconBg: project.status === "completed" ? "bg-green-100" : "bg-blue-100",
+        iconColor: project.status === "completed" ? "text-success" : "text-primary",
+        iconBg: project.status === "completed" ? "bg-success/10" : "bg-primary/10",
       });
     });
 
@@ -57,8 +57,8 @@ export default function RecentActivity() {
         title: `Task "${task.title}" completed`,
         timestamp: task.completedAt ? new Date(task.completedAt) : new Date(task.updatedAt),
         icon: Check,
-        iconColor: "text-green-600",
-        iconBg: "bg-green-100",
+        iconColor: "text-success",
+        iconBg: "bg-success/10",
       });
     });
 
@@ -72,8 +72,8 @@ export default function RecentActivity() {
         title: `Deal "${deal.title}" ${action === "completed" ? "won" : "added"} - €${parseFloat(deal.value).toLocaleString()}`,
         timestamp: new Date(deal.updatedAt),
         icon: deal.stage === "won" ? Check : Handshake,
-        iconColor: deal.stage === "won" ? "text-green-600" : "text-purple-600",
-        iconBg: deal.stage === "won" ? "bg-green-100" : "bg-purple-100",
+        iconColor: deal.stage === "won" ? "text-success" : "text-purple-600",
+        iconBg: deal.stage === "won" ? "bg-success/10" : "bg-purple-100",
       });
     });
 

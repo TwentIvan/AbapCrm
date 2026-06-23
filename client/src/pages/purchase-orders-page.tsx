@@ -106,11 +106,11 @@ export default function PurchaseOrdersPage() {
   };
 
   const statusColors = {
-    draft: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
-    approved: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+    draft: "bg-muted text-foreground dark:bg-card",
+    approved: "bg-primary/10 text-primary",
     sent: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-    received: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-    cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+    received: "bg-success/10 text-success dark:text-success",
+    cancelled: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-300"
   };
 
   const statusLabels = {

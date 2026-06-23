@@ -9,10 +9,10 @@ import { Task } from "@shared/schema";
 import { Link } from "wouter";
 
 const priorityColors = {
-  low: "bg-green-100 text-green-800",
-  medium: "bg-yellow-100 text-yellow-800",
-  high: "bg-orange-100 text-orange-800",
-  urgent: "bg-red-100 text-red-800",
+  low: "bg-success/10 text-success",
+  medium: "bg-warning/10 text-warning",
+  high: "bg-warning/10 text-warning",
+  urgent: "bg-destructive/10 text-destructive",
 };
 
 export default function UpcomingTasks() {
@@ -104,7 +104,7 @@ export default function UpcomingTasks() {
                   <p 
                     className={`text-xs ${
                       isOverdue(task.dueDate) 
-                        ? "text-red-600 font-medium" 
+                        ? "text-destructive font-medium" 
                         : "text-muted-foreground"
                     }`}
                     data-testid={`text-task-due-date-${task.id}`}

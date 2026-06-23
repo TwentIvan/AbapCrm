@@ -5,11 +5,11 @@ import { projectStatusColors, projectStatusLabels } from "../entity-constants";
 import { Link } from "wouter";
 
 const etcStateConfig: Record<string, { label: string; color: string; icon: any }> = {
-  completed: { label: "Completato", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400", icon: CheckCircle2 },
-  on_track: { label: "In Tempo", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", icon: Clock },
-  delayed: { label: "In Ritardo", color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400", icon: AlertTriangle },
-  no_planning_window: { label: "No Pianificazione", color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400", icon: CalendarX },
-  no_tasks: { label: "No Task", color: "bg-gray-100 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400", icon: HelpCircle },
+  completed: { label: "Completato", color: "bg-success/10 text-success dark:text-success", icon: CheckCircle2 },
+  on_track: { label: "In Tempo", color: "bg-primary/10 text-primary", icon: Clock },
+  delayed: { label: "In Ritardo", color: "bg-destructive/10 text-destructive dark:bg-red-900/30 dark:text-destructive", icon: AlertTriangle },
+  no_planning_window: { label: "No Pianificazione", color: "bg-warning/10 text-warning", icon: CalendarX },
+  no_tasks: { label: "No Task", color: "bg-muted text-muted-foreground dark:bg-card/30 dark:text-muted-foreground", icon: HelpCircle },
 };
 
 const projectsDescriptor: EntityListDescriptor = {
@@ -175,7 +175,7 @@ const projectsDescriptor: EntityListDescriptor = {
             <div className="flex items-center gap-2" data-testid={`progress-etc-${project.id}`}>
               <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-green-500 transition-all"
+                  className="h-full bg-success transition-all"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -217,7 +217,7 @@ const projectsDescriptor: EntityListDescriptor = {
           
           return (
             <span 
-              className={`text-sm ${isDelayed ? 'text-red-600 font-medium' : ''}`}
+              className={`text-sm ${isDelayed ? 'text-destructive font-medium' : ''}`}
               data-testid={`text-effective-end-${project.id}`}
             >
               {effectiveEnd.toLocaleDateString("it-IT")}
@@ -240,7 +240,7 @@ const projectsDescriptor: EntityListDescriptor = {
           
           return (
             <span 
-              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive dark:bg-red-900/30 dark:text-destructive"
               data-testid={`text-deficit-hours-${project.id}`}
               title={`Servono ${deficitHours.toFixed(1)} ore aggiuntive oltre la finestra pianificata`}
             >

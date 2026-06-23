@@ -65,13 +65,13 @@ const relationshipTypeLabels: Record<string, string> = {
 };
 
 const relationshipTypeColors: Record<string, string> = {
-  cliente_fattura: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
-  cliente_servizio: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100",
+  cliente_fattura: "bg-success/10 text-success",
+  cliente_servizio: "bg-primary/10 text-primary",
   cliente_timesheet: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100",
-  fornitore: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100",
+  fornitore: "bg-warning/10 text-warning",
   partner: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-100",
   subappaltatore: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-100",
-  gestisce: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-100",
+  gestisce: "bg-info/10 text-info dark:bg-indigo-900 dark:text-indigo-100",
 };
 
 export default function BusinessScenariosPage() {

@@ -283,12 +283,12 @@ export default function SapSystemForm({ system, editingSystem, onSuccess, onCanc
                       <SelectContent>
                         <SelectItem value="development">
                           <div className="flex items-center gap-2">
-                            <Badge className="bg-blue-100 text-blue-800">Sviluppo</Badge>
+                            <Badge className="bg-primary/10 text-primary">Sviluppo</Badge>
                           </div>
                         </SelectItem>
                         <SelectItem value="test">
                           <div className="flex items-center gap-2">
-                            <Badge className="bg-yellow-100 text-yellow-800">Test</Badge>
+                            <Badge className="bg-warning/10 text-warning">Test</Badge>
                           </div>
                         </SelectItem>
                         <SelectItem value="quality">
@@ -298,17 +298,17 @@ export default function SapSystemForm({ system, editingSystem, onSuccess, onCanc
                         </SelectItem>
                         <SelectItem value="pre_production">
                           <div className="flex items-center gap-2">
-                            <Badge className="bg-orange-100 text-orange-800">Pre-Produzione</Badge>
+                            <Badge className="bg-warning/10 text-warning">Pre-Produzione</Badge>
                           </div>
                         </SelectItem>
                         <SelectItem value="production">
                           <div className="flex items-center gap-2">
-                            <Badge className="bg-red-100 text-red-800">Produzione</Badge>
+                            <Badge className="bg-destructive/10 text-destructive">Produzione</Badge>
                           </div>
                         </SelectItem>
                         <SelectItem value="other">
                           <div className="flex items-center gap-2">
-                            <Badge className="bg-gray-100 text-gray-800">Altro...</Badge>
+                            <Badge className="bg-muted text-foreground">Altro...</Badge>
                           </div>
                         </SelectItem>
                       </SelectContent>
@@ -803,7 +803,7 @@ export default function SapSystemForm({ system, editingSystem, onSuccess, onCanc
                               <Building className="h-4 w-4" />
                               {partner.name}
                               {partner.company && (
-                                <span className="text-sm text-gray-500">({partner.company})</span>
+                                <span className="text-sm text-muted-foreground">({partner.company})</span>
                               )}
                             </div>
                           </SelectItem>

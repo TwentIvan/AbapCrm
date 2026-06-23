@@ -24,19 +24,19 @@ import { useOrganization } from "@/contexts/organization-context";
 import ProjectFormContainer from "@/components/forms/project-form-container";
 
 const statusColors: Record<string, string> = {
-  planning: "bg-blue-500",
-  active: "bg-green-500",
+  planning: "bg-primary",
+  active: "bg-success",
   on_hold: "bg-yellow-500",
   completed: "bg-gray-500",
   cancelled: "bg-red-500",
-  in_progress: "bg-blue-500"
+  in_progress: "bg-primary"
 };
 
 const taskStatusColors = {
   todo: "bg-gray-400",
-  in_progress: "bg-blue-500",
+  in_progress: "bg-primary",
   review: "bg-yellow-500",
-  completed: "bg-green-500"
+  completed: "bg-success"
 };
 
 export default function ProjectHierarchyPage() {
@@ -101,7 +101,7 @@ export default function ProjectHierarchyPage() {
         id: `project-${project.id}`,
         label: project.name,
         icon: subProjects.length > 0 ? (
-          <FolderOpen className="h-4 w-4 text-blue-500" />
+          <FolderOpen className="h-4 w-4 text-primary" />
         ) : (
           <Folder className="h-4 w-4 text-blue-400" />
         ),

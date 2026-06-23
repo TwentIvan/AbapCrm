@@ -91,7 +91,7 @@ export const tasksDescriptor: EntityListDescriptor = {
         const dueDate = new Date(task.dueDate);
         const isOverdue = dueDate < new Date() && task.status !== "completed";
         return (
-          <div className={isOverdue ? "text-red-600 font-medium" : "text-sm"}>
+          <div className={isOverdue ? "text-destructive font-medium" : "text-sm"}>
             {dueDate.toLocaleDateString("it-IT")}
           </div>
         );
@@ -168,7 +168,7 @@ export const tasksDescriptor: EntityListDescriptor = {
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              className="h-8 w-8 p-0 text-primary hover:text-primary hover:bg-primary/10"
               onClick={handleOpenCitrix}
               title={`Apri Citrix per ${task.sapSystemName || 'SAP'}`}
               data-testid={`button-citrix-launch-${task.id}`}
@@ -189,7 +189,7 @@ export const tasksDescriptor: EntityListDescriptor = {
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+              className="h-8 w-8 p-0 text-success hover:text-success hover:bg-success/10"
               onClick={handleOpenCloud}
               title={`Apri SAP Cloud per ${task.sapSystemName || 'SAP'}`}
               data-testid={`button-cloud-launch-${task.id}`}
@@ -237,7 +237,7 @@ export const tasksDescriptor: EntityListDescriptor = {
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+            className="h-8 w-8 p-0 text-warning hover:text-warning hover:bg-warning/5"
             onClick={handleDownloadShortcut}
             title={`Scarica shortcut SAP per ${task.sapSystemName || task.sapSystemIdCode}`}
             data-testid={`button-sap-launch-${task.id}`}
@@ -263,7 +263,7 @@ export const tasksDescriptor: EntityListDescriptor = {
               <Edit className="mr-2 h-4 w-4" />
               Modifica
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => helpers.onDelete(task)} className="text-red-600">
+            <DropdownMenuItem onClick={() => helpers.onDelete(task)} className="text-destructive">
               <Trash2 className="mr-2 h-4 w-4" />
               Elimina
             </DropdownMenuItem>

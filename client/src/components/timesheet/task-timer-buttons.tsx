@@ -176,7 +176,7 @@ export function TaskTimerButtons({ task }: TaskTimerButtonsProps) {
               <Square className="h-3 w-3 mr-1 fill-current" />
               Stop
             </Button>
-            <span className="text-xs font-mono bg-green-100 text-green-800 px-2 py-0.5 rounded dark:bg-green-900 dark:text-green-100">
+            <span className="text-xs font-mono bg-success/10 text-success px-2 py-0.5 rounded">
               {getElapsedTime()}
             </span>
           </div>
@@ -184,7 +184,7 @@ export function TaskTimerButtons({ task }: TaskTimerButtonsProps) {
           <div className="flex items-center gap-2">
             <Button
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white border-0"
+              className="bg-primary hover:bg-primary/90 text-white border-0"
               onClick={handleStart}
               disabled={startTimerMutation.isPending || hasRunningTimer}
               data-testid={`button-start-timer-${task.id}`}

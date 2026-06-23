@@ -28,9 +28,9 @@ export default function HomePage() {
         {/* Email Verification Banner */}
         {user && !user.isEmailVerified && (
           <div className="mx-6 mt-6">
-            <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950">
-              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              <AlertDescription className="text-amber-800 dark:text-amber-200">
+            <Alert className="border-warning/30 bg-warning/10 dark:border-amber-900 dark:bg-amber-950">
+              <AlertCircle className="h-4 w-4 text-warning dark:text-amber-400" />
+              <AlertDescription className="text-warning dark:text-amber-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Mail className="h-4 w-4" />

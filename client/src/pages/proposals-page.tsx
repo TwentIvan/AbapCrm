@@ -152,10 +152,10 @@ export default function ProposalsPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { label: "In sospeso", icon: Clock, className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
-      accepted: { label: "Accettata", icon: Check, className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-      rejected: { label: "Rigettata", icon: X, className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
-      partially_accepted: { label: "Parzialmente accettata", icon: AlertCircle, className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+      pending: { label: "In sospeso", icon: Clock, className: "bg-warning/10 text-warning dark:bg-yellow-900 dark:text-yellow-200" },
+      accepted: { label: "Accettata", icon: Check, className: "bg-success/10 text-success" },
+      rejected: { label: "Rigettata", icon: X, className: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-200" },
+      partially_accepted: { label: "Parzialmente accettata", icon: AlertCircle, className: "bg-primary/10 text-primary" },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
@@ -223,7 +223,7 @@ export default function ProposalsPage() {
             <CardContent>
               <div className="space-y-3">
                 {proposalData.contacts.map((contact: any, idx: number) => (
-                  <div key={idx} className="border-l-2 border-blue-500 pl-3 py-1">
+                  <div key={idx} className="border-l-2 border-primary/50 pl-3 py-1">
                     <div className="space-y-1">
                       <div className="font-medium">{contact.name}</div>
                       <div className="text-sm text-muted-foreground">{contact.email}</div>
@@ -332,7 +332,7 @@ export default function ProposalsPage() {
                               </div>
                             )}
                             {task.aiSpec.openQuestions?.length > 0 && (
-                              <div className="text-amber-600">
+                              <div className="text-warning">
                                 Domande aperte: {task.aiSpec.openQuestions.join(" · ")}
                               </div>
                             )}
@@ -354,9 +354,9 @@ export default function ProposalsPage() {
 
         {/* Chiarimenti richiesti */}
         {proposalData.needsClarification && proposalData.clarificationQuestions?.length > 0 && (
-          <Card className="border-amber-400 bg-amber-50 dark:bg-amber-950/30">
+          <Card className="border-warning/30 bg-warning/10 dark:bg-amber-950/30">
             <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <CardTitle className="text-sm flex items-center gap-2 text-warning dark:text-amber-400">
                 <Sparkles className="w-4 h-4" />
                 Chiarimenti necessari
               </CardTitle>
@@ -367,7 +367,7 @@ export default function ProposalsPage() {
             <CardContent>
               <ul className="list-disc ml-4 space-y-1 text-sm">
                 {proposalData.clarificationQuestions.map((q: string, i: number) => (
-                  <li key={i} className="text-amber-800 dark:text-amber-300">{q}</li>
+                  <li key={i} className="text-warning dark:text-warning">{q}</li>
                 ))}
               </ul>
             </CardContent>
@@ -386,9 +386,9 @@ export default function ProposalsPage() {
                 {proposalData.systems.map((sys: any, i: number) => (
                   <div key={i} className="flex items-center gap-2 text-sm">
                     {sys.needsManualConfig ? (
-                      <Badge variant="outline" className="text-amber-600 border-amber-400">Nuovo</Badge>
+                      <Badge variant="outline" className="text-warning border-warning/30">Nuovo</Badge>
                     ) : (
-                      <Badge variant="outline" className="text-green-600 border-green-400">Esistente</Badge>
+                      <Badge variant="outline" className="text-success border-success/30">Esistente</Badge>
                     )}
                     <span className="font-medium">{sys.name || sys.systemId}</span>
                     {sys.type && <span className="text-muted-foreground">· {sys.type}</span>}
@@ -412,9 +412,9 @@ export default function ProposalsPage() {
                 {proposalData.connections.map((conn: any, i: number) => (
                   <div key={i} className="flex items-center gap-2 text-sm">
                     {conn.needsManualConfig ? (
-                      <Badge variant="outline" className="text-amber-600 border-amber-400">Da configurare</Badge>
+                      <Badge variant="outline" className="text-warning border-warning/30">Da configurare</Badge>
                     ) : (
-                      <Badge variant="outline" className="text-green-600 border-green-400">Configurata</Badge>
+                      <Badge variant="outline" className="text-success border-success/30">Configurata</Badge>
                     )}
                     <span className="font-medium">{conn.name || conn.connectionId}</span>
                     {conn.type && <span className="text-muted-foreground">· {conn.type}</span>}
@@ -536,7 +536,7 @@ export default function ProposalsPage() {
                                       <Progress 
                                         value={confidence} 
                                         className={`w-16 h-2 ${
-                                          confidence >= 80 ? '[&>div]:bg-green-500' :
+                                          confidence >= 80 ? '[&>div]:bg-success' :
                                           confidence >= 50 ? '[&>div]:bg-yellow-500' :
                                           '[&>div]:bg-red-500'
                                         }`}
@@ -546,9 +546,9 @@ export default function ProposalsPage() {
                                   </TableCell>
                                   <TableCell className="text-center">
                                     <div className="flex items-center justify-center gap-1 text-sm">
-                                      <span className="text-green-600">{pattern.acceptanceCount}</span>
+                                      <span className="text-success">{pattern.acceptanceCount}</span>
                                       <span>/</span>
-                                      <span className="text-red-600">{pattern.rejectionCount}</span>
+                                      <span className="text-destructive">{pattern.rejectionCount}</span>
                                     </div>
                                   </TableCell>
                                   <TableCell>

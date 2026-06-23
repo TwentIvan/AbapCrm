@@ -83,7 +83,7 @@ export function LayoutControlBox({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDelete(layout);
@@ -104,7 +104,7 @@ export function LayoutControlBox({
           variant="default" 
           size="sm" 
           onClick={onConfigureTable}
-          className="h-8 gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+          className="h-8 gap-2 bg-primary hover:bg-primary/90 text-white"
           data-testid="button-configure-table"
         >
           <Settings className="h-4 w-4" />

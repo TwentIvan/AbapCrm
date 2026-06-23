@@ -555,19 +555,19 @@ export default function TimesheetPage() {
 
       {/* Running Timer Alert */}
       {runningEntry && (
-        <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+        <Card className="border-success/30 bg-success/10">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-green-600 animate-pulse" />
-                <span className="font-medium text-green-800 dark:text-green-200">
+                <Clock className="h-4 w-4 text-success animate-pulse" />
+                <span className="font-medium text-success">
                   Timer is running
                 </span>
               </div>
               <Badge variant="secondary" className="animate-pulse">
                 {taskMap.get(runningEntry.taskId)?.title || "Unknown Task"}
               </Badge>
-              <span className="text-sm text-green-700 dark:text-green-300">
+              <span className="text-sm text-success dark:text-success">
                 Started {formatDistanceToNow(new Date(runningEntry.startTime))} ago
               </span>
             </div>

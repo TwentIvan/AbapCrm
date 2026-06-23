@@ -84,7 +84,7 @@ export function SapPasteJsonDialog({ open, onOpenChange, projectId }: SapPasteJs
             data-testid="textarea-json-content"
           />
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground">
               Formato richiesto: JSON con campi request_number, description, owner
             </p>
             <div className="flex gap-2">
@@ -98,7 +98,7 @@ export function SapPasteJsonDialog({ open, onOpenChange, projectId }: SapPasteJs
               <Button
                 onClick={handlePaste}
                 disabled={pasteMutation.isPending || !jsonContent.trim()}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-primary hover:bg-primary/90"
                 data-testid="button-import-json"
               >
                 {pasteMutation.isPending ? "Importazione..." : "Importa"}

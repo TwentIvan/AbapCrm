@@ -182,7 +182,7 @@ export function BulkEditDialog({
           <Button
             onClick={handleSave}
             disabled={isPending || !hasEnabledFields}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-primary hover:bg-primary/90"
             data-testid="button-save-bulk-edit"
           >
             {isPending ? "Salvataggio..." : `Aggiorna ${selectedCount} elemento${selectedCount > 1 ? 'i' : ''}`}

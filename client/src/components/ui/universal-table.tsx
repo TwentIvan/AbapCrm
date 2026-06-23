@@ -116,9 +116,9 @@ const UniversalTableComponent = memo(function UniversalTable({
     <div className="space-y-4">
       {/* Barra azioni bulk */}
       {enableSelection && selectedIds.size > 0 && (
-        <div className="flex items-center justify-between bg-blue-50 px-4 py-2 rounded-lg border border-blue-200">
+        <div className="flex items-center justify-between bg-primary/5 px-4 py-2 rounded-lg border border-primary/20">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-blue-800">
+            <span className="text-sm font-medium text-primary">
               {selectedIds.size} elemento{selectedIds.size !== 1 ? 'i' : ''} selezionat{selectedIds.size !== 1 ? 'i' : 'o'}
             </span>
             <Button
@@ -128,7 +128,7 @@ const UniversalTableComponent = memo(function UniversalTable({
                 setSelectedIds(new Set());
                 onSelectionChange?.([]);
               }}
-              className="text-blue-600 hover:text-blue-800"
+              className="text-primary hover:text-primary"
             >
               <X className="h-4 w-4" />
               Deseleziona
@@ -157,7 +157,7 @@ const UniversalTableComponent = memo(function UniversalTable({
       {/* Tabella */}
       <div className="rounded-md border">
         <table className="w-full">
-          <thead className="bg-gray-100 dark:bg-gray-800">
+          <thead className="bg-muted dark:bg-card">
             <tr>
               {enableSelection && (
                 <th className="p-3 text-left w-12">
@@ -168,15 +168,15 @@ const UniversalTableComponent = memo(function UniversalTable({
                       if (el) el.indeterminate = isPartiallySelected;
                     }}
                     onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="rounded border-gray-300"
+                    className="rounded border-border"
                   />
                 </th>
               )}
               {columns.map((column) => (
                 <th 
                   key={column.key}
-                  className={`p-3 text-left font-medium text-gray-700 dark:text-gray-300 ${
-                    column.sortable ? 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 select-none' : ''
+                  className={`p-3 text-left font-medium text-foreground ${
+                    column.sortable ? 'cursor-pointer hover:bg-muted dark:hover:bg-gray-700 select-none' : ''
                   }`}
                   onClick={() => column.sortable && handleSort(column.key)}
                 >
@@ -197,8 +197,8 @@ const UniversalTableComponent = memo(function UniversalTable({
               sortedData.map((item) => (
                 <tr 
                   key={item.id}
-                  className={`border-t hover:bg-gray-50 ${
-                    selectedIds.has(item.id) ? 'bg-blue-50' : ''
+                  className={`border-t hover:bg-muted ${
+                    selectedIds.has(item.id) ? 'bg-primary/5' : ''
                   } ${onRowClick ? 'cursor-pointer' : ''}`}
                   onClick={(e) => {
                     // Non triggerare row click se si clicca su checkbox o button
@@ -215,7 +215,7 @@ const UniversalTableComponent = memo(function UniversalTable({
                         type="checkbox" 
                         checked={selectedIds.has(item.id)}
                         onChange={() => handleItemSelect(item.id)}
-                        className="rounded border-gray-300"
+                        className="rounded border-border"
                       />
                     </td>
                   )}
@@ -233,7 +233,7 @@ const UniversalTableComponent = memo(function UniversalTable({
               <tr>
                 <td 
                   colSpan={columns.length + (enableSelection ? 1 : 0)} 
-                  className="p-8 text-center text-gray-500"
+                  className="p-8 text-center text-muted-foreground"
                 >
                   {emptyMessage}
                 </td>
@@ -244,7 +244,7 @@ const UniversalTableComponent = memo(function UniversalTable({
       </div>
 
       {/* Info risultati */}
-      <div className="text-sm text-gray-500">
+      <div className="text-sm text-muted-foreground">
         {sortedData.length} di {data.length} elementi visualizzati
       </div>
     </div>
@@ -270,7 +270,7 @@ export const createStandardColumns = {
     render: (item: any) => {
       const value = item[key];
       if (!value) return "—";
-      const colorClass = colors?.[value] || "bg-gray-100 text-gray-800";
+      const colorClass = colors?.[value] || "bg-muted text-foreground";
       return <Badge className={colorClass}>{value}</Badge>;
     }
   }),
@@ -282,7 +282,7 @@ export const createStandardColumns = {
     searchable: true,
     accessor: (item: any) => item.partner?.name || "",
     render: (item: any) => item.partner ? (
-      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+      <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
         {item.partner.name}
       </Badge>
     ) : "—"

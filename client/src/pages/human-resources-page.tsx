@@ -335,7 +335,7 @@ function ResourceSkillAssessmentsEditor({ resourceId }: { resourceId: string }) 
     return (
       <div key={node.id}>
         <div
-          className={`flex items-center gap-2 py-1.5 px-2 hover:bg-accent/50 rounded transition-colors ${hasPending ? "bg-amber-50 dark:bg-amber-950/20" : ""}`}
+          className={`flex items-center gap-2 py-1.5 px-2 hover:bg-accent/50 rounded transition-colors ${hasPending ? "bg-warning/10 dark:bg-amber-950/20" : ""}`}
           style={{ paddingLeft: `${depth * 20 + 8}px` }}
         >
           {!leaf ? (
@@ -357,7 +357,7 @@ function ResourceSkillAssessmentsEditor({ resourceId }: { resourceId: string }) 
                   className={`w-6 h-6 rounded text-xs font-medium transition-colors ${
                     l === level
                       ? l === 0
-                        ? "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                        ? "bg-muted text-muted-foreground"
                         : "bg-primary text-primary-foreground"
                       : "bg-muted hover:bg-accent text-muted-foreground"
                   }`}
@@ -595,12 +595,12 @@ export default function HumanResourcesPage() {
 
   const getSkillLevelColor = (level: string) => {
     switch(level) {
-      case 'junior': return 'bg-green-100 text-green-800';
-      case 'mid': return 'bg-blue-100 text-blue-800';
+      case 'junior': return 'bg-success/10 text-success';
+      case 'mid': return 'bg-primary/10 text-primary';
       case 'senior': return 'bg-purple-100 text-purple-800';
-      case 'lead': return 'bg-orange-100 text-orange-800';
-      case 'principal': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'lead': return 'bg-warning/10 text-warning';
+      case 'principal': return 'bg-destructive/10 text-destructive';
+      default: return 'bg-muted text-foreground';
     }
   };
 
@@ -609,11 +609,11 @@ export default function HumanResourcesPage() {
     createStandardColumns.text("role", "Ruolo"),
     createStandardColumns.text("department", "Reparto"),
     createStandardColumns.badge("skillLevel", "Livello", {
-      junior: "bg-green-100 text-green-800",
-      mid: "bg-blue-100 text-blue-800", 
+      junior: "bg-success/10 text-success",
+      mid: "bg-primary/10 text-primary", 
       senior: "bg-purple-100 text-purple-800",
-      lead: "bg-orange-100 text-orange-800",
-      principal: "bg-red-100 text-red-800"
+      lead: "bg-warning/10 text-warning",
+      principal: "bg-destructive/10 text-destructive"
     }),
     {
       key: "baseHourlyRate",

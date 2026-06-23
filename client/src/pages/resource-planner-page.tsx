@@ -155,10 +155,10 @@ function getDefaultRange(granularity: Granularity): { start: Date; end: Date } {
 
 function StatusCell({ period, onClick }: { period: ResourcePeriod; onClick: () => void }) {
   const bgColor = {
-    unavailable: "bg-gray-100 dark:bg-gray-800 text-gray-400",
-    under: "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
+    unavailable: "bg-muted dark:bg-card text-muted-foreground",
+    under: "bg-warning/10 dark:bg-amber-950/30 text-warning dark:text-amber-400 border-warning/30 dark:border-amber-800",
     balanced: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
-    over: "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800",
+    over: "bg-destructive/10 dark:bg-red-950/30 text-destructive dark:text-destructive border-destructive/30 dark:border-red-800",
   }[period.status];
 
   const intensityClass = period.status === "over"
@@ -302,10 +302,10 @@ function SkillsPopover({ skills, matchScore }: { skills: ResourceSkillData[]; ma
                 {group.children.map(({ skill }) => (
                   <div key={skill.id} className="flex items-center justify-between py-0.5 pl-2">
                     <span className="text-xs flex items-center gap-1">
-                      {skill.isPrimary && <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500" />}
+                      {skill.isPrimary && <Star className="h-2.5 w-2.5 text-warning fill-yellow-500" />}
                       {skill.name}
                     </span>
-                    <span className="text-[10px] text-amber-600 dark:text-amber-400">{stars(skill.level)}</span>
+                    <span className="text-[10px] text-warning dark:text-amber-400">{stars(skill.level)}</span>
                   </div>
                 ))}
               </div>
@@ -318,10 +318,10 @@ function SkillsPopover({ skills, matchScore }: { skills: ResourceSkillData[]; ma
                 {grouped.ungrouped.map(({ skill }) => (
                   <div key={skill.id} className="flex items-center justify-between py-0.5">
                     <span className="text-xs flex items-center gap-1">
-                      {skill.isPrimary && <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500" />}
+                      {skill.isPrimary && <Star className="h-2.5 w-2.5 text-warning fill-yellow-500" />}
                       {skill.name}
                     </span>
-                    <span className="text-[10px] text-amber-600 dark:text-amber-400">{stars(skill.level)}</span>
+                    <span className="text-[10px] text-warning dark:text-amber-400">{stars(skill.level)}</span>
                   </div>
                 ))}
               </div>
@@ -338,8 +338,8 @@ function MatchBadge({ matchPercent }: { matchPercent: number }) {
   const color = matchPercent >= 80
     ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
     : matchPercent >= 50
-      ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-700"
-      : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 border-red-300 dark:border-red-700";
+      ? "bg-warning/10 text-warning dark:bg-amber-900 dark:text-warning border-warning/30 dark:border-amber-700"
+      : "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-300 border-destructive/30 dark:border-red-700";
   return (
     <Badge className={`text-[10px] px-1.5 py-0 font-bold border ${color}`}>
       {matchPercent}% match
@@ -454,9 +454,9 @@ function SkillRequirementsEditor({ entityType, entityId, entityTitle }: {
   };
 
   const modeIcon = (m: string) => {
-    if (m === "MUST") return <ShieldCheck className="h-2.5 w-2.5 text-red-500" />;
-    if (m === "TIEBREAK") return <Scale className="h-2.5 w-2.5 text-blue-500" />;
-    return <Target className="h-2.5 w-2.5 text-green-500" />;
+    if (m === "MUST") return <ShieldCheck className="h-2.5 w-2.5 text-destructive" />;
+    if (m === "TIEBREAK") return <Scale className="h-2.5 w-2.5 text-primary" />;
+    return <Target className="h-2.5 w-2.5 text-success" />;
   };
 
   return (
@@ -684,8 +684,8 @@ function MatchPanel({
                           <Badge
                             variant="outline"
                             className={`text-[10px] px-1.5 py-0 cursor-help ${
-                              r.mode === "MUST" ? "border-red-300 dark:border-red-700 text-red-700 dark:text-red-300" :
-                              r.mode === "TIEBREAK" ? "border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300" :
+                              r.mode === "MUST" ? "border-destructive/30 dark:border-red-700 text-destructive dark:text-red-300" :
+                              r.mode === "TIEBREAK" ? "border-primary/30 text-primary" :
                               "border-purple-300 dark:border-purple-700"
                             }`}
                           >
@@ -716,9 +716,9 @@ function MatchPanel({
                 <div className="space-y-1 max-h-[200px] overflow-y-auto">
                   {matchResults.map((r, idx) => (
                     <div key={r.resourceId} className={`flex items-center gap-2 text-xs rounded px-2 py-1.5 ${
-                      !r.eligible ? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800" :
+                      !r.eligible ? "bg-destructive/10 dark:bg-red-950/20 border border-destructive/30 dark:border-red-800" :
                       r.score >= 0.8 ? "bg-emerald-50 dark:bg-emerald-950/20" :
-                      r.score >= 0.5 ? "bg-amber-50 dark:bg-amber-950/20" :
+                      r.score >= 0.5 ? "bg-warning/10 dark:bg-amber-950/20" :
                       "bg-muted/50"
                     }`}>
                       <span className="text-[10px] font-bold text-muted-foreground w-4">{idx + 1}</span>
@@ -728,8 +728,8 @@ function MatchPanel({
                       )}
                       <span className={`font-bold text-sm ${
                         r.score >= 0.8 ? "text-emerald-600 dark:text-emerald-400" :
-                        r.score >= 0.5 ? "text-amber-600 dark:text-amber-400" :
-                        "text-red-600 dark:text-red-400"
+                        r.score >= 0.5 ? "text-warning dark:text-amber-400" :
+                        "text-destructive dark:text-destructive"
                       }`}>
                         {Math.round(r.score * 100)}%
                       </span>
@@ -744,11 +744,11 @@ function MatchPanel({
                             <div className="font-medium text-xs">{r.resourceName} — Dettaglio match</div>
                             {r.mustFailures.length > 0 && (
                               <div>
-                                <div className="text-[10px] font-semibold text-red-600 dark:text-red-400 mb-0.5">MUST non soddisfatti</div>
+                                <div className="text-[10px] font-semibold text-destructive dark:text-destructive mb-0.5">MUST non soddisfatti</div>
                                 {r.mustFailures.map(f => (
                                   <div key={f.skillId} className="text-[11px] flex justify-between">
                                     <span>{f.skillName}</span>
-                                    <span className="text-red-500">richiesto Lv.{f.requiredLevel}, ha Lv.{f.actualLevel}</span>
+                                    <span className="text-destructive">richiesto Lv.{f.requiredLevel}, ha Lv.{f.actualLevel}</span>
                                   </div>
                                 ))}
                               </div>
@@ -766,11 +766,11 @@ function MatchPanel({
                             )}
                             {r.gaps.length > 0 && (
                               <div>
-                                <div className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 mb-0.5">Lacune</div>
+                                <div className="text-[10px] font-semibold text-warning dark:text-amber-400 mb-0.5">Lacune</div>
                                 {r.gaps.map(g => (
                                   <div key={g.skillId} className="text-[11px] flex justify-between">
                                     <span>{g.skillName}</span>
-                                    <span className="text-amber-600 dark:text-amber-400">gap: {g.gap} (-{g.penalty.toFixed(2)})</span>
+                                    <span className="text-warning dark:text-amber-400">gap: {g.gap} (-{g.penalty.toFixed(2)})</span>
                                   </div>
                                 ))}
                               </div>
@@ -895,7 +895,7 @@ function ActivitySidebar({
                       <button onClick={() => toggleExpand(project.id)} className="p-0.5">
                         {isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
                       </button>
-                      <FolderOpen className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                      <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" />
                       <span className="text-xs truncate flex-1 font-medium">{project.name}</span>
                       {hasSkills && (
                         <Sparkles className="h-3 w-3 text-purple-500 shrink-0" />
@@ -1225,10 +1225,10 @@ export default function ResourcePlannerPage() {
           )}
           <div className="flex-1 overflow-auto p-4 space-y-4">
             <div className="grid grid-cols-4 gap-3">
-              <KPICard title="Risorse Attive" value={kpis.totalResources} subtitle="nel periodo selezionato" icon={Users} color="bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400" />
+              <KPICard title="Risorse Attive" value={kpis.totalResources} subtitle="nel periodo selezionato" icon={Users} color="bg-primary/10 text-primary" />
               <KPICard title="Utilizzo Medio" value={`${kpis.avgUtilization}%`} subtitle="capacità impegnata" icon={TrendingUp} color="bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400" />
-              <KPICard title="Sovra-allocazioni" value={kpis.overCount} subtitle="celle in criticità" icon={AlertTriangle} color="bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400" />
-              <KPICard title="Sotto-allocazioni" value={kpis.underCount} subtitle="capacità disponibile" icon={Clock} color="bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400" />
+              <KPICard title="Sovra-allocazioni" value={kpis.overCount} subtitle="celle in criticità" icon={AlertTriangle} color="bg-destructive/10 dark:bg-red-900 text-destructive dark:text-destructive" />
+              <KPICard title="Sotto-allocazioni" value={kpis.underCount} subtitle="capacità disponibile" icon={Clock} color="bg-warning/10 dark:bg-amber-900 text-warning dark:text-amber-400" />
             </div>
 
             <MatchPanel
@@ -1351,8 +1351,8 @@ export default function ResourcePlannerPage() {
                           const isSelected = selectedResourceIds.has(resource.id);
                           const rowHighlight = matchScore !== undefined && matchScore > 0
                             ? matchScore >= 80 ? "bg-emerald-50/50 dark:bg-emerald-950/20" :
-                              matchScore >= 50 ? "bg-amber-50/50 dark:bg-amber-950/20" :
-                              "bg-red-50/30 dark:bg-red-950/10"
+                              matchScore >= 50 ? "bg-warning/10/50 dark:bg-amber-950/20" :
+                              "bg-destructive/10/30 dark:bg-red-950/10"
                             : "";
 
                           return (
@@ -1407,10 +1407,10 @@ export default function ResourcePlannerPage() {
                           </td>
                           {data.summary.map((s, idx) => {
                             const statusColor = s.avgUtilization > 100
-                              ? "text-red-600 dark:text-red-400"
+                              ? "text-destructive dark:text-destructive"
                               : s.avgUtilization >= 70
                                 ? "text-emerald-600 dark:text-emerald-400"
-                                : "text-amber-600 dark:text-amber-400";
+                                : "text-warning dark:text-amber-400";
                             return (
                               <td key={idx} className="p-1.5 text-center">
                                 <div className="text-[11px] font-semibold">{s.totalDemand}h/{s.totalCapacity}h</div>
@@ -1432,15 +1432,15 @@ export default function ResourcePlannerPage() {
                 Bilanciato (70-100%)
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-amber-200 dark:bg-amber-800 border border-amber-300 dark:border-amber-700" />
+                <div className="w-3 h-3 rounded bg-warning/20 dark:bg-amber-800 border border-warning/30 dark:border-amber-700" />
                 Sotto-allocato (&lt;70%)
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-red-200 dark:bg-red-800 border border-red-300 dark:border-red-700" />
+                <div className="w-3 h-3 rounded bg-destructive/20 dark:bg-red-800 border border-destructive/30 dark:border-red-700" />
                 Sovra-allocato (&gt;100%)
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600" />
+                <div className="w-3 h-3 rounded bg-muted border border-border" />
                 Non disponibile
               </div>
             </div>
@@ -1531,7 +1531,7 @@ export default function ResourcePlannerPage() {
                     <div className="space-y-1.5">
                       {selectedResource.periods.map((p, idx) => {
                         const barWidth = Math.min(p.utilization, 150);
-                        const barColor = p.status === "over" ? "bg-red-500" : p.status === "balanced" ? "bg-emerald-500" : p.status === "under" ? "bg-amber-500" : "bg-gray-300";
+                        const barColor = p.status === "over" ? "bg-red-500" : p.status === "balanced" ? "bg-emerald-500" : p.status === "under" ? "bg-amber-500" : "bg-muted";
                         return (
                           <div key={idx} className="flex items-center gap-2 text-xs">
                             <span className="w-16 text-muted-foreground shrink-0">{p.label}</span>

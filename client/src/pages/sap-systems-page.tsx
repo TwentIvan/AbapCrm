@@ -26,12 +26,12 @@ import SapLandscapeImport from "../components/forms/sap-landscape-import";
 import SapSystemFormContainer from "../components/forms/sap-system-form-container";
 
 const landscapeColors: Record<string, string> = {
-  development: "bg-blue-100 text-blue-800",
-  test: "bg-yellow-100 text-yellow-800",
+  development: "bg-primary/10 text-primary",
+  test: "bg-warning/10 text-warning",
   quality: "bg-purple-100 text-purple-800",
-  pre_production: "bg-orange-100 text-orange-800",
-  production: "bg-red-100 text-red-800",
-  other: "bg-gray-100 text-gray-800",
+  pre_production: "bg-warning/10 text-warning",
+  production: "bg-destructive/10 text-destructive",
+  other: "bg-muted text-foreground",
 };
 
 const landscapeLabels: Record<string, string> = {
@@ -210,7 +210,7 @@ export default function SapSystemsPage() {
       render: (system: SapSystem) => {
         const landscapeValue = (system as any).landscapeType || system.landscape || "development";
         return (
-          <Badge className={landscapeColors[landscapeValue] || "bg-gray-100 text-gray-800"}>
+          <Badge className={landscapeColors[landscapeValue] || "bg-muted text-foreground"}>
             {landscapeLabels[landscapeValue] || landscapeValue}
           </Badge>
         );
@@ -243,7 +243,7 @@ export default function SapSystemsPage() {
       render: (system: SapSystem) => {
         const link = (system as any).cloudLink;
         return link ? (
-          <a href={link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate max-w-[200px] block">
+          <a href={link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate max-w-[200px] block">
             {link}
           </a>
         ) : "-";
@@ -325,7 +325,7 @@ export default function SapSystemsPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Tipo Landscape:</span>
                 <Badge 
-                  className={landscapeColors[(system as any).landscapeType || system.landscape as keyof typeof landscapeColors] || "bg-gray-100 text-gray-800"}
+                  className={landscapeColors[(system as any).landscapeType || system.landscape as keyof typeof landscapeColors] || "bg-muted text-foreground"}
                   data-testid={`text-landscape-${system.id}`}
                 >
                   {landscapeLabels[(system as any).landscapeType || system.landscape as keyof typeof landscapeLabels] || (system as any).landscapeType || system.landscape}
@@ -334,7 +334,7 @@ export default function SapSystemsPage() {
               
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Server Host:</span>
-                <span className="text-sm text-gray-600" data-testid={`text-server-host-${system.id}`}>
+                <span className="text-sm text-muted-foreground" data-testid={`text-server-host-${system.id}`}>
                   {system.serverHost}
                 </span>
               </div>
@@ -342,7 +342,7 @@ export default function SapSystemsPage() {
               {system.description && (
                 <div className="pt-2">
                   <span className="text-sm font-medium">Descrizione:</span>
-                  <p className="text-sm text-gray-600 mt-1" data-testid={`text-description-${system.id}`}>
+                  <p className="text-sm text-muted-foreground mt-1" data-testid={`text-description-${system.id}`}>
                     {system.description}
                   </p>
                 </div>
@@ -367,7 +367,7 @@ export default function SapSystemsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-muted">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header 
@@ -391,7 +391,7 @@ export default function SapSystemsPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-muted">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 

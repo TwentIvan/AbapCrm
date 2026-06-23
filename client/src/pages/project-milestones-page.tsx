@@ -140,10 +140,10 @@ export default function ProjectMilestonesPage() {
   };
 
   const statusColors = {
-    planned: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-    in_progress: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
-    completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-    cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+    planned: "bg-primary/10 text-primary",
+    in_progress: "bg-warning/10 text-warning dark:bg-yellow-900 dark:text-yellow-300",
+    completed: "bg-success/10 text-success dark:text-success",
+    cancelled: "bg-destructive/10 text-destructive dark:bg-red-900 dark:text-red-300"
   };
 
   const statusLabels = {
@@ -224,7 +224,7 @@ export default function ProjectMilestonesPage() {
         return (
           <div className="text-sm">
             <div>Budget: {budget.toFixed(2)} {milestone.currency || 'EUR'}</div>
-            <div className={isOverBudget ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}>
+            <div className={isOverBudget ? "text-destructive dark:text-destructive" : "text-muted-foreground"}>
               Costo: {actual.toFixed(2)} {milestone.currency || 'EUR'}
             </div>
           </div>
@@ -323,7 +323,7 @@ export default function ProjectMilestonesPage() {
               onRowClick={handleEdit}
             />
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div className="bg-background dark:bg-card rounded-lg shadow p-6">
               <GanttChart
                 milestones={filterProjectId ? milestones.filter(m => m.projectId === filterProjectId) : milestones}
                 projects={projects || []}

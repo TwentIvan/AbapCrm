@@ -270,7 +270,7 @@ export default function QuoteItemsEditor({
   };
 
   if (isLoading && quoteId) {
-    return <div className="p-4 text-center text-gray-500">Caricamento...</div>;
+    return <div className="p-4 text-center text-muted-foreground">Caricamento...</div>;
   }
 
   const subtotal = items.reduce((sum, item) => sum + parseFloat(item.lineTotal || "0"), 0);
@@ -280,7 +280,7 @@ export default function QuoteItemsEditor({
   return (
     <div className="space-y-4">
       {isReadOnly && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+        <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning">
           <strong>Attenzione:</strong> Questa offerta è in stato "{quoteStatus}" e non può essere modificata. 
           Per modificare le righe, riporta l'offerta in stato "Bozza".
         </div>
@@ -299,14 +299,14 @@ export default function QuoteItemsEditor({
       </div>
 
       {items.length === 0 ? (
-        <div className="p-8 text-center text-gray-500 border-2 border-dashed rounded-lg">
+        <div className="p-8 text-center text-muted-foreground border-2 border-dashed rounded-lg">
           Nessuna riga. Clicca "Nuova Riga" per iniziare.
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50">
+              <TableRow className="bg-muted">
                 <TableHead className="w-10">#</TableHead>
                 <TableHead className="w-32">Tipo</TableHead>
                 <TableHead className="w-40">Riferimento</TableHead>
@@ -321,8 +321,8 @@ export default function QuoteItemsEditor({
             </TableHeader>
             <TableBody>
               {items.map((item, index) => (
-                <TableRow key={index} className={item.isModified || item.isNew ? "bg-yellow-50" : ""}>
-                  <TableCell className="font-medium text-gray-500">{item.lineNumber}</TableCell>
+                <TableRow key={index} className={item.isModified || item.isNew ? "bg-warning/10" : ""}>
+                  <TableCell className="font-medium text-muted-foreground">{item.lineNumber}</TableCell>
                   <TableCell>
                     <Select 
                       value={item.itemType} 
@@ -371,7 +371,7 @@ export default function QuoteItemsEditor({
                         </SelectContent>
                       </Select>
                     ) : (
-                      <span className="text-xs text-gray-400">-</span>
+                      <span className="text-xs text-muted-foreground">-</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -440,7 +440,7 @@ export default function QuoteItemsEditor({
                             onClick={() => saveItem(index)}
                             data-testid={`button-save-${index}`}
                           >
-                            <Save className="h-3.5 w-3.5 text-green-600" />
+                            <Save className="h-3.5 w-3.5 text-success" />
                           </Button>
                         )}
                         <Button 
@@ -451,7 +451,7 @@ export default function QuoteItemsEditor({
                           onClick={() => deleteItem(index)}
                           data-testid={`button-delete-${index}`}
                         >
-                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       </div>
                     )}
@@ -465,13 +465,13 @@ export default function QuoteItemsEditor({
 
       {items.length > 0 && (
         <div className="flex justify-end">
-          <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm min-w-[200px]">
+          <div className="bg-muted p-4 rounded-lg space-y-1 text-sm min-w-[200px]">
             <div className="flex justify-between">
-              <span className="text-gray-600">Imponibile:</span>
+              <span className="text-muted-foreground">Imponibile:</span>
               <span className="font-medium">€{subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">IVA:</span>
+              <span className="text-muted-foreground">IVA:</span>
               <span className="font-medium">€{totalVat.toFixed(2)}</span>
             </div>
             <div className="flex justify-between border-t pt-1 mt-1">

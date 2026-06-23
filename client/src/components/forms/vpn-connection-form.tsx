@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { insertVpnConnectionSchema } from "@shared/schema";
 import { VpnConnection } from "@shared/schema";
-import { Zap, Settings, CheckCircle, AlertCircle, Copy } from "lucide-react";
+import { Zap, Settings, CheckCircle, AlertCircle, Copy, Rocket } from "lucide-react";
 import { z } from "zod";
 
 interface VPNConnectionFormProps {
@@ -96,7 +96,7 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
       setGeneratedScript(result);
       setIsGeneratingScript(false);
       toast({ 
-        title: "🚀 Script Generato!", 
+        title: "Script Generato!", 
         description: "Script di automazione VPN creato e salvato nel database" 
       });
     },
@@ -299,7 +299,7 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-blue-500" />
+              <Zap className="h-5 w-5 text-primary" />
               Automazione VPN
             </CardTitle>
             <CardDescription>
@@ -342,7 +342,7 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
                   data-testid="button-generate-script"
                 >
                   <Zap className="mr-2 h-4 w-4" />
-                  {isGeneratingScript ? "Generando Script..." : "🚀 Genera Script Automazione"}
+                  {isGeneratingScript ? "Generando Script..." : "Genera Script Automazione"}
                 </Button>
 
                 {vpnConnection.automationScript && !generatedScript && (
@@ -360,17 +360,17 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
                 )}
 
                 {generatedScript && (
-                  <Card className="border-green-200">
+                  <Card className="border-success/30">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <CheckCircle className="h-4 w-4 text-success" />
                         Script Generato con Successo!
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <div className="bg-gray-50 p-3 rounded-md">
-                        <div className="text-xs text-gray-600 mb-1">Comando di Esecuzione:</div>
-                        <div className="font-mono text-sm bg-black text-green-400 p-2 rounded flex items-center justify-between">
+                      <div className="bg-muted p-3 rounded-md">
+                        <div className="text-xs text-muted-foreground mb-1">Comando di Esecuzione:</div>
+                        <div className="font-mono text-sm bg-black text-success p-2 rounded flex items-center justify-between">
                           <span className="truncate">{generatedScript.automationResult.executionCommand}</span>
                           <Button
                             type="button"
@@ -384,7 +384,7 @@ export default function VPNConnectionForm({ vpnConnection, onSuccess, onCancel, 
                         </div>
                       </div>
                       
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-muted-foreground">
                         <strong>Istruzioni:</strong>
                         <pre className="whitespace-pre-wrap mt-1 text-xs">
                           {generatedScript.automationResult.instructions}

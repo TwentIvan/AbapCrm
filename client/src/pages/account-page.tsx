@@ -138,8 +138,8 @@ export default function AccountPage() {
 
   const STATUS_NEXT: Record<string, string> = { active: "deprecated", deprecated: "active", beta: "active" };
   const STATUS_LABEL: Record<string, { label: string; icon: any; cls: string }> = {
-    active: { label: "Attivo", icon: Power, cls: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-    deprecated: { label: "Deprecato", icon: PowerOff, cls: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
+    active: { label: "Attivo", icon: Power, cls: "bg-success/10 text-success" },
+    deprecated: { label: "Deprecato", icon: PowerOff, cls: "bg-muted text-muted-foreground dark:bg-card dark:text-muted-foreground" },
     beta: { label: "Beta", icon: FlaskConical, cls: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
   };
 
@@ -516,7 +516,7 @@ export default function AccountPage() {
                       <CardContent className="space-y-4">
                         {currentOrgModelKey && (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <CheckCircle className="h-4 w-4 text-success" />
                             Attuale: <Badge variant="secondary">{currentOrgModelKey}</Badge>
                           </div>
                         )}

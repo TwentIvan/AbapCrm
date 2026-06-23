@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Search, CheckCircle, Loader2, Wifi, Key } from "lucide-react";
+import { Search, CheckCircle, Loader2, Wifi, Key, Bot, Zap, AlertTriangle, User, Smartphone } from "lucide-react";
 import { z } from "zod";
 
 interface SimpleVPNFormProps {
@@ -334,7 +334,7 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
                 ) : (
                   <>
                     <Search className="mr-2 h-4 w-4" />
-                    🔍 Trova Connessioni Esistenti
+                    Trova Connessioni Esistenti
                   </>
                 )}
               </Button>
@@ -453,36 +453,36 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
                             if (conn.automationLevel === 'full') {
                               return { 
                                 label: 'Automazione Completa', 
-                                color: 'bg-green-100 text-green-800',
-                                icon: '🤖',
+                                color: 'bg-success/10 text-success',
+                                icon: <Bot className="h-3 w-3" />,
                                 description: 'Connessione automatica via sistema'
                               };
                             } else if (conn.automationLevel === 'cli') {
                               return { 
                                 label: 'Automazione CLI', 
-                                color: 'bg-blue-100 text-blue-800',
-                                icon: '⚡',
+                                color: 'bg-primary/10 text-primary',
+                                icon: <Zap className="h-3 w-3" />,
                                 description: 'Connessione via comando CLI'
                               };
                             } else if (conn.automationLevel === 'limited') {
                               return { 
                                 label: 'Automazione Limitata', 
-                                color: 'bg-yellow-100 text-yellow-800',
-                                icon: '⚠️',
+                                color: 'bg-warning/10 text-warning',
+                                icon: <AlertTriangle className="h-3 w-3" />,
                                 description: 'Apre app, potrebbe servire selezione manuale'
                               };
                             } else if (conn.automationLevel === 'manual') {
                               return { 
                                 label: 'Manuale', 
-                                color: 'bg-orange-100 text-orange-800',
-                                icon: '👤',
+                                color: 'bg-warning/10 text-warning',
+                                icon: <User className="h-3 w-3" />,
                                 description: 'Apre app, connessione manuale richiesta'
                               };
                             }
                             return { 
                               label: 'Standard', 
-                              color: 'bg-gray-100 text-gray-800',
-                              icon: '📱',
+                              color: 'bg-muted text-foreground',
+                              icon: <Smartphone className="h-3 w-3" />,
                               description: 'Automazione standard'
                             };
                           };
@@ -504,10 +504,10 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
                               />
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <Wifi className="h-4 w-4 text-blue-500" />
+                                  <Wifi className="h-4 w-4 text-primary" />
                                   <span className="font-medium">{connection.name}</span>
                                   {connection.configured && (
-                                    <Badge variant="outline" className="text-green-600">
+                                    <Badge variant="outline" className="text-success">
                                       <CheckCircle className="h-3 w-3 mr-1" />
                                       Configurata
                                     </Badge>
@@ -516,7 +516,7 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
                                 
                                 {/* Automation level indicator */}
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className={`px-2 py-1 rounded-full text-xs ${automationInfo.color}`}>
+                                  <span className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 w-fit ${automationInfo.color}`}>
                                     {automationInfo.icon} {automationInfo.label}
                                   </span>
                                 </div>
@@ -526,7 +526,7 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
                                 </p>
                                 
                                 {/* Automation description */}
-                                <p className="text-xs text-gray-500 mt-1 italic">
+                                <p className="text-xs text-muted-foreground mt-1 italic">
                                   {automationInfo.description}
                                 </p>
                               </div>

@@ -185,11 +185,11 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         {/* THE HUB UP - positioned at top */}
         <div className="relative z-10 mb-3">
           <h1 className="text-left font-black tracking-tight uppercase">
-            <span className="text-lg text-blue-600 dark:text-blue-400">THE</span>
+            <span className="text-lg text-primary">THE</span>
             {' '}
-            <span className="text-3xl text-blue-800 dark:text-blue-600">HUB</span>
+            <span className="text-3xl text-primary dark:text-primary">HUB</span>
             {' '}
-            <span className="text-3xl text-blue-400 dark:text-blue-300">UP</span>
+            <span className="text-3xl text-blue-400">UP</span>
           </h1>
         </div>
         
@@ -282,9 +282,9 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               >
                 <div className="relative flex flex-col items-end">
                   <div className="flex items-baseline space-x-0">
-                    <span className="text-lg font-black text-blue-600 dark:text-blue-400">T</span>
-                    <span className="text-2xl font-black text-blue-500 dark:text-blue-300">H</span>
-                    <span className="text-2xl font-black text-blue-600 dark:text-blue-400">U</span>
+                    <span className="text-lg font-black text-primary">T</span>
+                    <span className="text-2xl font-black text-primary">H</span>
+                    <span className="text-2xl font-black text-primary">U</span>
                   </div>
                   <span className="text-xs font-bold text-purple-500 dark:text-purple-400 -mt-1">AI</span>
                   {(pendingProposals?.count ?? 0) > 0 && (
@@ -306,17 +306,17 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <Link href="/mcp-library">
                 <Button
                   variant="ghost"
-                  className="flex items-center bg-amber-50 dark:bg-amber-950/30 relative"
+                  className="flex items-center bg-warning/10 dark:bg-amber-950/30 relative"
                   style={{ border: '2px solid rgba(245, 158, 11, 0.4)' }}
                   data-testid="button-pending-approvals"
                 >
                   <div className="relative">
-                    <ShieldAlert className="h-6 w-6 text-amber-500" />
+                    <ShieldAlert className="h-6 w-6 text-warning" />
                     <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
                       {(pendingApprovals?.count ?? 0) > 9 ? '9+' : pendingApprovals?.count}
                     </span>
                   </div>
-                  <span className="ml-2 text-amber-700 dark:text-amber-400 font-medium text-xs whitespace-nowrap">
+                  <span className="ml-2 text-warning dark:text-amber-400 font-medium text-xs whitespace-nowrap">
                     Approvazioni
                   </span>
                 </Button>
@@ -521,7 +521,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                         />
                       ) : (
                         <User 
-                          className="text-blue-600 dark:text-blue-400"
+                          className="text-primary"
                           style={{ width: '2rem', height: '2rem' }} 
                         />
                       )}

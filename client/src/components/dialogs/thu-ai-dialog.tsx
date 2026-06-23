@@ -489,7 +489,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
 
   const getComplexityColor = (complexity: string) => {
     switch (complexity) {
-      case "low": return "bg-green-500";
+      case "low": return "bg-success";
       case "medium": return "bg-yellow-500";
       case "high": return "bg-red-500";
       default: return "bg-gray-500";
@@ -498,10 +498,10 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "high": return "text-red-500";
-      case "medium": return "text-yellow-500";
-      case "low": return "text-green-500";
-      default: return "text-gray-500";
+      case "high": return "text-destructive";
+      case "medium": return "text-warning";
+      case "low": return "text-success";
+      default: return "text-muted-foreground";
     }
   };
 
@@ -511,9 +511,9 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <div className="flex items-center">
-              <span className="text-lg font-black text-blue-600">T</span>
-              <span className="text-xl font-black text-blue-500">H</span>
-              <span className="text-xl font-black text-blue-600">U</span>
+              <span className="text-lg font-black text-primary">T</span>
+              <span className="text-xl font-black text-primary">H</span>
+              <span className="text-xl font-black text-primary">U</span>
               <span className="text-sm font-bold text-purple-500 ml-1">AI</span>
             </div>
             <span className="text-muted-foreground">- Assistente Operativo</span>
@@ -588,7 +588,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                         data-testid="button-toggle-patterns"
                       >
                         <h3 className="font-semibold flex items-center gap-2">
-                          <BookMarked className="h-4 w-4 text-amber-500" />
+                          <BookMarked className="h-4 w-4 text-warning" />
                           Pattern ABAP 
                           {patterns.length > 0 && (
                             <Badge variant="secondary" className="ml-2">
@@ -596,7 +596,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                             </Badge>
                           )}
                           {selectedPatternIds.length > 0 && (
-                            <Badge className="bg-blue-500 ml-2">
+                            <Badge className="bg-primary ml-2">
                               {selectedPatternIds.length} selezionati
                             </Badge>
                           )}
@@ -662,7 +662,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                                   key={pattern.id}
                                   className={`flex items-start gap-3 p-2 rounded border transition-colors cursor-pointer ${
                                     selectedPatternIds.includes(pattern.id) 
-                                      ? 'bg-blue-50 dark:bg-blue-950 border-blue-300'
+                                      ? 'bg-primary/5 border-primary/30'
                                       : 'hover:bg-muted/50'
                                   }`}
                                   onClick={() => togglePatternSelection(pattern.id)}
@@ -724,7 +724,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-medium">{selectedTasks[idx]?.title}</span>
                           {result.success ? (
-                            <Badge className="bg-green-500">Completato</Badge>
+                            <Badge className="bg-success">Completato</Badge>
                           ) : (
                             <Badge variant="destructive">Errore</Badge>
                           )}
@@ -747,7 +747,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                           </div>
                         )}
                         {result.error && (
-                          <div className="text-sm text-red-500 flex items-center gap-1">
+                          <div className="text-sm text-destructive flex items-center gap-1">
                             <AlertTriangle className="h-4 w-4" />
                             {result.error}
                           </div>
@@ -885,7 +885,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                           <span className="text-sm font-medium">{selectedTasks[idx]?.title.substring(0, 30)}...</span>
                           {fb?.approved !== undefined ? (
                             <>
-                              <Badge className={fb.approved ? "bg-green-500" : "bg-red-500"}>
+                              <Badge className={fb.approved ? "bg-success" : "bg-red-500"}>
                                 {fb.approved ? "Approvato" : "Rifiutato"}
                               </Badge>
                               {!fb.approved && (
@@ -918,7 +918,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                                 disabled={feedbackMutation.isPending}
                                 data-testid={`button-approve-${idx}`}
                               >
-                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                <CheckCircle className="h-4 w-4 text-success" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -927,7 +927,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                                 disabled={feedbackMutation.isPending}
                                 data-testid={`button-reject-${idx}`}
                               >
-                                <XCircle className="h-4 w-4 text-red-500" />
+                                <XCircle className="h-4 w-4 text-destructive" />
                               </Button>
                             </>
                           )}
@@ -1052,8 +1052,8 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
 
                         {/* DevOps Work Item */}
                         {result.contextSummary.devOpsWorkItem && (
-                          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                          <div className="mb-4 p-3 bg-primary/5 rounded-lg">
+                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-primary">
                               <GitBranch className="h-3 w-3" />
                               DevOps Work Item #{result.contextSummary.devOpsWorkItem.id}
                             </h5>
@@ -1072,7 +1072,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                                   <Badge className="text-xs bg-purple-500">{result.contextSummary.devOpsWorkItem.commentsCount} commenti</Badge>
                                 ) : null}
                                 {result.contextSummary.devOpsWorkItem.hasImages && (
-                                  <Badge className="text-xs bg-green-500 flex items-center gap-1">
+                                  <Badge className="text-xs bg-success flex items-center gap-1">
                                     <Image className="h-3 w-3" />
                                     {result.contextSummary.devOpsWorkItem.imagesCount || 0} immagini
                                   </Badge>
@@ -1084,8 +1084,8 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
 
                         {/* Linked Messages */}
                         {result.contextSummary.linkedMessages.length > 0 && (
-                          <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950 rounded-lg">
-                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-orange-700 dark:text-orange-300">
+                          <div className="mb-4 p-3 bg-warning/5 rounded-lg">
+                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-warning dark:text-warning">
                               <Mail className="h-3 w-3" />
                               Messaggi Collegati ({result.contextSummary.linkedMessages.length})
                             </h5>
@@ -1095,13 +1095,13 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                                   <div className="font-medium flex items-center gap-2">
                                     {msg.subject || '(Senza oggetto)'}
                                     {msg.hasAttachments && (
-                                      <span className="flex items-center gap-0.5 text-blue-500" title={`${msg.attachmentsCount} allegati`}>
+                                      <span className="flex items-center gap-0.5 text-primary" title={`${msg.attachmentsCount} allegati`}>
                                         <Paperclip className="h-3 w-3" />
                                         <span>{msg.attachmentsCount}</span>
                                       </span>
                                     )}
                                     {msg.hasImages && (
-                                      <span className="flex items-center gap-0.5 text-green-500" title={`${msg.imagesCount} immagini`}>
+                                      <span className="flex items-center gap-0.5 text-success" title={`${msg.imagesCount} immagini`}>
                                         <Image className="h-3 w-3" />
                                         <span>{msg.imagesCount}</span>
                                       </span>
@@ -1117,8 +1117,8 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
 
                         {/* Task Comments */}
                         {result.contextSummary.taskComments.length > 0 && (
-                          <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-yellow-700 dark:text-yellow-300">
+                          <div className="mb-4 p-3 bg-warning/10 dark:bg-yellow-950 rounded-lg">
+                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-warning dark:text-yellow-300">
                               <MessageSquare className="h-3 w-3" />
                               Commenti Task ({result.contextSummary.taskComments.length})
                             </h5>
@@ -1134,8 +1134,8 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
 
                         {/* Transport Requests */}
                         {result.contextSummary.projectTransports.length > 0 && (
-                          <div className="mb-4 p-3 bg-green-50 dark:bg-green-950 rounded-lg">
-                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-green-700 dark:text-green-300">
+                          <div className="mb-4 p-3 bg-success/10 rounded-lg">
+                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-success dark:text-success">
                               <Code className="h-3 w-3" />
                               Transport Requests ({result.contextSummary.projectTransports.length})
                             </h5>
@@ -1322,7 +1322,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
                 )}
 
                 {chatMessages.length > 0 && (
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1">
+                  <p className="text-xs text-success dark:text-success mt-2 flex items-center gap-1">
                     <CheckCircle className="h-3 w-3" />
                     I chiarimenti saranno inclusi nella prossima rigenerazione
                   </p>
@@ -1338,7 +1338,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <BookMarked className="h-5 w-5 text-amber-500" />
+              <BookMarked className="h-5 w-5 text-warning" />
               Salva come Pattern ABAP
             </DialogTitle>
             <DialogDescription>

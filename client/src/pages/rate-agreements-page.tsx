@@ -169,10 +169,10 @@ export default function RateAgreementsPage() {
   };
 
   const statusColors: Record<string, string> = {
-    active: "bg-green-100 text-green-800",
-    inactive: "bg-gray-100 text-gray-800",
-    future: "bg-blue-100 text-blue-800",
-    expired: "bg-red-100 text-red-800"
+    active: "bg-success/10 text-success",
+    inactive: "bg-muted text-foreground",
+    future: "bg-primary/10 text-primary",
+    expired: "bg-destructive/10 text-destructive"
   };
 
   const statusLabels: Record<string, string> = {

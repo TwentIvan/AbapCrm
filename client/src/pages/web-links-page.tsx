@@ -191,7 +191,7 @@ export default function WebLinksPage() {
                                 href={link.webLink} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline truncate max-w-xs"
+                                className="text-primary hover:underline truncate max-w-xs"
                                 onClick={(e) => e.stopPropagation()}
                                 data-testid={`link-url-${link.id}`}
                               >
@@ -232,7 +232,7 @@ export default function WebLinksPage() {
                                 <Edit className="h-4 w-4 mr-2" />
                                 Modifica
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDelete(link)} className="text-red-600" data-testid={`menu-delete-${link.id}`}>
+                              <DropdownMenuItem onClick={() => handleDelete(link)} className="text-destructive" data-testid={`menu-delete-${link.id}`}>
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Elimina
                               </DropdownMenuItem>

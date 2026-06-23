@@ -203,7 +203,7 @@ export default function DealForm({ deal, onSuccess }: DealFormProps) {
                 <FormLabel className="flex items-center gap-2">
                   Tariffa Oraria (€/h)
                   {isResolvingRate && <Loader2 className="h-3 w-3 animate-spin" />}
-                  {resolvedRate && <Zap className="h-3 w-3 text-green-600" />}
+                  {resolvedRate && <Zap className="h-3 w-3 text-success" />}
                 </FormLabel>
                 <FormControl>
                   <Input 

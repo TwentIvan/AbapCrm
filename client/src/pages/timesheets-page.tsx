@@ -293,7 +293,7 @@ export default function TimesheetsPage() {
       header: "Nome",
       cell: ({ row }: { row: any }) => (
         <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-blue-500" />
+          <Clock className="h-4 w-4 text-primary" />
           <span className="font-medium">{row.getValue("name")}</span>
         </div>
       ),
@@ -369,14 +369,14 @@ export default function TimesheetsPage() {
           invoiced: "Fatturato"
         };
         const statusColors = {
-          draft: "bg-gray-100 text-gray-800",
-          to_send: "bg-yellow-100 text-yellow-800",
-          sent: "bg-blue-100 text-blue-800", 
-          invoiced: "bg-green-100 text-green-800"
+          draft: "bg-muted text-foreground",
+          to_send: "bg-warning/10 text-warning",
+          sent: "bg-primary/10 text-primary", 
+          invoiced: "bg-success/10 text-success"
         };
         return (
           <Badge 
-            className={`text-xs ${statusColors[status as keyof typeof statusColors] || "bg-gray-100 text-gray-800"}`}
+            className={`text-xs ${statusColors[status as keyof typeof statusColors] || "bg-muted text-foreground"}`}
             variant="secondary"
           >
             {statusLabels[status as keyof typeof statusLabels] || status}
@@ -766,7 +766,7 @@ function TimesheetDetailDialog({
       <DialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-blue-500" />
+            <Clock className="h-5 w-5 text-primary" />
             {timesheet.name || 'Timesheet'}
           </DialogTitle>
           <DialogDescription>
@@ -777,11 +777,11 @@ function TimesheetDetailDialog({
         {/* Timesheet Summary */}
         <div className="grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg mb-6">
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{timesheet.totalEntries || 0}</div>
+            <div className="text-2xl font-bold text-primary">{timesheet.totalEntries || 0}</div>
             <div className="text-sm text-muted-foreground">Voci totali</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-success">
               {Math.floor((timesheet.totalDuration || 0) / 60)}h {(timesheet.totalDuration || 0) % 60}m
             </div>
             <div className="text-sm text-muted-foreground">Durata totale</div>
@@ -793,11 +793,11 @@ function TimesheetDetailDialog({
         </div>
 
         {/* Status Management */}
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-6">
+        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-sm font-medium text-gray-900 mb-1">Stato Timesheet</h4>
-              <p className="text-xs text-gray-600">Il timesheet può essere convertito solo quando è "Da inviare"</p>
+              <h4 className="text-sm font-medium text-foreground mb-1">Stato Timesheet</h4>
+              <p className="text-xs text-muted-foreground">Il timesheet può essere convertito solo quando è "Da inviare"</p>
             </div>
             <div className="flex items-center gap-2">
               <Select 
@@ -824,23 +824,23 @@ function TimesheetDetailDialog({
         </div>
 
         {/* Conversion Actions */}
-        <div className="flex justify-end gap-3 mb-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg">
+        <div className="flex justify-end gap-3 mb-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 border border-primary/20 rounded-lg">
           <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900 mb-1">Conversione Documenti</h4>
-            <p className="text-xs text-gray-600">Trasforma le ore registrate in documenti commerciali</p>
+            <h4 className="text-sm font-medium text-foreground mb-1">Conversione Documenti</h4>
+            <p className="text-xs text-muted-foreground">Trasforma le ore registrate in documenti commerciali</p>
           </div>
           <div className="flex gap-2">
             <Button 
               onClick={() => onConvertToSalesOrder(timesheet)}
               disabled={convertingToSalesOrder === timesheet.id || timesheet.status !== "to_send"}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+              className="bg-primary hover:bg-primary/90 disabled:opacity-50"
               data-testid="button-convert-sales-order"
             >
-              {convertingToSalesOrder === timesheet.id ? "⏳ Creando..." : "📋 Ordine di Vendita"}
+              {convertingToSalesOrder === timesheet.id ? "Creando..." : "Ordine di Vendita"}
             </Button>
             <Button 
               onClick={() => handleConvertToInvoice(timesheet)}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success hover:bg-success/90"
               data-testid="button-convert-invoice"
             >
               🧾 Fattura
@@ -967,7 +967,7 @@ function TimesheetGroupRow({
                   <div>📅 {groupInfo.Date}</div>
                 )}
                 {groupInfo.description && groupInfo.description !== 'Unknown' && (
-                  <div>📝 {groupInfo.description}</div>
+                  <div>{groupInfo.description}</div>
                 )}
               </div>
             </div>
@@ -1006,7 +1006,7 @@ function TimesheetGroupRow({
                     onGroupTotalUpdate?.(editedTotal);
                     setIsEditingTotal(false);
                   }}
-                  className="h-5 w-5 p-0 text-green-600"
+                  className="h-5 w-5 p-0 text-success"
                 >
                   ✓
                 </Button>
@@ -1017,14 +1017,14 @@ function TimesheetGroupRow({
                     setEditedTotal(displayDuration);
                     setIsEditingTotal(false);
                   }}
-                  className="h-5 w-5 p-0 text-gray-600"
+                  className="h-5 w-5 p-0 text-muted-foreground"
                 >
                   ✕
                 </Button>
               </div>
             ) : (
               <div 
-                className="font-medium text-green-600 cursor-pointer hover:bg-green-50 px-2 py-1 rounded"
+                className="font-medium text-success cursor-pointer hover:bg-success/10 px-2 py-1 rounded"
                 onClick={() => {
                   // Start editing with current raw value
                   setEditedTotal(displayDuration);
@@ -1123,7 +1123,7 @@ function TimesheetEntryCard({
   };
 
   return (
-    <div className="bg-white border rounded-lg p-3 text-sm">
+    <div className="bg-background border rounded-lg p-3 text-sm">
       <div className="flex items-start justify-between">
         <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2">
@@ -1162,12 +1162,12 @@ function TimesheetEntryCard({
             </div>
           ) : (
             <div className="space-y-1">
-              <div className="text-xs bg-blue-50 px-2 py-1 rounded w-fit">
+              <div className="text-xs bg-primary/5 px-2 py-1 rounded w-fit">
                 ⏱️ {formatDuration(calculateEntryDuration(entry))}
               </div>
               {entry.description && (
                 <div className="text-xs text-muted-foreground">
-                  📝 {entry.description}
+                  {entry.description}
                 </div>
               )}
             </div>
@@ -1181,7 +1181,7 @@ function TimesheetEntryCard({
                 size="sm" 
                 variant="ghost"
                 onClick={handleSave}
-                className="h-6 w-6 p-0 text-green-600"
+                className="h-6 w-6 p-0 text-success"
               >
                 ✓
               </Button>
@@ -1189,7 +1189,7 @@ function TimesheetEntryCard({
                 size="sm" 
                 variant="ghost"
                 onClick={() => setIsEditing(false)}
-                className="h-6 w-6 p-0 text-gray-600"
+                className="h-6 w-6 p-0 text-muted-foreground"
               >
                 ✕
               </Button>
@@ -1209,7 +1209,7 @@ function TimesheetEntryCard({
                 size="sm" 
                 variant="ghost"
                 onClick={onDelete}
-                className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                 data-testid={`button-delete-entry-${entry.id}`}
               >
                 <Trash2 className="h-3 w-3" />

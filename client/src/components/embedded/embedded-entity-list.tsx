@@ -274,9 +274,9 @@ export function EmbeddedEntityList({
             >
               <div className="relative flex flex-col items-center">
                 <div className="flex items-baseline space-x-0">
-                  <span className="text-xs font-black text-blue-600 dark:text-blue-400">T</span>
-                  <span className="text-sm font-black text-blue-500 dark:text-blue-300">H</span>
-                  <span className="text-sm font-black text-blue-600 dark:text-blue-400">U</span>
+                  <span className="text-xs font-black text-primary">T</span>
+                  <span className="text-sm font-black text-primary">H</span>
+                  <span className="text-sm font-black text-primary">U</span>
                 </div>
                 <span className="text-[8px] font-bold text-purple-500 dark:text-purple-400 -mt-0.5">AI</span>
               </div>

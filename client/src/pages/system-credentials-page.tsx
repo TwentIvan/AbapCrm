@@ -161,8 +161,8 @@ export function SystemCredentialsPage() {
     createStandardColumns.text("username", "Username"),
     createStandardColumns.text("systemName", "Sistema"),
     createStandardColumns.badge("systemType", "Tipo", {
-      "sap": "bg-blue-100 text-blue-800",
-      "vpn": "bg-green-100 text-green-800"
+      "sap": "bg-primary/10 text-primary",
+      "vpn": "bg-success/10 text-success"
     }),
     createStandardColumns.text("description", "Descrizione"),
     {
@@ -178,7 +178,7 @@ export function SystemCredentialsPage() {
       sortable: true,
       searchable: false,
       render: (credential: SystemCredentials) => (
-        <span className={credential.isActive ? "text-green-600" : "text-red-600"}>
+        <span className={credential.isActive ? "text-success" : "text-destructive"}>
           {credential.isActive ? "Attivo" : "Inattivo"}
         </span>
       )
