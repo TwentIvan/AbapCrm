@@ -276,21 +276,20 @@ export default function SkillCatalogPage() {
   const rootSkills = skills.filter(s => !s.parentId);
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-auto">
         <Header
           title="Catalogo Skills"
           subtitle="Gestione gerarchica delle competenze"
           onNewClick={() => handleAdd()}
         />
-        <main
-          className="p-6 space-y-4 rounded-t-lg min-h-full overflow-y-auto"
+        <div
+          className="p-6 rounded-t-lg min-h-full"
           style={{
             borderTop: '2px solid rgba(30, 64, 175, 0.3)',
             borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
             borderRight: '2px solid rgba(30, 64, 175, 0.3)',
-            maxHeight: 'calc(100vh - 64px)',
           }}
         >
           <div className="flex items-center justify-between">
@@ -448,8 +447,8 @@ export default function SkillCatalogPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

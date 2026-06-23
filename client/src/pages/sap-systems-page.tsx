@@ -367,38 +367,50 @@ export default function SapSystemsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-muted">
+      <div className="flex h-screen overflow-hidden">
         <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header 
-            title="SAP Systems" 
+        <main className="flex-1 overflow-auto">
+          <Header
+            title="SAP Systems"
             subtitle="Manage your SAP system configurations and connections"
             onNewClick={() => setShowCreateDialog(true)}
           />
-          <main className="flex-1 overflow-y-auto p-6">
-            <div className="space-y-6">
-              <Skeleton className="h-8 w-48" />
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-48" />
-                ))}
-              </div>
+          <div
+            className="p-6 rounded-t-lg min-h-full"
+            style={{
+              borderTop: '2px solid rgba(30, 64, 175, 0.3)',
+              borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
+              borderRight: '2px solid rgba(30, 64, 175, 0.3)'
+            }}
+          >
+            <Skeleton className="h-8 w-48" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-48" />
+              ))}
             </div>
-          </main>
-        </div>
+          </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-muted">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header 
-          title="Sistemi SAP" 
+      <main className="flex-1 overflow-auto">
+        <Header
+          title="Sistemi SAP"
           subtitle="Gestisci le configurazioni e le connessioni ai sistemi SAP"
         />
-        <main className="flex-1 overflow-y-auto p-6">
+        <div
+          className="p-6 rounded-t-lg min-h-full"
+          style={{
+            borderTop: '2px solid rgba(30, 64, 175, 0.3)',
+            borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
+            borderRight: '2px solid rgba(30, 64, 175, 0.3)'
+          }}
+        >
           <div className="space-y-6">
             <div className="flex items-center gap-3">
               <ListViewToolbar
@@ -437,8 +449,8 @@ export default function SapSystemsPage() {
 
             {renderTable()}
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
 
       {/* Form Container - supports both dialog and full-page modes */}
       <SapSystemFormContainer

@@ -334,13 +334,20 @@ export default function EmailAccountsPage() {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 overflow-auto">
         <Header title="Account Email" subtitle="Gestisci gli account email per la ricezione e l'elaborazione dei messaggi" />
-        
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-muted/20 p-6">
-          <div className="max-w-full mx-auto space-y-6">
+
+        <div
+          className="p-6 rounded-t-lg min-h-full"
+          style={{
+            borderTop: '2px solid rgba(30, 64, 175, 0.3)',
+            borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
+            borderRight: '2px solid rgba(30, 64, 175, 0.3)'
+          }}
+        >
+          <div className="max-w-full mx-auto">
             <div className="flex items-center gap-3">
               <ListViewToolbar
                 currentLayoutName={currentLayoutName}
@@ -388,8 +395,8 @@ export default function EmailAccountsPage() {
               />
             )}
           </div>
-        </main>
-        
+        </div>
+
         {/* Single Delete Dialog */}
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
@@ -437,8 +444,8 @@ export default function EmailAccountsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </div>
-      
+      </main>
+
       {/* Email Account Edit Dialog */}
       <EmailAccountEditDialog />
       

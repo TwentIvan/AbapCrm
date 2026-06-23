@@ -318,7 +318,7 @@ export default function DealsPage() {
         />
         
         <div 
-          className="p-6 space-y-6 rounded-t-lg min-h-full"
+          className="p-6 rounded-t-lg min-h-full"
           style={{ 
             borderTop: '2px solid rgba(30, 64, 175, 0.3)',
             borderLeft: '2px solid rgba(30, 64, 175, 0.3)',

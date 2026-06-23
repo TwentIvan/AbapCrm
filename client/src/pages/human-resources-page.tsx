@@ -655,16 +655,16 @@ export default function HumanResourcesPage() {
   }, [columns, layout.columns]);
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 overflow-hidden">
-        <Header 
+      <main className="flex-1 overflow-auto">
+        <Header
           title="Risorse Umane"
           subtitle="Gestisci le risorse umane"
           onNewClick={handleAdd}
         />
-        <main 
-          className="p-6 space-y-6 rounded-t-lg min-h-full"
+        <div
+          className="p-6 rounded-t-lg min-h-full"
           style={{ 
             borderTop: '2px solid rgba(30, 64, 175, 0.3)',
             borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
@@ -834,8 +834,8 @@ export default function HumanResourcesPage() {
             onSave={handleBulkEditSave}
             isPending={bulkEditMutation.isPending}
           />
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

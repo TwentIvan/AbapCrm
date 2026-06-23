@@ -241,15 +241,22 @@ export default function VpnSystemsPage() {
   ];
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 overflow-hidden">
-        <Header 
+      <main className="flex-1 overflow-auto">
+        <Header
           title="Sistemi VPN"
           subtitle="Gestione sistemi VPN e connessioni partner"
           onNewClick={handleAdd}
         />
-        <main className="p-6 space-y-6">
+        <div
+          className="p-6 rounded-t-lg min-h-full"
+          style={{
+            borderTop: '2px solid rgba(30, 64, 175, 0.3)',
+            borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
+            borderRight: '2px solid rgba(30, 64, 175, 0.3)'
+          }}
+        >
           <ListViewToolbar
             currentLayoutName={currentLayoutName}
             savedLayouts={savedLayouts}
@@ -358,8 +365,8 @@ export default function VpnSystemsPage() {
               setEditingLayout(null);
             }}
           />
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
