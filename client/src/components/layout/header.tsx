@@ -146,12 +146,14 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
       <div className="px-6 pt-2 pb-8 relative overflow-hidden">
         
         
+        {/* Wordmark row */}
+        <div className="relative z-10 mb-3">
+          <Wordmark height={52} />
+        </div>
+
         {/* Content above background */}
         <div className="relative z-10 flex items-center justify-between w-full">
         <div className="flex items-stretch space-x-4">
-          <div className="flex items-center">
-            <Wordmark height={34} />
-          </div>
           <div
             className="flex items-center space-x-3 px-4 py-2 bg-sidebar-accent rounded-lg"
             style={{

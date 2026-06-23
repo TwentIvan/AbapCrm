@@ -262,7 +262,7 @@ export default function Sidebar() {
           <img
             src={newLogo}
             alt="App Logo"
-            className="w-48 h-32 object-contain"
+            className="w-60 h-40 object-contain"
             data-testid="img-app-logo"
           />
         </div>
