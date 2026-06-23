@@ -19,6 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Wordmark } from "@/components/brand/Wordmark";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrganization } from "@/contexts/organization-context";
 import { useTranslation, Language } from "@/lib/i18n";
@@ -148,7 +149,10 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
         {/* Content above background */}
         <div className="relative z-10 flex items-center justify-between w-full">
         <div className="flex items-stretch space-x-4">
-          <div 
+          <div className="flex items-center">
+            <Wordmark height={34} />
+          </div>
+          <div
             className="flex items-center space-x-3 px-4 py-2 bg-sidebar-accent rounded-lg"
             style={{
               border: '2px solid rgba(30, 64, 175, 0.3)'
