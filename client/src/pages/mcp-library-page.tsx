@@ -764,16 +764,6 @@ export default function McpLibraryPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-medium text-sm">{entry.name}</span>
-                              {entry.validated && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span>
-                                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Validata per questa organizzazione</TooltipContent>
-                                </Tooltip>
-                              )}
                               {entry.category && <Badge variant="outline" className="text-xs">{entry.category}</Badge>}
                               <Badge variant="secondary" className="text-xs">{entry.transport}</Badge>
                               {entry.writeCapable && <Badge variant="destructive" className="text-xs">write</Badge>}
@@ -784,8 +774,26 @@ export default function McpLibraryPage() {
                               <span className="text-xs text-primary mt-0.5 block truncate">{entry.repoUrl}</span>
                             )}
                           </div>
-                          <div className="text-xs text-muted-foreground whitespace-nowrap">
+                          <div className="flex items-center gap-2 shrink-0">
                             {entry.authModel && entry.authModel !== "none" && <Badge variant="outline" className="text-xs">{entry.authModel}</Badge>}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className={entry.validated ? "text-green-600 hover:text-green-700" : "text-amber-500 hover:text-amber-600"}
+                                  disabled={validateCatalogMutation.isPending}
+                                  onClick={e => { e.stopPropagation(); validateCatalogMutation.mutate({ catalogId: entry.id, validated: !entry.validated }); }}
+                                  data-testid={`btn-validate-catalog-${entry.id}`}
+                                >
+                                  {entry.validated
+                                    ? <ShieldCheck className="h-4 w-4" />
+                                    : <ShieldAlert className="h-4 w-4" />
+                                  }
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{entry.validated ? "Validata ✓ — clicca per rimuovere" : "Non validata — clicca per abilitare all'AI"}</TooltipContent>
+                            </Tooltip>
                           </div>
                         </div>
                       ))}
