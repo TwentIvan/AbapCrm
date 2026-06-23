@@ -198,7 +198,7 @@ function ConnectionPlanPanel({ task }: { task: Task }) {
                 {STEP_TYPE_LABELS[step.type] ?? step.type}
               </p>
               {step.onFailure && step.onFailure !== "abort" && (
-                <p className="text-xs text-warning dark:text-amber-400 mt-0.5">
+                <p className="text-xs text-warning mt-0.5">
                   In caso di errore: {step.onFailure === "retry" ? "riprova" : "chiedi all'utente"}
                 </p>
               )}
@@ -286,8 +286,8 @@ function PendingActionsPanel({ task }: { task: Task }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-warning/10 dark:bg-amber-950/20 border border-warning/30 dark:border-amber-800 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-warning dark:text-amber-400">
+      <div className="bg-warning/10 border border-warning/30 dark:border-amber-800 rounded-lg p-4">
+        <div className="flex items-center gap-2 text-warning">
           <ShieldAlert className="h-4 w-4" />
           <span className="font-medium text-sm">
             Esecuzione sospesa — {pending.length} azione{pending.length !== 1 ? "i" : ""} write in attesa
@@ -414,8 +414,8 @@ function AiCostsPanel({ task }: { task: Task }) {
   return (
     <div className="space-y-4">
       {lastPaused && (
-        <div className="bg-warning/10 dark:bg-amber-950/20 border border-warning/30 dark:border-amber-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-warning dark:text-amber-400">
+        <div className="bg-warning/10 border border-warning/30 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-warning">
             <AlertTriangle className="h-4 w-4" />
             <span className="font-medium text-sm">Esecuzione sospesa per budget</span>
           </div>
@@ -646,13 +646,13 @@ function AiSpecPanel({ task }: { task: Task }) {
       {Array.isArray(spec.openQuestions) && spec.openQuestions.length > 0 && (
         <Card className="border-warning/30 dark:border-yellow-800">
           <CardHeader className="py-3 px-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-warning dark:text-yellow-400">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-warning">
               <AlertTriangle className="h-4 w-4" />
               Domande Aperte ({spec.openQuestions.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <ul className="list-decimal pl-4 space-y-1 text-sm text-warning dark:text-yellow-300">
+            <ul className="list-decimal pl-4 space-y-1 text-sm text-warning">
               {spec.openQuestions.map((q: string, i: number) => <li key={i}>{q}</li>)}
             </ul>
           </CardContent>

@@ -27,7 +27,7 @@ const statusColors: Record<string, string> = {
   planning: "bg-primary",
   active: "bg-success",
   on_hold: "bg-yellow-500",
-  completed: "bg-gray-500",
+  completed: "bg-muted-foreground",
   cancelled: "bg-red-500",
   in_progress: "bg-primary"
 };

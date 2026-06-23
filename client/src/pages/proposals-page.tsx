@@ -354,9 +354,9 @@ export default function ProposalsPage() {
 
         {/* Chiarimenti richiesti */}
         {proposalData.needsClarification && proposalData.clarificationQuestions?.length > 0 && (
-          <Card className="border-warning/30 bg-warning/10 dark:bg-amber-950/30">
+          <Card className="border-warning/30 bg-warning/10">
             <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2 text-warning dark:text-amber-400">
+              <CardTitle className="text-sm flex items-center gap-2 text-warning">
                 <Sparkles className="w-4 h-4" />
                 Chiarimenti necessari
               </CardTitle>

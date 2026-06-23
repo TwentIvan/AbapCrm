@@ -112,7 +112,7 @@ export function ListViewToolbar({
             size="sm"
             onClick={onBulkEdit}
             disabled={!hasSelection || disableBulkEdit}
-            className={`h-9 ${hasSelection && !disableBulkEdit ? 'bg-warning/10 text-warning border-warning/30 hover:bg-warning/10 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800' : ''}`}
+            className={`h-9 ${hasSelection && !disableBulkEdit ? 'bg-warning/10 text-warning border-warning/30 hover:bg-warning/10 dark:text-yellow-400 dark:border-yellow-800' : ''}`}
             data-testid="button-bulk-edit"
           >
             <Edit className="h-4 w-4" />
@@ -126,7 +126,7 @@ export function ListViewToolbar({
             size="sm"
             onClick={onDeleteSelected}
             disabled={!hasSelection || disableDelete}
-            className={`h-9 ${hasSelection && !disableDelete ? 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/10 dark:bg-red-950 dark:text-destructive dark:border-red-800' : ''}`}
+            className={`h-9 ${hasSelection && !disableDelete ? 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/10 dark:text-destructive dark:border-red-800' : ''}`}
             data-testid="button-delete-selected"
           >
             <Trash2 className="h-4 w-4" />

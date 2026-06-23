@@ -335,7 +335,7 @@ function ResourceSkillAssessmentsEditor({ resourceId }: { resourceId: string }) 
     return (
       <div key={node.id}>
         <div
-          className={`flex items-center gap-2 py-1.5 px-2 hover:bg-accent/50 rounded transition-colors ${hasPending ? "bg-warning/10 dark:bg-amber-950/20" : ""}`}
+          className={`flex items-center gap-2 py-1.5 px-2 hover:bg-accent/50 rounded transition-colors ${hasPending ? "bg-warning/10" : ""}`}
           style={{ paddingLeft: `${depth * 20 + 8}px` }}
         >
           {!leaf ? (

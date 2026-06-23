@@ -259,7 +259,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
               <Link href="/mcp-library">
                 <Button
                   variant="ghost"
-                  className="flex items-center bg-warning/10 dark:bg-amber-950/30 relative"
+                  className="flex items-center bg-warning/10 relative"
                   style={{ border: '2px solid rgba(245, 158, 11, 0.4)' }}
                   data-testid="button-pending-approvals"
                 >
@@ -269,7 +269,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                       {(pendingApprovals?.count ?? 0) > 9 ? '9+' : pendingApprovals?.count}
                     </span>
                   </div>
-                  <span className="ml-2 text-warning dark:text-amber-400 font-medium text-xs whitespace-nowrap">
+                  <span className="ml-2 text-warning font-medium text-xs whitespace-nowrap">
                     Approvazioni
                   </span>
                 </Button>

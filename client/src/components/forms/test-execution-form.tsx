@@ -116,7 +116,7 @@ export default function TestExecutionForm({ execution, projectId, onSuccess, onC
       case "failed":
         return <XCircle className="h-4 w-4 text-destructive dark:text-destructive" />;
       case "partial":
-        return <AlertCircle className="h-4 w-4 text-warning dark:text-yellow-400" />;
+        return <AlertCircle className="h-4 w-4 text-warning" />;
       case "blocked":
         return <Ban className="h-4 w-4 text-muted-foreground dark:text-muted-foreground" />;
       default:

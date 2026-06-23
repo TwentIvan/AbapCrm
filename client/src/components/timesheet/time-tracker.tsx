@@ -333,7 +333,7 @@ export function TimeTracker({ task }: TimeTrackerProps) {
                       <span>Projected Remaining:</span>
                       <span className={`font-medium ${
                         remainingTimeData.projected > remainingTimeData.original 
-                          ? 'text-warning dark:text-amber-400' 
+                          ? 'text-warning' 
                           : 'text-success dark:text-success'
                       }`}>
                         {formatDuration(remainingTimeData.projected * 60)}

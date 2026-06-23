@@ -577,10 +577,10 @@ export default function MessagesPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'unread': return 'bg-primary';
-      case 'read': return 'bg-gray-500';
+      case 'read': return 'bg-muted-foreground';
       case 'processed': return 'bg-success';
       case 'archived': return 'bg-yellow-500';
-      default: return 'bg-gray-500';
+      default: return 'bg-muted-foreground';
     }
   };
 
@@ -1196,10 +1196,10 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="other" 
                           data-testid="tab-other"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-500 transition-all data-[state=active]:bg-gray-500 data-[state=active]:text-white data-[state=active]:border-gray-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-500 transition-all data-[state=active]:bg-muted-foreground data-[state=active]:text-white data-[state=active]:border-gray-500 data-[state=active]:shadow-lg"
                         >
                           <FileText className="h-5 w-5" />
-                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-gray-500 text-white rounded px-1 mt-0.5">
+                          <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-muted-foreground text-white rounded px-1 mt-0.5">
                             {typeCounts.other}
                           </span>
                           {unreadCounts.other > 0 && (
@@ -1209,7 +1209,7 @@ export default function MessagesPage() {
                           )}
                         </TabsTrigger>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom" className="bg-gray-500 text-white">
+                      <TooltipContent side="bottom" className="bg-muted-foreground text-white">
                         <p>Altri ({typeCounts.other})</p>
                       </TooltipContent>
                     </Tooltip>
@@ -1939,9 +1939,9 @@ export default function MessagesPage() {
                             
                             {/* Altri dati */}
                             {(externalMeta.ticketCode || externalMeta.wbsCode || externalMeta.ticketType || (externalMeta.customFields && Object.keys(externalMeta.customFields).length > 0)) && (
-                              <div className="bg-warning/10 dark:bg-amber-900/20 border border-warning/30 dark:border-amber-800 rounded-lg p-3">
+                              <div className="bg-warning/10 border border-warning/30 dark:border-amber-800 rounded-lg p-3">
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-warning dark:text-amber-400 font-medium text-sm">🏷️ Altri dati</span>
+                                  <span className="text-warning font-medium text-sm">🏷️ Altri dati</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                   {externalMeta.ticketCode && (
@@ -2599,12 +2599,12 @@ export default function MessagesPage() {
                         <>
                           {/* Parsing failure warning - MUST be shown before messages check */}
                           {renderedContent.metadata?.parsingFailed && (
-                            <div className="bg-warning/10 dark:bg-yellow-950 border border-warning/30 dark:border-yellow-800 rounded-lg p-4 mb-4" data-testid="warning-parsing-failed">
+                            <div className="bg-warning/10 border border-warning/30 dark:border-yellow-800 rounded-lg p-4 mb-4" data-testid="warning-parsing-failed">
                               <div className="flex items-start gap-3">
-                                <AlertTriangle className="h-5 w-5 text-warning dark:text-yellow-400 mt-0.5" />
+                                <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
                                 <div className="flex-1">
-                                  <h4 className="font-medium text-warning dark:text-yellow-200 mb-1">Formato non riconosciuto</h4>
-                                  <p className="text-sm text-warning dark:text-yellow-300">
+                                  <h4 className="font-medium text-warning mb-1">Formato non riconosciuto</h4>
+                                  <p className="text-sm text-warning">
                                     Il contenuto incollato non corrisponde al formato atteso per {renderedContent.metadata.platform || 'questa piattaforma'}. 
                                     Il testo originale è visualizzato sotto. Assicurati di copiare solo la conversazione senza menu o elementi dell'interfaccia.
                                   </p>

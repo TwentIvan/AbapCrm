@@ -492,7 +492,7 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
       case "low": return "bg-success";
       case "medium": return "bg-yellow-500";
       case "high": return "bg-red-500";
-      default: return "bg-gray-500";
+      default: return "bg-muted-foreground";
     }
   };
 
@@ -1117,8 +1117,8 @@ export function ThuAiDialog({ open, onOpenChange, selectedTasks }: ThuAiDialogPr
 
                         {/* Task Comments */}
                         {result.contextSummary.taskComments.length > 0 && (
-                          <div className="mb-4 p-3 bg-warning/10 dark:bg-yellow-950 rounded-lg">
-                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-warning dark:text-yellow-300">
+                          <div className="mb-4 p-3 bg-warning/10 rounded-lg">
+                            <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-warning">
                               <MessageSquare className="h-3 w-3" />
                               Commenti Task ({result.contextSummary.taskComments.length})
                             </h5>
