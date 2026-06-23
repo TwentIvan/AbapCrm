@@ -1052,7 +1052,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="all" 
                           data-testid="tab-all"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-slate-400 dark:hover:border-slate-500 transition-all data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:border-slate-600 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-slate-400 dark:hover:border-slate-500 transition-all data-[state=active]:bg-slate-600 data-[state=active]:text-white data-[state=active]:border-slate-600"
                         >
                           <Inbox className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-slate-600 text-white rounded px-1 mt-0.5">
@@ -1076,7 +1076,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="email" 
                           data-testid="tab-email"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-primary/30 dark:hover:border-blue-600 transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:border-primary/50 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-primary/30 dark:hover:border-blue-600 transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:border-primary/50"
                         >
                           <Mail className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-primary text-white rounded px-1 mt-0.5">
@@ -1100,7 +1100,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="chat" 
                           data-testid="tab-chat"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-success/30 dark:hover:border-green-600 transition-all data-[state=active]:bg-success data-[state=active]:text-white data-[state=active]:border-success/30 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-success/30 dark:hover:border-green-600 transition-all data-[state=active]:bg-success data-[state=active]:text-white data-[state=active]:border-success/30"
                         >
                           <MessageSquare className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-success text-white rounded px-1 mt-0.5">
@@ -1124,7 +1124,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="sms" 
                           data-testid="tab-sms"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-warning/30 dark:hover:border-yellow-500 transition-all data-[state=active]:bg-yellow-500 data-[state=active]:text-white data-[state=active]:border-yellow-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-warning/30 dark:hover:border-yellow-500 transition-all data-[state=active]:bg-yellow-500 data-[state=active]:text-white data-[state=active]:border-yellow-500"
                         >
                           <Smartphone className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-yellow-500 text-white rounded px-1 mt-0.5">
@@ -1148,7 +1148,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="devops" 
                           data-testid="tab-devops"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-warning/30 dark:hover:border-orange-600 transition-all data-[state=active]:bg-warning data-[state=active]:text-white data-[state=active]:border-warning/50 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-warning/30 dark:hover:border-orange-600 transition-all data-[state=active]:bg-warning data-[state=active]:text-white data-[state=active]:border-warning/50"
                         >
                           <GitBranch className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-warning text-white rounded px-1 mt-0.5">
@@ -1172,7 +1172,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="calendar" 
                           data-testid="tab-calendar"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:border-purple-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-600 transition-all data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:border-purple-500"
                         >
                           <Calendar className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-purple-500 text-white rounded px-1 mt-0.5">
@@ -1196,7 +1196,7 @@ export default function MessagesPage() {
                         <TabsTrigger 
                           value="other" 
                           data-testid="tab-other"
-                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-500 transition-all data-[state=active]:bg-muted-foreground data-[state=active]:text-white data-[state=active]:border-gray-500 data-[state=active]:shadow-lg"
+                          className="relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-500 transition-all data-[state=active]:bg-muted-foreground data-[state=active]:text-white data-[state=active]:border-gray-500"
                         >
                           <FileText className="h-5 w-5" />
                           <span className="min-w-[20px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-muted-foreground text-white rounded px-1 mt-0.5">
@@ -3107,7 +3107,7 @@ export default function MessagesPage() {
   {/* Floating Action Button for new message */}
   <Button
     onClick={() => setShowNewMessageDialog(true)}
-    className="fixed bottom-8 right-8 h-16 w-16 rounded-full shadow-lg z-50"
+    className="fixed bottom-8 right-8 h-16 w-16 rounded-full shadow-md z-50"
     size="icon"
     data-testid="button-add-message"
   >

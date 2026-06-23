@@ -454,7 +454,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className={`w-14 h-14 rounded-lg shadow-lg transition-all duration-300 ${
+                      className={`w-14 h-14 rounded-lg shadow-sm transition-all duration-300 ${
                         currentOrganization?.name === "Personal" && personalScope === 'all'
                           ? 'bg-background hover:bg-accent'
                           : 'bg-background border border-border hover:bg-accent'

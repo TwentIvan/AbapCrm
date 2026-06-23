@@ -146,7 +146,7 @@ export default function CalendarPage() {
               <h3 className="text-lg font-semibold text-foreground mb-4">Upcoming Events</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {upcomingEvents.map((event) => (
-                  <Card key={event.id} className="hover:shadow-lg transition-shadow" data-testid={`card-event-${event.id}`}>
+                  <Card key={event.id} className="transition-shadow" data-testid={`card-event-${event.id}`}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div>

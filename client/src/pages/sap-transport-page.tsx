@@ -285,7 +285,7 @@ export default function SapTransportPage() {
             ) : (
               <div className="space-y-4">
                 {requests.map((request) => (
-                  <Card key={request.id} className="hover:shadow-lg transition-shadow" data-testid={`card-request-${request.id}`}>
+                  <Card key={request.id} className="transition-shadow" data-testid={`card-request-${request.id}`}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
