@@ -135,9 +135,11 @@ export async function syncMcpCatalog(): Promise<SyncResult> {
       // Update in batches of 100 to avoid huge IN clauses
       for (let i = 0; i < toStale.length; i += 100) {
         const batch = toStale.slice(i, i + 100);
+        // Build parameterized IN list — avoid casting JS array as record type
+        const uuidList = sql.join(batch.map(id => sql`${id}::uuid`), sql`, `);
         await db.execute(sql`
           UPDATE mcp_catalog SET stale = true
-          WHERE id IN (SELECT unnest(${batch}::uuid[]))
+          WHERE id IN (${uuidList})
         `);
       }
       result.stale = toStale.length;

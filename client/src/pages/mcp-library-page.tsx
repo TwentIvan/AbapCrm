@@ -643,6 +643,16 @@ export default function McpLibraryPage() {
     onError: (err: any) => toast({ title: "Errore eliminazione", description: err.message, variant: "destructive" }),
   });
 
+  const validateCatalogMutation = useMutation({
+    mutationFn: async ({ catalogId, validated }: { catalogId: string; validated: boolean }) =>
+      apiRequest("PATCH", `/api/mcp/catalog/${catalogId}/validate`, { validated }),
+    onSuccess: (_, { validated }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/mcp/catalog"] });
+      toast({ title: validated ? "✓ Server validato — usabile dall'AI" : "Validazione rimossa" });
+    },
+    onError: (err: any) => toast({ title: "Errore validazione", description: err.message, variant: "destructive" }),
+  });
+
   const handleSync = async () => {
     setSyncing(true);
     try {
@@ -839,6 +849,28 @@ export default function McpLibraryPage() {
                               <HealthBadge lastHealth={cfg.lastHealth} />
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
+                              {cfg.catalogId && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className={isValidated ? "text-green-600 hover:text-green-700" : "text-amber-500 hover:text-amber-600"}
+                                      disabled={validateCatalogMutation.isPending}
+                                      onClick={() => validateCatalogMutation.mutate({ catalogId: cfg.catalogId!, validated: !isValidated })}
+                                      data-testid={`btn-validate-${cfg.id}`}
+                                    >
+                                      {validateCatalogMutation.isPending
+                                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                                        : isValidated
+                                          ? <ShieldCheck className="h-4 w-4" />
+                                          : <ShieldAlert className="h-4 w-4" />
+                                      }
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{isValidated ? "Validato ✓ — clicca per rimuovere" : "Non validato — clicca per validare e abilitare all'AI"}</TooltipContent>
+                                </Tooltip>
+                              )}
                               <Button size="sm" variant="ghost" onClick={() => handleHealthCheck(cfg)} disabled={healthLoading[cfg.id]} title="Health Check" data-testid={`btn-health-${cfg.id}`}>
                                 {healthLoading[cfg.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
                               </Button>
