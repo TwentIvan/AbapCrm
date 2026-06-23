@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, Users, Calendar, TrendingUp, Shield, Zap, Mail, CheckCircle } from "lucide-react";
-import { Wordmark } from "@/components/ui/wordmark";
+import { Wordmark } from "@/components/brand/Wordmark";
 import { SiGoogle } from "react-icons/si";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 

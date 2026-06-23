@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch, LayoutDashboard, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "@/components/brand/Wordmark";
+import ImageContainer from "@/components/ui/image-container";
 
 // Anagrafiche direct items
 const getDefaultAnagraficheDirectItems = (t: any) => [
@@ -258,7 +259,7 @@ export default function Sidebar() {
     <aside className="w-80 bg-card flex flex-col">
       {/* Logo Box - Same total height as both headers combined: py-2 + py-4 = py-6 */}
       <div className="px-6 py-6">
-        <div className="flex justify-center items-center py-2">
+        <div className="flex justify-center items-center">
           <Wordmark height={44} />
         </div>
       </div>
