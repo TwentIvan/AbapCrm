@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch, LayoutDashboard, Brain, ChevronDown, ChevronRight } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch, LayoutDashboard, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import htuLogo from "@assets/HTU-logo-512_(1)_1782240207188.png";
 
@@ -74,72 +74,120 @@ const getDefaultParentItems = (t: any) => [
   { id: "p4", name: t("nav.timeManagement"), icon: Clock, testId: "nav-time-management", type: "timeManagement" },
 ];
 
+// Simple Navigation Item Component
 function NavItem({ item, isActive }: { item: any; isActive: boolean }) {
   const [, setLocation] = useLocation();
   const Icon = item.icon;
 
   return (
-    <div
-      className={cn(
-        "flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
-        isActive
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      )}
+    <div 
+      className="w-full cursor-pointer transition-all duration-200 sidebar-nav-item"
       data-testid={item.testId}
       onClick={() => setLocation(item.href)}
     >
-      <Icon className="h-4 w-4 flex-shrink-0" />
-      <span className="text-sm font-medium">{item.name}</span>
+      <div 
+        className={cn(
+          "flex items-center gap-3 px-4 py-2 rounded-md nav-box transition-all duration-200",
+          "bg-sidebar-accent dark:bg-sidebar-accent",
+          isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
+        )}
+        style={{
+          border: '2px solid rgba(30, 64, 175, 0.3)'
+        }}
+      >
+        <div className="p-1.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.3)' }}>
+          <Icon className="h-5 w-5 flex-shrink-0 text-primary" />
+        </div>
+        <span className={cn(
+          "text-sm font-medium flex-1",
+          isActive ? "text-primary" : "text-foreground"
+        )}>{item.name}</span>
+      </div>
     </div>
   );
 }
 
+// Simple Parent Item Component (with expand/collapse button)
 function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }: { item: any; children: React.ReactNode; isOpen: boolean; onToggle: () => void; hasActiveChild?: boolean }) {
   const Icon = item.icon;
 
   return (
-    <div>
-      <button
-        className={cn(
-          "w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
-          hasActiveChild
-            ? "text-primary"
-            : "text-foreground hover:bg-muted"
-        )}
-        onClick={onToggle}
+    <>
+      <div 
+        className="w-full transition-all duration-200 sidebar-nav-item"
         data-testid={item.testId}
       >
-        <Icon className="h-4 w-4 flex-shrink-0" />
-        <span className="text-sm font-semibold flex-1 text-left">{item.name}</span>
-        {isOpen ? (
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-        )}
-      </button>
-      {isOpen && <div className="ml-3 mt-0.5 space-y-0.5 border-l border-border pl-3">{children}</div>}
-    </div>
+        <div 
+          className={cn(
+            "flex items-center gap-3 h-10 px-4 rounded-md nav-box transition-all duration-200",
+            "bg-sidebar-accent dark:bg-sidebar-accent",
+            hasActiveChild && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
+          )}
+          style={{
+            border: '2px solid rgba(30, 64, 175, 0.3)'
+          }}
+        >
+          <div className="p-1.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.3)' }}>
+            <Icon className="h-5 w-5 flex-shrink-0 text-background" />
+          </div>
+          <span className={cn(
+            "text-sm font-medium flex-1",
+            hasActiveChild ? "text-primary" : "text-foreground"
+          )}>{item.name}</span>
+          <button 
+            onClick={onToggle}
+            className={cn(
+              "ml-2 w-7 h-7 rounded-md hover:bg-sidebar-accent dark:hover:bg-sidebar-accent transition-colors flex items-center justify-center",
+              "text-primary"
+            )}
+          >
+            {isOpen ? (
+              <Minus className="h-4 w-4 font-bold stroke-[2.5]" />
+            ) : (
+              <Plus className="h-4 w-4 font-bold stroke-[2.5]" />
+            )}
+          </button>
+        </div>
+      </div>
+      {isOpen && <div className="mt-2 space-y-2">{children}</div>}
+    </>
   );
 }
 
+// Simple Sub-Navigation Item Component (smaller)
 function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boolean; onChildClick: () => void }) {
   const [, setLocation] = useLocation();
   const Icon = item.icon;
 
   return (
-    <div
-      className={cn(
-        "flex items-center gap-3 px-3 py-1.5 rounded-md cursor-pointer transition-colors",
-        isActive
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      )}
-      onClick={() => setLocation(item.href)}
-      data-testid={item.testId}
-    >
-      <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-      <span className="text-sm">{item.name}</span>
+    <div className="ml-6">
+      <div 
+        className="w-full cursor-pointer transition-all duration-200 sidebar-nav-item"
+        onClick={() => {
+          console.log('Child clicked:', item.name);
+          setLocation(item.href);
+        }}
+        data-testid={item.testId}
+      >
+        <div 
+          className={cn(
+            "flex items-center gap-3 h-10 px-4 rounded-md nav-box transition-all duration-200",
+            "bg-sidebar-accent dark:bg-sidebar-accent",
+            isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
+          )}
+          style={{
+            border: '2px solid rgba(30, 64, 175, 0.3)'
+          }}
+        >
+          <div className="p-1.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.3)' }}>
+            <Icon className="h-4 w-4 flex-shrink-0 text-background" />
+          </div>
+          <span className={cn(
+            "text-sm font-medium flex-1",
+            isActive ? "text-primary" : "text-foreground"
+          )}>{item.name}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -164,7 +212,8 @@ export default function Sidebar() {
   const [isAcquistiOpen, setIsAcquistiOpen] = useState(false);
   const [isTimeManagementOpen, setIsTimeManagementOpen] = useState(false);
   const [systemsManual, setSystemsManual] = useState<'open' | 'closed' | null>(null);
-
+  
+  // Auto-open parent menus when child is active
   const hasActiveAnagraficheDirectChild = anagraficheDirectItems.some((item: any) => location === item.href);
   const hasActiveSystemsChild = systemsItems.some((item: any) => location === item.href);
   const hasActiveBusinessScenariosChild = location === "/business-scenarios";
@@ -174,7 +223,8 @@ export default function Sidebar() {
   const hasActiveVenditaChild = venditaItems.some((item: any) => location === item.href);
   const hasActiveAcquistiChild = acquistiItems.some((item: any) => location === item.href);
   const hasActiveTimeChild = timeManagementItems.some((item: any) => location === item.href);
-
+  
+  // Keep menus open if they have active children - with manual override
   const shouldAnagraficheBeOpen = anagraficheManual === 'open' || (anagraficheManual !== 'closed' && hasActiveAnagraficheChild);
   const shouldSystemsBeOpen = systemsManual === 'open' || (systemsManual !== 'closed' && hasActiveSystemsChild);
   const shouldProgettiBeOpen = progettiManual === 'open' || (progettiManual !== 'closed' && hasActiveProgettiChild);
@@ -182,8 +232,11 @@ export default function Sidebar() {
   const shouldVenditaBeOpen = isVenditaOpen || hasActiveVenditaChild;
   const shouldAcquistiBeOpen = isAcquistiOpen || hasActiveAcquistiChild;
   const shouldTimeManagementBeOpen = isTimeManagementOpen || hasActiveTimeChild;
-
+  
+  // Toggle function with manual override
   const handleToggle = (type: string) => {
+    console.log('Executing toggle for:', type);
+    
     if (type === 'anagrafiche') {
       setAnagraficheManual(shouldAnagraficheBeOpen ? 'closed' : 'open');
     } else if (type === 'systems') {
@@ -202,128 +255,154 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-card border-r border-border flex flex-col">
-      {/* Logo */}
-      <div className="px-5 py-5">
-        <img
-          src={htuLogo}
-          alt="HTU Logo"
-          className="h-16 object-contain"
-          data-testid="img-app-logo"
-        />
+    <aside className="w-80 bg-card flex flex-col">
+      {/* Logo Box - Same total height as both headers combined: py-2 + py-4 = py-6 */}
+      <div className="px-6 py-6">
+        <div className="flex justify-center items-center">
+          <img
+            src={htuLogo}
+            alt="HTU Logo"
+            className="w-60 h-40 object-contain"
+            data-testid="img-app-logo"
+          />
+        </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 pb-4 space-y-1 overflow-y-auto">
-        {/* Anagrafiche */}
+      {/* Navigation Menu */}
+      <nav className="flex-1 px-4 pt-4 pb-4 space-y-2">
+        {/* Anagrafiche Section (3 livelli: Anagrafiche > Partners/Risorse + Sistemi > SAP/VPN/Credenziali) */}
         <ParentItem
-          item={{ id: "p0", name: "Anagrafiche", icon: Contact, testId: "nav-anagrafiche", type: "anagrafiche" }}
-          isOpen={shouldAnagraficheBeOpen}
-          hasActiveChild={hasActiveAnagraficheChild}
-          onToggle={() => handleToggle('anagrafiche')}
-        >
-          {anagraficheDirectItems.map((childItem: any) => (
-            <SubNavItem
-              key={childItem.id}
-              item={childItem}
-              isActive={location === childItem.href}
-              onChildClick={() => {}}
-            />
-          ))}
-
-          <ParentItem
-            item={{ id: "p-systems", name: "Sistemi", icon: Shield, testId: "nav-systems-nested", type: "systems" }}
-            isOpen={shouldSystemsBeOpen}
-            hasActiveChild={hasActiveSystemsChild}
-            onToggle={() => handleToggle('systems')}
+            item={{ id: "p0", name: "Anagrafiche", icon: Contact, testId: "nav-anagrafiche", type: "anagrafiche" }}
+            isOpen={shouldAnagraficheBeOpen}
+            hasActiveChild={hasActiveAnagraficheChild}
+            onToggle={() => handleToggle('anagrafiche')}
           >
-            {systemsItems.map((sysItem: any) => (
-              <SubNavItem
-                key={sysItem.id}
-                item={sysItem}
-                isActive={location === sysItem.href}
-                onChildClick={() => {}}
-              />
-            ))}
-          </ParentItem>
-
-          <SubNavItem
-            item={{ id: "bs1", name: "Scenari di Business", href: "/business-scenarios", icon: Network, testId: "nav-business-scenarios" }}
-            isActive={location === "/business-scenarios"}
-            onChildClick={() => {}}
-          />
-        </ParentItem>
-
-        {/* Other sections */}
-        {parentItems.map((item: any) => {
-          if (item.type === 'anagrafiche') return null;
-
-          let isOpen = false;
-          let hasActiveChild = false;
-          let childItems: any[] = [];
-
-          if (item.type === 'progetti') {
-            isOpen = shouldProgettiBeOpen;
-            hasActiveChild = hasActiveProgettiChild;
-            childItems = progettiItems;
-          } else if (item.type === 'soluzioni') {
-            isOpen = shouldSoluzioniBeOpen;
-            hasActiveChild = hasActiveSoluzioniChild;
-            childItems = soluzioniItems;
-          } else if (item.type === 'vendita') {
-            isOpen = shouldVenditaBeOpen;
-            hasActiveChild = hasActiveVenditaChild;
-            childItems = venditaItems;
-          } else if (item.type === 'acquisti') {
-            isOpen = shouldAcquistiBeOpen;
-            hasActiveChild = hasActiveAcquistiChild;
-            childItems = acquistiItems;
-          } else if (item.type === 'timeManagement') {
-            isOpen = shouldTimeManagementBeOpen;
-            hasActiveChild = hasActiveTimeChild;
-            childItems = timeManagementItems;
-          }
-
-          return (
-            <ParentItem
-              key={item.id}
-              item={item}
-              isOpen={isOpen}
-              hasActiveChild={hasActiveChild}
-              onToggle={() => handleToggle(item.type)}
-            >
-              {childItems.map((subItem: any) => (
-                <SubNavItem
-                  key={subItem.id}
-                  item={subItem}
-                  isActive={location === subItem.href}
+            {/* Direct items: Partners e Risorse */}
+            {anagraficheDirectItems.map((childItem: any) => {
+              const isChildActive = location === childItem.href;
+              return (
+                <SubNavItem 
+                  key={childItem.id} 
+                  item={childItem} 
+                  isActive={isChildActive}
                   onChildClick={() => {}}
                 />
-              ))}
-            </ParentItem>
-          );
-        })}
-
-        {/* AI Section */}
-        <div className="pt-4 mt-4 border-t border-border">
-          <p className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            AI
-          </p>
-          {aiToolsItems.map((item) => (
-            <NavItem
-              key={item.id}
-              item={item}
-              isActive={location === item.href}
+              );
+            })}
+            
+            {/* Nested Sistemi section */}
+            <div className="ml-4">
+              <ParentItem
+                item={{ id: "p-systems", name: "Sistemi", icon: Shield, testId: "nav-systems-nested", type: "systems" }}
+                isOpen={shouldSystemsBeOpen}
+                hasActiveChild={hasActiveSystemsChild}
+                onToggle={() => handleToggle('systems')}
+              >
+                {systemsItems.map((sysItem: any) => {
+                  const isSysActive = location === sysItem.href;
+                  return (
+                    <SubNavItem 
+                      key={sysItem.id} 
+                      item={sysItem} 
+                      isActive={isSysActive}
+                      onChildClick={() => {}}
+                    />
+                  );
+                })}
+              </ParentItem>
+            </div>
+            
+            {/* Scenari di Business - allo stesso livello di Sistemi */}
+            <SubNavItem 
+              item={{ id: "bs1", name: "Scenari di Business", href: "/business-scenarios", icon: Network, testId: "nav-business-scenarios" }} 
+              isActive={location === "/business-scenarios"}
+              onChildClick={() => {}}
             />
-          ))}
-        </div>
+          </ParentItem>
+        
+        {/* Altri Parent Sections (Progetti, Soluzioni, Vendite, Acquisti, Time Management) */}
+          {parentItems.map((item: any) => {
+            const isAnagraficheItem = item.type === 'anagrafiche';
+            const isProgettiItem = item.type === 'progetti';
+            const isSoluzioniItem = item.type === 'soluzioni';
+            const isVenditaItem = item.type === 'vendita';
+            const isAcquistiItem = item.type === 'acquisti';
+            const isTimeItem = item.type === 'timeManagement';
+            
+            // Saltare Anagrafiche già renderizzata sopra
+            if (isAnagraficheItem) {
+              return null;
+            }
+            
+            let isOpen = false;
+            let hasActiveChild = false;
+            let childItems: any[] = [];
+            
+            if (isProgettiItem) {
+              isOpen = shouldProgettiBeOpen;
+              hasActiveChild = hasActiveProgettiChild;
+              childItems = progettiItems;
+            } else if (isSoluzioniItem) {
+              isOpen = shouldSoluzioniBeOpen;
+              hasActiveChild = hasActiveSoluzioniChild;
+              childItems = soluzioniItems;
+            } else if (isVenditaItem) {
+              isOpen = shouldVenditaBeOpen;
+              hasActiveChild = hasActiveVenditaChild;
+              childItems = venditaItems;
+            } else if (isAcquistiItem) {
+              isOpen = shouldAcquistiBeOpen;
+              hasActiveChild = hasActiveAcquistiChild;
+              childItems = acquistiItems;
+            } else if (isTimeItem) {
+              isOpen = shouldTimeManagementBeOpen;
+              hasActiveChild = hasActiveTimeChild;
+              childItems = timeManagementItems;
+            }
+            
+            return (
+              <ParentItem
+                key={item.id}
+                item={item}
+                isOpen={isOpen}
+                hasActiveChild={hasActiveChild}
+                onToggle={() => handleToggle(item.type)}
+              >
+                {childItems.map((subItem: any) => {
+                  const isActive = location === subItem.href;
+                  return (
+                    <SubNavItem 
+                      key={subItem.id} 
+                      item={subItem} 
+                      isActive={isActive} 
+                      onChildClick={() => {}}
+                    />
+                  );
+                })}
+              </ParentItem>
+            );
+          })}
       </nav>
 
-      {/* User */}
-      <div className="p-4 border-t border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-            <User className="h-4 w-4 text-primary" />
+      {/* AI Tools section */}
+      <div className="px-4 pb-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
+          AI
+        </p>
+        {aiToolsItems.map((item) => (
+          <NavItem
+            key={item.id}
+            item={item}
+            isActive={location === item.href}
+          />
+        ))}
+      </div>
+
+      {/* User Profile */}
+      <div className="p-6 border-t border-border">
+        <div className="flex items-center space-x-3 p-3 rounded-md hover:bg-accent transition-colors">
+          <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+            <User className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground truncate" data-testid="text-user-name">
@@ -336,11 +415,10 @@ export default function Sidebar() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onClick={() => logoutMutation.mutate()}
             data-testid="button-logout"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4 w-4 text-muted-foreground" />
           </Button>
         </div>
       </div>
