@@ -157,7 +157,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
           <div
             className="flex items-center space-x-3 px-4 py-2 bg-sidebar-accent rounded-lg"
             style={{
-              border: '2px solid rgba(30, 64, 175, 0.3)'
+              border: '2px solid hsl(var(--brand) / 0.3)'
             }}
           >
             <AreaIcon className="text-muted-foreground flex-shrink-0" style={{ width: '2rem', height: '2rem' }} />
@@ -176,7 +176,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             onClick={() => !isSearchOpen && setIsSearchOpen(true)}
             data-testid="button-search"
             style={{ 
-              border: '2px solid rgba(30, 64, 175, 0.3)',
+              border: '2px solid hsl(var(--brand) / 0.3)',
               width: isSearchOpen ? '300px' : 'auto'
             }}
           >
@@ -232,7 +232,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 className="flex items-center bg-sidebar-accent relative"
                 style={{
                   ...getButtonStyle('proposals', hoveredButton),
-                  border: '2px solid rgba(30, 64, 175, 0.3)'
+                  border: '2px solid hsl(var(--brand) / 0.3)'
                 }}
                 onMouseEnter={() => setHoveredButton('proposals')}
                 onMouseLeave={() => setHoveredButton(null)}
@@ -282,7 +282,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 className="flex items-center bg-sidebar-accent relative"
                 style={{
                   ...getButtonStyle('messages', hoveredButton),
-                  border: '2px solid rgba(30, 64, 175, 0.3)'
+                  border: '2px solid hsl(var(--brand) / 0.3)'
                 }}
                 onMouseEnter={() => setHoveredButton('messages')}
                 onMouseLeave={() => setHoveredButton(null)}
@@ -310,7 +310,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 className="flex items-center bg-sidebar-accent"
                 style={{
                   ...getButtonStyle('calendar', hoveredButton),
-                  border: '2px solid rgba(30, 64, 175, 0.3)'
+                  border: '2px solid hsl(var(--brand) / 0.3)'
                 }}
                 onMouseEnter={() => setHoveredButton('calendar')}
                 onMouseLeave={() => setHoveredButton(null)}
@@ -331,7 +331,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 className="flex items-center bg-sidebar-accent"
                 style={{
                   ...getButtonStyle('planning', hoveredButton),
-                  border: '2px solid rgba(30, 64, 175, 0.3)'
+                  border: '2px solid hsl(var(--brand) / 0.3)'
                 }}
                 onMouseEnter={() => setHoveredButton('planning')}
                 onMouseLeave={() => setHoveredButton(null)}
@@ -354,7 +354,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
                 className="flex items-center bg-sidebar-accent"
                 style={{
                   ...getButtonStyle('partners', hoveredButton),
-                  border: '2px solid rgba(30, 64, 175, 0.3)'
+                  border: '2px solid hsl(var(--brand) / 0.3)'
                 }}
                 onMouseEnter={() => setHoveredButton('partners')}
                 onMouseLeave={() => setHoveredButton(null)}
@@ -375,7 +375,7 @@ export default function Header({ title, subtitle, onNewClick }: HeaderProps) {
             <div 
               className="relative rounded-lg px-4 py-2 flex items-center space-x-4 bg-sidebar-accent transition-all duration-200"
               style={{
-                border: '2px solid rgba(30, 64, 175, 0.3)'
+                border: '2px solid hsl(var(--brand) / 0.3)'
               }}
             >
               {/* Language Selector - Bandiera Flat */}
