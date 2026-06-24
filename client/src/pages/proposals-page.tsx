@@ -169,14 +169,31 @@ export default function ProposalsPage() {
       const resp = await apiRequest("POST", `/api/proposals/${selectedProposal!.id}/discussions`, { message });
       return resp.json();
     },
+    onMutate: async (message: string) => {
+      const key = ["/api/proposals", selectedProposal?.id, "discussions"];
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<any[]>(key) || [];
+      const optimistic = {
+        id: `optimistic-${Date.now()}`,
+        role: "user",
+        content: message,
+        createdAt: new Date().toISOString(),
+        _optimistic: true,
+      };
+      queryClient.setQueryData<any[]>(key, [...previous, optimistic]);
+      setDiscussionInput("");
+      return { previous, key };
+    },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/proposals", selectedProposal?.id, "discussions"] });
       if (data.proposalUpdated) {
         queryClient.invalidateQueries({ queryKey: ["/api/proposals"] });
       }
-      setDiscussionInput("");
     },
-    onError: (error: any) => {
+    onError: (error: any, _vars, context: any) => {
+      if (context?.key && context?.previous) {
+        queryClient.setQueryData(context.key, context.previous);
+      }
       toast({
         title: "Errore",
         description: error.message || "Impossibile inviare il messaggio",
