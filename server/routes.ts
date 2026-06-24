@@ -4912,7 +4912,6 @@ REGOLE:
         organizationId,
         caller: "proposal-discussion",
         maxTokens: 4000,
-        temperature: 0.7,
       });
 
       // Check if AI proposed an updated proposal
@@ -5017,7 +5016,6 @@ PROCESSO: <testo con punti numerati>`,
           organizationId,
           caller: "proposal-decision-summary",
           maxTokens: 1000,
-          temperature: 0.3,
         });
 
         const summaryMatch = summaryResult.content.match(/RIASSUNTO:\s*([\s\S]*?)(?=PROCESSO:)/);
