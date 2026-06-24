@@ -230,11 +230,18 @@ export default function ProposalsPage() {
   };
 
   const renderProposalData = (proposalData: any) => {
-    if (!proposalData || proposalData.processing) {
+    if (!proposalData || (proposalData.processing && !proposalData.failed)) {
       return (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin" />
           <span>Analisi in corso...</span>
+        </div>
+      );
+    }
+    if (proposalData.failed) {
+      return (
+        <div className="text-destructive text-sm">
+          Analisi fallita. Controlla i dettagli dell'errore.
         </div>
       );
     }
