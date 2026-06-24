@@ -338,6 +338,23 @@ export default function ProposalsPage() {
       ),
     },
     {
+      key: "estimatedTokens",
+      label: "Token previsti",
+      sortable: true,
+      searchable: false,
+      accessor: (proposal: Proposal) => (proposal.estimateTokensMin || 0) + (proposal.estimateTokensMax || 0),
+      render: (proposal: Proposal) => {
+        const min = proposal.estimateTokensMin;
+        const max = proposal.estimateTokensMax;
+        if (!min && !max) return <span className="text-sm text-muted-foreground">-</span>;
+        return (
+          <span className="text-sm">
+            {(min || 0).toLocaleString()} – {(max || 0).toLocaleString()}
+          </span>
+        );
+      },
+    },
+    {
       key: "spentTokens",
       label: "Token spesi",
       sortable: true,
@@ -680,6 +697,7 @@ export default function ProposalsPage() {
           { id: "status", label: "Stato" },
           { id: "proposedEntities", label: "Entità proposte" },
           { id: "createdEntities", label: "Entità create" },
+          { id: "estimatedTokens", label: "Token previsti" },
           { id: "spentTokens", label: "Token spesi" },
           { id: "modelKey", label: "Modello" },
           { id: "createdAt", label: "Data" },
