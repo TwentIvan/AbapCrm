@@ -1,15 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
@@ -19,98 +17,99 @@ import { ListViewToolbar } from "@/components/ui/list-view-toolbar";
 import { TableConfiguration } from "@/components/ui/table-configuration";
 import { useTableLayout } from "@/lib/user-preferences";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, X, Clock, AlertCircle, Eye, Sparkles, Loader2, Brain, TrendingUp, Trash2, Link2, MessageSquare, Send, Bot, User } from "lucide-react";
+import { Check, X, Clock, AlertCircle, Eye, Sparkles, Loader2, TrendingUp, Link2, MessageSquare, Send, Bot, User } from "lucide-react";
 import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import type { Proposal, AiLearningPattern } from "@shared/schema";
+import type { Proposal } from "@shared/schema";
 import { useOrganization } from "@/contexts/organization-context";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-interface EntityGroup {
-  label: string;
-  items: string[];
+interface EntityItem {
+  type: string;          // entity type label, e.g. "Partner", "Task"
+  description: string;   // entity name/title
+  targetPath?: string;   // navigation target (when the entity exists)
 }
 
-function getProposedEntityGroups(pd: any): EntityGroup[] {
+// Maps an entity type to its detail/edit route (when an id is available).
+function buildTargetPath(type: string, id?: string): string | undefined {
+  if (!id) return undefined;
+  switch (type) {
+    case "Partner": return `/partners/${id}/edit`;
+    case "Progetto": return `/projects/${id}/edit`;
+    case "Task": return `/tasks/${id}/edit`;
+    case "Sistema SAP": return `/sap-systems/${id}/edit`;
+    case "Connessione": return `/vpn-connections/${id}/edit`;
+    case "Contatto": return `/contacts`;
+    default: return undefined;
+  }
+}
+
+function getProposedEntityItems(pd: any): EntityItem[] {
   if (!pd || pd.processing || pd.failed) return [];
-  const groups: EntityGroup[] = [];
-  if (pd.partner) groups.push({ label: "Partner", items: [pd.partner.name].filter(Boolean) });
-  if (pd.project) groups.push({ label: "Progetto", items: [pd.project.name].filter(Boolean) });
-  if (pd.tasks?.length) groups.push({ label: "Task", items: pd.tasks.map((t: any) => t.title).filter(Boolean) });
-  if (pd.contacts?.length) groups.push({ label: "Contatti", items: pd.contacts.map((c: any) => c.name).filter(Boolean) });
-  if (pd.systems?.length) groups.push({ label: "Sistemi SAP", items: pd.systems.map((s: any) => s.name || s.systemId).filter(Boolean) });
-  if (pd.connections?.length) groups.push({ label: "Connessioni", items: pd.connections.map((c: any) => c.name || c.connectionId).filter(Boolean) });
-  return groups;
+  const items: EntityItem[] = [];
+  const push = (type: string, description?: string, id?: string) => {
+    if (description) items.push({ type, description, targetPath: buildTargetPath(type, id) });
+  };
+  if (pd.partner) push("Partner", pd.partner.name, pd.partner.id);
+  if (pd.project) push("Progetto", pd.project.name, pd.project.id);
+  pd.tasks?.forEach((t: any) => push("Task", t.title, t.id));
+  pd.contacts?.forEach((c: any) => push("Contatto", c.name, c.id));
+  pd.systems?.forEach((s: any) => push("Sistema SAP", s.name || s.systemId, s.id));
+  pd.connections?.forEach((c: any) => push("Connessione", c.name || c.connectionId, c.id));
+  return items;
 }
 
-function getCreatedEntityGroups(proposal: Proposal): EntityGroup[] {
+function getCreatedEntityItems(proposal: Proposal): EntityItem[] {
   const pd = proposal.proposalData as any;
   if (!pd || pd.processing || pd.failed) return [];
   if (proposal.status !== "accepted" && proposal.status !== "partially_accepted") return [];
-  const groups: EntityGroup[] = [];
-  if (pd.partner?.isNew) groups.push({ label: "Partner", items: [pd.partner.name].filter(Boolean) });
-  if (pd.project?.isNew) groups.push({ label: "Progetto", items: [pd.project.name].filter(Boolean) });
-  if (pd.tasks?.length) {
-    const newTasks = pd.tasks.filter((t: any) => t.isNew).map((t: any) => t.title).filter(Boolean);
-    if (newTasks.length) groups.push({ label: "Task", items: newTasks });
-  }
-  if (pd.contacts?.length) groups.push({ label: "Contatti", items: pd.contacts.map((c: any) => c.name).filter(Boolean) });
-  return groups;
-}
-
-function countEntities(groups: EntityGroup[]): number {
-  return groups.reduce((sum, g) => sum + g.items.length, 0);
+  const items: EntityItem[] = [];
+  const push = (type: string, description?: string, id?: string) => {
+    if (description) items.push({ type, description, targetPath: buildTargetPath(type, id) });
+  };
+  if (pd.partner?.isNew) push("Partner", pd.partner.name, pd.partner.id);
+  if (pd.project?.isNew) push("Progetto", pd.project.name, pd.project.id);
+  pd.tasks?.filter((t: any) => t.isNew).forEach((t: any) => push("Task", t.title, t.id));
+  pd.contacts?.forEach((c: any) => push("Contatto", c.name, c.id));
+  return items;
 }
 
 function EntityCountBadge({
-  groups,
+  items,
   variant = "proposed",
   testId,
+  onOpen,
 }: {
-  groups: EntityGroup[];
+  items: EntityItem[];
   variant?: "proposed" | "created";
   testId?: string;
+  onOpen: (label: string, items: EntityItem[]) => void;
 }) {
-  const total = countEntities(groups);
+  const total = items.length;
   if (total === 0) {
     return <span className="text-sm text-muted-foreground">-</span>;
   }
   const bg = variant === "created" ? "bg-success" : "bg-primary";
+  const label = variant === "created" ? "Entità create" : "Entità proposte";
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onOpen(label, items);
+  };
   return (
-    <Popover>
-      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          className={`flex items-center justify-center w-8 h-8 rounded-full ${bg} text-primary-foreground font-semibold text-sm cursor-pointer hover:opacity-80 transition-opacity z-50 relative`}
-          onMouseDown={(e) => e.stopPropagation()}
-          onMouseUp={(e) => { e.stopPropagation(); e.preventDefault(); }}
-          onPointerDown={(e) => e.stopPropagation()}
-          data-testid={testId}
-        >
-          {total}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-72 p-3" onClick={(e) => e.stopPropagation()} align="start">
-        <div className="space-y-3">
-          {groups.map((g, i) => (
-            <div key={i}>
-              <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">
-                {g.label} ({g.items.length})
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {g.items.map((item, j) => (
-                  <Badge key={j} variant="outline" className="text-xs font-normal">
-                    {item}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
+    <button
+      type="button"
+      className={`flex items-center justify-center w-8 h-8 rounded-full ${bg} text-primary-foreground font-semibold text-sm cursor-pointer hover:opacity-80 transition-opacity z-50 relative`}
+      onClick={handleClick}
+      onMouseDown={(e) => e.stopPropagation()}
+      onMouseUp={(e) => { e.stopPropagation(); e.preventDefault(); handleClick(e); }}
+      onPointerDown={(e) => e.stopPropagation()}
+      data-testid={testId}
+    >
+      {total}
+    </button>
   );
 }
 
@@ -139,9 +138,8 @@ export default function ProposalsPage() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "accepted" | "rejected">("all");
-  const [mainTab, setMainTab] = useState<"proposals" | "learning">("proposals");
   const [detailTab, setDetailTab] = useState<"detail" | "discussion">("detail");
+  const [entityPreview, setEntityPreview] = useState<{ label: string; items: EntityItem[] } | null>(null);
   const [discussionInput, setDiscussionInput] = useState("");
   const [selectedProposals, setSelectedProposals] = useState<Proposal[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
@@ -150,6 +148,11 @@ export default function ProposalsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { currentOrganizationId } = useOrganization();
+  const [, setLocation] = useLocation();
+
+  const openEntityPreview = (label: string, items: EntityItem[]) => {
+    setEntityPreview({ label, items });
+  };
 
   const {
     layout,
@@ -164,18 +167,12 @@ export default function ProposalsPage() {
 
   // ── Data ──
 
-  const { data: proposals = [], isLoading, refetch } = useQuery<Proposal[]>({
+  const { data: proposals = [], isLoading } = useQuery<Proposal[]>({
     queryKey: ["/api/proposals"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentOrganizationId,
     refetchInterval: 5000,
     refetchIntervalInBackground: true,
-  });
-
-  const { data: learningPatterns = [], isLoading: isLoadingPatterns, refetch: refetchPatterns } = useQuery<AiLearningPattern[]>({
-    queryKey: ["/api/ai-learning-patterns"],
-    queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!currentOrganizationId,
   });
 
   const { data: discussions = [], isLoading: isLoadingDiscussions } = useQuery<any[]>({
@@ -196,22 +193,7 @@ export default function ProposalsPage() {
     }
   }, [proposals, selectedProposal]);
 
-  // ── Filtered data ──
-
-  const filteredProposals = useMemo(() => {
-    if (statusFilter === "all") return proposals;
-    return proposals.filter(p => p.status === statusFilter);
-  }, [proposals, statusFilter]);
-
   // ── Mutations ──
-
-  const deletePatternMutation = useMutation({
-    mutationFn: (patternId: string) => apiRequest("DELETE", `/api/ai-learning-patterns/${patternId}`, {}),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/ai-learning-patterns"] });
-      toast({ title: "Pattern eliminato" });
-    },
-  });
 
   const applyProposalMutation = useMutation({
     mutationFn: (proposalId: string) => apiRequest("POST", `/api/proposals/${proposalId}/apply`, {}),
@@ -334,9 +316,10 @@ export default function ProposalsPage() {
       searchable: false,
       render: (proposal: Proposal) => (
         <EntityCountBadge
-          groups={getProposedEntityGroups(proposal.proposalData)}
+          items={getProposedEntityItems(proposal.proposalData)}
           variant="proposed"
           testId={`badge-proposed-${proposal.id}`}
+          onOpen={openEntityPreview}
         />
       ),
     },
@@ -347,9 +330,10 @@ export default function ProposalsPage() {
       searchable: false,
       render: (proposal: Proposal) => (
         <EntityCountBadge
-          groups={getCreatedEntityGroups(proposal)}
+          items={getCreatedEntityItems(proposal)}
           variant="created"
           testId={`badge-created-${proposal.id}`}
+          onOpen={openEntityPreview}
         />
       ),
     },
@@ -652,147 +636,38 @@ export default function ProposalsPage() {
             borderRight: '2px solid rgba(30, 64, 175, 0.3)',
           }}
         >
-          <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as any)} className="mb-4">
-            <TabsList>
-              <TabsTrigger value="proposals" data-testid="tab-main-proposals" className="gap-2">
-                <Sparkles className="w-4 h-4" />
-                Proposte ({proposals.length})
-              </TabsTrigger>
-              <TabsTrigger value="learning" data-testid="tab-main-learning" className="gap-2">
-                <Brain className="w-4 h-4" />
-                Apprendimento AI ({learningPatterns.length})
-              </TabsTrigger>
-            </TabsList>
+          {/* Toolbar (same as Partner/Projects pages) */}
+          <ListViewToolbar
+            currentLayoutName={currentLayoutName}
+            savedLayouts={savedLayouts}
+            onLoadLayout={loadLayout}
+            onRenameLayout={renameLayout}
+            onDeleteLayout={deleteLayout}
+            onConfigureTable={() => setShowConfigDialog(true)}
+            onDeleteSelected={handleBulkDelete}
+            hasSelection={selectedProposals.length > 0}
+          />
 
-            {/* ── Learning tab ── */}
-            <TabsContent value="learning" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="w-5 h-5" />
-                    Pattern Appresi
-                  </CardTitle>
-                  <CardDescription>
-                    L'AI utilizza questi pattern per migliorare le proposte future basandosi sulle tue decisioni passate
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingPatterns ? (
-                    <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
-                  ) : learningPatterns.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Brain className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                      <p>Nessun pattern appreso</p>
-                      <p className="text-sm mt-1">Accetta o rigetta proposte per insegnare all'AI le tue preferenze</p>
-                    </div>
-                  ) : (
-                    <ScrollArea className="h-[500px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Tipo Pattern</TableHead>
-                            <TableHead>Input</TableHead>
-                            <TableHead>Azione Scelta</TableHead>
-                            <TableHead className="text-center">Confidenza</TableHead>
-                            <TableHead className="text-center">Utilizzi</TableHead>
-                            <TableHead></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {learningPatterns.map((pattern) => {
-                            const features = pattern.inputFeatures as Record<string, any> || {};
-                            const action = pattern.chosenAction as Record<string, any> || {};
-                            const total = pattern.acceptanceCount + pattern.rejectionCount;
-                            const confidence = total > 0 ? Math.round((pattern.acceptanceCount / total) * 100) : 0;
-                            return (
-                              <TableRow key={pattern.id} data-testid={`row-pattern-${pattern.id}`}>
-                                <TableCell><Badge variant="outline">{pattern.patternType}</Badge></TableCell>
-                                <TableCell className="max-w-[200px]">
-                                  <div className="text-xs text-muted-foreground truncate">
-                                    {Object.entries(features).map(([key, value]) => <div key={key}><strong>{key}:</strong> {String(value)}</div>)}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="max-w-[200px]">
-                                  <div className="text-xs text-muted-foreground truncate">
-                                    {Object.entries(action).map(([key, value]) => <div key={key}><strong>{key}:</strong> {String(value)}</div>)}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <div className="flex flex-col items-center gap-1">
-                                    <Progress
-                                      value={confidence}
-                                      className={`w-16 h-2 ${confidence >= 80 ? '[&>div]:bg-success' : confidence >= 50 ? '[&>div]:bg-yellow-500' : '[&>div]:bg-red-500'}`}
-                                    />
-                                    <span className="text-xs">{confidence}%</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <div className="flex items-center justify-center gap-1 text-sm">
-                                    <span className="text-success">{pattern.acceptanceCount}</span>/<span className="text-destructive">{pattern.rejectionCount}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Button variant="ghost" size="icon" onClick={() => deletePatternMutation.mutate(pattern.id)} disabled={deletePatternMutation.isPending}>
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </ScrollArea>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* ── Proposals tab ── */}
-            <TabsContent value="proposals" className="mt-4">
-              {/* Status filter tabs */}
-              <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-                <TabsList>
-                  <TabsTrigger value="all" data-testid="tab-all-proposals">Tutte ({proposals.length})</TabsTrigger>
-                  <TabsTrigger value="pending" data-testid="tab-pending-proposals">In sospeso ({proposals.filter(p => p.status === "pending").length})</TabsTrigger>
-                  <TabsTrigger value="accepted" data-testid="tab-accepted-proposals">Accettate ({proposals.filter(p => p.status === "accepted").length})</TabsTrigger>
-                  <TabsTrigger value="rejected" data-testid="tab-rejected-proposals">Rigettate ({proposals.filter(p => p.status === "rejected").length})</TabsTrigger>
-                </TabsList>
-              </Tabs>
-
-              {/* Toolbar (same as Partner/Projects pages) */}
-              <ListViewToolbar
-                currentLayoutName={currentLayoutName}
-                savedLayouts={savedLayouts}
-                onLoadLayout={loadLayout}
-                onRenameLayout={renameLayout}
-                onDeleteLayout={deleteLayout}
-                onConfigureTable={() => setShowConfigDialog(true)}
-                onDeleteSelected={handleBulkDelete}
-                hasSelection={selectedProposals.length > 0}
-              />
-
-              {/* Table */}
-              {isLoading && proposals.length === 0 ? (
-                <div className="space-y-4">
-                  {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-                </div>
-              ) : proposals.length === 0 ? (
-                <div className="text-center py-12">
-                  <Sparkles className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">Nessuna proposta</h3>
-                  <p className="text-muted-foreground mb-4">Le proposte vengono generate analizzando i messaggi email</p>
-                </div>
-              ) : (
-                <UniversalTable
-                  data={filteredProposals}
-                  columns={visibleColumns}
-                  enableSelection={true}
-                  onSelectionChange={(rows) => setSelectedProposals(rows as Proposal[])}
-                  onRowClick={handleRowClick}
-                />
-              )}
-            </TabsContent>
-          </Tabs>
+          {/* Table */}
+          {isLoading && proposals.length === 0 ? (
+            <div className="space-y-4">
+              {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+            </div>
+          ) : proposals.length === 0 ? (
+            <div className="text-center py-12">
+              <Sparkles className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">Nessuna proposta</h3>
+              <p className="text-muted-foreground mb-4">Le proposte vengono generate analizzando i messaggi email</p>
+            </div>
+          ) : (
+            <UniversalTable
+              data={proposals}
+              columns={visibleColumns}
+              enableSelection={true}
+              onSelectionChange={(rows) => setSelectedProposals(rows as Proposal[])}
+              onRowClick={handleRowClick}
+            />
+          )}
         </div>
       </main>
 
@@ -1025,6 +900,42 @@ export default function ProposalsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Entity preview (badge click) — same format as standard list badges ── */}
+      <Dialog open={!!entityPreview} onOpenChange={(open) => { if (!open) setEntityPreview(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {entityPreview?.label} ({entityPreview?.items.length})
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-80">
+            <div className="space-y-2 py-2">
+              {entityPreview?.items.map((item, i) => {
+                const clickable = !!item.targetPath;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    disabled={!clickable}
+                    onClick={() => {
+                      if (item.targetPath) {
+                        setEntityPreview(null);
+                        setLocation(item.targetPath);
+                      }
+                    }}
+                    className={`w-full text-left p-3 rounded-lg bg-muted flex items-center justify-between gap-2 ${clickable ? "hover:bg-muted/70 cursor-pointer" : "cursor-default"}`}
+                    data-testid={`preview-entity-${i}`}
+                  >
+                    <span className="text-sm font-medium">{item.description}</span>
+                    <Badge variant="outline" className="text-xs font-normal flex-shrink-0">{item.type}</Badge>
+                  </button>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Bulk delete ── */}
       <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
