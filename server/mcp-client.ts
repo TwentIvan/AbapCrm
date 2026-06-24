@@ -1,16 +1,19 @@
-// MCP Client — Phase 4
+// MCP Client — Phase 5
 // The CRM backend acts as the MCP CLIENT.
 // Connects to remote MCP servers, lists tools, classifies and namespaces them.
 // Phase 3: only read tools exposed to AI model.
 // Phase 4: write tools also exposed (non-PRD, non-readOnly), namespaced, marked requiresApproval.
+// Phase 5: stdio transport support with template-based config resolution.
 
 import { Client } from "@modelcontextprotocol/sdk/client";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { mcpServerConfigs } from "@shared/schema";
 import type { McpServerConfig } from "@shared/schema";
+import { resolveTemplate } from "./mcp-template-resolver";
 
 export type { McpServerConfig };
 
@@ -69,7 +72,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
-async function buildClient(endpoint: string): Promise<{ client: Client; kind: "streamable-http" | "sse" }> {
+async function buildHttpClient(endpoint: string): Promise<{ client: Client; kind: "streamable-http" | "sse" }> {
   const url = new URL(endpoint);
 
   try {
@@ -85,6 +88,39 @@ async function buildClient(endpoint: string): Promise<{ client: Client; kind: "s
   }
 }
 
+async function buildStdioClient(
+  command: string,
+  args: string[],
+  env: Record<string, string>
+): Promise<{ client: Client; kind: "stdio" }> {
+  const transport = new StdioClientTransport({
+    command,
+    args,
+    env: { ...process.env, ...env },
+  });
+  const client = new Client({ name: "crm-backend", version: "1.0.0" });
+  await withTimeout(client.connect(transport), CONNECT_TIMEOUT_MS);
+  return { client, kind: "stdio" };
+}
+
+type TransportKind = "streamable-http" | "sse" | "stdio";
+
+async function buildClient(
+  config: McpServerConfig
+): Promise<{ client: Client; kind: TransportKind }> {
+  const transportType = (config as any).transportType ?? "http";
+
+  if (transportType === "stdio") {
+    const command = (config as any).launchCommand;
+    if (!command) throw new Error("stdio transport requires launchCommand");
+    const args = ((config as any).launchArgs ?? []) as string[];
+    const resolvedEnv = await resolveTemplate(config);
+    return buildStdioClient(command, args, resolvedEnv);
+  }
+
+  return buildHttpClient(config.endpoint);
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export interface McpToolInfo {
@@ -97,7 +133,7 @@ export interface McpToolInfo {
 
 export interface ConnectResult {
   tools: McpToolInfo[];
-  transport: "streamable-http" | "sse";
+  transport: TransportKind;
 }
 
 /**
@@ -106,7 +142,7 @@ export interface ConnectResult {
  * Throws on connection failure — caller is responsible for graceful degradation.
  */
 export async function connectAndListTools(config: McpServerConfig): Promise<ConnectResult> {
-  const { client, kind } = await buildClient(config.endpoint);
+  const { client, kind } = await buildClient(config);
   try {
     const result = await client.listTools();
     const overrides: Record<string, "read" | "write"> =
@@ -166,7 +202,7 @@ export async function callTool(
   args: Record<string, unknown>
 ): Promise<{ ok: boolean; text: string; durationMs: number }> {
   const startMs = Date.now();
-  const { client } = await buildClient(config.endpoint);
+  const { client } = await buildClient(config);
   try {
     const result = await client.callTool({ name: toolName, arguments: args });
     const text = Array.isArray(result.content)

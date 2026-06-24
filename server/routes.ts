@@ -10979,6 +10979,130 @@ ISTRUZIONI:
     }
   });
 
+  // ── Phase 5: MCP Mapping Facilitator ──────────────────────────────────────
+
+  // GET /api/mcp/mapping/sources — describe available data sources for mapping
+  app.get("/api/mcp/mapping/sources", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const { describeAvailableSources } = await import("./mcp-template-resolver");
+    return res.json(describeAvailableSources());
+  });
+
+  // POST /api/mcp/mapping/suggest — AI suggests field mappings for an MCP server
+  app.post("/api/mcp/mapping/suggest", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const organizationId = req.headers["x-organization-id"] as string;
+    const bodySchema = z.object({
+      catalogId: z.string().uuid().optional(),
+      requiredSchema: z.record(z.object({
+        type: z.string().optional().default("string"),
+        description: z.string().optional().default(""),
+        required: z.boolean().optional().default(true),
+      })).optional(),
+      sapSystemId: z.string().uuid().optional(),
+      credentialId: z.string().uuid().optional(),
+    });
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid body", details: parsed.error.issues });
+
+    try {
+      const { describeAvailableSources } = await import("./mcp-template-resolver");
+      const sources = describeAvailableSources();
+
+      // Get required schema from catalog if catalogId provided
+      let reqSchema = parsed.data.requiredSchema ?? {};
+      if (parsed.data.catalogId && Object.keys(reqSchema).length === 0) {
+        const [catalogEntry] = await db.select().from(mcpCatalog).where(eq(mcpCatalog.id, parsed.data.catalogId)).limit(1);
+        if (catalogEntry?.requiredSchema) {
+          reqSchema = catalogEntry.requiredSchema as any;
+        }
+      }
+
+      if (Object.keys(reqSchema).length === 0) {
+        return res.json({ mappings: {}, configTemplate: {}, message: "No required schema defined — mapping skipped" });
+      }
+
+      // Fetch actual data from linked entities to give the AI richer context
+      let sapSystemData: Record<string, any> | null = null;
+      let credentialData: Record<string, any> | null = null;
+      if (parsed.data.sapSystemId) {
+        const [sys] = await db.select().from(sapSystems).where(eq(sapSystems.id, parsed.data.sapSystemId)).limit(1);
+        sapSystemData = sys ?? null;
+      }
+      if (parsed.data.credentialId) {
+        const [cred] = await db.select().from(systemCredentials).where(eq(systemCredentials.id, parsed.data.credentialId)).limit(1);
+        credentialData = cred ? { username: cred.username, systemName: cred.systemName } : null;
+      }
+
+      // Use AI to suggest the mapping
+      const { aiGateway, getDefaultModelKey } = await import("./ai-gateway");
+      const modelKey = await getDefaultModelKey(organizationId);
+
+      const systemPrompt = `You are an MCP server configuration assistant. Given a required schema (env vars the server needs) and available data sources, suggest the best field mapping.
+
+Available data sources:
+${JSON.stringify(sources, null, 2)}
+
+${sapSystemData ? `SAP System data sample (field names and values): ${JSON.stringify(Object.fromEntries(Object.entries(sapSystemData).filter(([k]) => !["userId", "organizationId", "defaultPassword", "createdAt", "updatedAt"].includes(k))))}` : ""}
+${credentialData ? `Credential data sample: ${JSON.stringify(credentialData)}` : ""}
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "mappings": { "ENV_VAR_NAME": { "source": "source_table_name", "field": "field_name" }, ... },
+  "configTemplate": { "ENV_VAR_NAME": "\${source.field}", ... },
+  "reasoning": "Brief explanation of mapping choices"
+}`;
+
+      const userPrompt = `Map these required env vars to available sources:\n${JSON.stringify(reqSchema, null, 2)}`;
+
+      const result = await aiGateway({
+        modelKey,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.1,
+        maxTokens: 2000,
+        organizationId,
+      });
+
+      const text = result.choices?.[0]?.message?.content ?? "";
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return res.json({ mappings: {}, configTemplate: {}, message: "AI could not generate mapping", raw: text });
+      }
+      const suggestion = JSON.parse(jsonMatch[0]);
+      return res.json(suggestion);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/mcp/mapping/resolve-preview — preview resolved env vars for a config
+  app.post("/api/mcp/mapping/resolve-preview", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const bodySchema = z.object({ configId: z.string().uuid() });
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
+
+    try {
+      const [config] = await db.select().from(mcpServerConfigs).where(eq(mcpServerConfigs.id, parsed.data.configId)).limit(1);
+      if (!config) return res.status(404).json({ error: "Config not found" });
+
+      const { resolveTemplate } = await import("./mcp-template-resolver");
+      const resolved = await resolveTemplate(config);
+      // Mask passwords
+      const masked = Object.fromEntries(
+        Object.entries(resolved).map(([k, v]) =>
+          /password|secret|token|key/i.test(k) ? [k, "••••••••"] : [k, v]
+        )
+      );
+      return res.json({ resolved: masked });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── Phase 5: Context Packs ────────────────────────────────────────────────
 
   // GET /api/context-packs/:scopeType/:scopeId? — read context pack
