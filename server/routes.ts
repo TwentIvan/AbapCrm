@@ -4933,9 +4933,21 @@ REGOLE:
       }
 
       // Clean display content (remove the JSON block)
-      const displayContent = aiResult.content
+      let displayContent = aiResult.content
         .replace(/<updated_proposal>[\s\S]*?<\/updated_proposal>/, "")
         .trim();
+
+      // Guarantee a non-empty reply (e.g. when the model returned only the JSON block)
+      if (!displayContent) {
+        displayContent = updatedProposalData
+          ? "Ho aggiornato la proposta secondo la tua richiesta. Controlla il tab Dettaglio per vedere le modifiche."
+          : "(nessun contenuto testuale restituito dall'agente)";
+      }
+
+      console.log(
+        `[PROPOSAL-DISCUSSION] proposal=${proposal.id} model=${(proposal as any).modelKey || "default"}` +
+          ` reply_len=${displayContent.length} updated=${!!updatedProposalData}`
+      );
 
       // Save AI reply
       const [aiMsg] = await db
