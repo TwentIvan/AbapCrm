@@ -10711,9 +10711,21 @@ ISTRUZIONI:
     try {
       const body = req.body;
 
-      // Security: catalogId is mandatory — no config may exist without a cataloged and validatable entry
+      // Security: catalogId is mandatory — no config may exist without a cataloged and validatable entry.
+      // Exception: stdio configs auto-create a catalog entry (born unvalidated) to preserve the validation model.
       if (!body.catalogId) {
-        return res.status(400).json({ error: "catalogId is required: every MCP config must reference a catalog entry" });
+        if (body.transportType === "stdio") {
+          const [autoCatalog] = await db.insert(mcpCatalog).values({
+            name: body.name || "Custom stdio server",
+            source: "custom",
+            transport: "stdio",
+            description: `Auto-created for stdio config "${body.name}"`,
+            writeCapable: body.readOnly === false,
+          }).returning();
+          body.catalogId = autoCatalog.id;
+        } else {
+          return res.status(400).json({ error: "catalogId is required: every MCP config must reference a catalog entry" });
+        }
       }
       const [catalogEntry] = await db.select({ id: mcpCatalog.id }).from(mcpCatalog).where(eq(mcpCatalog.id, body.catalogId)).limit(1);
       if (!catalogEntry) {

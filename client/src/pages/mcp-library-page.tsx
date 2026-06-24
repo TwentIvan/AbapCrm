@@ -470,25 +470,108 @@ function ConfigFormDialog({ open, onClose, initial, catalog, projects, sapSystem
   const [toolAllowlist, setToolAllowlist] = useState((initial?.toolAllowlist as string[] | null)?.join(", ") ?? "");
   const [saving, setSaving] = useState(false);
 
+  // Phase 5: transport + mapping
+  const [transportType, setTransportType] = useState((initial as any)?.transportType ?? "http");
+  const [launchCommand, setLaunchCommand] = useState((initial as any)?.launchCommand ?? "");
+  const [launchArgsStr, setLaunchArgsStr] = useState((((initial as any)?.launchArgs as string[] | null) ?? []).join(" "));
+  const [credentialsRef, setCredentialsRef] = useState((initial as any)?.credentialsRef ?? "none");
+  const [mappingRows, setMappingRows] = useState<Array<{ envVar: string; source: string; field: string }>>(() => {
+    const fm = ((initial as any)?.fieldMappings ?? {}) as Record<string, { source: string; field: string }>;
+    return Object.entries(fm).map(([envVar, m]) => ({ envVar, source: m.source, field: m.field }));
+  });
+  const [suggesting, setSuggesting] = useState(false);
+  const [reasoning, setReasoning] = useState("");
+
+  const isStdio = transportType === "stdio";
+
+  // Fetch available data sources for mapping
+  const { data: sources = {} } = useQuery<Record<string, Array<{ field: string; description: string }>>>({
+    queryKey: ["/api/mcp/mapping/sources"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: open && isStdio,
+  });
+
+  // Fetch credentials for the credentials selector
+  const { data: credentials = [] } = useQuery<any[]>({
+    queryKey: ["/api/system-credentials"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: open && isStdio,
+  });
+
   const effectiveReadOnly = environment === "PRD" ? true : readOnly;
 
+  const addMappingRow = () => setMappingRows(prev => [...prev, { envVar: "", source: "sap_systems", field: "" }]);
+  const removeMappingRow = (i: number) => setMappingRows(prev => prev.filter((_, idx) => idx !== i));
+  const updateMappingRow = (i: number, patch: Partial<{ envVar: string; source: string; field: string }>) =>
+    setMappingRows(prev => prev.map((r, idx) => idx === i ? { ...r, ...patch } : r));
+
+  const handleSuggestMapping = async () => {
+    setSuggesting(true);
+    setReasoning("");
+    try {
+      const res = await apiRequest("POST", "/api/mcp/mapping/suggest", {
+        catalogId: catalogId !== "none" ? catalogId : undefined,
+        sapSystemId: sapSystemId !== "none" ? sapSystemId : undefined,
+        credentialId: credentialsRef !== "none" ? credentialsRef : undefined,
+      });
+      const data = await res.json();
+      const mappings = (data.mappings ?? {}) as Record<string, { source: string; field: string }>;
+      const rows = Object.entries(mappings).map(([envVar, m]) => ({ envVar, source: m.source, field: m.field }));
+      if (rows.length > 0) {
+        setMappingRows(rows);
+        setReasoning(data.reasoning ?? "");
+        toast({ title: "Mapping suggerito", description: `${rows.length} campi mappati dall'AI` });
+      } else {
+        toast({ title: "Nessun mapping", description: data.message ?? "L'AI non ha prodotto un mapping. Definisci lo schema richiesto nel catalogo.", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Errore facilitatore", description: err.message, variant: "destructive" });
+    } finally {
+      setSuggesting(false);
+    }
+  };
+
   const handleSave = async () => {
-    if (!name.trim() || !endpoint.trim()) {
-      toast({ title: "Nome ed endpoint sono obbligatori", variant: "destructive" });
+    if (!name.trim()) {
+      toast({ title: "Il nome è obbligatorio", variant: "destructive" });
+      return;
+    }
+    if (!isStdio && !endpoint.trim()) {
+      toast({ title: "L'endpoint è obbligatorio per HTTP/SSE", variant: "destructive" });
+      return;
+    }
+    if (isStdio && !launchCommand.trim()) {
+      toast({ title: "Il comando di avvio è obbligatorio per stdio", variant: "destructive" });
       return;
     }
     setSaving(true);
     try {
-      const body = {
+      // Build fieldMappings + configTemplate from rows
+      const fieldMappings: Record<string, { source: string; field: string }> = {};
+      const configTemplate: Record<string, string> = {};
+      for (const row of mappingRows) {
+        if (row.envVar.trim() && row.source && row.field) {
+          fieldMappings[row.envVar.trim()] = { source: row.source, field: row.field };
+          configTemplate[row.envVar.trim()] = `\${${row.source}.${row.field}}`;
+        }
+      }
+
+      const body: Record<string, any> = {
         name: name.trim(),
-        endpoint: endpoint.trim(),
+        endpoint: isStdio ? (endpoint.trim() || `stdio://${launchCommand.trim().split(" ")[0]}`) : endpoint.trim(),
         environment,
         readOnly: effectiveReadOnly,
         catalogId: catalogId !== "none" ? catalogId : null,
         projectId: projectId !== "none" ? projectId : null,
         sapSystemId: sapSystemId !== "none" ? sapSystemId : null,
+        credentialsRef: credentialsRef !== "none" ? credentialsRef : null,
         toolAllowlist: toolAllowlist.split(",").map(s => s.trim()).filter(Boolean),
         enabled: true,
+        transportType,
+        launchCommand: isStdio ? launchCommand.trim() : null,
+        launchArgs: isStdio ? launchArgsStr.split(" ").map(s => s.trim()).filter(Boolean) : [],
+        configTemplate,
+        fieldMappings,
       };
       if (initial) {
         await apiRequest("PATCH", `/api/mcp/configs/${initial.id}`, body);
@@ -507,7 +590,7 @@ function ConfigFormDialog({ open, onClose, initial, catalog, projects, sapSystem
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initial ? "Modifica Configurazione MCP" : "Nuova Configurazione MCP"}</DialogTitle>
         </DialogHeader>
@@ -516,10 +599,42 @@ function ConfigFormDialog({ open, onClose, initial, catalog, projects, sapSystem
             <Label>Nome *</Label>
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="es. SAP DEV MCP" data-testid="mcp-config-name" />
           </div>
+
+          {/* Transport selector */}
           <div className="space-y-1">
-            <Label>Endpoint *</Label>
-            <Input value={endpoint} onChange={e => setEndpoint(e.target.value)} placeholder="http://localhost:9090/mcp" data-testid="mcp-config-endpoint" />
+            <Label>Trasporto</Label>
+            <Select value={transportType} onValueChange={setTransportType}>
+              <SelectTrigger data-testid="mcp-config-transport"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="http">HTTP / SSE (server remoto già attivo)</SelectItem>
+                <SelectItem value="stdio">stdio (il sistema avvia il processo locale)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {isStdio
+                ? "Il server viene avviato dal sistema con le credenziali risolte automaticamente dal mapping."
+                : "Il server è raggiungibile a un endpoint HTTP/SSE."}
+            </p>
           </div>
+
+          {!isStdio ? (
+            <div className="space-y-1">
+              <Label>Endpoint *</Label>
+              <Input value={endpoint} onChange={e => setEndpoint(e.target.value)} placeholder="http://localhost:9090/mcp" data-testid="mcp-config-endpoint" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-1">
+                <Label>Comando di avvio *</Label>
+                <Input value={launchCommand} onChange={e => setLaunchCommand(e.target.value)} placeholder="node mcp-sap-server.js" data-testid="mcp-config-launch-command" />
+              </div>
+              <div className="space-y-1">
+                <Label>Argomenti (separati da spazio)</Label>
+                <Input value={launchArgsStr} onChange={e => setLaunchArgsStr(e.target.value)} placeholder="--port 0 --mode rfc" data-testid="mcp-config-launch-args" />
+              </div>
+            </>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Ambiente</Label>
@@ -576,6 +691,87 @@ function ConfigFormDialog({ open, onClose, initial, catalog, projects, sapSystem
               </Select>
             </div>
           </div>
+
+          {/* Phase 5: stdio credentials + mapping facilitator */}
+          {isStdio && (
+            <>
+              <div className="space-y-1">
+                <Label>Credenziali (per il mapping)</Label>
+                <Select value={credentialsRef} onValueChange={setCredentialsRef}>
+                  <SelectTrigger><SelectValue placeholder="Nessuna" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nessuna</SelectItem>
+                    {credentials.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.systemName} — {c.username}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 border rounded-lg p-3 bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">Mapping campi → variabili d'ambiente</Label>
+                  <Button type="button" size="sm" variant="outline" onClick={handleSuggestMapping} disabled={suggesting} data-testid="btn-suggest-mapping">
+                    {suggesting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Settings className="h-3.5 w-3.5 mr-1" />}
+                    Suggerisci (AI)
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Le variabili che il server MCP richiede, mappate sui campi del sistema/credenziali collegati. Risolte all'avvio del task.
+                </p>
+
+                {reasoning && (
+                  <div className="text-xs bg-info/10 border border-info/20 rounded p-2 text-info">
+                    {reasoning}
+                  </div>
+                )}
+
+                {mappingRows.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic py-2">
+                    Nessun mapping. Usa "Suggerisci (AI)" o aggiungi manualmente.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {mappingRows.map((row, i) => {
+                      const fieldsForSource = sources[row.source] ?? [];
+                      return (
+                        <div key={i} className="flex items-center gap-1.5">
+                          <Input
+                            value={row.envVar}
+                            onChange={e => updateMappingRow(i, { envVar: e.target.value })}
+                            placeholder="SAP_HOST"
+                            className="h-8 text-xs font-mono flex-1"
+                          />
+                          <span className="text-muted-foreground text-xs">←</span>
+                          <Select value={row.source} onValueChange={v => updateMappingRow(i, { source: v, field: "" })}>
+                            <SelectTrigger className="h-8 text-xs w-32"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {Object.keys(sources).map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <Select value={row.field} onValueChange={v => updateMappingRow(i, { field: v })}>
+                            <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="campo" /></SelectTrigger>
+                            <SelectContent>
+                              {fieldsForSource.map(f => (
+                                <SelectItem key={f.field} value={f.field} className="text-xs" title={f.description}>{f.field}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive" onClick={() => removeMappingRow(i)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <Button type="button" size="sm" variant="ghost" onClick={addMappingRow} className="text-xs">
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Aggiungi campo
+                </Button>
+              </div>
+            </>
+          )}
+
           <div className="space-y-1">
             <Label>Allowlist Tool (opzionale, separati da virgola)</Label>
             <Input value={toolAllowlist} onChange={e => setToolAllowlist(e.target.value)} placeholder="sap_ping, sap_get_status" data-testid="mcp-config-allowlist" />
