@@ -206,9 +206,9 @@ export default function VendorInvoicesPage() {
         <div
           className="p-6 rounded-t-lg min-h-full"
           style={{
-            borderTop: '2px solid rgba(30, 64, 175, 0.3)',
-            borderLeft: '2px solid rgba(30, 64, 175, 0.3)',
-            borderRight: '2px solid rgba(30, 64, 175, 0.3)'
+            borderTop: '2px solid hsl(var(--brand) / 0.3)',
+            borderLeft: '2px solid hsl(var(--brand) / 0.3)',
+            borderRight: '2px solid hsl(var(--brand) / 0.3)'
           }}
         >
           <ListViewToolbar

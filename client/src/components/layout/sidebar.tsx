@@ -85,17 +85,18 @@ function NavItem({ item, isActive }: { item: any; isActive: boolean }) {
       data-testid={item.testId}
       onClick={() => setLocation(item.href)}
     >
-      <div 
+      <div
         className={cn(
-          "flex items-center gap-3 px-4 py-2 rounded-md nav-box transition-all duration-200",
+          "flex items-center gap-3 pl-0 pr-3 rounded-md nav-box transition-all duration-200",
           "bg-sidebar-accent dark:bg-sidebar-accent",
           isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
         )}
         style={{
-          border: '2px solid hsl(var(--brand) / 0.3)'
+          border: '2px solid hsl(var(--brand) / 0.3)',
+          height: '36px',
         }}
       >
-        <div className="p-1.5 rounded-md" style={{ backgroundColor: 'hsl(var(--brand) / 0.3)' }}>
+        <div className="w-[36px] h-[32px] flex items-center justify-center rounded-md flex-shrink-0" style={{ backgroundColor: 'hsl(var(--brand) / 0.3)' }}>
           <Icon className="h-5 w-5 flex-shrink-0 text-background" />
         </div>
         <span className={cn(
@@ -117,17 +118,18 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
         className="w-full transition-all duration-200 sidebar-nav-item"
         data-testid={item.testId}
       >
-        <div 
+        <div
           className={cn(
-            "flex items-center gap-3 h-10 px-4 rounded-md nav-box transition-all duration-200",
+            "flex items-center gap-3 pl-0 pr-3 rounded-md nav-box transition-all duration-200",
             "bg-sidebar-accent dark:bg-sidebar-accent",
             hasActiveChild && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
           )}
           style={{
-            border: '2px solid hsl(var(--brand) / 0.3)'
+            border: '2px solid hsl(var(--brand) / 0.3)',
+            height: '36px',
           }}
         >
-          <div className="p-1.5 rounded-md" style={{ backgroundColor: 'hsl(var(--brand) / 0.3)' }}>
+          <div className="w-[36px] h-[32px] flex items-center justify-center rounded-md flex-shrink-0" style={{ backgroundColor: 'hsl(var(--brand) / 0.3)' }}>
             <Icon className="h-5 w-5 flex-shrink-0 text-background" />
           </div>
           <span className={cn(
@@ -169,17 +171,18 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
         }}
         data-testid={item.testId}
       >
-        <div 
+        <div
           className={cn(
-            "flex items-center gap-3 h-10 px-4 rounded-md nav-box transition-all duration-200",
+            "flex items-center gap-3 pl-0 pr-3 rounded-md nav-box transition-all duration-200",
             "bg-sidebar-accent dark:bg-sidebar-accent",
             isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
           )}
           style={{
-            border: '2px solid hsl(var(--brand) / 0.3)'
+            border: '2px solid hsl(var(--brand) / 0.3)',
+            height: '32px',
           }}
         >
-          <div className="p-1.5 rounded-md" style={{ backgroundColor: 'hsl(var(--brand) / 0.3)' }}>
+          <div className="w-[32px] h-[28px] flex items-center justify-center rounded-md flex-shrink-0" style={{ backgroundColor: 'hsl(var(--brand) / 0.3)' }}>
             <Icon className="h-4 w-4 flex-shrink-0 text-background" />
           </div>
           <span className={cn(
