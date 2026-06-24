@@ -4956,9 +4956,9 @@ REGOLE:
         aiMessage: aiMsg,
         proposalUpdated: !!updatedProposalData,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Proposal discussion error:", error);
-      res.status(500).json({ error: "Failed to process discussion" });
+      res.status(500).json({ error: "Failed to process discussion", details: error?.message || String(error) });
     }
   });
 
