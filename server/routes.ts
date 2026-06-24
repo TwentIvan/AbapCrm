@@ -4309,13 +4309,14 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         });
       }
       
-      // Create a pending proposal immediately
+      // Create a pending proposal immediately (record the chosen model/agent)
       const proposal = await storage.createProposal({
         userId,
         organizationId,
         messageId,
         status: 'pending',
         proposalData: { processing: true },
+        modelKey: req.body?.modelKey || undefined,
       });
       
       // Start AI analysis in background (don't await)
@@ -4903,8 +4904,9 @@ REGOLE:
       }
       aiMessages.push({ role: "user", content: message });
 
-      const { aiGateway, getDefaultModelKey } = await import("./ai-gateway");
+      const { aiGateway } = await import("./ai-gateway");
       const aiResult = await aiGateway.complete({
+        modelKey: (proposal as any).modelKey || undefined, // usa lo stesso agente della proposta
         messages: [
           { role: "system", content: systemPrompt },
           ...aiMessages,
@@ -5000,6 +5002,7 @@ REGOLE:
           .join("\n\n");
 
         const summaryResult = await aiGateway.complete({
+          modelKey: (proposal as any).modelKey || undefined, // stesso agente della proposta
           messages: [
             {
               role: "system",
