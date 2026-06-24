@@ -466,6 +466,8 @@ export const proposals = pgTable("proposals", {
   appliedBy: uuid("applied_by").references(() => users.id), // Chi ha applicato la proposta
   decisionSummary: text("decision_summary"), // Sintesi della decisione finale dopo la discussione
   decisionReasoning: text("decision_reasoning"), // Processo decisionale che ha portato alle scelte
+  promptTokens: integer("prompt_tokens"),
+  completionTokens: integer("completion_tokens"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
