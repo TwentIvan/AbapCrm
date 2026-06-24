@@ -463,8 +463,25 @@ export const proposals = pgTable("proposals", {
   errorMessage: text("error_message"), // Eventuale errore durante l'analisi
   appliedAt: timestamp("applied_at"), // Quando è stata applicata
   appliedBy: uuid("applied_by").references(() => users.id), // Chi ha applicato la proposta
+  decisionSummary: text("decision_summary"), // Sintesi della decisione finale dopo la discussione
+  decisionReasoning: text("decision_reasoning"), // Processo decisionale che ha portato alle scelte
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const proposalDiscussionRoleEnum = pgEnum("proposal_discussion_role", ["user", "assistant"]);
+
+export const proposalDiscussions = pgTable("proposal_discussions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  proposalId: uuid("proposal_id").references(() => proposals.id, { onDelete: "cascade" }).notNull(),
+  role: proposalDiscussionRoleEnum("role").notNull(),
+  content: text("content").notNull(),
+  proposalDataSnapshot: jsonb("proposal_data_snapshot"), // snapshot of proposalData after AI revision
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  promptTokens: integer("prompt_tokens"),
+  completionTokens: integer("completion_tokens"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Domini supportati dalle organizzazioni (per identificazione automatica email)
@@ -1426,11 +1443,18 @@ export const contactsRelations = relations(contacts, ({ one }) => ({
   partner: one(partners, { fields: [contacts.partnerId], references: [partners.id] }),
 }));
 
-export const proposalsRelations = relations(proposals, ({ one }) => ({
+export const proposalsRelations = relations(proposals, ({ one, many }) => ({
   user: one(users, { fields: [proposals.userId], references: [users.id] }),
   organization: one(organizations, { fields: [proposals.organizationId], references: [organizations.id] }),
   message: one(messages, { fields: [proposals.messageId], references: [messages.id] }),
   appliedByUser: one(users, { fields: [proposals.appliedBy], references: [users.id] }),
+  discussions: many(proposalDiscussions),
+}));
+
+export const proposalDiscussionsRelations = relations(proposalDiscussions, ({ one }) => ({
+  proposal: one(proposals, { fields: [proposalDiscussions.proposalId], references: [proposals.id] }),
+  user: one(users, { fields: [proposalDiscussions.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [proposalDiscussions.organizationId], references: [organizations.id] }),
 }));
 
 export const commentsRelations = relations(comments, ({ one }) => ({
@@ -1664,6 +1688,13 @@ export const insertProposalSchema = createInsertSchema(proposals).omit({
 });
 export type InsertProposal = z.infer<typeof insertProposalSchema>;
 export type Proposal = typeof proposals.$inferSelect;
+
+export const insertProposalDiscussionSchema = createInsertSchema(proposalDiscussions).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertProposalDiscussion = z.infer<typeof insertProposalDiscussionSchema>;
+export type ProposalDiscussion = typeof proposalDiscussions.$inferSelect;
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,

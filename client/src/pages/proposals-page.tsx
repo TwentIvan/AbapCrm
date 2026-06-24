@@ -11,7 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
-import { Check, X, Clock, AlertCircle, Eye, Sparkles, Mail, Loader2, RefreshCw, Brain, TrendingUp, Trash2, Link2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Check, X, Clock, AlertCircle, Eye, Sparkles, Mail, Loader2, RefreshCw, Brain, TrendingUp, Trash2, Link2, MessageSquare, Send, Bot, User } from "lucide-react";
 import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -33,6 +34,8 @@ export default function ProposalsPage() {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "accepted" | "rejected">("all");
   const [mainTab, setMainTab] = useState<"proposals" | "learning">("proposals");
+  const [detailTab, setDetailTab] = useState<"detail" | "discussion">("detail");
+  const [discussionInput, setDiscussionInput] = useState("");
   const { toast } = useToast();
   const { currentOrganizationId } = useOrganization();
 
@@ -141,6 +144,49 @@ export default function ProposalsPage() {
         title: "Errore",
         description: error.message || "Impossibile eliminare la proposta",
         variant: "destructive",
+      });
+    },
+  });
+
+  const { data: discussions = [], isLoading: isLoadingDiscussions } = useQuery<any[]>({
+    queryKey: ["/api/proposals", selectedProposal?.id, "discussions"],
+    queryFn: () =>
+      selectedProposal
+        ? fetch(`/api/proposals/${selectedProposal.id}/discussions`, { credentials: "include" }).then((r) => r.json())
+        : [],
+    enabled: !!selectedProposal,
+    refetchInterval: false,
+  });
+
+  const discussionMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const resp = await apiRequest("POST", `/api/proposals/${selectedProposal!.id}/discussions`, { message });
+      return resp.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/proposals", selectedProposal?.id, "discussions"] });
+      if (data.proposalUpdated) {
+        queryClient.invalidateQueries({ queryKey: ["/api/proposals"] });
+      }
+      setDiscussionInput("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile inviare il messaggio",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const finalizeDecisionMutation = useMutation({
+    mutationFn: ({ proposalId, action }: { proposalId: string; action: "accept" | "reject" }) =>
+      apiRequest("POST", `/api/proposals/${proposalId}/finalize-decision`, { action }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/proposals"] });
+      toast({
+        title: "Decisione registrata",
+        description: "La decisione e il processo decisionale sono stati salvati",
       });
     },
   });
@@ -649,8 +695,56 @@ export default function ProposalsPage() {
               </Card>
 
               <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-sm">Dettaglio Proposta</CardTitle>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm">Dettaglio Proposta</CardTitle>
+                    {selectedProposal && (
+                      <div className="flex gap-2">
+                        {selectedProposal.status === "pending" && !(selectedProposal.proposalData as any)?.processing && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => {
+                                if (discussions.length > 0) {
+                                  finalizeDecisionMutation.mutate({ proposalId: selectedProposal.id, action: "accept" });
+                                }
+                                setShowApplyDialog(true);
+                              }}
+                              data-testid="button-apply-proposal"
+                            >
+                              <Check className="w-4 h-4 mr-1" />
+                              Applica
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                if (discussions.length > 0) {
+                                  finalizeDecisionMutation.mutate({ proposalId: selectedProposal.id, action: "reject" });
+                                }
+                                setShowRejectDialog(true);
+                              }}
+                              data-testid="button-reject-proposal"
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Rigetta
+                            </Button>
+                          </>
+                        )}
+                        {selectedProposal.status !== "pending" && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteProposalMutation.mutate(selectedProposal.id)}
+                            data-testid="button-delete-proposal"
+                          >
+                            Elimina
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {!selectedProposal ? (
@@ -658,12 +752,28 @@ export default function ProposalsPage() {
                       Seleziona una proposta per visualizzarne i dettagli
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
+                    <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as any)}>
+                      <TabsList className="mb-3">
+                        <TabsTrigger value="detail" className="gap-1.5">
+                          <Eye className="w-3.5 h-3.5" />
+                          Dettaglio
+                        </TabsTrigger>
+                        <TabsTrigger value="discussion" className="gap-1.5">
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          Discussione
+                          {discussions.length > 0 && (
+                            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                              {discussions.length}
+                            </Badge>
+                          )}
+                        </TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="detail" className="mt-0">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             {getStatusBadge(selectedProposal.status)}
-                            <span className="text-sm text-muted-foreground">
+                            <span>
                               Creata il {format(new Date(selectedProposal.createdAt), "dd MMMM yyyy 'alle' HH:mm", { locale: it })}
                             </span>
                           </div>
@@ -672,47 +782,124 @@ export default function ProposalsPage() {
                               Applicata il {format(new Date(selectedProposal.appliedAt), "dd MMMM yyyy 'alle' HH:mm", { locale: it })}
                             </div>
                           )}
-                        </div>
-                        <div className="flex gap-2">
-                          {selectedProposal.status === "pending" && !(selectedProposal.proposalData as any)?.processing && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => setShowApplyDialog(true)}
-                                data-testid="button-apply-proposal"
-                              >
-                                <Check className="w-4 h-4 mr-1" />
-                                Applica
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => setShowRejectDialog(true)}
-                                data-testid="button-reject-proposal"
-                              >
-                                <X className="w-4 h-4 mr-1" />
-                                Rigetta
-                              </Button>
-                            </>
+                          {(selectedProposal as any).decisionSummary && (
+                            <Card className="bg-muted/50">
+                              <CardContent className="p-3 space-y-2">
+                                <div className="text-xs font-semibold uppercase text-muted-foreground">Decisione Finale</div>
+                                <p className="text-sm">{(selectedProposal as any).decisionSummary}</p>
+                                {(selectedProposal as any).decisionReasoning && (
+                                  <>
+                                    <div className="text-xs font-semibold uppercase text-muted-foreground mt-2">Processo Decisionale</div>
+                                    <p className="text-sm whitespace-pre-line">{(selectedProposal as any).decisionReasoning}</p>
+                                  </>
+                                )}
+                              </CardContent>
+                            </Card>
                           )}
-                          {selectedProposal.status !== "pending" && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => deleteProposalMutation.mutate(selectedProposal.id)}
-                              data-testid="button-delete-proposal"
-                            >
-                              Elimina
-                            </Button>
-                          )}
+                          <ScrollArea className="h-[450px]">
+                            {renderProposalData(selectedProposal.proposalData)}
+                          </ScrollArea>
                         </div>
-                      </div>
+                      </TabsContent>
 
-                      <ScrollArea className="h-[500px]">
-                        {renderProposalData(selectedProposal.proposalData)}
-                      </ScrollArea>
-                    </div>
+                      <TabsContent value="discussion" className="mt-0">
+                        <div className="flex flex-col h-[520px]">
+                          <ScrollArea className="flex-1 pr-2">
+                            {isLoadingDiscussions ? (
+                              <div className="flex justify-center py-8">
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                              </div>
+                            ) : discussions.length === 0 ? (
+                              <div className="text-center py-12 text-muted-foreground">
+                                <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                                <p className="font-medium">Nessuna discussione</p>
+                                <p className="text-sm mt-1">
+                                  Scrivi un messaggio per discutere la proposta con l'AI.
+                                  Puoi chiedere modifiche, chiarimenti o approfondimenti.
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="space-y-3 pb-2">
+                                {discussions.map((msg: any) => (
+                                  <div
+                                    key={msg.id}
+                                    className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                                  >
+                                    {msg.role === "assistant" && (
+                                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                                        <Bot className="w-4 h-4 text-primary" />
+                                      </div>
+                                    )}
+                                    <div
+                                      className={`rounded-lg px-3 py-2 max-w-[85%] text-sm ${
+                                        msg.role === "user"
+                                          ? "bg-primary text-primary-foreground"
+                                          : "bg-muted"
+                                      }`}
+                                    >
+                                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                                      <div className={`text-xs mt-1 ${msg.role === "user" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                                        {format(new Date(msg.createdAt), "HH:mm", { locale: it })}
+                                        {msg.proposalDataSnapshot && (
+                                          <span className="ml-2 font-medium">
+                                            Proposta aggiornata
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {msg.role === "user" && (
+                                      <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 mt-1">
+                                        <User className="w-4 h-4" />
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                                {discussionMutation.isPending && (
+                                  <div className="flex gap-2.5">
+                                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                      <Bot className="w-4 h-4 text-primary" />
+                                    </div>
+                                    <div className="bg-muted rounded-lg px-3 py-2">
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </ScrollArea>
+                          {selectedProposal.status === "pending" && (
+                            <div className="flex gap-2 mt-3 pt-3 border-t">
+                              <Textarea
+                                value={discussionInput}
+                                onChange={(e) => setDiscussionInput(e.target.value)}
+                                placeholder="Scrivi un messaggio per discutere la proposta..."
+                                className="min-h-[60px] max-h-[120px] resize-none"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    if (discussionInput.trim() && !discussionMutation.isPending) {
+                                      discussionMutation.mutate(discussionInput.trim());
+                                    }
+                                  }
+                                }}
+                              />
+                              <Button
+                                size="icon"
+                                className="h-[60px] w-[60px]"
+                                disabled={!discussionInput.trim() || discussionMutation.isPending}
+                                onClick={() => discussionMutation.mutate(discussionInput.trim())}
+                              >
+                                {discussionMutation.isPending ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Send className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   )}
                 </CardContent>
               </Card>

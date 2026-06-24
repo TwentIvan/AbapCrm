@@ -36,7 +36,8 @@ import {
   taskRequiredSkills, insertTaskRequiredSkillSchema,
   aiProviders, aiModels, userOrganizations,
   mcpCatalog, mcpServerConfigs, insertMcpServerConfigSchema, mcpCatalogValidations,
-  connectionWorkflows, insertConnectionWorkflowSchema
+  connectionWorkflows, insertConnectionWorkflowSchema,
+  proposalDiscussions
 } from "@shared/schema";
 import { aiService } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
@@ -4807,6 +4808,238 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Delete proposal error:", error);
       res.status(500).json({ error: "Failed to delete proposal" });
+    }
+  });
+
+  // ── Proposal Discussion Thread ────────────────────────────────────────────
+
+  // Get discussion messages for a proposal
+  app.get("/api/proposals/:id/discussions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const rows = await db
+        .select()
+        .from(proposalDiscussions)
+        .where(
+          and(
+            eq(proposalDiscussions.proposalId, req.params.id),
+            eq(proposalDiscussions.organizationId, organizationId)
+          )
+        )
+        .orderBy(asc(proposalDiscussions.createdAt));
+      res.json(rows);
+    } catch (error) {
+      console.error("Get proposal discussions error:", error);
+      res.status(500).json({ error: "Failed to fetch discussions" });
+    }
+  });
+
+  // Post a user message and get AI reply
+  app.post("/api/proposals/:id/discussions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const { message } = req.body;
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ error: "message is required" });
+      }
+
+      // Fetch proposal
+      const [proposal] = await db
+        .select()
+        .from(proposals)
+        .where(
+          and(
+            eq(proposals.id, req.params.id),
+            eq(proposals.organizationId, organizationId)
+          )
+        )
+        .limit(1);
+      if (!proposal) return res.sendStatus(404);
+
+      // Fetch existing discussion history
+      const history = await db
+        .select()
+        .from(proposalDiscussions)
+        .where(eq(proposalDiscussions.proposalId, proposal.id))
+        .orderBy(asc(proposalDiscussions.createdAt));
+
+      // Save user message
+      const [userMsg] = await db
+        .insert(proposalDiscussions)
+        .values({
+          proposalId: proposal.id,
+          role: "user",
+          content: message,
+          userId: req.user!.id,
+          organizationId,
+        })
+        .returning();
+
+      // Build AI conversation
+      const proposalData = proposal.proposalData as any;
+      const systemPrompt = `Sei un assistente AI per la gestione di proposte progettuali in un CRM per consulenti SAP ABAP freelance.
+
+L'utente sta discutendo una proposta generata dall'AI. La proposta attuale è:
+
+${JSON.stringify(proposalData, null, 2)}
+
+Il tuo compito è:
+1. Rispondere alle domande dell'utente sulla proposta
+2. Se l'utente chiede modifiche, proporre una versione aggiornata della proposta
+3. Spiegare il ragionamento dietro le scelte fatte
+4. Aiutare l'utente a prendere una decisione informata
+
+REGOLE:
+- Rispondi SEMPRE in italiano
+- Se l'utente chiede di modificare la proposta, includi nel tuo messaggio un blocco JSON aggiornato della proposta tra i tag <updated_proposal> e </updated_proposal>
+- Il JSON deve mantenere ESATTAMENTE la stessa struttura dell'originale
+- Sii conciso ma completo nelle risposte`;
+
+      const aiMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
+      for (const msg of history) {
+        aiMessages.push({ role: msg.role as "user" | "assistant", content: msg.content });
+      }
+      aiMessages.push({ role: "user", content: message });
+
+      const { aiGateway, getDefaultModelKey } = await import("./ai-gateway");
+      const aiResult = await aiGateway.complete({
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...aiMessages,
+        ],
+        organizationId,
+        caller: "proposal-discussion",
+        maxTokens: 4000,
+        temperature: 0.7,
+      });
+
+      // Check if AI proposed an updated proposal
+      let updatedProposalData: any = null;
+      const updateMatch = aiResult.content.match(/<updated_proposal>([\s\S]*?)<\/updated_proposal>/);
+      if (updateMatch) {
+        try {
+          updatedProposalData = JSON.parse(updateMatch[1]);
+          // Update the proposal with the new data
+          await db
+            .update(proposals)
+            .set({ proposalData: updatedProposalData, updatedAt: new Date() })
+            .where(eq(proposals.id, proposal.id));
+        } catch {
+          // Invalid JSON in update block — ignore
+        }
+      }
+
+      // Clean display content (remove the JSON block)
+      const displayContent = aiResult.content
+        .replace(/<updated_proposal>[\s\S]*?<\/updated_proposal>/, "")
+        .trim();
+
+      // Save AI reply
+      const [aiMsg] = await db
+        .insert(proposalDiscussions)
+        .values({
+          proposalId: proposal.id,
+          role: "assistant",
+          content: displayContent,
+          proposalDataSnapshot: updatedProposalData,
+          userId: req.user!.id,
+          organizationId,
+          promptTokens: aiResult.promptTokens,
+          completionTokens: aiResult.completionTokens,
+        })
+        .returning();
+
+      res.json({
+        userMessage: userMsg,
+        aiMessage: aiMsg,
+        proposalUpdated: !!updatedProposalData,
+      });
+    } catch (error) {
+      console.error("Proposal discussion error:", error);
+      res.status(500).json({ error: "Failed to process discussion" });
+    }
+  });
+
+  // Finalize proposal decision — captures decision summary and reasoning
+  app.post("/api/proposals/:id/finalize-decision", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const { action } = req.body; // "accept" | "reject"
+      if (!action || !["accept", "reject"].includes(action)) {
+        return res.status(400).json({ error: "action must be 'accept' or 'reject'" });
+      }
+
+      const [proposal] = await db
+        .select()
+        .from(proposals)
+        .where(
+          and(
+            eq(proposals.id, req.params.id),
+            eq(proposals.organizationId, organizationId)
+          )
+        )
+        .limit(1);
+      if (!proposal) return res.sendStatus(404);
+
+      // Fetch discussion history to generate decision summary
+      const history = await db
+        .select()
+        .from(proposalDiscussions)
+        .where(eq(proposalDiscussions.proposalId, proposal.id))
+        .orderBy(asc(proposalDiscussions.createdAt));
+
+      let decisionSummary = "";
+      let decisionReasoning = "";
+
+      if (history.length > 0) {
+        const { aiGateway } = await import("./ai-gateway");
+        const conversationText = history
+          .map((m) => `${m.role === "user" ? "UTENTE" : "AI"}: ${m.content}`)
+          .join("\n\n");
+
+        const summaryResult = await aiGateway.complete({
+          messages: [
+            {
+              role: "system",
+              content: `Analizza la seguente discussione su una proposta progettuale e produci:
+1. Un RIASSUNTO DECISIONE (2-3 frasi) della decisione finale presa
+2. Un PROCESSO DECISIONALE (3-5 punti) che descrive come si è arrivati alla decisione
+
+Rispondi in italiano. Formato:
+RIASSUNTO: <testo>
+PROCESSO: <testo con punti numerati>`,
+            },
+            { role: "user", content: conversationText },
+          ],
+          organizationId,
+          caller: "proposal-decision-summary",
+          maxTokens: 1000,
+          temperature: 0.3,
+        });
+
+        const summaryMatch = summaryResult.content.match(/RIASSUNTO:\s*([\s\S]*?)(?=PROCESSO:)/);
+        const processMatch = summaryResult.content.match(/PROCESSO:\s*([\s\S]*)/);
+        decisionSummary = summaryMatch?.[1]?.trim() || summaryResult.content;
+        decisionReasoning = processMatch?.[1]?.trim() || "";
+      }
+
+      const [updated] = await db
+        .update(proposals)
+        .set({
+          decisionSummary,
+          decisionReasoning,
+          updatedAt: new Date(),
+        })
+        .where(eq(proposals.id, proposal.id))
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Finalize decision error:", error);
+      res.status(500).json({ error: "Failed to finalize decision" });
     }
   });
 
