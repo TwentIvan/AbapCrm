@@ -4786,11 +4786,68 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       
       const proposal = await storage.getProposal(req.params.id, userId, organizationId);
       if (!proposal) return res.sendStatus(404);
-      
+
       await storage.updateProposal(req.params.id, {
         status: 'rejected'
       }, userId, organizationId);
-      
+
+      // Capture rejection feedback as a learning pattern so future analyses improve.
+      // Sources of feedback: explicit body.feedback, the decisionReasoning captured
+      // from the discussion, and the discussion messages themselves.
+      try {
+        const explicitFeedback = typeof req.body?.feedback === "string" ? req.body.feedback.trim() : "";
+        const discussionRows = await db
+          .select()
+          .from(proposalDiscussions)
+          .where(eq(proposalDiscussions.proposalId, proposal.id))
+          .orderBy(asc(proposalDiscussions.createdAt));
+        const userNotes = discussionRows
+          .filter((d) => d.role === "user")
+          .map((d) => d.content)
+          .join("\n");
+
+        const feedbackText = [explicitFeedback, (proposal as any).decisionReasoning || "", userNotes]
+          .filter(Boolean)
+          .join("\n\n")
+          .trim();
+
+        if (feedbackText) {
+          // Derive input features from the source message for future matching
+          const msg = await storage.getMessage(proposal.messageId, userId);
+          const senderDomain = msg?.fromEmail?.includes("@") ? msg.fromEmail.split("@")[1] : undefined;
+          const subjectKeywords = (msg?.subject || "")
+            .toLowerCase()
+            .split(/\s+/)
+            .filter((w) => w.length > 3)
+            .slice(0, 8);
+
+          await storage.createAiLearningPattern({
+            organizationId,
+            userId,
+            patternType: "task_creation",
+            inputFeatures: {
+              senderDomain,
+              subjectKeywords,
+              isDuplicateMessage: true,
+            },
+            chosenAction: {
+              decision: "rejected",
+              avoid: feedbackText,
+              modelKey: (proposal as any).modelKey || null,
+            },
+            wasAccepted: false,
+            acceptanceCount: 0,
+            rejectionCount: 1,
+            sourceProposalId: proposal.id,
+            notes: explicitFeedback || feedbackText.slice(0, 500),
+          });
+          console.log(`[LEARNING] Captured rejection pattern from proposal ${proposal.id}`);
+        }
+      } catch (learnErr) {
+        console.error("Failed to capture rejection learning pattern:", learnErr);
+        // Non-fatal: rejection already succeeded
+      }
+
       res.json({ success: true });
     } catch (error) {
       console.error("Reject proposal error:", error);

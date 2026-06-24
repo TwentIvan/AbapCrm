@@ -860,6 +860,12 @@ export default function ProposalsPage() {
                                       <p className="whitespace-pre-wrap">{msg.content}</p>
                                       <div className={`text-xs mt-1 ${msg.role === "user" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
                                         {format(new Date(msg.createdAt), "HH:mm", { locale: it })}
+                                        {(msg.promptTokens != null || msg.completionTokens != null) && (
+                                          <span className="ml-2">
+                                            · {(msg.promptTokens || 0) + (msg.completionTokens || 0)} token
+                                            ({msg.promptTokens || 0}↑ {msg.completionTokens || 0}↓)
+                                          </span>
+                                        )}
                                         {msg.proposalDataSnapshot && (
                                           <span className="ml-2 font-medium">
                                             Proposta aggiornata

@@ -186,6 +186,40 @@ function formatMcpContext(
   }).join('\n');
 }
 
+/**
+ * Parse JSON from an LLM response that may be wrapped in markdown fences
+ * (```json ... ```) or include a textual preamble. OpenAI's json_object mode
+ * returns pure JSON, but Claude and other models often do not.
+ */
+function parseJsonLoose(raw: string | null | undefined): any {
+  const text = (raw || "").trim();
+  if (!text) return {};
+
+  // 1) Try direct parse
+  try {
+    return JSON.parse(text);
+  } catch { /* fall through */ }
+
+  // 2) Strip markdown code fences (```json ... ``` or ``` ... ```)
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenceMatch) {
+    try {
+      return JSON.parse(fenceMatch[1].trim());
+    } catch { /* fall through */ }
+  }
+
+  // 3) Extract the outermost {...} object
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      return JSON.parse(text.slice(firstBrace, lastBrace + 1));
+    } catch { /* fall through */ }
+  }
+
+  throw new Error("La risposta dell'agente non è un JSON valido");
+}
+
 export async function analyzeMessageForProject(
   message: Message,
   existingProjects: Project[],
@@ -544,10 +578,10 @@ Respond with VALID JSON ONLY (no markdown, no explanations outside JSON).`;
       caller: "ai-project-agent/analyzeMessageForProject",
     });
 
-    const proposal = JSON.parse(gwResult.content || "{}");
-    
+    const proposal = parseJsonLoose(gwResult.content);
+
     console.log('[AI-AGENT] Generated proposal:', JSON.stringify(proposal, null, 2));
-    
+
     return proposal as ProjectProposal;
   } catch (error) {
     console.error('[AI-AGENT] Error analyzing message:', error);
