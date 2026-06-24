@@ -4391,10 +4391,15 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             req.body?.modelKey || undefined,
           );
           
+          // Extract token usage before storing
+          const tokenUsage = (analysisResult as any)._tokenUsage;
+          delete (analysisResult as any)._tokenUsage;
+
           // Update proposal with results
           await storage.updateProposal(proposal.id, {
             proposalData: analysisResult,
-            status: 'pending'
+            status: 'pending',
+            ...(tokenUsage ? { promptTokens: tokenUsage.promptTokens, completionTokens: tokenUsage.completionTokens } : {}),
           }, userId, organizationId);
           
           console.log(`[AI] Proposal ${proposal.id} analysis completed for message ${messageId}`);

@@ -231,7 +231,7 @@ export async function analyzeMessageForProject(
   existingConnections: VpnConnection[] = [],
   mcpContext?: { catalog: McpCatalogWithValidation[]; configs: McpServerConfig[] },
   modelKeyOverride?: string,
-): Promise<ProjectProposal> {
+): Promise<ProjectProposal & { _tokenUsage?: { promptTokens: number; completionTokens: number } }> {
   const systemPrompt = `You are an intelligent project management assistant for a SAP ABAP freelancer CRM system.
 
 ## ⚠️ MANDATORY LANGUAGE REQUIREMENT ⚠️
@@ -582,7 +582,13 @@ Respond with VALID JSON ONLY (no markdown, no explanations outside JSON).`;
 
     console.log('[AI-AGENT] Generated proposal:', JSON.stringify(proposal, null, 2));
 
-    return proposal as ProjectProposal;
+    return {
+      ...proposal,
+      _tokenUsage: {
+        promptTokens: gwResult.promptTokens,
+        completionTokens: gwResult.completionTokens,
+      },
+    } as ProjectProposal & { _tokenUsage: { promptTokens: number; completionTokens: number } };
   } catch (error) {
     console.error('[AI-AGENT] Error analyzing message:', error);
     throw new Error(`Failed to analyze message: ${error instanceof Error ? error.message : String(error)}`);

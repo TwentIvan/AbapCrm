@@ -660,15 +660,7 @@ export default function ProposalsPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
               <Card className="lg:col-span-1">
-                <CardHeader>
-                  <CardTitle className="text-sm">
-                    {statusFilter === "all" ? "Tutte le proposte" : 
-                     statusFilter === "pending" ? "Proposte in sospeso" :
-                     statusFilter === "accepted" ? "Proposte accettate" :
-                     "Proposte rigettate"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                   {isLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="w-6 h-6 animate-spin" />
@@ -679,37 +671,82 @@ export default function ProposalsPage() {
                     </div>
                   ) : (
                     <ScrollArea className="h-[600px]">
-                      <div className="space-y-2">
-                        {filteredProposals.map((proposal) => (
-                          <Card
-                            key={proposal.id}
-                            className={`cursor-pointer transition-colors ${
-                              selectedProposal?.id === proposal.id
-                                ? "border-primary"
-                                : "hover:bg-accent"
-                            }`}
-                            onClick={() => setSelectedProposal(proposal)}
-                            data-testid={`card-proposal-${proposal.id}`}
-                          >
-                            <CardContent className="p-4">
-                              <div className="space-y-2">
-                                <div className="flex items-start justify-between gap-2">
-                                  {getStatusBadge(proposal.status)}
-                                  <span className="text-xs text-muted-foreground">
-                                    {format(new Date(proposal.createdAt), "dd MMM yyyy HH:mm", { locale: it })}
-                                  </span>
-                                </div>
-                                {proposal.errorMessage && (
-                                  <div className="text-xs text-destructive flex items-start gap-1">
-                                    <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                    <span>{proposal.errorMessage}</span>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Stato</TableHead>
+                            <TableHead>Entità proposte</TableHead>
+                            <TableHead>Entità create</TableHead>
+                            <TableHead className="text-right">Token</TableHead>
+                            <TableHead className="text-right">Data</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredProposals.map((proposal) => {
+                            const pd = proposal.proposalData as any;
+                            const isProcessing = pd?.processing && !pd?.failed;
+                            const proposedEntities: string[] = [];
+                            if (pd?.partner) proposedEntities.push("Partner");
+                            if (pd?.project) proposedEntities.push("Progetto");
+                            if (pd?.tasks?.length) proposedEntities.push(`${pd.tasks.length} Task`);
+                            if (pd?.contacts?.length) proposedEntities.push(`${pd.contacts.length} Contatti`);
+                            if (pd?.systems?.length) proposedEntities.push(`${pd.systems.length} Sistemi`);
+
+                            const createdEntities: string[] = [];
+                            if (pd?.partner && !pd.partner.isNew) createdEntities.push("Partner");
+                            if (proposal.status === "accepted") {
+                              if (pd?.partner?.isNew) createdEntities.push("Partner");
+                              if (pd?.project?.isNew) createdEntities.push("Progetto");
+                              if (pd?.tasks?.length) {
+                                const newTasks = pd.tasks.filter((t: any) => t.isNew).length;
+                                if (newTasks > 0) createdEntities.push(`${newTasks} Task`);
+                              }
+                              if (pd?.contacts?.length) createdEntities.push(`${pd.contacts.length} Contatti`);
+                            }
+
+                            const totalTokens = ((proposal as any).promptTokens || 0) + ((proposal as any).completionTokens || 0);
+
+                            return (
+                              <TableRow
+                                key={proposal.id}
+                                className={`cursor-pointer ${selectedProposal?.id === proposal.id ? "bg-accent" : ""}`}
+                                onClick={() => setSelectedProposal(proposal)}
+                                data-testid={`row-proposal-${proposal.id}`}
+                              >
+                                <TableCell>{isProcessing ? <Badge className="bg-blue-500/10 text-blue-500"><Loader2 className="w-3 h-3 mr-1 animate-spin" />Analisi...</Badge> : getStatusBadge(proposal.status)}</TableCell>
+                                <TableCell>
+                                  {isProcessing ? <span className="text-xs text-muted-foreground">—</span> : (
+                                    <div className="flex flex-wrap gap-1">
+                                      {proposedEntities.length > 0 ? proposedEntities.map((e, i) => (
+                                        <Badge key={i} variant="outline" className="text-xs">{e}</Badge>
+                                      )) : <span className="text-xs text-muted-foreground">—</span>}
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-wrap gap-1">
+                                    {createdEntities.length > 0 ? createdEntities.map((e, i) => (
+                                      <Badge key={i} variant="secondary" className="text-xs">{e}</Badge>
+                                    )) : <span className="text-xs text-muted-foreground">—</span>}
                                   </div>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {totalTokens > 0 ? (
+                                    <span className="text-xs text-muted-foreground" title={`${(proposal as any).promptTokens || 0}↑ ${(proposal as any).completionTokens || 0}↓`}>
+                                      {totalTokens.toLocaleString()}
+                                    </span>
+                                  ) : <span className="text-xs text-muted-foreground">—</span>}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <span className="text-xs text-muted-foreground">
+                                    {format(new Date(proposal.createdAt), "dd MMM HH:mm", { locale: it })}
+                                  </span>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
                     </ScrollArea>
                   )}
                 </CardContent>
@@ -800,6 +837,17 @@ export default function ProposalsPage() {
                                 {(selectedProposal as any).modelKey}
                               </Badge>
                             )}
+                            {(() => {
+                              const pt = (selectedProposal as any).promptTokens || 0;
+                              const ct = (selectedProposal as any).completionTokens || 0;
+                              const total = pt + ct;
+                              return total > 0 ? (
+                                <Badge variant="outline" className="gap-1">
+                                  <TrendingUp className="w-3 h-3" />
+                                  {total.toLocaleString()} token ({pt.toLocaleString()}↑ {ct.toLocaleString()}↓)
+                                </Badge>
+                              ) : null;
+                            })()}
                             <span>
                               Creata il {format(new Date(selectedProposal.createdAt), "dd MMMM yyyy 'alle' HH:mm", { locale: it })}
                             </span>
