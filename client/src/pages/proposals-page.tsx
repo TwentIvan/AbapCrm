@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
+import { UniversalTable, type TableColumn } from "@/components/ui/universal-table";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, X, Clock, AlertCircle, Eye, Sparkles, Mail, Loader2, RefreshCw, Brain, TrendingUp, Trash2, Link2, MessageSquare, Send, Bot, User } from "lucide-react";
 import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
@@ -28,8 +31,102 @@ interface ProposalWithMessage extends Proposal {
   };
 }
 
+// Gruppo di entità (es. "Task" con la lista dei titoli)
+interface EntityGroup {
+  label: string;
+  items: string[];
+}
+
+// Estrae i gruppi di entità proposte dal proposalData
+function getProposedEntityGroups(pd: any): EntityGroup[] {
+  if (!pd || pd.processing || pd.failed) return [];
+  const groups: EntityGroup[] = [];
+  if (pd.partner) groups.push({ label: "Partner", items: [pd.partner.name].filter(Boolean) });
+  if (pd.project) groups.push({ label: "Progetto", items: [pd.project.name].filter(Boolean) });
+  if (pd.tasks?.length) groups.push({ label: "Task", items: pd.tasks.map((t: any) => t.title).filter(Boolean) });
+  if (pd.contacts?.length) groups.push({ label: "Contatti", items: pd.contacts.map((c: any) => c.name).filter(Boolean) });
+  if (pd.systems?.length) groups.push({ label: "Sistemi SAP", items: pd.systems.map((s: any) => s.name || s.systemId).filter(Boolean) });
+  if (pd.connections?.length) groups.push({ label: "Connessioni", items: pd.connections.map((c: any) => c.name || c.connectionId).filter(Boolean) });
+  return groups;
+}
+
+// Estrae i gruppi di entità effettivamente create (solo proposte accettate/applicate)
+function getCreatedEntityGroups(proposal: Proposal): EntityGroup[] {
+  const pd = proposal.proposalData as any;
+  if (!pd || pd.processing || pd.failed) return [];
+  if (proposal.status !== "accepted" && proposal.status !== "partially_accepted") return [];
+  const groups: EntityGroup[] = [];
+  if (pd.partner?.isNew) groups.push({ label: "Partner", items: [pd.partner.name].filter(Boolean) });
+  if (pd.project?.isNew) groups.push({ label: "Progetto", items: [pd.project.name].filter(Boolean) });
+  if (pd.tasks?.length) {
+    const newTasks = pd.tasks.filter((t: any) => t.isNew).map((t: any) => t.title).filter(Boolean);
+    if (newTasks.length) groups.push({ label: "Task", items: newTasks });
+  }
+  if (pd.contacts?.length) groups.push({ label: "Contatti", items: pd.contacts.map((c: any) => c.name).filter(Boolean) });
+  return groups;
+}
+
+function countEntities(groups: EntityGroup[]): number {
+  return groups.reduce((sum, g) => sum + g.items.length, 0);
+}
+
+// Badge cerchiato con numero che, cliccato, mostra il popup con l'elenco delle entità
+function EntityCountBadge({
+  groups,
+  variant = "proposed",
+  testId,
+}: {
+  groups: EntityGroup[];
+  variant?: "proposed" | "created";
+  testId?: string;
+}) {
+  const total = countEntities(groups);
+  if (total === 0) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+  const colorClass =
+    variant === "created"
+      ? "bg-success/10 text-success border-success/30 hover:bg-success/20"
+      : "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20";
+  return (
+    <Popover>
+      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+        <button
+          className={`inline-flex items-center justify-center w-7 h-7 rounded-full border text-xs font-semibold transition-colors ${colorClass}`}
+          data-testid={testId}
+        >
+          {total}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-3" onClick={(e) => e.stopPropagation()} align="start">
+        <div className="space-y-3">
+          {groups.map((g, i) => (
+            <div key={i}>
+              <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">
+                {g.label} ({g.items.length})
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {g.items.length > 0 ? (
+                  g.items.map((item, j) => (
+                    <Badge key={j} variant="outline" className="text-xs font-normal">
+                      {item}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function ProposalsPage() {
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "accepted" | "rejected">("all");
@@ -96,6 +193,7 @@ export default function ProposalsPage() {
         description: "Le entità sono state create con successo, inclusi i contatti estratti",
       });
       setShowApplyDialog(false);
+      setShowDetailDialog(false);
       setSelectedProposal(null);
     },
     onError: (error: any) => {
@@ -117,6 +215,7 @@ export default function ProposalsPage() {
         description: "La proposta è stata rigettata",
       });
       setShowRejectDialog(false);
+      setShowDetailDialog(false);
       setSelectedProposal(null);
     },
     onError: (error: any) => {
@@ -137,6 +236,7 @@ export default function ProposalsPage() {
         title: "Proposta eliminata",
         description: "La proposta è stata eliminata",
       });
+      setShowDetailDialog(false);
       setSelectedProposal(null);
     },
     onError: (error: any) => {
@@ -228,6 +328,100 @@ export default function ProposalsPage() {
       </Badge>
     );
   };
+
+  // Colonne della tabella proposte (modello generico UniversalTable)
+  const proposalColumns: TableColumn[] = [
+    {
+      key: "status",
+      label: "Stato",
+      sortable: true,
+      render: (proposal: Proposal) => {
+        const pd = proposal.proposalData as any;
+        const isProcessing = pd?.processing && !pd?.failed;
+        return (
+          <div className="flex items-center gap-1.5">
+            {isProcessing ? (
+              <Badge className="bg-blue-500/10 text-blue-500">
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                Analisi...
+              </Badge>
+            ) : (
+              getStatusBadge(proposal.status)
+            )}
+            {proposal.errorMessage && (
+              <AlertCircle className="w-4 h-4 text-destructive" title={proposal.errorMessage} />
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "proposedEntities",
+      label: "Entità proposte",
+      sortable: false,
+      render: (proposal: Proposal) => (
+        <EntityCountBadge
+          groups={getProposedEntityGroups(proposal.proposalData)}
+          variant="proposed"
+          testId={`badge-proposed-${proposal.id}`}
+        />
+      ),
+    },
+    {
+      key: "createdEntities",
+      label: "Entità create",
+      sortable: false,
+      render: (proposal: Proposal) => (
+        <EntityCountBadge
+          groups={getCreatedEntityGroups(proposal)}
+          variant="created"
+          testId={`badge-created-${proposal.id}`}
+        />
+      ),
+    },
+    {
+      key: "estimatedTokens",
+      label: "Token previsti",
+      sortable: false,
+      render: (proposal: Proposal) => {
+        const est = (proposal.proposalData as any)?.estimatedTokens || (proposal as any).estimatedTokens;
+        return est ? (
+          <span className="text-xs text-muted-foreground">{Number(est).toLocaleString()}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        );
+      },
+    },
+    {
+      key: "spentTokens",
+      label: "Token spesi",
+      sortable: true,
+      accessor: (proposal: Proposal) =>
+        ((proposal as any).promptTokens || 0) + ((proposal as any).completionTokens || 0),
+      render: (proposal: Proposal) => {
+        const pt = (proposal as any).promptTokens || 0;
+        const ct = (proposal as any).completionTokens || 0;
+        const total = pt + ct;
+        return total > 0 ? (
+          <span className="text-xs text-muted-foreground" title={`${pt.toLocaleString()}↑ ${ct.toLocaleString()}↓`}>
+            {total.toLocaleString()}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        );
+      },
+    },
+    {
+      key: "createdAt",
+      label: "Data",
+      sortable: true,
+      render: (proposal: Proposal) => (
+        <span className="text-xs text-muted-foreground">
+          {format(new Date(proposal.createdAt), "dd MMM yyyy HH:mm", { locale: it })}
+        </span>
+      ),
+    },
+  ];
 
   const renderProposalData = (proposalData: any) => {
     if (!proposalData || (proposalData.processing && !proposalData.failed)) {
@@ -658,153 +852,94 @@ export default function ProposalsPage() {
                   </TabsList>
                 </Tabs>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
-              <Card className="lg:col-span-1">
-                <CardContent className="p-0">
-                  {isLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin" />
-                    </div>
-                  ) : filteredProposals.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Nessuna proposta trovata
-                    </div>
-                  ) : (
-                    <ScrollArea className="h-[600px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Stato</TableHead>
-                            <TableHead>Entità proposte</TableHead>
-                            <TableHead>Entità create</TableHead>
-                            <TableHead className="text-right">Token</TableHead>
-                            <TableHead className="text-right">Data</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredProposals.map((proposal) => {
-                            const pd = proposal.proposalData as any;
-                            const isProcessing = pd?.processing && !pd?.failed;
-                            const proposedEntities: string[] = [];
-                            if (pd?.partner) proposedEntities.push("Partner");
-                            if (pd?.project) proposedEntities.push("Progetto");
-                            if (pd?.tasks?.length) proposedEntities.push(`${pd.tasks.length} Task`);
-                            if (pd?.contacts?.length) proposedEntities.push(`${pd.contacts.length} Contatti`);
-                            if (pd?.systems?.length) proposedEntities.push(`${pd.systems.length} Sistemi`);
+                <div className="mt-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              ) : filteredProposals.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  Nessuna proposta trovata
+                </div>
+              ) : (
+                <UniversalTable
+                  data={filteredProposals}
+                  columns={proposalColumns}
+                  onRowClick={(p) => {
+                    setSelectedProposal(p as Proposal);
+                    setDetailTab("detail");
+                    setShowDetailDialog(true);
+                  }}
+                />
+              )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </main>
+      </div>
 
-                            const createdEntities: string[] = [];
-                            if (pd?.partner && !pd.partner.isNew) createdEntities.push("Partner");
-                            if (proposal.status === "accepted") {
-                              if (pd?.partner?.isNew) createdEntities.push("Partner");
-                              if (pd?.project?.isNew) createdEntities.push("Progetto");
-                              if (pd?.tasks?.length) {
-                                const newTasks = pd.tasks.filter((t: any) => t.isNew).length;
-                                if (newTasks > 0) createdEntities.push(`${newTasks} Task`);
-                              }
-                              if (pd?.contacts?.length) createdEntities.push(`${pd.contacts.length} Contatti`);
-                            }
-
-                            const totalTokens = ((proposal as any).promptTokens || 0) + ((proposal as any).completionTokens || 0);
-
-                            return (
-                              <TableRow
-                                key={proposal.id}
-                                className={`cursor-pointer ${selectedProposal?.id === proposal.id ? "bg-accent" : ""}`}
-                                onClick={() => setSelectedProposal(proposal)}
-                                data-testid={`row-proposal-${proposal.id}`}
-                              >
-                                <TableCell>{isProcessing ? <Badge className="bg-blue-500/10 text-blue-500"><Loader2 className="w-3 h-3 mr-1 animate-spin" />Analisi...</Badge> : getStatusBadge(proposal.status)}</TableCell>
-                                <TableCell>
-                                  {isProcessing ? <span className="text-xs text-muted-foreground">—</span> : (
-                                    <div className="flex flex-wrap gap-1">
-                                      {proposedEntities.length > 0 ? proposedEntities.map((e, i) => (
-                                        <Badge key={i} variant="outline" className="text-xs">{e}</Badge>
-                                      )) : <span className="text-xs text-muted-foreground">—</span>}
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-wrap gap-1">
-                                    {createdEntities.length > 0 ? createdEntities.map((e, i) => (
-                                      <Badge key={i} variant="secondary" className="text-xs">{e}</Badge>
-                                    )) : <span className="text-xs text-muted-foreground">—</span>}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {totalTokens > 0 ? (
-                                    <span className="text-xs text-muted-foreground" title={`${(proposal as any).promptTokens || 0}↑ ${(proposal as any).completionTokens || 0}↓`}>
-                                      {totalTokens.toLocaleString()}
-                                    </span>
-                                  ) : <span className="text-xs text-muted-foreground">—</span>}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <span className="text-xs text-muted-foreground">
-                                    {format(new Date(proposal.createdAt), "dd MMM HH:mm", { locale: it })}
-                                  </span>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </ScrollArea>
+      {/* Dialog dettaglio proposta + discussione */}
+      <Dialog open={showDetailDialog} onOpenChange={(open) => {
+        setShowDetailDialog(open);
+        if (!open) setSelectedProposal(null);
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <div className="flex items-center justify-between gap-2 pr-6">
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Dettaglio Proposta
+              </DialogTitle>
+              {selectedProposal && (
+                <div className="flex gap-2">
+                  {selectedProposal.status === "pending" && !(selectedProposal.proposalData as any)?.processing && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => {
+                          if (discussions.length > 0) {
+                            finalizeDecisionMutation.mutate({ proposalId: selectedProposal.id, action: "accept" });
+                          }
+                          setShowApplyDialog(true);
+                        }}
+                        data-testid="button-apply-proposal"
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Applica
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          if (discussions.length > 0) {
+                            finalizeDecisionMutation.mutate({ proposalId: selectedProposal.id, action: "reject" });
+                          }
+                          setShowRejectDialog(true);
+                        }}
+                        data-testid="button-reject-proposal"
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Rigetta
+                      </Button>
+                    </>
                   )}
-                </CardContent>
-              </Card>
-
-              <Card className="lg:col-span-2">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">Dettaglio Proposta</CardTitle>
-                    {selectedProposal && (
-                      <div className="flex gap-2">
-                        {selectedProposal.status === "pending" && !(selectedProposal.proposalData as any)?.processing && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => {
-                                if (discussions.length > 0) {
-                                  finalizeDecisionMutation.mutate({ proposalId: selectedProposal.id, action: "accept" });
-                                }
-                                setShowApplyDialog(true);
-                              }}
-                              data-testid="button-apply-proposal"
-                            >
-                              <Check className="w-4 h-4 mr-1" />
-                              Applica
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => {
-                                if (discussions.length > 0) {
-                                  finalizeDecisionMutation.mutate({ proposalId: selectedProposal.id, action: "reject" });
-                                }
-                                setShowRejectDialog(true);
-                              }}
-                              data-testid="button-reject-proposal"
-                            >
-                              <X className="w-4 h-4 mr-1" />
-                              Rigetta
-                            </Button>
-                          </>
-                        )}
-                        {selectedProposal.status !== "pending" && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => deleteProposalMutation.mutate(selectedProposal.id)}
-                            data-testid="button-delete-proposal"
-                          >
-                            Elimina
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
+                  {selectedProposal.status !== "pending" && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => deleteProposalMutation.mutate(selectedProposal.id)}
+                      data-testid="button-delete-proposal"
+                    >
+                      Elimina
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
                   {!selectedProposal ? (
                     <div className="text-center py-12 text-muted-foreground">
                       Seleziona una proposta per visualizzarne i dettagli
@@ -982,14 +1117,9 @@ export default function ProposalsPage() {
                       </TabsContent>
                     </Tabs>
                   )}
-                </CardContent>
-              </Card>
-                </div>
-              </TabsContent>
-            </Tabs>
           </div>
-        </main>
-      </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
         <AlertDialogContent>
