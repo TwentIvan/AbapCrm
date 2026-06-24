@@ -92,11 +92,11 @@ function NavItem({ item, isActive }: { item: any; isActive: boolean }) {
           isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
         )}
         style={{
-          border: '2px solid rgba(30, 64, 175, 0.3)'
+          border: '2px solid hsl(var(--brand) / 0.3)'
         }}
       >
-        <div className="p-1.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.3)' }}>
-          <Icon className="h-5 w-5 flex-shrink-0 text-primary" />
+        <div className="p-1.5 rounded-md" style={{ backgroundColor: 'hsl(var(--brand) / 0.3)' }}>
+          <Icon className="h-5 w-5 flex-shrink-0 text-background" />
         </div>
         <span className={cn(
           "text-sm font-medium flex-1",
@@ -124,10 +124,10 @@ function ParentItem({ item, children, isOpen, onToggle, hasActiveChild = false }
             hasActiveChild && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
           )}
           style={{
-            border: '2px solid rgba(30, 64, 175, 0.3)'
+            border: '2px solid hsl(var(--brand) / 0.3)'
           }}
         >
-          <div className="p-1.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.3)' }}>
+          <div className="p-1.5 rounded-md" style={{ backgroundColor: 'hsl(var(--brand) / 0.3)' }}>
             <Icon className="h-5 w-5 flex-shrink-0 text-background" />
           </div>
           <span className={cn(
@@ -176,10 +176,10 @@ function SubNavItem({ item, isActive, onChildClick }: { item: any; isActive: boo
             isActive && "bg-sidebar-accent/80 dark:bg-sidebar-accent/80"
           )}
           style={{
-            border: '2px solid rgba(30, 64, 175, 0.3)'
+            border: '2px solid hsl(var(--brand) / 0.3)'
           }}
         >
-          <div className="p-1.5 rounded-md" style={{ backgroundColor: 'rgba(30, 64, 175, 0.3)' }}>
+          <div className="p-1.5 rounded-md" style={{ backgroundColor: 'hsl(var(--brand) / 0.3)' }}>
             <Icon className="h-4 w-4 flex-shrink-0 text-background" />
           </div>
           <span className={cn(
