@@ -4403,6 +4403,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
           // Update proposal with error
           await storage.updateProposal(proposal.id, {
             status: 'pending',
+            proposalData: { processing: false, failed: true },
             errorMessage: error instanceof Error ? error.message : String(error)
           }, userId, organizationId);
         }

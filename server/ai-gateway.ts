@@ -109,6 +109,21 @@ async function computeCost(
   }
 }
 
+// ── Model ID resolution ───────────────────────────────────────────────────────
+
+async function resolveModelId(modelKey: string): Promise<string> {
+  try {
+    const [model] = await db
+      .select({ modelId: aiModels.modelId })
+      .from(aiModels)
+      .where(eq(aiModels.modelKey, modelKey))
+      .limit(1);
+    if (model?.modelId) return model.modelId;
+  } catch {}
+  const slashIdx = modelKey.indexOf("/");
+  return slashIdx >= 0 ? modelKey.slice(slashIdx + 1) : modelKey;
+}
+
 // ── Gateway client ─────────────────────────────────────────────────────────────
 
 class AiGateway {
@@ -166,7 +181,8 @@ class AiGateway {
       ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
     };
 
-    const response = await client.messages.create(params);
+    console.log(`[AI-GATEWAY] Anthropic call starting: model=${rawModelId} caller=${caller}`);
+    const response = await client.messages.create(params, { timeout: 120_000 });
 
     const durationMs = Date.now() - startMs;
     const promptTokens = response.usage?.input_tokens || 0;
@@ -245,7 +261,7 @@ class AiGateway {
     // Route by provider prefix
     if (modelKey.startsWith("openai/")) {
       const client = this.getOpenAIClient();
-      const rawModelId = modelKey.slice("openai/".length);
+      const rawModelId = await resolveModelId(modelKey);
 
       const params: any = {
         model: rawModelId,
@@ -290,7 +306,7 @@ class AiGateway {
     }
 
     if (modelKey.startsWith("anthropic/")) {
-      const rawModelId = modelKey.slice("anthropic/".length);
+      const rawModelId = await resolveModelId(modelKey);
       return this.completeWithAnthropic(opts, rawModelId, modelKey, caller, startMs);
     }
 
