@@ -460,6 +460,7 @@ export const proposals = pgTable("proposals", {
   messageId: uuid("message_id").references(() => messages.id).notNull(),
   status: proposalStatusEnum("status").default("pending").notNull(),
   proposalData: jsonb("proposal_data").notNull(), // { project, partner, tasks, reasoning }
+  modelKey: text("model_key"), // Modello/agente AI usato per generare la proposta (es. "anthropic/claude-opus-4-8")
   errorMessage: text("error_message"), // Eventuale errore durante l'analisi
   appliedAt: timestamp("applied_at"), // Quando è stata applicata
   appliedBy: uuid("applied_by").references(() => users.id), // Chi ha applicato la proposta

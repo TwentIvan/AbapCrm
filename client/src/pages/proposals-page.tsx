@@ -777,8 +777,14 @@ export default function ProposalsPage() {
 
                       <TabsContent value="detail" className="mt-0">
                         <div className="space-y-3">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                             {getStatusBadge(selectedProposal.status)}
+                            {(selectedProposal as any).modelKey && (
+                              <Badge variant="outline" className="gap-1">
+                                <Bot className="w-3 h-3" />
+                                {(selectedProposal as any).modelKey}
+                              </Badge>
+                            )}
                             <span>
                               Creata il {format(new Date(selectedProposal.createdAt), "dd MMMM yyyy 'alle' HH:mm", { locale: it })}
                             </span>
