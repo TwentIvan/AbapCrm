@@ -3603,6 +3603,8 @@ export const mcpCatalog = pgTable("mcp_catalog", {
   writeCapable: boolean("write_capable").default(false),
   maturity: jsonb("maturity").default({}),
   stale: boolean("stale").notNull().default(false),
+  // Schema dei campi richiesti per la configurazione (es. { "SAP_HOST": { type: "string", description: "SAP server hostname", required: true } })
+  requiredSchema: jsonb("required_schema").default({}),
   readmeMd: text("readme_md"),
   readmeFetchedAt: timestamp("readme_fetched_at"),
   syncedAt: timestamp("synced_at"),
@@ -3634,8 +3636,13 @@ export const mcpServerConfigs = pgTable("mcp_server_configs", {
   environment: text("environment").notNull().default("DEV"),
   enabled: boolean("enabled").default(true),
   lastHealth: jsonb("last_health"),
-  // Phase 4: per-tool classification overrides { toolName: "read"|"write" } — only read→write is valid
   toolClassificationOverrides: jsonb("tool_classification_overrides").default({}),
+  // Phase 5: stdio transport + template-based config resolution
+  transportType: text("transport_type").notNull().default("http"), // "http" | "sse" | "stdio"
+  launchCommand: text("launch_command"), // e.g. "node mcp-sap-server.js" (stdio only)
+  launchArgs: jsonb("launch_args").default([]), // CLI args array (stdio only)
+  configTemplate: jsonb("config_template").default({}), // env var template with ${placeholder} syntax
+  fieldMappings: jsonb("field_mappings").default({}), // resolved mapping: { "SAP_HOST": { source: "sap_systems", field: "serverHost" }, ... }
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
