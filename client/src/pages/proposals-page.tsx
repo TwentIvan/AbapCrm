@@ -150,16 +150,7 @@ export default function ProposalsPage() {
 
   const { data: discussions = [], isLoading: isLoadingDiscussions } = useQuery<any[]>({
     queryKey: ["/api/proposals", selectedProposal?.id, "discussions"],
-    queryFn: async () => {
-      if (!selectedProposal) return [];
-      const res = await fetch(`/api/proposals/${selectedProposal.id}/discussions`, { credentials: "include" });
-      if (!res.ok) {
-        const text = (await res.text()) || res.statusText;
-        throw new Error(`${res.status}: ${text.slice(0, 200)}`);
-      }
-      const data = await res.json();
-      return Array.isArray(data) ? data : [];
-    },
+    queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!selectedProposal,
     refetchInterval: false,
   });
