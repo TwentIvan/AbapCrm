@@ -11434,31 +11434,9 @@ ISTRUZIONI:
         }
       }
 
-      // If there are unmapped vars, try AI
+      // If there are unmapped vars, log them (no AI call needed)
       if (unmapped.length > 0) {
-        try {
-          const { aiGateway, getDefaultModelKey } = await import("./ai-gateway");
-          const modelKey = await getDefaultModelKey(organizationId);
-          const unmappedSchema = Object.fromEntries(unmapped.map(k => [k, reqSchema[k]]));
-          const aiResult = await aiGateway.complete({
-            modelKey,
-            messages: [
-              { role: "system", content: `Map env vars to available data sources. Sources: ${JSON.stringify(sources, null, 2)}. Respond ONLY with JSON: { "mappings": { "VAR": { "source": "table", "field": "column" } } }` },
-              { role: "user", content: JSON.stringify(unmappedSchema) },
-            ],
-            temperature: 0.1,
-            maxTokens: 1000,
-            organizationId,
-          });
-          const text = aiResult.choices?.[0]?.message?.content ?? "";
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed2 = JSON.parse(jsonMatch[0]);
-            Object.assign(mappings, parsed2.mappings ?? {});
-          }
-        } catch (aiErr: any) {
-          console.warn("[MCP] AI mapping fallback failed, using deterministic only:", aiErr.message);
-        }
+        console.log(`[MCP] Unmapped env vars (no deterministic match): ${unmapped.join(", ")}`);
       }
 
       const configTemplate: Record<string, string> = {};
