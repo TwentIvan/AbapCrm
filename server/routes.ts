@@ -11424,7 +11424,7 @@ Respond ONLY with valid JSON in this exact format:
 
       const userPrompt = `Map these required env vars to available sources:\n${JSON.stringify(reqSchema, null, 2)}`;
 
-      const result = await aiGateway({
+      const result = await aiGateway.complete({
         modelKey,
         messages: [
           { role: "system", content: systemPrompt },
