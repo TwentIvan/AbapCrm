@@ -310,6 +310,81 @@ function CustomServerWizard({ open, onClose, projects, sapSystems }: {
   );
 }
 
+// ── Catalog Launch & Schema Editor ──────────────────────────────────────────
+
+function CatalogLaunchEditor({ entry, onSaved }: { entry: any; onSaved: () => void }) {
+  const { toast } = useToast();
+  const [cmd, setCmd] = useState(entry?.defaultLaunchCommand ?? "");
+  const [args, setArgs] = useState(((entry?.defaultLaunchArgs ?? []) as string[]).join(" "));
+  const [schemaText, setSchemaText] = useState(() => {
+    const rs = entry?.requiredSchema;
+    return rs && Object.keys(rs).length > 0 ? JSON.stringify(rs, null, 2) : "";
+  });
+  const [saving, setSaving] = useState(false);
+  const [schemaError, setSchemaError] = useState("");
+
+  const handleSave = async () => {
+    let parsedSchema: Record<string, any> | null = null;
+    if (schemaText.trim()) {
+      try {
+        parsedSchema = JSON.parse(schemaText.trim());
+        setSchemaError("");
+      } catch {
+        setSchemaError("JSON non valido");
+        return;
+      }
+    }
+    setSaving(true);
+    try {
+      await apiRequest("PATCH", `/api/mcp/catalog/${entry.id}`, {
+        defaultLaunchCommand: cmd.trim() || null,
+        defaultLaunchArgs: args.trim() ? args.trim().split(" ").filter(Boolean) : [],
+        requiredSchema: parsedSchema ?? {},
+        transport: cmd.trim() ? "stdio" : entry.transport,
+      });
+      toast({ title: "Configurazione catalogo salvata" });
+      onSaved();
+    } catch (err: any) {
+      toast({ title: "Errore salvataggio", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 border rounded-lg p-4 bg-muted/20">
+      <h3 className="text-sm font-semibold flex items-center gap-2">
+        <Settings className="h-4 w-4" />
+        Configurazione avvio & mapping
+      </h3>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Comando di avvio (stdio)</Label>
+          <Input value={cmd} onChange={e => setCmd(e.target.value)} placeholder="npx" className="h-8 text-sm" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Argomenti</Label>
+          <Input value={args} onChange={e => setArgs(e.target.value)} placeholder="-y arc-1@latest" className="h-8 text-sm" />
+        </div>
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">Schema variabili richieste (JSON)</Label>
+        <textarea
+          className="w-full rounded border bg-background px-3 py-2 text-xs font-mono min-h-[100px] resize-y focus:outline-none focus:ring-1 focus:ring-primary"
+          value={schemaText}
+          onChange={e => { setSchemaText(e.target.value); setSchemaError(""); }}
+          placeholder={'{\n  "SAP_URL": { "type": "string", "description": "SAP host URL", "required": true },\n  "SAP_USER": { "type": "string", "description": "SAP username", "required": true }\n}'}
+        />
+        {schemaError && <p className="text-xs text-destructive">{schemaError}</p>}
+      </div>
+      <Button size="sm" onClick={handleSave} disabled={saving} className="h-8">
+        {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+        Salva configurazione catalogo
+      </Button>
+    </div>
+  );
+}
+
 // ── Catalog Detail Dialog ────────────────────────────────────────────────────
 
 function CatalogDetailDialog({ entryId, onClose, onValidationChange }: {
@@ -413,6 +488,12 @@ function CatalogDetailDialog({ entryId, onClose, onValidationChange }: {
                 )}
               </div>
             </div>
+
+            {/* Launch & Schema editor */}
+            <CatalogLaunchEditor entry={detail} onSaved={() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/mcp/catalog", entryId, "details"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/mcp/catalog"] });
+            }} />
 
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>Chiudi</Button>

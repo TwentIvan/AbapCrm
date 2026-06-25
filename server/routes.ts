@@ -10982,6 +10982,36 @@ ISTRUZIONI:
     }
   });
 
+  // PATCH /api/mcp/catalog/:id — update catalog entry fields (launch defaults, requiredSchema)
+  app.patch("/api/mcp/catalog/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const patchSchema = z.object({
+      defaultLaunchCommand: z.string().nullable().optional(),
+      defaultLaunchArgs: z.array(z.string()).nullable().optional(),
+      requiredSchema: z.record(z.object({
+        type: z.string().optional().default("string"),
+        description: z.string().optional().default(""),
+        required: z.boolean().optional().default(true),
+      })).nullable().optional(),
+      transport: z.string().optional(),
+    });
+    const parsed = patchSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid body", details: parsed.error.issues });
+    try {
+      const updates: Record<string, any> = {};
+      if (parsed.data.defaultLaunchCommand !== undefined) updates.defaultLaunchCommand = parsed.data.defaultLaunchCommand;
+      if (parsed.data.defaultLaunchArgs !== undefined) updates.defaultLaunchArgs = parsed.data.defaultLaunchArgs;
+      if (parsed.data.requiredSchema !== undefined) updates.requiredSchema = parsed.data.requiredSchema;
+      if (parsed.data.transport !== undefined) updates.transport = parsed.data.transport;
+      if (Object.keys(updates).length === 0) return res.json({ ok: true });
+      const [updated] = await db.update(mcpCatalog).set(updates).where(eq(mcpCatalog.id, req.params.id)).returning();
+      if (!updated) return res.status(404).json({ error: "Not found" });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   // POST /api/mcp/catalog/sync — sync from GitHub registry
   app.post("/api/mcp/catalog/sync", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
