@@ -184,7 +184,6 @@ class AiGateway {
       max_tokens: opts.maxTokens || 8096,
       messages: anthropicMessages,
       ...(systemPrompt ? { system: systemPrompt } : {}),
-      ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
     };
 
     console.log(`[AI-GATEWAY] Anthropic call starting: model=${rawModelId} caller=${caller}`);
