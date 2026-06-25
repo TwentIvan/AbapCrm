@@ -657,7 +657,24 @@ function ConfigFormDialog({ open, onClose, initial, catalog, projects, sapSystem
           </div>
           <div className="space-y-1">
             <Label>Catalogo (opzionale)</Label>
-            <Select value={catalogId} onValueChange={setCatalogId}>
+            <Select value={catalogId} onValueChange={(val) => {
+              setCatalogId(val);
+              if (val !== "none") {
+                const entry = catalog.find(c => c.id === val);
+                if (entry) {
+                  if (!name.trim() || name === initial?.name) setName(entry.name);
+                  if (entry.transport === "stdio") {
+                    setTransportType("stdio");
+                    const cmd = (entry as any).defaultLaunchCommand;
+                    const args = (entry as any).defaultLaunchArgs as string[] | null;
+                    if (cmd && !launchCommand.trim()) setLaunchCommand(cmd);
+                    if (args?.length && !launchArgsStr.trim()) setLaunchArgsStr(args.join(" "));
+                  } else {
+                    setTransportType(entry.transport ?? "http");
+                  }
+                }
+              }
+            }}>
               <SelectTrigger><SelectValue placeholder="Nessun catalogo" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Nessun catalogo</SelectItem>
