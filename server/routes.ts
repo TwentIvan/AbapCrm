@@ -11403,45 +11403,74 @@ ISTRUZIONI:
         credentialData = cred ? { username: cred.username, systemName: cred.systemName } : null;
       }
 
-      // Use AI to suggest the mapping
-      const { aiGateway, getDefaultModelKey } = await import("./ai-gateway");
-      const modelKey = await getDefaultModelKey(organizationId);
+      // Deterministic mapping for known env var patterns, AI fallback for unknown ones
+      const KNOWN_MAPPINGS: Record<string, { source: string; field: string }> = {
+        SAP_URL: { source: "sap_systems", field: "serverHost" },
+        SAP_HOST: { source: "sap_systems", field: "serverHost" },
+        SAP_HOSTNAME: { source: "sap_systems", field: "serverHost" },
+        SAP_PORT: { source: "sap_systems", field: "applicationServerPort" },
+        SAP_SYSTEM_NUMBER: { source: "sap_systems", field: "systemNumber" },
+        SAP_SYSNR: { source: "sap_systems", field: "systemNumber" },
+        SAP_SID: { source: "sap_systems", field: "systemId" },
+        SAP_SYSTEM_ID: { source: "sap_systems", field: "systemId" },
+        SAP_CLIENT: { source: "sap_systems", field: "defaultClient" },
+        SAP_MANDT: { source: "sap_systems", field: "defaultClient" },
+        SAP_USER: { source: "system_credentials", field: "username" },
+        SAP_USERNAME: { source: "system_credentials", field: "username" },
+        SAP_PASSWORD: { source: "system_credentials", field: "password" },
+        SAP_PASSWD: { source: "system_credentials", field: "password" },
+        SAP_LANGUAGE: { source: "sap_systems", field: "defaultLanguage" },
+        SAP_LANG: { source: "sap_systems", field: "defaultLanguage" },
+      };
 
-      const systemPrompt = `You are an MCP server configuration assistant. Given a required schema (env vars the server needs) and available data sources, suggest the best field mapping.
-
-Available data sources:
-${JSON.stringify(sources, null, 2)}
-
-${sapSystemData ? `SAP System data sample (field names and values): ${JSON.stringify(Object.fromEntries(Object.entries(sapSystemData).filter(([k]) => !["userId", "organizationId", "defaultPassword", "createdAt", "updatedAt"].includes(k))))}` : ""}
-${credentialData ? `Credential data sample: ${JSON.stringify(credentialData)}` : ""}
-
-Respond ONLY with valid JSON in this exact format:
-{
-  "mappings": { "ENV_VAR_NAME": { "source": "source_table_name", "field": "field_name" }, ... },
-  "configTemplate": { "ENV_VAR_NAME": "\${source.field}", ... },
-  "reasoning": "Brief explanation of mapping choices"
-}`;
-
-      const userPrompt = `Map these required env vars to available sources:\n${JSON.stringify(reqSchema, null, 2)}`;
-
-      const result = await aiGateway.complete({
-        modelKey,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.1,
-        maxTokens: 2000,
-        organizationId,
-      });
-
-      const text = result.choices?.[0]?.message?.content ?? "";
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        return res.json({ mappings: {}, configTemplate: {}, message: "AI could not generate mapping", raw: text });
+      const mappings: Record<string, { source: string; field: string }> = {};
+      const unmapped: string[] = [];
+      for (const envVar of Object.keys(reqSchema)) {
+        const known = KNOWN_MAPPINGS[envVar.toUpperCase()];
+        if (known) {
+          mappings[envVar] = known;
+        } else {
+          unmapped.push(envVar);
+        }
       }
-      const suggestion = JSON.parse(jsonMatch[0]);
-      return res.json(suggestion);
+
+      // If there are unmapped vars, try AI
+      if (unmapped.length > 0) {
+        try {
+          const { aiGateway, getDefaultModelKey } = await import("./ai-gateway");
+          const modelKey = await getDefaultModelKey(organizationId);
+          const unmappedSchema = Object.fromEntries(unmapped.map(k => [k, reqSchema[k]]));
+          const aiResult = await aiGateway.complete({
+            modelKey,
+            messages: [
+              { role: "system", content: `Map env vars to available data sources. Sources: ${JSON.stringify(sources, null, 2)}. Respond ONLY with JSON: { "mappings": { "VAR": { "source": "table", "field": "column" } } }` },
+              { role: "user", content: JSON.stringify(unmappedSchema) },
+            ],
+            temperature: 0.1,
+            maxTokens: 1000,
+            organizationId,
+          });
+          const text = aiResult.choices?.[0]?.message?.content ?? "";
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed2 = JSON.parse(jsonMatch[0]);
+            Object.assign(mappings, parsed2.mappings ?? {});
+          }
+        } catch (aiErr: any) {
+          console.warn("[MCP] AI mapping fallback failed, using deterministic only:", aiErr.message);
+        }
+      }
+
+      const configTemplate: Record<string, string> = {};
+      for (const [envVar, m] of Object.entries(mappings)) {
+        configTemplate[envVar] = `\${${m.source}.${m.field}}`;
+      }
+
+      return res.json({
+        mappings,
+        configTemplate,
+        reasoning: `Mapping deterministico per ${Object.keys(mappings).length} variabili SAP` + (unmapped.length > 0 ? ` (${unmapped.length} risolte via AI)` : ""),
+      });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }
