@@ -125,6 +125,7 @@ export function describeAvailableSources(): Record<string, Array<{ field: string
       { field: "defaultPassword", description: "Legacy default password (encrypted)" },
       { field: "cloudLink", description: "Cloud endpoint URL (BTP, S/4 Cloud)" },
       { field: "portalUrl", description: "Portal URL for cookie-based auth" },
+      { field: "sapRouterString", description: "SAProuter string for internet access (/H/host/S/port/...)" },
     ],
     system_credentials: [
       { field: "username", description: "Credential username" },

@@ -813,7 +813,8 @@ export const sapSystems = pgTable("sap_systems", {
   systemNumber: text("system_number").notNull(), // 00, 01, etc.
   applicationServerPort: integer("application_server_port").default(3200), // 32XX
   messageServerPort: integer("message_server_port").default(3600), // 36XX
-  
+  sapRouterString: text("sap_router_string"), // /H/host/S/port/... for internet access via SAProuter
+
   // Additional SAP details
   sapReleaseVersion: text("sap_release_version"), // 750, 740, etc.
   kernelVersion: text("kernel_version"),

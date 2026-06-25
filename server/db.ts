@@ -130,6 +130,12 @@ export async function runStartupMigrations(): Promise<boolean> {
     `);
     console.log('[DB] ✓ mcp_catalog launch defaults ensured');
 
+    // Migration 0007: SAProuter string
+    await client.query(`
+      ALTER TABLE "sap_systems" ADD COLUMN IF NOT EXISTS "sap_router_string" text;
+    `);
+    console.log('[DB] ✓ sap_systems.sap_router_string ensured');
+
     client.release();
     return true;
   } catch (error) {

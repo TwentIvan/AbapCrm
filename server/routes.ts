@@ -11425,6 +11425,9 @@ ISTRUZIONI:
         SAP_PASSWD: { source: "system_credentials", field: "password" },
         SAP_LANGUAGE: { source: "sap_systems", field: "defaultLanguage" },
         SAP_LANG: { source: "sap_systems", field: "defaultLanguage" },
+        SAP_ROUTER: { source: "sap_systems", field: "sapRouterString" },
+        SAP_ROUTER_STRING: { source: "sap_systems", field: "sapRouterString" },
+        SAPROUTER: { source: "sap_systems", field: "sapRouterString" },
       };
 
       const mappings: Record<string, { source: string; field: string }> = {};

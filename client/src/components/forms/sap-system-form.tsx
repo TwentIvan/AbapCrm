@@ -42,6 +42,7 @@ const formSchema = z.object({
   messageServerHost: z.string().optional(),
   messageServerPort: z.coerce.number().optional(),
   routerString: z.string().optional(),
+  sapRouterString: z.string().optional(),
   vpnConnectionId: z.string().optional(),
   defaultUsername: z.string().optional(),
   defaultPassword: z.string().optional(),
@@ -91,6 +92,7 @@ export default function SapSystemForm({ system, editingSystem, onSuccess, onCanc
       citrixLink: (effectiveSystem as any)?.citrixLink || "",
       citrixAppName: (effectiveSystem as any)?.citrixAppName || "",
       webLink: (effectiveSystem as any)?.webLink || "",
+      sapRouterString: (effectiveSystem as any)?.sapRouterString || "",
       sapShortcutFile: (effectiveSystem as any)?.sapShortcutFile || "",
       portalUrl: (effectiveSystem as any)?.portalUrl || "",
       shortcutPattern: (effectiveSystem as any)?.shortcutPattern || "tx*.sap",
@@ -525,6 +527,28 @@ export default function SapSystemForm({ system, editingSystem, onSuccess, onCanc
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="sapRouterString"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>SAProuter String</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="/H/saprouter.example.com/S/3299/H/"
+                            {...field}
+                            value={field.value || ''}
+                            data-testid="input-sap-router-string"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Stringa SAProuter per accesso diretto via internet (opzionale)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
