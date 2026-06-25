@@ -1849,6 +1849,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       if (req.body.estimatedEffort !== undefined) updateData.estimatedEffort = req.body.estimatedEffort || null;
       if (req.body.completionPercentage !== undefined) updateData.completionPercentage = req.body.completionPercentage;
       if (req.body.assignedTo !== undefined) updateData.assignedTo = req.body.assignedTo || null;
+      if (req.body.agentModelId !== undefined) updateData.agentModelId = req.body.agentModelId || null;
+      if (req.body.budgetCapEur !== undefined) updateData.budgetCapEur = req.body.budgetCapEur || null;
+      if (req.body.mcpConfigIds !== undefined) updateData.mcpConfigIds = req.body.mcpConfigIds ?? [];
+      if (req.body.connectionWorkflowId !== undefined) updateData.connectionWorkflowId = req.body.connectionWorkflowId || null;
 
       // Auto-calculate remaining effort when completion percentage changes
       if (req.body.completionPercentage !== undefined) {
