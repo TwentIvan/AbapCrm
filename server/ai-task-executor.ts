@@ -23,6 +23,7 @@ import {
   mcpServerConfigs,
   mcpCatalogValidations,
   aiPendingActions,
+  systemCredentials,
   auditLogs,
   messages,
   messageLinks,
@@ -1291,7 +1292,22 @@ export async function executeTaskWithAI(
             console.warn(`[MCP] Config ${cfg.id} (${cfg.name}) is PRD but readOnly=false — coerced to read-only`);
           }
           try {
-            const { tools } = await connectAndListTools(cfg); // overrides applied inside
+            // Inherit sapSystemId/credentialsRef from task/project if config doesn't specify them
+            const effectiveCfg = { ...cfg };
+            if (!effectiveCfg.sapSystemId) {
+              effectiveCfg.sapSystemId = (taskData as any).sapSystemId || projectData?.sapSystemId || null;
+            }
+            if (!effectiveCfg.credentialsRef && effectiveCfg.sapSystemId) {
+              const [cred] = await db.select({ id: systemCredentials.id })
+                .from(systemCredentials)
+                .where(and(
+                  eq(systemCredentials.systemId, effectiveCfg.sapSystemId),
+                  eq(systemCredentials.isActive, true),
+                ))
+                .limit(1);
+              if (cred) effectiveCfg.credentialsRef = cred.id;
+            }
+            const { tools } = await connectAndListTools(effectiveCfg); // overrides applied inside
             const allowlist: string[] = (cfg.toolAllowlist as string[] | null) ?? [];
             for (const t of tools) {
               if (allowlist.length > 0 && !allowlist.includes(t.name)) continue;
@@ -1302,7 +1318,7 @@ export async function executeTaskWithAI(
                 namespacedName: t.namespacedName,
                 originalName: t.name,
                 configId: cfg.id,
-                config: cfg,
+                config: effectiveCfg,
                 classification: t.classification,
                 requiresApproval,
                 description: t.description ?? "",
