@@ -107,7 +107,29 @@ export async function runStartupMigrations(): Promise<boolean> {
         ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id);
     `);
     console.log('[DB] ✓ vpn_connections.organization_id ensured');
-    
+
+    // Migration 0004: proposal token tracking
+    await client.query(`
+      ALTER TABLE "proposals" ADD COLUMN IF NOT EXISTS "prompt_tokens" integer;
+      ALTER TABLE "proposals" ADD COLUMN IF NOT EXISTS "completion_tokens" integer;
+      ALTER TABLE "proposals" ADD COLUMN IF NOT EXISTS "model_key" text;
+    `);
+    console.log('[DB] ✓ proposals token columns ensured');
+
+    // Migration 0005: proposal estimated tokens
+    await client.query(`
+      ALTER TABLE "proposals" ADD COLUMN IF NOT EXISTS "estimate_tokens_min" integer;
+      ALTER TABLE "proposals" ADD COLUMN IF NOT EXISTS "estimate_tokens_max" integer;
+    `);
+    console.log('[DB] ✓ proposals estimated token columns ensured');
+
+    // Migration 0006: catalog launch defaults
+    await client.query(`
+      ALTER TABLE "mcp_catalog" ADD COLUMN IF NOT EXISTS "default_launch_command" text;
+      ALTER TABLE "mcp_catalog" ADD COLUMN IF NOT EXISTS "default_launch_args" jsonb DEFAULT '[]';
+    `);
+    console.log('[DB] ✓ mcp_catalog launch defaults ensured');
+
     client.release();
     return true;
   } catch (error) {
