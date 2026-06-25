@@ -11362,10 +11362,27 @@ ISTRUZIONI:
 
       // Get required schema from catalog if catalogId provided
       let reqSchema = parsed.data.requiredSchema ?? {};
+      let catalogEntry: any = null;
       if (parsed.data.catalogId && Object.keys(reqSchema).length === 0) {
-        const [catalogEntry] = await db.select().from(mcpCatalog).where(eq(mcpCatalog.id, parsed.data.catalogId)).limit(1);
-        if (catalogEntry?.requiredSchema) {
+        [catalogEntry] = await db.select().from(mcpCatalog).where(eq(mcpCatalog.id, parsed.data.catalogId)).limit(1);
+        if (catalogEntry?.requiredSchema && Object.keys(catalogEntry.requiredSchema as any).length > 0) {
           reqSchema = catalogEntry.requiredSchema as any;
+        }
+      }
+
+      // Fallback: infer schema for known SAP MCP servers when requiredSchema is empty
+      if (Object.keys(reqSchema).length === 0) {
+        const nameLC = (catalogEntry?.name ?? "").toLowerCase();
+        const descLC = (catalogEntry?.description ?? "").toLowerCase();
+        const isSapMcp = nameLC.includes("arc-1") || nameLC.includes("arc1") || nameLC.includes("abap") || nameLC.includes("sap")
+          || descLC.includes("sap") || descLC.includes("abap") || descLC.includes("adt");
+        if (isSapMcp) {
+          reqSchema = {
+            SAP_URL: { type: "string", description: "SAP host URL (e.g. https://host:44300)", required: true },
+            SAP_USER: { type: "string", description: "SAP username", required: true },
+            SAP_PASSWORD: { type: "string", description: "SAP password", required: true },
+            SAP_CLIENT: { type: "string", description: "SAP client number (e.g. 100)", required: false },
+          };
         }
       }
 
