@@ -825,9 +825,9 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                                   if (isDisabled) return;
                                   const current = form.getValues("mcpConfigIds") ?? [];
                                   if (v) {
-                                    form.setValue("mcpConfigIds", [...current, cfg.id]);
+                                    form.setValue("mcpConfigIds", [...current, cfg.id], { shouldDirty: true });
                                   } else {
-                                    form.setValue("mcpConfigIds", current.filter((id: string) => id !== cfg.id));
+                                    form.setValue("mcpConfigIds", current.filter((id: string) => id !== cfg.id), { shouldDirty: true });
                                   }
                                 }}
                                 data-testid={`mcp-config-check-${cfg.id}`}
