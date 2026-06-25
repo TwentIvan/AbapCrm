@@ -586,12 +586,13 @@ function ConfigFormDialog({ open, onClose, initial, catalog, projects, sapSystem
   const updateMappingRow = (i: number, patch: Partial<{ envVar: string; source: string; field: string }>) =>
     setMappingRows(prev => prev.map((r, idx) => idx === i ? { ...r, ...patch } : r));
 
-  const handleSuggestMapping = async () => {
+  const handleSuggestMapping = async (overrideCatalogId?: string) => {
     setSuggesting(true);
     setReasoning("");
     try {
+      const effectiveCatalogId = overrideCatalogId ?? catalogId;
       const res = await apiRequest("POST", "/api/mcp/mapping/suggest", {
-        catalogId: catalogId !== "none" ? catalogId : undefined,
+        catalogId: effectiveCatalogId !== "none" ? effectiveCatalogId : undefined,
         sapSystemId: sapSystemId !== "none" ? sapSystemId : undefined,
         credentialId: credentialsRef !== "none" ? credentialsRef : undefined,
       });
@@ -753,6 +754,9 @@ function ConfigFormDialog({ open, onClose, initial, catalog, projects, sapSystem
                   } else {
                     setTransportType(entry.transport ?? "http");
                   }
+                  if (mappingRows.length === 0) {
+                    setTimeout(() => handleSuggestMapping(entry.id), 100);
+                  }
                 }
               }
             }}>
@@ -781,12 +785,13 @@ function ConfigFormDialog({ open, onClose, initial, catalog, projects, sapSystem
             <div className="space-y-1">
               <Label>Sistema SAP (opzionale)</Label>
               <Select value={sapSystemId} onValueChange={setSapSystemId}>
-                <SelectTrigger><SelectValue placeholder="Tutti" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Auto da task/progetto" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Tutti</SelectItem>
+                  <SelectItem value="none">Auto da task/progetto</SelectItem>
                   {sapSystems.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">Se non specificato, viene ereditato dal task o dal progetto a runtime</p>
             </div>
           </div>
 
@@ -794,11 +799,11 @@ function ConfigFormDialog({ open, onClose, initial, catalog, projects, sapSystem
           {isStdio && (
             <>
               <div className="space-y-1">
-                <Label>Credenziali (per il mapping)</Label>
+                <Label>Credenziali (opzionale)</Label>
                 <Select value={credentialsRef} onValueChange={setCredentialsRef}>
-                  <SelectTrigger><SelectValue placeholder="Nessuna" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Auto da sistema SAP" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Nessuna</SelectItem>
+                    <SelectItem value="none">Auto da sistema SAP</SelectItem>
                     {credentials.map((c: any) => (
                       <SelectItem key={c.id} value={c.id}>{c.systemName} — {c.username}</SelectItem>
                     ))}

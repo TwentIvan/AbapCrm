@@ -11375,7 +11375,8 @@ ISTRUZIONI:
         const nameLC = (catalogEntry?.name ?? "").toLowerCase();
         const descLC = (catalogEntry?.description ?? "").toLowerCase();
         const isSapMcp = nameLC.includes("arc-1") || nameLC.includes("arc1") || nameLC.includes("abap") || nameLC.includes("sap")
-          || descLC.includes("sap") || descLC.includes("abap") || descLC.includes("adt");
+          || descLC.includes("sap") || descLC.includes("abap") || descLC.includes("adt")
+          || parsed.data.sapSystemId || parsed.data.credentialId;
         if (isSapMcp) {
           reqSchema = {
             SAP_URL: { type: "string", description: "SAP host URL (e.g. https://host:44300)", required: true },
