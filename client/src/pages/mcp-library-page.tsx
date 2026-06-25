@@ -814,7 +814,7 @@ function ConfigFormDialog({ open, onClose, initial, catalog, projects, sapSystem
               <div className="space-y-2 border rounded-lg p-3 bg-muted/30">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-semibold">Mapping campi → variabili d'ambiente</Label>
-                  <Button type="button" size="sm" variant="outline" onClick={handleSuggestMapping} disabled={suggesting} data-testid="btn-suggest-mapping">
+                  <Button type="button" size="sm" variant="outline" onClick={() => handleSuggestMapping()} disabled={suggesting} data-testid="btn-suggest-mapping">
                     {suggesting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Settings className="h-3.5 w-3.5 mr-1" />}
                     Suggerisci (AI)
                   </Button>
