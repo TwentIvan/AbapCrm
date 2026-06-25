@@ -809,7 +809,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                     const ids: string[] = form.watch("mcpConfigIds") ?? [];
                     const checked = ids.includes(cfg.id);
                     const isValidated = cfg.catalogId
-                      ? (catalogValidationMap.get(cfg.catalogId) ?? false)
+                      ? (catalogValidationMap.get(cfg.catalogId) ?? true)
                       : true;
                     const isDisabled = !isValidated;
                     return (
