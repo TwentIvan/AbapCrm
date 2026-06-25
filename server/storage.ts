@@ -1464,7 +1464,10 @@ export class DatabaseStorage implements IStorage {
       .insert(tasks)
       .values(task)
       .returning();
-    
+
+    const cacheKey = `${task.userId}-${task.organizationId}`;
+    this.taskCache.delete(cacheKey);
+
     // Log audit trail for task creation
     if (auditContext) {
       await AuditService.logCreate(
@@ -1497,7 +1500,11 @@ export class DatabaseStorage implements IStorage {
       .set(updateData)
       .where(and(eq(tasks.id, id), eq(tasks.userId, userId), eq(tasks.organizationId, organizationId)))
       .returning();
-    
+
+    // Invalidate task list cache
+    const cacheKey = `${userId}-${organizationId}`;
+    this.taskCache.delete(cacheKey);
+
     // Log audit trail for task update
     if (auditContext && updatedTask && oldTask) {
       await AuditService.logUpdate(
@@ -1524,7 +1531,9 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, userId), eq(tasks.organizationId, organizationId)));
-    
+
+    this.taskCache.delete(`${userId}-${organizationId}`);
+
     // Log audit trail for task deletion
     if (auditContext && oldTask && (result.rowCount || 0) > 0) {
       await AuditService.logDelete(
