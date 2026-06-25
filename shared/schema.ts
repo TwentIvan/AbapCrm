@@ -3639,6 +3639,8 @@ export const mcpCatalog = pgTable("mcp_catalog", {
   stale: boolean("stale").notNull().default(false),
   // Schema dei campi richiesti per la configurazione (es. { "SAP_HOST": { type: "string", description: "SAP server hostname", required: true } })
   requiredSchema: jsonb("required_schema").default({}),
+  defaultLaunchCommand: text("default_launch_command"),
+  defaultLaunchArgs: jsonb("default_launch_args").$type<string[]>().default([]),
   readmeMd: text("readme_md"),
   readmeFetchedAt: timestamp("readme_fetched_at"),
   syncedAt: timestamp("synced_at"),
