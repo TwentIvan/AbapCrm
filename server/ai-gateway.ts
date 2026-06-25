@@ -127,7 +127,7 @@ async function resolveModelId(modelKey: string): Promise<string> {
 }
 
 function sanitizeModelId(id: string): string {
-  return id.replace(/^(claude-[\w]+-\d+-\d+)-\d{8}$/, "$1");
+  return id.replace(/^(claude-[\w-]+-\d+-\d+)-\d{8}$/, "$1");
 }
 
 // ── Gateway client ─────────────────────────────────────────────────────────────
