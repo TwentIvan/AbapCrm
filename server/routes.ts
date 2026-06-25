@@ -1854,6 +1854,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       if (req.body.mcpConfigIds !== undefined) updateData.mcpConfigIds = req.body.mcpConfigIds ?? [];
       if (req.body.connectionWorkflowId !== undefined) updateData.connectionWorkflowId = req.body.connectionWorkflowId && req.body.connectionWorkflowId !== "none" ? req.body.connectionWorkflowId : null;
 
+      console.log(`[TASK-UPDATE] id=${req.params.id} agentModelId=${updateData.agentModelId} mcpConfigIds=${JSON.stringify(updateData.mcpConfigIds)} budgetCapEur=${updateData.budgetCapEur}`);
+
       // Auto-calculate remaining effort when completion percentage changes
       if (req.body.completionPercentage !== undefined) {
         // Get current task to access previous remaining effort and estimated effort
