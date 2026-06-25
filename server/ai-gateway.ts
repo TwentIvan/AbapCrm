@@ -118,10 +118,16 @@ async function resolveModelId(modelKey: string): Promise<string> {
       .from(aiModels)
       .where(eq(aiModels.modelKey, modelKey))
       .limit(1);
-    if (model?.modelId) return model.modelId;
+    if (model?.modelId) {
+      return sanitizeModelId(model.modelId);
+    }
   } catch {}
   const slashIdx = modelKey.indexOf("/");
   return slashIdx >= 0 ? modelKey.slice(slashIdx + 1) : modelKey;
+}
+
+function sanitizeModelId(id: string): string {
+  return id.replace(/^(claude-[\w]+-\d+-\d+)-\d{8}$/, "$1");
 }
 
 // ── Gateway client ─────────────────────────────────────────────────────────────

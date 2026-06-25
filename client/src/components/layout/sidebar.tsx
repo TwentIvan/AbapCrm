@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch, LayoutDashboard, Brain } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch, LayoutDashboard, Brain, Cpu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import htuLogo from "@assets/HTU-logo-512_(1)_1782240207188.png";
 
@@ -62,6 +62,7 @@ const getDefaultTimeManagementItems = (t: any) => [
 const getDefaultAiToolsItems = (t: any) => [
   { id: "ai1", name: "AI Analytics", href: "/ai-analytics", icon: Brain, testId: "nav-ai-analytics" },
   { id: "ai2", name: "MCP Library", href: "/mcp-library", icon: Server, testId: "nav-mcp-library" },
+  { id: "ai3", name: "Modelli AI", href: "/ai-models", icon: Cpu, testId: "nav-ai-models" },
 ];
 
 // Parent sections
