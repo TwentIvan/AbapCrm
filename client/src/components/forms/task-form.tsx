@@ -247,6 +247,7 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
       };
 
       if (task) {
+        console.log('[TASK-FORM] PUT payload:', { mcpConfigIds: taskData.mcpConfigIds, agentModelId: taskData.agentModelId, budgetCapEur: taskData.budgetCapEur });
         const res = await apiRequest("PUT", `/api/tasks/${task.id}`, taskData);
         return res.json();
       } else {
@@ -279,12 +280,13 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
   });
 
   const onSubmit = (data: FormData) => {
+    console.log('[TASK-FORM] onSubmit called, mcpConfigIds:', data.mcpConfigIds, 'agentModelId:', data.agentModelId);
     saveTaskMutation.mutate(data);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.error('[TASK-FORM] Validation errors:', errors))} className="space-y-4">
         <div className="flex justify-end space-x-2 pb-4 border-b">
           <Button
             type="submit"
