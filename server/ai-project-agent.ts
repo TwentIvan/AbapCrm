@@ -4,6 +4,7 @@ import { aiGateway, getDefaultModelKey } from "./ai-gateway";
 import type {
   Message, Project, Partner, Task, AiLearningPattern, Calendar,
   SapSystem, VpnConnection, McpServerConfig, McpCatalogWithValidation,
+  Contact,
 } from "@shared/schema";
 
 export interface ProjectProposal {
@@ -27,11 +28,21 @@ export interface ProjectProposal {
     type: "client" | "vendor" | "consultant" | "other";
   };
   contacts?: Array<{
+    isNew?: boolean;
+    existingId?: string;
     name: string;
     email: string;
     phone?: string;
     position?: string;
     company?: string;
+    notes?: string;
+  }>;
+  // People interested in the project — stakeholders to keep informed / who must approve.
+  // Each references a contact by email (matching contacts[] or existingContacts).
+  stakeholders?: Array<{
+    contactEmail: string;
+    role: "informed" | "approver" | "responsible" | "reviewer";
+    notify?: boolean; // receive progress notifications
     notes?: string;
   }>;
   tasks: Array<{
@@ -231,6 +242,7 @@ export async function analyzeMessageForProject(
   existingConnections: VpnConnection[] = [],
   mcpContext?: { catalog: McpCatalogWithValidation[]; configs: McpServerConfig[] },
   modelKeyOverride?: string,
+  existingContacts: Contact[] = [],
 ): Promise<ProjectProposal & { _tokenUsage?: { promptTokens: number; completionTokens: number } }> {
   const systemPrompt = `You are an intelligent project management assistant for a SAP ABAP freelancer CRM system.
 
@@ -281,11 +293,23 @@ Analyze incoming messages and propose:
 - If 70%+ confidence match exists, use existingId, set isNew=false
 - Only create new partner if clearly a new company/person
 
-### Contact Extraction
+### Contact Extraction (match-first, like projects & systems)
 Extract reference contacts from the message:
 - Email CC/BCC recipients, signatures, people mentioned in body
 - **email is MANDATORY** — do not create contact without email
+- **Match-first**: before creating a contact, check EXISTING CONTACTS by email.
+  If found, set isNew=false + existingId and do NOT duplicate. Otherwise isNew=true.
 - Include 0-5 contacts; notes in Italian; do not extract sender or recipient
+
+### Stakeholders (people interested in the project — for notification/approval workflows)
+Identify which contacts are **interested parties of the project** and populate stakeholders[]:
+- **role**: "informed" (kept up to date on progress), "approver" (must approve deliverables/
+  milestones), "responsible" (client-side owner/referente), "reviewer" (reviews work).
+- **notify=true** when the person should receive progress updates (status changes, milestones).
+- Reference each stakeholder by contactEmail matching a contacts[] entry or an existing contact.
+- Infer roles from the message: e.g. the person asking for the work / signing off = approver or
+  responsible; people in CC interested in updates = informed. Be conservative — only add a
+  stakeholder when the message genuinely indicates interest/involvement. Empty array if unclear.
 
 ### Project Matching (⚠️ BE CONSERVATIVE - AVOID FALSE MATCHES)
 **ONLY match existing project if there is EXPLICIT reference:**
@@ -419,12 +443,22 @@ Return valid JSON ONLY with this structure (ALL text fields in ITALIAN):
   },
   "contacts": [
     {
+      "isNew": boolean,
+      "existingId": "contacts.id if this contact already exists (match by email, isNew=false)",
       "name": "Nome completo",
       "email": "email@domain.com (REQUIRED)",
       "phone": "opzionale",
       "position": "opzionale",
       "company": "opzionale",
       "notes": "ITALIAN: contesto breve (1-2 frasi)"
+    }
+  ],
+  "stakeholders": [
+    {
+      "contactEmail": "email del contatto interessato (deve combaciare con un contacts[].email o un contatto esistente)",
+      "role": "informed|approver|responsible|reviewer",
+      "notify": true,
+      "notes": "ITALIAN: perché questa persona è interessata al progetto"
     }
   ],
   "tasks": [
@@ -568,6 +602,14 @@ ${(() => {
   }
   return blocks.join('\n');
 })()}
+
+**EXISTING CONTACTS** (${existingContacts.length} total) — match-first by email to avoid duplicates:
+${existingContacts.length > 0
+  ? existingContacts.slice(0, 30).map(c =>
+      `  • [${c.id}] ${c.name} <${c.email}> - ${c.position || 'N/A'} @ ${c.company || 'N/A'}${c.partnerId ? `, Partner: ${c.partnerId}` : ''}`
+    ).join('\n')
+  : '  (no existing contacts)'}
+${existingContacts.length > 30 ? `  ... and ${existingContacts.length - 30} more` : ''}
 
 **EXISTING SAP SYSTEMS** (${existingSapSystems.length} total) — match-first, target tasks here:
 ${formatSapSystems(existingSapSystems)}

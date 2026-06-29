@@ -25,7 +25,7 @@ import {
   insertCustomEntitySchema, insertCustomFieldSchema, insertEntityCustomValueSchema,
   insertTestExecutionSchema,
   type EmailConfig,
-  projects, tasks, partners, contacts, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
+  projects, tasks, partners, contacts, projectContacts, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals, projectShares,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users, organizations,
   customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions,
@@ -2658,6 +2658,74 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Project stakeholders (interested contacts for notification/approval workflows)
+  app.get("/api/projects/:projectId/stakeholders", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const rows = await db.select({
+        id: projectContacts.id,
+        projectId: projectContacts.projectId,
+        contactId: projectContacts.contactId,
+        role: projectContacts.role,
+        notify: projectContacts.notify,
+        notes: projectContacts.notes,
+        contactName: contacts.name,
+        contactEmail: contacts.email,
+        contactCompany: contacts.company,
+        contactPosition: contacts.position,
+      })
+        .from(projectContacts)
+        .leftJoin(contacts, eq(projectContacts.contactId, contacts.id))
+        .where(and(
+          eq(projectContacts.projectId, req.params.projectId),
+          eq(projectContacts.organizationId, organizationId),
+        ));
+      res.json(rows);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.post("/api/projects/:projectId/stakeholders", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const { contactId, role, notify, notes } = req.body;
+      if (!contactId) return res.status(400).json({ error: "contactId is required" });
+      const validRole = ["informed", "approver", "responsible", "reviewer"].includes(role) ? role : "informed";
+      const [link] = await db.insert(projectContacts).values({
+        projectId: req.params.projectId,
+        contactId,
+        role: validRole,
+        notify: notify !== false,
+        notes: notes || null,
+        userId: req.user!.id,
+        organizationId,
+      }).onConflictDoUpdate({
+        target: [projectContacts.projectId, projectContacts.contactId],
+        set: { role: validRole, notify: notify !== false, notes: notes || null, updatedAt: new Date() },
+      }).returning();
+      res.status(201).json(link);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.delete("/api/projects/:projectId/stakeholders/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      await db.delete(projectContacts).where(and(
+        eq(projectContacts.id, req.params.id),
+        eq(projectContacts.organizationId, organizationId),
+      ));
+      res.sendStatus(204);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
   app.get("/api/contacts/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const organizationId = getOrganizationId(req);
@@ -4331,6 +4399,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
           const existingProjects = await storage.getProjects(userId, organizationId);
           const existingPartners = await storage.getPartners(userId, organizationId);
           const existingTasks = await storage.getTasks(userId, organizationId);
+          const existingContacts = await storage.getContacts(userId, organizationId);
           
           // Fetch learning context for AI
           const patterns = await storage.getAiLearningPatterns(organizationId);
@@ -4395,8 +4464,9 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             vpnConnections,
             aiMcpContext,
             req.body?.modelKey || undefined,
+            existingContacts,
           );
-          
+
           // Extract token usage before storing
           const tokenUsage = (analysisResult as any)._tokenUsage;
           delete (analysisResult as any)._tokenUsage;
@@ -4730,6 +4800,44 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         }
       }
       
+      // 4b. Link project stakeholders (interested contacts) for notification/approval workflows
+      results.stakeholders = [];
+      if (results.project?.id && Array.isArray((proposalData as any).stakeholders)) {
+        for (const sh of (proposalData as any).stakeholders) {
+          if (!sh.contactEmail) continue;
+          // Resolve the contact: prefer the ones just created/matched, else look up by email
+          let contact = (results.contacts as any[]).find(
+            (c: any) => c.email?.toLowerCase() === sh.contactEmail.toLowerCase()
+          );
+          if (!contact) {
+            contact = await storage.getContactByEmail(sh.contactEmail, userId, organizationId);
+          }
+          if (!contact) {
+            console.warn(`[PROPOSAL APPLY] Stakeholder skipped — no contact for ${sh.contactEmail}`);
+            continue;
+          }
+          const role = ["informed", "approver", "responsible", "reviewer"].includes(sh.role) ? sh.role : "informed";
+          try {
+            const [link] = await db.insert(projectContacts).values({
+              projectId: results.project.id,
+              contactId: contact.id,
+              role,
+              notify: sh.notify !== false,
+              notes: sh.notes || null,
+              sourceMessageIds: [proposal.messageId],
+              userId,
+              organizationId,
+            }).onConflictDoNothing().returning();
+            if (link) {
+              results.stakeholders.push(link);
+              console.log(`[PROPOSAL APPLY] Linked stakeholder ${contact.email} as ${role} to project ${results.project.id}`);
+            }
+          } catch (e) {
+            console.warn(`[PROPOSAL APPLY] Could not link stakeholder ${sh.contactEmail}:`, e);
+          }
+        }
+      }
+
       // 5. Phase 6 — resolve/create VPN connections from proposal
       results.connections = [];
       if (Array.isArray(proposalData.connections)) {

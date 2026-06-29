@@ -136,6 +136,29 @@ export async function runStartupMigrations(): Promise<boolean> {
     `);
     console.log('[DB] ✓ sap_systems.sap_router_string ensured');
 
+    // Migration 0008: project stakeholders (project_contacts)
+    await client.query(`
+      DO $$ BEGIN
+        CREATE TYPE "stakeholder_role" AS ENUM ('informed', 'approver', 'responsible', 'reviewer');
+      EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+      CREATE TABLE IF NOT EXISTS "project_contacts" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "project_id" uuid NOT NULL REFERENCES "projects"("id") ON DELETE CASCADE,
+        "contact_id" uuid NOT NULL REFERENCES "contacts"("id") ON DELETE CASCADE,
+        "role" "stakeholder_role" NOT NULL DEFAULT 'informed',
+        "notify" boolean NOT NULL DEFAULT true,
+        "notes" text,
+        "user_id" uuid NOT NULL REFERENCES "users"("id"),
+        "organization_id" uuid NOT NULL REFERENCES "organizations"("id"),
+        "source_message_ids" text[] DEFAULT '{}',
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS "project_contacts_project_contact_idx" ON "project_contacts" ("project_id", "contact_id");
+    `);
+    console.log('[DB] ✓ project_contacts table ensured');
+
     client.release();
     return true;
   } catch (error) {

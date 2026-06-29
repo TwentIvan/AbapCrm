@@ -287,6 +287,25 @@ export const contacts = pgTable("contacts", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Project stakeholders — contacts interested in a project (for informational/approval workflows)
+export const stakeholderRoleEnum = pgEnum("stakeholder_role", ["informed", "approver", "responsible", "reviewer"]);
+
+export const projectContacts = pgTable("project_contacts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
+  contactId: uuid("contact_id").references(() => contacts.id, { onDelete: "cascade" }).notNull(),
+  role: stakeholderRoleEnum("role").default("informed").notNull(),
+  notify: boolean("notify").default(true).notNull(), // receive progress notifications
+  notes: text("notes"),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  sourceMessageIds: text("source_message_ids").array().default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  projectContactUnique: uniqueIndex("project_contacts_project_contact_idx").on(table.projectId, table.contactId),
+}));
+
 export const dealStageEnum = pgEnum("deal_stage", ["prospecting", "proposal", "negotiation", "closing", "won", "lost"]);
 
 export const deals = pgTable("deals", {
@@ -1642,6 +1661,13 @@ export const insertContactSchema = createInsertSchema(contacts).omit({
   organizationId: true, // Auto-filled from user session
 });
 
+export const insertProjectContactSchema = createInsertSchema(projectContacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  organizationId: true,
+});
+
 export const insertDealSchema = createInsertSchema(deals).omit({
   id: true,
   createdAt: true,
@@ -1797,6 +1823,8 @@ export type Partner = typeof partners.$inferSelect;
 export type InsertPartner = z.infer<typeof insertPartnerSchema>;
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
+export type ProjectContact = typeof projectContacts.$inferSelect;
+export type InsertProjectContact = z.infer<typeof insertProjectContactSchema>;
 export type Deal = typeof deals.$inferSelect;
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type Calendar = typeof calendars.$inferSelect;
