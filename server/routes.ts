@@ -5074,13 +5074,47 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         }
       }
 
-      // Update proposal status
+      // Write created entity IDs back into proposalData so the "created" view shows
+      // exactly what was persisted (with working links), not just what was proposed.
+      try {
+        if (proposalData.partner && results.partner?.id) proposalData.partner.id = results.partner.id;
+        if (proposalData.project && results.project?.id) proposalData.project.id = results.project.id;
+        if (Array.isArray(proposalData.tasks)) {
+          for (const t of proposalData.tasks) {
+            const match = (results.tasks as any[]).find((rt: any) => rt?.title === t.title);
+            if (match?.id) t.id = match.id;
+          }
+        }
+        if (Array.isArray(proposalData.contacts)) {
+          for (const c of proposalData.contacts) {
+            const match = (results.contacts as any[]).find((rc: any) => rc?.email?.toLowerCase() === c.email?.toLowerCase());
+            if (match?.id) c.id = match.id;
+          }
+        }
+        if (Array.isArray(proposalData.systems)) {
+          for (const s of proposalData.systems) {
+            const id = systemNameToId.get(s.name);
+            if (id) s.id = id; else delete s.id;
+          }
+        }
+        if (Array.isArray(proposalData.connections)) {
+          for (const c of proposalData.connections) {
+            const match = (results.connections as any[]).find((rc: any) => rc?.name === c.name);
+            if (match?.id) c.id = match.id; else delete c.id;
+          }
+        }
+      } catch (e) {
+        console.warn('[PROPOSAL APPLY] Could not write back created IDs:', e);
+      }
+
+      // Update proposal status + persist proposalData with created IDs
       await storage.updateProposal(req.params.id, {
         status: 'accepted',
+        proposalData,
         appliedAt: new Date(),
         appliedBy: userId
       }, userId, organizationId);
-      
+
       res.json({
         success: true,
         results
