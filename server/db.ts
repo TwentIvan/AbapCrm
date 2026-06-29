@@ -159,6 +159,36 @@ export async function runStartupMigrations(): Promise<boolean> {
     `);
     console.log('[DB] ✓ project_contacts table ensured');
 
+    // Migration 0009: stakeholder notifications
+    await client.query(`
+      DO $$ BEGIN
+        CREATE TYPE "notification_status" AS ENUM ('pending', 'sent', 'dismissed');
+      EXCEPTION WHEN duplicate_object THEN null; END $$;
+      DO $$ BEGIN
+        CREATE TYPE "notification_channel" AS ENUM ('in_app', 'email_draft', 'email_sent');
+      EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+      CREATE TABLE IF NOT EXISTS "notifications" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "organization_id" uuid NOT NULL REFERENCES "organizations"("id"),
+        "user_id" uuid NOT NULL REFERENCES "users"("id"),
+        "project_id" uuid REFERENCES "projects"("id") ON DELETE CASCADE,
+        "contact_id" uuid REFERENCES "contacts"("id") ON DELETE SET NULL,
+        "event_type" text NOT NULL,
+        "stakeholder_role" "stakeholder_role",
+        "channel" "notification_channel" NOT NULL DEFAULT 'in_app',
+        "status" "notification_status" NOT NULL DEFAULT 'pending',
+        "subject" text,
+        "body" text,
+        "payload" jsonb,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "notifications_project_idx" ON "notifications" ("project_id");
+      CREATE INDEX IF NOT EXISTS "notifications_status_idx" ON "notifications" ("organization_id", "status");
+    `);
+    console.log('[DB] ✓ notifications table ensured');
+
     client.release();
     return true;
   } catch (error) {

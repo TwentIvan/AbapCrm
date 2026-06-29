@@ -1212,14 +1212,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateProject(id: string, project: Partial<InsertProject>, userId: string, organizationId: string, auditContext?: { userId: string; userAgent?: string; ipAddress?: string }): Promise<Project | undefined> {
-    // Get old values for audit trail
-    const oldProject = auditContext ? await this.getProject(id, userId, organizationId) : null;
-    
+    // Get old values for audit trail and status-change detection
+    const needsStatusCheck = project.status !== undefined;
+    const oldProject = (auditContext || needsStatusCheck) ? await this.getProject(id, userId, organizationId) : null;
+
     const [updatedProject] = await db
       .update(projects)
       .set({ ...project, updatedAt: new Date() })
       .where(and(eq(projects.id, id), eq(projects.userId, userId), eq(projects.organizationId, organizationId)))
       .returning();
+
+    // Generate stakeholder notifications on project status change (non-blocking)
+    if (updatedProject && oldProject && project.status !== undefined && oldProject.status !== updatedProject.status) {
+      import("./notification-service").then(({ notifyProjectStatusChange }) =>
+        notifyProjectStatusChange(updatedProject, oldProject.status, updatedProject.status, userId, organizationId)
+      ).catch(err => console.error("[NOTIFICATIONS] Failed to generate status-change notifications:", err));
+    }
     
     // Log audit trail for project update
     if (auditContext && updatedProject && oldProject) {

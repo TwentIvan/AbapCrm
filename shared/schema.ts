@@ -306,6 +306,30 @@ export const projectContacts = pgTable("project_contacts", {
   projectContactUnique: uniqueIndex("project_contacts_project_contact_idx").on(table.projectId, table.contactId),
 }));
 
+// Stakeholder notifications — generated on project events (status change, milestones)
+export const notificationStatusEnum = pgEnum("notification_status", ["pending", "sent", "dismissed"]);
+export const notificationChannelEnum = pgEnum("notification_channel", ["in_app", "email_draft", "email_sent"]);
+
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(), // owner (the freelancer)
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  contactId: uuid("contact_id").references(() => contacts.id, { onDelete: "set null" }), // stakeholder recipient
+  eventType: text("event_type").notNull(), // project_status_change | milestone_reached | progress_threshold
+  stakeholderRole: stakeholderRoleEnum("stakeholder_role"),
+  channel: notificationChannelEnum("channel").default("in_app").notNull(),
+  status: notificationStatusEnum("status").default("pending").notNull(),
+  subject: text("subject"),
+  body: text("body"), // draft communication body (Italian)
+  payload: jsonb("payload"), // { oldStatus, newStatus, projectName, ... }
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  notifProjectIdx: index("notifications_project_idx").on(table.projectId),
+  notifStatusIdx: index("notifications_status_idx").on(table.organizationId, table.status),
+}));
+
 export const dealStageEnum = pgEnum("deal_stage", ["prospecting", "proposal", "negotiation", "closing", "won", "lost"]);
 
 export const deals = pgTable("deals", {
@@ -1825,6 +1849,7 @@ export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
 export type ProjectContact = typeof projectContacts.$inferSelect;
 export type InsertProjectContact = z.infer<typeof insertProjectContactSchema>;
+export type Notification = typeof notifications.$inferSelect;
 export type Deal = typeof deals.$inferSelect;
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type Calendar = typeof calendars.$inferSelect;

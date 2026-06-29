@@ -25,7 +25,7 @@ import {
   insertCustomEntitySchema, insertCustomFieldSchema, insertEntityCustomValueSchema,
   insertTestExecutionSchema,
   type EmailConfig,
-  projects, tasks, partners, contacts, projectContacts, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
+  projects, tasks, partners, contacts, projectContacts, notifications, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals, projectShares,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users, organizations,
   customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions,
@@ -2721,6 +2721,60 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         eq(projectContacts.organizationId, organizationId),
       ));
       res.sendStatus(204);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // Notifications center (stakeholder notifications generated on project events)
+  app.get("/api/notifications", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const statusFilter = typeof req.query.status === "string" ? req.query.status : undefined;
+      const conditions = [eq(notifications.organizationId, organizationId)];
+      if (statusFilter) conditions.push(eq(notifications.status, statusFilter as any));
+      const rows = await db.select({
+        id: notifications.id,
+        projectId: notifications.projectId,
+        contactId: notifications.contactId,
+        eventType: notifications.eventType,
+        stakeholderRole: notifications.stakeholderRole,
+        channel: notifications.channel,
+        status: notifications.status,
+        subject: notifications.subject,
+        body: notifications.body,
+        payload: notifications.payload,
+        createdAt: notifications.createdAt,
+        contactName: contacts.name,
+        contactEmail: contacts.email,
+        projectName: projects.name,
+      })
+        .from(notifications)
+        .leftJoin(contacts, eq(notifications.contactId, contacts.id))
+        .leftJoin(projects, eq(notifications.projectId, projects.id))
+        .where(and(...conditions))
+        .orderBy(desc(notifications.createdAt))
+        .limit(200);
+      res.json(rows);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.patch("/api/notifications/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const patch: any = { updatedAt: new Date() };
+      if (req.body.status && ["pending", "sent", "dismissed"].includes(req.body.status)) patch.status = req.body.status;
+      if (req.body.subject !== undefined) patch.subject = req.body.subject;
+      if (req.body.body !== undefined) patch.body = req.body.body;
+      const [updated] = await db.update(notifications).set(patch)
+        .where(and(eq(notifications.id, req.params.id), eq(notifications.organizationId, organizationId)))
+        .returning();
+      if (!updated) return res.sendStatus(404);
+      res.json(updated);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }
