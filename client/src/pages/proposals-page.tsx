@@ -73,6 +73,8 @@ function getCreatedEntityItems(proposal: Proposal): EntityItem[] {
   if (pd.project?.isNew) push("Progetto", pd.project.name, pd.project.id);
   pd.tasks?.filter((t: any) => t.isNew).forEach((t: any) => push("Task", t.title, t.id));
   pd.contacts?.forEach((c: any) => push("Contatto", c.name, c.id));
+  pd.systems?.forEach((s: any) => push("Sistema SAP", s.name || s.systemId, s.id));
+  pd.connections?.forEach((c: any) => push("Connessione", c.name || c.connectionId, c.id));
   return items;
 }
 
