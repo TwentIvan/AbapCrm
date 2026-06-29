@@ -45,6 +45,7 @@ import SkillCatalogPage from "@/pages/skill-catalog-page";
 import AiAnalyticsPage from "@/pages/ai-analytics-page";
 import McpLibraryPage from "@/pages/mcp-library-page";
 import AiModelsPage from "@/pages/ai-models-page";
+import WorkflowsPage from "@/pages/workflows-page";
 import ConnectionWorkflowsPage from "@/pages/connection-workflows-page";
 import NotFound from "@/pages/not-found";
 
@@ -102,6 +103,7 @@ function Router() {
       <ProtectedRoute path="/ai-analytics" component={AiAnalyticsPage} />
       <ProtectedRoute path="/mcp-library" component={McpLibraryPage} />
       <ProtectedRoute path="/ai-models" component={AiModelsPage} />
+      <ProtectedRoute path="/workflows" component={WorkflowsPage} />
       <ProtectedRoute path="/connection-workflows" component={ConnectionWorkflowsPage} />
       <ProtectedRoute path="/connection-workflows/new" component={ConnectionWorkflowsPage} />
       <ProtectedRoute path="/connection-workflows/:id/edit" component={ConnectionWorkflowsPage} />
