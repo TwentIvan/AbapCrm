@@ -39,7 +39,7 @@ import {
   connectionWorkflows, insertConnectionWorkflowSchema,
   proposalDiscussions
 } from "@shared/schema";
-import { aiService } from "./ai-service";
+import { aiService, extractAnalysisText } from "./ai-service";
 import { initializeEmailService, getEmailService } from "./imap-service";
 import { AuditService } from "./audit-service";
 import { MessageLogService } from "./message-log-service";
@@ -4566,34 +4566,16 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             calendars
           };
 
-          // For forwarded emails (e.g. Derga -> Gmail), extract the ORIGINAL body so the
-          // project agent analyzes the real content, not the forwarding wrapper/signature.
-          let baseBody = message.body || '';
-          let baseFromEmail = message.fromEmail;
-          let baseFromName = message.fromName;
-          try {
-            const cleaned = await EmailForwardCleaner.cleanForwardedEmailWithTraining(
-              message.subject || '',
-              message.body || '',
-              message.htmlBody || null,
-              userId,
-              undefined,
-              null,
-              message.id,
-              (message as any).forwardArtifacts,
-            );
-            if (cleaned?.isForwarded && cleaned.originalBody && cleaned.originalBody.trim().length > 0) {
-              baseBody = cleaned.originalBody;
-              if (cleaned.originalFromEmail) baseFromEmail = cleaned.originalFromEmail;
-              if (cleaned.originalFromName) baseFromName = cleaned.originalFromName;
-              console.log(`[AI-PROJECT] Using cleaned original body for forwarded message ${message.id} (${message.body?.length || 0} -> ${baseBody.length} chars)`);
-            }
-          } catch (cleanErr) {
-            console.warn(`[AI-PROJECT] Forward cleaning failed for message ${message.id}, using raw body:`, cleanErr);
+          // For forwarded emails the stored text body is often over-stripped to the
+          // forwarder's signature; the HTML retains the original content. Use the
+          // HTML-derived text for analysis (same gentle stripping as the message view).
+          const baseBody = extractAnalysisText(message);
+          if (baseBody.length !== (message.body || '').length) {
+            console.log(`[AI-PROJECT] Using HTML-derived body for message ${message.id} (${message.body?.length || 0} -> ${baseBody.length} chars)`);
           }
 
           // Enrich message body with extracted attachment text (Excel, CSV, TXT)
-          let enrichedMessage = { ...message, body: baseBody, fromEmail: baseFromEmail, fromName: baseFromName };
+          let enrichedMessage = { ...message, body: baseBody };
           if (message.attachments && message.attachments.length > 0) {
             const attachmentSections: string[] = [];
             for (const filename of message.attachments) {

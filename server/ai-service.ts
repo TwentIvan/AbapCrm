@@ -2,9 +2,36 @@ import { storage } from "./storage";
 import { MessageLogService } from "./message-log-service";
 import { aiGateway, getDefaultModelKey } from "./ai-gateway";
 import { EmailForwardCleaner } from "./email-forward-cleaner";
+import * as cheerio from "cheerio";
 import type { Project, Task, Partner, Message } from "@shared/schema";
 
 const messageLogService = new MessageLogService();
+
+/**
+ * Extract the best plain-text content for AI analysis.
+ * For forwarded emails the stored text `body` is often over-stripped (left with
+ * only the forwarder's signature), while the HTML body retains the original
+ * content. So prefer HTML: gently strip the forwarder's signature/headers (same
+ * as the message view) and convert to text. Fall back to the longer of html-text
+ * vs the stored text body.
+ */
+export function extractAnalysisText(message: { body?: string | null; htmlBody?: string | null }): string {
+  const textBody = (message.body || "").trim();
+  const html = message.htmlBody;
+  if (!html) return textBody;
+  try {
+    const stripped = EmailForwardCleaner.stripSignaturesAndHeaders(html) || html;
+    const $ = cheerio.load(stripped);
+    // Preserve line breaks from block elements
+    $("br").replaceWith("\n");
+    $("p, div, tr, li").append("\n");
+    const htmlText = $("body").text().replace(/\n{3,}/g, "\n\n").trim();
+    // Use whichever carries more signal
+    return htmlText.length >= textBody.length ? htmlText : textBody;
+  } catch {
+    return textBody;
+  }
+}
 
 interface AISuggestion {
   type: 'project' | 'task' | 'partner';
@@ -58,36 +85,15 @@ export class AIService {
         }))
       };
 
-      // Extract the original message body for forwarded emails so the AI
-      // analyzes the original content, not the forwarding wrapper/headers.
-      let analysisBody = message.body || '';
-      let analysisFromEmail = message.fromEmail;
-      let analysisFromName = message.fromName;
-      try {
-        const cleaned = await EmailForwardCleaner.cleanForwardedEmailWithTraining(
-          message.subject || '',
-          message.body || '',
-          message.htmlBody || null,
-          userId,
-          undefined,
-          null,
-          message.id,
-          (message as any).forwardArtifacts,
-        );
-        if (cleaned?.isForwarded && cleaned.originalBody && cleaned.originalBody.trim().length > 0) {
-          analysisBody = cleaned.originalBody;
-          // Prefer the original sender when the email was forwarded
-          if (cleaned.originalFromEmail) analysisFromEmail = cleaned.originalFromEmail;
-          if (cleaned.originalFromName) analysisFromName = cleaned.originalFromName;
-          console.log(`[AI-SERVICE] Using cleaned original body for forwarded message ${message.id} (${message.body?.length || 0} -> ${analysisBody.length} chars)`);
-        }
-      } catch (cleanErr) {
-        console.warn(`[AI-SERVICE] Forward cleaning failed for message ${message.id}, using raw body:`, cleanErr);
-      }
+      // Prefer the (richer) HTML body for analysis: the plain-text `body` is often
+      // over-stripped for forwarded emails (reduced to the forwarder's signature),
+      // while the HTML retains the original content. Use gentle signature/header
+      // stripping (same as the message view) and convert to text.
+      const analysisBody = extractAnalysisText(message);
 
       // Create analysis prompt
       const emailContent = `
-        From: ${analysisFromEmail} (${analysisFromName || 'N/A'})
+        From: ${message.fromEmail} (${message.fromName || 'N/A'})
         To: ${message.toEmail}
         Subject: ${message.subject || 'No Subject'}
         Body: ${analysisBody || 'No Body'}
