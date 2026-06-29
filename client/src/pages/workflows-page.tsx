@@ -68,7 +68,6 @@ export default function WorkflowsPage() {
   const { data: meta } = useQuery<{ entities: WorkflowEntity[]; operators: Operator[] }>({
     queryKey: ["/api/workflow-entities"],
     queryFn: getQueryFn({ on401: "throw" }),
-    enabled: !!currentOrganizationId,
   });
   const entities = meta?.entities || [];
   const operators = meta?.operators || [];
