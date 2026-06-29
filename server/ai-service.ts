@@ -1,6 +1,7 @@
 import { storage } from "./storage";
 import { MessageLogService } from "./message-log-service";
 import { aiGateway, getDefaultModelKey } from "./ai-gateway";
+import { EmailForwardCleaner } from "./email-forward-cleaner";
 import type { Project, Task, Partner, Message } from "@shared/schema";
 
 const messageLogService = new MessageLogService();
@@ -57,12 +58,39 @@ export class AIService {
         }))
       };
 
+      // Extract the original message body for forwarded emails so the AI
+      // analyzes the original content, not the forwarding wrapper/headers.
+      let analysisBody = message.body || '';
+      let analysisFromEmail = message.fromEmail;
+      let analysisFromName = message.fromName;
+      try {
+        const cleaned = await EmailForwardCleaner.cleanForwardedEmailWithTraining(
+          message.subject || '',
+          message.body || '',
+          message.htmlBody || null,
+          userId,
+          undefined,
+          null,
+          message.id,
+          (message as any).forwardArtifacts,
+        );
+        if (cleaned?.isForwarded && cleaned.originalBody && cleaned.originalBody.trim().length > 0) {
+          analysisBody = cleaned.originalBody;
+          // Prefer the original sender when the email was forwarded
+          if (cleaned.originalFromEmail) analysisFromEmail = cleaned.originalFromEmail;
+          if (cleaned.originalFromName) analysisFromName = cleaned.originalFromName;
+          console.log(`[AI-SERVICE] Using cleaned original body for forwarded message ${message.id} (${message.body?.length || 0} -> ${analysisBody.length} chars)`);
+        }
+      } catch (cleanErr) {
+        console.warn(`[AI-SERVICE] Forward cleaning failed for message ${message.id}, using raw body:`, cleanErr);
+      }
+
       // Create analysis prompt
       const emailContent = `
-        From: ${message.fromEmail} (${message.fromName || 'N/A'})
+        From: ${analysisFromEmail} (${analysisFromName || 'N/A'})
         To: ${message.toEmail}
         Subject: ${message.subject || 'No Subject'}
-        Body: ${message.body || 'No Body'}
+        Body: ${analysisBody || 'No Body'}
       `;
 
       const prompt = `
