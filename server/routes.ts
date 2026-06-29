@@ -4566,8 +4566,34 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             calendars
           };
 
+          // For forwarded emails (e.g. Derga -> Gmail), extract the ORIGINAL body so the
+          // project agent analyzes the real content, not the forwarding wrapper/signature.
+          let baseBody = message.body || '';
+          let baseFromEmail = message.fromEmail;
+          let baseFromName = message.fromName;
+          try {
+            const cleaned = await EmailForwardCleaner.cleanForwardedEmailWithTraining(
+              message.subject || '',
+              message.body || '',
+              message.htmlBody || null,
+              userId,
+              undefined,
+              null,
+              message.id,
+              (message as any).forwardArtifacts,
+            );
+            if (cleaned?.isForwarded && cleaned.originalBody && cleaned.originalBody.trim().length > 0) {
+              baseBody = cleaned.originalBody;
+              if (cleaned.originalFromEmail) baseFromEmail = cleaned.originalFromEmail;
+              if (cleaned.originalFromName) baseFromName = cleaned.originalFromName;
+              console.log(`[AI-PROJECT] Using cleaned original body for forwarded message ${message.id} (${message.body?.length || 0} -> ${baseBody.length} chars)`);
+            }
+          } catch (cleanErr) {
+            console.warn(`[AI-PROJECT] Forward cleaning failed for message ${message.id}, using raw body:`, cleanErr);
+          }
+
           // Enrich message body with extracted attachment text (Excel, CSV, TXT)
-          let enrichedMessage = { ...message };
+          let enrichedMessage = { ...message, body: baseBody, fromEmail: baseFromEmail, fromName: baseFromName };
           if (message.attachments && message.attachments.length > 0) {
             const attachmentSections: string[] = [];
             for (const filename of message.attachments) {
@@ -4583,8 +4609,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             }
             if (attachmentSections.length > 0) {
               enrichedMessage = {
-                ...message,
-                body: (message.body || '') + attachmentSections.join(''),
+                ...enrichedMessage,
+                body: baseBody + attachmentSections.join(''),
               };
             }
           }
