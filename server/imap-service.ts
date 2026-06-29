@@ -498,10 +498,11 @@ export class ImapEmailService {
       // Run AI analysis in background - with error handling for quota limits
       if (process.env.OPENAI_API_KEY) {
         try {
-          // Get user's first organization for AI context
-          const userOrganizations = await storage.getUserOrganizations(messageData.userId);
-          const organizationId = userOrganizations.length > 0 ? userOrganizations[0].organizationId : undefined;
-          
+          // Use the email account's organization (consistent with how the message
+          // was saved), not the user's first org. getUserOrganizations returns `.id`.
+          const organizationId = this.config.organizationId
+            || (await storage.getUserOrganizations(messageData.userId))[0]?.id;
+
           const analysis = await aiService.analyzeMessage(savedMessage, messageData.userId, organizationId);
           if (analysis.bestMatch) {
             await aiService.updateMessageWithSuggestion(
