@@ -189,6 +189,35 @@ export async function runStartupMigrations(): Promise<boolean> {
     `);
     console.log('[DB] ✓ notifications table ensured');
 
+    // Migration 0010: project workflows (agent-proposed trigger objects)
+    await client.query(`
+      DO $$ BEGIN
+        CREATE TYPE "project_workflow_action" AS ENUM ('inform', 'approve', 'review');
+      EXCEPTION WHEN duplicate_object THEN null; END $$;
+      DO $$ BEGIN
+        CREATE TYPE "project_workflow_status" AS ENUM ('draft', 'active', 'inactive');
+      EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+      CREATE TABLE IF NOT EXISTS "project_workflows" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "organization_id" uuid NOT NULL REFERENCES "organizations"("id"),
+        "user_id" uuid NOT NULL REFERENCES "users"("id"),
+        "project_id" uuid NOT NULL REFERENCES "projects"("id") ON DELETE CASCADE,
+        "name" text NOT NULL,
+        "description" text,
+        "trigger_event" text NOT NULL,
+        "trigger_config" jsonb,
+        "actors" jsonb DEFAULT '[]',
+        "channel" "notification_channel" NOT NULL DEFAULT 'email_draft',
+        "status" "project_workflow_status" NOT NULL DEFAULT 'draft',
+        "source_message_ids" text[] DEFAULT '{}',
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "project_workflows_project_idx" ON "project_workflows" ("project_id");
+    `);
+    console.log('[DB] ✓ project_workflows table ensured');
+
     client.release();
     return true;
   } catch (error) {

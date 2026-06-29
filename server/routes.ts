@@ -25,7 +25,7 @@ import {
   insertCustomEntitySchema, insertCustomFieldSchema, insertEntityCustomValueSchema,
   insertTestExecutionSchema,
   type EmailConfig,
-  projects, tasks, partners, contacts, projectContacts, notifications, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
+  projects, tasks, partners, contacts, projectContacts, notifications, projectWorkflows, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals, projectShares,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users, organizations,
   customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions,
@@ -2726,6 +2726,58 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Project workflows (agent-proposed trigger objects: event + actors + action)
+  app.get("/api/projects/:projectId/workflows", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const rows = await db.select().from(projectWorkflows)
+        .where(and(
+          eq(projectWorkflows.projectId, req.params.projectId),
+          eq(projectWorkflows.organizationId, organizationId),
+        ))
+        .orderBy(desc(projectWorkflows.createdAt));
+      res.json(rows);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.patch("/api/projects/:projectId/workflows/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const patch: any = { updatedAt: new Date() };
+      if (req.body.name !== undefined) patch.name = req.body.name;
+      if (req.body.description !== undefined) patch.description = req.body.description;
+      if (req.body.triggerEvent !== undefined) patch.triggerEvent = req.body.triggerEvent;
+      if (req.body.triggerConfig !== undefined) patch.triggerConfig = req.body.triggerConfig;
+      if (req.body.actors !== undefined) patch.actors = req.body.actors;
+      if (req.body.status && ["draft", "active", "inactive"].includes(req.body.status)) patch.status = req.body.status;
+      const [updated] = await db.update(projectWorkflows).set(patch)
+        .where(and(eq(projectWorkflows.id, req.params.id), eq(projectWorkflows.organizationId, organizationId)))
+        .returning();
+      if (!updated) return res.sendStatus(404);
+      res.json(updated);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.delete("/api/projects/:projectId/workflows/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      await db.delete(projectWorkflows).where(and(
+        eq(projectWorkflows.id, req.params.id),
+        eq(projectWorkflows.organizationId, organizationId),
+      ));
+      res.sendStatus(204);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
   // Notifications center (stakeholder notifications generated on project events)
   app.get("/api/notifications", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -4888,6 +4940,47 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             }
           } catch (e) {
             console.warn(`[PROPOSAL APPLY] Could not link stakeholder ${sh.contactEmail}:`, e);
+          }
+        }
+      }
+
+      // 4c. Create agent-proposed workflow objects (triggers + actors). No execution yet.
+      results.workflows = [];
+      if (results.project?.id && Array.isArray((proposalData as any).workflows)) {
+        const validEvents = ["project_status_change", "milestone_reached", "task_completed", "progress_threshold"];
+        const validActions = ["inform", "approve", "review"];
+        for (const wf of (proposalData as any).workflows) {
+          if (!wf.name || !validEvents.includes(wf.triggerEvent)) continue;
+          // Resolve actors to contact ids where possible (match stakeholders/contacts by email)
+          const actors = Array.isArray(wf.actors)
+            ? wf.actors
+                .filter((a: any) => a.contactEmail && validActions.includes(a.action))
+                .map((a: any) => {
+                  const c = (results.contacts as any[]).find(
+                    (cc: any) => cc.email?.toLowerCase() === a.contactEmail.toLowerCase()
+                  );
+                  return { contactEmail: a.contactEmail, contactId: c?.id, action: a.action };
+                })
+            : [];
+          try {
+            const [wfRow] = await db.insert(projectWorkflows).values({
+              projectId: results.project.id,
+              name: wf.name,
+              description: wf.description || null,
+              triggerEvent: wf.triggerEvent,
+              triggerConfig: wf.triggerConfig || null,
+              actors,
+              status: "draft",
+              sourceMessageIds: [proposal.messageId],
+              userId,
+              organizationId,
+            }).returning();
+            if (wfRow) {
+              results.workflows.push(wfRow);
+              console.log(`[PROPOSAL APPLY] Created workflow "${wf.name}" (${wf.triggerEvent}, ${actors.length} actors) for project ${results.project.id}`);
+            }
+          } catch (e) {
+            console.warn(`[PROPOSAL APPLY] Could not create workflow "${wf.name}":`, e);
           }
         }
       }
