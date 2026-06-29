@@ -4818,21 +4818,27 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       results.systems = [];
       if (Array.isArray(proposalData.systems)) {
         for (const sysProposal of proposalData.systems) {
+          // Try to link an existing system first
+          let linkedExisting = false;
           if (!sysProposal.isNew && sysProposal.existingId) {
-            // Match existing — record the mapping
-            systemNameToId.set(sysProposal.name, sysProposal.existingId);
             const existing = await storage.getSapSystem(sysProposal.existingId, userId);
-            if (existing) results.systems.push(existing);
-          } else if (sysProposal.isNew) {
-            // Create stub system — only if minimum required fields are satisfiable
-            const sid = (sysProposal.systemId || sysProposal.name || 'TBC').substring(0, 3).toUpperCase();
+            if (existing) {
+              systemNameToId.set(sysProposal.name, sysProposal.existingId);
+              results.systems.push(existing);
+              linkedExisting = true;
+            }
+          }
+          // Otherwise create a stub — covers isNew=true AND isNew=false without a
+          // valid existing match (system referenced in the message but not yet created).
+          if (!linkedExisting && sysProposal.name) {
+            const sid = (sysProposal.systemId || sysProposal.name || 'TBC').replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase() || 'TBC';
             try {
               const sysData: any = {
                 name: sysProposal.name,
                 systemId: sid,
                 description: sysProposal.notes || `Proposto dall'agente AI — da configurare (host, credenziali, ecc.)`,
-                serverHost: 'TBC',
-                systemNumber: '00',
+                serverHost: sysProposal.serverHost || 'TBC',
+                systemNumber: sysProposal.systemNumber || '00',
                 landscapeType: sysProposal.landscapeType || 'other',
                 partnerId: results.partner?.id || null,
                 notes: `needsManualConfig=true. ${sysProposal.notes || ''}`.trim(),

@@ -106,6 +106,9 @@ export interface ProjectProposal {
     landscapeType?: "development" | "test" | "quality" | "pre_production" | "production" | "other";
     role?: "target" | "reference";
     needsManualConfig?: boolean;
+    // Connection params — ONLY when explicitly present in the message (never invented).
+    serverHost?: string;
+    systemNumber?: string;
     notes?: string;
   }>;
   connections?: Array<{
@@ -426,8 +429,12 @@ proposing it.**
 ### Infrastructure Awareness (Phase 6)
 **SAP Systems (match-first):**
 - Check EXISTING SAP SYSTEMS list before proposing new ones
-- If a system is clearly referenced (by name, SID, or client): use existingId, isNew=false
-- If a new system is needed: isNew=true, needsManualConfig=true (never invent host/credentials)
+- If a system MATCHES one in the EXISTING SAP SYSTEMS list: use its existingId, isNew=false
+- If a system is referenced/described but NOT in the existing list: isNew=true (it must be
+  created). Do NOT set isNew=false without a real existingId — that would skip it.
+- needsManualConfig=true; never INVENT host/credentials. BUT if the message EXPLICITLY contains
+  connection parameters (host/IP, system number, client/SID), copy them verbatim into
+  serverHost / systemNumber / systemId — copying what's stated is not inventing.
 - Set role: "target" = work happens here; "reference" = read-only context
 
 **Connections (match-first):**
@@ -563,6 +570,8 @@ Return valid JSON ONLY with this structure (ALL text fields in ITALIAN):
       "landscapeType": "development|test|quality|pre_production|production|other",
       "role": "target|reference",
       "needsManualConfig": true (always true when isNew),
+      "serverHost": "host/IP ONLY if explicitly stated in the message, else omit",
+      "systemNumber": "system number (00/01/...) ONLY if explicitly stated, else omit",
       "notes": "ITALIAN: note"
     }
   ],
