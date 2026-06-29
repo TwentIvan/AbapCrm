@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -23,29 +22,28 @@ import Header from "@/components/layout/header";
 import { Workflow, Loader2, Plus, Pencil, Trash2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Entity types whose events can drive a workflow (data-driven; extendable)
-const ENTITY_TYPES = ["project", "task", "deal", "contact", "milestone", "message", "sales_order", "quote"];
-const TRIGGER_EVENTS = ["created", "updated", "status_changed", "field_changed", "threshold_reached", "completed"];
+const TRIGGER_EVENTS = [
+  { value: "created", label: "Creazione" },
+  { value: "updated", label: "Modifica" },
+  { value: "deleted", label: "Eliminazione" },
+];
 const ACTOR_ACTIONS = ["inform", "approve", "review"];
 const ACTION_TYPES = ["notify", "request_approval", "send_email", "create_task"];
 const STATUSES = ["draft", "active", "inactive"];
 
+interface WorkflowField { name: string; label: string; type: string; enumValues?: string[]; relationEntity?: string; }
+interface WorkflowEntity { entityType: string; label: string; fields: WorkflowField[]; }
+interface Operator { value: string; label: string; types: string[]; }
 interface Actor { contactEmail: string; action: string; }
 interface Action { type: string; config?: Record<string, any>; }
+interface Condition { field: string; operator: string; value: string; }
 
 interface WorkflowRow {
-  id: string;
-  name: string;
-  description: string | null;
-  entityType: string;
-  entityId: string | null;
-  triggerEvent: string;
-  triggerConfig: Record<string, any> | null;
-  actors: Actor[] | null;
-  actions: Action[] | null;
-  status: string;
+  id: string; name: string; description: string | null; entityType: string;
+  entityId: string | null; triggerEvent: string;
+  conditions: { rules?: Condition[] } | null;
+  actors: Actor[] | null; actions: Action[] | null; status: string;
 }
-
 interface ContactRow { id: string; name: string; email: string; }
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
@@ -54,7 +52,7 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
 
 const emptyForm = {
   name: "", description: "", entityType: "project", entityId: "",
-  triggerEvent: "status_changed", triggerField: "", triggerValue: "",
+  triggerEvent: "updated", conditions: [] as Condition[],
   actors: [] as Actor[], actions: [] as Action[], status: "draft" as string,
 };
 
@@ -66,6 +64,14 @@ export default function WorkflowsPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+
+  const { data: meta } = useQuery<{ entities: WorkflowEntity[]; operators: Operator[] }>({
+    queryKey: ["/api/workflow-entities"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentOrganizationId,
+  });
+  const entities = meta?.entities || [];
+  const operators = meta?.operators || [];
 
   const { data: rows, isLoading } = useQuery<WorkflowRow[]>({
     queryKey: ["/api/workflows"],
@@ -79,18 +85,17 @@ export default function WorkflowsPage() {
     enabled: !!currentOrganizationId,
   });
 
+  const selectedEntity = entities.find((e) => e.entityType === form.entityType);
+  const entityLabel = (et: string) => entities.find((e) => e.entityType === et)?.label || et;
+
   const saveMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const triggerConfig: Record<string, any> = {};
-      if (data.triggerField) triggerConfig.field = data.triggerField;
-      if (data.triggerValue) {
-        triggerConfig[data.triggerEvent === "threshold_reached" ? "threshold" : "toValue"] =
-          data.triggerEvent === "threshold_reached" ? Number(data.triggerValue) : data.triggerValue;
-      }
+    mutationFn: async (data: typeof form) => {
       const body = {
         name: data.name, description: data.description, entityType: data.entityType,
         entityId: data.entityId || null, triggerEvent: data.triggerEvent,
-        triggerConfig: Object.keys(triggerConfig).length ? triggerConfig : null,
+        conditions: data.triggerEvent === "updated" && data.conditions.length
+          ? { rules: data.conditions.filter((c) => c.field && c.operator) }
+          : null,
         actors: data.actors, actions: data.actions, status: data.status,
       };
       if (editId) return apiRequest("PATCH", `/api/workflows/${editId}`, body);
@@ -120,15 +125,23 @@ export default function WorkflowsPage() {
 
   function openEdit(w: WorkflowRow) {
     setEditId(w.id);
-    const tc = w.triggerConfig || {};
     setForm({
       name: w.name, description: w.description || "", entityType: w.entityType,
       entityId: w.entityId || "", triggerEvent: w.triggerEvent,
-      triggerField: tc.field || "",
-      triggerValue: tc.toValue ?? tc.threshold ?? "",
+      conditions: w.conditions?.rules || [],
       actors: w.actors || [], actions: w.actions || [], status: w.status,
     });
     setEditOpen(true);
+  }
+
+  // Operators valid for a given field's type
+  function operatorsForField(fieldName: string): Operator[] {
+    const f = selectedEntity?.fields.find((x) => x.name === fieldName);
+    if (!f) return operators;
+    return operators.filter((op) => op.types.includes(f.type));
+  }
+  function fieldMeta(fieldName: string): WorkflowField | undefined {
+    return selectedEntity?.fields.find((x) => x.name === fieldName);
   }
 
   return (
@@ -159,6 +172,7 @@ export default function WorkflowsPage() {
                       <TableHead>Nome</TableHead>
                       <TableHead>Entità</TableHead>
                       <TableHead>Evento</TableHead>
+                      <TableHead>Condizioni</TableHead>
                       <TableHead>Attori</TableHead>
                       <TableHead>Azioni</TableHead>
                       <TableHead>Stato</TableHead>
@@ -169,10 +183,11 @@ export default function WorkflowsPage() {
                     {(rows || []).map((w) => (
                       <TableRow key={w.id}>
                         <TableCell className="font-medium">{w.name}</TableCell>
-                        <TableCell><Badge variant="outline">{w.entityType}</Badge></TableCell>
-                        <TableCell className="font-mono text-xs">{w.triggerEvent}</TableCell>
+                        <TableCell><Badge variant="outline">{entityLabel(w.entityType)}</Badge></TableCell>
+                        <TableCell>{TRIGGER_EVENTS.find((e) => e.value === w.triggerEvent)?.label || w.triggerEvent}</TableCell>
+                        <TableCell>{w.conditions?.rules?.length || 0}</TableCell>
                         <TableCell>{(w.actors || []).length}</TableCell>
-                        <TableCell className="text-xs">{(w.actions || []).map(a => a.type).join(", ") || "—"}</TableCell>
+                        <TableCell className="text-xs">{(w.actions || []).map((a) => a.type).join(", ") || "—"}</TableCell>
                         <TableCell><Badge variant={STATUS_VARIANTS[w.status]}>{w.status}</Badge></TableCell>
                         <TableCell>
                           <div className="flex gap-1">
@@ -190,7 +205,7 @@ export default function WorkflowsPage() {
                     ))}
                     {(rows || []).length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
+                        <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
                           Nessun workflow configurato
                         </TableCell>
                       </TableRow>
@@ -209,7 +224,7 @@ export default function WorkflowsPage() {
               <div className="space-y-4">
                 <div>
                   <Label>Nome</Label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Es. Approvazione completamento" />
+                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Es. Approvazione completamento progetto" />
                 </div>
                 <div>
                   <Label>Descrizione</Label>
@@ -218,10 +233,14 @@ export default function WorkflowsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Entità (trigger)</Label>
-                    <Select value={form.entityType} onValueChange={(v) => setForm({ ...form, entityType: v })}>
+                    <Select value={form.entityType} onValueChange={(v) => setForm({ ...form, entityType: v, conditions: [] })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {ENTITY_TYPES.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                        {entities.map((e) => (
+                          <SelectItem key={e.entityType} value={e.entityType}>
+                            {e.label} <span className="text-muted-foreground font-mono text-xs">({e.entityType})</span>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -230,21 +249,73 @@ export default function WorkflowsPage() {
                     <Select value={form.triggerEvent} onValueChange={(v) => setForm({ ...form, triggerEvent: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {TRIGGER_EVENTS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                        {TRIGGER_EVENTS.map((e) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Campo (opzionale)</Label>
-                    <Input value={form.triggerField} onChange={(e) => setForm({ ...form, triggerField: e.target.value })} placeholder="es. status, completionPercentage" />
+
+                {/* Conditions — only for "updated" */}
+                {form.triggerEvent === "updated" && (
+                  <div className="space-y-2 rounded-md border p-3">
+                    <div className="flex items-center justify-between">
+                      <Label>Condizioni sui campi (modifica)</Label>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setForm({ ...form, conditions: [...form.conditions, { field: "", operator: "eq", value: "" }] })}>
+                        <Plus className="h-3 w-3 mr-1" /> Condizione
+                      </Button>
+                    </div>
+                    {form.conditions.length === 0 && (
+                      <p className="text-xs text-muted-foreground">Nessuna condizione: il workflow scatta ad ogni modifica.</p>
+                    )}
+                    {form.conditions.map((c, i) => {
+                      const fm = fieldMeta(c.field);
+                      return (
+                        <div key={i} className="flex gap-2 items-center">
+                          <Select value={c.field} onValueChange={(v) => {
+                            const next = [...form.conditions]; next[i] = { ...next[i], field: v, value: "" }; setForm({ ...form, conditions: next });
+                          }}>
+                            <SelectTrigger className="flex-1"><SelectValue placeholder="Campo" /></SelectTrigger>
+                            <SelectContent>
+                              {(selectedEntity?.fields || []).map((f) => (
+                                <SelectItem key={f.name} value={f.name}>
+                                  {f.label} <span className="text-muted-foreground font-mono text-xs">({f.name})</span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select value={c.operator} onValueChange={(v) => {
+                            const next = [...form.conditions]; next[i] = { ...next[i], operator: v }; setForm({ ...form, conditions: next });
+                          }}>
+                            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {operatorsForField(c.field).map((op) => <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          {c.operator !== "changed" && (
+                            fm?.type === "enum" ? (
+                              <Select value={c.value} onValueChange={(v) => {
+                                const next = [...form.conditions]; next[i] = { ...next[i], value: v }; setForm({ ...form, conditions: next });
+                              }}>
+                                <SelectTrigger className="w-40"><SelectValue placeholder="Valore" /></SelectTrigger>
+                                <SelectContent>
+                                  {(fm.enumValues || []).map((ev) => <SelectItem key={ev} value={ev}>{ev}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Input className="w-40" value={c.value} placeholder="Valore" onChange={(e) => {
+                                const next = [...form.conditions]; next[i] = { ...next[i], value: e.target.value }; setForm({ ...form, conditions: next });
+                              }} />
+                            )
+                          )}
+                          <Button type="button" variant="ghost" size="icon" onClick={() => setForm({ ...form, conditions: form.conditions.filter((_, j) => j !== i) })}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div>
-                    <Label>Valore / Soglia</Label>
-                    <Input value={form.triggerValue} onChange={(e) => setForm({ ...form, triggerValue: e.target.value })} placeholder="es. completed, 50" />
-                  </div>
-                </div>
+                )}
+
                 <div>
                   <Label>ID record specifico (opzionale)</Label>
                   <Input value={form.entityId} onChange={(e) => setForm({ ...form, entityId: e.target.value })} placeholder="lascia vuoto per tutti i record dell'entità" />

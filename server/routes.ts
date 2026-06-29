@@ -2726,6 +2726,13 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Workflow entity metadata (entities + their fields + operators) for the configurator
+  app.get("/api/workflow-entities", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { WORKFLOW_ENTITIES, WORKFLOW_OPERATORS } = await import("./workflow-entities");
+    res.json({ entities: WORKFLOW_ENTITIES, operators: WORKFLOW_OPERATORS });
+  });
+
   // Workflows — generic, entity-agnostic configurator (list/create/update/delete)
   app.get("/api/workflows", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -4993,7 +5000,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
               entityType: wf.entityType,
               entityId,
               triggerEvent: wf.triggerEvent,
-              triggerConfig: wf.triggerConfig || null,
+              conditions: wf.triggerEvent === "updated" && wf.conditions ? wf.conditions : null,
               actors,
               actions: Array.isArray(wf.actions) ? wf.actions : [],
               status: "draft",

@@ -53,8 +53,9 @@ export interface ProjectProposal {
     name: string;
     description?: string;
     entityType: string; // "project" | "task" | "deal" | "contact" | "milestone" | "message" | ...
-    triggerEvent: string; // "created" | "updated" | "status_changed" | "field_changed" | "threshold_reached" | "completed"
-    triggerConfig?: Record<string, any>; // e.g. { field: "status", toValue: "completed" } | { field: "completionPercentage", threshold: 50 }
+    triggerEvent: "created" | "updated" | "deleted"; // CRUD events only
+    // Field conditions apply ONLY when triggerEvent === "updated".
+    conditions?: { rules: Array<{ field: string; operator: string; value?: any }> };
     actors?: Array<{
       contactEmail: string;
       action: "inform" | "approve" | "review";
@@ -335,9 +336,12 @@ When the message implies a recurring communication or approval need, propose wor
 workflow is fully data-driven — its design lives in the field values, NOT in fixed types:
 - **entityType**: the name of the entity whose events drive the workflow — "project", "task",
   "deal", "contact", "milestone", "message", etc. Pick whichever entity the automation is about.
-- **triggerEvent**: when it fires — "created", "updated", "status_changed", "field_changed",
-  "threshold_reached", "completed". Use **triggerConfig** to qualify it, e.g.
-  { field: "status", toValue: "completed" } or { field: "completionPercentage", threshold: 50 }.
+- **triggerEvent**: a CRUD event only — "created", "updated", or "deleted".
+- **conditions** (ONLY for triggerEvent="updated"): rules on the entity's fields, e.g.
+  { rules: [ { field: "status", operator: "eq", value: "completed" } ] }. Operators:
+  eq, neq, gt, lt, gte, lte, changed. "status" is just one field among many — condition on
+  whatever field matters (completionPercentage, priority, dueDate, ...). Omit conditions for
+  created/deleted.
 - **actors**: which stakeholders are involved and what they do — "inform" (receive an update),
   "approve" (must sign off), "review". Reference each by contactEmail matching a stakeholder.
 - **actions**: what the workflow does — e.g. { type: "notify" }, { type: "request_approval" },
@@ -503,8 +507,8 @@ Return valid JSON ONLY with this structure (ALL text fields in ITALIAN):
       "name": "ITALIAN: nome breve del workflow (es. 'Approvazione completamento')",
       "description": "ITALIAN: cosa fa il workflow",
       "entityType": "project|task|deal|contact|milestone|message|...",
-      "triggerEvent": "created|updated|status_changed|field_changed|threshold_reached|completed",
-      "triggerConfig": { "field": "status", "toValue": "completed" },
+      "triggerEvent": "created|updated|deleted",
+      "conditions": { "rules": [ { "field": "status", "operator": "eq", "value": "completed" } ] },
       "actors": [
         { "contactEmail": "email (deve combaciare con uno stakeholder)", "action": "inform|approve|review" }
       ],
