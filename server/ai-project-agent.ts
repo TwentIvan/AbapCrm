@@ -336,6 +336,21 @@ Modella il lavoro; la comunicazione è al massimo un singolo task piccolo.
 
 For each task, set sapSystemRef matching the name of the target SAP system (from existing or newly proposed systems).
 
+### ⚠️ CRITICAL: Task Matching / Deduplication (match-first, like projects & systems)
+**If the matched project already exists (project.isNew=false), you MUST compare every task you
+generate against that project's EXISTING TASKS (see list above, grouped by project) BEFORE
+proposing it.**
+- If an existing task semantically covers the same work (same subProjectName/target system +
+  equivalent taskType + same objective), set the task **isNew=false** and populate **existingId**
+  with the existing task's id. Do NOT recreate it.
+- Only set isNew=true for work genuinely NOT yet present among the project's existing tasks.
+- Ignore/match-only existing tasks already in status "done"/"completed" (don't duplicate them).
+- **Effort consistency**: when a task is matched (isNew=false), its estimatedEffort still counts
+  toward project.estimatedEffort, but do NOT double-count — the project total = Σ of all tasks
+  (new + existing) for the intended scope, not new-only.
+- When unsure whether a generated task duplicates an existing one, prefer isNew=false +
+  needsClarification over silently creating a duplicate.
+
 ### Effort Estimation (Conservative)
 - Simple report/form: 8-16h | Medium ABAP program: 24-40h | Complex interface: 40-80h
 - Fiori app: 60-120h | Analysis/design: 4-16h | Meetings: 2-4h | Bug fix: 2-8h | Docs: 4-8h
@@ -414,7 +429,8 @@ Return valid JSON ONLY with this structure (ALL text fields in ITALIAN):
   ],
   "tasks": [
     {
-      "isNew": true,
+      "isNew": boolean,
+      "existingId": "tasks.id if this task already exists in the matched project (isNew=false)",
       "title": "ITALIAN: Titolo specifico",
       "description": "ITALIAN: Cosa deve essere fatto",
       "priority": "low|medium|high|urgent",
@@ -529,13 +545,29 @@ ${existingPartners.length > 0
   : '  (no existing partners)'}
 ${existingPartners.length > 20 ? `  ... and ${existingPartners.length - 20} more` : ''}
 
-**EXISTING TASKS** (${existingTasks.length} total):
-${existingTasks.length > 0
-  ? existingTasks.slice(0, 15).map(t => 
-      `  • [${t.id}] "${t.title}" - Project: ${t.projectId || 'none'}, Status: ${t.status}, Priority: ${t.priority}`
-    ).join('\n')
-  : '  (no existing tasks)'}
-${existingTasks.length > 15 ? `  ... and ${existingTasks.length - 15} more` : ''}
+**EXISTING TASKS** (${existingTasks.length} total) — grouped by project, match-first to avoid duplicates:
+${(() => {
+  if (existingTasks.length === 0) return '  (no existing tasks)';
+  // Group tasks by project so the agent can match generated tasks against
+  // the tasks already present in the matched project (dedup).
+  const byProject = new Map<string, Task[]>();
+  for (const t of existingTasks) {
+    const key = t.projectId || 'none';
+    if (!byProject.has(key)) byProject.set(key, []);
+    byProject.get(key)!.push(t);
+  }
+  const projName = new Map(existingProjects.map(p => [p.id, p.name]));
+  const blocks: string[] = [];
+  for (const [pid, tlist] of byProject) {
+    const header = pid === 'none' ? 'Project: (none)' : `Project [${pid}] "${projName.get(pid) || '?'}"`;
+    const lines = tlist.slice(0, 30).map(t =>
+      `    • [${t.id}] "${t.title}" - Type: ${t.taskType}, Status: ${t.status}, Effort: ${t.estimatedEffort || 'N/A'}h`
+    ).join('\n');
+    const more = tlist.length > 30 ? `\n    ... and ${tlist.length - 30} more` : '';
+    blocks.push(`  ${header} (${tlist.length} task):\n${lines}${more}`);
+  }
+  return blocks.join('\n');
+})()}
 
 **EXISTING SAP SYSTEMS** (${existingSapSystems.length} total) — match-first, target tasks here:
 ${formatSapSystems(existingSapSystems)}
