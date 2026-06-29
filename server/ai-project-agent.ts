@@ -45,17 +45,23 @@ export interface ProjectProposal {
     notify?: boolean; // receive progress notifications
     notes?: string;
   }>;
-  // Workflow objects the agent proposes: which event fires the workflow and which
-  // stakeholders (actors) are involved with what action. Only the objects are created;
-  // execution is layered on later.
+  // Workflow objects the agent proposes — generic and entity-agnostic. The design is in
+  // the values: entityType names the entity whose events drive it, triggerEvent/Config say
+  // when it fires, actors say who is involved, actions say what happens. Only the objects
+  // are created; execution is layered on later.
   workflows?: Array<{
     name: string;
     description?: string;
-    triggerEvent: "project_status_change" | "milestone_reached" | "task_completed" | "progress_threshold";
-    triggerConfig?: Record<string, any>; // e.g. { toStatus: "completed" } | { threshold: 50 }
-    actors: Array<{
+    entityType: string; // "project" | "task" | "deal" | "contact" | "milestone" | "message" | ...
+    triggerEvent: string; // "created" | "updated" | "status_changed" | "field_changed" | "threshold_reached" | "completed"
+    triggerConfig?: Record<string, any>; // e.g. { field: "status", toValue: "completed" } | { field: "completionPercentage", threshold: 50 }
+    actors?: Array<{
       contactEmail: string;
       action: "inform" | "approve" | "review";
+    }>;
+    actions?: Array<{
+      type: string; // "notify" | "request_approval" | "send_email" | "create_task" | ...
+      config?: Record<string, any>;
     }>;
   }>;
   tasks: Array<{
@@ -324,19 +330,23 @@ Identify which contacts are **interested parties of the project** and populate s
   responsible; people in CC interested in updates = informed. Be conservative — only add a
   stakeholder when the message genuinely indicates interest/involvement. Empty array if unclear.
 
-### Workflows (propose the automation, don't execute it)
-When the message implies a recurring communication or approval need, propose workflows[]:
-- **triggerEvent**: which project event should fire it — project_status_change (use
-  triggerConfig.toStatus), milestone_reached, task_completed, or progress_threshold
-  (triggerConfig.threshold = 50/100...).
+### Workflows (propose the automation, don't execute it) — GENERIC & ENTITY-AGNOSTIC
+When the message implies a recurring communication or approval need, propose workflows[]. A
+workflow is fully data-driven — its design lives in the field values, NOT in fixed types:
+- **entityType**: the name of the entity whose events drive the workflow — "project", "task",
+  "deal", "contact", "milestone", "message", etc. Pick whichever entity the automation is about.
+- **triggerEvent**: when it fires — "created", "updated", "status_changed", "field_changed",
+  "threshold_reached", "completed". Use **triggerConfig** to qualify it, e.g.
+  { field: "status", toValue: "completed" } or { field: "completionPercentage", threshold: 50 }.
 - **actors**: which stakeholders are involved and what they do — "inform" (receive an update),
-  "approve" (must sign off, blocks progress), "review". Reference each actor by contactEmail
-  matching a stakeholder you proposed.
+  "approve" (must sign off), "review". Reference each by contactEmail matching a stakeholder.
+- **actions**: what the workflow does — e.g. { type: "notify" }, { type: "request_approval" },
+  { type: "send_email" }, { type: "create_task", config: {...} }.
 - Name/description in Italian. Propose a workflow ONLY when the message genuinely signals it
-  (e.g. "tienimi aggiornato sullo stato", "deve approvare il referente cliente", "avvisare il PM
-  a fine sviluppo"). Empty array when there's no clear automation need — do NOT invent workflows.
-- You decide the events and the actors; the system only creates these workflow objects (no
-  execution yet).
+  (e.g. "tienimi aggiornato sullo stato del progetto", "il referente cliente deve approvare a
+  fine sviluppo", "avvisami quando il task X è completato"). Empty array otherwise — do NOT
+  invent workflows. You decide entity, event, actors and actions; the system only persists the
+  objects (no execution yet).
 
 ### Project Matching (⚠️ BE CONSERVATIVE - AVOID FALSE MATCHES)
 **ONLY match existing project if there is EXPLICIT reference:**
@@ -492,10 +502,14 @@ Return valid JSON ONLY with this structure (ALL text fields in ITALIAN):
     {
       "name": "ITALIAN: nome breve del workflow (es. 'Approvazione completamento')",
       "description": "ITALIAN: cosa fa il workflow",
-      "triggerEvent": "project_status_change|milestone_reached|task_completed|progress_threshold",
-      "triggerConfig": { "toStatus": "completed" },
+      "entityType": "project|task|deal|contact|milestone|message|...",
+      "triggerEvent": "created|updated|status_changed|field_changed|threshold_reached|completed",
+      "triggerConfig": { "field": "status", "toValue": "completed" },
       "actors": [
         { "contactEmail": "email (deve combaciare con uno stakeholder)", "action": "inform|approve|review" }
+      ],
+      "actions": [
+        { "type": "notify|request_approval|send_email|create_task", "config": {} }
       ]
     }
   ],

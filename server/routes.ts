@@ -25,7 +25,7 @@ import {
   insertCustomEntitySchema, insertCustomFieldSchema, insertEntityCustomValueSchema,
   insertTestExecutionSchema,
   type EmailConfig,
-  projects, tasks, partners, contacts, projectContacts, notifications, projectWorkflows, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
+  projects, tasks, partners, contacts, projectContacts, notifications, workflows, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals, projectShares,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users, organizations,
   customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions,
@@ -2726,36 +2726,59 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
-  // Project workflows (agent-proposed trigger objects: event + actors + action)
-  app.get("/api/projects/:projectId/workflows", async (req, res) => {
+  // Workflows — generic, entity-agnostic configurator (list/create/update/delete)
+  app.get("/api/workflows", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOrganizationId(req);
-      const rows = await db.select().from(projectWorkflows)
-        .where(and(
-          eq(projectWorkflows.projectId, req.params.projectId),
-          eq(projectWorkflows.organizationId, organizationId),
-        ))
-        .orderBy(desc(projectWorkflows.createdAt));
+      const conditions = [eq(workflows.organizationId, organizationId)];
+      if (typeof req.query.entityType === "string") conditions.push(eq(workflows.entityType, req.query.entityType));
+      if (typeof req.query.entityId === "string") conditions.push(eq(workflows.entityId, req.query.entityId));
+      if (typeof req.query.status === "string") conditions.push(eq(workflows.status, req.query.status as any));
+      const rows = await db.select().from(workflows)
+        .where(and(...conditions))
+        .orderBy(desc(workflows.createdAt))
+        .limit(500);
       res.json(rows);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }
   });
 
-  app.patch("/api/projects/:projectId/workflows/:id", async (req, res) => {
+  app.post("/api/workflows", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const { name, description, entityType, entityId, triggerEvent, triggerConfig, conditions, actors, actions, channel, status } = req.body;
+      if (!name || !entityType || !triggerEvent) {
+        return res.status(400).json({ error: "name, entityType and triggerEvent are required" });
+      }
+      const [created] = await db.insert(workflows).values({
+        name, description: description || null, entityType, entityId: entityId || null,
+        triggerEvent, triggerConfig: triggerConfig || null, conditions: conditions || null,
+        actors: Array.isArray(actors) ? actors : [],
+        actions: Array.isArray(actions) ? actions : [],
+        channel: channel || "email_draft",
+        status: ["draft", "active", "inactive"].includes(status) ? status : "draft",
+        userId: req.user!.id, organizationId,
+      }).returning();
+      res.status(201).json(created);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  app.patch("/api/workflows/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOrganizationId(req);
       const patch: any = { updatedAt: new Date() };
-      if (req.body.name !== undefined) patch.name = req.body.name;
-      if (req.body.description !== undefined) patch.description = req.body.description;
-      if (req.body.triggerEvent !== undefined) patch.triggerEvent = req.body.triggerEvent;
-      if (req.body.triggerConfig !== undefined) patch.triggerConfig = req.body.triggerConfig;
-      if (req.body.actors !== undefined) patch.actors = req.body.actors;
+      for (const f of ["name", "description", "entityType", "entityId", "triggerEvent", "triggerConfig", "conditions", "actors", "actions", "channel"]) {
+        if (req.body[f] !== undefined) patch[f] = req.body[f];
+      }
       if (req.body.status && ["draft", "active", "inactive"].includes(req.body.status)) patch.status = req.body.status;
-      const [updated] = await db.update(projectWorkflows).set(patch)
-        .where(and(eq(projectWorkflows.id, req.params.id), eq(projectWorkflows.organizationId, organizationId)))
+      const [updated] = await db.update(workflows).set(patch)
+        .where(and(eq(workflows.id, req.params.id), eq(workflows.organizationId, organizationId)))
         .returning();
       if (!updated) return res.sendStatus(404);
       res.json(updated);
@@ -2764,13 +2787,13 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
-  app.delete("/api/projects/:projectId/workflows/:id", async (req, res) => {
+  app.delete("/api/workflows/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOrganizationId(req);
-      await db.delete(projectWorkflows).where(and(
-        eq(projectWorkflows.id, req.params.id),
-        eq(projectWorkflows.organizationId, organizationId),
+      await db.delete(workflows).where(and(
+        eq(workflows.id, req.params.id),
+        eq(workflows.organizationId, organizationId),
       ));
       res.sendStatus(204);
     } catch (error) {
@@ -4944,13 +4967,12 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         }
       }
 
-      // 4c. Create agent-proposed workflow objects (triggers + actors). No execution yet.
+      // 4c. Create agent-proposed workflow objects (generic, entity-agnostic). No execution yet.
       results.workflows = [];
-      if (results.project?.id && Array.isArray((proposalData as any).workflows)) {
-        const validEvents = ["project_status_change", "milestone_reached", "task_completed", "progress_threshold"];
+      if (Array.isArray((proposalData as any).workflows)) {
         const validActions = ["inform", "approve", "review"];
         for (const wf of (proposalData as any).workflows) {
-          if (!wf.name || !validEvents.includes(wf.triggerEvent)) continue;
+          if (!wf.name || !wf.entityType || !wf.triggerEvent) continue;
           // Resolve actors to contact ids where possible (match stakeholders/contacts by email)
           const actors = Array.isArray(wf.actors)
             ? wf.actors
@@ -4962,14 +4984,18 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
                   return { contactEmail: a.contactEmail, contactId: c?.id, action: a.action };
                 })
             : [];
+          // If the workflow is about the project being created, scope it to that record.
+          const entityId = wf.entityType === "project" ? (results.project?.id ?? null) : null;
           try {
-            const [wfRow] = await db.insert(projectWorkflows).values({
-              projectId: results.project.id,
+            const [wfRow] = await db.insert(workflows).values({
               name: wf.name,
               description: wf.description || null,
+              entityType: wf.entityType,
+              entityId,
               triggerEvent: wf.triggerEvent,
               triggerConfig: wf.triggerConfig || null,
               actors,
+              actions: Array.isArray(wf.actions) ? wf.actions : [],
               status: "draft",
               sourceMessageIds: [proposal.messageId],
               userId,
@@ -4977,7 +5003,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             }).returning();
             if (wfRow) {
               results.workflows.push(wfRow);
-              console.log(`[PROPOSAL APPLY] Created workflow "${wf.name}" (${wf.triggerEvent}, ${actors.length} actors) for project ${results.project.id}`);
+              console.log(`[PROPOSAL APPLY] Created workflow "${wf.name}" (entity=${wf.entityType}, event=${wf.triggerEvent}, ${actors.length} actors)`);
             }
           } catch (e) {
             console.warn(`[PROPOSAL APPLY] Could not create workflow "${wf.name}":`, e);

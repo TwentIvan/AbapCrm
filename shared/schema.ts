@@ -330,34 +330,41 @@ export const notifications = pgTable("notifications", {
   notifStatusIdx: index("notifications_status_idx").on(table.organizationId, table.status),
 }));
 
-// Project workflows — agent-proposed automation intents tied to a project.
-// These are the "trigger objects": which event fires the workflow, which
-// stakeholders (actors) are involved, and what action they perform.
-// Execution is layered on top later; the proposal only creates these objects.
-export const projectWorkflowActionEnum = pgEnum("project_workflow_action", ["inform", "approve", "review"]);
-export const projectWorkflowStatusEnum = pgEnum("project_workflow_status", ["draft", "active", "inactive"]);
+// Workflows — generic, entity-agnostic automation objects. The design is defined
+// entirely by row values: entityType names the entity whose events drive the workflow,
+// triggerEvent + triggerConfig describe when it fires, actors describe who is involved,
+// and actions describe what happens. Not coupled to any single entity (projects, tasks,
+// deals, contacts, milestones, messages, ...). Execution is layered on top later; the
+// proposal/configurator only creates these objects.
+export const workflowConfigStatusEnum = pgEnum("workflow_config_status", ["draft", "active", "inactive"]);
 
-export const projectWorkflows = pgTable("project_workflows", {
+export const workflows = pgTable("workflows", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
   userId: uuid("user_id").references(() => users.id).notNull(),
-  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
   name: text("name").notNull(),
   description: text("description"),
-  // Event that triggers the workflow, chosen by the agent. Free-form but typically:
-  // project_status_change | milestone_reached | task_completed | progress_threshold
+  // The entity whose events trigger this workflow (by NAME, data-driven):
+  // e.g. "project" | "task" | "deal" | "contact" | "milestone" | "message" | ...
+  entityType: text("entity_type").notNull(),
+  // Optional: scope the workflow to a specific record of that entity (else applies to all).
+  entityId: uuid("entity_id"),
+  // Trigger event, data-driven: "created" | "updated" | "field_changed" |
+  // "status_changed" | "threshold_reached" | "completed" | ...
   triggerEvent: text("trigger_event").notNull(),
-  triggerConfig: jsonb("trigger_config"), // e.g. { toStatus: "completed" } | { threshold: 50 }
-  // Actors involved: stakeholders + the action each performs.
-  // [{ contactEmail, contactId?, role, action: "inform"|"approve"|"review" }]
+  triggerConfig: jsonb("trigger_config"), // e.g. { field: "status", toValue: "completed" } | { field: "completionPercentage", threshold: 50 }
+  conditions: jsonb("conditions"), // optional extra filters: { operator: "AND", rules: [...] }
+  // Actors involved (who): [{ contactEmail?, contactId?, role?, action }]
   actors: jsonb("actors").$type<Array<{ contactEmail?: string; contactId?: string; role?: string; action: string }>>().default([]),
+  // Actions (what happens): [{ type: "notify"|"request_approval"|"send_email"|"create_task"|..., config: {...} }]
+  actions: jsonb("actions").$type<Array<{ type: string; config?: Record<string, any> }>>().default([]),
   channel: notificationChannelEnum("channel").default("email_draft").notNull(),
-  status: projectWorkflowStatusEnum("status").default("draft").notNull(),
+  status: workflowConfigStatusEnum("status").default("draft").notNull(),
   sourceMessageIds: text("source_message_ids").array().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
-  projectWorkflowProjectIdx: index("project_workflows_project_idx").on(table.projectId),
+  workflowsEntityIdx: index("workflows_entity_idx").on(table.organizationId, table.entityType),
 }));
 
 export const dealStageEnum = pgEnum("deal_stage", ["prospecting", "proposal", "negotiation", "closing", "won", "lost"]);
@@ -1880,7 +1887,7 @@ export type InsertContact = z.infer<typeof insertContactSchema>;
 export type ProjectContact = typeof projectContacts.$inferSelect;
 export type InsertProjectContact = z.infer<typeof insertProjectContactSchema>;
 export type Notification = typeof notifications.$inferSelect;
-export type ProjectWorkflow = typeof projectWorkflows.$inferSelect;
+export type Workflow = typeof workflows.$inferSelect;
 export type Deal = typeof deals.$inferSelect;
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type Calendar = typeof calendars.$inferSelect;
