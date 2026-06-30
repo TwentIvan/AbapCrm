@@ -1745,7 +1745,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
           
           const vpnConnectionDataWithOrg = {
             ...vpnConnectionData,
-            organizationId: '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be' // TODO: Get from user session
+            organizationId: getOrganizationId(req)
           };
           await storage.createVpnConnection(vpnConnectionDataWithOrg, req.user!.id);
           console.log('[VPN-REAL-PROFILES] ✅ Saved real profile to database:', conn.name);

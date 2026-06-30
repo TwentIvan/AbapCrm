@@ -2089,13 +2089,13 @@ export class DatabaseStorage implements IStorage {
         updatedEvent,
         {
           userId: auditContext.userId,
-          organizationId: '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be', // Default org for calendar events
+          organizationId: (updatedEvent as any).organizationId || (oldEvent as any).organizationId,
           userAgent: auditContext.userAgent,
           ipAddress: auditContext.ipAddress,
         }
       );
     }
-    
+
     return updatedEvent || undefined;
   }
 
@@ -2115,13 +2115,13 @@ export class DatabaseStorage implements IStorage {
         oldEvent,
         {
           userId: auditContext.userId,
-          organizationId: '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be', // Default org for calendar events
+          organizationId: (oldEvent as any).organizationId,
           userAgent: auditContext.userAgent,
           ipAddress: auditContext.ipAddress,
         }
       );
     }
-    
+
     return (result.rowCount || 0) > 0;
   }
 
