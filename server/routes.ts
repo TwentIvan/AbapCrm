@@ -4715,14 +4715,21 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.post("/api/proposals/:id/apply", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const organizationId = getOrganizationId(req);
       const userId = req.user!.id;
-      
-      console.log(`[PROPOSAL APPLY] Using organizationId from header: ${organizationId}`);
-      
-      const proposal = await storage.getProposal(req.params.id, userId, organizationId);
+
+      // Fetch the proposal by id+user (NOT by the active-view org). Created entities
+      // must land in the SOURCE org (where the message/proposal lives), independent of
+      // the current view scope ("Personal + all"), to avoid scattering objects.
+      const [proposal] = await db
+        .select()
+        .from(proposals)
+        .where(and(eq(proposals.id, req.params.id), eq(proposals.userId, userId)))
+        .limit(1);
       if (!proposal) return res.sendStatus(404);
-      
+
+      const organizationId = proposal.organizationId;
+      console.log(`[PROPOSAL APPLY] Creating entities in proposal's org: ${organizationId}`);
+
       if (proposal.status !== 'pending') {
         return res.status(400).json({ error: "Proposal already processed" });
       }
@@ -7275,8 +7282,13 @@ PROCESSO: <testo con punti numerati>`,
   // VPN Connections
   app.get("/api/vpn-connections", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const connections = await storage.getVpnConnections(req.user!.id);
-    res.json(connections);
+    // Scope by organization (consistent with SAP systems and other entities),
+    // honouring the Personal "all" scope. Connections without an org are still
+    // shown to their owner so legacy/unscoped rows are not hidden.
+    const organizationIds = await getOrganizationIdsForFilter(req);
+    const all = await storage.getVpnConnections(req.user!.id);
+    const filtered = all.filter((c: any) => !c.organizationId || organizationIds.includes(c.organizationId));
+    res.json(filtered);
   });
 
   app.get("/api/vpn-connections/partner/:partnerId", async (req, res) => {
