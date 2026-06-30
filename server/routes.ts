@@ -489,6 +489,20 @@ function getEffectiveDailyHours(availability: Array<{ weeklyHours: number; effec
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
+  // Ensure an organization context exists for authenticated requests: if the client
+  // didn't send X-Organization-Id, resolve it to the user's Personal org (or first org)
+  // instead of falling back to a hardcoded id. Prevents objects landing in a stale/wrong org.
+  app.use(async (req: any, _res, next) => {
+    try {
+      if (req.isAuthenticated?.() && req.user && !req.headers['x-organization-id']) {
+        const orgs = await storage.getUserOrganizations(req.user.id);
+        const personal = orgs.find((o: any) => o.name === 'Personal') || orgs[0];
+        if (personal?.id) req.headers['x-organization-id'] = personal.id;
+      }
+    } catch { /* non-fatal — fall back to existing behavior */ }
+    next();
+  });
+
   // Health check endpoint for debugging
   app.get('/api/__health', (req, res) => {
     res.json({ 
@@ -1806,8 +1820,17 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         remainingEffort = Math.round(remainingHours * 60); // Convert to minutes
       }
 
-      const organizationId = getOrganizationId(req);
-      const taskData = insertTaskSchema.parse({ 
+      // Inherit organization from the parent project when present (context-driven),
+      // so a task always lands in the same org as its project regardless of view scope.
+      let organizationId = getOrganizationId(req);
+      if (req.body.projectId) {
+        try {
+          const [proj] = await db.select({ organizationId: projects.organizationId })
+            .from(projects).where(eq(projects.id, req.body.projectId)).limit(1);
+          if (proj?.organizationId) organizationId = proj.organizationId;
+        } catch { /* fall back to active org */ }
+      }
+      const taskData = insertTaskSchema.parse({
         title: req.body.title,
         description: req.body.description || null,
         status: req.body.status,
@@ -2874,7 +2897,15 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     try {
-      const organizationId = getOrganizationId(req);
+      // Inherit organization from the parent partner when present (context-driven).
+      let organizationId = getOrganizationId(req);
+      if (req.body.partnerId) {
+        try {
+          const [p] = await db.select({ organizationId: partners.organizationId })
+            .from(partners).where(eq(partners.id, req.body.partnerId)).limit(1);
+          if (p?.organizationId) organizationId = p.organizationId;
+        } catch { /* fall back to active org */ }
+      }
       const contactData = insertContactSchema.parse({
         name: req.body.name,
         email: req.body.email,
@@ -2886,7 +2917,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         userId: req.user!.id,
         organizationId: organizationId
       });
-      
+
       const auditContext = AuditService.createContext(req);
       const contact = await storage.createContact({ ...contactData, organizationId }, auditContext);
       res.status(201).json(contact);
