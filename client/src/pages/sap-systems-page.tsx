@@ -24,6 +24,7 @@ import { SapSystem } from "@shared/schema";
 import SapSystemForm from "../components/forms/sap-system-form";
 import SapLandscapeImport from "../components/forms/sap-landscape-import";
 import SapSystemFormContainer from "../components/forms/sap-system-form-container";
+import { useTargetOrgGuard } from "@/hooks/use-target-org";
 
 const landscapeColors: Record<string, string> = {
   development: "bg-primary/10 text-primary",
@@ -45,6 +46,8 @@ const landscapeLabels: Record<string, string> = {
 
 export default function SapSystemsPage() {
   const [location] = useLocation();
+  const { ensureTargetOrg, dialog: targetOrgDialog } = useTargetOrgGuard();
+  const openCreate = async () => { if (await ensureTargetOrg()) setShowCreateDialog(true); };
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -373,7 +376,7 @@ export default function SapSystemsPage() {
           <Header
             title="SAP Systems"
             subtitle="Manage your SAP system configurations and connections"
-            onNewClick={() => setShowCreateDialog(true)}
+            onNewClick={openCreate}
           />
           <div
             className="p-6 rounded-t-lg min-h-full"
@@ -420,7 +423,7 @@ export default function SapSystemsPage() {
                 onRenameLayout={renameLayout}
                 onDeleteLayout={deleteLayout}
                 onConfigureTable={() => setShowConfigDialog(true)}
-                onCreateNew={() => setShowCreateDialog(true)}
+                onCreateNew={openCreate}
                 onCopySelected={() => {/* TODO: implement copy */}}
                 onBulkEdit={() => {/* TODO: implement bulk edit */}}
                 onDeleteSelected={() => setShowBulkDeleteDialog(true)}
@@ -451,6 +454,8 @@ export default function SapSystemsPage() {
           </div>
         </div>
       </main>
+
+      {targetOrgDialog}
 
       {/* Form Container - supports both dialog and full-page modes */}
       <SapSystemFormContainer

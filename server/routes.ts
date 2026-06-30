@@ -503,6 +503,41 @@ export function registerRoutes(app: Express): Server {
     next();
   });
 
+  // GENERIC ORG INHERITANCE: on entity CREATE (POST), if the payload references a
+  // parent entity, the new record inherits the parent's organization. This is the
+  // single source of truth for "child inherits parent org" — no per-route wiring.
+  // Parent fields are checked in priority order (most specific first).
+  const ORG_PARENT_LOOKUPS: Array<{ field: string; table: any }> = [
+    { field: 'parentTaskId', table: tasks },
+    { field: 'taskId', table: tasks },
+    { field: 'projectId', table: projects },
+    { field: 'milestoneId', table: projectMilestones },
+    { field: 'dealId', table: deals },
+    { field: 'quoteId', table: quotes },
+    { field: 'salesOrderId', table: salesOrders },
+    { field: 'sapSystemId', table: sapSystems },
+    { field: 'partnerId', table: partners },
+    { field: 'contactId', table: contacts },
+  ];
+  app.use(async (req: any, _res, next) => {
+    try {
+      if (req.method === 'POST' && req.body && typeof req.body === 'object' && req.isAuthenticated?.() && req.user) {
+        for (const { field, table } of ORG_PARENT_LOOKUPS) {
+          const pid = req.body[field];
+          if (pid && typeof pid === 'string') {
+            const [row] = await db.select({ organizationId: table.organizationId })
+              .from(table).where(eq(table.id, pid)).limit(1);
+            if (row?.organizationId) {
+              req.headers['x-organization-id'] = row.organizationId;
+              break; // first (most specific) parent wins
+            }
+          }
+        }
+      }
+    } catch { /* non-fatal — keep the active org */ }
+    next();
+  });
+
   // Health check endpoint for debugging
   app.get('/api/__health', (req, res) => {
     res.json({ 
@@ -1820,16 +1855,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         remainingEffort = Math.round(remainingHours * 60); // Convert to minutes
       }
 
-      // Inherit organization from the parent project when present (context-driven),
-      // so a task always lands in the same org as its project regardless of view scope.
-      let organizationId = getOrganizationId(req);
-      if (req.body.projectId) {
-        try {
-          const [proj] = await db.select({ organizationId: projects.organizationId })
-            .from(projects).where(eq(projects.id, req.body.projectId)).limit(1);
-          if (proj?.organizationId) organizationId = proj.organizationId;
-        } catch { /* fall back to active org */ }
-      }
+      // Org is resolved by the global parent-inheritance middleware (see registerRoutes).
+      const organizationId = getOrganizationId(req);
       const taskData = insertTaskSchema.parse({
         title: req.body.title,
         description: req.body.description || null,
@@ -2897,15 +2924,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     try {
-      // Inherit organization from the parent partner when present (context-driven).
-      let organizationId = getOrganizationId(req);
-      if (req.body.partnerId) {
-        try {
-          const [p] = await db.select({ organizationId: partners.organizationId })
-            .from(partners).where(eq(partners.id, req.body.partnerId)).limit(1);
-          if (p?.organizationId) organizationId = p.organizationId;
-        } catch { /* fall back to active org */ }
-      }
+      // Org is resolved by the global parent-inheritance middleware (see registerRoutes).
+      const organizationId = getOrganizationId(req);
       const contactData = insertContactSchema.parse({
         name: req.body.name,
         email: req.body.email,

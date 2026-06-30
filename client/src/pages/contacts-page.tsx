@@ -20,8 +20,11 @@ import ContactForm from "@/components/forms/contact-form";
 import { BulkEditDialog, BulkEditField } from "@/components/dialogs/bulk-edit-dialog";
 import { BulkCopyDialog } from "@/components/dialogs/bulk-copy-dialog";
 import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
+import { useTargetOrgGuard } from "@/hooks/use-target-org";
 
 export default function ContactsPage() {
+  const { ensureTargetOrg, dialog: targetOrgDialog } = useTargetOrgGuard();
+  const openCreate = async () => { if (await ensureTargetOrg()) setShowCreateDialog(true); };
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -326,7 +329,7 @@ export default function ContactsPage() {
             onRenameLayout={renameLayout}
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
-            onCreateNew={() => setShowCreateDialog(true)}
+            onCreateNew={openCreate}
             onCopySelected={() => setShowBulkCopyDialog(true)}
             onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={() => setShowBulkDeleteDialog(true)}
@@ -344,7 +347,7 @@ export default function ContactsPage() {
               <ContactIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">Nessun contatto</h3>
               <p className="text-muted-foreground mb-4">Aggiungi il tuo primo contatto di riferimento</p>
-              <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-first-contact">
+              <Button onClick={openCreate} data-testid="button-create-first-contact">
                 Aggiungi Contatto
               </Button>
             </div>
@@ -370,7 +373,9 @@ export default function ContactsPage() {
           )}
         </div>
       </main>
-      
+
+      {targetOrgDialog}
+
       {/* Create/Edit Dialog */}
       <Dialog open={showCreateDialog || showEditDialog} onOpenChange={(open) => {
         if (!open) {

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useOrganization } from "@/contexts/organization-context";
+import { useTargetOrgGuard } from "@/hooks/use-target-org";
 import { useTableLayout } from "@/lib/user-preferences";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
@@ -47,6 +48,7 @@ export default function DealsPage() {
   const [selectedDeals, setSelectedDeals] = useState<Deal[]>([]);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const { ensureTargetOrg, dialog: targetOrgDialog } = useTargetOrgGuard();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
@@ -165,7 +167,8 @@ export default function DealsPage() {
     setShowForm(true);
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
+    if (!(await ensureTargetOrg())) return;
     setEditingDeal(null);
     setShowForm(true);
   };
@@ -530,6 +533,7 @@ export default function DealsPage() {
               )}
         </div>
       </main>
+      {targetOrgDialog}
 
       {/* Bulk Copy Dialog */}
       <BulkCopyDialog

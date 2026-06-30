@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
 import { useEntityFieldMetadata, metadataToAvailableColumns } from "@/hooks/use-entity-field-metadata";
+import { useTargetOrgGuard } from "@/hooks/use-target-org";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -23,6 +24,7 @@ export default function VPNConnectionsPage() {
   const [selectedConnections, setSelectedConnections] = useState<VpnConnection[]>([]);
   const [editingConnection, setEditingConnection] = useState<VpnConnection | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const { ensureTargetOrg, dialog: targetOrgDialog } = useTargetOrgGuard();
   
   // Route detection for full-page mode
   const isFullPageMode = location.startsWith("/vpn-connections/");
@@ -125,11 +127,10 @@ export default function VPNConnectionsPage() {
     setShowForm(true);
   };
 
-  const handleAdd = () => {
-    console.log("🔍 handleAdd called - aprendo dialog VPN");
+  const handleAdd = async () => {
+    if (!(await ensureTargetOrg())) return;
     setEditingConnection(null);
     setShowForm(true);
-    console.log("🔍 showForm state updated to:", true);
   };
 
   const handleSingleDelete = (connection: VpnConnection) => {
@@ -357,6 +358,7 @@ export default function VPNConnectionsPage() {
           </AlertDialog>
         </div>
       </main>
+      {targetOrgDialog}
     </div>
   );
 }
