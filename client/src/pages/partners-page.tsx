@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useTableLayout } from "@/lib/user-preferences";
 import { useOrganization } from "@/contexts/organization-context";
+import { useTargetOrgGuard } from "@/hooks/use-target-org";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -158,6 +159,8 @@ export default function PartnersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { currentOrganizationId } = useOrganization();
+  const { ensureTargetOrg, dialog: targetOrgDialog } = useTargetOrgGuard();
+  const openCreate = async () => { if (await ensureTargetOrg()) setShowCreateDialog(true); };
 
   // Use the table layout hook for persistent preferences
   const { 
@@ -704,7 +707,7 @@ export default function PartnersPage() {
             onRenameLayout={renameLayout}
             onDeleteLayout={deleteLayout}
             onConfigureTable={() => setShowConfigDialog(true)}
-            onCreateNew={() => setShowCreateDialog(true)}
+            onCreateNew={openCreate}
             onCopySelected={() => setShowBulkCopyDialog(true)}
             onBulkEdit={() => setShowBulkEditDialog(true)}
             onDeleteSelected={handleBulkDelete}
@@ -721,7 +724,7 @@ export default function PartnersPage() {
               <Building className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">No partners yet</h3>
               <p className="text-muted-foreground mb-4">Add your first client or business contact to get started</p>
-              <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-first-partner">
+              <Button onClick={openCreate} data-testid="button-create-first-partner">
                 Add Partner
               </Button>
             </div>
@@ -742,7 +745,9 @@ export default function PartnersPage() {
           )}
         </div>
       </main>
-      
+
+      {targetOrgDialog}
+
       {/* Form Container - supports both dialog and full-page modes */}
       <PartnerFormContainer
         open={showCreateDialog || showEditDialog}

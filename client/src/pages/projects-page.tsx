@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useTableLayout } from "@/lib/user-preferences";
 import { useOrganization } from "@/contexts/organization-context";
+import { useTargetOrgGuard } from "@/hooks/use-target-org";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -139,6 +140,7 @@ function ProjectMilestonesCount({ projectId, currentOrganizationId }: { projectI
 
 export default function ProjectsPage() {
   const [location] = useLocation();
+  const { ensureTargetOrg, dialog: targetOrgDialog } = useTargetOrgGuard();
   const [selectedProjects, setSelectedProjects] = useState<Project[]>([]);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -322,7 +324,8 @@ export default function ProjectsPage() {
     setShowForm(true);
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
+    if (!(await ensureTargetOrg())) return; // aggregated view: user must pick a target org
     setEditingProject(null);
     setShowForm(true);
   };
@@ -687,6 +690,8 @@ export default function ProjectsPage() {
           )}
         </div>
       </main>
+
+      {targetOrgDialog}
 
       {/* Form Container - supports both dialog and full-page modes */}
       <ProjectFormContainer
