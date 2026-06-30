@@ -7220,12 +7220,18 @@ PROCESSO: <testo con punti numerati>`,
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
-      const systemsList = await db.select().from(sapSystems)
-        .where(and(
-          eq(sapSystems.userId, req.user!.id),
-          inArray(sapSystems.organizationId, organizationIds)
-        ));
-      res.json(systemsList);
+      const allUserOrgIds = await getUserOrganizationIds(req.user!.id);
+      // Fetch all systems owned by the user, then keep those in the current org
+      // filter PLUS any "orphaned" ones whose org isn't among the user's orgs
+      // (e.g. created under the legacy hardcoded default org) so they aren't lost.
+      const owned = await db.select().from(sapSystems)
+        .where(eq(sapSystems.userId, req.user!.id));
+      const visible = owned.filter((s: any) =>
+        (s.organizationId && organizationIds.includes(s.organizationId)) ||
+        !s.organizationId ||
+        !allUserOrgIds.includes(s.organizationId)
+      );
+      res.json(visible);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }

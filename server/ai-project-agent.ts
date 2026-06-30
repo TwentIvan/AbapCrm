@@ -435,6 +435,13 @@ proposing it.**
 - needsManualConfig=true; never INVENT host/credentials. BUT if the message EXPLICITLY contains
   connection parameters (host/IP, system number, client/SID), copy them verbatim into
   serverHost / systemNumber / systemId — copying what's stated is not inventing.
+  Access-parameter emails often list each system as a block of consecutive lines, e.g.:
+      SAP S4 2021 - 01 SVI  -->  ILOTORTO (pwd)
+      10.80.27.180          <- serverHost (IP/hostname)
+      00                    <- systemNumber
+      SVI                   <- systemId/client
+  Parse each such block into one system with serverHost/systemNumber/systemId filled from the
+  lines. Create one system per block. Always set serverHost when an IP/hostname is present.
 - Set role: "target" = work happens here; "reference" = read-only context
 
 **Connections (match-first):**

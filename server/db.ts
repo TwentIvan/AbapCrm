@@ -221,6 +221,30 @@ export async function runStartupMigrations(): Promise<boolean> {
     `);
     console.log('[DB] ✓ workflows table ensured');
 
+    // Migration 0011: reassign data stranded under the legacy hardcoded "default"
+    // org to each owner's Personal org (only when the owner isn't a member of that
+    // legacy org — i.e. truly orphaned rows that were invisible everywhere).
+    const LEGACY_ORG = '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be';
+    for (const tbl of ['sap_systems', 'vpn_connections']) {
+      await client.query(`
+        UPDATE "${tbl}" t
+        SET organization_id = pers.org_id, updated_at = now()
+        FROM (
+          SELECT uo.user_id, uo.organization_id AS org_id
+          FROM user_organizations uo
+          JOIN organizations o ON o.id = uo.organization_id
+          WHERE o.name = 'Personal'
+        ) pers
+        WHERE t.user_id = pers.user_id
+          AND t.organization_id = '${LEGACY_ORG}'
+          AND NOT EXISTS (
+            SELECT 1 FROM user_organizations uo2
+            WHERE uo2.user_id = t.user_id AND uo2.organization_id = t.organization_id
+          );
+      `);
+    }
+    console.log('[DB] ✓ orphaned sap_systems/vpn_connections reassigned to Personal org');
+
     client.release();
     return true;
   } catch (error) {
