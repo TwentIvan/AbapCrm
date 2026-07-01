@@ -182,6 +182,27 @@ DEFAULT_CATALOG = [
         "connected_proc": "SonicWall Mobile Connect",
     },
     {
+        # SonicWall Cloud Secure Edge (CSE, ex-Banyan): ZTNA identity-based.
+        # NON ha un server VPN configurato: accesso via codice di invito + SSO
+        # (es. O365). L'app/processo variano per versione — glob larghi + più
+        # nomi processo. `configured` = registrato (identita' presente); il
+        # `connected` reale lo conferma tunnel_up_check verso l'host SAP.
+        "id": "sonicwall_cse", "kind": "vpn", "role": "reachability",
+        "app": "/Applications/Cloud Secure Edge.app",
+        "app_alt": "/Applications/SonicWall Cloud Secure Edge.app",
+        "app_glob": "/Applications/*Secure Edge*.app",
+        "app_glob2": "/Applications/*Banyan*.app",
+        "connected_proc": "Cloud Secure Edge",
+        "iface": "utun",
+    },
+    {
+        "id": "banyan", "kind": "vpn", "role": "reachability",
+        "app": "/Applications/Banyan.app",
+        "app_alt": "/Applications/Banyan Desktop.app",
+        "connected_proc": "Banyan",
+        "iface": "utun",
+    },
+    {
         "id": "forticlient", "kind": "vpn", "role": "customer_tunnel",
         "app": "/Applications/FortiClient.app",
         "connected_proc": "FortiClient",

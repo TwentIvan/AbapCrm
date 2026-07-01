@@ -7474,23 +7474,58 @@ PROCESSO: <testo con punti numerati>`,
       const reachabilityVpn = vpns.find((v) => v.role === 'reachability');
       const hasSaprouter = !!(sys as any).sapRouterString;
 
+      // Inventory source: prefer the user's REAL inventory (posted by the local probe)
+      // when present; otherwise fall back to the ghost fixture. Either way, verification
+      // stays "ghost-unverified" in this phase (companion not notarized yet).
+      const { getModuleRunner } = await import("./lib/moduleRunner");
+      const { composeReadiness } = await import("./lib/connectionCompose");
+      const storedRows = await db.select().from(discoveredConnectionMethods)
+        .where(eq(discoveredConnectionMethods.userId, userId))
+        .orderBy(desc(discoveredConnectionMethods.lastProbedAt));
+
+      let inventory: any;
+      let verification = "ghost-unverified";
+      let warnings: string[] = [];
+      if (storedRows.length > 0) {
+        inventory = {
+          schema: "hubup.discovered_connection_methods/1",
+          os: storedRows[0].os || "mac",
+          hostname: storedRows[0].hostname || "",
+          generated_at: (storedRows[0].lastProbedAt as any) || new Date().toISOString(),
+          methods: storedRows.map((r: any) => ({
+            id: r.methodId, kind: r.kind, role: r.role, os: r.os,
+            installed: r.installed, configured: r.configured, connected: r.connected,
+            version: r.version || undefined, profiles: r.profiles || [], evidence: r.evidence || [],
+          })),
+        };
+        warnings = [`Inventario da probe locale (${inventory.methods.length} metodi, host ${inventory.hostname || 'n/d'}) — consegna non ancora notarizzata.`];
+      } else {
+        const result = await getModuleRunner().run<any>("discovery-mac");
+        inventory = result.data;
+        verification = result.verification;
+        warnings = result.warnings;
+      }
+
+      // Pick the reachability method that opens this SAProuter: an explicit reachability
+      // VPN record, else the first reachability method actually present in the inventory
+      // (covers SonicWall CSE/Banyan detected on the real machine), else NetExtender.
+      const invReach = (inventory.methods || []).find((m: any) => m.role === 'reachability' && (m.installed || m.connected));
+      const requiresReachability = hasSaprouter
+        ? (reachabilityVpn?.methodId || invReach?.id || 'sonicwall_netextender')
+        : undefined;
+
       const target = {
         id: (sys as any).systemId || (sys as any).name,
         reachVia: (hasSaprouter ? 'saprouter' : 'vpn_direct') as 'saprouter' | 'vpn_direct',
         saprouter: (sys as any).sapRouterString || undefined,
         appServer: (sys as any).serverHost || undefined,
         instance: (sys as any).systemNumber || undefined,
-        requiresReachability: hasSaprouter ? (reachabilityVpn?.methodId || 'sonicwall_netextender') : undefined,
+        requiresReachability,
         launch: (launch || 'arc1') as 'arc1' | 'vsp' | 'gui_bridge' | 'sap_gui',
       };
 
-      const { getModuleRunner } = await import("./lib/moduleRunner");
-      const { composeReadiness } = await import("./lib/connectionCompose");
-      const runner = getModuleRunner();
-      const result = await runner.run<any>("discovery-mac");
-      const plan = composeReadiness(target as any, result.data as any, vpns as any);
-
-      res.json({ plan, verification: result.verification, warnings: result.warnings });
+      const plan = composeReadiness(target as any, inventory as any, vpns as any);
+      res.json({ plan, verification, warnings });
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : 'Plan failed' });
     }
