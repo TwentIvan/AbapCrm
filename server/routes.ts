@@ -7461,14 +7461,25 @@ PROCESSO: <testo con punti numerati>`,
 
       // Map existing VPNs -> VpnConnectionRecord (role from column; savableCreds derived from autoConnect)
       const vpnRows = await db.select().from(vpnConnections).where(eq(vpnConnections.userId, userId));
-      const vpns = vpnRows.map((v: any) => ({
-        id: v.id,
-        methodId: v.methodId || (String(v.name || '').toLowerCase().includes('sonicwall') ? 'sonicwall_netextender' : v.id),
-        label: v.name,
-        role: (v.role === 'reachability' ? 'reachability' : 'customer_tunnel') as 'reachability' | 'customer_tunnel',
-        autoConnect: !!v.autoConnect,
-        savableCreds: !!v.autoConnect,
-      }));
+      const vpns = vpnRows.map((v: any) => {
+        const nm = String(v.name || '').toLowerCase();
+        // Best-effort methodId from the connection name when not explicitly set.
+        // Prefer CSE (Cloud Secure Edge) and Mobile Connect before falling back
+        // to legacy NetExtender, so a "SonicWall CSE" row isn't mislabelled.
+        const inferred =
+          nm.includes('cse') || nm.includes('secure edge') ? 'sonicwall_cse'
+          : nm.includes('mobile connect') ? 'sonicwall_mobile_connect'
+          : nm.includes('sonicwall') ? 'sonicwall_netextender'
+          : v.id;
+        return {
+          id: v.id,
+          methodId: v.methodId || inferred,
+          label: v.name,
+          role: (v.role === 'reachability' ? 'reachability' : 'customer_tunnel') as 'reachability' | 'customer_tunnel',
+          autoConnect: !!v.autoConnect,
+          savableCreds: !!v.autoConnect,
+        };
+      });
 
       // Determine the reachability method that opens this system's SAProuter/corporate net.
       const reachabilityVpn = vpns.find((v) => v.role === 'reachability');
@@ -7508,10 +7519,11 @@ PROCESSO: <testo con punti numerati>`,
 
       // Pick the reachability method that opens this SAProuter: an explicit reachability
       // VPN record, else the first reachability method actually present in the inventory
-      // (covers SonicWall CSE/Banyan detected on the real machine), else NetExtender.
+      // (covers SonicWall CSE/Banyan detected on the real machine), else CSE (the
+      // reachability VPN in use on the reference Mac).
       const invReach = (inventory.methods || []).find((m: any) => m.role === 'reachability' && (m.installed || m.connected));
       const requiresReachability = hasSaprouter
-        ? (reachabilityVpn?.methodId || invReach?.id || 'sonicwall_netextender')
+        ? (reachabilityVpn?.methodId || invReach?.id || 'sonicwall_cse')
         : undefined;
 
       const target = {

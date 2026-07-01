@@ -57,9 +57,10 @@ export interface ModuleRunner {
 }
 
 // ---- fixture simulata (usata dal Ghost quando non gira il probe reale) -------
-// Rappresenta un Mac "tipico" da consulente: SonicWall (reachability) ATTIVA,
+// Rappresenta un Mac "tipico" da consulente: SonicWall CSE (reachability) ATTIVA,
 // FortiClient (customer_tunnel Telepass) installata ma non connessa, SAP GUI e
-// Parallels presenti.
+// Parallels presenti. La reachability rispecchia il probe reale (SonicWall Cloud
+// Secure Edge / ex-Banyan, ZTNA identity-based) — vedi hubup_discover_mac.py.
 export const SIMULATED_MAC_INVENTORY: DiscoveryInventory = {
   schema: "hubup.discovered_connection_methods/1",
   os: "mac",
@@ -67,9 +68,14 @@ export const SIMULATED_MAC_INVENTORY: DiscoveryInventory = {
   generated_at: new Date().toISOString(),
   methods: [
     {
-      id: "sonicwall_netextender", kind: "vpn", role: "reachability", os: "mac",
-      installed: true, configured: true, connected: true, version: "10.3.0",
-      profiles: ["Lu-Ve corporate"], evidence: ["app: /Applications/NetExtender.app", "iface: utun up"],
+      id: "sonicwall_cse", kind: "vpn", role: "reachability", os: "mac",
+      installed: true, configured: true, connected: true, version: "1.4.0",
+      profiles: ["Lu-Ve corporate"],
+      evidence: [
+        "app: /Applications/SonicWall Cloud Secure Edge.app",
+        "config: ~/Library/Application Support/sonicwallcse",
+        "proc: sonicwall-cse-wgs (WireGuard) up",
+      ],
     },
     {
       id: "forticlient", kind: "vpn", role: "customer_tunnel", os: "mac",
