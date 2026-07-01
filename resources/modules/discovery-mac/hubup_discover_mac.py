@@ -257,10 +257,11 @@ DEFAULT_CATALOG = [
         # Mac. Path affinati con la diagnostica reale — glob larghi per versione.
         "id": "parallels_client", "kind": "vdi",
         "app": "/Applications/Parallels Client.app",
-        # Verificato: connessioni RAS sotto ~/Library/Preferences/Parallels (non in
-        # Application Support). Glob largo per catturare i file di connessione lì.
-        "profiles_glob": "~/Library/Preferences/Parallels/**/*",
-        "profiles_glob2": "~/Library/Preferences/Parallels/*",
+        # NB: ~/Library/Preferences/Parallels contiene i CACHE di Parallels DESKTOP,
+        # non le connessioni RAS del Client -> NON usarlo per `configured` (falso
+        # positivo). Il RAS Client su Mac tende a essere sandboxed: la sede reale
+        # delle connessioni va individuata (Containers/keychain). Per ora solo
+        # `installed`; `configured` si aggiunge quando troviamo lo store RAS.
         "connected_proc": "Parallels Client",
     },
     {
