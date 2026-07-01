@@ -37,6 +37,7 @@ import {
   aiProviders, aiModels, userOrganizations,
   mcpCatalog, mcpServerConfigs, insertMcpServerConfigSchema, mcpCatalogValidations,
   connectionWorkflows, insertConnectionWorkflowSchema,
+  discoveredConnectionMethods,
   proposalDiscussions
 } from "@shared/schema";
 import { aiService, extractAnalysisText } from "./ai-service";
@@ -7346,6 +7347,127 @@ PROCESSO: <testo con punti numerati>`,
     const all = await storage.getVpnConnections(req.user!.id);
     const filtered = all.filter((c: any) => !c.organizationId || organizationIds.includes(c.organizationId));
     res.json(filtered);
+  });
+
+  // ── The Hub Up — Connection discovery (Modulo F, Fase F1) ──────────────────
+  // List discovered connection methods for the current user's workstation(s).
+  app.get("/api/hubup/discovery", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const rows = await db.select().from(discoveredConnectionMethods)
+        .where(eq(discoveredConnectionMethods.userId, req.user!.id))
+        .orderBy(desc(discoveredConnectionMethods.lastProbedAt));
+      res.json(rows);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // Ingest an inventory produced by the companion / module runner. The payload
+  // never contains secrets — only names, versions, states, profile identifiers.
+  app.post("/api/hubup/discovery/inventory", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const inv = req.body || {};
+      const hostname: string = inv.hostname || 'unknown';
+      const os: string = inv.os || null;
+      const methods: any[] = Array.isArray(inv.methods) ? inv.methods : [];
+      const KIND = ['vpn','vdi','hypervisor','rdp','sap_gui','direct','unknown'];
+      const ROLE = ['reachability','customer_tunnel'];
+      let upserted = 0;
+      for (const m of methods) {
+        if (!m?.id) continue;
+        const values = {
+          userId: req.user!.id,
+          organizationId,
+          methodId: m.id,
+          kind: (KIND.includes(m.kind) ? m.kind : 'unknown') as any,
+          role: (ROLE.includes(m.role) ? m.role : null) as any,
+          os: m.os || os,
+          hostname,
+          installed: !!m.installed,
+          configured: !!m.configured,
+          connected: !!m.connected,
+          version: m.version || null,
+          profiles: Array.isArray(m.profiles) ? m.profiles : [],
+          evidence: Array.isArray(m.evidence) ? m.evidence : [],
+          lastProbedAt: new Date(),
+        };
+        await db.insert(discoveredConnectionMethods).values(values)
+          .onConflictDoUpdate({
+            target: [discoveredConnectionMethods.userId, discoveredConnectionMethods.hostname, discoveredConnectionMethods.methodId],
+            set: { ...values, updatedAt: new Date() },
+          });
+        upserted++;
+      }
+      res.json({ ok: true, hostname, upserted });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // Run the module runner (ghost by default) to produce + store an inventory.
+  // Verification label makes it impossible to mistake ghost data for production.
+  app.post("/api/hubup/discovery/run", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const { getModuleRunner } = await import("./hubup/moduleRunner");
+      const runner = getModuleRunner();
+      const result = await runner.run<any>("discovery-mac");
+      const inv = result.data || {};
+      const methods: any[] = Array.isArray(inv.methods) ? inv.methods : [];
+      const hostname: string = inv.hostname || 'unknown';
+      for (const m of methods) {
+        if (!m?.id) continue;
+        const values = {
+          userId: req.user!.id, organizationId, methodId: m.id,
+          kind: (m.kind || 'unknown') as any, role: (m.role || null) as any,
+          os: m.os || inv.os || null, hostname,
+          installed: !!m.installed, configured: !!m.configured, connected: !!m.connected,
+          version: m.version || null,
+          profiles: Array.isArray(m.profiles) ? m.profiles : [],
+          evidence: Array.isArray(m.evidence) ? m.evidence : [],
+          lastProbedAt: new Date(),
+        };
+        await db.insert(discoveredConnectionMethods).values(values)
+          .onConflictDoUpdate({
+            target: [discoveredConnectionMethods.userId, discoveredConnectionMethods.hostname, discoveredConnectionMethods.methodId],
+            set: { ...values, updatedAt: new Date() },
+          });
+      }
+      res.json({ verification: result.verification, version: result.version, warnings: result.warnings, hostname, methods: methods.length });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Discovery run failed' });
+    }
+  });
+
+  // Compose a readiness plan for a target system from the stored inventory.
+  app.post("/api/hubup/readiness", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { target, existingVpns } = req.body || {};
+      if (!target?.id) return res.status(400).json({ error: "target.id is required" });
+      const rows = await db.select().from(discoveredConnectionMethods)
+        .where(eq(discoveredConnectionMethods.userId, req.user!.id));
+      const inventory = {
+        schema: "hubup.discovered_connection_methods/1",
+        os: rows[0]?.os || "mac",
+        hostname: rows[0]?.hostname || "",
+        generated_at: new Date().toISOString(),
+        methods: rows.map((r: any) => ({
+          id: r.methodId, kind: r.kind, role: r.role, os: r.os,
+          installed: r.installed, configured: r.configured, connected: r.connected,
+          version: r.version || undefined, profiles: r.profiles || [], evidence: r.evidence || [],
+        })),
+      };
+      const { composeReadiness } = await import("./hubup/connectionCompose");
+      const plan = composeReadiness(target, inventory as any, Array.isArray(existingVpns) ? existingVpns : []);
+      res.json(plan);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
   });
 
   app.get("/api/vpn-connections/partner/:partnerId", async (req, res) => {

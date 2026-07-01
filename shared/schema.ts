@@ -1189,6 +1189,61 @@ export const discoveredVpnConfigurations = pgTable("discovered_vpn_configuration
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ============================================================================
+// The Hub Up — Modulo F/G: Connection one-click (DETECT → CONNECT → LAUNCH)
+// Generalizes vpn_software/discovered_vpn_configurations to ALL connection
+// methods (vpn|vdi|hypervisor|rdp|sap_gui|direct) with a 3-state model.
+// Extensions, not rewrites — the legacy VPN tables stay as they are.
+// ============================================================================
+export const connectionMethodKindEnum = pgEnum("connection_method_kind", [
+  "vpn", "vdi", "hypervisor", "rdp", "sap_gui", "direct", "unknown",
+]);
+export const connectionMethodRoleEnum = pgEnum("connection_method_role", [
+  "reachability", "customer_tunnel",
+]);
+
+// Data-driven catalog of connection-method signatures (evolves vpn_software).
+// Adding a tool = adding a row, not writing code.
+export const connectionMethodSignatures = pgTable("connection_method_signatures", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id), // null = global/default signature
+  signatureId: text("signature_id").notNull(), // e.g. "forticlient" — matches companion output
+  kind: connectionMethodKindEnum("kind").default("vpn").notNull(),
+  role: connectionMethodRoleEnum("role"), // reachability | customer_tunnel | null
+  osList: text("os_list").array().default([]), // ["win","mac"]
+  detect: jsonb("detect"), // per-OS detection descriptor (see spec §1.3)
+  connect: jsonb("connect"), // cli_template / cred_injection / supports_saved_creds / requires_mfa
+  enabled: boolean("enabled").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  sigOrgIdx: index("conn_method_sig_org_idx").on(table.organizationId, table.signatureId),
+}));
+
+// Per-workstation discovered inventory with the 3-state model (installed/configured/connected).
+export const discoveredConnectionMethods = pgTable("discovered_connection_methods", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  methodId: text("method_id").notNull(), // matches connection_method_signatures.signatureId
+  kind: connectionMethodKindEnum("kind").default("unknown").notNull(),
+  role: connectionMethodRoleEnum("role"),
+  os: text("os"), // "mac" | "win"
+  hostname: text("hostname"), // workstation hostname the inventory came from
+  installed: boolean("installed").default(false).notNull(),
+  configured: boolean("configured").default(false).notNull(),
+  connected: boolean("connected").default(false).notNull(),
+  version: text("version"),
+  profiles: text("profiles").array().default([]), // profile identifiers (host/name) — NEVER credentials
+  evidence: text("evidence").array().default([]),
+  lastProbedAt: timestamp("last_probed_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  dcmUserHostIdx: index("discovered_conn_methods_user_host_idx").on(table.userId, table.hostname),
+  dcmUserMethodUnique: uniqueIndex("discovered_conn_methods_user_host_method_idx").on(table.userId, table.hostname, table.methodId),
+}));
+
 // Transport Request files (cofile and data file)
 export const transportRequestStatusEnum = pgEnum("transport_request_status", ["development", "testing", "quality", "production", "released", "imported"]);
 export const transportRequestTypeEnum = pgEnum("transport_request_type", ["workbench", "customizing", "copy", "relocate"]);
@@ -2054,6 +2109,17 @@ export const insertDiscoveredVpnConfigurationSchema = createInsertSchema(discove
   discoveredAt: true,
   updatedAt: true,
 });
+
+// The Hub Up — connection discovery (Modulo F)
+export const insertConnectionMethodSignatureSchema = createInsertSchema(connectionMethodSignatures).omit({
+  id: true, createdAt: true, updatedAt: true, organizationId: true,
+});
+export const insertDiscoveredConnectionMethodSchema = createInsertSchema(discoveredConnectionMethods).omit({
+  id: true, createdAt: true, updatedAt: true, organizationId: true,
+});
+export type ConnectionMethodSignature = typeof connectionMethodSignatures.$inferSelect;
+export type DiscoveredConnectionMethod = typeof discoveredConnectionMethods.$inferSelect;
+export type InsertDiscoveredConnectionMethod = z.infer<typeof insertDiscoveredConnectionMethodSchema>;
 
 // All Types
 export type HumanResource = typeof humanResources.$inferSelect;

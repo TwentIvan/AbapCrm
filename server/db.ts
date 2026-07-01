@@ -245,6 +245,50 @@ export async function runStartupMigrations(): Promise<boolean> {
     }
     console.log('[DB] ✓ orphaned sap_systems/vpn_connections reassigned to Personal org');
 
+    // Migration 0012: The Hub Up connection discovery (Modulo F)
+    await client.query(`
+      DO $$ BEGIN CREATE TYPE "connection_method_kind" AS ENUM ('vpn','vdi','hypervisor','rdp','sap_gui','direct','unknown'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+      DO $$ BEGIN CREATE TYPE "connection_method_role" AS ENUM ('reachability','customer_tunnel'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+      CREATE TABLE IF NOT EXISTS "connection_method_signatures" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "organization_id" uuid REFERENCES "organizations"("id"),
+        "signature_id" text NOT NULL,
+        "kind" "connection_method_kind" NOT NULL DEFAULT 'vpn',
+        "role" "connection_method_role",
+        "os_list" text[] DEFAULT '{}',
+        "detect" jsonb,
+        "connect" jsonb,
+        "enabled" boolean NOT NULL DEFAULT true,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "conn_method_sig_org_idx" ON "connection_method_signatures" ("organization_id","signature_id");
+
+      CREATE TABLE IF NOT EXISTS "discovered_connection_methods" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "user_id" uuid NOT NULL REFERENCES "users"("id"),
+        "organization_id" uuid NOT NULL REFERENCES "organizations"("id"),
+        "method_id" text NOT NULL,
+        "kind" "connection_method_kind" NOT NULL DEFAULT 'unknown',
+        "role" "connection_method_role",
+        "os" text,
+        "hostname" text,
+        "installed" boolean NOT NULL DEFAULT false,
+        "configured" boolean NOT NULL DEFAULT false,
+        "connected" boolean NOT NULL DEFAULT false,
+        "version" text,
+        "profiles" text[] DEFAULT '{}',
+        "evidence" text[] DEFAULT '{}',
+        "last_probed_at" timestamp NOT NULL DEFAULT now(),
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "discovered_conn_methods_user_host_idx" ON "discovered_connection_methods" ("user_id","hostname");
+      CREATE UNIQUE INDEX IF NOT EXISTS "discovered_conn_methods_user_host_method_idx" ON "discovered_connection_methods" ("user_id","hostname","method_id");
+    `);
+    console.log('[DB] ✓ connection discovery tables (Modulo F) ensured');
+
     client.release();
     return true;
   } catch (error) {
