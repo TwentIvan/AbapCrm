@@ -289,6 +289,40 @@ export async function runStartupMigrations(): Promise<boolean> {
     `);
     console.log('[DB] ✓ connection discovery tables (Modulo F) ensured');
 
+    // Migration 0013: vpn_connections.role + methodId (Hub Up readiness planning)
+    await client.query(`
+      ALTER TABLE "vpn_connections" ADD COLUMN IF NOT EXISTS "role" text NOT NULL DEFAULT 'customer_tunnel';
+      ALTER TABLE "vpn_connections" ADD COLUMN IF NOT EXISTS "method_id" text;
+    `);
+    // Seed: SonicWall connections are reachability tunnels (open the corporate net).
+    await client.query(`
+      UPDATE "vpn_connections"
+      SET role = 'reachability'
+      WHERE role <> 'reachability'
+        AND (
+          lower(name) LIKE '%sonicwall%'
+          OR lower(coalesce(method_id,'')) IN ('sonicwall_netextender','sonicwall_mobile_connect')
+          OR lower(coalesce(connection_type,'')) LIKE '%sonicwall%'
+        );
+    `);
+    console.log('[DB] ✓ vpn_connections.role/method_id ensured + SonicWall reachability seed');
+
+    // Migration 0014: module_runs audit sink (Hub Up bootstrap prod-phase; never stores secrets)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "module_runs" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "user_id" uuid REFERENCES "users"("id"),
+        "organization_id" uuid REFERENCES "organizations"("id"),
+        "module" text NOT NULL,
+        "version" text,
+        "sha256" text,
+        "operator" text,
+        "exit_code" integer,
+        "created_at" timestamp NOT NULL DEFAULT now()
+      );
+    `);
+    console.log('[DB] ✓ module_runs table ensured');
+
     client.release();
     return true;
   } catch (error) {

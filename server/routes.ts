@@ -37,7 +37,7 @@ import {
   aiProviders, aiModels, userOrganizations,
   mcpCatalog, mcpServerConfigs, insertMcpServerConfigSchema, mcpCatalogValidations,
   connectionWorkflows, insertConnectionWorkflowSchema,
-  discoveredConnectionMethods,
+  discoveredConnectionMethods, moduleRuns,
   proposalDiscussions
 } from "@shared/schema";
 import { aiService, extractAnalysisText } from "./ai-service";
@@ -7413,7 +7413,7 @@ PROCESSO: <testo con punti numerati>`,
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOrganizationId(req);
-      const { getModuleRunner } = await import("./hubup/moduleRunner");
+      const { getModuleRunner } = await import("./lib/moduleRunner");
       const runner = getModuleRunner();
       const result = await runner.run<any>("discovery-mac");
       const inv = result.data || {};
@@ -7443,28 +7443,76 @@ PROCESSO: <testo con punti numerati>`,
     }
   });
 
-  // Compose a readiness plan for a target system from the stored inventory.
-  app.post("/api/hubup/readiness", async (req, res) => {
+  // ── POST /api/connection/plan — readiness plan for a task's target system ──
+  // Body: { targetSystemId } (SAP system uuid or 3-char SID) [+ optional launch].
+  // No secrets are handled or logged in this route.
+  app.post("/api/connection/plan", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const { target, existingVpns } = req.body || {};
-      if (!target?.id) return res.status(400).json({ error: "target.id is required" });
-      const rows = await db.select().from(discoveredConnectionMethods)
-        .where(eq(discoveredConnectionMethods.userId, req.user!.id));
-      const inventory = {
-        schema: "hubup.discovered_connection_methods/1",
-        os: rows[0]?.os || "mac",
-        hostname: rows[0]?.hostname || "",
-        generated_at: new Date().toISOString(),
-        methods: rows.map((r: any) => ({
-          id: r.methodId, kind: r.kind, role: r.role, os: r.os,
-          installed: r.installed, configured: r.configured, connected: r.connected,
-          version: r.version || undefined, profiles: r.profiles || [], evidence: r.evidence || [],
-        })),
+      const userId = req.user!.id;
+      const { targetSystemId, launch } = req.body || {};
+      if (!targetSystemId) return res.status(400).json({ error: "targetSystemId is required" });
+
+      // Resolve the SAP system by uuid or by 3-char SID (systemId), owned by the user.
+      const owned = await db.select().from(sapSystems).where(eq(sapSystems.userId, userId));
+      const sys = owned.find((s: any) => s.id === targetSystemId)
+        || owned.find((s: any) => (s.systemId || '').toUpperCase() === String(targetSystemId).toUpperCase());
+      if (!sys) return res.status(404).json({ error: "Target SAP system not found" });
+
+      // Map existing VPNs -> VpnConnectionRecord (role from column; savableCreds derived from autoConnect)
+      const vpnRows = await db.select().from(vpnConnections).where(eq(vpnConnections.userId, userId));
+      const vpns = vpnRows.map((v: any) => ({
+        id: v.id,
+        methodId: v.methodId || (String(v.name || '').toLowerCase().includes('sonicwall') ? 'sonicwall_netextender' : v.id),
+        label: v.name,
+        role: (v.role === 'reachability' ? 'reachability' : 'customer_tunnel') as 'reachability' | 'customer_tunnel',
+        autoConnect: !!v.autoConnect,
+        savableCreds: !!v.autoConnect,
+      }));
+
+      // Determine the reachability method that opens this system's SAProuter/corporate net.
+      const reachabilityVpn = vpns.find((v) => v.role === 'reachability');
+      const hasSaprouter = !!(sys as any).sapRouterString;
+
+      const target = {
+        id: (sys as any).systemId || (sys as any).name,
+        reachVia: (hasSaprouter ? 'saprouter' : 'vpn_direct') as 'saprouter' | 'vpn_direct',
+        saprouter: (sys as any).sapRouterString || undefined,
+        appServer: (sys as any).serverHost || undefined,
+        instance: (sys as any).systemNumber || undefined,
+        requiresReachability: hasSaprouter ? (reachabilityVpn?.methodId || 'sonicwall_netextender') : undefined,
+        launch: (launch || 'arc1') as 'arc1' | 'vsp' | 'gui_bridge' | 'sap_gui',
       };
-      const { composeReadiness } = await import("./hubup/connectionCompose");
-      const plan = composeReadiness(target, inventory as any, Array.isArray(existingVpns) ? existingVpns : []);
-      res.json(plan);
+
+      const { getModuleRunner } = await import("./lib/moduleRunner");
+      const { composeReadiness } = await import("./lib/connectionCompose");
+      const runner = getModuleRunner();
+      const result = await runner.run<any>("discovery-mac");
+      const plan = composeReadiness(target as any, result.data as any, vpns as any);
+
+      res.json({ plan, verification: result.verification, warnings: result.warnings });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Plan failed' });
+    }
+  });
+
+  // ── POST /api/audit/module-run — audit sink for the signed bootstrap (prod) ──
+  // Never expects/persists secrets; ignores any unexpected sensitive fields.
+  app.post("/api/audit/module-run", async (req, res) => {
+    // Bootstrap may post without a session in prod; accept but scope to user if present.
+    try {
+      const { module, version, sha256, operator, exit } = req.body || {};
+      if (!module) return res.status(400).json({ error: "module is required" });
+      await db.insert(moduleRuns).values({
+        userId: (req as any).user?.id || null,
+        organizationId: (req as any).user ? getOrganizationId(req) : null,
+        module: String(module),
+        version: version ? String(version) : null,
+        sha256: sha256 ? String(sha256) : null,
+        operator: operator ? String(operator) : null,
+        exitCode: typeof exit === 'number' ? exit : null,
+      });
+      res.json({ ok: true });
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }

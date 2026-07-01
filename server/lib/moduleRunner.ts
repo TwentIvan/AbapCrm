@@ -104,7 +104,7 @@ export class GhostModuleRunner implements ModuleRunner {
     // (dati veri, ma consegna comunque NON verificata -> resta ghost).
     if (process.env.HUBUP_GHOST_USE_LOCAL_PROBE === "1" && moduleName === "discovery-mac") {
       try {
-        const probe = process.env.HUBUP_LOCAL_PROBE || "hubup_discover_mac.py";
+        const probe = process.env.HUBUP_LOCAL_PROBE || "resources/modules/discovery-mac/hubup_discover_mac.py";
         const { stdout } = await pexec("python3", [probe, ...args], { timeout: 120_000 });
         data = JSON.parse(stdout);
         warnings.push("probe locale reale eseguito (consegna comunque non verificata).");
@@ -130,7 +130,7 @@ export class GhostModuleRunner implements ModuleRunner {
 export class NotarizedModuleRunner implements ModuleRunner {
   readonly mode = "prod" as const;
   constructor(
-    private bootstrapPath = process.env.HUBUP_BOOTSTRAP || "./hubup-bootstrap.sh",
+    private bootstrapPath = process.env.HUBUP_BOOTSTRAP || "resources/modules/hubup-bootstrap.sh",
     private server = process.env.HUBUP_SERVER || "",
   ) {}
 

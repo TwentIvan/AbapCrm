@@ -1031,7 +1031,11 @@ export const vpnConnections = pgTable("vpn_connections", {
   description: text("description"),
   connectionType: vpnConnectionTypeEnum("connection_type").default("openvpn").notNull(),
   status: vpnStatusEnum("status").default("active").notNull(),
-  
+  // The Hub Up — connection role: "reachability" (opens a SAProuter/corporate net,
+  // e.g. SonicWall) vs "customer_tunnel" (per-customer VPN). Drives readiness planning.
+  role: text("role").default("customer_tunnel").notNull(),
+  methodId: text("method_id"), // matches a connection_method_signatures.signatureId (e.g. sonicwall_netextender)
+
   // Connection details
   serverHost: text("server_host").notNull(),
   serverPort: integer("server_port").default(1194).notNull(),
@@ -1243,6 +1247,19 @@ export const discoveredConnectionMethods = pgTable("discovered_connection_method
   dcmUserHostIdx: index("discovered_conn_methods_user_host_idx").on(table.userId, table.hostname),
   dcmUserMethodUnique: uniqueIndex("discovered_conn_methods_user_host_method_idx").on(table.userId, table.hostname, table.methodId),
 }));
+
+// Hub Up module-run audit sink (Modulo G bootstrap; never stores secrets).
+export const moduleRuns = pgTable("module_runs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id),
+  organizationId: uuid("organization_id").references(() => organizations.id),
+  module: text("module").notNull(),
+  version: text("version"),
+  sha256: text("sha256"),
+  operator: text("operator"),
+  exitCode: integer("exit_code"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 // Transport Request files (cofile and data file)
 export const transportRequestStatusEnum = pgEnum("transport_request_status", ["development", "testing", "quality", "production", "released", "imported"]);

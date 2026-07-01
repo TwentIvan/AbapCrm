@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Edit, MessageSquare, History, Brain, AlertTriangle, Zap, CheckCircle2, XCircle, ShieldAlert, ShieldCheck, ShieldX, Loader2, FileText, ExternalLink, CheckCheck, Wifi, Bot, User, GitBranch, AlertCircle } from "lucide-react";
+import { Edit, MessageSquare, History, Brain, AlertTriangle, Zap, CheckCircle2, XCircle, ShieldAlert, ShieldCheck, ShieldX, Loader2, FileText, ExternalLink, CheckCheck, Wifi, Bot, User, GitBranch, AlertCircle, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Task } from "@shared/schema";
 
@@ -116,6 +116,110 @@ const STEP_TYPE_LABELS: Record<string, string> = {
   mcp_health_check: "MCP Health Check",
   manual_confirm: "Conferma manuale",
 };
+
+// ── Hub Up readiness (Modulo F) — 🟢🟡🔴 plan from /api/connection/plan ────────
+function HubUpReadinessPanel({ task }: { task: Task }) {
+  const targetSystemId = (task as any).sapSystemId as string | undefined;
+  const { data, isLoading, error, refetch, isFetching } = useQuery<any>({
+    queryKey: ["/api/connection/plan", task.id],
+    queryFn: async () => {
+      const r = await fetch("/api/connection/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ targetSystemId }),
+      });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error || "Errore piano");
+      return r.json();
+    },
+    enabled: !!targetSystemId,
+  });
+
+  if (!targetSystemId) {
+    return (
+      <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+        <Wifi className="h-8 w-8 mx-auto mb-2 opacity-40" />
+        <p className="text-sm font-medium">Nessun sistema SAP associato al task</p>
+        <p className="text-xs mt-1">Assegna un sistema SAP (tab Dettagli) per vedere il piano di prontezza.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return <div className="flex items-center gap-2 text-muted-foreground py-8"><Loader2 className="h-4 w-4 animate-spin" /><span>Calcolo prontezza...</span></div>;
+  }
+  if (error || !data?.plan) {
+    return (
+      <div className="flex items-center gap-2 text-destructive py-8">
+        <AlertCircle className="h-4 w-4" />
+        <span>Impossibile calcolare la prontezza</span>
+        <Button variant="ghost" size="sm" onClick={() => refetch()}>Riprova</Button>
+      </div>
+    );
+  }
+
+  const plan = data.plan;
+  const readinessCfg: Record<string, { dot: string; label: string; cls: string }> = {
+    ready: { dot: "🟢", label: "Pronto", cls: "text-success" },
+    needs_connection: { dot: "🟡", label: `Servono ${plan.pendingSteps} step`, cls: "text-warning" },
+    blocked: { dot: "🔴", label: "Bloccato", cls: "text-destructive" },
+  };
+  const rc = readinessCfg[plan.readiness] || readinessCfg.needs_connection;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <span className="text-lg leading-none">{rc.dot}</span>
+            <span>Prontezza connessione — {plan.target}</span>
+            <span className={`text-xs font-medium ${rc.cls}`}>({rc.label})</span>
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {data.verification === "ghost-unverified" && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                <ShieldAlert className="h-3 w-3" /> ghost-unverified
+              </Badge>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching}>
+              {isFetching ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-2">
+          {plan.steps.map((s: any, i: number) => (
+            <div key={i} className="flex items-start gap-3 p-2 rounded border">
+              <span className={`mt-0.5 shrink-0 ${s.status === "satisfied" ? "text-success" : "text-muted-foreground"}`}>
+                {s.status === "satisfied" ? <CheckCircle2 className="h-4 w-4" /> : <span className="inline-block w-4 text-center">•</span>}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm">{s.label}</div>
+              </div>
+              <Badge variant={s.actor === "auto" ? "default" : "secondary"} className="text-xs gap-1 shrink-0">
+                {s.actor === "auto" ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                {s.actor === "auto" ? "auto" : "umano"}
+              </Badge>
+            </div>
+          ))}
+        </div>
+
+        {Array.isArray(plan.notes) && plan.notes.length > 0 && (
+          <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2 space-y-1">
+            {plan.notes.map((n: string, i: number) => <p key={i}>ℹ️ {n}</p>)}
+          </div>
+        )}
+
+        {Array.isArray(data.warnings) && data.warnings.length > 0 && (
+          <div className="text-xs text-warning bg-warning/10 border border-warning/30 rounded p-2 space-y-1">
+            {data.warnings.map((w: string, i: number) => <p key={i}>⚠️ {w}</p>)}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function ConnectionPlanPanel({ task }: { task: Task }) {
   const { data: plan, isLoading, error, refetch } = useQuery<any>({
@@ -839,7 +943,8 @@ export default function TaskFormContainer({
             <PendingActionsPanel task={task as Task} />
           </TabsContent>
 
-          <TabsContent value="connection-plan" className="mt-6">
+          <TabsContent value="connection-plan" className="mt-6 space-y-6">
+            <HubUpReadinessPanel task={task as Task} />
             <ConnectionPlanPanel task={task as Task} />
           </TabsContent>
         </Tabs>
