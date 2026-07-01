@@ -46,7 +46,9 @@ trap 'rm -f "$COOKIE_JAR"' EXIT
 # Argomenti di autenticazione per curl: token (Bearer) o cookie di sessione.
 CURL_AUTH=()
 
-log() { printf '[companion] %s\n' "$*" >&2; }
+# Log su stdout (finisce in companion.out del LaunchAgent): un solo file da
+# guardare per la diagnosi.
+log() { printf '[companion] %s\n' "$*"; }
 
 json_str() { python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))'; }
 
