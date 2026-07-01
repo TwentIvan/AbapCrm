@@ -37,7 +37,7 @@ import {
   aiProviders, aiModels, userOrganizations,
   mcpCatalog, mcpServerConfigs, insertMcpServerConfigSchema, mcpCatalogValidations,
   connectionWorkflows, insertConnectionWorkflowSchema,
-  discoveredConnectionMethods, moduleRuns, hubupJobs,
+  discoveredConnectionMethods, moduleRuns, hubupJobs, hubupCompanions,
   proposalDiscussions
 } from "@shared/schema";
 import { aiService, extractAnalysisText } from "./ai-service";
@@ -7450,6 +7450,13 @@ PROCESSO: <testo con punti numerati>`,
     const userId = req.user!.id;
     const deadline = Date.now() + 25_000;
     try {
+      // Heartbeat: segnala che un companion di questo utente è vivo e in ascolto.
+      await db.insert(hubupCompanions)
+        .values({ userId, hostname: (req.query.hostname as string) || null, lastSeenAt: new Date() })
+        .onConflictDoUpdate({
+          target: hubupCompanions.userId,
+          set: { lastSeenAt: new Date(), hostname: (req.query.hostname as string) || null },
+        });
       while (Date.now() < deadline) {
         const [queued] = await db.select().from(hubupJobs)
           .where(and(eq(hubupJobs.userId, userId), eq(hubupJobs.status, 'queued')))
@@ -7526,6 +7533,17 @@ PROCESSO: <testo con punti numerati>`,
     } catch (error) {
       res.status(500).send(`# installer non disponibile: ${error instanceof Error ? error.message : "errore"}`);
     }
+  });
+
+  // Stato del companion per l'utente: mai installato / offline / online.
+  // Usato dal click sulla scansione per proporre l'installazione al volo.
+  app.get("/api/hubup/companion/status", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const [row] = await db.select().from(hubupCompanions)
+      .where(eq(hubupCompanions.userId, req.user!.id));
+    const lastSeenAt = row?.lastSeenAt ? new Date(row.lastSeenAt as any) : null;
+    const online = !!lastSeenAt && (Date.now() - lastSeenAt.getTime() < 60_000);
+    res.json({ everSeen: !!row, online, lastSeenAt, hostname: row?.hostname || null });
   });
 
   // Companion + probe (whitelist fissa, nessun path arbitrario).

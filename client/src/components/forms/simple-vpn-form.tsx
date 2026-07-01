@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -53,19 +54,46 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
   const [selectedSoftware, setSelectedSoftware] = useState<VpnSoftware | null>(null);
   const [showCredentialsForm, setShowCredentialsForm] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [installOpen, setInstallOpen] = useState(false);
+  const pollCancel = useRef(false);
+  const installCmd = `curl -fsSL ${typeof window !== "undefined" ? window.location.origin : ""}/api/hubup/companion/install.sh | bash`;
 
-  // Scan "server-triggered": accoda un job e attende che il companion sul Mac
-  // esegua il probe, poi ricarica la lista del software rilevato.
+  const copyInstallCmd = () => {
+    navigator.clipboard?.writeText(installCmd);
+    toast({ title: "Comando copiato", description: "Incollalo nel Terminale del Mac." });
+  };
+
+  // Scan "server-triggered": accoda un job e attende che il companion esegua il
+  // probe. Se nessun companion è online, propone l'installazione al volo (con
+  // conferma umana): il job resta in coda e si completa appena il companion parte.
   const scanWorkstation = async () => {
     setIsScanning(true);
+    pollCancel.current = false;
     try {
+      // Il companion è mai stato installato / è online?
+      let online = false;
+      try {
+        const sr = await fetch("/api/hubup/companion/status", { credentials: "include" });
+        if (sr.ok) online = !!(await sr.json()).online;
+      } catch { /* ignora: trattiamo come offline */ }
+
       const res = await apiRequest("POST", "/api/hubup/jobs", {});
       const job = await res.json();
-      toast({ title: "Scansione richiesta", description: "In attesa del companion sulla workstation..." });
+
+      if (online) {
+        toast({ title: "Scansione richiesta", description: "In attesa del companion sulla workstation..." });
+      } else {
+        // Nessun companion: chiedi l'installazione (conferma umana) e continua
+        // ad attendere — appena parte, raccoglie questo stesso job.
+        setInstallOpen(true);
+      }
+
+      const limit = online ? 120000 : 600000; // più tempo se deve installare
       const started = Date.now();
       let done = false;
       let lastStatus = job?.status || "queued";
-      while (Date.now() - started < 120000) {
+      while (Date.now() - started < limit) {
+        if (pollCancel.current) break;
         await new Promise((r) => setTimeout(r, 2500));
         const jr = await fetch(`/api/hubup/jobs/${job.id}`, { credentials: "include" });
         if (!jr.ok) break;
@@ -73,21 +101,22 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
         lastStatus = j.status;
         if (j.status === "done") {
           await refetchSoftware();
+          setInstallOpen(false);
           toast({ title: "Scansione completata", description: `Rilevati ${j.methodsCount ?? 0} metodi su ${j.hostname || "la tua workstation"}.` });
           done = true;
           break;
         }
         if (j.status === "error") {
+          setInstallOpen(false);
           toast({ variant: "destructive", title: "Scansione fallita", description: j.error || "Errore del companion" });
           done = true;
           break;
         }
       }
-      if (!done) {
-        // Distingui: job mai raccolto (nessun companion) vs preso ma non concluso.
+      if (!done && !pollCancel.current) {
         const description = lastStatus === "running"
           ? "Il companion ha preso il job ma non l'ha completato: probe lento o in errore. Controlla i log del companion."
-          : "Nessun companion ha raccolto la richiesta. Assicurati che hubup_companion.sh sia in esecuzione sulla workstation e connesso.";
+          : "Nessun companion ha raccolto la richiesta. Installa/avvia il companion e riprova.";
         toast({ variant: "destructive", title: "Nessuna risposta", description });
       }
     } catch (error: any) {
@@ -95,6 +124,12 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
     } finally {
       setIsScanning(false);
     }
+  };
+
+  const cancelScan = () => {
+    pollCancel.current = true;
+    setInstallOpen(false);
+    setIsScanning(false);
   };
 
   // Load VPN software from the real workstation scan (Hub Up probe), not the
@@ -633,15 +668,50 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
           >
             Annulla
           </Button>
-          <Button 
-            type="submit" 
-            disabled={createMutation.isPending || !discoveryComplete || !form.getValues('existingConnectionId')} 
+          <Button
+            type="submit"
+            disabled={createMutation.isPending || !discoveryComplete || !form.getValues('existingConnectionId')}
             data-testid="button-save"
           >
             {createMutation.isPending ? "Salvando..." : "Configura VPN"}
           </Button>
         </div>
       </form>
+
+      {/* Prompt d'installazione del companion (conferma umana, al click di scan) */}
+      <Dialog open={installOpen} onOpenChange={(o) => { if (!o) cancelScan(); }}>
+        <DialogContent data-testid="dialog-install-companion">
+          <DialogHeader>
+            <DialogTitle>Installa il companion sulla workstation</DialogTitle>
+            <DialogDescription>
+              Nessun companion risulta attivo. Serve un solo comando, una volta sola:
+              installa e avvia il companion (poi si auto-aggiorna). La scansione
+              è già in coda e partirà da sola appena il companion è attivo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Copia questo e incollalo nel <strong>Terminale del Mac</strong>:
+            </p>
+            <pre className="overflow-x-auto rounded bg-muted p-3 text-[11px] leading-relaxed">
+              <code>{installCmd}</code>
+            </pre>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={copyInstallCmd} data-testid="button-copy-install">
+                Copia comando
+              </Button>
+              <span className="flex items-center text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> In attesa che il companion parta...
+              </span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={cancelScan} data-testid="button-cancel-install">
+              Annulla
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Form>
   );
 }

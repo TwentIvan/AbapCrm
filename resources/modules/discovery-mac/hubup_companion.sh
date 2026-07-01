@@ -121,7 +121,7 @@ main() {
     local http body tmp
     tmp="$(mktemp -t hubup_next.XXXXXX)"
     http="$(curl -sS -b "$COOKIE_JAR" -o "$tmp" -w '%{http_code}' \
-      --max-time 35 "$SERVER/api/hubup/jobs/next")" || http="000"
+      --max-time 35 "$SERVER/api/hubup/jobs/next?hostname=$(hostname | sed 's/[^A-Za-z0-9._-]/_/g')")" || http="000"
     body="$(cat "$tmp")"; rm -f "$tmp"
 
     case "$http" in

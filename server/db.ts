@@ -382,6 +382,17 @@ export async function runStartupMigrations(): Promise<boolean> {
       CREATE INDEX IF NOT EXISTS "hubup_jobs_user_status_idx" ON "hubup_jobs" ("user_id","status");
     `);
 
+    // Migration 0017: hubup_companions — heartbeat del companion (per capire se
+    // è mai stato installato e se è online, così il click sulla scansione può
+    // proporre l'installazione).
+    await safeMigrate('hubup_companions table ensured', `
+      CREATE TABLE IF NOT EXISTS "hubup_companions" (
+        "user_id" uuid PRIMARY KEY REFERENCES "users"("id"),
+        "hostname" text,
+        "last_seen_at" timestamp NOT NULL DEFAULT now()
+      );
+    `);
+
     client.release();
     return true;
   } catch (error) {

@@ -1281,6 +1281,14 @@ export const hubupJobs = pgTable("hubup_jobs", {
   hubupJobsUserStatusIdx: index("hubup_jobs_user_status_idx").on(table.userId, table.status),
 }));
 
+// Heartbeat del companion: aggiornato ad ogni polling. Serve a sapere se un
+// companion è mai stato installato (riga presente) e se è online (recente).
+export const hubupCompanions = pgTable("hubup_companions", {
+  userId: uuid("user_id").primaryKey().references(() => users.id),
+  hostname: text("hostname"),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+});
+
 // Transport Request files (cofile and data file)
 export const transportRequestStatusEnum = pgEnum("transport_request_status", ["development", "testing", "quality", "production", "released", "imported"]);
 export const transportRequestTypeEnum = pgEnum("transport_request_type", ["workbench", "customizing", "copy", "relocate"]);
