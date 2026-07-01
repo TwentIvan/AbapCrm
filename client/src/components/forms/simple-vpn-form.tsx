@@ -343,6 +343,19 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
               </Button>
             </div>
 
+            <details className="text-xs text-muted-foreground">
+              <summary className="cursor-pointer select-none">
+                Prima volta? Installa il companion (un solo comando, sul Mac)
+              </summary>
+              <p className="mt-2">
+                Incolla questo nel Terminale del Mac: scarica e avvia il companion
+                (auto-avvio + auto-aggiornamento dal server). Va fatto una volta sola.
+              </p>
+              <pre className="mt-2 overflow-x-auto rounded bg-muted p-2 text-[11px] leading-relaxed">
+                <code>{`curl -fsSL ${typeof window !== "undefined" ? window.location.origin : ""}/api/hubup/companion/install.sh | bash`}</code>
+              </pre>
+            </details>
+
             <FormField
               control={form.control}
               name="vpnSoftware"

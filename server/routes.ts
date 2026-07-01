@@ -7504,6 +7504,45 @@ PROCESSO: <testo con punti numerati>`,
     }
   });
 
+  // ── Hub Up companion — distribuzione turnkey ──────────────────────────────
+  // Il server non può installare nulla sul Mac: serve un unico comando manuale
+  // (curl | bash). Da lì il companion si scarica DA QUI e si installa/aggiorna
+  // da solo. Questi file sono script generici, NON contengono segreti.
+  const HUBUP_COMPANION_DIR = "resources/modules/discovery-mac";
+  const HUBUP_COMPANION_FILES: Record<string, { file: string; type: string }> = {
+    "agent.sh": { file: "hubup_companion.sh", type: "text/x-shellscript; charset=utf-8" },
+    "probe-mac": { file: "hubup_discover_mac.py", type: "text/x-python; charset=utf-8" },
+  };
+
+  // Installer one-liner: inietta l'URL pubblico del server nel template.
+  app.get("/api/hubup/companion/install.sh", async (req, res) => {
+    try {
+      const fs = await import("fs");
+      const path = await import("path");
+      const proto = (String(req.headers["x-forwarded-proto"] || "").split(",")[0]) || req.protocol || "https";
+      const server = `${proto}://${req.get("host")}`;
+      const tpl = fs.readFileSync(path.resolve(HUBUP_COMPANION_DIR, "hubup_install.sh"), "utf8");
+      res.type("text/x-shellscript; charset=utf-8").send(tpl.replace(/@@HUBUP_SERVER@@/g, server));
+    } catch (error) {
+      res.status(500).send(`# installer non disponibile: ${error instanceof Error ? error.message : "errore"}`);
+    }
+  });
+
+  // Companion + probe (whitelist fissa, nessun path arbitrario).
+  app.get("/api/hubup/companion/:name", async (req, res) => {
+    const entry = HUBUP_COMPANION_FILES[req.params.name];
+    if (!entry) return res.sendStatus(404);
+    try {
+      const fs = await import("fs");
+      const path = await import("path");
+      const p = path.resolve(HUBUP_COMPANION_DIR, entry.file);
+      if (!fs.existsSync(p)) return res.sendStatus(404);
+      res.type(entry.type).send(fs.readFileSync(p, "utf8"));
+    } catch (error) {
+      res.status(500).send(`# non disponibile: ${error instanceof Error ? error.message : "errore"}`);
+    }
+  });
+
   // Run the module runner (ghost by default) to produce + store an inventory.
   // Verification label makes it impossible to mistake ghost data for production.
   app.post("/api/hubup/discovery/run", async (req, res) => {

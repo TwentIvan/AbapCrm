@@ -96,8 +96,26 @@ handle_job() {
   log "job $job_id: completato -> $resp"
 }
 
+# Auto-aggiornamento del probe dal server (best-effort). Mantiene la firma
+# di rilevamento allineata senza reinstallare il companion.
+self_update_probe() {
+  [[ "$(uname -s)" == "Darwin" ]] || return 0
+  [[ -n "$PROBE" ]] || return 0
+  local tmp; tmp="$(mktemp -t hubup_probe.XXXXXX)"
+  if curl -fsSL --max-time 20 "$SERVER/api/hubup/companion/probe-mac" -o "$tmp" 2>/dev/null \
+       && python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' "$tmp" 2>/dev/null; then
+    mkdir -p "$(dirname "$PROBE")"
+    mv "$tmp" "$PROBE"
+    log "probe aggiornato dal server."
+  else
+    rm -f "$tmp"
+    log "probe non aggiornato (uso la copia locale)."
+  fi
+}
+
 main() {
   login || { log "login iniziale fallito, riprovo tra ${POLL_BACKOFF}s"; sleep "$POLL_BACKOFF"; }
+  self_update_probe
   log "in ascolto di job su $SERVER ..."
   while true; do
     local http body tmp
