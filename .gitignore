@@ -5,4 +5,5 @@ server/public
 vite.config.ts.*
 *.tar.gz
 stored_attachments
-uploads__pycache__/
+uploads
+__pycache__/
