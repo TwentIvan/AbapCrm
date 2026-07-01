@@ -152,7 +152,7 @@ main() {
       # nessun job: col long-poll il server tiene ~25s. Se torna subito (server
       # non long-poll), evita l'hot-loop con una piccola pausa.
       204) [[ "$elapsed" -lt 2 ]] && sleep 2 ;;
-      401) log "non autorizzato (token/sessione), riprovo tra ${POLL_BACKOFF}s"; sleep "$POLL_BACKOFF"; login || true ;;
+      401) log "non autorizzato: ${body:-(nessun corpo)} — riprovo tra ${POLL_BACKOFF}s"; sleep "$POLL_BACKOFF"; login || true ;;
       000) log "rete non raggiungibile, ritento tra ${POLL_BACKOFF}s"; sleep "$POLL_BACKOFF" ;;
       *)   log "risposta inattesa (HTTP $http), attendo ${POLL_BACKOFF}s"; sleep "$POLL_BACKOFF" ;;
     esac

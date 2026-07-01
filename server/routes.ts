@@ -7413,27 +7413,30 @@ PROCESSO: <testo con punti numerati>`,
     }
   });
 
+  // Timbro di build: serve a distinguere "server aggiornato" da "server vecchio
+  // ancora in esecuzione" durante la diagnosi. Bumpalo ad ogni fix rilevante.
+  const HUBUP_BUILD = "2025-07-01.token-diag.1";
+
   // Risolve "chi sta chiamando": sessione browser OPPURE token di arruolamento
-  // del companion (Bearer / ?token= / x-hubup-token). Restituisce userId+org.
-  async function resolveHubupActor(req: any): Promise<{ userId: string; organizationId: string | null } | null> {
+  // del companion (Bearer / ?token= / x-hubup-token). Restituisce actor + reason
+  // (reason usato SOLO per diagnosi nel 401, mai per logica).
+  async function resolveHubupActor(req: any): Promise<{ actor: { userId: string; organizationId: string | null } | null; reason: string }> {
     if (req.isAuthenticated && req.isAuthenticated()) {
-      return { userId: req.user!.id, organizationId: getOrganizationId(req) };
+      return { actor: { userId: req.user!.id, organizationId: getOrganizationId(req) }, reason: "session" };
     }
     const auth = String(req.headers["authorization"] || "");
     const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
     const token = bearer || (req.headers["x-hubup-token"] as string) || (req.query.token as string) || "";
-    if (!token) return null;
-    // NB: non filtriamo su revoked. I token sono credenziali long-lived del
-    // companion e non esiste un flusso di revoca reale; il flag revoked poteva
-    // restare "true" per token ancora installati (rotazione dei vecchi download)
-    // causando 401 a raffica. Basta che il token esista e non sia scaduto.
+    if (!token) return { actor: null, reason: "no-token" };
+    // NB: non filtriamo su revoked (nessun flusso di revoca reale; il flag poteva
+    // restare true su token ancora installati). Basta esista e non sia scaduto.
     const [row] = await db.select().from(hubupEnrollTokens)
       .where(eq(hubupEnrollTokens.token, token));
-    if (!row) return null;
-    if (row.expiresAt && new Date(row.expiresAt as any).getTime() < Date.now()) return null;
+    if (!row) return { actor: null, reason: `token-not-found(len=${token.length})` };
+    if (row.expiresAt && new Date(row.expiresAt as any).getTime() < Date.now()) return { actor: null, reason: "token-expired" };
     db.update(hubupEnrollTokens).set({ lastUsedAt: new Date() })
       .where(eq(hubupEnrollTokens.id, row.id)).catch(() => {});
-    return { userId: row.userId, organizationId: row.organizationId };
+    return { actor: { userId: row.userId, organizationId: row.organizationId }, reason: "token-ok" };
   }
 
   // App (sessione): genera un token di arruolamento per il companion e l'URL
@@ -7518,8 +7521,8 @@ PROCESSO: <testo con punti numerati>`,
   // Attende fino a ~25s; se ne trova uno lo "claim-a" (queued -> running) in
   // modo atomico. 204 se non c'è nulla entro il timeout (il companion ripolla).
   app.get("/api/hubup/jobs/next", async (req, res) => {
-    const actor = await resolveHubupActor(req);
-    if (!actor) return res.sendStatus(401);
+    const { actor, reason } = await resolveHubupActor(req);
+    if (!actor) return res.status(401).json({ error: "unauthorized", reason, build: HUBUP_BUILD });
     const userId = actor.userId;
     const deadline = Date.now() + 25_000;
     try {
@@ -7554,7 +7557,7 @@ PROCESSO: <testo con punti numerati>`,
   // Companion: riporta l'esito. Body: { hostname?, inventory?, error? }.
   // Con inventory -> upsert dei metodi e job "done"; con error -> job "error".
   app.post("/api/hubup/jobs/:id/result", async (req, res) => {
-    const actor = await resolveHubupActor(req);
+    const { actor } = await resolveHubupActor(req);
     if (!actor) return res.sendStatus(401);
     try {
       const userId = actor.userId;
@@ -7603,7 +7606,7 @@ PROCESSO: <testo con punti numerati>`,
       .where(eq(hubupCompanions.userId, req.user!.id));
     const lastSeenAt = row?.lastSeenAt ? new Date(row.lastSeenAt as any) : null;
     const online = !!lastSeenAt && (Date.now() - lastSeenAt.getTime() < 60_000);
-    res.json({ everSeen: !!row, online, lastSeenAt, hostname: row?.hostname || null });
+    res.json({ everSeen: !!row, online, lastSeenAt, hostname: row?.hostname || null, build: HUBUP_BUILD });
   });
 
   // Companion + probe (whitelist fissa, nessun path arbitrario).
