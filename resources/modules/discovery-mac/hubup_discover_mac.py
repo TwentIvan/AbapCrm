@@ -257,9 +257,10 @@ DEFAULT_CATALOG = [
         # Mac. Path affinati con la diagnostica reale — glob larghi per versione.
         "id": "parallels_client", "kind": "vdi",
         "app": "/Applications/Parallels Client.app",
-        "app_alt": "/Applications/2X Client.app",
-        "profiles_glob": "~/Library/Application Support/Parallels/Parallels Client/**/*",
-        "profiles_glob2": "~/Library/Preferences/com.parallels*client*.plist",
+        # Verificato: connessioni RAS sotto ~/Library/Preferences/Parallels (non in
+        # Application Support). Glob largo per catturare i file di connessione lì.
+        "profiles_glob": "~/Library/Preferences/Parallels/**/*",
+        "profiles_glob2": "~/Library/Preferences/Parallels/*",
         "connected_proc": "Parallels Client",
     },
     {
