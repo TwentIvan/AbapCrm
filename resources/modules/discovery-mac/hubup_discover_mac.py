@@ -245,9 +245,22 @@ DEFAULT_CATALOG = [
         "profiles_glob": "~/Library/Application Support/Citrix Receiver/**/*.store",
     },
     {
+        # Parallels DESKTOP: hypervisor con VM LOCALI (prlctl). Scenario E.
         "id": "parallels", "kind": "hypervisor",
         "app": "/Applications/Parallels Desktop.app",
         "cli": "prlctl",
+    },
+    {
+        # Parallels CLIENT (ex 2X / RAS Client): client VDI verso desktop/app
+        # PUBBLICATE su una farm Parallels RAS (es. SAP GUI pubblicata). Scenario F
+        # (come Citrix): l'MCP/bridge deve girare DENTRO la sessione remota, non sul
+        # Mac. Path affinati con la diagnostica reale — glob larghi per versione.
+        "id": "parallels_client", "kind": "vdi",
+        "app": "/Applications/Parallels Client.app",
+        "app_alt": "/Applications/2X Client.app",
+        "profiles_glob": "~/Library/Application Support/Parallels/Parallels Client/**/*",
+        "profiles_glob2": "~/Library/Preferences/com.parallels*client*.plist",
+        "connected_proc": "Parallels Client",
     },
     {
         "id": "microsoft_rdp", "kind": "rdp",
