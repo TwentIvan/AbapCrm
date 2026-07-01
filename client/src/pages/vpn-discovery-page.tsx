@@ -61,12 +61,12 @@ export default function VPNDiscoveryPage() {
     password: ""
   });
 
-  // Funzione per eseguire discovery e salvare nel database
+  // Esegue il probe Hub Up (Modulo F) e ne salva l'inventario.
   const runDiscovery = async () => {
-    console.log('🔍 Eseguendo discovery VPN e salvataggio nel database...');
-    const response = await fetch("/api/discovered-vpn-software/run-discovery", { 
+    console.log('🔍 Eseguendo discovery VPN via probe Hub Up...');
+    const response = await fetch("/api/hubup/discovery/run", {
       method: "POST",
-      credentials: "include" 
+      credentials: "include"
     });
     if (!response.ok) {
       throw new Error('Discovery failed');
@@ -76,29 +76,24 @@ export default function VPNDiscoveryPage() {
     return result;
   };
 
-  // Pre-carica software VPN scoperti dal database 
+  // Software VPN dal probe Hub Up (unica sorgente), non più dallo scan legacy.
   const { data: availableSoftware, isLoading: isLoadingSoftware, refetch: refetchSoftware } = useQuery<VPNSoftware[]>({
-    queryKey: ["/api/discovered-vpn-software"],
+    queryKey: ["/api/vpn-software/discovered"],
     queryFn: async () => {
       try {
-        console.log('🔍 Caricamento software VPN dal database...');
-        const res = await fetch("/api/discovered-vpn-software", { credentials: "include" });
-        if (!res.ok) {
-          console.log('Database non disponibile o vuoto - usando discovery real-time');
-          // NON eseguire inserimenti automatici - usa solo discovery real-time!
-          return [];
-        }
+        const res = await fetch("/api/vpn-software/discovered", { credentials: "include" });
+        if (!res.ok) return [];
         const data = await res.json();
-        console.log('✅ Software VPN caricato dal database:', data.length, 'elementi');
-        
-        // Converti dal formato database al formato frontend
+        console.log('✅ Software VPN dal probe:', data.length, 'elementi');
         return data.map((software: any) => ({
-          software: software.softwareKey,
+          software: software.id,
           name: software.name,
           installed: software.installed,
           canReadConfigs: software.canReadConfigs,
-          configCount: software.configCount,
-          description: software.description,
+          configCount: 0,
+          description: software.vendor
+            ? `${software.vendor}${software.version ? ` v${software.version}` : ''}`
+            : '',
           automationType: software.automationType
         }));
       } catch (error) {
@@ -108,50 +103,10 @@ export default function VPNDiscoveryPage() {
     },
   });
 
-  // Carica configurazioni VPN dal database per il software selezionato
+  // I profili configurati per-software non sono esposti dal probe (F1): lista vuota.
   const { data: vpnConnections, isLoading: isLoadingConnections, refetch: refetchConnections } = useQuery<VPNConnection[]>({
-    queryKey: ["/api/discovered-vpn-configurations/software", selectedSoftware],
-    queryFn: async () => {
-      if (!selectedSoftware) return [];
-      
-      try {
-        // Trova il software selezionato per ottenere il database ID
-        const selectedSoftwareData = availableSoftware?.find(s => s.software === selectedSoftware);
-        if (!selectedSoftwareData) return [];
-        
-        // Ottieni l'ID dal database
-        const softwareRes = await fetch("/api/discovered-vpn-software", { credentials: "include" });
-        if (!softwareRes.ok) return [];
-        const allSoftware = await softwareRes.json();
-        const dbSoftware = allSoftware.find((s: any) => s.softwareKey === selectedSoftware);
-        if (!dbSoftware) return [];
-        
-        // Carica le configurazioni per questo software
-        const res = await fetch(`/api/discovered-vpn-configurations/software/${dbSoftware.id}`, { 
-          credentials: "include"
-        });
-        if (!res.ok) {
-          console.log('Nessuna configurazione trovata nel database');
-          return [];
-        }
-        const data = await res.json();
-        console.log('✅ Configurazioni caricate dal database per', selectedSoftware, ':', data.length);
-        
-        // Converti dal formato database al formato frontend
-        return data.map((config: any) => ({
-          id: config.configId,
-          name: config.name,
-          type: config.extractionMethod,
-          server: config.server,
-          port: config.port,
-          details: config.profileData ? JSON.parse(config.profileData).details || '' : '',
-          configured: config.configured
-        }));
-      } catch (error) {
-        console.log('Errore caricamento configurazioni:', error);
-        return [];
-      }
-    },
+    queryKey: ["/api/vpn-software/discovered/configs", selectedSoftware],
+    queryFn: async () => [],
     enabled: !!selectedSoftware && !!availableSoftware
   });
 

@@ -307,23 +307,30 @@ export async function runStartupMigrations(): Promise<boolean> {
     `);
     console.log('[DB] ✓ vpn_connections.role/method_id ensured + SonicWall reachability seed');
 
-    // Seed: SonicWall Cloud Secure Edge (CSE, ex-Banyan) as selectable VPN software.
-    // ZTNA identity-based reachability VPN now used on the reference Mac (the legacy
-    // NetExtender entry stays for consultants still on it). Idempotent on unique name.
+    // Migration 0015: vpn_systems.vpn_software_id ora è il methodId del probe
+    // (testo, es. "sonicwall_cse"), non più una FK verso il catalogo statico
+    // vpn_software. Tutto il software VPN viene dal probe Hub Up. Rimuoviamo il
+    // vincolo FK e convertiamo la colonna a text (idempotente).
     await client.query(`
-      INSERT INTO "vpn_software" (name, vendor, version, description, supported_platforms, is_active)
-      SELECT
-        'SonicWall Cloud Secure Edge',
-        'SonicWall',
-        '1.4',
-        'ZTNA identity-based (ex-Banyan). Reachability verso la rete corporate.',
-        ARRAY['mac','windows'],
-        true
-      WHERE NOT EXISTS (
-        SELECT 1 FROM "vpn_software" WHERE name = 'SonicWall Cloud Secure Edge'
-      );
+      DO $$
+      DECLARE fk_name text;
+      BEGIN
+        SELECT conname INTO fk_name
+          FROM pg_constraint
+          WHERE conrelid = 'vpn_systems'::regclass
+            AND contype = 'f'
+            AND conkey = ARRAY[(
+              SELECT attnum FROM pg_attribute
+              WHERE attrelid = 'vpn_systems'::regclass AND attname = 'vpn_software_id'
+            )];
+        IF fk_name IS NOT NULL THEN
+          EXECUTE format('ALTER TABLE vpn_systems DROP CONSTRAINT %I', fk_name);
+        END IF;
+      END $$;
+      ALTER TABLE "vpn_systems" ALTER COLUMN "vpn_software_id" DROP NOT NULL;
+      ALTER TABLE "vpn_systems" ALTER COLUMN "vpn_software_id" TYPE text USING "vpn_software_id"::text;
     `);
-    console.log('[DB] ✓ vpn_software SonicWall CSE seed ensured');
+    console.log('[DB] ✓ vpn_systems.vpn_software_id migrated to probe methodId (text, no FK)');
 
     // Migration 0014: module_runs audit sink (Hub Up bootstrap prod-phase; never stores secrets)
     await client.query(`

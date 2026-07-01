@@ -84,6 +84,7 @@ import connectPg from "connect-pg-simple";
 import MemoryStore from "memorystore";
 import { pool } from "./db";
 import { sql } from "drizzle-orm";
+import { resolveVpnMethod } from "./lib/vpnCatalog";
 import scrypt from "scrypt-js";
 import { AuditService } from "./audit-service";
 import { ThreadingService } from "./threading-service";
@@ -3816,7 +3817,9 @@ export class DatabaseStorage implements IStorage {
 
   // VPN Systems
   async getVpnSystems(userId: string): Promise<VpnSystems[]> {
-    return await db.select({
+    // vpnSoftwareId ora è il methodId del probe (testo): niente più join sul
+    // catalogo statico, nome/vendor risolti dal catalogo condiviso Hub Up.
+    const rows = await db.select({
       id: vpnSystems.id,
       name: vpnSystems.name,
       serverHost: vpnSystems.serverHost,
@@ -3839,18 +3842,21 @@ export class DatabaseStorage implements IStorage {
         name: partners.name,
         company: partners.company
       },
-      vpnSoftware: {
-        id: vpnSoftware.id,
-        name: vpnSoftware.name,
-        vendor: vpnSoftware.vendor,
-        iconUrl: vpnSoftware.iconUrl
-      }
     })
     .from(vpnSystems)
     .leftJoin(partners, eq(vpnSystems.partnerId, partners.id))
-    .leftJoin(vpnSoftware, eq(vpnSystems.vpnSoftwareId, vpnSoftware.id))
     .where(eq(vpnSystems.userId, userId))
     .orderBy(desc(vpnSystems.createdAt));
+
+    return rows.map((r: any) => {
+      const meta = resolveVpnMethod(r.vpnSoftwareId);
+      return {
+        ...r,
+        vpnSoftware: r.vpnSoftwareId
+          ? { id: r.vpnSoftwareId, name: meta.name, vendor: meta.vendor, iconUrl: null }
+          : null,
+      };
+    }) as unknown as VpnSystems[];
   }
 
   async getVpnSystemsByPartner(partnerId: string, userId: string): Promise<VpnSystems[]> {

@@ -10,7 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertVpnSystemsSchema, type VpnSystems, type Partner, type VpnSoftware } from "@shared/schema";
+import { insertVpnSystemsSchema, type VpnSystems, type Partner } from "@shared/schema";
+
+// Software VPN rilevato dal probe Hub Up (non dal catalogo statico).
+interface DiscoveredVpnSoftware {
+  id: string;
+  name: string;
+  vendor: string;
+  version?: string;
+}
 
 const formSchema = insertVpnSystemsSchema.extend({
   partnerId: z.string().optional(),
@@ -57,11 +65,11 @@ export default function VpnSystemForm({ system, onSuccess, onCancel }: VpnSystem
     },
   });
 
-  // Fetch VPN software for dropdown
-  const { data: vpnSoftware = [] } = useQuery<VpnSoftware[]>({
-    queryKey: ["/api/vpn-software"],
+  // Fetch VPN software rilevato dal probe (Hub Up), non dal catalogo statico
+  const { data: vpnSoftware = [] } = useQuery<DiscoveredVpnSoftware[]>({
+    queryKey: ["/api/vpn-software/discovered"],
     queryFn: async () => {
-      const res = await fetch("/api/vpn-software", { credentials: "include" });
+      const res = await fetch("/api/vpn-software/discovered", { credentials: "include" });
       if (!res.ok) throw new Error('Failed to fetch VPN software');
       return res.json();
     },
@@ -107,8 +115,8 @@ export default function VpnSystemForm({ system, onSuccess, onCancel }: VpnSystem
       // Clean up empty strings to undefined
       const cleanData = {
         ...data,
-        partnerId: data.partnerId || undefined,
-        vpnSoftwareId: data.vpnSoftwareId || undefined,
+        partnerId: data.partnerId === "none" ? undefined : (data.partnerId || undefined),
+        vpnSoftwareId: data.vpnSoftwareId === "none" ? undefined : (data.vpnSoftwareId || undefined),
         description: data.description || undefined,
       };
 

@@ -997,7 +997,8 @@ export const vpnSystems = pgTable("vpn_systems", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
   partnerId: uuid("partner_id").references(() => partners.id).notNull(),
-  vpnSoftwareId: uuid("vpn_software_id").references(() => vpnSoftware.id).notNull(),
+  // methodId del probe Hub Up (es. "sonicwall_cse"), non più FK al catalogo statico.
+  vpnSoftwareId: text("vpn_software_id"),
   
   name: text("name").notNull(), // "VPN Azienda ABC", "Accesso remoto Cliente XYZ"
   description: text("description"),
