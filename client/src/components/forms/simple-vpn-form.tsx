@@ -55,12 +55,28 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
   const [showCredentialsForm, setShowCredentialsForm] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const pollCancel = useRef(false);
-  const installCmd = `curl -fsSL ${typeof window !== "undefined" ? window.location.origin : ""}/api/hubup/companion/install.sh | bash`;
 
-  const copyInstallCmd = () => {
-    navigator.clipboard?.writeText(installCmd);
-    toast({ title: "Comando copiato", description: "Incollalo nel Terminale del Mac." });
+  // Genera un token di arruolamento e scarica l'installer personalizzato
+  // (.command): doppio click, nessuna credenziale da digitare.
+  const downloadInstaller = async () => {
+    setIsDownloading(true);
+    try {
+      const res = await apiRequest("POST", "/api/hubup/companion/enroll", {});
+      const { downloadUrl } = await res.json();
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = "";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast({ title: "Installer scaricato", description: "Aprilo con doppio click per installare il companion." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Errore", description: error?.message || "Impossibile generare l'installer" });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   // Scan "server-triggered": accoda un job e attende che il companion esegua il
@@ -378,18 +394,6 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
               </Button>
             </div>
 
-            <details className="text-xs text-muted-foreground">
-              <summary className="cursor-pointer select-none">
-                Prima volta? Installa il companion (un solo comando, sul Mac)
-              </summary>
-              <p className="mt-2">
-                Incolla questo nel Terminale del Mac: scarica e avvia il companion
-                (auto-avvio + auto-aggiornamento dal server). Va fatto una volta sola.
-              </p>
-              <pre className="mt-2 overflow-x-auto rounded bg-muted p-2 text-[11px] leading-relaxed">
-                <code>{`curl -fsSL ${typeof window !== "undefined" ? window.location.origin : ""}/api/hubup/companion/install.sh | bash`}</code>
-              </pre>
-            </details>
 
             <FormField
               control={form.control}
@@ -684,24 +688,27 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
           <DialogHeader>
             <DialogTitle>Installa il companion sulla workstation</DialogTitle>
             <DialogDescription>
-              Nessun companion risulta attivo. Serve un solo comando, una volta sola:
-              installa e avvia il companion (poi si auto-aggiorna). La scansione
-              è già in coda e partirà da sola appena il companion è attivo.
+              Nessun companion risulta attivo. Scarica l'installer (una volta sola):
+              non serve digitare credenziali. La scansione è già in coda e partirà
+              da sola appena il companion è attivo.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Copia questo e incollalo nel <strong>Terminale del Mac</strong>:
-            </p>
-            <pre className="overflow-x-auto rounded bg-muted p-3 text-[11px] leading-relaxed">
-              <code>{installCmd}</code>
-            </pre>
-            <div className="flex items-center gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={copyInstallCmd} data-testid="button-copy-install">
-                Copia comando
+            <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+              <li>Scarica l'installer col pulsante qui sotto.</li>
+              <li>Aprilo con <strong>doppio click</strong> (la prima volta: tasto destro &gt; Apri).</li>
+              <li>Torna qui: la scansione si completa da sola.</li>
+            </ol>
+            <div className="flex items-center gap-3">
+              <Button type="button" onClick={downloadInstaller} disabled={isDownloading} data-testid="button-download-installer">
+                {isDownloading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Genero l'installer...</>
+                ) : (
+                  <><RefreshCw className="mr-2 h-4 w-4" /> Scarica installer</>
+                )}
               </Button>
               <span className="flex items-center text-sm text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> In attesa che il companion parta...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> In attesa del companion...
               </span>
             </div>
           </div>

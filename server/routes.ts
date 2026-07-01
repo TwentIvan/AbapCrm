@@ -37,7 +37,7 @@ import {
   aiProviders, aiModels, userOrganizations,
   mcpCatalog, mcpServerConfigs, insertMcpServerConfigSchema, mcpCatalogValidations,
   connectionWorkflows, insertConnectionWorkflowSchema,
-  discoveredConnectionMethods, moduleRuns, hubupJobs, hubupCompanions,
+  discoveredConnectionMethods, moduleRuns, hubupJobs, hubupCompanions, hubupEnrollTokens,
   proposalDiscussions
 } from "@shared/schema";
 import { aiService, extractAnalysisText } from "./ai-service";
@@ -7413,6 +7413,69 @@ PROCESSO: <testo con punti numerati>`,
     }
   });
 
+  // Risolve "chi sta chiamando": sessione browser OPPURE token di arruolamento
+  // del companion (Bearer / ?token= / x-hubup-token). Restituisce userId+org.
+  async function resolveHubupActor(req: any): Promise<{ userId: string; organizationId: string | null } | null> {
+    if (req.isAuthenticated && req.isAuthenticated()) {
+      return { userId: req.user!.id, organizationId: getOrganizationId(req) };
+    }
+    const auth = String(req.headers["authorization"] || "");
+    const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
+    const token = bearer || (req.headers["x-hubup-token"] as string) || (req.query.token as string) || "";
+    if (!token) return null;
+    const [row] = await db.select().from(hubupEnrollTokens)
+      .where(and(eq(hubupEnrollTokens.token, token), eq(hubupEnrollTokens.revoked, false)));
+    if (!row) return null;
+    if (row.expiresAt && new Date(row.expiresAt as any).getTime() < Date.now()) return null;
+    db.update(hubupEnrollTokens).set({ lastUsedAt: new Date() })
+      .where(eq(hubupEnrollTokens.id, row.id)).catch(() => {});
+    return { userId: row.userId, organizationId: row.organizationId };
+  }
+
+  // App (sessione): genera un token di arruolamento per il companion e l'URL
+  // dell'installer personalizzato. Il token è la credenziale del companion —
+  // niente password digitata sul Mac.
+  app.post("/api/hubup/companion/enroll", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const crypto = await import("crypto");
+      const token = crypto.randomBytes(32).toString("base64url");
+      const organizationId = getOrganizationId(req);
+      // Un solo token attivo per utente: revoca i precedenti (rotazione).
+      await db.update(hubupEnrollTokens).set({ revoked: true })
+        .where(and(eq(hubupEnrollTokens.userId, req.user!.id), eq(hubupEnrollTokens.revoked, false)));
+      await db.insert(hubupEnrollTokens).values({
+        token, userId: req.user!.id, organizationId, label: "companion",
+      });
+      const proto = (String(req.headers["x-forwarded-proto"] || "").split(",")[0]) || req.protocol || "https";
+      const server = `${proto}://${req.get("host")}`;
+      res.json({ token, downloadUrl: `${server}/api/hubup/companion/installer?token=${encodeURIComponent(token)}` });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : "enroll failed" });
+    }
+  });
+
+  // Download dell'installer personalizzato (autorizzato dal token, non dalla
+  // sessione: così il browser può scaricarlo direttamente). Modalità .command
+  // oggi, .pkg in produzione — deciso da HUBUP_INSTALLER_MODE.
+  app.get("/api/hubup/companion/installer", async (req, res) => {
+    try {
+      const token = String(req.query.token || "");
+      if (!token) return res.status(400).send("token mancante");
+      const [row] = await db.select().from(hubupEnrollTokens)
+        .where(and(eq(hubupEnrollTokens.token, token), eq(hubupEnrollTokens.revoked, false)));
+      if (!row) return res.status(403).send("token non valido");
+      const proto = (String(req.headers["x-forwarded-proto"] || "").split(",")[0]) || req.protocol || "https";
+      const server = `${proto}://${req.get("host")}`;
+      const { getCompanionInstaller } = await import("./lib/companionInstaller");
+      const artifact = getCompanionInstaller().build({ server, token });
+      res.setHeader("Content-Disposition", `attachment; filename="${artifact.filename}"`);
+      res.type(artifact.contentType).send(artifact.body);
+    } catch (error) {
+      res.status(500).send(`installer non disponibile: ${error instanceof Error ? error.message : "errore"}`);
+    }
+  });
+
   // ── Hub Up job queue — scan "server-triggered" ────────────────────────────
   // Il server non può raggiungere il Mac (NAT/firewall): il flusso è invertito.
   // L'app accoda un job; il companion installato sul Mac fa polling outbound,
@@ -7446,8 +7509,9 @@ PROCESSO: <testo con punti numerati>`,
   // Attende fino a ~25s; se ne trova uno lo "claim-a" (queued -> running) in
   // modo atomico. 204 se non c'è nulla entro il timeout (il companion ripolla).
   app.get("/api/hubup/jobs/next", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    const userId = req.user!.id;
+    const actor = await resolveHubupActor(req);
+    if (!actor) return res.sendStatus(401);
+    const userId = actor.userId;
     const deadline = Date.now() + 25_000;
     try {
       // Heartbeat: segnala che un companion di questo utente è vivo e in ascolto.
@@ -7481,9 +7545,10 @@ PROCESSO: <testo con punti numerati>`,
   // Companion: riporta l'esito. Body: { hostname?, inventory?, error? }.
   // Con inventory -> upsert dei metodi e job "done"; con error -> job "error".
   app.post("/api/hubup/jobs/:id/result", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const actor = await resolveHubupActor(req);
+    if (!actor) return res.sendStatus(401);
     try {
-      const userId = req.user!.id;
+      const userId = actor.userId;
       const [job] = await db.select().from(hubupJobs)
         .where(and(eq(hubupJobs.id, req.params.id), eq(hubupJobs.userId, userId)));
       if (!job) return res.sendStatus(404);
@@ -7499,7 +7564,7 @@ PROCESSO: <testo con punti numerati>`,
         return res.json({ ok: true, status: 'error' });
       }
 
-      const organizationId = job.organizationId || getOrganizationId(req);
+      const organizationId = job.organizationId || actor.organizationId || getOrganizationId(req);
       const inv = inventory && typeof inventory === 'object' ? inventory : req.body;
       const { hostname: invHost, upserted } = await ingestHubupInventory(userId, organizationId, inv);
       await db.update(hubupJobs)

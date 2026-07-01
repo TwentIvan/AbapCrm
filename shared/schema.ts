@@ -1289,6 +1289,21 @@ export const hubupCompanions = pgTable("hubup_companions", {
   lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
 });
 
+// Token di arruolamento del companion: generato dalla UI (sessione già
+// autenticata) e cablato nell'installer. Il companion lo usa come credenziale
+// (Bearer) al posto di email/password — niente credenziali digitate sul Mac.
+export const hubupEnrollTokens = pgTable("hubup_enroll_tokens", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: text("token").notNull().unique(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id),
+  label: text("label"),
+  revoked: boolean("revoked").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  expiresAt: timestamp("expires_at"),
+});
+
 // Transport Request files (cofile and data file)
 export const transportRequestStatusEnum = pgEnum("transport_request_status", ["development", "testing", "quality", "production", "released", "imported"]);
 export const transportRequestTypeEnum = pgEnum("transport_request_type", ["workbench", "customizing", "copy", "relocate"]);

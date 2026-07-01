@@ -18,7 +18,7 @@
 # In produzione si installa come LaunchAgent (vedi com.hubup.companion.plist).
 # Alternativa a email/password: HUBUP_COOKIE='connect.sid=...'.
 # ---------------------------------------------------------------------------
-set -uo pipefail
+set -o pipefail   # niente -u: su bash 3.2 (macOS) l'array vuoto va in errore
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVER="${HUBUP_SERVER:-}"
@@ -43,19 +43,29 @@ PROBE="$(detect_probe)"
 COOKIE_JAR="$(mktemp -t hubup_companion.XXXXXX)"
 trap 'rm -f "$COOKIE_JAR"' EXIT
 
+# Argomenti di autenticazione per curl: token (Bearer) o cookie di sessione.
+CURL_AUTH=()
+
 log() { printf '[companion] %s\n' "$*" >&2; }
 
 json_str() { python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))'; }
 
 login() {
+  # Modalità preferita: token di arruolamento (installer generato dalla UI).
+  if [[ -n "${HUBUP_TOKEN:-}" ]]; then
+    CURL_AUTH=(-H "Authorization: Bearer $HUBUP_TOKEN")
+    log "autenticazione via token"
+    return 0
+  fi
   if [[ -n "${HUBUP_COOKIE:-}" ]]; then
     printf '%s\tTRUE\t/\tFALSE\t0\t%s\t%s\n' \
       "$(printf '%s' "$SERVER" | sed -E 's#^https?://##; s#/.*$##')" \
       "${HUBUP_COOKIE%%=*}" "${HUBUP_COOKIE#*=}" > "$COOKIE_JAR"
+    CURL_AUTH=(-b "$COOKIE_JAR")
     return 0
   fi
-  : "${HUBUP_EMAIL:?imposta HUBUP_EMAIL o HUBUP_COOKIE}"
-  : "${HUBUP_PASSWORD:?imposta HUBUP_PASSWORD o HUBUP_COOKIE}"
+  : "${HUBUP_EMAIL:?imposta HUBUP_TOKEN, HUBUP_COOKIE o HUBUP_EMAIL}"
+  : "${HUBUP_PASSWORD:?imposta HUBUP_TOKEN, HUBUP_COOKIE o HUBUP_PASSWORD}"
   local code
   code="$(curl -sS -o /dev/null -w '%{http_code}' -c "$COOKIE_JAR" \
     -H 'Content-Type: application/json' -X POST "$SERVER/api/login" \
@@ -63,6 +73,7 @@ login() {
       "$(printf '%s' "$HUBUP_EMAIL" | json_str)" \
       "$(printf '%s' "$HUBUP_PASSWORD" | json_str)")")" || return 1
   [[ "$code" == "200" ]] || { log "login fallito (HTTP $code)"; return 1; }
+  CURL_AUTH=(-b "$COOKIE_JAR")
   log "login OK come $HUBUP_EMAIL"
 }
 
@@ -72,7 +83,7 @@ handle_job() {
   # SO non supportato dal probe: riporta un errore parlante e prosegui.
   if [[ -z "$PROBE" || ! -f "$PROBE" ]]; then
     local msg; msg="$(printf 'nessun probe per questo SO (%s); solo macOS supportato al momento' "$(uname -s)")"
-    curl -sS -b "$COOKIE_JAR" -H 'Content-Type: application/json' \
+    curl -sS "${CURL_AUTH[@]}" -H 'Content-Type: application/json' \
       -X POST "$SERVER/api/hubup/jobs/$job_id/result" \
       --data "$(printf '{"error":%s}' "$(printf '%s' "$msg" | json_str)")" >/dev/null || true
     log "job $job_id: $msg"
@@ -81,7 +92,7 @@ handle_job() {
   log "job $job_id: scansione in corso ..."
   inv="$(python3 "$PROBE" 2>/dev/null)" || rc=$?
   if [[ $rc -ne 0 || -z "$inv" ]]; then
-    curl -sS -b "$COOKIE_JAR" -H 'Content-Type: application/json' \
+    curl -sS "${CURL_AUTH[@]}" -H 'Content-Type: application/json' \
       -X POST "$SERVER/api/hubup/jobs/$job_id/result" \
       --data "$(printf '{"error":%s}' "$(printf 'probe fallito (rc=%s)' "$rc" | json_str)")" >/dev/null || true
     log "job $job_id: probe fallito (rc=$rc)"
@@ -91,7 +102,7 @@ handle_job() {
   local body
   body="$(python3 -c 'import json,sys; print(json.dumps({"inventory": json.loads(sys.stdin.read())}))' <<<"$inv")"
   local resp
-  resp="$(curl -sS -b "$COOKIE_JAR" -H 'Content-Type: application/json' \
+  resp="$(curl -sS "${CURL_AUTH[@]}" -H 'Content-Type: application/json' \
     -X POST "$SERVER/api/hubup/jobs/$job_id/result" --data "$body")" || { log "job $job_id: upload esito fallito"; return; }
   log "job $job_id: completato -> $resp"
 }
@@ -118,11 +129,13 @@ main() {
   self_update_probe
   log "in ascolto di job su $SERVER ..."
   while true; do
-    local http body tmp
+    local http body tmp t0 elapsed
     tmp="$(mktemp -t hubup_next.XXXXXX)"
-    http="$(curl -sS -b "$COOKIE_JAR" -o "$tmp" -w '%{http_code}' \
+    t0=$SECONDS
+    http="$(curl -sS "${CURL_AUTH[@]}" -o "$tmp" -w '%{http_code}' \
       --max-time 35 "$SERVER/api/hubup/jobs/next?hostname=$(hostname | sed 's/[^A-Za-z0-9._-]/_/g')")" || http="000"
     body="$(cat "$tmp")"; rm -f "$tmp"
+    elapsed=$(( SECONDS - t0 ))
 
     case "$http" in
       200)
@@ -130,8 +143,10 @@ main() {
         job_id="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' <<<"$body" 2>/dev/null)"
         [[ -n "$job_id" ]] && handle_job "$job_id"
         ;;
-      204) : ;;                        # nessun job: ripolla subito
-      401) log "sessione scaduta, rilogin ..."; login || sleep "$POLL_BACKOFF" ;;
+      # nessun job: col long-poll il server tiene ~25s. Se torna subito (server
+      # non long-poll), evita l'hot-loop con una piccola pausa.
+      204) [[ "$elapsed" -lt 2 ]] && sleep 2 ;;
+      401) log "non autorizzato (token/sessione), riprovo tra ${POLL_BACKOFF}s"; sleep "$POLL_BACKOFF"; login || true ;;
       000) log "rete non raggiungibile, ritento tra ${POLL_BACKOFF}s"; sleep "$POLL_BACKOFF" ;;
       *)   log "risposta inattesa (HTTP $http), attendo ${POLL_BACKOFF}s"; sleep "$POLL_BACKOFF" ;;
     esac

@@ -393,6 +393,22 @@ export async function runStartupMigrations(): Promise<boolean> {
       );
     `);
 
+    // Migration 0018: hubup_enroll_tokens — credenziale del companion generata
+    // dalla UI (Bearer), così non si digitano password sul Mac.
+    await safeMigrate('hubup_enroll_tokens table ensured', `
+      CREATE TABLE IF NOT EXISTS "hubup_enroll_tokens" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "token" text NOT NULL UNIQUE,
+        "user_id" uuid NOT NULL REFERENCES "users"("id"),
+        "organization_id" uuid REFERENCES "organizations"("id"),
+        "label" text,
+        "revoked" boolean NOT NULL DEFAULT false,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "last_used_at" timestamp,
+        "expires_at" timestamp
+      );
+    `);
+
     client.release();
     return true;
   } catch (error) {
