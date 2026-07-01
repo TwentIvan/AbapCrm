@@ -7438,15 +7438,20 @@ PROCESSO: <testo con punti numerati>`,
   app.post("/api/hubup/companion/enroll", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const crypto = await import("crypto");
-      const token = crypto.randomBytes(32).toString("base64url");
       const organizationId = getOrganizationId(req);
-      // Un solo token attivo per utente: revoca i precedenti (rotazione).
-      await db.update(hubupEnrollTokens).set({ revoked: true })
-        .where(and(eq(hubupEnrollTokens.userId, req.user!.id), eq(hubupEnrollTokens.revoked, false)));
-      await db.insert(hubupEnrollTokens).values({
-        token, userId: req.user!.id, organizationId, label: "companion",
-      });
+      // Riusa il token attivo esistente (se c'è): riscaricare l'installer non
+      // deve invalidare un companion già installato con un token precedente.
+      const [existing] = await db.select().from(hubupEnrollTokens)
+        .where(and(eq(hubupEnrollTokens.userId, req.user!.id), eq(hubupEnrollTokens.revoked, false)))
+        .orderBy(desc(hubupEnrollTokens.createdAt));
+      let token = existing?.token;
+      if (!token) {
+        const crypto = await import("crypto");
+        token = crypto.randomBytes(32).toString("base64url");
+        await db.insert(hubupEnrollTokens).values({
+          token, userId: req.user!.id, organizationId, label: "companion",
+        });
+      }
       const proto = (String(req.headers["x-forwarded-proto"] || "").split(",")[0]) || req.protocol || "https";
       const server = `${proto}://${req.get("host")}`;
       res.json({ token, downloadUrl: `${server}/api/hubup/companion/installer?token=${encodeURIComponent(token)}` });

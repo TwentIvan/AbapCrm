@@ -57,6 +57,8 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
   const [installOpen, setInstallOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const pollCancel = useRef(false);
+  const [companionOnline, setCompanionOnline] = useState<boolean | null>(null);
+  const [jobPhase, setJobPhase] = useState<string>("queued");
 
   // Genera un token di arruolamento e scarica l'installer personalizzato
   // (.command): doppio click, nessuna credenziale da digitare.
@@ -85,6 +87,7 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
   const scanWorkstation = async () => {
     setIsScanning(true);
     pollCancel.current = false;
+    setJobPhase("queued");
     try {
       // Il companion è mai stato installato / è online?
       let online = false;
@@ -92,6 +95,7 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
         const sr = await fetch("/api/hubup/companion/status", { credentials: "include" });
         if (sr.ok) online = !!(await sr.json()).online;
       } catch { /* ignora: trattiamo come offline */ }
+      setCompanionOnline(online);
 
       const res = await apiRequest("POST", "/api/hubup/jobs", {});
       const job = await res.json();
@@ -111,10 +115,16 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
       while (Date.now() - started < limit) {
         if (pollCancel.current) break;
         await new Promise((r) => setTimeout(r, 2500));
+        // Stato live del companion (per diagnosi: si connette al server?).
+        try {
+          const sr = await fetch("/api/hubup/companion/status", { credentials: "include" });
+          if (sr.ok) setCompanionOnline(!!(await sr.json()).online);
+        } catch { /* ignora */ }
         const jr = await fetch(`/api/hubup/jobs/${job.id}`, { credentials: "include" });
         if (!jr.ok) break;
         const j = await jr.json();
         lastStatus = j.status;
+        setJobPhase(j.status);
         if (j.status === "done") {
           await refetchSoftware();
           setInstallOpen(false);
@@ -710,6 +720,20 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
               <span className="flex items-center text-sm text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> In attesa del companion...
               </span>
+            </div>
+            <div className="rounded border bg-muted/40 p-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className={`inline-block h-2 w-2 rounded-full ${companionOnline ? "bg-success" : "bg-muted-foreground/50"}`} />
+                Companion:{" "}
+                <strong>{companionOnline === null ? "verifico..." : companionOnline ? "connesso ✓" : "non ancora connesso"}</strong>
+                {companionOnline && <>· scansione: <strong>{jobPhase}</strong></>}
+              </div>
+              {companionOnline === false && (
+                <p className="mt-1 text-muted-foreground">
+                  Se resta "non connesso" dopo aver aperto l'installer: controlla
+                  il file <code>~/.hubup/companion.err</code> sul Mac.
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
