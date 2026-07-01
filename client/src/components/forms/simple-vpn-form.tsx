@@ -61,14 +61,16 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
     try {
       const res = await apiRequest("POST", "/api/hubup/jobs", {});
       const job = await res.json();
-      toast({ title: "Scansione richiesta", description: "In attesa del companion sul Mac..." });
+      toast({ title: "Scansione richiesta", description: "In attesa del companion sulla workstation..." });
       const started = Date.now();
       let done = false;
+      let lastStatus = job?.status || "queued";
       while (Date.now() - started < 120000) {
         await new Promise((r) => setTimeout(r, 2500));
         const jr = await fetch(`/api/hubup/jobs/${job.id}`, { credentials: "include" });
         if (!jr.ok) break;
         const j = await jr.json();
+        lastStatus = j.status;
         if (j.status === "done") {
           await refetchSoftware();
           toast({ title: "Scansione completata", description: `Rilevati ${j.methodsCount ?? 0} metodi su ${j.hostname || "la tua workstation"}.` });
@@ -82,7 +84,11 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
         }
       }
       if (!done) {
-        toast({ variant: "destructive", title: "Nessuna risposta", description: "Il companion non ha risposto. È in esecuzione sul Mac?" });
+        // Distingui: job mai raccolto (nessun companion) vs preso ma non concluso.
+        const description = lastStatus === "running"
+          ? "Il companion ha preso il job ma non l'ha completato: probe lento o in errore. Controlla i log del companion."
+          : "Nessun companion ha raccolto la richiesta. Assicurati che hubup_companion.sh sia in esecuzione sulla workstation e connesso.";
+        toast({ variant: "destructive", title: "Nessuna risposta", description });
       }
     } catch (error: any) {
       toast({ variant: "destructive", title: "Errore", description: error?.message || "Impossibile avviare la scansione" });
