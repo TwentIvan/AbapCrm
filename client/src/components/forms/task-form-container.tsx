@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Edit, MessageSquare, History, Brain, AlertTriangle, Zap, CheckCircle2, XCircle, ShieldAlert, ShieldCheck, ShieldX, Loader2, FileText, ExternalLink, CheckCheck, Wifi, Bot, User, GitBranch, AlertCircle, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -120,6 +121,10 @@ const STEP_TYPE_LABELS: Record<string, string> = {
 // ── Hub Up readiness (Modulo F) — 🟢🟡🔴 plan from /api/connection/plan ────────
 function HubUpReadinessPanel({ task }: { task: Task }) {
   const targetSystemId = (task as any).sapSystemId as string | undefined;
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [showImport, setShowImport] = useState(false);
+  const [invText, setInvText] = useState("");
   const { data, isLoading, error, refetch, isFetching } = useQuery<any>({
     queryKey: ["/api/connection/plan", task.id],
     queryFn: async () => {
@@ -133,6 +138,23 @@ function HubUpReadinessPanel({ task }: { task: Task }) {
       return r.json();
     },
     enabled: !!targetSystemId,
+  });
+
+  const importMutation = useMutation({
+    mutationFn: async (raw: string) => {
+      let payload: any;
+      try { payload = JSON.parse(raw); } catch { throw new Error("JSON non valido"); }
+      const res = await apiRequest("POST", "/api/hubup/discovery/inventory", payload);
+      return res.json();
+    },
+    onSuccess: (r: any) => {
+      toast({ title: "Inventario importato", description: `${r.upserted} metodi (host ${r.hostname})` });
+      setShowImport(false);
+      setInvText("");
+      qc.invalidateQueries({ queryKey: ["/api/connection/plan", task.id] });
+      refetch();
+    },
+    onError: (e: any) => toast({ title: "Import fallito", description: e.message, variant: "destructive" }),
   });
 
   if (!targetSystemId) {
@@ -181,6 +203,7 @@ function HubUpReadinessPanel({ task }: { task: Task }) {
                 <ShieldAlert className="h-3 w-3" /> ghost-unverified
               </Badge>
             )}
+            <Button variant="outline" size="sm" onClick={() => setShowImport((v) => !v)}>Importa inventario</Button>
             <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching}>
               {isFetching ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
             </Button>
@@ -188,6 +211,27 @@ function HubUpReadinessPanel({ task }: { task: Task }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {showImport && (
+          <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+            <p className="text-xs text-muted-foreground">
+              Incolla qui l'output di <code>hubup_discover_mac.py</code> (JSON). Verrà salvato come inventario del tuo Mac e il piano userà i dati reali.
+            </p>
+            <Textarea
+              value={invText}
+              onChange={(e) => setInvText(e.target.value)}
+              rows={6}
+              placeholder='{"schema":"hubup.discovered_connection_methods/1","hostname":"...","methods":[...]}'
+              className="font-mono text-xs"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => { setShowImport(false); setInvText(""); }}>Annulla</Button>
+              <Button size="sm" onClick={() => importMutation.mutate(invText)} disabled={!invText.trim() || importMutation.isPending}>
+                {importMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                Importa
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="space-y-2">
           {plan.steps.map((s: any, i: number) => (
             <div key={i} className="flex items-start gap-3 p-2 rounded border">

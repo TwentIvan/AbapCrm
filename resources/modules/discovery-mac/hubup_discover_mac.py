@@ -207,8 +207,9 @@ DEFAULT_CATALOG = [
     {
         "id": "forticlient", "kind": "vpn", "role": "customer_tunnel",
         "app": "/Applications/FortiClient.app",
-        "connected_proc": "FortiClient",
-        "iface": "utun",
+        # NB: NON usare "iface":"utun" ne' il processo GUI come segnale di connessione:
+        # su questo Mac FortiClient usa la VPN NATIVA (com.fortinet, via scutil), quindi
+        # lo stato "connected" reale emerge dalla firma native_vpn. Qui solo `installed`.
     },
     {
         "id": "cisco_secure_client", "kind": "vpn",
@@ -222,7 +223,9 @@ DEFAULT_CATALOG = [
         "id": "globalprotect", "kind": "vpn",
         "app": "/Applications/GlobalProtect.app",
         "cli": "/usr/local/bin/globalprotect",
-        "connected_proc": "PanGPS",
+        # NB: NON usare "PanGPS" come segnale di connessione: e' un daemon SEMPRE
+        # attivo (anche a VPN spenta) -> falso positivo. Lo stato reale di GP e'
+        # nella VPN nativa (com.paloaltonetworks, via scutil / firma native_vpn).
     },
     {
         "id": "openvpn_connect", "kind": "vpn",
