@@ -9,6 +9,7 @@
 
 import fs from "fs";
 import path from "path";
+import { zipSingleExecutable } from "./zipstore";
 
 export type InstallerMode = "command" | "pkg";
 
@@ -25,18 +26,21 @@ export interface CompanionInstaller {
 
 const TEMPLATE_DIR = "resources/modules/discovery-mac";
 
-// Modalità 1 — .command personalizzato (doppio click, zero digitazione).
+// Modalità 1 — .command personalizzato, consegnato in uno ZIP che preserva il
+// bit di esecuzione (un file scaricato dal browser perde +x e non parte al
+// doppio click). L'utente estrae con doppio click (Finder) e apre il .command.
 class CommandInstaller implements CompanionInstaller {
   readonly mode = "command" as const;
   build({ server, token }: { server: string; token: string }): InstallerArtifact {
     const tpl = fs.readFileSync(path.resolve(TEMPLATE_DIR, "hubup_install.command"), "utf8");
-    const body = tpl
+    const script = tpl
       .replace(/@@HUBUP_SERVER@@/g, server)
       .replace(/@@HUBUP_TOKEN@@/g, token);
+    const zip = zipSingleExecutable("Installa-HubUp-Companion.command", Buffer.from(script, "utf8"));
     return {
-      filename: "Installa-HubUp-Companion.command",
-      contentType: "application/octet-stream",
-      body: Buffer.from(body, "utf8"),
+      filename: "Installa-HubUp-Companion.command.zip",
+      contentType: "application/zip",
+      body: zip,
     };
   }
 }

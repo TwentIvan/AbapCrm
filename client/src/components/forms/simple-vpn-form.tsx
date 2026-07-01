@@ -705,8 +705,9 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
           </DialogHeader>
           <div className="space-y-3">
             <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
-              <li>Scarica l'installer col pulsante qui sotto.</li>
-              <li>Aprilo con <strong>doppio click</strong> (la prima volta: tasto destro &gt; Apri).</li>
+              <li>Scarica l'installer (uno <strong>.zip</strong>) col pulsante qui sotto.</li>
+              <li>Doppio click sul .zip per estrarlo (Finder).</li>
+              <li>Apri il file estratto <code>Installa-HubUp-Companion.command</code> con <strong>tasto destro &gt; Apri</strong> (la prima volta macOS chiede conferma).</li>
               <li>Torna qui: la scansione si completa da sola.</li>
             </ol>
             <div className="flex items-center gap-3">
