@@ -184,16 +184,18 @@ DEFAULT_CATALOG = [
     {
         # SonicWall Cloud Secure Edge (CSE, ex-Banyan): ZTNA identity-based.
         # NON ha un server VPN configurato: accesso via codice di invito + SSO
-        # (es. O365). L'app/processo variano per versione — glob larghi + più
-        # nomi processo. `configured` = registrato (identita' presente); il
-        # `connected` reale lo conferma tunnel_up_check verso l'host SAP.
+        # (es. O365). Verificato su Mac reale:
+        #   app      = /Applications/SonicWall Cloud Secure Edge.app
+        #   config   = ~/Library/Application Support/sonicwallcse  (identita' registrata)
+        #   connected= daemon WireGuard "sonicwall-cse-wgs" attivo (tunnel su utun, IP 100.64/10)
+        # NB: NON usare iface:"utun" come segnale (troppo lasco su macOS moderno):
+        # il daemon -wgs gira solo a tunnel attivo, quindi e' il segnale affidabile.
         "id": "sonicwall_cse", "kind": "vpn", "role": "reachability",
-        "app": "/Applications/Cloud Secure Edge.app",
-        "app_alt": "/Applications/SonicWall Cloud Secure Edge.app",
+        "app": "/Applications/SonicWall Cloud Secure Edge.app",
+        "app_alt": "/Applications/Cloud Secure Edge.app",
         "app_glob": "/Applications/*Secure Edge*.app",
-        "app_glob2": "/Applications/*Banyan*.app",
-        "connected_proc": "Cloud Secure Edge",
-        "iface": "utun",
+        "profiles_glob": "~/Library/Application Support/sonicwallcse",
+        "connected_proc": "sonicwall-cse-wgs",
     },
     {
         "id": "banyan", "kind": "vpn", "role": "reachability",
