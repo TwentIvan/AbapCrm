@@ -7586,20 +7586,6 @@ PROCESSO: <testo con punti numerati>`,
     "probe-mac": { file: "hubup_discover_mac.py", type: "text/x-python; charset=utf-8" },
   };
 
-  // Installer one-liner: inietta l'URL pubblico del server nel template.
-  app.get("/api/hubup/companion/install.sh", async (req, res) => {
-    try {
-      const fs = await import("fs");
-      const path = await import("path");
-      const proto = (String(req.headers["x-forwarded-proto"] || "").split(",")[0]) || req.protocol || "https";
-      const server = `${proto}://${req.get("host")}`;
-      const tpl = fs.readFileSync(path.resolve(HUBUP_COMPANION_DIR, "hubup_install.sh"), "utf8");
-      res.type("text/x-shellscript; charset=utf-8").send(tpl.replace(/@@HUBUP_SERVER@@/g, server));
-    } catch (error) {
-      res.status(500).send(`# installer non disponibile: ${error instanceof Error ? error.message : "errore"}`);
-    }
-  });
-
   // Stato del companion per l'utente: mai installato / offline / online.
   // Usato dal click sulla scansione per proporre l'installazione al volo.
   app.get("/api/hubup/companion/status", async (req, res) => {

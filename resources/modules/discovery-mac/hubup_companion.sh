@@ -64,8 +64,12 @@ login() {
     CURL_AUTH=(-b "$COOKIE_JAR")
     return 0
   fi
-  : "${HUBUP_EMAIL:?imposta HUBUP_TOKEN, HUBUP_COOKIE o HUBUP_EMAIL}"
-  : "${HUBUP_PASSWORD:?imposta HUBUP_TOKEN, HUBUP_COOKIE o HUBUP_PASSWORD}"
+  # Nessuna credenziale: NON uscire (launchd riavvierebbe in loop). Segnala e
+  # lascia che il chiamante faccia backoff.
+  if [[ -z "${HUBUP_EMAIL:-}" || -z "${HUBUP_PASSWORD:-}" ]]; then
+    log "nessuna credenziale (HUBUP_TOKEN/HUBUP_COOKIE/HUBUP_EMAIL): in attesa di configurazione."
+    return 1
+  fi
   local code
   code="$(curl -sS -o /dev/null -w '%{http_code}' -c "$COOKIE_JAR" \
     -H 'Content-Type: application/json' -X POST "$SERVER/api/login" \

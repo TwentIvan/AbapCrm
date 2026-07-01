@@ -58,9 +58,17 @@ echo "→ avvio il companion ..."
 launchctl unload "$PLIST" 2>/dev/null || true
 launchctl load "$PLIST"
 
+# Verifica: mostra lo stato reale del companion appena avviato.
+sleep 3
 echo ""
-echo "✓ Fatto! Il companion è installato e attivo."
-echo "  Torna nell'app: la scansione in corso si completerà da sola."
-echo "  (log: $HOME_DIR/companion.out)"
+echo "── stato companion ──────────────────────────────"
+tail -n 3 "$HOME_DIR/companion.out" 2>/dev/null || true
+tail -n 2 "$HOME_DIR/companion.err" 2>/dev/null || true
+echo "─────────────────────────────────────────────────"
+
+echo ""
+echo "✓ Fatto! Se sopra vedi 'autenticazione via token' e 'in ascolto',"
+echo "  il companion è attivo. Torna nell'app: la scansione si completa da sola."
+echo "  (log completi: $HOME_DIR/companion.out)"
 echo ""
 echo "Puoi chiudere questa finestra."
