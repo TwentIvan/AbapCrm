@@ -301,11 +301,29 @@ export async function runStartupMigrations(): Promise<boolean> {
       WHERE role <> 'reachability'
         AND (
           lower(name) LIKE '%sonicwall%'
-          OR lower(coalesce(method_id,'')) IN ('sonicwall_netextender','sonicwall_mobile_connect')
+          OR lower(coalesce(method_id,'')) IN ('sonicwall_netextender','sonicwall_mobile_connect','sonicwall_cse')
           OR lower(coalesce(connection_type,'')) LIKE '%sonicwall%'
         );
     `);
     console.log('[DB] ✓ vpn_connections.role/method_id ensured + SonicWall reachability seed');
+
+    // Seed: SonicWall Cloud Secure Edge (CSE, ex-Banyan) as selectable VPN software.
+    // ZTNA identity-based reachability VPN now used on the reference Mac (the legacy
+    // NetExtender entry stays for consultants still on it). Idempotent on unique name.
+    await client.query(`
+      INSERT INTO "vpn_software" (name, vendor, version, description, supported_platforms, is_active)
+      SELECT
+        'SonicWall Cloud Secure Edge',
+        'SonicWall',
+        '1.4',
+        'ZTNA identity-based (ex-Banyan). Reachability verso la rete corporate.',
+        ARRAY['mac','windows'],
+        true
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "vpn_software" WHERE name = 'SonicWall Cloud Secure Edge'
+      );
+    `);
+    console.log('[DB] ✓ vpn_software SonicWall CSE seed ensured');
 
     // Migration 0014: module_runs audit sink (Hub Up bootstrap prod-phase; never stores secrets)
     await client.query(`
