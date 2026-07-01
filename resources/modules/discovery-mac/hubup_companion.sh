@@ -21,13 +21,24 @@
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROBE="${HUBUP_PROBE:-$HERE/hubup_discover_mac.py}"
 SERVER="${HUBUP_SERVER:-}"
 POLL_BACKOFF="${HUBUP_POLL_BACKOFF:-5}"   # attesa dopo un errore, in secondi
 
 [[ -n "$SERVER" ]] || { echo "ERRORE: imposta HUBUP_SERVER" >&2; exit 2; }
 SERVER="${SERVER%/}"
-[[ -f "$PROBE" ]] || { echo "ERRORE: probe non trovato: $PROBE" >&2; exit 2; }
+
+# Rileva il SO e scegli il probe adatto. Oggi esiste solo il probe macOS; su
+# altri SO il companion resta comunque in ascolto e riporta un errore chiaro
+# sul job, così la soluzione di produzione (multi-OS) potrà aggiungere i probe
+# Windows/Linux senza cambiare né server né UI.
+detect_probe() {
+  if [[ -n "${HUBUP_PROBE:-}" ]]; then echo "$HUBUP_PROBE"; return; fi
+  case "$(uname -s)" in
+    Darwin) echo "$HERE/hubup_discover_mac.py" ;;
+    *)      echo "" ;;   # TODO: hubup_discover_win / hubup_discover_linux
+  esac
+}
+PROBE="$(detect_probe)"
 
 COOKIE_JAR="$(mktemp -t hubup_companion.XXXXXX)"
 trap 'rm -f "$COOKIE_JAR"' EXIT
@@ -58,6 +69,15 @@ login() {
 # Esegue il probe e riporta l'esito del job.  $1 = job id
 handle_job() {
   local job_id="$1" inv rc=0
+  # SO non supportato dal probe: riporta un errore parlante e prosegui.
+  if [[ -z "$PROBE" || ! -f "$PROBE" ]]; then
+    local msg; msg="$(printf 'nessun probe per questo SO (%s); solo macOS supportato al momento' "$(uname -s)")"
+    curl -sS -b "$COOKIE_JAR" -H 'Content-Type: application/json' \
+      -X POST "$SERVER/api/hubup/jobs/$job_id/result" \
+      --data "$(printf '{"error":%s}' "$(printf '%s' "$msg" | json_str)")" >/dev/null || true
+    log "job $job_id: $msg"
+    return
+  fi
   log "job $job_id: scansione in corso ..."
   inv="$(python3 "$PROBE" 2>/dev/null)" || rc=$?
   if [[ $rc -ne 0 || -z "$inv" ]]; then

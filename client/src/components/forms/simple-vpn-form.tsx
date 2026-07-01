@@ -56,7 +56,7 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
 
   // Scan "server-triggered": accoda un job e attende che il companion sul Mac
   // esegua il probe, poi ricarica la lista del software rilevato.
-  const scanMyMac = async () => {
+  const scanWorkstation = async () => {
     setIsScanning(true);
     try {
       const res = await apiRequest("POST", "/api/hubup/jobs", {});
@@ -71,7 +71,7 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
         const j = await jr.json();
         if (j.status === "done") {
           await refetchSoftware();
-          toast({ title: "Scansione completata", description: `Rilevati ${j.methodsCount ?? 0} metodi su ${j.hostname || "il tuo Mac"}.` });
+          toast({ title: "Scansione completata", description: `Rilevati ${j.methodsCount ?? 0} metodi su ${j.hostname || "la tua workstation"}.` });
           done = true;
           break;
         }
@@ -319,20 +319,20 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
 
             <div className="flex items-center justify-between rounded-md border border-dashed p-3">
               <p className="text-sm text-muted-foreground">
-                Non vedi il tuo software? Avvia una scansione del Mac (richiede il companion attivo).
+                Non vedi il tuo software? Avvia una scansione della tua workstation (richiede il companion attivo).
               </p>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={scanMyMac}
+                onClick={scanWorkstation}
                 disabled={isScanning}
-                data-testid="button-scan-mac"
+                data-testid="button-scan-workstation"
               >
                 {isScanning ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scansione...</>
                 ) : (
-                  <><RefreshCw className="mr-2 h-4 w-4" /> Scansiona il mio Mac</>
+                  <><RefreshCw className="mr-2 h-4 w-4" /> Scansiona la mia workstation</>
                 )}
               </Button>
             </div>

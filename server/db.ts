@@ -315,6 +315,11 @@ export async function runStartupMigrations(): Promise<boolean> {
       DO $$
       DECLARE fk_name text;
       BEGIN
+        -- to_regclass() ritorna NULL (non solleva) se la tabella non esiste:
+        -- così la migrazione non aborta su DB dove vpn_systems non c'è mai stato.
+        IF to_regclass('public.vpn_systems') IS NULL THEN
+          RETURN;
+        END IF;
         SELECT conname INTO fk_name
           FROM pg_constraint
           WHERE conrelid = 'vpn_systems'::regclass
@@ -326,9 +331,9 @@ export async function runStartupMigrations(): Promise<boolean> {
         IF fk_name IS NOT NULL THEN
           EXECUTE format('ALTER TABLE vpn_systems DROP CONSTRAINT %I', fk_name);
         END IF;
+        ALTER TABLE vpn_systems ALTER COLUMN vpn_software_id DROP NOT NULL;
+        ALTER TABLE vpn_systems ALTER COLUMN vpn_software_id TYPE text USING vpn_software_id::text;
       END $$;
-      ALTER TABLE "vpn_systems" ALTER COLUMN "vpn_software_id" DROP NOT NULL;
-      ALTER TABLE "vpn_systems" ALTER COLUMN "vpn_software_id" TYPE text USING "vpn_software_id"::text;
     `);
     console.log('[DB] ✓ vpn_systems.vpn_software_id migrated to probe methodId (text, no FK)');
 
