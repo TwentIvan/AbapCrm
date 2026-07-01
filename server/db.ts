@@ -89,7 +89,19 @@ export async function runStartupMigrations(): Promise<boolean> {
   try {
     console.log('[DB] Running startup migrations...');
     const client = await pool.connect();
-    
+
+    // Esegue una migrazione ISOLATA: un suo fallimento viene loggato ma NON
+    // aborta le migrazioni successive (evita che un errore su una tabella
+    // opzionale impedisca di crearne altre, es. hubup_jobs).
+    const safeMigrate = async (label: string, sqlText: string) => {
+      try {
+        await client.query(sqlText);
+        console.log(`[DB] ✓ ${label}`);
+      } catch (e) {
+        console.error(`[DB] ✗ ${label} (proseguo):`, e instanceof Error ? e.message : e);
+      }
+    };
+
     // Add new email training selection columns if they don't exist
     const migrationSQL = `
       ALTER TABLE email_training_selections
@@ -311,34 +323,33 @@ export async function runStartupMigrations(): Promise<boolean> {
     // (testo, es. "sonicwall_cse"), non più una FK verso il catalogo statico
     // vpn_software. Tutto il software VPN viene dal probe Hub Up. Rimuoviamo il
     // vincolo FK e convertiamo la colonna a text (idempotente).
-    await client.query(`
+    await safeMigrate('vpn_systems.vpn_software_id migrated to probe methodId (text, no FK)', `
       DO $$
       DECLARE fk_name text;
       BEGIN
         -- to_regclass() ritorna NULL (non solleva) se la tabella non esiste:
         -- così la migrazione non aborta su DB dove vpn_systems non c'è mai stato.
-        IF to_regclass('public.vpn_systems') IS NULL THEN
-          RETURN;
+        -- Niente RETURN dentro il DO: tutto il corpo è avvolto in un IF.
+        IF to_regclass('public.vpn_systems') IS NOT NULL THEN
+          SELECT conname INTO fk_name
+            FROM pg_constraint
+            WHERE conrelid = 'vpn_systems'::regclass
+              AND contype = 'f'
+              AND conkey = ARRAY[(
+                SELECT attnum FROM pg_attribute
+                WHERE attrelid = 'vpn_systems'::regclass AND attname = 'vpn_software_id'
+              )];
+          IF fk_name IS NOT NULL THEN
+            EXECUTE format('ALTER TABLE vpn_systems DROP CONSTRAINT %I', fk_name);
+          END IF;
+          ALTER TABLE vpn_systems ALTER COLUMN vpn_software_id DROP NOT NULL;
+          ALTER TABLE vpn_systems ALTER COLUMN vpn_software_id TYPE text USING vpn_software_id::text;
         END IF;
-        SELECT conname INTO fk_name
-          FROM pg_constraint
-          WHERE conrelid = 'vpn_systems'::regclass
-            AND contype = 'f'
-            AND conkey = ARRAY[(
-              SELECT attnum FROM pg_attribute
-              WHERE attrelid = 'vpn_systems'::regclass AND attname = 'vpn_software_id'
-            )];
-        IF fk_name IS NOT NULL THEN
-          EXECUTE format('ALTER TABLE vpn_systems DROP CONSTRAINT %I', fk_name);
-        END IF;
-        ALTER TABLE vpn_systems ALTER COLUMN vpn_software_id DROP NOT NULL;
-        ALTER TABLE vpn_systems ALTER COLUMN vpn_software_id TYPE text USING vpn_software_id::text;
       END $$;
     `);
-    console.log('[DB] ✓ vpn_systems.vpn_software_id migrated to probe methodId (text, no FK)');
 
     // Migration 0014: module_runs audit sink (Hub Up bootstrap prod-phase; never stores secrets)
-    await client.query(`
+    await safeMigrate('module_runs table ensured', `
       CREATE TABLE IF NOT EXISTS "module_runs" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         "user_id" uuid REFERENCES "users"("id"),
@@ -351,11 +362,10 @@ export async function runStartupMigrations(): Promise<boolean> {
         "created_at" timestamp NOT NULL DEFAULT now()
       );
     `);
-    console.log('[DB] ✓ module_runs table ensured');
 
     // Migration 0016: hubup_jobs — coda per lo scan server-triggered. L'app
     // accoda un job, il companion sul Mac lo pesca (polling outbound) ed esegue.
-    await client.query(`
+    await safeMigrate('hubup_jobs table ensured', `
       CREATE TABLE IF NOT EXISTS "hubup_jobs" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         "user_id" uuid NOT NULL REFERENCES "users"("id"),
@@ -371,7 +381,6 @@ export async function runStartupMigrations(): Promise<boolean> {
       );
       CREATE INDEX IF NOT EXISTS "hubup_jobs_user_status_idx" ON "hubup_jobs" ("user_id","status");
     `);
-    console.log('[DB] ✓ hubup_jobs table ensured');
 
     client.release();
     return true;
