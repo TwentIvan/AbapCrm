@@ -7423,8 +7423,12 @@ PROCESSO: <testo con punti numerati>`,
     const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
     const token = bearer || (req.headers["x-hubup-token"] as string) || (req.query.token as string) || "";
     if (!token) return null;
+    // NB: non filtriamo su revoked. I token sono credenziali long-lived del
+    // companion e non esiste un flusso di revoca reale; il flag revoked poteva
+    // restare "true" per token ancora installati (rotazione dei vecchi download)
+    // causando 401 a raffica. Basta che il token esista e non sia scaduto.
     const [row] = await db.select().from(hubupEnrollTokens)
-      .where(and(eq(hubupEnrollTokens.token, token), eq(hubupEnrollTokens.revoked, false)));
+      .where(eq(hubupEnrollTokens.token, token));
     if (!row) return null;
     if (row.expiresAt && new Date(row.expiresAt as any).getTime() < Date.now()) return null;
     db.update(hubupEnrollTokens).set({ lastUsedAt: new Date() })
