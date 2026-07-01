@@ -200,6 +200,13 @@ async function discoverAzureVPNConfigurations(): Promise<{
 /**
  * Discover available VPN software installed on the system
  */
+/**
+ * @deprecated Scan legacy del software VPN (filesystem/scutil): copre solo
+ * FortiClient/Cisco/Azure/Native/OpenVPN e NON rileva SonicWall (CSE/NetExtender).
+ * Il rilevamento unificato è il probe Hub Up (Modulo F, hubup_discover_mac.py ->
+ * discovered_connection_methods), esposto da GET /api/vpn-software/discovered.
+ * Mantenuto solo per la vecchia pagina /api/discovered-vpn-software.
+ */
 export async function discoverAvailableVPNSoftware(userId?: string): Promise<{
   software: string;
   name: string;

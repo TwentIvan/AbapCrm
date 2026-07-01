@@ -26,6 +26,8 @@ interface VpnSoftware {
   vendor: string;
   version?: string;
   description?: string;
+  canReadConfigs?: boolean;
+  automationType?: 'full' | 'credentials' | 'manual';
 }
 
 const formSchema = z.object({
@@ -51,14 +53,15 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
   const [selectedSoftware, setSelectedSoftware] = useState<VpnSoftware | null>(null);
   const [showCredentialsForm, setShowCredentialsForm] = useState(false);
 
-  // Load VPN software from database
+  // Load VPN software from the real workstation scan (Hub Up probe), not the
+  // static catalog: mostra solo il software VPN effettivamente rilevato.
   const { data: vpnSoftware = [], isLoading: isLoadingSoftware } = useQuery<VpnSoftware[]>({
-    queryKey: ["/api/vpn-software"],
+    queryKey: ["/api/vpn-software/discovered"],
     queryFn: async () => {
       try {
-        const res = await fetch("/api/vpn-software", { credentials: "include" });
+        const res = await fetch("/api/vpn-software/discovered", { credentials: "include" });
         if (!res.ok) {
-          console.log('[VPN-SOFTWARE] Error loading from database:', res.status);
+          console.log('[VPN-SOFTWARE] Error loading discovered software:', res.status);
           return []; // Return empty array instead of throwing
         }
         return res.json();

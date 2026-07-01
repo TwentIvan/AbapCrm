@@ -7791,6 +7791,88 @@ PROCESSO: <testo con punti numerati>`,
     res.json(enhancedSoftware);
   });
 
+  // ── GET /api/vpn-software/discovered — dropdown sorgente unificata (Hub Up) ──
+  // Il dialog "Nuova Connessione VPN" popola "Software Installato" da qui: lo
+  // scan reale della workstation (probe Modulo F -> discovered_connection_methods),
+  // NON dal catalogo statico vpn_software. Se non c'è ancora un inventario reale
+  // per l'utente si ricade sul module runner ghost (che rispecchia il probe, CSE
+  // incluso), così il dropdown mostra sempre qualcosa di coerente.
+  // NB: deve restare registrata PRIMA di "/api/vpn-software/:id".
+  app.get("/api/vpn-software/discovered", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+
+      // methodId (firma probe) -> nome/vendor leggibili per il dropdown.
+      const CATALOG: Record<string, { name: string; vendor: string }> = {
+        sonicwall_cse: { name: "SonicWall Cloud Secure Edge", vendor: "SonicWall" },
+        sonicwall_netextender: { name: "SonicWall NetExtender", vendor: "SonicWall" },
+        sonicwall_mobile_connect: { name: "SonicWall Mobile Connect", vendor: "SonicWall" },
+        banyan: { name: "Banyan", vendor: "SonicWall" },
+        forticlient: { name: "FortiClient", vendor: "Fortinet" },
+        cisco_secure_client: { name: "Cisco Secure Client", vendor: "Cisco" },
+        globalprotect: { name: "GlobalProtect", vendor: "Palo Alto Networks" },
+        openvpn_connect: { name: "OpenVPN Connect", vendor: "OpenVPN Inc." },
+        zscaler: { name: "Zscaler", vendor: "Zscaler" },
+        native_vpn: { name: "VPN Nativa del Sistema", vendor: "Sistema" },
+      };
+      const automationFor = (vendor: string): { canReadConfigs: boolean; automationType: string } => {
+        switch (vendor.toLowerCase()) {
+          case "cisco":
+          case "fortinet":
+          case "palo alto networks":
+            return { canReadConfigs: true, automationType: "full" };
+          case "microsoft":
+            return { canReadConfigs: false, automationType: "credentials" };
+          default:
+            return { canReadConfigs: false, automationType: "manual" };
+        }
+      };
+
+      // Inventario: prefer i metodi reali del probe; altrimenti fixture ghost.
+      let methods: any[] = [];
+      const storedRows = await db.select().from(discoveredConnectionMethods)
+        .where(eq(discoveredConnectionMethods.userId, userId))
+        .orderBy(desc(discoveredConnectionMethods.lastProbedAt));
+      if (storedRows.length > 0) {
+        methods = storedRows.map((r: any) => ({
+          id: r.methodId, kind: r.kind, role: r.role,
+          installed: r.installed, configured: r.configured, connected: r.connected,
+          version: r.version || undefined,
+        }));
+      } else {
+        const { getModuleRunner } = await import("./lib/moduleRunner");
+        const result = await getModuleRunner().run<any>("discovery-mac");
+        methods = Array.isArray(result?.data?.methods) ? result.data.methods : [];
+      }
+
+      // Solo VPN installate, deduplicate per methodId (prima occorrenza = più recente).
+      const seen = new Set<string>();
+      const software = methods
+        .filter((m: any) => m?.kind === "vpn" && m?.id && (m.installed || m.connected))
+        .filter((m: any) => (seen.has(m.id) ? false : (seen.add(m.id), true)))
+        .map((m: any) => {
+          const meta = CATALOG[m.id] || { name: String(m.id).replace(/_/g, " "), vendor: "" };
+          const auto = automationFor(meta.vendor);
+          return {
+            id: m.id,
+            name: meta.name,
+            vendor: meta.vendor,
+            version: m.version || undefined,
+            role: m.role || undefined,
+            installed: !!m.installed,
+            configured: !!m.configured,
+            connected: !!m.connected,
+            ...auto,
+          };
+        });
+
+      res.json(software);
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : "Discovery failed" });
+    }
+  });
+
   app.get("/api/vpn-software/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const software = await storage.getVpnSoftwareById(req.params.id);
