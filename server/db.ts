@@ -348,6 +348,26 @@ export async function runStartupMigrations(): Promise<boolean> {
     `);
     console.log('[DB] ✓ module_runs table ensured');
 
+    // Migration 0016: hubup_jobs — coda per lo scan server-triggered. L'app
+    // accoda un job, il companion sul Mac lo pesca (polling outbound) ed esegue.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "hubup_jobs" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "user_id" uuid NOT NULL REFERENCES "users"("id"),
+        "organization_id" uuid REFERENCES "organizations"("id"),
+        "module" text NOT NULL DEFAULT 'discovery-mac',
+        "status" text NOT NULL DEFAULT 'queued',
+        "hostname" text,
+        "methods_count" integer,
+        "error" text,
+        "requested_at" timestamp NOT NULL DEFAULT now(),
+        "claimed_at" timestamp,
+        "finished_at" timestamp
+      );
+      CREATE INDEX IF NOT EXISTS "hubup_jobs_user_status_idx" ON "hubup_jobs" ("user_id","status");
+    `);
+    console.log('[DB] ✓ hubup_jobs table ensured');
+
     client.release();
     return true;
   } catch (error) {

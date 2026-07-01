@@ -37,7 +37,7 @@ import {
   aiProviders, aiModels, userOrganizations,
   mcpCatalog, mcpServerConfigs, insertMcpServerConfigSchema, mcpCatalogValidations,
   connectionWorkflows, insertConnectionWorkflowSchema,
-  discoveredConnectionMethods, moduleRuns,
+  discoveredConnectionMethods, moduleRuns, hubupJobs,
   proposalDiscussions
 } from "@shared/schema";
 import { aiService, extractAnalysisText } from "./ai-service";
@@ -7363,45 +7363,142 @@ PROCESSO: <testo con punti numerati>`,
     }
   });
 
-  // Ingest an inventory produced by the companion / module runner. The payload
-  // never contains secrets — only names, versions, states, profile identifiers.
+  // Upsert di un inventario (probe) in discovered_connection_methods. Riusato
+  // dalla route di ingest diretta e dal risultato dei job del companion.
+  // Il payload non contiene MAI segreti — solo nomi, versioni, stati, profili.
+  async function ingestHubupInventory(userId: string, organizationId: string, inv: any): Promise<{ hostname: string; upserted: number }> {
+    const hostname: string = inv?.hostname || 'unknown';
+    const os: string = inv?.os || null;
+    const methods: any[] = Array.isArray(inv?.methods) ? inv.methods : [];
+    const KIND = ['vpn','vdi','hypervisor','rdp','sap_gui','direct','unknown'];
+    const ROLE = ['reachability','customer_tunnel'];
+    let upserted = 0;
+    for (const m of methods) {
+      if (!m?.id) continue;
+      const values = {
+        userId,
+        organizationId,
+        methodId: m.id,
+        kind: (KIND.includes(m.kind) ? m.kind : 'unknown') as any,
+        role: (ROLE.includes(m.role) ? m.role : null) as any,
+        os: m.os || os,
+        hostname,
+        installed: !!m.installed,
+        configured: !!m.configured,
+        connected: !!m.connected,
+        version: m.version || null,
+        profiles: Array.isArray(m.profiles) ? m.profiles : [],
+        evidence: Array.isArray(m.evidence) ? m.evidence : [],
+        lastProbedAt: new Date(),
+      };
+      await db.insert(discoveredConnectionMethods).values(values)
+        .onConflictDoUpdate({
+          target: [discoveredConnectionMethods.userId, discoveredConnectionMethods.hostname, discoveredConnectionMethods.methodId],
+          set: { ...values, updatedAt: new Date() },
+        });
+      upserted++;
+    }
+    return { hostname, upserted };
+  }
+
+  // Ingest an inventory produced by the companion / module runner (direct push).
   app.post("/api/hubup/discovery/inventory", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const organizationId = getOrganizationId(req);
-      const inv = req.body || {};
-      const hostname: string = inv.hostname || 'unknown';
-      const os: string = inv.os || null;
-      const methods: any[] = Array.isArray(inv.methods) ? inv.methods : [];
-      const KIND = ['vpn','vdi','hypervisor','rdp','sap_gui','direct','unknown'];
-      const ROLE = ['reachability','customer_tunnel'];
-      let upserted = 0;
-      for (const m of methods) {
-        if (!m?.id) continue;
-        const values = {
-          userId: req.user!.id,
-          organizationId,
-          methodId: m.id,
-          kind: (KIND.includes(m.kind) ? m.kind : 'unknown') as any,
-          role: (ROLE.includes(m.role) ? m.role : null) as any,
-          os: m.os || os,
-          hostname,
-          installed: !!m.installed,
-          configured: !!m.configured,
-          connected: !!m.connected,
-          version: m.version || null,
-          profiles: Array.isArray(m.profiles) ? m.profiles : [],
-          evidence: Array.isArray(m.evidence) ? m.evidence : [],
-          lastProbedAt: new Date(),
-        };
-        await db.insert(discoveredConnectionMethods).values(values)
-          .onConflictDoUpdate({
-            target: [discoveredConnectionMethods.userId, discoveredConnectionMethods.hostname, discoveredConnectionMethods.methodId],
-            set: { ...values, updatedAt: new Date() },
-          });
-        upserted++;
-      }
+      const { hostname, upserted } = await ingestHubupInventory(req.user!.id, organizationId, req.body || {});
       res.json({ ok: true, hostname, upserted });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // ── Hub Up job queue — scan "server-triggered" ────────────────────────────
+  // Il server non può raggiungere il Mac (NAT/firewall): il flusso è invertito.
+  // L'app accoda un job; il companion installato sul Mac fa polling outbound,
+  // esegue il probe e riporta l'inventario. Nessun segreto in transito.
+
+  // App: accoda una richiesta di scansione per l'utente corrente.
+  app.post("/api/hubup/jobs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const organizationId = getOrganizationId(req);
+      const module = typeof req.body?.module === 'string' ? req.body.module : 'discovery-mac';
+      const [job] = await db.insert(hubupJobs)
+        .values({ userId: req.user!.id, organizationId, module, status: 'queued' })
+        .returning();
+      res.status(201).json(job);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // App: stato di un job (polling dell'esito).
+  app.get("/api/hubup/jobs/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const [job] = await db.select().from(hubupJobs)
+      .where(and(eq(hubupJobs.id, req.params.id), eq(hubupJobs.userId, req.user!.id)));
+    if (!job) return res.sendStatus(404);
+    res.json(job);
+  });
+
+  // Companion: long-poll per prendere il prossimo job in coda dell'utente.
+  // Attende fino a ~25s; se ne trova uno lo "claim-a" (queued -> running) in
+  // modo atomico. 204 se non c'è nulla entro il timeout (il companion ripolla).
+  app.get("/api/hubup/jobs/next", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const userId = req.user!.id;
+    const deadline = Date.now() + 25_000;
+    try {
+      while (Date.now() < deadline) {
+        const [queued] = await db.select().from(hubupJobs)
+          .where(and(eq(hubupJobs.userId, userId), eq(hubupJobs.status, 'queued')))
+          .orderBy(asc(hubupJobs.requestedAt)).limit(1);
+        if (queued) {
+          // claim atomico: solo chi porta lo status da queued->running vince.
+          const claimed = await db.update(hubupJobs)
+            .set({ status: 'running', claimedAt: new Date() })
+            .where(and(eq(hubupJobs.id, queued.id), eq(hubupJobs.status, 'queued')))
+            .returning();
+          if (claimed.length) return res.json(claimed[0]);
+          continue; // qualcun altro l'ha preso, riprova subito
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      res.sendStatus(204);
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'poll failed' });
+    }
+  });
+
+  // Companion: riporta l'esito. Body: { hostname?, inventory?, error? }.
+  // Con inventory -> upsert dei metodi e job "done"; con error -> job "error".
+  app.post("/api/hubup/jobs/:id/result", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const [job] = await db.select().from(hubupJobs)
+        .where(and(eq(hubupJobs.id, req.params.id), eq(hubupJobs.userId, userId)));
+      if (!job) return res.sendStatus(404);
+      if (job.status === 'done' || job.status === 'error') {
+        return res.status(409).json({ error: 'job già concluso' });
+      }
+
+      const { hostname, inventory, error } = req.body || {};
+      if (error) {
+        await db.update(hubupJobs)
+          .set({ status: 'error', error: String(error).slice(0, 2000), hostname: hostname || null, finishedAt: new Date() })
+          .where(eq(hubupJobs.id, job.id));
+        return res.json({ ok: true, status: 'error' });
+      }
+
+      const organizationId = job.organizationId || getOrganizationId(req);
+      const inv = inventory && typeof inventory === 'object' ? inventory : req.body;
+      const { hostname: invHost, upserted } = await ingestHubupInventory(userId, organizationId, inv);
+      await db.update(hubupJobs)
+        .set({ status: 'done', hostname: hostname || invHost, methodsCount: upserted, finishedAt: new Date() })
+        .where(eq(hubupJobs.id, job.id));
+      res.json({ ok: true, status: 'done', upserted });
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }

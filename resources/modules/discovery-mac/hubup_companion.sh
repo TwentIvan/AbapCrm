@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# Hub Up — Companion (macOS).  Scan "server-triggered".
+#
+# Il server (cloud) NON può raggiungere il tuo Mac. Questo companion inverte il
+# flusso: gira sul Mac, apre lui la connessione al server (outbound, regge
+# NAT/firewall), fa long-poll dei job in coda e, quando l'app accoda uno scan,
+# esegue il probe QUI e riporta l'inventario. Nessuna credenziale VPN letta.
+#
+# Flusso:
+#   login  ->  loop { GET /api/hubup/jobs/next (attesa) -> probe -> POST result }
+#
+# Uso (in foreground, per test):
+#   HUBUP_SERVER=https://tuo-app.replit.app \
+#   HUBUP_EMAIL=tu@example.com HUBUP_PASSWORD='...' \
+#   ./hubup_companion.sh
+#
+# In produzione si installa come LaunchAgent (vedi com.hubup.companion.plist).
+# Alternativa a email/password: HUBUP_COOKIE='connect.sid=...'.
+# ---------------------------------------------------------------------------
+set -uo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROBE="${HUBUP_PROBE:-$HERE/hubup_discover_mac.py}"
+SERVER="${HUBUP_SERVER:-}"
+POLL_BACKOFF="${HUBUP_POLL_BACKOFF:-5}"   # attesa dopo un errore, in secondi
+
+[[ -n "$SERVER" ]] || { echo "ERRORE: imposta HUBUP_SERVER" >&2; exit 2; }
+SERVER="${SERVER%/}"
+[[ -f "$PROBE" ]] || { echo "ERRORE: probe non trovato: $PROBE" >&2; exit 2; }
+
+COOKIE_JAR="$(mktemp -t hubup_companion.XXXXXX)"
+trap 'rm -f "$COOKIE_JAR"' EXIT
+
+log() { printf '[companion] %s\n' "$*" >&2; }
+
+json_str() { python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))'; }
+
+login() {
+  if [[ -n "${HUBUP_COOKIE:-}" ]]; then
+    printf '%s\tTRUE\t/\tFALSE\t0\t%s\t%s\n' \
+      "$(printf '%s' "$SERVER" | sed -E 's#^https?://##; s#/.*$##')" \
+      "${HUBUP_COOKIE%%=*}" "${HUBUP_COOKIE#*=}" > "$COOKIE_JAR"
+    return 0
+  fi
+  : "${HUBUP_EMAIL:?imposta HUBUP_EMAIL o HUBUP_COOKIE}"
+  : "${HUBUP_PASSWORD:?imposta HUBUP_PASSWORD o HUBUP_COOKIE}"
+  local code
+  code="$(curl -sS -o /dev/null -w '%{http_code}' -c "$COOKIE_JAR" \
+    -H 'Content-Type: application/json' -X POST "$SERVER/api/login" \
+    --data "$(printf '{"email":%s,"password":%s}' \
+      "$(printf '%s' "$HUBUP_EMAIL" | json_str)" \
+      "$(printf '%s' "$HUBUP_PASSWORD" | json_str)")")" || return 1
+  [[ "$code" == "200" ]] || { log "login fallito (HTTP $code)"; return 1; }
+  log "login OK come $HUBUP_EMAIL"
+}
+
+# Esegue il probe e riporta l'esito del job.  $1 = job id
+handle_job() {
+  local job_id="$1" inv rc=0
+  log "job $job_id: scansione in corso ..."
+  inv="$(python3 "$PROBE" 2>/dev/null)" || rc=$?
+  if [[ $rc -ne 0 || -z "$inv" ]]; then
+    curl -sS -b "$COOKIE_JAR" -H 'Content-Type: application/json' \
+      -X POST "$SERVER/api/hubup/jobs/$job_id/result" \
+      --data "$(printf '{"error":%s}' "$(printf 'probe fallito (rc=%s)' "$rc" | json_str)")" >/dev/null || true
+    log "job $job_id: probe fallito (rc=$rc)"
+    return
+  fi
+  # inventory come oggetto annidato: { "inventory": <payload probe> }
+  local body
+  body="$(python3 -c 'import json,sys; print(json.dumps({"inventory": json.loads(sys.stdin.read())}))' <<<"$inv")"
+  local resp
+  resp="$(curl -sS -b "$COOKIE_JAR" -H 'Content-Type: application/json' \
+    -X POST "$SERVER/api/hubup/jobs/$job_id/result" --data "$body")" || { log "job $job_id: upload esito fallito"; return; }
+  log "job $job_id: completato -> $resp"
+}
+
+main() {
+  login || { log "login iniziale fallito, riprovo tra ${POLL_BACKOFF}s"; sleep "$POLL_BACKOFF"; }
+  log "in ascolto di job su $SERVER ..."
+  while true; do
+    local http body tmp
+    tmp="$(mktemp -t hubup_next.XXXXXX)"
+    http="$(curl -sS -b "$COOKIE_JAR" -o "$tmp" -w '%{http_code}' \
+      --max-time 35 "$SERVER/api/hubup/jobs/next")" || http="000"
+    body="$(cat "$tmp")"; rm -f "$tmp"
+
+    case "$http" in
+      200)
+        local job_id
+        job_id="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' <<<"$body" 2>/dev/null)"
+        [[ -n "$job_id" ]] && handle_job "$job_id"
+        ;;
+      204) : ;;                        # nessun job: ripolla subito
+      401) log "sessione scaduta, rilogin ..."; login || sleep "$POLL_BACKOFF" ;;
+      000) log "rete non raggiungibile, ritento tra ${POLL_BACKOFF}s"; sleep "$POLL_BACKOFF" ;;
+      *)   log "risposta inattesa (HTTP $http), attendo ${POLL_BACKOFF}s"; sleep "$POLL_BACKOFF" ;;
+    esac
+  done
+}
+
+main "$@"

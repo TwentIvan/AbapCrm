@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Hub Up Companion — LaunchAgent (macOS).
+
+  Installa lo scan "server-triggered": il companion resta in ascolto e, quando
+  l'app accoda uno scan, esegue il probe sul Mac e riporta l'inventario.
+
+  Installazione:
+    1) Personalizza i path e le variabili qui sotto (SERVER, EMAIL, PASSWORD).
+       Meglio non mettere la password in chiaro: usa HUBUP_COOKIE oppure il
+       Keychain. Per un primo test va bene così.
+    2) Copia:  cp com.hubup.companion.plist ~/Library/LaunchAgents/
+    3) Carica:  launchctl load ~/Library/LaunchAgents/com.hubup.companion.plist
+    4) Log:  /tmp/hubup-companion.out  e  /tmp/hubup-companion.err
+    Per fermarlo: launchctl unload ~/Library/LaunchAgents/com.hubup.companion.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.hubup.companion</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <!-- ADATTA questo path alla posizione reale del repo/script sul Mac -->
+        <string>/Users/CHANGE_ME/AbapCrm/resources/modules/discovery-mac/hubup_companion.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HUBUP_SERVER</key>
+        <string>https://CHANGE_ME.replit.app</string>
+        <key>HUBUP_EMAIL</key>
+        <string>CHANGE_ME@example.com</string>
+        <key>HUBUP_PASSWORD</key>
+        <string>CHANGE_ME</string>
+    </dict>
+
+    <!-- Tienilo vivo: riparte se cade o al login -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/hubup-companion.out</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/hubup-companion.err</string>
+</dict>
+</plist>

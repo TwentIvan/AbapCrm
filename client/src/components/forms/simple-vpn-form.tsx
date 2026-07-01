@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Search, CheckCircle, Loader2, Wifi, Key, Bot, Zap, AlertTriangle, User, Smartphone } from "lucide-react";
+import { Search, CheckCircle, Loader2, Wifi, Key, Bot, Zap, AlertTriangle, User, Smartphone, RefreshCw } from "lucide-react";
 import { z } from "zod";
 
 interface SimpleVPNFormProps {
@@ -52,10 +52,48 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
   const [discoveryComplete, setDiscoveryComplete] = useState(false);
   const [selectedSoftware, setSelectedSoftware] = useState<VpnSoftware | null>(null);
   const [showCredentialsForm, setShowCredentialsForm] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+
+  // Scan "server-triggered": accoda un job e attende che il companion sul Mac
+  // esegua il probe, poi ricarica la lista del software rilevato.
+  const scanMyMac = async () => {
+    setIsScanning(true);
+    try {
+      const res = await apiRequest("POST", "/api/hubup/jobs", {});
+      const job = await res.json();
+      toast({ title: "Scansione richiesta", description: "In attesa del companion sul Mac..." });
+      const started = Date.now();
+      let done = false;
+      while (Date.now() - started < 120000) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const jr = await fetch(`/api/hubup/jobs/${job.id}`, { credentials: "include" });
+        if (!jr.ok) break;
+        const j = await jr.json();
+        if (j.status === "done") {
+          await refetchSoftware();
+          toast({ title: "Scansione completata", description: `Rilevati ${j.methodsCount ?? 0} metodi su ${j.hostname || "il tuo Mac"}.` });
+          done = true;
+          break;
+        }
+        if (j.status === "error") {
+          toast({ variant: "destructive", title: "Scansione fallita", description: j.error || "Errore del companion" });
+          done = true;
+          break;
+        }
+      }
+      if (!done) {
+        toast({ variant: "destructive", title: "Nessuna risposta", description: "Il companion non ha risposto. È in esecuzione sul Mac?" });
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Errore", description: error?.message || "Impossibile avviare la scansione" });
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   // Load VPN software from the real workstation scan (Hub Up probe), not the
   // static catalog: mostra solo il software VPN effettivamente rilevato.
-  const { data: vpnSoftware = [], isLoading: isLoadingSoftware } = useQuery<VpnSoftware[]>({
+  const { data: vpnSoftware = [], isLoading: isLoadingSoftware, refetch: refetchSoftware } = useQuery<VpnSoftware[]>({
     queryKey: ["/api/vpn-software/discovered"],
     queryFn: async () => {
       try {
@@ -278,7 +316,27 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            
+
+            <div className="flex items-center justify-between rounded-md border border-dashed p-3">
+              <p className="text-sm text-muted-foreground">
+                Non vedi il tuo software? Avvia una scansione del Mac (richiede il companion attivo).
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={scanMyMac}
+                disabled={isScanning}
+                data-testid="button-scan-mac"
+              >
+                {isScanning ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scansione...</>
+                ) : (
+                  <><RefreshCw className="mr-2 h-4 w-4" /> Scansiona il mio Mac</>
+                )}
+              </Button>
+            </div>
+
             <FormField
               control={form.control}
               name="vpnSoftware"

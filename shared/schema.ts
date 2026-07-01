@@ -1262,6 +1262,25 @@ export const moduleRuns = pgTable("module_runs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Hub Up job queue (server-triggered scan). L'app accoda un job; il companion
+// installato sul Mac fa polling (outbound, regge NAT/firewall), esegue il probe
+// e riporta l'inventario. Nessun segreto: solo stato + esito della scansione.
+export const hubupJobs = pgTable("hubup_jobs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id),
+  module: text("module").default("discovery-mac").notNull(),
+  status: text("status").default("queued").notNull(), // queued | running | done | error
+  hostname: text("hostname"),      // riportato dal companion col risultato
+  methodsCount: integer("methods_count"),
+  error: text("error"),
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  claimedAt: timestamp("claimed_at"),
+  finishedAt: timestamp("finished_at"),
+}, (table) => ({
+  hubupJobsUserStatusIdx: index("hubup_jobs_user_status_idx").on(table.userId, table.status),
+}));
+
 // Transport Request files (cofile and data file)
 export const transportRequestStatusEnum = pgEnum("transport_request_status", ["development", "testing", "quality", "production", "released", "imported"]);
 export const transportRequestTypeEnum = pgEnum("transport_request_type", ["workbench", "customizing", "copy", "relocate"]);
