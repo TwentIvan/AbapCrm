@@ -130,7 +130,25 @@ self_update_probe() {
   fi
 }
 
+# Auto-aggiornamento del companion STESSO dal server: evita di restare bloccati
+# su versioni vecchie. Scarica agent.sh, valida la sintassi, e se differisce si
+# sostituisce e si riavvia (exec). Best-effort.
+SELF="${BASH_SOURCE[0]}"
+self_update_self() {
+  local tmp; tmp="$(mktemp -t hubup_agent.XXXXXX)"
+  if curl -fsSL --max-time 20 "$SERVER/api/hubup/companion/agent.sh" -o "$tmp" 2>/dev/null \
+       && bash -n "$tmp" 2>/dev/null \
+       && ! cmp -s "$tmp" "$SELF" 2>/dev/null; then
+    cp "$tmp" "$SELF" 2>/dev/null && chmod +x "$SELF" 2>/dev/null
+    rm -f "$tmp"
+    log "companion aggiornato dal server, riavvio."
+    exec /bin/bash "$SELF"
+  fi
+  rm -f "$tmp"
+}
+
 main() {
+  self_update_self
   login || { log "login iniziale fallito, riprovo tra ${POLL_BACKOFF}s"; sleep "$POLL_BACKOFF"; }
   self_update_probe
   log "in ascolto di job su $SERVER ..."
