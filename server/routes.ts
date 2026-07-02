@@ -7801,16 +7801,27 @@ PROCESSO: <testo con punti numerati>`,
   app.post("/api/vpn-connections", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const connectionData = { 
-        ...req.body, 
-        id: undefined  // Let database generate ID
+      const body = req.body || {};
+      const VALID_CONN_TYPES = ["openvpn", "ipsec", "wireguard", "cisco_anyconnect", "fortigate", "other"];
+      const connectionData = {
+        ...body,
+        id: undefined,  // Let database generate ID
+        // Org dal contesto sessione (il client non la conosce).
+        organizationId: body.organizationId || getOrganizationId(req),
+        // Connessioni riferite dal probe non hanno un host: usa un identificativo.
+        serverHost: body.serverHost || body.existingConnectionName || body.name || "detected",
+        // connectionType è un enum: se arriva un methodId del probe (es.
+        // "sonicwall_cse") non è valido -> ricade su "other".
+        connectionType: VALID_CONN_TYPES.includes(body.connectionType) ? body.connectionType : "other",
+        // Collega la connessione al metodo rilevato dal probe.
+        methodId: body.methodId || body.vpnSoftware || null,
       };
-      
-      // Validate basic required fields
-      if (!connectionData.name || !connectionData.partnerId || !connectionData.serverHost) {
-        return res.status(400).json({ error: "Missing required fields: name, partnerId, serverHost" });
+
+      // Solo name e partnerId sono davvero obbligatori per questo flusso.
+      if (!connectionData.name || !connectionData.partnerId) {
+        return res.status(400).json({ error: "Missing required fields: name, partnerId" });
       }
-      
+
       const validatedData = insertVpnConnectionSchema.parse(connectionData);
       const connection = await storage.createVpnConnection(validatedData, req.user!.id);
       res.status(201).json(connection);
