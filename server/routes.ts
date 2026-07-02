@@ -12537,22 +12537,29 @@ ISTRUZIONI:
 
       let workflow: typeof connectionWorkflows.$inferSelect | null = null;
 
+      // Sistema effettivo: override del task o default del partner (livello 1).
+      const resolved = await storage.resolveTaskSapSystem(req.params.id, req.user!.id);
+
       if ((task as any).connectionWorkflowId) {
         const [wf] = await db.select().from(connectionWorkflows)
           .where(eq(connectionWorkflows.id, (task as any).connectionWorkflowId));
         if (wf) workflow = wf;
       }
 
-      if (!workflow && task.sapSystemId) {
+      if (!workflow && resolved?.systemId) {
         const [wf] = await db.select().from(connectionWorkflows)
-          .where(eq(connectionWorkflows.sapSystemId, task.sapSystemId))
+          .where(eq(connectionWorkflows.sapSystemId, resolved.systemId))
           .orderBy(connectionWorkflows.createdAt)
           .limit(1);
         if (wf) workflow = wf;
       }
 
       if (!workflow) {
-        return res.json({ workflow: null, steps: [], source: "none" });
+        return res.json({
+          workflow: null, steps: [], source: "none",
+          sapSystemId: resolved?.systemId ?? null,
+          systemSource: resolved?.source ?? null,
+        });
       }
 
       const steps = ((workflow.steps as any[]) || []).map((s: any) => ({
@@ -12563,6 +12570,8 @@ ISTRUZIONI:
       return res.json({
         workflow: { id: workflow.id, name: workflow.name },
         source: (task as any).connectionWorkflowId ? "task-override" : "sap-system",
+        sapSystemId: resolved?.systemId ?? null,
+        systemSource: resolved?.source ?? null,
         steps,
       });
     } catch (err: any) {

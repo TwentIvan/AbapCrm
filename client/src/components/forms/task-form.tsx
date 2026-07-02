@@ -195,6 +195,14 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
     return sys.partnerId === selectedProject.clientId;
   }) || [];
 
+  // Default all'avvio quando il task non ha un sistema esplicito: quello del
+  // partner con landscapeLevel più basso (1 = sviluppo). Stessa logica del server.
+  const defaultSapSystem = selectedProject?.clientId && filteredSapSystems.length > 0
+    ? [...filteredSapSystems].sort(
+        (a, b) => (((a as any).landscapeLevel ?? 99) - ((b as any).landscapeLevel ?? 99))
+      )[0]
+    : null;
+
   const { data: connectionWorkflowsForTask = [] } = useQuery<any[]>({
     queryKey: ["/api/connection-workflows", { sapSystemId: watchSapSystemId }],
     queryFn: async () => {
@@ -540,10 +548,19 @@ export default function TaskForm({ task, onSuccess }: TaskFormProps) {
                   {filteredSapSystems.map((sapSystem) => (
                     <SelectItem key={sapSystem.id} value={sapSystem.id}>
                       {sapSystem.name} - {sapSystem.serverHost}:{sapSystem.applicationServerPort}
+                      {(sapSystem as any).landscapeLevel ? ` (L${(sapSystem as any).landscapeLevel})` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {/* Senza override, all'avvio si usa il sistema del partner con
+                  landscapeLevel più basso (1 = sviluppo). */}
+              {(field.value === "none" || !field.value) && defaultSapSystem && (
+                <p className="text-xs text-muted-foreground">
+                  Default all'avvio: <strong>{defaultSapSystem.name}</strong>
+                  {(defaultSapSystem as any).landscapeLevel ? ` (livello ${(defaultSapSystem as any).landscapeLevel})` : ""} — sistema di sviluppo del partner.
+                </p>
+              )}
               <FormMessage />
             </FormItem>
           )}

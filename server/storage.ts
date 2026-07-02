@@ -152,6 +152,7 @@ export interface IStorage {
   getTasksByProject(projectId: string, userId: string, organizationId: string): Promise<Task[]>;
   getTask(id: string, userId: string, organizationId: string): Promise<Task | undefined>;
   getTaskConnectionInfo(taskId: string, userId: string): Promise<any>;
+  resolveTaskSapSystem(taskId: string, userId: string): Promise<{ systemId: string; source: 'task' | 'partner-default' } | null>;
   createTask(task: InsertTask & { organizationId: string }): Promise<Task>;
   updateTask(id: string, task: Partial<InsertTask>, userId: string, organizationId: string): Promise<Task | undefined>;
   deleteTask(id: string, userId: string, organizationId: string): Promise<boolean>;
@@ -1370,7 +1371,37 @@ export class DatabaseStorage implements IStorage {
     return task || undefined;
   }
 
+  // Risolve il sistema SAP EFFETTIVO di un task: l'override esplicito sul task,
+  // altrimenti il default del partner del progetto = landscapeLevel più basso
+  // (1 = sviluppo). Ritorna anche la fonte, per UI e diagnosi.
+  async resolveTaskSapSystem(taskId: string, userId: string): Promise<{ systemId: string; source: 'task' | 'partner-default' } | null> {
+    const [task] = await db.select({ sapSystemId: tasks.sapSystemId, projectId: tasks.projectId })
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)));
+    if (!task) return null;
+    if (task.sapSystemId) return { systemId: task.sapSystemId, source: 'task' };
+    if (!task.projectId) return null;
+    const [project] = await db.select({ clientId: projects.clientId }).from(projects)
+      .where(eq(projects.id, task.projectId));
+    if (!project?.clientId) return null;
+    const systems = await db.select({ id: sapSystems.id, landscapeLevel: sapSystems.landscapeLevel })
+      .from(sapSystems)
+      .where(and(
+        eq(sapSystems.partnerId, project.clientId),
+        eq(sapSystems.userId, userId),
+        eq(sapSystems.isActive, true),
+      ));
+    if (systems.length === 0) return null;
+    // livello più basso vince (1 = sviluppo); i senza livello vanno in coda
+    systems.sort((a, b) => (a.landscapeLevel ?? 99) - (b.landscapeLevel ?? 99));
+    return { systemId: systems[0].id, source: 'partner-default' };
+  }
+
   async getTaskConnectionInfo(taskId: string, userId: string): Promise<any> {
+    // Sistema effettivo: override del task o default del partner (livello 1).
+    const resolved = await this.resolveTaskSapSystem(taskId, userId);
+    if (!resolved) return null;
+
     const [result] = await db
       .select({
         // Task info
@@ -1420,19 +1451,21 @@ export class DatabaseStorage implements IStorage {
         partnerEmail: partners.email,
       })
       .from(tasks)
-      .leftJoin(sapSystems, eq(tasks.sapSystemId, sapSystems.id))
+      // Join sul sistema RISOLTO (override del task o default del partner),
+      // non più solo su tasks.sapSystemId.
+      .leftJoin(sapSystems, eq(sapSystems.id, resolved.systemId))
       .leftJoin(vpnConnections, eq(sapSystems.vpnConnectionId, vpnConnections.id))
       .leftJoin(vpnSoftware, eq(tasks.id, tasks.id)) // Remove invalid join - vpnConnections doesn't have vpnSoftwareId
       .leftJoin(partners, eq(sapSystems.partnerId, partners.id))
       .where(and(
-        eq(tasks.id, taskId), 
-        eq(tasks.userId, userId),
-        isNotNull(tasks.sapSystemId) // Solo task con sistema SAP collegato
+        eq(tasks.id, taskId),
+        eq(tasks.userId, userId)
       ));
 
     if (!result) {
       return null;
     }
+    (result as any).sapSystemSource = resolved.source;
 
     // Get SAP credentials for this system
     const credentials = await db
