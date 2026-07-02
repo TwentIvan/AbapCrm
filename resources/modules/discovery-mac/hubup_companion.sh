@@ -95,7 +95,12 @@ handle_job() {
     log "job $job_id: $msg"
     return
   fi
-  log "job $job_id: scansione in corso ..."
+  # Probe sempre fresco: riscaricalo subito prima di OGNI scansione, così il
+  # job usa l'ultima versione a prescindere dai tempi di pull/kickstart.
+  self_update_probe
+  local pv
+  pv="$(sed -n 's/^PROBE_VERSION = "\(.*\)"/\1/p' "$PROBE" 2>/dev/null)"
+  log "job $job_id: scansione in corso (probe ${pv:-sconosciuto}) ..."
   inv="$(python3 "$PROBE" 2>/dev/null)" || rc=$?
   if [[ $rc -ne 0 || -z "$inv" ]]; then
     curl -sS "${CURL_AUTH[@]}" -H 'Content-Type: application/json' \
