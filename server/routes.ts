@@ -7415,7 +7415,7 @@ PROCESSO: <testo con punti numerati>`,
 
   // Timbro di build: serve a distinguere "server aggiornato" da "server vecchio
   // ancora in esecuzione" durante la diagnosi. Bumpalo ad ogni fix rilevante.
-  const HUBUP_BUILD = "2025-07-01.token-diag.1";
+  const HUBUP_BUILD = "2025-07-01.routeorder-fix.2";
 
   // Risolve "chi sta chiamando": sessione browser OPPURE token di arruolamento
   // del companion (Bearer / ?token= / x-hubup-token). Restituisce actor + reason
@@ -7509,17 +7509,11 @@ PROCESSO: <testo con punti numerati>`,
   });
 
   // App: stato di un job (polling dell'esito).
-  app.get("/api/hubup/jobs/:id", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    const [job] = await db.select().from(hubupJobs)
-      .where(and(eq(hubupJobs.id, req.params.id), eq(hubupJobs.userId, req.user!.id)));
-    if (!job) return res.sendStatus(404);
-    res.json(job);
-  });
-
   // Companion: long-poll per prendere il prossimo job in coda dell'utente.
   // Attende fino a ~25s; se ne trova uno lo "claim-a" (queued -> running) in
   // modo atomico. 204 se non c'è nulla entro il timeout (il companion ripolla).
+  // NB: DEVE stare PRIMA di "/api/hubup/jobs/:id", altrimenti "next" viene
+  // catturato come :id (id="next") dal handler che richiede la sessione -> 401.
   app.get("/api/hubup/jobs/next", async (req, res) => {
     const { actor, reason } = await resolveHubupActor(req);
     if (!actor) return res.status(401).json({ error: "unauthorized", reason, build: HUBUP_BUILD });
@@ -7552,6 +7546,15 @@ PROCESSO: <testo con punti numerati>`,
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : 'poll failed' });
     }
+  });
+
+  // App: stato di un job (polling dell'esito). Registrata DOPO "/next".
+  app.get("/api/hubup/jobs/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const [job] = await db.select().from(hubupJobs)
+      .where(and(eq(hubupJobs.id, req.params.id), eq(hubupJobs.userId, req.user!.id)));
+    if (!job) return res.sendStatus(404);
+    res.json(job);
   });
 
   // Companion: riporta l'esito. Body: { hostname?, inventory?, error? }.
