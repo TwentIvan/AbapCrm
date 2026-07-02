@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 
 # Versione del probe: emessa come metodo-beacon nell'inventario, così è
 # possibile sapere QUALE probe ha girato davvero (diagnosi self-update).
-PROBE_VERSION = "gen-3-sysext"
+PROBE_VERSION = "gen-4-registry"
 
 # --------------------------------------------------------------------------- #
 # Helper di sistema (tutti tolleranti: comando assente -> risultato vuoto)
@@ -433,30 +433,136 @@ def _bundle_vpn_extension(app_path):
     return None
 
 
-def discover_generic_vpn(covered_paths):
-    """Client VPN NON coperti dal catalogo, dedotti dalla Network Extension."""
-    out = []
-    seen_ids = set()
-    for path, ver in _installed_apps().items():
-        if not isinstance(path, str) or not path.endswith(".app"):
-            continue
-        real = os.path.realpath(_expand(path))
-        if real in covered_paths:
-            continue  # già rilevato (meglio) dal catalogo
-        pt = _bundle_vpn_extension(path)
+def _bundle_id(app_path):
+    """CFBundleIdentifier di una .app ('' se non leggibile)."""
+    plist = os.path.join(_expand(app_path), "Contents", "Info.plist")
+    try:
+        with open(plist, "rb") as fh:
+            return plistlib.load(fh).get("CFBundleIdentifier", "") or ""
+    except Exception:
+        return ""
+
+
+def _pluginkit_vpn_apps():
+    """App con appex VPN REGISTRATI nel plugin registry (pluginkit).
+
+    Interroga il registro di sistema invece di scandire i bundle: copre anche
+    app con layout non standard o fuori da /Applications.
+    """
+    apps = {}
+    for point in sorted(_VPN_EXT_POINTS):
+        out = _run(["pluginkit", "-m", "-p", point, "-v"])
+        for line in out.splitlines():
+            i = line.find("/")
+            if i == -1:
+                continue
+            path = line[i:].strip()
+            j = path.find(".app/")
+            if j != -1:
+                apps[path[:j + 4]] = point
+    return apps
+
+
+def _staged_sysext_vpn(base="/Library/SystemExtensions"):
+    """System extension VPN ATTIVATE/staged da macOS (fonte autorevole).
+
+    macOS copia le system extension approvate sotto /Library/SystemExtensions:
+    qui un client tipo-GlobalProtect compare per forza, qualunque sia il layout
+    della sua app. Filtriamo per NEProviderClasses VPN (niente content filter).
+    """
+    recs = []
+    pattern = os.path.join(base, "*", "*.systemextension", "Contents", "Info.plist")
+    for plist in glob.glob(pattern):
+        pt = _plist_vpn_provider(plist)
         if not pt:
             continue
-        name = os.path.splitext(os.path.basename(path))[0]
+        try:
+            with open(plist, "rb") as fh:
+                info = plistlib.load(fh)
+        except Exception:
+            continue
+        recs.append({
+            "bundle": info.get("CFBundleIdentifier", "") or "",
+            "name": info.get("CFBundleDisplayName") or info.get("CFBundleName") or "",
+            "version": info.get("CFBundleShortVersionString", "") or "",
+            "point": pt,
+            "path": os.path.dirname(os.path.dirname(plist)),
+        })
+    return recs
+
+
+def discover_generic_vpn(covered_paths):
+    """Client VPN NON coperti dal catalogo, da tre fonti generiche:
+
+    1. pluginkit         -> appex VPN registrati (registro di sistema)
+    2. scansione bundle  -> app in /Applications con appex/sysext VPN nel bundle
+    3. /Library/SystemExtensions -> system extension VPN attivate da macOS
+
+    Nessuna lista di nomi: un client VPN emerge perché È una VPN per il sistema.
+    """
+    out = []
+    seen_ids = set()
+    known_bundles = set()
+    for p in covered_paths:
+        b = _bundle_id(p)
+        if b:
+            known_bundles.add(b)
+
+    def emit_app(real, evidence, version=""):
+        name = os.path.splitext(os.path.basename(real))[0]
         mid = _slug(name)
+        if mid in seen_ids:
+            return
+        seen_ids.add(mid)
+        b = _bundle_id(real)
+        if b:
+            known_bundles.add(b)
+        out.append({
+            "id": mid, "kind": "vpn", "role": None, "os": "mac",
+            "installed": True, "configured": False, "connected": False,
+            "version": version or _app_version(real),
+            "profiles": [],
+            "evidence": evidence,
+            "last_probed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        })
+
+    # Candidati app: registro pluginkit + system_profiler + glob diretto di
+    # /Applications (robusto anche se system_profiler va in timeout).
+    candidates = {}
+    for app, point in _pluginkit_vpn_apps().items():
+        candidates[os.path.realpath(_expand(app))] = f"pluginkit: {point.split('.')[-1]}"
+    for path, _ver in _installed_apps().items():
+        if isinstance(path, str) and path.endswith(".app"):
+            candidates.setdefault(os.path.realpath(_expand(path)), "")
+    for pat in ("/Applications/*.app", "/Applications/*/*.app",
+                os.path.expanduser("~/Applications/*.app")):
+        for p in glob.glob(pat):
+            candidates.setdefault(os.path.realpath(p), "")
+
+    for real, pk_evidence in sorted(candidates.items()):
+        if real in covered_paths:
+            continue  # già rilevato (meglio) dal catalogo
+        pt = _bundle_vpn_extension(real)
+        ev = pk_evidence or (f"netext: {pt.split('.')[-1]}" if pt else "")
+        if not ev:
+            continue
+        emit_app(real, [f"app: {real}", ev])
+
+    # System extension VPN attivate ma non riconducibili ad app già note.
+    for rec in _staged_sysext_vpn():
+        b = rec["bundle"]
+        if b and any(b.startswith(k) or k.startswith(b) for k in known_bundles):
+            continue
+        nm = rec["name"] or (b.split(".")[-1] if b else "vpn extension")
+        mid = _slug(nm)
         if mid in seen_ids:
             continue
         seen_ids.add(mid)
         out.append({
             "id": mid, "kind": "vpn", "role": None, "os": "mac",
             "installed": True, "configured": False, "connected": False,
-            "version": ver or _app_version(path),
-            "profiles": [],
-            "evidence": [f"app: {path}", f"netext: {pt.split('.')[-1]}"],
+            "version": rec["version"], "profiles": [],
+            "evidence": [f"sysext: {b}", f"provider: {rec['point'].split('.')[-1]}"],
             "last_probed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         })
     return out
