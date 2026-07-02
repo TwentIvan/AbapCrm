@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 
 # Versione del probe: emessa come metodo-beacon nell'inventario, così è
 # possibile sapere QUALE probe ha girato davvero (diagnosi self-update).
-PROBE_VERSION = "gen-2-netext"
+PROBE_VERSION = "gen-3-sysext"
 
 # --------------------------------------------------------------------------- #
 # Helper di sistema (tutti tolleranti: comando assente -> risultato vuoto)
@@ -396,13 +396,26 @@ def _slug(name):
     return s or "app"
 
 
-def _plist_ext_point(info_plist_path):
+def _plist_vpn_provider(info_plist_path):
+    """Ritorna il provider VPN dichiarato in un Info.plist, o None.
+
+    Copre due meccanismi:
+      - appex: NSExtension.NSExtensionPointIdentifier
+      - system extension: NetworkExtension.NEProviderClasses (chiavi = tipi provider)
+    """
     try:
         with open(info_plist_path, "rb") as fh:
             info = plistlib.load(fh)
-        return (info.get("NSExtension", {}) or {}).get("NSExtensionPointIdentifier")
     except Exception:
         return None
+    pt = (info.get("NSExtension", {}) or {}).get("NSExtensionPointIdentifier")
+    if pt in _VPN_EXT_POINTS:
+        return pt
+    classes = (info.get("NetworkExtension", {}) or {}).get("NEProviderClasses", {}) or {}
+    for k in classes.keys():
+        if k in _VPN_EXT_POINTS:
+            return k
+    return None
 
 
 def _bundle_vpn_extension(app_path):
@@ -414,8 +427,8 @@ def _bundle_vpn_extension(app_path):
     )
     for pat in patterns:
         for f in glob.glob(os.path.join(app_path, pat)):
-            pt = _plist_ext_point(f)
-            if pt in _VPN_EXT_POINTS:
+            pt = _plist_vpn_provider(f)
+            if pt:
                 return pt
     return None
 
