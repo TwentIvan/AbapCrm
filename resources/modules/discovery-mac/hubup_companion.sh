@@ -152,7 +152,14 @@ main() {
   login || { log "login iniziale fallito, riprovo tra ${POLL_BACKOFF}s"; sleep "$POLL_BACKOFF"; }
   self_update_probe
   log "in ascolto di job su $SERVER ..."
+  local last_update=$SECONDS
   while true; do
+    # Auto-aggiornamento periodico (probe + companion) senza restart manuale.
+    if (( SECONDS - last_update > 300 )); then
+      last_update=$SECONDS
+      self_update_probe
+      self_update_self   # fa exec se agent.sh è cambiato (rilegge anche il probe)
+    fi
     local http body tmp t0 elapsed
     tmp="$(mktemp -t hubup_next.XXXXXX)"
     t0=$SECONDS

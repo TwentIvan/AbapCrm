@@ -373,6 +373,79 @@ def discover(catalog):
 
 
 # --------------------------------------------------------------------------- #
+# Scoperta GENERICA (vendor-agnostica): qualunque app che incorpori una Network
+# Extension di tipo VPN è un client VPN, senza bisogno di una firma per nome.
+# Segnale: un .appex / .systemextension nel bundle che dichiara come
+# NSExtensionPointIdentifier un provider di rete VPN (packet-tunnel / app-proxy).
+# --------------------------------------------------------------------------- #
+
+_VPN_EXT_POINTS = {
+    "com.apple.networkextension.packet-tunnel",
+    "com.apple.networkextension.app-proxy",
+}
+
+
+def _slug(name):
+    s = "".join(c.lower() if c.isalnum() else "_" for c in name).strip("_")
+    while "__" in s:
+        s = s.replace("__", "_")
+    return s or "app"
+
+
+def _plist_ext_point(info_plist_path):
+    try:
+        with open(info_plist_path, "rb") as fh:
+            info = plistlib.load(fh)
+        return (info.get("NSExtension", {}) or {}).get("NSExtensionPointIdentifier")
+    except Exception:
+        return None
+
+
+def _bundle_vpn_extension(app_path):
+    """Ritorna il tipo di Network Extension VPN nel bundle, o None."""
+    app_path = _expand(app_path)
+    patterns = (
+        "Contents/PlugIns/*.appex/Contents/Info.plist",
+        "Contents/Library/SystemExtensions/*.systemextension/Contents/Info.plist",
+    )
+    for pat in patterns:
+        for f in glob.glob(os.path.join(app_path, pat)):
+            pt = _plist_ext_point(f)
+            if pt in _VPN_EXT_POINTS:
+                return pt
+    return None
+
+
+def discover_generic_vpn(covered_paths):
+    """Client VPN NON coperti dal catalogo, dedotti dalla Network Extension."""
+    out = []
+    seen_ids = set()
+    for path, ver in _installed_apps().items():
+        if not isinstance(path, str) or not path.endswith(".app"):
+            continue
+        real = os.path.realpath(_expand(path))
+        if real in covered_paths:
+            continue  # già rilevato (meglio) dal catalogo
+        pt = _bundle_vpn_extension(path)
+        if not pt:
+            continue
+        name = os.path.splitext(os.path.basename(path))[0]
+        mid = _slug(name)
+        if mid in seen_ids:
+            continue
+        seen_ids.add(mid)
+        out.append({
+            "id": mid, "kind": "vpn", "role": None, "os": "mac",
+            "installed": True, "configured": False, "connected": False,
+            "version": ver or _app_version(path),
+            "profiles": [],
+            "evidence": [f"app: {path}", f"netext: {pt.split('.')[-1]}"],
+            "last_probed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        })
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # main
 # --------------------------------------------------------------------------- #
 
@@ -396,12 +469,22 @@ def main():
         print("ATTENZIONE: non sei su macOS; le sonde mac ritorneranno vuote.",
               file=sys.stderr)
 
+    # Catalogo (firme precise, con stato "connected") + scoperta generica dei
+    # client VPN non catalogati, deduplicati per path dell'app già coperto.
+    catalog_records = discover(catalog)
+    covered = set()
+    for r in catalog_records:
+        for e in r.get("evidence", []):
+            if e.startswith("app: "):
+                covered.add(os.path.realpath(_expand(e[5:])))
+    all_records = catalog_records + discover_generic_vpn(covered)
+
     inventory = {
         "schema": "hubup.discovered_connection_methods/1",
         "os": "mac",
         "hostname": _run(["hostname"]).strip() or os.uname().nodename,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "methods": [m for m in discover(catalog) if m["installed"] or m["configured"]],
+        "methods": [m for m in all_records if m["installed"] or m["configured"]],
     }
 
     payload = json.dumps(inventory, indent=2 if args.pretty else None, ensure_ascii=False)

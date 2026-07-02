@@ -22,10 +22,15 @@ export const VPN_METHOD_CATALOG: Record<string, { name: string; vendor: string }
   native_vpn: { name: "VPN Nativa del Sistema", vendor: "Sistema" },
 };
 
-// Risolve nome/vendor da un methodId, con fallback leggibile per id sconosciuti.
+// Risolve nome/vendor da un methodId, con fallback leggibile per id sconosciuti
+// (es. client rilevati genericamente dal probe: "cloudflare_warp" -> "Cloudflare Warp").
 export function resolveVpnMethod(methodId?: string | null): { name: string; vendor: string } {
   if (!methodId) return { name: "—", vendor: "" };
-  return VPN_METHOD_CATALOG[methodId] || { name: String(methodId).replace(/_/g, " "), vendor: "" };
+  if (VPN_METHOD_CATALOG[methodId]) return VPN_METHOD_CATALOG[methodId];
+  const name = String(methodId)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return { name, vendor: "" };
 }
 
 // Livello di automazione derivato dal vendor (coerente con la vecchia logica).
