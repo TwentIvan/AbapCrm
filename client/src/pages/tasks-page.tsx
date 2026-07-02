@@ -257,87 +257,67 @@ export default function TasksPage() {
     setShowEditDialog(true);
   };
 
+  // Avvio task reale: il server compone il piano (workflow custom o piano
+  // calcolato dall'inventario) e lo accoda come job "connect"; il companion
+  // lo esegue sulla workstation (VPN reachability -> tunnel cliente -> check
+  // -> SAP GUI) e riporta l'esito per passo. Il sistema SAP, se non
+  // esplicito sul task, è il default del partner (livello 1 = sviluppo).
   const handleLaunchConnections = async (task: Task) => {
-    if (!task.sapSystemId) {
-      toast({ 
-        title: "Sistema SAP non configurato", 
-        description: "Questo task non ha un sistema SAP collegato",
-        variant: "destructive" 
-      });
-      return;
-    }
-
     try {
-      // Execute VPN automation
-      const response = await fetch(`/api/tasks/${task.id}/execute-connection`, {
-        method: 'POST',
-        credentials: "include"
+      // Il companion è connesso?
+      let online = false;
+      try {
+        const sr = await fetch("/api/hubup/companion/status", { credentials: "include" });
+        if (sr.ok) online = !!(await sr.json()).online;
+      } catch { /* trattato come offline */ }
+      if (!online) {
+        toast({
+          title: "Companion non attivo",
+          description: "Il companion non risulta connesso sulla workstation. Installalo/avvialo dal wizard VPN e riprova.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const res = await apiRequest("POST", `/api/tasks/${task.id}/launch`, {});
+      const { jobId, steps, system, systemSource } = await res.json();
+      toast({
+        title: "Avvio connessioni",
+        description: `Sistema ${system}${systemSource === "partner-default" ? " (default sviluppo)" : ""} — piano di ${steps?.length ?? 0} passi inviato alla workstation...`,
       });
 
-      let automationResult;
-
-      if (!response.ok) {
-        // Fallback demo automation result
-        console.log('API error, using demo automation result');
-        automationResult = {
-          success: true,
-          connectionType: 'forticlient',
-          instructions: `Demo Automazione VPN per ${task.title}
-
-Sul tuo MacBook reale, questo script:
-1. 🔍 Rileverà automaticamente le tue 5 connessioni FortiClient 
-2. 📝 Genererà AppleScript personalizzato per la connessione VPN
-3. 🚀 Avvierà FortiClient e si connetterà automaticamente
-4. 💻 Aprirà SAP GUI con le credenziali corrette
-
-Questo è l'automazione completa VPN + SAP in un solo click!`,
-          executionCommand: `osascript -e 'tell application "FortiClient" to activate; delay 2; tell application "System Events" to tell process "FortiClient" to click button "Connect"'`
-        };
-      } else {
-        automationResult = await response.json();
+      const started = Date.now();
+      while (Date.now() - started < 180000) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const jr = await fetch(`/api/hubup/jobs/${jobId}`, { credentials: "include" });
+        if (!jr.ok) break;
+        const j = await jr.json();
+        if (j.status === "done" || j.status === "error") {
+          const icon = (s: string) =>
+            s === "ok" ? "✅" : s === "manual" ? "✋" : s === "skipped" ? "⏭" : "❌";
+          const lines = (j.result?.steps || [])
+            .map((s: any) => `${icon(s.status)} ${s.label}${s.detail ? ` — ${s.detail}` : ""}`)
+            .join("\n");
+          alert(`${j.status === "done" ? "🚀 Connessioni avviate" : "⚠️ Avvio con errori"} — ${task.title}\n\n${lines || j.error || ""}`);
+          if (j.status === "done") {
+            toast({ title: "Task avviato", description: "Sequenza di connessione completata sulla workstation." });
+          } else {
+            toast({ title: "Avvio con errori", description: j.error || "Alcuni passi sono falliti", variant: "destructive" });
+          }
+          return;
+        }
       }
-      
-      if (automationResult.success) {
-        // Show successful automation result with instructions
-        const message = `🚀 Automazione VPN Generata per ${task.title}
-
-Tipo Connessione: ${automationResult.connectionType}
-
-${automationResult.instructions || ''}
-
-${automationResult.executionCommand ? `📋 Comando di esecuzione:\n${automationResult.executionCommand}` : ''}
-
-✅ Lo script è stato generato e può essere eseguito per connettersi automaticamente!`;
-
-        alert(message);
-        
-        toast({
-          title: "Automazione Generata",
-          description: `Script VPN ${automationResult.connectionType} generato con successo`,
-        });
-      } else {
-        // Show error from automation
-        const errorMessage = `❌ Errore nell'automazione VPN per ${task.title}:
-
-${automationResult.error || 'Errore sconosciuto'}
-
-Tipo Connessione: ${automationResult.connectionType || 'Unknown'}`;
-
-        alert(errorMessage);
-        
-        toast({
-          title: "Errore Automazione",
-          description: automationResult.error || "Errore nell'automazione VPN",
-          variant: "destructive"
-        });
-      }
-
-    } catch (error) {
-      console.error('Error launching connections:', error);
-      toast({ 
-        title: "Errore", 
-        description: "Impossibile avviare l'automazione delle connessioni",
-        variant: "destructive" 
+      toast({
+        title: "Nessuna risposta",
+        description: "Il companion non ha completato in tempo. Controlla ~/.hubup/companion.out",
+        variant: "destructive",
+      });
+    } catch (error: any) {
+      console.error('Error launching task:', error);
+      toast({
+        title: "Errore",
+        description: error?.message || "Impossibile avviare il task",
+        variant: "destructive",
       });
     }
   };

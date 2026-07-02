@@ -1269,11 +1269,13 @@ export const hubupJobs = pgTable("hubup_jobs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").references(() => users.id).notNull(),
   organizationId: uuid("organization_id").references(() => organizations.id),
-  module: text("module").default("discovery-mac").notNull(),
+  module: text("module").default("discovery-mac").notNull(), // discovery-mac | connect
   status: text("status").default("queued").notNull(), // queued | running | done | error
   hostname: text("hostname"),      // riportato dal companion col risultato
   methodsCount: integer("methods_count"),
   error: text("error"),
+  payload: jsonb("payload"),       // per module=connect: il piano di passi da eseguire
+  result: jsonb("result"),         // esito per passo riportato dal companion
   requestedAt: timestamp("requested_at").defaultNow().notNull(),
   claimedAt: timestamp("claimed_at"),
   finishedAt: timestamp("finished_at"),

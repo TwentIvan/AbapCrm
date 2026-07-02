@@ -1413,10 +1413,12 @@ export class DatabaseStorage implements IStorage {
         // SAP System info
         sapSystemId: sapSystems.id,
         sapSystemName: sapSystems.name,
+        sapSystemSid: sapSystems.systemId,
         sapSystemDescription: sapSystems.description,
         sapSystemType: sapSystems.systemType,
         sapServerHost: sapSystems.serverHost,
         sapSystemNumber: sapSystems.systemNumber,
+        sapRouterString: sapSystems.sapRouterString,
         sapApplicationServerPort: sapSystems.applicationServerPort,
         sapMessageServerPort: sapSystems.messageServerPort,
         sapReleaseVersion: sapSystems.sapReleaseVersion,
@@ -1426,6 +1428,8 @@ export class DatabaseStorage implements IStorage {
         // VPN Connection info
         vpnConnectionId: vpnConnections.id,
         vpnConnectionName: vpnConnections.name,
+        vpnMethodId: vpnConnections.methodId,
+        vpnRole: vpnConnections.role,
         vpnConnectionType: vpnConnections.connectionType,
         vpnServerHost: vpnConnections.serverHost,
         vpnServerPort: vpnConnections.serverPort,

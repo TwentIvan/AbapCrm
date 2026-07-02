@@ -118,6 +118,103 @@ handle_job() {
   log "job $job_id: completato -> $resp"
 }
 
+# Esegue un job "connect": il piano di passi arriva dal server (payload) e
+# viene eseguito con VERBI VINCOLATI — mai shell arbitraria:
+#   vpn_connect      -> open -a <app in /Applications>  |  scutil --nc start <servizio>
+#   tunnel_up_check  -> connessione TCP host:porta (timeout 6s)
+#   mcp_health_check -> HTTP GET solo verso localhost
+#   launch_process   -> open -a <app in /Applications>
+# Passi actor=human o non supportati vengono riportati, non eseguiti.
+handle_connect_job() {
+  local job_id="$1" payload_b64="$2" result body resp
+  log "job $job_id: eseguo piano di connessione ..."
+  result="$(printf '%s' "$payload_b64" | python3 -c '
+import base64, json, os, socket, subprocess, sys, urllib.request
+
+payload = json.loads(base64.b64decode(sys.stdin.read()) or b"{}")
+steps_in = payload.get("steps", [])
+out, ok_all = [], True
+
+def run(cmd, timeout=20):
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        return r.returncode == 0, (r.stdout or r.stderr or "").strip()[:300]
+    except Exception as e:
+        return False, str(e)[:300]
+
+for s in steps_in:
+    t = s.get("type"); p = s.get("params") or {}; label = s.get("label") or str(t)
+    if s.get("status") == "satisfied":
+        out.append({"label": label, "status": "ok", "detail": "gia soddisfatto"}); continue
+    if s.get("actor") == "human":
+        out.append({"label": label, "status": "manual", "detail": "richiede intervento umano"}); continue
+    ok, detail = False, ""
+    if t == "vpn_connect":
+        app = p.get("app") or ""; svc = p.get("nativeService") or ""
+        if svc:
+            ok, detail = run(["scutil", "--nc", "start", svc])
+            detail = detail or f"avvio servizio VPN nativo {svc}"
+        elif app.startswith("/Applications/") and os.path.exists(app):
+            ok, detail = run(["open", "-a", app])
+            detail = detail or "app aperta (completa login/MFA se richiesto)"
+        else:
+            detail = "app non trovata: " + (app or str(p.get("methodId") or "?"))
+    elif t == "tunnel_up_check":
+        host = (p.get("appServer") or p.get("host") or "")
+        sr = p.get("saprouter") or ""
+        if not host and sr.startswith("/H/"):
+            host = sr[3:].split("/")[0]
+        try:
+            port = int(p.get("port") or 3200)
+        except Exception:
+            port = 3200
+        try:
+            with socket.create_connection((host, port), timeout=6):
+                ok, detail = True, f"{host}:{port} raggiungibile"
+        except Exception as e:
+            detail = f"{host}:{port} non raggiungibile ({e})"
+    elif t == "mcp_health_check":
+        url = p.get("url") or ""
+        if not (url.startswith("http://127.0.0.1") or url.startswith("http://localhost")):
+            detail = "solo endpoint locali ammessi"
+        else:
+            try:
+                with urllib.request.urlopen(url, timeout=5) as r:
+                    ok, detail = True, f"HTTP {r.status}"
+            except Exception as e:
+                detail = str(e)[:200]
+    elif t == "launch_process":
+        app = p.get("app") or ""
+        if app.startswith("/Applications/") and os.path.exists(app):
+            ok, detail = run(["open", "-a", app])
+            detail = detail or "app aperta"
+        else:
+            detail = "app non trovata: " + (app or "?")
+    else:
+        out.append({"label": label, "status": "skipped", "detail": f"tipo {t} non eseguibile dal companion"}); continue
+    out.append({"label": label, "status": "ok" if ok else "error", "detail": detail})
+    if not ok:
+        ok_all = False
+
+print(json.dumps({"steps": out, "ok": ok_all}, ensure_ascii=False))
+' 2>&1)" || true
+
+  body="$(printf '%s' "$result" | python3 -c '
+import json, sys
+try:
+    r = json.loads(sys.stdin.read())
+except Exception as e:
+    r = {"steps": [], "ok": False, "detail": str(e)[:200]}
+msg = {"result": r}
+if not r.get("ok"):
+    msg["error"] = "uno o piu passi falliti"
+print(json.dumps(msg, ensure_ascii=False))')"
+  resp="$(curl -sS "${CURL_AUTH[@]}" -H 'Content-Type: application/json' \
+    -X POST "$SERVER/api/hubup/jobs/$job_id/result" --data "$body")" \
+    || { log "job $job_id: upload esito fallito"; return; }
+  log "job $job_id: piano eseguito -> $resp"
+}
+
 # Auto-aggiornamento del probe dal server (best-effort). Mantiene la firma
 # di rilevamento allineata senza reinstallare il companion.
 self_update_probe() {
@@ -175,9 +272,19 @@ main() {
 
     case "$http" in
       200)
-        local job_id
-        job_id="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' <<<"$body" 2>/dev/null)"
-        [[ -n "$job_id" ]] && handle_job "$job_id"
+        local job_id job_module payload_b64
+        read -r job_id job_module payload_b64 <<<"$(python3 -c '
+import base64, json, sys
+j = json.load(sys.stdin)
+print(j.get("id",""), j.get("module","discovery-mac"),
+      base64.b64encode(json.dumps(j.get("payload") or {}).encode()).decode())' <<<"$body" 2>/dev/null)"
+        if [[ -n "$job_id" ]]; then
+          if [[ "$job_module" == "connect" ]]; then
+            handle_connect_job "$job_id" "$payload_b64"
+          else
+            handle_job "$job_id"
+          fi
+        fi
         ;;
       # nessun job: col long-poll il server tiene ~25s. Se torna subito (server
       # non long-poll), evita l'hot-loop con una piccola pausa.

@@ -393,6 +393,14 @@ export async function runStartupMigrations(): Promise<boolean> {
       );
     `);
 
+    // Migration 0019: hubup_jobs.payload/result — job "connect" (avvio task):
+    // il server accoda il piano di passi, il companion lo esegue e riporta
+    // l'esito per passo.
+    await safeMigrate('hubup_jobs payload/result ensured', `
+      ALTER TABLE "hubup_jobs" ADD COLUMN IF NOT EXISTS "payload" jsonb;
+      ALTER TABLE "hubup_jobs" ADD COLUMN IF NOT EXISTS "result" jsonb;
+    `);
+
     // Migration 0018: hubup_enroll_tokens — credenziale del companion generata
     // dalla UI (Bearer), così non si digitano password sul Mac.
     await safeMigrate('hubup_enroll_tokens table ensured', `

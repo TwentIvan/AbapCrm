@@ -1603,6 +1603,137 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // ── POST /api/tasks/:id/launch — avvio task via companion (job "connect") ──
+  // Compone il piano di connessione e lo accoda come job che il companion
+  // esegue DAVVERO sulla workstation: reachability (es. SonicWall CSE) ->
+  // tunnel cliente -> check raggiungibilità -> SAP GUI. Sorgente del piano:
+  // Connection Workflow (override task, poi workflow del sistema) se definito,
+  // altrimenti piano calcolato da composeReadiness sull'inventario del probe.
+  app.post("/api/tasks/:id/launch", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const info = await storage.getTaskConnectionInfo(req.params.id, userId);
+      if (!info?.sapSystemId) {
+        return res.status(400).json({ error: "Nessun sistema SAP per questo task (nemmeno un default del partner)" });
+      }
+      const targetLabel = info.sapSystemSid || info.sapSystemName;
+
+      // Inventario del probe: traduce methodId -> app da aprire sul Mac.
+      const invRows = await db.select().from(discoveredConnectionMethods)
+        .where(eq(discoveredConnectionMethods.userId, userId));
+      const appFor = (methodId?: string | null): string | undefined => {
+        if (!methodId) return undefined;
+        const r: any = invRows.find((m: any) => m.methodId === methodId);
+        const ev = (r?.evidence || []).find((e: string) => e.startsWith("app: "));
+        return ev ? ev.slice(5) : undefined;
+      };
+
+      // 1) Workflow custom: override del task, poi workflow del sistema.
+      const [task] = await db.select().from(tasks)
+        .where(and(eq(tasks.id, req.params.id), eq(tasks.userId, userId)));
+      let steps: any[] | null = null;
+      let planSource = "composed";
+      const wfId = (task as any)?.connectionWorkflowId;
+      let wf: any = null;
+      if (wfId) {
+        const found = await db.select().from(connectionWorkflows).where(eq(connectionWorkflows.id, wfId));
+        wf = found[0] || null;
+      }
+      if (!wf) {
+        const found = await db.select().from(connectionWorkflows)
+          .where(eq(connectionWorkflows.sapSystemId, info.sapSystemId))
+          .orderBy(connectionWorkflows.createdAt).limit(1);
+        wf = found[0] || null;
+      }
+      if (wf && Array.isArray(wf.steps) && wf.steps.length > 0) {
+        steps = (wf.steps as any[]).map((s: any) => ({ status: "todo", ...s }));
+        planSource = wfId ? "workflow-task" : "workflow-system";
+      }
+
+      // 2) Default: piano calcolato dall'inventario reale (Hub Up).
+      if (!steps) {
+        const { composeReadiness } = await import("./lib/connectionCompose");
+        const vpnRows = await db.select().from(vpnConnections).where(eq(vpnConnections.userId, userId));
+        const vpns = vpnRows.map((v: any) => ({
+          id: v.id, methodId: v.methodId || v.id, label: v.name,
+          role: (v.role === "reachability" ? "reachability" : "customer_tunnel") as "reachability" | "customer_tunnel",
+          autoConnect: !!v.autoConnect, savableCreds: !!v.autoConnect,
+        }));
+        const inventory: any = {
+          schema: "hubup.discovered_connection_methods/1", os: "mac", hostname: "",
+          generated_at: new Date().toISOString(),
+          methods: invRows.map((r: any) => ({
+            id: r.methodId, kind: r.kind, role: r.role, os: r.os,
+            installed: r.installed, configured: r.configured, connected: r.connected,
+            version: r.version || undefined, profiles: r.profiles || [], evidence: r.evidence || [],
+          })),
+        };
+        const hasSaprouter = !!info.sapRouterString;
+        const reachVpn = vpns.find((v) => v.role === "reachability");
+        const invReach: any = invRows.find((m: any) => m.role === "reachability" && (m.installed || m.connected));
+        const target = {
+          id: targetLabel,
+          reachVia: (hasSaprouter ? "saprouter" : "vpn_direct") as any,
+          saprouter: info.sapRouterString || undefined,
+          appServer: info.sapServerHost || undefined,
+          instance: info.sapSystemNumber || undefined,
+          requiresReachability: hasSaprouter ? (reachVpn?.methodId || invReach?.methodId || "sonicwall_cse") : undefined,
+          launch: "sap_gui" as any,
+        };
+        steps = composeReadiness(target as any, inventory, vpns as any).steps;
+
+        // Tunnel VPN del cliente (composeReadiness gestisce solo la reachability):
+        // va su dopo la reachability, prima del check di raggiungibilità.
+        if (info.vpnConnectionId && info.vpnRole !== "reachability") {
+          const isNative = (info.vpnMethodId || "") === "native_vpn";
+          const alreadyUp = !!(invRows.find((m: any) => m.methodId === info.vpnMethodId) as any)?.connected;
+          const step = {
+            type: "vpn_connect", actor: "auto",
+            label: `Connetti VPN cliente ${info.vpnConnectionName}`,
+            params: isNative
+              ? { nativeService: info.vpnConnectionName }
+              : { methodId: info.vpnMethodId, app: appFor(info.vpnMethodId) },
+            status: alreadyUp ? "satisfied" : "todo",
+          };
+          const idx = steps.findIndex((s: any) => s.type === "tunnel_up_check");
+          if (idx >= 0) steps.splice(idx, 0, step as any); else steps.push(step as any);
+        }
+
+        // Lancio SAP GUI (per launch=sap_gui composeReadiness non aggiunge step).
+        const guiApp = appFor("sap_gui_java");
+        steps.push({
+          type: "launch_process", actor: guiApp ? "auto" : "human",
+          label: `Apri SAP GUI (${targetLabel})`, params: { app: guiApp }, status: "todo",
+        } as any);
+      }
+
+      // Arricchimento comune: app per i vpn_connect e porta per il check.
+      for (const s of steps as any[]) {
+        if (s.type === "vpn_connect" && s.params?.methodId && !s.params.app && !s.params.nativeService) {
+          s.params.app = appFor(s.params.methodId);
+        }
+        if (s.type === "tunnel_up_check") {
+          s.params = { ...(s.params || {}), port: info.sapApplicationServerPort || 3200 };
+        }
+      }
+
+      const organizationId = getOrganizationId(req);
+      const [job] = await db.insert(hubupJobs).values({
+        userId, organizationId, module: "connect", status: "queued",
+        payload: { taskId: req.params.id, taskTitle: info.taskTitle, target: targetLabel, source: planSource, steps },
+      }).returning();
+
+      res.status(201).json({
+        jobId: job.id, source: planSource,
+        systemSource: info.sapSystemSource, system: targetLabel, steps,
+      });
+    } catch (error) {
+      console.error('Error launching task:', error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Launch failed" });
+    }
+  });
+
   // VPN Software Discovery endpoint - NEW HYBRID APPROACH
   app.get('/api/vpn/software', async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -7571,12 +7702,21 @@ PROCESSO: <testo con punti numerati>`,
         return res.status(409).json({ error: 'job già concluso' });
       }
 
-      const { hostname, inventory, error } = req.body || {};
+      const { hostname, inventory, error, result } = req.body || {};
+      const stepResult = result && typeof result === 'object' ? result : null;
       if (error) {
         await db.update(hubupJobs)
-          .set({ status: 'error', error: String(error).slice(0, 2000), hostname: hostname || null, finishedAt: new Date() })
+          .set({ status: 'error', error: String(error).slice(0, 2000), result: stepResult, hostname: hostname || null, finishedAt: new Date() })
           .where(eq(hubupJobs.id, job.id));
         return res.json({ ok: true, status: 'error' });
+      }
+
+      // Job "connect": nessun inventario, solo l'esito per passo.
+      if (job.module === 'connect') {
+        await db.update(hubupJobs)
+          .set({ status: 'done', result: stepResult, hostname: hostname || null, finishedAt: new Date() })
+          .where(eq(hubupJobs.id, job.id));
+        return res.json({ ok: true, status: 'done' });
       }
 
       const organizationId = job.organizationId || actor.organizationId || getOrganizationId(req);
