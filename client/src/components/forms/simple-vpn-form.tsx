@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -49,6 +49,7 @@ interface DiscoveredConnection {
 
 export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleVPNFormProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [discoveredConnections, setDiscoveredConnections] = useState<DiscoveredConnection[]>([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [discoveryComplete, setDiscoveryComplete] = useState(false);
@@ -252,6 +253,8 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
       });
     },
     onSuccess: () => {
+      // Ricarica la lista connessioni: senza questo il nuovo record non compare.
+      queryClient.invalidateQueries({ queryKey: ["/api/vpn-connections"] });
       toast({
         title: "Connessione VPN Configurata",
         description: "Riferimento alla connessione esistente salvato con successo",
