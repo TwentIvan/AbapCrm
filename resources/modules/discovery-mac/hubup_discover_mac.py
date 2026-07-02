@@ -29,6 +29,10 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 
+# Versione del probe: emessa come metodo-beacon nell'inventario, così è
+# possibile sapere QUALE probe ha girato davvero (diagnosi self-update).
+PROBE_VERSION = "gen-2-netext"
+
 # --------------------------------------------------------------------------- #
 # Helper di sistema (tutti tolleranti: comando assente -> risultato vuoto)
 # --------------------------------------------------------------------------- #
@@ -479,12 +483,24 @@ def main():
                 covered.add(os.path.realpath(_expand(e[5:])))
     all_records = catalog_records + discover_generic_vpn(covered)
 
+    methods = [m for m in all_records if m["installed"] or m["configured"]]
+    # Beacon di versione: metodo sempre presente (kind=unknown, escluso dal
+    # dropdown VPN) che rivela QUALE probe ha girato. Serve solo a diagnosi.
+    methods.append({
+        "id": "probe_selfcheck", "kind": "unknown", "role": None, "os": "mac",
+        "installed": True, "configured": False, "connected": False,
+        "version": PROBE_VERSION, "profiles": [],
+        "evidence": [f"probe version {PROBE_VERSION}"],
+        "last_probed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    })
+
     inventory = {
         "schema": "hubup.discovered_connection_methods/1",
         "os": "mac",
         "hostname": _run(["hostname"]).strip() or os.uname().nodename,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "methods": [m for m in all_records if m["installed"] or m["configured"]],
+        "probe_version": PROBE_VERSION,
+        "methods": methods,
     }
 
     payload = json.dumps(inventory, indent=2 if args.pretty else None, ensure_ascii=False)
