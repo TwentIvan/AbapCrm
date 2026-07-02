@@ -282,33 +282,37 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
     
     if (!software) return;
 
-    // 1) Se il probe ha già rilevato profili/connessioni per questo software,
-    //    usiamo quelli (nessuno scan lato server): es. SonicWall CSE, VPN native.
-    if (software.profiles && software.profiles.length > 0) {
-      const conns = software.profiles.map((p) => ({
-        id: `${software.id}:${p}`,
-        name: p,
-        type: software.id,
-        details: `${software.name} · ${p}`,
-        configured: true,
-      }));
-      setDiscoveredConnections(conns);
-      setDiscoveryComplete(true);
-      setShowCredentialsForm(false);
-      return;
-    }
-
-    // 2) Software che sa leggere le config (FortiClient/Cisco/GP): scan.
-    if (software.canReadConfigs || software.automationType === 'full') {
-      discoverMutation.mutate(softwareId);
-    } else {
-      // 3) Nessun profilo noto: inserimento manuale.
-      setShowCredentialsForm(true);
-      setDiscoveryComplete(true);
+    // Se il probe ha già i profili, mostrali; altrimenti scan / manuale.
+    if (!applyProbeProfiles(software)) {
+      if (software.canReadConfigs || software.automationType === 'full') {
+        discoverMutation.mutate(softwareId);
+      } else {
+        setShowCredentialsForm(true);
+        setDiscoveryComplete(true);
+      }
     }
   };
 
+  // Popola le connessioni dai profili rilevati dal probe (nessuno scan server).
+  // Ritorna true se ha trovato profili da mostrare.
+  const applyProbeProfiles = (software: VpnSoftware): boolean => {
+    if (!software.profiles || software.profiles.length === 0) return false;
+    const conns = software.profiles.map((p) => ({
+      id: `${software.id}:${p}`,
+      name: p,
+      type: software.id,
+      details: `${software.name} · ${p}`,
+      configured: true,
+    }));
+    setDiscoveredConnections(conns);
+    setDiscoveryComplete(true);
+    setShowCredentialsForm(false);
+    return true;
+  };
+
   const handleDiscover = () => {
+    // "Cerca configurazioni": prima i profili del probe, poi lo scan legacy.
+    if (selectedSoftware && applyProbeProfiles(selectedSoftware)) return;
     const software = form.getValues('vpnSoftware');
     discoverMutation.mutate(software);
   };
@@ -640,7 +644,14 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
                                 type="radio"
                                 value={connection.id}
                                 checked={field.value === connection.id}
-                                onChange={() => field.onChange(connection.id)}
+                                onChange={() => {
+                                  field.onChange(connection.id);
+                                  // Auto-compila il Nome Connessione se vuoto,
+                                  // col nome della configurazione scelta.
+                                  if (!form.getValues('name')?.trim()) {
+                                    form.setValue('name', connection.name, { shouldValidate: true });
+                                  }
+                                }}
                                 className="text-primary"
                               />
                               <div className="flex-1">
