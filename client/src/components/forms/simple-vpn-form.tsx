@@ -29,6 +29,7 @@ interface VpnSoftware {
   description?: string;
   canReadConfigs?: boolean;
   automationType?: 'full' | 'credentials' | 'manual';
+  profiles?: string[];
 }
 
 const formSchema = z.object({
@@ -280,17 +281,28 @@ export default function SimpleVPNForm({ onSuccess, onCancel, partners }: SimpleV
     setSelectedSoftware(software || null);
     
     if (!software) return;
-    
-    console.log('🔍 Selected software:', software.name, 'Vendor:', software.vendor);
-    console.log('🔍 Automation type:', software.automationType, 'Can read configs:', software.canReadConfigs);
-    
-    // If software can read configurations, do automatic discovery
+
+    // 1) Se il probe ha già rilevato profili/connessioni per questo software,
+    //    usiamo quelli (nessuno scan lato server): es. SonicWall CSE, VPN native.
+    if (software.profiles && software.profiles.length > 0) {
+      const conns = software.profiles.map((p) => ({
+        id: `${software.id}:${p}`,
+        name: p,
+        type: software.id,
+        details: `${software.name} · ${p}`,
+        configured: true,
+      }));
+      setDiscoveredConnections(conns);
+      setDiscoveryComplete(true);
+      setShowCredentialsForm(false);
+      return;
+    }
+
+    // 2) Software che sa leggere le config (FortiClient/Cisco/GP): scan.
     if (software.canReadConfigs || software.automationType === 'full') {
-      console.log('🔍 Software can read configs - starting automatic discovery');
       discoverMutation.mutate(softwareId);
     } else {
-      // Software requires manual credentials
-      console.log('🔍 Software requires credentials - showing credentials form');
+      // 3) Nessun profilo noto: inserimento manuale.
       setShowCredentialsForm(true);
       setDiscoveryComplete(true);
     }

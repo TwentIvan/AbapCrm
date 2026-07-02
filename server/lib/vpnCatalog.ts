@@ -58,6 +58,7 @@ export interface DiscoveredVpnSoftware {
   connected: boolean;
   canReadConfigs: boolean;
   automationType: "full" | "credentials" | "manual";
+  profiles: string[];   // profili/connessioni rilevati dal probe
 }
 
 // Lista del software VPN rilevato per un utente: metodi reali del probe se
@@ -74,6 +75,7 @@ export async function getDiscoveredVpnSoftware(userId: string): Promise<Discover
       id: r.methodId, kind: r.kind, role: r.role,
       installed: r.installed, configured: r.configured, connected: r.connected,
       version: r.version || undefined,
+      profiles: Array.isArray(r.profiles) ? r.profiles : [],
     }));
   } else {
     const { getModuleRunner } = await import("./moduleRunner");
@@ -97,6 +99,7 @@ export async function getDiscoveredVpnSoftware(userId: string): Promise<Discover
         installed: !!m.installed,
         configured: !!m.configured,
         connected: !!m.connected,
+        profiles: Array.isArray(m.profiles) ? m.profiles : [],
         ...auto,
       };
     });
