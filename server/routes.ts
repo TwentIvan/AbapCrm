@@ -490,15 +490,34 @@ function getEffectiveDailyHours(availability: Array<{ weeklyHours: number; effec
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
-  // Ensure an organization context exists for authenticated requests: if the client
-  // didn't send X-Organization-Id, resolve it to the user's Personal org (or first org)
-  // instead of falling back to a hardcoded id. Prevents objects landing in a stale/wrong org.
+  // Ensure a VALID organization context for authenticated requests: if the client
+  // didn't send X-Organization-Id, OR sent an org the user is NOT a member of
+  // (localStorage stale, org rimossa, id legacy), resolve to the user's Personal
+  // org (or first org). Unico choke point: evita proposte/entità create in org
+  // "fantasma" e quindi invisibili in ogni lista. Cache 60s per non pagare una
+  // query a richiesta.
+  const orgContextCache = new Map<string, { ids: Set<string>; fallback: string | null; ts: number }>();
   app.use(async (req: any, _res, next) => {
     try {
-      if (req.isAuthenticated?.() && req.user && !req.headers['x-organization-id']) {
-        const orgs = await storage.getUserOrganizations(req.user.id);
-        const personal = orgs.find((o: any) => o.name === 'Personal') || orgs[0];
-        if (personal?.id) req.headers['x-organization-id'] = personal.id;
+      if (req.isAuthenticated?.() && req.user) {
+        const now = Date.now();
+        let entry = orgContextCache.get(req.user.id);
+        if (!entry || now - entry.ts > 60_000) {
+          const orgs = await storage.getUserOrganizations(req.user.id);
+          entry = {
+            ids: new Set(orgs.map((o: any) => o.id)),
+            fallback: (orgs.find((o: any) => o.name === 'Personal') || orgs[0])?.id ?? null,
+            ts: now,
+          };
+          orgContextCache.set(req.user.id, entry);
+        }
+        const hdr = req.headers['x-organization-id'] as string | undefined;
+        if ((!hdr || !entry.ids.has(hdr)) && entry.fallback) {
+          if (hdr && !entry.ids.has(hdr)) {
+            console.warn(`[ORG] header org ${hdr} non appartiene all'utente ${req.user.id} — uso ${entry.fallback}`);
+          }
+          req.headers['x-organization-id'] = entry.fallback;
+        }
       }
     } catch { /* non-fatal — fall back to existing behavior */ }
     next();
@@ -4741,6 +4760,9 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
             catalog: catalogRows.map(c => ({ ...c, validated: validatedSet.has(c.id) })),
             configs: mcpConfigs,
           };
+          // Diagnosi: se qui è tutto a zero, l'agente NON può proporre MCP
+          // (config assenti/disabilitate o org sbagliata al momento dell'analisi).
+          console.log(`[AI-PROJECT] MCP context org=${organizationId}: ${mcpConfigs.length} config abilitate, ${validatedSet.size}/${catalogRows.length} voci catalogo validate`);
           
           const { analyzeMessageForProject } = await import('./ai-project-agent');
           

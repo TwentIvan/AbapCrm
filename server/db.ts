@@ -393,6 +393,28 @@ export async function runStartupMigrations(): Promise<boolean> {
       );
     `);
 
+    // Migration 0020: recupero entità del flusso proposte finite in org di cui
+    // l'owner NON è membro (header stale/org legacy al momento dell'analisi):
+    // erano invisibili in ogni lista. Riassegnate alla Personal org dell'owner.
+    for (const tbl of ['projects', 'tasks', 'partners', 'contacts', 'proposals']) {
+      await safeMigrate(`orphaned ${tbl} reassigned to owner Personal org`, `
+        UPDATE "${tbl}" t
+        SET organization_id = pers.org_id
+        FROM (
+          SELECT uo.user_id, uo.organization_id AS org_id
+          FROM user_organizations uo
+          JOIN organizations o ON o.id = uo.organization_id
+          WHERE o.name = 'Personal'
+        ) pers
+        WHERE t.user_id = pers.user_id
+          AND t.organization_id IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM user_organizations uo2
+            WHERE uo2.user_id = t.user_id AND uo2.organization_id = t.organization_id
+          );
+      `);
+    }
+
     // Migration 0019: hubup_jobs.payload/result — job "connect" (avvio task):
     // il server accoda il piano di passi, il companion lo esegue e riporta
     // l'esito per passo.
