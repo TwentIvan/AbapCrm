@@ -73,9 +73,8 @@ export class PdfService {
     if (logoPath) {
       try {
         // Build full URL for relative paths
-        const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-          : `http://localhost:${process.env.PORT || 5000}`;
+        // I loghi sono serviti dallo stesso processo: si leggono da localhost, senza passare dal dominio pubblico
+        const baseUrl = `http://localhost:${process.env.PORT || 5000}`;
         const logoUrl = logoPath.startsWith('http') ? logoPath : `${baseUrl}${logoPath}`;
         console.log("[PDF] Loading logo from:", logoUrl);
         

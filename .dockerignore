@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+/*.png
+*.zip
+*.sh
+cookie*
+cookies.txt
+test-*.json
+docs
+bridge-server
+chrome_extension
+.replit
+replit.md
+.agents

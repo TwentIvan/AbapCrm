@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
@@ -2715,6 +2715,31 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       res.status(500).json({ error: 'Failed to normalize logo URL' });
     }
   });
+
+  // Upload logo (PUT del file grezzo; sostituisce l'URL firmato dell'Object Storage di Replit)
+  app.put(
+    "/objects/upload/logos/:logoId",
+    express.raw({ type: () => true, limit: "10mb" }),
+    async (req, res) => {
+      if (!req.isAuthenticated()) return res.sendStatus(401);
+      try {
+        const contentType = req.get("content-type") || "";
+        if (!contentType.startsWith("image/")) {
+          return res.status(400).json({ error: "Only images are allowed" });
+        }
+        const objectStorageService = new ObjectStorageService();
+        const objectPath = await objectStorageService.saveLogo(
+          req.params.logoId,
+          req.body as Buffer,
+          contentType,
+        );
+        res.json({ objectPath });
+      } catch (error) {
+        console.error("Logo upload error:", error);
+        res.status(500).json({ error: "Failed to store logo" });
+      }
+    },
+  );
 
   // Serve logo files
   app.get("/objects/logos/:logoId", async (req, res) => {

@@ -6,9 +6,9 @@
 // Phase 5: stdio transport support with template-based config resolution.
 
 import { Client } from "@modelcontextprotocol/sdk/client";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { mcpServerConfigs } from "@shared/schema";

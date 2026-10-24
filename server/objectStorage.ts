@@ -1,27 +1,14 @@
-import { Storage, File } from "@google-cloud/storage";
+// Storage dei loghi su disco locale (sostituisce l'Object Storage di Replit, che
+// funzionava solo tramite il sidecar di Replit). Stessa interfaccia usata da routes.ts:
+//  - getLogoUploadURL()  → URL su cui il client fa una PUT con il file
+//  - normalizeLogoPath() → path pubblico /objects/logos/<id> da salvare nel DB
+//  - getLogoFile()       → descrittore del file per il download
+//  - downloadObject()    → stream del file nella response
+// I file vivono in OBJECT_STORAGE_DIR (default /app/data/objects): montare lì un volume persistente.
 import { Response } from "express";
 import { randomUUID } from "crypto";
-
-const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
-
-// The object storage client is used to interact with the object storage service.
-export const objectStorageClient = new Storage({
-  credentials: {
-    audience: "replit",
-    subject_token_type: "access_token",
-    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
-    type: "external_account",
-    credential_source: {
-      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
-      format: {
-        type: "json",
-        subject_token_field_name: "access_token",
-      },
-    },
-    universe_domain: "googleapis.com",
-  },
-  projectId: "",
-});
+import fs from "fs";
+import path from "path";
 
 export class ObjectNotFoundError extends Error {
   constructor() {
@@ -31,224 +18,93 @@ export class ObjectNotFoundError extends Error {
   }
 }
 
-// The object storage service is used to interact with the object storage service.
+export interface LocalFile {
+  absolutePath: string;
+  contentType: string;
+  size: number;
+}
+
+const UPLOAD_PREFIX = "/objects/upload/logos/";
+const PUBLIC_PREFIX = "/objects/logos/";
+const LOGO_ID_RE = /^[a-zA-Z0-9-]+$/;
+
 export class ObjectStorageService {
   constructor() {}
 
-  // Gets the public object search paths.
-  getPublicObjectSearchPaths(): Array<string> {
-    const pathsStr = process.env.PUBLIC_OBJECT_SEARCH_PATHS || "";
-    const paths = Array.from(
-      new Set(
-        pathsStr
-          .split(",")
-          .map((path) => path.trim())
-          .filter((path) => path.length > 0)
-      )
-    );
-    if (paths.length === 0) {
-      throw new Error(
-        "PUBLIC_OBJECT_SEARCH_PATHS not set. Create a bucket in 'Object Storage' " +
-          "tool and set PUBLIC_OBJECT_SEARCH_PATHS env var (comma-separated paths)."
-      );
-    }
-    return paths;
-  }
-
-  // Gets the private object directory.
-  getPrivateObjectDir(): string {
-    const dir = process.env.PRIVATE_OBJECT_DIR || "";
-    if (!dir) {
-      throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
-      );
-    }
+  getStorageDir(): string {
+    const dir = process.env.OBJECT_STORAGE_DIR || "/app/data/objects";
+    fs.mkdirSync(path.join(dir, "logos"), { recursive: true });
     return dir;
   }
 
-  // Search for a public object from the search paths.
-  async searchPublicObject(filePath: string): Promise<File | null> {
-    for (const searchPath of this.getPublicObjectSearchPaths()) {
-      const fullPath = `${searchPath}/${filePath}`;
-
-      // Full path format: /<bucket_name>/<object_name>
-      const { bucketName, objectName } = parseObjectPath(fullPath);
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectName);
-
-      // Check if file exists
-      const [exists] = await file.exists();
-      if (exists) {
-        return file;
-      }
-    }
-
-    return null;
+  private logoPath(logoId: string): string {
+    if (!LOGO_ID_RE.test(logoId)) throw new ObjectNotFoundError();
+    return path.join(this.getStorageDir(), "logos", logoId);
   }
 
-  // Downloads an object to the response.
-  async downloadObject(file: File, res: Response, cacheTtlSec: number = 3600) {
+  // URL (relativo al dominio dell'app) su cui il client esegue la PUT del file.
+  async getLogoUploadURL(): Promise<string> {
+    this.getStorageDir();
+    const logoId = randomUUID();
+    return `${UPLOAD_PREFIX}${logoId}`;
+  }
+
+  // Salva il corpo di una PUT come logo. Restituisce il path pubblico.
+  async saveLogo(logoId: string, body: Buffer, contentType: string | undefined): Promise<string> {
+    const filePath = this.logoPath(logoId);
+    await fs.promises.writeFile(filePath, body);
+    await fs.promises.writeFile(
+      `${filePath}.meta.json`,
+      JSON.stringify({ contentType: contentType || "application/octet-stream", size: body.length }),
+    );
+    return `${PUBLIC_PREFIX}${logoId}`;
+  }
+
+  // Da URL di upload (assoluto o relativo, con o senza query) a path pubblico.
+  normalizeLogoPath(rawPath: string): string {
+    let p = rawPath;
     try {
-      // Get file metadata
-      const [metadata] = await file.getMetadata();
-      
-      // Set appropriate headers
+      if (/^https?:\/\//.test(rawPath)) p = new URL(rawPath).pathname;
+    } catch {
+      /* lascia rawPath */
+    }
+    p = p.split("?")[0];
+    if (p.startsWith(UPLOAD_PREFIX)) return `${PUBLIC_PREFIX}${p.slice(UPLOAD_PREFIX.length)}`;
+    return p;
+  }
+
+  async getLogoFile(logoPath: string): Promise<LocalFile> {
+    if (!logoPath.startsWith(PUBLIC_PREFIX)) throw new ObjectNotFoundError();
+    const logoId = logoPath.slice(PUBLIC_PREFIX.length);
+    const absolutePath = this.logoPath(logoId);
+    if (!fs.existsSync(absolutePath)) throw new ObjectNotFoundError();
+    let contentType = "application/octet-stream";
+    try {
+      const meta = JSON.parse(await fs.promises.readFile(`${absolutePath}.meta.json`, "utf8"));
+      if (meta.contentType) contentType = meta.contentType;
+    } catch {
+      /* senza meta: octet-stream */
+    }
+    const { size } = await fs.promises.stat(absolutePath);
+    return { absolutePath, contentType, size };
+  }
+
+  async downloadObject(file: LocalFile, res: Response, cacheTtlSec: number = 3600) {
+    try {
       res.set({
-        "Content-Type": metadata.contentType || "application/octet-stream",
-        "Content-Length": metadata.size,
+        "Content-Type": file.contentType,
+        "Content-Length": String(file.size),
         "Cache-Control": `public, max-age=${cacheTtlSec}`,
       });
-
-      // Stream the file to the response
-      const stream = file.createReadStream();
-
+      const stream = fs.createReadStream(file.absolutePath);
       stream.on("error", (err) => {
         console.error("Stream error:", err);
-        if (!res.headersSent) {
-          res.status(500).json({ error: "Error streaming file" });
-        }
+        if (!res.headersSent) res.status(500).json({ error: "Error streaming file" });
       });
-
       stream.pipe(res);
     } catch (error) {
       console.error("Error downloading file:", error);
-      if (!res.headersSent) {
-        res.status(500).json({ error: "Error downloading file" });
-      }
+      if (!res.headersSent) res.status(500).json({ error: "Error downloading file" });
     }
   }
-
-  // Gets the upload URL for a logo file.
-  async getLogoUploadURL(): Promise<string> {
-    const privateObjectDir = this.getPrivateObjectDir();
-    if (!privateObjectDir) {
-      throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
-      );
-    }
-
-    const logoId = randomUUID();
-    const fullPath = `${privateObjectDir}/logos/${logoId}`;
-
-    const { bucketName, objectName } = parseObjectPath(fullPath);
-
-    // Sign URL for PUT method with TTL
-    return signObjectURL({
-      bucketName,
-      objectName,
-      method: "PUT",
-      ttlSec: 900,
-    });
-  }
-
-  // Gets the logo file from the object path.
-  async getLogoFile(logoPath: string): Promise<File> {
-    if (!logoPath.startsWith("/objects/logos/")) {
-      throw new ObjectNotFoundError();
-    }
-
-    const parts = logoPath.slice(1).split("/");
-    if (parts.length < 3) {
-      throw new ObjectNotFoundError();
-    }
-
-    const logoId = parts.slice(2).join("/");
-    let logoDir = this.getPrivateObjectDir();
-    if (!logoDir.endsWith("/")) {
-      logoDir = `${logoDir}/`;
-    }
-    const logoObjectPath = `${logoDir}logos/${logoId}`;
-    const { bucketName, objectName } = parseObjectPath(logoObjectPath);
-    const bucket = objectStorageClient.bucket(bucketName);
-    const logoFile = bucket.file(objectName);
-    const [exists] = await logoFile.exists();
-    if (!exists) {
-      throw new ObjectNotFoundError();
-    }
-    return logoFile;
-  }
-
-  normalizeLogoPath(rawPath: string): string {
-    if (!rawPath.startsWith("https://storage.googleapis.com/")) {
-      return rawPath;
-    }
-  
-    // Extract the path from the URL by removing query parameters and domain
-    const url = new URL(rawPath);
-    const rawLogoPath = url.pathname;
-  
-    let logoDir = this.getPrivateObjectDir();
-    if (!logoDir.endsWith("/")) {
-      logoDir = `${logoDir}/`;
-    }
-  
-    if (!rawLogoPath.startsWith(`${logoDir}logos/`)) {
-      return rawLogoPath;
-    }
-  
-    // Extract the logo ID from the path
-    const logoId = rawLogoPath.slice(`${logoDir}logos/`.length);
-    return `/objects/logos/${logoId}`;
-  }
-}
-
-function parseObjectPath(path: string): {
-  bucketName: string;
-  objectName: string;
-} {
-  if (!path.startsWith("/")) {
-    path = `/${path}`;
-  }
-  const pathParts = path.split("/");
-  if (pathParts.length < 3) {
-    throw new Error("Invalid path: must contain at least a bucket name");
-  }
-
-  const bucketName = pathParts[1];
-  const objectName = pathParts.slice(2).join("/");
-
-  return {
-    bucketName,
-    objectName,
-  };
-}
-
-async function signObjectURL({
-  bucketName,
-  objectName,
-  method,
-  ttlSec,
-}: {
-  bucketName: string;
-  objectName: string;
-  method: "GET" | "PUT" | "DELETE" | "HEAD";
-  ttlSec: number;
-}): Promise<string> {
-  const request = {
-    bucket_name: bucketName,
-    object_name: objectName,
-    method,
-    expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
-  };
-  const response = await fetch(
-    `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(
-      `Failed to sign object URL, errorcode: ${response.status}, ` +
-        `make sure you're running on Replit`
-    );
-  }
-
-  const { signed_url: signedURL } = await response.json();
-  return signedURL;
 }

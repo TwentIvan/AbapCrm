@@ -14,7 +14,10 @@ export class EmailService {
     this.fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@example.com';
     
     // Use Replit domain in cloud environment, fallback to localhost for development
-    if (process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN) {
+    if (process.env.PUBLIC_APP_URL) {
+      // Fuori da Replit: URL pubblico dell'app (es. https://hubup.fantamister.cloud)
+      this.baseUrl = process.env.PUBLIC_APP_URL.replace(/\/+$/, "");
+    } else if (process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN) {
       const domain = process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN;
       this.baseUrl = `https://${domain}`;
     } else {
