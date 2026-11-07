@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useBotcaveObjectContext } from "@/lib/botcave";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
@@ -249,6 +250,10 @@ export default function TasksPage() {
       data: { status: newStatus }
     });
   };
+
+  useBotcaveObjectContext(
+    editingTask && showEditDialog ? { page: "task", id: editingTask.id, title: editingTask.title } : null,
+  );
 
   const handleEditTask = (task: Task) => {
     console.log('handleEditTask called for task:', task.id);

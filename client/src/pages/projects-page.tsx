@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useBotcaveObjectContext } from "@/lib/botcave";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -318,6 +319,10 @@ export default function ProjectsPage() {
       placeholder: "0-100",
     },
   ];
+
+  useBotcaveObjectContext(
+    editingProject && showForm ? { page: "project", id: editingProject.id, title: editingProject.name } : null,
+  );
 
   const handleEdit = (project: Project) => {
     setEditingProject(project);
