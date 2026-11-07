@@ -53,6 +53,7 @@ async function runBriefUpdate(executionId: string, taskId: string, organizationI
       await startBotcaveRun(botcaveConfig, "brief", { type: "project", id: projectId }, buildBriefRunInput({
         organizationId,
         projectId,
+        taskId,
         taskTitle: taskRow.title,
         summary: result?.summary,
         recommendations: result?.recommendations,

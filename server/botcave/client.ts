@@ -22,6 +22,8 @@ export async function startBotcaveRun(
       redirect: "manual",
       signal: AbortSignal.timeout(10_000),
     });
+    // Il corpo non serve: si cancella per non tenere occupato il socket.
+    try { await res.body?.cancel(); } catch { /* ignorato */ }
     if (res.status !== 202) fail(String(res.status));
   } catch {
     fail("rete");
