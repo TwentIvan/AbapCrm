@@ -23,6 +23,23 @@ export async function canLink(
   return messageOrg === input.organizationId && recordOrg === input.organizationId;
 }
 
+// Collegamenti in blocco: vero solo se ogni voce è ben formata e ammessa da canLink.
+export async function canLinkAll(
+  deps: LinkScopeDeps,
+  input: { organizationId: string; messageId: string; links: unknown[] },
+): Promise<boolean> {
+  if (input.links.length === 0) return false;
+  for (const l of input.links) {
+    if (!l || typeof l !== "object") return false;
+    const { tableName, recordId } = l as { tableName?: unknown; recordId?: unknown };
+    if (typeof tableName !== "string" || typeof recordId !== "string") return false;
+    if (!(await canLink(deps, { organizationId: input.organizationId, messageId: input.messageId, table: tableName, recordId }))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export async function canEditLink(
   deps: { linkOrg(id: string): Promise<string | null> },
   input: { organizationId: string; linkId: string },

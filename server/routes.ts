@@ -1,5 +1,5 @@
 import express, { type Express } from "express";
-import { canLink, canEditLink, dbLinkScopeDeps } from "./message-link-scope";
+import { canLink, canLinkAll, canEditLink, dbLinkScopeDeps } from "./message-link-scope";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { registerApiTokenRoutes } from "./api-token-routes";
@@ -5879,6 +5879,15 @@ PROCESSO: <testo con punti numerati>`,
         messageId,
         userId: req.user!.id
       });
+
+      // Solo dentro l'organizzazione della richiesta
+      const allowed = await canLink(dbLinkScopeDeps, {
+        organizationId: getOrganizationId(req),
+        messageId,
+        table: data.linkedTableName,
+        recordId: data.linkedRecordId,
+      });
+      if (!allowed) return res.status(404).json({ error: "messaggio o oggetto non trovato" });
       
       const context = MessageLogService.createContext(req);
       const link = await MessageLogService.linkMessage(
@@ -5996,6 +6005,9 @@ PROCESSO: <testo con punti numerati>`,
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const { linkId } = req.params;
+      if (!(await canEditLink(dbLinkScopeDeps, { organizationId: getOrganizationId(req), linkId }))) {
+        return res.status(404).json({ error: "messaggio o oggetto non trovato" });
+      }
       const success = await MessageLogService.unlinkMessage(linkId, req.user!.id);
       if (!success) return res.sendStatus(404);
       
@@ -6014,6 +6026,11 @@ PROCESSO: <testo con punti numerati>`,
       
       if (!Array.isArray(links) || links.length === 0) {
         return res.status(400).json({ error: "Links array is required" });
+      }
+
+      // Tutto o niente: un solo collegamento fuori dall'organizzazione non ne crea nessuno
+      if (!(await canLinkAll(dbLinkScopeDeps, { organizationId: getOrganizationId(req), messageId, links }))) {
+        return res.status(404).json({ error: "messaggio o oggetto non trovato" });
       }
       
       const context = MessageLogService.createContext(req);
