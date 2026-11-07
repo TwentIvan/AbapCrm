@@ -1,4 +1,6 @@
-import { Switch, Route } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
+import { setBotcaveRouteContext } from "@/lib/botcave";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -48,6 +50,15 @@ import AiModelsPage from "@/pages/ai-models-page";
 import WorkflowsPage from "@/pages/workflows-page";
 import ConnectionWorkflowsPage from "@/pages/connection-workflows-page";
 import NotFound from "@/pages/not-found";
+
+// Contesto della pagina per il pannello Botcave a ogni cambio di route.
+function BotcaveRouteContext() {
+  const [location] = useLocation();
+  useEffect(() => {
+    setBotcaveRouteContext(location);
+  }, [location]);
+  return null;
+}
 
 function Router() {
   return (
@@ -123,6 +134,7 @@ function App() {
             <I18nProvider>
               <TooltipProvider>
                 <Toaster />
+                <BotcaveRouteContext />
                 <Router />
               </TooltipProvider>
             </I18nProvider>

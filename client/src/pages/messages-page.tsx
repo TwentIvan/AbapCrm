@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useBotcaveObjectContext } from "@/lib/botcave";
 import { AiModelPickerDialog } from "@/components/dialogs/ai-model-picker-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DOMPurify from 'dompurify';
@@ -181,6 +182,18 @@ export default function MessagesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  // Contesto per Botcave: un messaggio che è un work item di DevOps si presenta come tale.
+  const botcaveWorkItem = (selectedMessage as any)?.externalMetadata?.workItemId as string | number | undefined;
+  useBotcaveObjectContext(
+    selectedMessage && botcaveWorkItem != null
+      ? {
+          page: "workitem",
+          id: botcaveWorkItem,
+          title: (selectedMessage as any).externalMetadata?.workItemTitle ?? selectedMessage.subject,
+        }
+      : null,
+  );
 
   // Reset thread content visibility when message changes
   useEffect(() => {
