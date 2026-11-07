@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, decimal, real, pgEnum, boolean, uuid, time, jsonb, index, uniqueIndex, unique } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, timestamp, integer, decimal, real, pgEnum, boolean, uuid, time, jsonb, index, uniqueIndex, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -1305,6 +1305,24 @@ export const hubupEnrollTokens = pgTable("hubup_enroll_tokens", {
   lastUsedAt: timestamp("last_used_at"),
   expiresAt: timestamp("expires_at"),
 });
+
+// Token personali per l'API (`thu_…`): si salva solo l'hash SHA-256, mai il token in chiaro.
+export const apiTokens = pgTable("api_tokens", {
+  id: serial("id").primaryKey(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  prefix: text("prefix").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  lastUsedAt: timestamp("last_used_at"),
+}, (table) => ({
+  apiTokensUserIdx: index("api_tokens_user_idx").on(table.userId),
+}));
+export type ApiTokenRow = typeof apiTokens.$inferSelect;
+export type InsertApiToken = typeof apiTokens.$inferInsert;
 
 // Transport Request files (cofile and data file)
 export const transportRequestStatusEnum = pgEnum("transport_request_status", ["development", "testing", "quality", "production", "released", "imported"]);

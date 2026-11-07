@@ -5,6 +5,7 @@ import {
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
   emailVerificationTokens, organizationDomains, emailFeedbacks, customFeedbackReasons, emailTrainingSelections, proposals,
   sapTransportRequests, sapTransportTasks, sapTransportObjects, sapObjectContent, businessScenarios, projectShares,
+  apiTokens, type ApiTokenRow,
   customEntities, customFields, entityCustomValues,
   chatRooms, chatMessages, chatParticipants, chatRoomEntities,
   calendars, aiLearningPatterns, devopsFieldMappings,
@@ -78,7 +79,7 @@ import {
   taskSkillRequirements, type TaskSkillRequirement, type InsertTaskSkillRequirement
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, isNotNull, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, isNotNull, inArray, isNull, gt } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import MemoryStore from "memorystore";
@@ -597,11 +598,49 @@ export interface IStorage {
   deleteTestExecution(id: string, userId: string, organizationId: string): Promise<boolean>;
   deleteTestExecutions(ids: string[], userId: string, organizationId: string): Promise<number>;
 
+  // Token personali API
+  createApiToken(input: { userId: string; organizationId: string; name: string; tokenHash: string; prefix: string; expiresAt: Date }): Promise<ApiTokenRow>;
+  listApiTokens(userId: string): Promise<ApiTokenRow[]>;
+  revokeApiToken(userId: string, id: number): Promise<boolean>;
+  findActiveApiTokenByHash(hash: string, now: Date): Promise<ApiTokenRow | undefined>;
+  touchApiTokenLastUsed(id: number, now: Date): Promise<void>;
+
   sessionStore: session.Store;
 }
 
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
+
+  // Token personali API
+  async createApiToken(input: { userId: string; organizationId: string; name: string; tokenHash: string; prefix: string; expiresAt: Date }): Promise<ApiTokenRow> {
+    const [row] = await db.insert(apiTokens).values(input).returning();
+    return row;
+  }
+
+  async listApiTokens(userId: string): Promise<ApiTokenRow[]> {
+    return db.select().from(apiTokens)
+      .where(and(eq(apiTokens.userId, userId), isNull(apiTokens.revokedAt)))
+      .orderBy(desc(apiTokens.createdAt), desc(apiTokens.id));
+  }
+
+  async revokeApiToken(userId: string, id: number): Promise<boolean> {
+    const rows = await db.update(apiTokens)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(apiTokens.id, id), eq(apiTokens.userId, userId), isNull(apiTokens.revokedAt)))
+      .returning({ id: apiTokens.id });
+    return rows.length > 0;
+  }
+
+  async findActiveApiTokenByHash(hash: string, now: Date): Promise<ApiTokenRow | undefined> {
+    const [row] = await db.select().from(apiTokens)
+      .where(and(eq(apiTokens.tokenHash, hash), isNull(apiTokens.revokedAt), gt(apiTokens.expiresAt, now)))
+      .limit(1);
+    return row;
+  }
+
+  async touchApiTokenLastUsed(id: number, now: Date): Promise<void> {
+    await db.update(apiTokens).set({ lastUsedAt: now }).where(eq(apiTokens.id, id));
+  }
 
   constructor() {
     // Use PostgreSQL session store for persistent sessions across server restarts
