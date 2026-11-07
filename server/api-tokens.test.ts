@@ -52,6 +52,8 @@ describe("isDeniedForToken", () => {
     ["GET", "/api/vpn-credentials/5"],
     ["DELETE", "/api/account/api-tokens/3"],
     ["POST", "/api/logout"],
+    ["GET", "/API/AI/models"],
+    ["GET", "/Api/Sap-Systems/x/Credentials"],
   ])("vieta %s %s", (method, path) => {
     expect(isDeniedForToken(method, path)).toBe(true);
   });
@@ -64,6 +66,7 @@ describe("isDeniedForToken", () => {
     ["POST", "/api/comments"],
     ["GET", "/api/email-training-selections"],
     ["GET", "/api/user"],
+    ["GET", "/API/Projects"],
   ])("ammette %s %s", (method, path) => {
     expect(isDeniedForToken(method, path)).toBe(false);
   });

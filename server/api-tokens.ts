@@ -87,7 +87,9 @@ function matchesPrefix(path: string, prefix: string): boolean {
 }
 
 /** Vero se la route non è disponibile con un token API. */
-export function isDeniedForToken(method: string, path: string): boolean {
+export function isDeniedForToken(method: string, rawPath: string): boolean {
+  // Express instrada senza distinguere le maiuscole: il confronto deve fare lo stesso.
+  const path = rawPath.toLowerCase();
   if (DENIED_PREFIXES.some((p) => matchesPrefix(path, p))) return true;
   if (SAP_CREDENTIALS_PATTERN.test(path)) return true;
   if (
