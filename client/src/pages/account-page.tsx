@@ -20,6 +20,7 @@ import { useOrganization } from "@/contexts/organization-context";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import ApiTokensCard from "@/components/account/api-tokens-card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function AccountPage() {
@@ -323,6 +324,7 @@ export default function AccountPage() {
                     <TabsTrigger value="email">Email</TabsTrigger>
                     <TabsTrigger value="preferences">Preferenze</TabsTrigger>
                     <TabsTrigger value="ai">Modello AI</TabsTrigger>
+                    <TabsTrigger value="api-tokens">Token API</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="account" className="space-y-4">
@@ -499,6 +501,10 @@ export default function AccountPage() {
                         </div>
                       </CardContent>
                     </Card>
+                  </TabsContent>
+
+                  <TabsContent value="api-tokens" className="space-y-4">
+                    <ApiTokensCard />
                   </TabsContent>
 
                   <TabsContent value="ai" className="space-y-4">

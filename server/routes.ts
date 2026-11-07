@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
+import { registerApiTokenRoutes } from "./api-token-routes";
 import { storage } from "./storage";
 import { db } from "./db";
 import { sql, inArray, eq, and, or, desc, asc, isNull, aliasedTable } from "drizzle-orm";
@@ -561,6 +562,9 @@ export function registerRoutes(app: Express): Server {
     } catch { /* non-fatal — keep the active org */ }
     next();
   });
+
+  // Token API personali (gestione dall'account, solo con la sessione)
+  registerApiTokenRoutes(app, storage);
 
   // Health check endpoint for debugging
   app.get('/api/__health', (req, res) => {
