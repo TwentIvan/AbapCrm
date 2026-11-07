@@ -92,7 +92,8 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
+      // Niente corpo per i token API: il 201 contiene il token in chiaro.
+      if (capturedJsonResponse && !path.startsWith("/api/account/api-tokens")) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 

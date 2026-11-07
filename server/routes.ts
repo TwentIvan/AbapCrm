@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
+import { registerApiTokenRoutes } from "./api-token-routes";
 import { storage } from "./storage";
 import { db } from "./db";
 import { sql, inArray, eq, and, or, desc, asc, isNull, aliasedTable } from "drizzle-orm";
@@ -498,6 +499,8 @@ export function registerRoutes(app: Express): Server {
   // query a richiesta.
   const orgContextCache = new Map<string, { ids: Set<string>; fallback: string | null; ts: number }>();
   app.use(async (req: any, _res, next) => {
+    // Token API: l'organizzazione l'ha già verificata il middleware del token, senza cache.
+    if (req.apiToken) return next();
     try {
       if (req.isAuthenticated?.() && req.user) {
         const now = Date.now();
@@ -540,6 +543,8 @@ export function registerRoutes(app: Express): Server {
     { field: 'contactId', table: contacts },
   ];
   app.use(async (req: any, _res, next) => {
+    // Token API: le scritture restano nell'organizzazione del token, nessuna ereditarietà dal padre.
+    if (req.apiToken) return next();
     try {
       if (req.method === 'POST' && req.body && typeof req.body === 'object' && req.isAuthenticated?.() && req.user) {
         for (const { field, table } of ORG_PARENT_LOOKUPS) {
@@ -557,6 +562,9 @@ export function registerRoutes(app: Express): Server {
     } catch { /* non-fatal — keep the active org */ }
     next();
   });
+
+  // Token API personali (gestione dall'account, solo con la sessione)
+  registerApiTokenRoutes(app, storage);
 
   // Health check endpoint for debugging
   app.get('/api/__health', (req, res) => {
