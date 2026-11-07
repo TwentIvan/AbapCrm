@@ -6,7 +6,7 @@ import { generateApiToken, hashApiToken, TOKEN_MESSAGES } from "./api-tokens";
 
 const NOW = new Date("2026-11-07T10:00:00Z");
 
-function setup(opts: { memberOf?: string[]; user?: boolean; findActive?: () => Promise<any>; sessionUser?: boolean } = {}) {
+function setup(opts: { fullUser?: boolean; memberOf?: string[]; user?: boolean; findActive?: () => Promise<any>; sessionUser?: boolean } = {}) {
   const { token, hash } = generateApiToken();
   const row = { id: 7, userId: "u1", organizationId: "org1", tokenHash: hash };
   const touch = vi.fn(async () => {});
@@ -15,7 +15,10 @@ function setup(opts: { memberOf?: string[]; user?: boolean; findActive?: () => P
   const mw = createApiTokenAuth({
     findActive,
     touch,
-    getUser: async (id) => (opts.user === false ? undefined : ({ id } as any)),
+    getUser: async (id) =>
+      opts.user === false
+        ? undefined
+        : ({ id, ...(opts.fullUser ? { password: "hash", resetToken: "t", resetTokenExpiry: NOW, email: "a@b.c" } : {}) } as any),
     getUserOrganizationIds: async () => opts.memberOf ?? ["org1"],
     now: () => NOW,
   });
@@ -31,6 +34,7 @@ function setup(opts: { memberOf?: string[]; user?: boolean; findActive?: () => P
       user: req.user?.id,
       org: req.headers["x-organization-id"],
       scope: req.headers["x-organization-scope"],
+      full: req.user,
       auth: req.isAuthenticated?.() ?? !!req.user,
     }),
   );
@@ -38,11 +42,17 @@ function setup(opts: { memberOf?: string[]; user?: boolean; findActive?: () => P
 }
 
 describe("createApiTokenAuth", () => {
+  it("req.user non contiene password né token di reset", async () => {
+    const { app, token } = setup({ fullUser: true });
+    const res = await request(app).get("/api/user").set("Authorization", `Bearer ${token}`);
+    expect(res.body.full).toEqual({ id: "u1", email: "a@b.c" });
+  });
+
   it("autentica con un token valido", async () => {
     const { app, token } = setup();
     const res = await request(app).get("/api/projects").set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ user: "u1", org: "org1", scope: "personal", auth: true });
+    expect(res.body).toMatchObject({ user: "u1", org: "org1", scope: "personal", auth: true });
   });
 
   it("sovrascrive gli header di organizzazione del client", async () => {

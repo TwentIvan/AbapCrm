@@ -63,7 +63,9 @@ export function createApiTokenAuth(deps: ApiTokenAuthDeps): RequestHandler {
       return res.status(401).json({ message: TOKEN_MESSAGES.invalid });
     }
 
-    req.user = user;
+    // Mai segreti su req.user: GET /api/user lo restituisce così com'è.
+    const { password: _p, resetToken: _r, resetTokenExpiry: _e, ...safeUser } = user;
+    req.user = safeUser as User;
     req.headers["x-organization-id"] = row.organizationId;
     req.headers["x-organization-scope"] = "personal";
     req.apiToken = { id: row.id, organizationId: row.organizationId };

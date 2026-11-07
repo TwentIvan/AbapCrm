@@ -74,12 +74,16 @@ const DENIED_PREFIXES = [
   "/api/executions",
   "/api/mcp/configs",
   "/api/mcp/custom",
-  // companion
+  // companion: arruolamento, installer e canali del companion (solo `resolveHubupActor`: jobs/next, jobs/:id/result)
   "/api/hubup/companion",
+  "/api/hubup/jobs/next",
+  "/api/hubup/discovery/inventory",
 ];
 
-const WRITE_ONLY_DENIED_PREFIXES = ["/api/organizations"];
+// In sola lettura restano ammessi; le scritture cambierebbero configurazioni globali (es. comandi stdio del catalogo MCP).
+const WRITE_ONLY_DENIED_PREFIXES = ["/api/organizations", "/api/mcp/catalog"];
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const HUBUP_JOB_RESULT_PATTERN = /^\/api\/hubup\/jobs\/[^/]+\/result(\/|$)/;
 const SAP_CREDENTIALS_PATTERN = /^\/api\/sap-systems\/[^/]+\/credentials(\/|$)/;
 
 function matchesPrefix(path: string, prefix: string): boolean {
@@ -92,6 +96,8 @@ export function isDeniedForToken(method: string, rawPath: string): boolean {
   const path = rawPath.toLowerCase();
   if (DENIED_PREFIXES.some((p) => matchesPrefix(path, p))) return true;
   if (SAP_CREDENTIALS_PATTERN.test(path)) return true;
+  // Esito dei job del companion: l'attore è risolto da `resolveHubupActor`, che accetta qualunque utente autenticato.
+  if (HUBUP_JOB_RESULT_PATTERN.test(path)) return true;
   if (
     WRITE_METHODS.has(method.toUpperCase()) &&
     WRITE_ONLY_DENIED_PREFIXES.some((p) => matchesPrefix(path, p))
