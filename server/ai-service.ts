@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import { MessageLogService } from "./message-log-service";
+import { canLink, dbLinkScopeDeps } from "./message-link-scope";
 import { aiGateway, getDefaultModelKey } from "./ai-gateway";
 import { EmailForwardCleaner } from "./email-forward-cleaner";
 import * as cheerio from "cheerio";
@@ -210,6 +211,12 @@ export class AIService {
           const tableName = suggestion.type === 'partner' ? 'partners' : 
                            suggestion.type === 'project' ? 'projects' : 'tasks';
           
+          // Collega solo se messaggio e oggetto sono dell'organizzazione
+          if (!(await canLink(dbLinkScopeDeps, { organizationId, messageId, table: tableName, recordId: suggestion.id }))) {
+            console.warn(`[AI] Collegamento saltato: ${messageId} -> ${tableName}/${suggestion.id} fuori dall'organizzazione`);
+            return;
+          }
+
           await MessageLogService.linkMessage(
             messageId,
             tableName,

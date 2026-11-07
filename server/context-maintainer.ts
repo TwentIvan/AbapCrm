@@ -7,6 +7,10 @@ import { db } from "./db";
 import { eq, and } from "drizzle-orm";
 import { aiTaskExecutions, tasks, contextPacks } from "@shared/schema";
 import { aiGateway } from "./ai-gateway";
+import { getBotcaveConfig } from "./botcave/config";
+import { routeFunction } from "./botcave/routing";
+import { startBotcaveRun } from "./botcave/client";
+import { buildBriefRunInput } from "./botcave/inputs";
 
 const RATE_LIMIT_MS = 10 * 60 * 1000; // 10 minutes
 const MAINTAINER_MODEL = process.env.CONTEXT_MAINTAINER_MODEL_KEY || "openai/gpt-4o-mini";
@@ -41,6 +45,21 @@ async function runBriefUpdate(executionId: string, taskId: string, organizationI
     // Load execution result
     const [exec] = await db.select().from(aiTaskExecutions).where(eq(aiTaskExecutions.id, executionId)).limit(1);
     if (!exec) return;
+
+    // Aggiornamento del brief su Botcave, se instradato lì
+    const botcaveConfig = getBotcaveConfig();
+    if (botcaveConfig && routeFunction(botcaveConfig, "brief", { organizationId }) === "botcave") {
+      const result = exec.analysisResult as any;
+      await startBotcaveRun(botcaveConfig, "brief", { type: "project", id: projectId }, buildBriefRunInput({
+        organizationId,
+        projectId,
+        taskId,
+        taskTitle: taskRow.title,
+        summary: result?.summary,
+        recommendations: result?.recommendations,
+      }));
+      return;
+    }
 
     // Load or create context pack for the project
     let [pack] = await db.select().from(contextPacks)
