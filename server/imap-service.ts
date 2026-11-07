@@ -1,7 +1,11 @@
 import Imap from "imap";
 import { simpleParser } from "mailparser";
 import { storage } from "./storage";
-import { aiService } from "./ai-service";
+import { aiService, extractAnalysisText } from "./ai-service";
+import { getBotcaveConfig } from "./botcave/config";
+import { routeFunction } from "./botcave/routing";
+import { startBotcaveRun } from "./botcave/client";
+import { buildEmailRunInput } from "./botcave/inputs";
 import { EmailForwardCleaner } from "./email-forward-cleaner";
 import { AttachmentsService } from "./attachments-service";
 import { ThreadingService } from "./threading-service";
@@ -493,6 +497,24 @@ export class ImapEmailService {
           return;
         }
         throw createError; // Re-throw other errors
+      }
+
+      // Smistamento su Botcave (senza attenderlo) oppure percorso interno
+      const botcaveConfig = getBotcaveConfig();
+      const botcaveOrgId = this.config.organizationId
+        || (await storage.getUserOrganizations(messageData.userId))[0]?.id
+        || null;
+      if (routeFunction(botcaveConfig, "email", { organizationId: botcaveOrgId, userId: messageData.userId }) === "botcave" && botcaveConfig && botcaveOrgId) {
+        void startBotcaveRun(botcaveConfig, "email", { type: "message", id: savedMessage.id }, buildEmailRunInput({
+          id: savedMessage.id,
+          organizationId: botcaveOrgId,
+          fromEmail: messageData.fromEmail,
+          fromName: messageData.fromName,
+          toEmail: messageData.toEmail,
+          subject: messageData.subject,
+          text: extractAnalysisText(savedMessage),
+        }));
+        return;
       }
 
       // Run AI analysis in background - with error handling for quota limits

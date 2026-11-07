@@ -92,3 +92,23 @@ describe("startBotcaveRun", () => {
     expect(log.mock.calls[0][0]).toBe("[Botcave] email email:5 fallita: rete");
   });
 });
+
+import { buildEmailRunInput, buildBriefRunInput } from "./inputs";
+
+describe("input delle run", () => {
+  it("buildEmailRunInput: contiene messageId, organizationId, Da, A, Oggetto e il testo troncato a 8 000 caratteri", () => {
+    const out = buildEmailRunInput({ id: "m1", organizationId: "org1", fromEmail: "a@x.it", fromName: "Anna", toEmail: "b@y.it", subject: "Ciao", text: "x".repeat(9_000) });
+    expect(out).toContain("messageId: m1");
+    expect(out).toContain("organizationId: org1");
+    expect(out).toContain("Da: a@x.it (Anna)");
+    expect(out).toContain("A: b@y.it");
+    expect(out).toContain("Oggetto: Ciao");
+    expect(out.split("Testo:\n")[1]).toHaveLength(8_000);
+  });
+  it("buildBriefRunInput: al massimo 2 raccomandazioni; senza sintesi nessuna riga Risultato", () => {
+    const out = buildBriefRunInput({ organizationId: "o", projectId: "p", taskTitle: "T", recommendations: ["a", "b", "c"] });
+    expect(out).toContain("Raccomandazioni: a; b");
+    expect(out).not.toContain("; c");
+    expect(out).not.toContain("Risultato");
+  });
+});
