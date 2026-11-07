@@ -8,6 +8,7 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { emailService } from "./email-service";
+import { createApiTokenAuth } from "./api-token-auth";
 
 declare global {
   namespace Express {
@@ -81,6 +82,16 @@ export function setupAuth(app: Express) {
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Token personali `thu_…`: se presenti vincono sulla sessione (deve stare prima di ogni route)
+  app.use(
+    createApiTokenAuth({
+      findActive: (hash, now) => storage.findActiveApiTokenByHash(hash, now),
+      touch: (id, now) => storage.touchApiTokenLastUsed(id, now),
+      getUser: (id) => storage.getUser(id),
+      getUserOrganizationIds: async (id) => (await storage.getUserOrganizations(id)).map((o) => o.id),
+    }),
+  );
 
   // Local Strategy - supporting both email and username
   passport.use(
