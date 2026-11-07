@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import { canLink, canEditLink, dbLinkScopeDeps } from "./message-link-scope";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { registerApiTokenRoutes } from "./api-token-routes";
@@ -5940,6 +5941,15 @@ PROCESSO: <testo con punti numerati>`,
         return res.status(400).json({ error: "messageId, linkedTableName, and linkedRecordId are required" });
       }
       
+      // Solo dentro l'organizzazione della richiesta
+      const allowed = await canLink(dbLinkScopeDeps, {
+        organizationId: getOrganizationId(req),
+        messageId,
+        table: linkedTableName,
+        recordId: linkedRecordId,
+      });
+      if (!allowed) return res.status(404).json({ error: "messaggio o oggetto non trovato" });
+
       const context = MessageLogService.createContext(req);
       const link = await MessageLogService.linkMessage(
         messageId,
@@ -5963,6 +5973,10 @@ PROCESSO: <testo con punti numerati>`,
     try {
       const { linkId } = req.params;
       const { notes, linkType } = req.body;
+
+      if (!(await canEditLink(dbLinkScopeDeps, { organizationId: getOrganizationId(req), linkId }))) {
+        return res.status(404).json({ error: "messaggio o oggetto non trovato" });
+      }
       
       const updates: any = {};
       if (notes !== undefined) updates.notes = notes;
