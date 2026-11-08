@@ -43,7 +43,8 @@ import {
   discoveredConnectionMethods, moduleRuns, hubupJobs, hubupCompanions, hubupEnrollTokens,
   proposalDiscussions
 } from "@shared/schema";
-import { aiService, extractAnalysisText } from "./ai-service";
+import { aiService } from "./ai-service";
+import { extractAnalysisText } from "./message-text";
 import { initializeEmailService, getEmailService } from "./imap-service";
 import { AuditService } from "./audit-service";
 import { MessageLogService } from "./message-log-service";

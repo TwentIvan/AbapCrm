@@ -1,7 +1,8 @@
 import Imap from "imap";
 import { simpleParser } from "mailparser";
 import { storage } from "./storage";
-import { aiService, extractAnalysisText } from "./ai-service";
+import { aiService } from "./ai-service";
+import { extractAnalysisText } from "./message-text";
 import { getBotcaveConfig } from "./botcave/config";
 import { routeFunction } from "./botcave/routing";
 import { startBotcaveRun } from "./botcave/client";
