@@ -456,6 +456,11 @@ export async function runStartupMigrations(): Promise<boolean> {
       CREATE INDEX IF NOT EXISTS "api_tokens_user_idx" ON "api_tokens" ("user_id");
     `);
 
+    // Ambito «tutte le mie organizzazioni»: organization_id null. Additiva e idempotente.
+    await safeMigrate('api_tokens_organization_nullable', `
+      ALTER TABLE "api_tokens" ALTER COLUMN "organization_id" DROP NOT NULL;
+    `);
+
     client.release();
     return true;
   } catch (error) {

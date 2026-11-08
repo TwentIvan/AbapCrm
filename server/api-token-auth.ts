@@ -12,13 +12,17 @@ import {
 declare global {
   namespace Express {
     interface Request {
-      /** Valorizzato solo per le richieste autenticate con un token personale. */
-      apiToken?: { id: number; organizationId: string };
+      /**
+       * Valorizzato solo per le richieste autenticate con un token personale.
+       * `organizationId` null = token «tutte le mie organizzazioni».
+       */
+      apiToken?: { id: number; organizationId: string | null };
     }
   }
 }
 
 const MINUTE_MS = 60_000;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface ApiTokenAuthDeps {
   findActive(hash: string, now: Date): Promise<ApiTokenRow | undefined>;
@@ -44,21 +48,20 @@ export function createApiTokenAuth(deps: ApiTokenAuthDeps): RequestHandler {
     const current = now();
     let row: ApiTokenRow | undefined;
     let user: User | undefined;
-    let isMember = false;
+    let userOrgIds: string[] = [];
     try {
       row = await deps.findActive(hashApiToken(token), current);
       if (row) {
         user = await deps.getUser(row.userId);
-        if (user) {
-          const orgIds = await deps.getUserOrganizationIds(user.id);
-          isMember = orgIds.includes(row.organizationId);
-        }
+        if (user) userOrgIds = await deps.getUserOrganizationIds(user.id);
       }
     } catch (error) {
       // Nel log solo il nome dell'errore: mai il token né il suo hash.
       console.error("Errore nella verifica del token API:", error instanceof Error ? error.name : "errore");
       return res.status(500).json({ message: "errore interno" });
     }
+    // Token con una organizzazione: l'utente deve esserne ancora membro.
+    const isMember = row?.organizationId == null || userOrgIds.includes(row.organizationId);
     if (!row || !user || !isMember) {
       return res.status(401).json({ message: TOKEN_MESSAGES.invalid });
     }
@@ -66,8 +69,13 @@ export function createApiTokenAuth(deps: ApiTokenAuthDeps): RequestHandler {
     // Mai segreti su req.user: GET /api/user lo restituisce così com'è.
     const { password: _p, resetToken: _r, resetTokenExpiry: _e, ...safeUser } = user;
     req.user = safeUser as User;
-    req.headers["x-organization-id"] = row.organizationId;
-    req.headers["x-organization-scope"] = "personal";
+    if (row.organizationId) {
+      // Token con una organizzazione: gli header della richiesta non contano.
+      req.headers["x-organization-id"] = row.organizationId;
+      req.headers["x-organization-scope"] = "personal";
+    } else if (!applyRequestOrganization(req.headers, userOrgIds)) {
+      return res.status(403).json({ message: TOKEN_MESSAGES.organization });
+    }
     req.apiToken = { id: row.id, organizationId: row.organizationId };
 
     if (isDeniedForToken(req.method, req.path)) {
@@ -84,4 +92,29 @@ export function createApiTokenAuth(deps: ApiTokenAuthDeps): RequestHandler {
     }
     next();
   };
+}
+
+/**
+ * Token «tutte le mie organizzazioni»: l'organizzazione la indica la richiesta. `x-organization-id`,
+ * se c'è, deve essere un'organizzazione dell'utente del token (altrimenti false → 403); senza, non si
+ * impone nulla e vale il comportamento predefinito dell'app. `x-organization-scope` resta solo se vale
+ * `all` o `personal`, altrimenti diventa `personal`.
+ */
+export function applyRequestOrganization(
+  headers: Record<string, string | string[] | undefined>,
+  userOrgIds: readonly string[],
+): boolean {
+  const orgHeader = headers["x-organization-id"];
+  if (orgHeader === undefined || orgHeader === "") {
+    delete headers["x-organization-id"];
+  } else if (
+    typeof orgHeader !== "string" ||
+    !UUID_PATTERN.test(orgHeader) ||
+    !userOrgIds.includes(orgHeader)
+  ) {
+    return false;
+  }
+  const scope = headers["x-organization-scope"];
+  if (scope !== "all" && scope !== "personal") headers["x-organization-scope"] = "personal";
+  return true;
 }
