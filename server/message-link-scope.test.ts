@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canLink, canLinkAll, canEditLink } from "./message-link-scope";
+import { canLink, canLinkAll, canEditLink, linkOrganization } from "./message-link-scope";
 
 const deps = (m: string | null, r: string | null) => ({
   messageOrg: async () => m,
@@ -57,5 +57,25 @@ describe("canLinkAll", () => {
   });
   it("elenco vuoto → false", async () => {
     expect(await canLinkAll(recordDeps({}), { ...base, links: [] })).toBe(false);
+  });
+});
+
+describe("linkOrganization", () => {
+  const scope = { organizationIds: ["o1", "o2"], messageId: "m", table: "tasks", recordId: "r" };
+  it("messaggio in una delle organizzazioni e oggetto nella stessa → organizzazione del messaggio", async () => {
+    expect(await linkOrganization(deps("o2", "o2"), scope)).toBe("o2");
+  });
+  it("messaggio fuori dalle organizzazioni della richiesta → null", async () => {
+    expect(await linkOrganization(deps("o3", "o3"), scope)).toBeNull();
+  });
+  it("oggetto in un'altra organizzazione del messaggio → null", async () => {
+    expect(await linkOrganization(deps("o1", "o2"), scope)).toBeNull();
+  });
+  it("messaggio senza organizzazione o oggetto inesistente → null", async () => {
+    expect(await linkOrganization(deps(null, null), scope)).toBeNull();
+    expect(await linkOrganization(deps("o1", null), scope)).toBeNull();
+  });
+  it("tabella non ammessa → null", async () => {
+    expect(await linkOrganization(deps("o1", "o1"), { ...scope, table: "users" })).toBeNull();
   });
 });

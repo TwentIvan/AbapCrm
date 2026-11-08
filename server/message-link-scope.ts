@@ -23,6 +23,22 @@ export async function canLink(
   return messageOrg === input.organizationId && recordOrg === input.organizationId;
 }
 
+// Organizzazione in cui collegare un messaggio a un oggetto, per una richiesta che vede più organizzazioni
+// (es. token «tutte le organizzazioni» con X-Organization-Scope: all): il messaggio deve stare in una delle
+// organizzazioni della richiesta e l'oggetto nella stessa organizzazione del messaggio. Null se non ammesso.
+export async function linkOrganization(
+  deps: LinkScopeDeps,
+  input: { organizationIds: string[]; messageId: string; table: string; recordId: string },
+): Promise<string | null> {
+  if (!(LINKABLE_TABLES as readonly string[]).includes(input.table)) return null;
+  const [messageOrg, recordOrg] = await Promise.all([
+    deps.messageOrg(input.messageId),
+    deps.recordOrg(input.table, input.recordId),
+  ]);
+  if (!messageOrg || !input.organizationIds.includes(messageOrg)) return null;
+  return recordOrg === messageOrg ? messageOrg : null;
+}
+
 // Collegamenti in blocco: vero solo se ogni voce è ben formata e ammessa da canLink.
 export async function canLinkAll(
   deps: LinkScopeDeps,

@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
-import { canLink, canLinkAll, canEditLink, dbLinkScopeDeps } from "./message-link-scope";
+import { canLinkAll, canEditLink, dbLinkScopeDeps, linkOrganization } from "./message-link-scope";
+import { parseSuggestion, suggestionUpdate, SUGGESTION_TABLES } from "./message-suggestion";
 import { isSummaryRequest, messageSummaryColumns } from "./message-list";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
@@ -4688,6 +4689,30 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   });
 
   // AI Project Agent - Analyze message and create proposal in background
+  // Classificazione di un messaggio decisa da chi chiama (es. lo Smistatore di Botcave): nessuna AI qui
+  app.post("/api/messages/:id/apply-suggestion", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const suggestion = parseSuggestion(req.body?.suggestion);
+      if (!suggestion) return res.status(400).json({ error: "proposta non valida: type (project|task|partner), id, confidence 0..1, reason" });
+
+      const allowed = await linkOrganization(dbLinkScopeDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        messageId: req.params.id,
+        table: SUGGESTION_TABLES[suggestion.type],
+        recordId: suggestion.id,
+      });
+      if (!allowed) return res.status(404).json({ error: "messaggio o oggetto non trovato" });
+
+      const updated = await storage.updateMessage(req.params.id, suggestionUpdate(suggestion), req.user!.id);
+      if (!updated) return res.status(404).json({ error: "messaggio o oggetto non trovato" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Apply suggestion error:", error);
+      res.status(500).json({ error: "Failed to apply suggestion" });
+    }
+  });
+
   app.post("/api/messages/:id/analyze-project", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
@@ -5835,16 +5860,16 @@ PROCESSO: <testo con punti numerati>`,
         userId: req.user!.id
       });
 
-      // Solo dentro l'organizzazione della richiesta
-      const allowed = await canLink(dbLinkScopeDeps, {
-        organizationId: getOrganizationId(req),
+      // Messaggio in una delle organizzazioni della richiesta, oggetto nella stessa organizzazione del messaggio
+      const linkOrgId = await linkOrganization(dbLinkScopeDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
         messageId,
         table: data.linkedTableName,
         recordId: data.linkedRecordId,
       });
-      if (!allowed) return res.status(404).json({ error: "messaggio o oggetto non trovato" });
+      if (!linkOrgId) return res.status(404).json({ error: "messaggio o oggetto non trovato" });
       
-      const context = MessageLogService.createContext(req);
+      const context = { ...MessageLogService.createContext(req), organizationId: linkOrgId };
       const link = await MessageLogService.linkMessage(
         messageId,
         data.linkedTableName,
@@ -5905,16 +5930,16 @@ PROCESSO: <testo con punti numerati>`,
         return res.status(400).json({ error: "messageId, linkedTableName, and linkedRecordId are required" });
       }
       
-      // Solo dentro l'organizzazione della richiesta
-      const allowed = await canLink(dbLinkScopeDeps, {
-        organizationId: getOrganizationId(req),
+      // Messaggio in una delle organizzazioni della richiesta, oggetto nella stessa organizzazione del messaggio
+      const linkOrgId = await linkOrganization(dbLinkScopeDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
         messageId,
         table: linkedTableName,
         recordId: linkedRecordId,
       });
-      if (!allowed) return res.status(404).json({ error: "messaggio o oggetto non trovato" });
+      if (!linkOrgId) return res.status(404).json({ error: "messaggio o oggetto non trovato" });
 
-      const context = MessageLogService.createContext(req);
+      const context = { ...MessageLogService.createContext(req), organizationId: linkOrgId };
       const link = await MessageLogService.linkMessage(
         messageId,
         linkedTableName,
