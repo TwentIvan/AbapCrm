@@ -599,7 +599,7 @@ export interface IStorage {
   deleteTestExecutions(ids: string[], userId: string, organizationId: string): Promise<number>;
 
   // Token personali API
-  createApiToken(input: { userId: string; organizationId: string; name: string; tokenHash: string; prefix: string; expiresAt: Date }): Promise<ApiTokenRow>;
+  createApiToken(input: { userId: string; organizationId: string | null; name: string; tokenHash: string; prefix: string; expiresAt: Date }): Promise<ApiTokenRow>;
   listApiTokens(userId: string): Promise<ApiTokenRow[]>;
   revokeApiToken(userId: string, id: number): Promise<boolean>;
   findActiveApiTokenByHash(hash: string, now: Date): Promise<ApiTokenRow | undefined>;
@@ -612,7 +612,7 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   // Token personali API
-  async createApiToken(input: { userId: string; organizationId: string; name: string; tokenHash: string; prefix: string; expiresAt: Date }): Promise<ApiTokenRow> {
+  async createApiToken(input: { userId: string; organizationId: string | null; name: string; tokenHash: string; prefix: string; expiresAt: Date }): Promise<ApiTokenRow> {
     const [row] = await db.insert(apiTokens).values(input).returning();
     return row;
   }

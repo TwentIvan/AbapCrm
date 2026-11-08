@@ -12,6 +12,7 @@ export const TOKEN_MESSAGES = {
   invalid: "token non valido o scaduto",
   denied: "operazione non disponibile con un token API",
   rate: "Troppe richieste: riprova tra poco",
+  organization: "organizzazione non accessibile con questo token",
 } as const;
 
 const TOKEN_PATTERN = /^thu_[A-Za-z0-9_-]{43}$/;

@@ -6,6 +6,7 @@ import { useOrganization } from "@/contexts/organization-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -23,7 +24,8 @@ interface ApiTokenItem {
   id: number;
   name: string;
   prefix: string;
-  organizationId: string;
+  /** null = «tutte le mie organizzazioni». */
+  organizationId: string | null;
   createdAt: string;
   expiresAt: string;
   lastUsedAt: string | null;
@@ -42,8 +44,9 @@ function formatDate(value: string | null): string {
 export default function ApiTokensCard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { organizations } = useOrganization();
+  const { organizations, currentOrganization } = useOrganization();
   const [name, setName] = useState("");
+  const [allOrganizations, setAllOrganizations] = useState(false);
   const [created, setCreated] = useState<CreatedToken | null>(null);
   const [toRevoke, setToRevoke] = useState<ApiTokenItem | null>(null);
 
@@ -53,13 +56,14 @@ export default function ApiTokensCard() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (tokenName: string) => {
-      const res = await apiRequest("POST", "/api/account/api-tokens", { name: tokenName });
+    mutationFn: async (input: { name: string; allOrganizations: boolean }) => {
+      const res = await apiRequest("POST", "/api/account/api-tokens", input);
       return (await res.json()) as CreatedToken;
     },
     onSuccess: (data) => {
       setCreated(data);
       setName("");
+      setAllOrganizations(false);
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
     },
     onError: (error: Error) =>
@@ -79,7 +83,8 @@ export default function ApiTokensCard() {
       toast({ title: "Token non revocato", description: error.message, variant: "destructive" }),
   });
 
-  const orgName = (id: string) => organizations?.find((o) => o.id === id)?.name ?? id;
+  const orgName = (id: string | null) =>
+    id === null ? "Tutte le organizzazioni" : organizations?.find((o) => o.id === id)?.name ?? id;
 
   const copyToken = async () => {
     if (!created) return;
@@ -97,30 +102,50 @@ export default function ApiTokensCard() {
         <CardTitle>Token API</CardTitle>
         <CardDescription>
           Token personali per chiamare le API di The Hub Up da un agente esterno con l'intestazione
-          Authorization: Bearer. Ogni token vale per l'organizzazione attiva alla creazione.
+          Authorization: Bearer. Un token vale per l'organizzazione attiva alla creazione oppure per tutte
+          le tue organizzazioni.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <form
-          className="flex items-end gap-2"
+          className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
-            if (name.trim()) createMutation.mutate(name.trim());
+            if (name.trim()) createMutation.mutate({ name: name.trim(), allOrganizations });
           }}
         >
-          <div className="flex-1 space-y-2">
-            <Label htmlFor="api-token-name">Nuovo token</Label>
-            <Input
-              id="api-token-name"
-              value={name}
-              maxLength={100}
-              placeholder="Nome, ad esempio «Botcave»"
-              onChange={(e) => setName(e.target.value)}
-            />
+          <div className="flex items-end gap-2">
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="api-token-name">Nuovo token</Label>
+              <Input
+                id="api-token-name"
+                value={name}
+                maxLength={100}
+                placeholder="Nome, ad esempio «Botcave»"
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <Button type="submit" disabled={!name.trim() || createMutation.isPending}>
+              Crea token
+            </Button>
           </div>
-          <Button type="submit" disabled={!name.trim() || createMutation.isPending}>
-            Crea token
-          </Button>
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">
+              Organizzazione: {allOrganizations ? "tutte le tue organizzazioni" : currentOrganization?.name ?? "attiva"}
+            </p>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="api-token-all-orgs"
+                checked={allOrganizations}
+                onCheckedChange={(checked) => setAllOrganizations(checked === true)}
+              />
+              <Label htmlFor="api-token-all-orgs">Tutte le mie organizzazioni</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Il token usa l'organizzazione indicata da ogni richiesta (header X-Organization-Id), solo tra quelle a
+              cui hai accesso.
+            </p>
+          </div>
         </form>
 
         {created && (

@@ -49,6 +49,19 @@ The server uses `Express.js` with TypeScript, following a RESTful API design. `P
 
 Authentication is session-based using a local username/password strategy. Authorization is implemented via route-level middleware.
 
+**Token API personali (`thu_…`)** — `server/api-tokens.ts`, `server/api-token-auth.ts`, `server/api-token-routes.ts`; si creano da Account
+(`POST /api/account/api-tokens`, solo con la sessione) e si usano con `Authorization: Bearer thu_…`, che vince sulla sessione. Ogni token ha un
+ambito di organizzazione scelto alla creazione:
+-   **una organizzazione** (default: quella attiva, `X-Organization-Id` della sessione): `X-Organization-Id` e `X-Organization-Scope` della
+    richiesta sono ignorati e sostituiti da quell'organizzazione e da `personal`;
+-   **tutte le mie organizzazioni** (`allOrganizations: true` alla creazione, `api_tokens.organization_id` null; nell'elenco `organizationId: null`):
+    se la richiesta porta `X-Organization-Id` deve essere un uuid di un'organizzazione di cui l'utente del token è membro, altrimenti 403
+    «organizzazione non accessibile con questo token»; `X-Organization-Scope` passa solo se vale `all` o `personal`, altrimenti diventa `personal`;
+    senza `X-Organization-Id` vale il comportamento predefinito dell'app (organizzazione Personal dell'utente). Niente ereditarietà
+    dell'organizzazione dal padre nelle POST, come per gli altri token.
+Il perimetro resta l'utente del token: non vede mai più di quanto vede dall'interfaccia. Route vietate e limite di 120 richieste/min valgono per
+entrambi. La colonna nullable arriva con la migrazione d'avvio `api_tokens_organization_nullable` di `server/db.ts`.
+
 ## Core Features & Design Patterns
 
 -   **Custom Fields & Metadata System**: A metadata-driven extension layer enables dynamic custom fields, entities, event-driven workflows, and role-based permissions, supported by `CustomMetadataService` for caching and validation.

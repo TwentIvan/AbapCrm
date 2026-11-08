@@ -1310,7 +1310,8 @@ export const hubupEnrollTokens = pgTable("hubup_enroll_tokens", {
 export const apiTokens = pgTable("api_tokens", {
   id: serial("id").primaryKey(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }).notNull(),
+  // null = «tutte le mie organizzazioni»: l'organizzazione la indica ogni richiesta (X-Organization-Id).
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   tokenHash: text("token_hash").notNull().unique(),
   prefix: text("prefix").notNull(),

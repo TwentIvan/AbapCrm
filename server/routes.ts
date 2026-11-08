@@ -500,8 +500,9 @@ export function registerRoutes(app: Express): Server {
   // query a richiesta.
   const orgContextCache = new Map<string, { ids: Set<string>; fallback: string | null; ts: number }>();
   app.use(async (req: any, _res, next) => {
-    // Token API: l'organizzazione l'ha già verificata il middleware del token, senza cache.
-    if (req.apiToken) return next();
+    // Token API: l'organizzazione l'ha già imposta o verificata il middleware del token, senza cache.
+    // Token «tutte le mie organizzazioni» senza X-Organization-Id: vale il comportamento predefinito qui sotto.
+    if (req.apiToken && (req.apiToken.organizationId || req.headers['x-organization-id'])) return next();
     try {
       if (req.isAuthenticated?.() && req.user) {
         const now = Date.now();
@@ -544,7 +545,8 @@ export function registerRoutes(app: Express): Server {
     { field: 'contactId', table: contacts },
   ];
   app.use(async (req: any, _res, next) => {
-    // Token API: le scritture restano nell'organizzazione del token, nessuna ereditarietà dal padre.
+    // Token API: le scritture restano nell'organizzazione del token (o, per i token «tutte», in quella
+    // della richiesta), nessuna ereditarietà dal padre.
     if (req.apiToken) return next();
     try {
       if (req.method === 'POST' && req.body && typeof req.body === 'object' && req.isAuthenticated?.() && req.user) {
