@@ -223,8 +223,7 @@ export class ImapEmailService {
       const quickMessageId = headerMatch ? headerMatch[1].trim() : null;
 
       if (quickMessageId) {
-        const existingMessage = await storage.getMessageByMessageId(quickMessageId, userId);
-        if (existingMessage) {
+        if (await storage.messageExistsByMessageId(quickMessageId, userId)) {
           console.log(`[IMAP] Email already exists, skipping: ${quickMessageId}`);
           return;
         }
@@ -236,8 +235,7 @@ export class ImapEmailService {
       
       // Double-check with parsed messageId if quick check used a different format
       if (!quickMessageId || quickMessageId !== messageId) {
-        const existingMessage = await storage.getMessageByMessageId(messageId, userId);
-        if (existingMessage) {
+        if (await storage.messageExistsByMessageId(messageId, userId)) {
           console.log(`[IMAP] Email already exists, skipping: ${messageId}`);
           return;
         }

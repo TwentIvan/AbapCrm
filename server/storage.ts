@@ -270,6 +270,7 @@ export interface IStorage {
   getMessageThreads(userId: string, limit?: number, offset?: number): Promise<any[]>;
   getMessage(id: string, userId: string): Promise<Message | undefined>;
   getMessageByMessageId(messageId: string, userId: string): Promise<Message | undefined>;
+  messageExistsByMessageId(messageId: string, userId: string): Promise<boolean>;
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(id: string, message: Partial<InsertMessage>, userId: string): Promise<Message | undefined>;
   deleteMessage(id: string, userId: string): Promise<boolean>;
@@ -2824,6 +2825,17 @@ export class DatabaseStorage implements IStorage {
       .from(messages)
       .where(and(eq(messages.id, id), eq(messages.userId, userId)));
     return message || undefined;
+  }
+
+  // Controllo di esistenza leggero (solo l'id): il polling IMAP lo chiama per ogni email degli ultimi 90 giorni
+  // ogni 2 minuti, e leggere la riga intera (corpo, HTML) esauriva il traffico mensile del database.
+  async messageExistsByMessageId(messageId: string, userId: string): Promise<boolean> {
+    const [row] = await db
+      .select({ id: messages.id })
+      .from(messages)
+      .where(and(eq(messages.messageId, messageId), eq(messages.userId, userId)))
+      .limit(1);
+    return !!row;
   }
 
   async getMessageByMessageId(messageId: string, userId: string): Promise<Message | undefined> {
