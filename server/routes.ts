@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import { canLink, canLinkAll, canEditLink, dbLinkScopeDeps } from "./message-link-scope";
+import { isSummaryRequest, messageSummaryColumns } from "./message-list";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { registerApiTokenRoutes } from "./api-token-routes";
@@ -3793,14 +3794,16 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
-      const messagesList = await db.select().from(messages)
-        .where(and(
-          eq(messages.userId, req.user!.id),
-          inArray(messages.organizationId, organizationIds)
-        ))
-        .limit(limit)
-        .offset(offset)
-        .orderBy(sql`${messages.receivedAt} DESC`);
+      const filter = and(
+        eq(messages.userId, req.user!.id),
+        inArray(messages.organizationId, organizationIds)
+      );
+      // summary=true: solo i campi di riepilogo (lista leggera per gli inneschi di Botcave)
+      const messagesList = isSummaryRequest(req.query)
+        ? await db.select(messageSummaryColumns).from(messages).where(filter)
+            .limit(limit).offset(offset).orderBy(sql`${messages.receivedAt} DESC`)
+        : await db.select().from(messages).where(filter)
+            .limit(limit).offset(offset).orderBy(sql`${messages.receivedAt} DESC`);
       res.json(messagesList);
     } catch (error) {
       console.error("Error fetching messages:", error);
