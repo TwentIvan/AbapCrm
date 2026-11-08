@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import { sanitizeTokenPartnerUpdate, tokenContactOrganization, tokenPartnerOrganization } from "./partner-contact-scope";
+import { taskExternalRef } from "./task-external-ref";
 import { canLinkAll, canEditLink, dbLinkScopeDeps, linkOrganization } from "./message-link-scope";
 import { parseSuggestion, suggestionUpdate, SUGGESTION_TABLES } from "./message-suggestion";
 import { isSummaryRequest, messageSummaryColumns } from "./message-list";
@@ -2022,9 +2023,13 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         remainingEffort = Math.round(remainingHours * 60); // Convert to minutes
       }
 
+      const external = taskExternalRef(req.body);
+      if ("error" in external) return res.status(400).json({ error: "Invalid task data", details: external.error });
+
       // Org is resolved by the global parent-inheritance middleware (see registerRoutes).
       const organizationId = getOrganizationId(req);
       const taskData = insertTaskSchema.parse({
+        ...external.ref,
         title: req.body.title,
         description: req.body.description || null,
         status: req.body.status,
