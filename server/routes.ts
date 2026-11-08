@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import { sanitizeTokenPartnerUpdate, tokenContactOrganization, tokenPartnerOrganization } from "./partner-contact-scope";
 import { canLinkAll, canEditLink, dbLinkScopeDeps, linkOrganization } from "./message-link-scope";
 import { parseSuggestion, suggestionUpdate, SUGGESTION_TABLES } from "./message-suggestion";
 import { isSummaryRequest, messageSummaryColumns } from "./message-list";
@@ -1528,6 +1529,8 @@ export function registerRoutes(app: Express): Server {
         estimatedEffort: tasks.estimatedEffort,
         remainingEffort: tasks.remainingEffort,
         completionPercentage: tasks.completionPercentage,
+        externalWorkItemId: tasks.externalWorkItemId,
+        externalSystem: tasks.externalSystem,
         createdAt: tasks.createdAt,
         updatedAt: tasks.updatedAt,
         organizationId: tasks.organizationId,
@@ -2444,8 +2447,27 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   app.put("/api/partners/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const organizationId = getOrganizationId(req);
       const auditContext = AuditService.createContext(req);
+      // Token API: niente campi protetti nel corpo e solo partner dell'utente nel perimetro della richiesta.
+      if ((req as any).apiToken) {
+        const update = sanitizeTokenPartnerUpdate(req.body);
+        if (!update) return res.status(400).json({ error: "Invalid partner data" });
+        const org = await tokenPartnerOrganization(
+          {
+            ownedPartnerOrg: async (id, userId) => {
+              const [row] = await db.select({ organizationId: partners.organizationId }).from(partners)
+                .where(and(eq(partners.id, id), eq(partners.userId, userId))).limit(1);
+              return row?.organizationId ?? null;
+            },
+          },
+          { partnerId: req.params.id, userId: req.user!.id, organizationIds: await getOrganizationIdsForFilter(req) },
+        );
+        if (!org) return res.sendStatus(404);
+        const updated = await storage.updatePartner(req.params.id, update as any, req.user!.id, org, auditContext);
+        if (!updated) return res.sendStatus(404);
+        return res.json(updated);
+      }
+      const organizationId = getOrganizationId(req);
       let partner = await storage.updatePartner(req.params.id, req.body, req.user!.id, organizationId, auditContext);
       
       // If not found, try to find the partner in any of user's organizations
@@ -3114,7 +3136,22 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     
     try {
       // Org is resolved by the global parent-inheritance middleware (see registerRoutes).
-      const organizationId = getOrganizationId(req);
+      let organizationId = getOrganizationId(req);
+      // Token API: l'ereditarietà è spenta; il contatto va nell'organizzazione del partner, se nel perimetro.
+      if ((req as any).apiToken) {
+        const org = await tokenContactOrganization(
+          {
+            partnerOrg: async (id) => {
+              const [row] = await db.select({ organizationId: partners.organizationId }).from(partners)
+                .where(eq(partners.id, id)).limit(1);
+              return row?.organizationId ?? null;
+            },
+          },
+          { partnerId: req.body?.partnerId, organizationId, organizationIds: await getOrganizationIdsForFilter(req) },
+        );
+        if (!org) return res.status(400).json({ error: "Invalid contact data", details: "partner non trovato" });
+        organizationId = org;
+      }
       const contactData = insertContactSchema.parse({
         name: req.body.name,
         email: req.body.email,
