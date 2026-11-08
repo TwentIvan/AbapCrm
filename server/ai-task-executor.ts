@@ -9,7 +9,6 @@ import { db } from "./db";
 import { eq, and, sql, desc, or, ilike, inArray } from "drizzle-orm";
 import { getUsdEurRate, usdToEur } from "./fx";
 import { assembleContext } from "./context-assembler";
-import { triggerBriefUpdate } from "./context-maintainer";
 import {
   tasks,
   projects,
@@ -1744,9 +1743,6 @@ export async function executeTaskWithAI(
         })
         .where(eq(aiTaskExecutions.id, execution.id));
 
-      // Phase 5: trigger background brief update
-      triggerBriefUpdate(execution.id, taskId, organizationId);
-
       // Update pattern usage statistics
       for (const pattern of patterns) {
         await db
@@ -2033,13 +2029,6 @@ async function parseAndSaveResumedResult(params: {
       .set({ usageCount: sql`${aiAbapPatterns.usageCount} + 1`, lastUsedAt: new Date() })
       .where(eq(aiAbapPatterns.id, patternId));
   }
-
-  // Phase 5: trigger background brief update
-  // Load taskId from execution record to pass to maintainer
-  db.select({ taskId: aiTaskExecutions.taskId }).from(aiTaskExecutions)
-    .where(eq(aiTaskExecutions.id, executionId)).limit(1)
-    .then(([row]) => { if (row?.taskId) triggerBriefUpdate(executionId, row.taskId, organizationId); })
-    .catch(() => {});
 }
 
 /**
