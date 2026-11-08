@@ -5,7 +5,8 @@ import { generateApiToken, TOKEN_TTL_DAYS } from "./api-tokens";
 export interface ApiTokenRouteDeps {
   createApiToken(input: {
     userId: string;
-    organizationId: string;
+    /** null = «tutte le mie organizzazioni». */
+    organizationId: string | null;
     name: string;
     tokenHash: string;
     prefix: string;
@@ -17,6 +18,7 @@ export interface ApiTokenRouteDeps {
 }
 
 const NAME_MESSAGE = "nome obbligatorio, al massimo 100 caratteri";
+const ALL_ORGS_MESSAGE = "allOrganizations deve essere true o false";
 
 /** Gestione dei token API dell'utente di sessione (con un token le blocca già il middleware). */
 export function registerApiTokenRoutes(app: Express, deps: ApiTokenRouteDeps): void {
@@ -47,8 +49,16 @@ export function registerApiTokenRoutes(app: Express, deps: ApiTokenRouteDeps): v
     const raw = req.body?.name;
     const name = typeof raw === "string" ? raw.trim() : "";
     if (name.length < 1 || name.length > 100) return res.status(400).json({ message: NAME_MESSAGE });
-    const organizationId = req.headers["x-organization-id"] as string | undefined;
-    if (!organizationId) return res.status(400).json({ message: "organizzazione non determinata" });
+    // `allOrganizations: true` → token «tutte le mie organizzazioni» (organizationId null): l'organizzazione
+    // la indica ogni richiesta. Altrimenti il token vale per l'organizzazione attiva (X-Organization-Id).
+    const rawAll = req.body?.allOrganizations;
+    const allOrganizations = rawAll === undefined ? false : rawAll;
+    if (typeof allOrganizations !== "boolean") return res.status(400).json({ message: ALL_ORGS_MESSAGE });
+    const activeOrganizationId = req.headers["x-organization-id"] as string | undefined;
+    if (!allOrganizations && !activeOrganizationId) {
+      return res.status(400).json({ message: "organizzazione non determinata" });
+    }
+    const organizationId = allOrganizations ? null : activeOrganizationId!;
     try {
       const { token, hash, prefix } = generateApiToken();
       const expiresAt = new Date(now().getTime() + TOKEN_TTL_DAYS * 86_400_000);

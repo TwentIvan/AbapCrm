@@ -53,6 +53,30 @@ describe("route dei token API", () => {
     }
   });
 
+  it("POST con allOrganizations: true → organizationId null, anche nell'elenco", async () => {
+    const { app, createApiToken } = setup();
+    const res = await request(app).post("/api/account/api-tokens").send({ name: "Botcave", allOrganizations: true });
+    expect(res.status).toBe(201);
+    expect(res.body.organizationId).toBeNull();
+    expect(createApiToken.mock.calls[0][0].organizationId).toBeNull();
+    await request(app).post("/api/account/api-tokens").send({ name: "Una", allOrganizations: false });
+    const list = await request(app).get("/api/account/api-tokens");
+    expect(list.body.map((t: any) => [t.name, t.organizationId])).toEqual([
+      ["Botcave", null],
+      ["Una", "org1"],
+    ]);
+  });
+
+  it("POST con allOrganizations non booleano → 400", async () => {
+    const { app, createApiToken } = setup();
+    for (const allOrganizations of ["true", 1, null, {}]) {
+      const res = await request(app).post("/api/account/api-tokens").send({ name: "A", allOrganizations });
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({ message: "allOrganizations deve essere true o false" });
+    }
+    expect(createApiToken).not.toHaveBeenCalled();
+  });
+
   it("GET non contiene mai token né tokenHash", async () => {
     const { app } = setup();
     await request(app).post("/api/account/api-tokens").send({ name: "A" });
