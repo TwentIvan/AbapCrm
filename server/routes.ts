@@ -43,7 +43,6 @@ import {
   discoveredConnectionMethods, moduleRuns, hubupJobs, hubupCompanions, hubupEnrollTokens,
   proposalDiscussions
 } from "@shared/schema";
-import { aiService } from "./ai-service";
 import { extractAnalysisText } from "./message-text";
 import { initializeEmailService, getEmailService } from "./imap-service";
 import { AuditService } from "./audit-service";
@@ -4389,15 +4388,6 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       
       const message = await storage.createMessage(messageData);
       
-      // Run AI analysis in background
-      if (process.env.OPENAI_API_KEY) {
-        aiService.analyzeMessage(message, req.user!.id).then(analysis => {
-          if (analysis.bestMatch) {
-            aiService.updateMessageWithSuggestion(message.id, analysis.bestMatch, req.user!.id);
-          }
-        }).catch(console.error);
-      }
-      
       res.status(201).json(message);
     } catch (error) {
       console.error("Chat normalization error:", error);
@@ -4416,15 +4406,6 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         receivedAt: req.body.receivedAt ? new Date(req.body.receivedAt) : new Date()
       });
       const message = await storage.createMessage(messageData);
-      
-      // Run AI analysis in background
-      if (process.env.OPENAI_API_KEY) {
-        aiService.analyzeMessage(message, req.user!.id).then(analysis => {
-          if (analysis.bestMatch) {
-            aiService.updateMessageWithSuggestion(message.id, analysis.bestMatch, req.user!.id);
-          }
-        }).catch(console.error);
-      }
       
       res.status(201).json(message);
     } catch (error) {
@@ -4521,38 +4502,6 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     const deleted = await storage.deleteComment(req.params.id, req.user!.id);
     if (!deleted) return res.sendStatus(404);
     res.sendStatus(204);
-  });
-
-  // AI Analysis
-  app.post("/api/messages/:id/analyze", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    try {
-      const message = await storage.getMessage(req.params.id, req.user!.id);
-      if (!message) return res.sendStatus(404);
-      
-      const analysis = await aiService.analyzeMessage(message, req.user!.id);
-      res.json(analysis);
-    } catch (error) {
-      console.error("AI analysis error:", error);
-      res.status(500).json({ error: "Analysis failed" });
-    }
-  });
-
-  app.post("/api/messages/:id/apply-suggestion", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    try {
-      const { suggestion } = req.body;
-      if (!suggestion) return res.status(400).json({ error: "Suggestion required" });
-      
-      await aiService.updateMessageWithSuggestion(req.params.id, suggestion, req.user!.id);
-      
-      // Return updated message
-      const updatedMessage = await storage.getMessage(req.params.id, req.user!.id);
-      res.json(updatedMessage);
-    } catch (error) {
-      console.error("Apply suggestion error:", error);
-      res.status(500).json({ error: "Failed to apply suggestion" });
-    }
   });
 
   // Feedback on email cleaning
@@ -8706,86 +8655,6 @@ PROCESSO: <testo con punti numerati>`,
     const success = await storage.deleteSystemCredential(req.params.id, req.user!.id);
     if (!success) return res.sendStatus(404);
     res.sendStatus(204);
-  });
-
-  // AI Documentation Generation
-  app.post("/api/intervention-documents/generate", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    try {
-      const { transportRequestId, title, type = "transport_analysis" } = req.body;
-      
-      if (!transportRequestId) {
-        return res.status(400).json({ error: "Transport request ID is required" });
-      }
-
-      // Get transport request with cofile content for AI analysis
-      const transportRequest = await storage.getTransportRequest(transportRequestId, req.user!.id);
-      if (!transportRequest) {
-        return res.status(404).json({ error: "Transport request not found" });
-      }
-
-      if (!transportRequest.cofileContent) {
-        return res.status(400).json({ error: "Transport request must have cofile content for AI analysis" });
-      }
-
-      // Generate AI documentation
-      const analysisPrompt = `Analyze this SAP transport request and generate professional documentation:
-      
-Transport: ${transportRequest.requestNumber}
-Description: ${transportRequest.description}
-Owner: ${transportRequest.owner}
-Type: ${transportRequest.type}
-Status: ${transportRequest.status}
-
-Cofile Content:
-${transportRequest.cofileContent}
-
-Objects Included: ${transportRequest.includedObjects?.join(', ') || 'Not specified'}
-
-Please generate a comprehensive intervention document that includes:
-1. Executive Summary
-2. Technical Changes Overview
-3. Objects Modified/Created
-4. Impact Analysis
-5. Testing Recommendations
-6. Deployment Notes
-7. Rollback Procedures (if applicable)
-
-Format the response as professional documentation suitable for client delivery.`;
-
-      const aiResponse = await aiService.generateDocumentation(analysisPrompt);
-      
-      // Create intervention document with AI content
-      const documentData = {
-        userId: req.user!.id,
-        transportRequestId,
-        title: title || `Documentation for Transport ${transportRequest.requestNumber}`,
-        type,
-        aiGeneratedContent: aiResponse.content,
-        aiConfidenceScore: aiResponse.confidence,
-        aiModel: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-        analysisPrompt,
-        sourceFiles: transportRequest.cofilePath ? [transportRequest.cofilePath] : [],
-        sapSystemId: transportRequest.sapSystemId,
-        projectId: transportRequest.projectId,
-        taskId: transportRequest.taskId
-      };
-
-      const validatedData = insertInterventionDocumentSchema.parse(documentData);
-      const document = await storage.createInterventionDocument(validatedData);
-      
-      res.status(201).json({
-        document,
-        aiGenerated: true,
-        confidence: aiResponse.confidence
-      });
-    } catch (error) {
-      console.error("AI documentation generation error:", error);
-      res.status(500).json({ 
-        error: "Failed to generate AI documentation", 
-        details: error instanceof Error ? error.message : String(error) 
-      });
-    }
   });
 
   // Audit API endpoints

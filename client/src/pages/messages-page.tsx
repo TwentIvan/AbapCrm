@@ -75,19 +75,6 @@ import { ProjectProposalDialog } from "@/components/dialogs/project-proposal-dia
 import { useAuth } from "@/hooks/use-auth";
 import { generateBookmarkletUrl } from "@/lib/devops-bookmarklet";
 
-interface AISuggestion {
-  type: 'project' | 'task' | 'partner';
-  id: string;
-  name: string;
-  confidence: number;
-  reason: string;
-}
-
-interface AnalysisResult {
-  suggestions: AISuggestion[];
-  bestMatch?: AISuggestion;
-}
-
 interface RenderedMessageContent {
   bodyText: string;
   bodyHtml: string | null;
@@ -336,29 +323,6 @@ export default function MessagesPage() {
     }
   }, [initialMessageId, messages]);
 
-  const analyzeMutation = useMutation<AnalysisResult, Error, string>({
-    mutationFn: async (messageId: string) => {
-      const response = await apiRequest("POST", `/api/messages/${messageId}/analyze`);
-      return response as unknown as AnalysisResult;
-    },
-    onSuccess: () => {
-      setShowSuggestions(true);
-    }
-  });
-
-  const applySuggestionMutation = useMutation({
-    mutationFn: ({ messageId, suggestion }: { messageId: string, suggestion: AISuggestion }) =>
-      apiRequest("POST", `/api/messages/${messageId}/apply-suggestion`, { suggestion }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
-      setShowSuggestions(false);
-      toast({
-        title: "Collegamento applicato",
-        description: "Il messaggio è stato collegato con successo.",
-      });
-    }
-  });
-
   const deleteMessageMutation = useMutation({
     mutationFn: (messageId: string) => 
       apiRequest("DELETE", `/api/messages/${messageId}`),
@@ -551,21 +515,6 @@ export default function MessagesPage() {
     setShowSuggestions(false);
     if (message.status === 'unread') {
       markAsReadMutation.mutate(message.id);
-    }
-  };
-
-  const handleAnalyze = () => {
-    if (selectedMessage) {
-      analyzeMutation.mutate(selectedMessage.id);
-    }
-  };
-
-  const handleApplySuggestion = (suggestion: AISuggestion) => {
-    if (selectedMessage) {
-      applySuggestionMutation.mutate({
-        messageId: selectedMessage.id,
-        suggestion
-      });
     }
   };
 

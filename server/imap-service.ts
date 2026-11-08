@@ -1,7 +1,6 @@
 import Imap from "imap";
 import { simpleParser } from "mailparser";
 import { storage } from "./storage";
-import { aiService } from "./ai-service";
 import { extractAnalysisText } from "./message-text";
 import { getBotcaveConfig } from "./botcave/config";
 import { routeFunction } from "./botcave/routing";
@@ -523,29 +522,6 @@ export class ImapEmailService {
             text: extractAnalysisText(savedMessage),
           }));
           return;
-        }
-      }
-
-      // Run AI analysis in background - with error handling for quota limits
-      if (process.env.OPENAI_API_KEY) {
-        try {
-          // Use the email account's organization (consistent with how the message
-          // was saved), not the user's first org. getUserOrganizations returns `.id`.
-          const organizationId = this.config.organizationId
-            || (await storage.getUserOrganizations(messageData.userId))[0]?.id;
-
-          const analysis = await aiService.analyzeMessage(savedMessage, messageData.userId, organizationId);
-          if (analysis.bestMatch) {
-            await aiService.updateMessageWithSuggestion(
-              savedMessage.id, 
-              analysis.bestMatch, 
-              messageData.userId,
-              organizationId
-            );
-            console.log(`[IMAP] AI analysis completed for email ${savedMessage.id}`);
-          }
-        } catch (aiError) {
-          console.error('[IMAP] AI analysis failed:', aiError);
         }
       }
 
