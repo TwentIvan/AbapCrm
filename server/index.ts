@@ -2,7 +2,6 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic, log } from "./static";
 import { autoInitializeEmailServices } from "./email-auto-init";
-import { readBotcaveConfig } from "./botcave/config";
 import { testDatabaseConnection, checkDatabaseHealth, closeDatabasePool, runStartupMigrations } from "./db";
 
 process.on('SIGTERM', () => {
@@ -143,9 +142,6 @@ app.use((req, res, next) => {
   }, async () => {
     log(`serving on port ${port}`);
 
-    // Botcave: solo i nomi delle variabili mancanti o non valide, mai i valori
-    for (const w of readBotcaveConfig(process.env).warnings) console.warn(`[Botcave] ${w}`);
-    
     // Test database connection on startup
     const dbConnected = await testDatabaseConnection();
     if (!dbConnected) {

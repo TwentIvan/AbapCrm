@@ -1,11 +1,6 @@
 import Imap from "imap";
 import { simpleParser } from "mailparser";
 import { storage } from "./storage";
-import { aiService, extractAnalysisText } from "./ai-service";
-import { getBotcaveConfig } from "./botcave/config";
-import { routeFunction } from "./botcave/routing";
-import { startBotcaveRun } from "./botcave/client";
-import { buildEmailRunInput } from "./botcave/inputs";
 import { EmailForwardCleaner } from "./email-forward-cleaner";
 import { AttachmentsService } from "./attachments-service";
 import { ThreadingService } from "./threading-service";
@@ -497,55 +492,6 @@ export class ImapEmailService {
           return;
         }
         throw createError; // Re-throw other errors
-      }
-
-      // Smistamento su Botcave (senza attenderlo) oppure percorso interno
-      const botcaveConfig = getBotcaveConfig();
-      if (botcaveConfig) {
-        let botcaveOrgId: string | null = null;
-        try {
-          botcaveOrgId = this.config.organizationId
-            || (messageData as any).organizationId
-            || (await storage.getUserOrganizations(messageData.userId))[0]?.id
-            || null;
-        } catch (orgError) {
-          console.error('[IMAP] Organization lookup failed:', orgError);
-        }
-        if (botcaveOrgId && routeFunction(botcaveConfig, "email", { organizationId: botcaveOrgId, userId: messageData.userId }) === "botcave") {
-          void startBotcaveRun(botcaveConfig, "email", { type: "message", id: savedMessage.id }, buildEmailRunInput({
-            id: savedMessage.id,
-            organizationId: botcaveOrgId,
-            fromEmail: messageData.fromEmail,
-            fromName: messageData.fromName,
-            toEmail: messageData.toEmail,
-            subject: messageData.subject,
-            text: extractAnalysisText(savedMessage),
-          }));
-          return;
-        }
-      }
-
-      // Run AI analysis in background - with error handling for quota limits
-      if (process.env.OPENAI_API_KEY) {
-        try {
-          // Use the email account's organization (consistent with how the message
-          // was saved), not the user's first org. getUserOrganizations returns `.id`.
-          const organizationId = this.config.organizationId
-            || (await storage.getUserOrganizations(messageData.userId))[0]?.id;
-
-          const analysis = await aiService.analyzeMessage(savedMessage, messageData.userId, organizationId);
-          if (analysis.bestMatch) {
-            await aiService.updateMessageWithSuggestion(
-              savedMessage.id, 
-              analysis.bestMatch, 
-              messageData.userId,
-              organizationId
-            );
-            console.log(`[IMAP] AI analysis completed for email ${savedMessage.id}`);
-          }
-        } catch (aiError) {
-          console.error('[IMAP] AI analysis failed:', aiError);
-        }
       }
 
     } catch (error) {
