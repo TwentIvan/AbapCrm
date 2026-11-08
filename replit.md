@@ -75,6 +75,7 @@ entrambi. La colonna nullable arriva con la migrazione d'avvio `api_tokens_organ
 -   **SAP Transport Request Integration**: Supports receiving Transport Requests via API POST, email parsing of JSON attachments, or manual UI input.
 -   **SAP Shortcut Integration**: Allows launching SAP ABAP programs from projects and automatically creating Transport Requests from their JSON output.
 -   **THU AI Task Executor**: AI-powered ABAP code generation with rich context collection from project details, DevOps work items, messages, and transport requests, including pattern learning and a regenerate flow.
+-   **Botcave**: lo smistamento delle email nuove e l'aggiornamento dei brief di progetto li fanno gli agenti di Botcave con gli inneschi di sorveglianza (`GET /api/messages?summary=true`, `GET /api/tasks`); The Hub Up non li esegue più al suo interno.
 -   **Computed Fields System (End-to-Complete)**: Dynamic calculated columns for project planning visibility (e.g., State, Completion %, Remaining Hours), fetched via batch endpoints and integrated into tables.
 -   **Planning Windows & Project Relationship**: Architectural design for project scheduling in a global calendar, where projects reference independent planning windows for ETC clamping and display.
 -   **Auto-Rescheduling System**: Automatically recalculates project schedules and deficit hours when task completion or effort changes, persisting updates to project records.
