@@ -1589,6 +1589,76 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Esecuzione di un task ABAP con una squadra Botcave sul nodo locale: task, progetto, sistema SAP effettivo
+  // (senza host né credenziali), trasporti, commenti e readiness in una lettura, nelle organizzazioni della
+  // richiesta (anche con token). Nessuna AI, nessuna scrittura: l'esito va in POST /api/tasks/:id/agent-runs.
+  app.get("/api/tasks/:id/abap-execution", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { abapExecutionContext } = await import("./abap-execution-context");
+      const { transportRequests } = await import("@shared/schema");
+      // Solo i campi del pacchetto: host, SAProuter e credenziali non escono dal database.
+      const abapSapSystemFields = {
+        id: sapSystems.id,
+        organizationId: sapSystems.organizationId,
+        partnerId: sapSystems.partnerId,
+        name: sapSystems.name,
+        systemId: sapSystems.systemId,
+        systemType: sapSystems.systemType,
+        status: sapSystems.status,
+        systemNumber: sapSystems.systemNumber,
+        sapReleaseVersion: sapSystems.sapReleaseVersion,
+        landscapeType: sapSystems.landscapeType,
+        landscapeLevel: sapSystems.landscapeLevel,
+        connectionType: sapSystems.connectionType,
+        isActive: sapSystems.isActive,
+      };
+      const result = await abapExecutionContext(
+        {
+          getTask: async (id) => {
+            const [row] = await db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+            return row ?? null;
+          },
+          getProject: async (id) => {
+            const [row] = await db
+              .select({
+                id: projects.id,
+                organizationId: projects.organizationId,
+                name: projects.name,
+                description: projects.description,
+                clientId: projects.clientId,
+              })
+              .from(projects)
+              .where(eq(projects.id, id))
+              .limit(1);
+            return row ?? null;
+          },
+          getSapSystem: async (id) => {
+            const [row] = await db.select(abapSapSystemFields).from(sapSystems).where(eq(sapSystems.id, id)).limit(1);
+            return row ?? null;
+          },
+          getPartnerSapSystems: (partnerId) =>
+            db.select(abapSapSystemFields).from(sapSystems).where(eq(sapSystems.partnerId, partnerId)),
+          getTransports: (taskId, projectId) =>
+            db
+              .select()
+              .from(transportRequests)
+              .where(
+                projectId
+                  ? or(eq(transportRequests.taskId, taskId), eq(transportRequests.projectId, projectId))
+                  : eq(transportRequests.taskId, taskId),
+              ),
+          getComments: (taskId) => db.select().from(comments).where(eq(comments.taskId, taskId)),
+        },
+        { taskId: req.params.id, organizationIds: await getOrganizationIdsForFilter(req) },
+      );
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Get ABAP execution context error:", error);
+      res.status(500).json({ error: "Failed to build ABAP execution context" });
+    }
+  });
+
   // Execute VPN connection automation
   app.post("/api/tasks/:id/execute-connection", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
