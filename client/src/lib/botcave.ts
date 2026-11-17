@@ -40,3 +40,10 @@ export function useBotcaveObjectContext(ctx: { page: string; id?: string | numbe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 }
+
+// Apre il pannello Botcave (di norma su Alfred). false se lo script del pannello non è caricato.
+export function openBotcavePanel(tab: "alfred" | "pending" | "bulletin" | "lucius" = "alfred"): boolean {
+  if (!window.Botcave) return false;
+  window.Botcave.open(tab);
+  return true;
+}
