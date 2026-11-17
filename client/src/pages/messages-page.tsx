@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useBotcaveObjectContext } from "@/lib/botcave";
+import { openBotcavePanel, useBotcaveObjectContext } from "@/lib/botcave";
 import { AiModelPickerDialog } from "@/components/dialogs/ai-model-picker-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DOMPurify from 'dompurify';
@@ -65,7 +65,7 @@ import {
   Video
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { BarChart3, TrendingUp, Database, Image, Inbox } from "lucide-react";
+import { BarChart3, TrendingUp, Database, Image, Inbox, Shuffle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Message, Project, Task, Partner } from "@shared/schema";
 import { format } from "date-fns";
@@ -170,17 +170,32 @@ export default function MessagesPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  // Contesto per Botcave: un messaggio che è un work item di DevOps si presenta come tale.
+  // Contesto per Botcave: un messaggio che è un work item di DevOps si presenta come tale, gli altri come
+  // messaggio (id e oggetto), così lo Smistatore di Botcave sa quale email smistare.
   const botcaveWorkItem = (selectedMessage as any)?.externalMetadata?.workItemId as string | number | undefined;
   useBotcaveObjectContext(
-    selectedMessage && botcaveWorkItem != null
-      ? {
-          page: "workitem",
-          id: botcaveWorkItem,
-          title: (selectedMessage as any).externalMetadata?.workItemTitle ?? selectedMessage.subject,
-        }
-      : null,
+    !selectedMessage
+      ? null
+      : botcaveWorkItem != null
+        ? {
+            page: "workitem",
+            id: botcaveWorkItem,
+            title: (selectedMessage as any).externalMetadata?.workItemTitle ?? selectedMessage.subject,
+          }
+        : { page: "message", id: selectedMessage.id, title: selectedMessage.subject },
   );
+
+  // Smistamento affidato all'agente Botcave: il contesto è già il messaggio aperto, qui si apre il pannello.
+  const handleTriageWithBotcave = () => {
+    if (!selectedMessage) return;
+    if (!openBotcavePanel("alfred")) {
+      toast({
+        title: "Pannello Botcave non disponibile",
+        description: "Lo smistamento delle email lo fa l'agente Botcave: ricarica la pagina o riprova più tardi.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Reset thread content visibility when message changes
   useEffect(() => {
@@ -963,6 +978,27 @@ export default function MessagesPage() {
                         </TooltipContent>
                       </Tooltip>
                       
+                      {/* Smistamento con l'agente Botcave */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleTriageWithBotcave}
+                            disabled={!selectedMessage}
+                            variant="outline"
+                            className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-agent/30 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-agent hover:bg-agent/10 transition-all ${
+                              !selectedMessage ? 'opacity-40' : 'opacity-100'
+                            }`}
+                            aria-label="Smista con Botcave"
+                            data-testid="button-triage-botcave"
+                          >
+                            <Shuffle className="h-6 w-6 text-agent" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="bg-agent text-white">
+                          <p>{selectedMessage ? 'Smista con Botcave' : 'Apri un messaggio per smistarlo con Botcave'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+
                       {/* Delete Selected Button */}
                       <AlertDialog>
                         <Tooltip>
