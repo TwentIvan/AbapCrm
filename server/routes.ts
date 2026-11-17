@@ -5,6 +5,7 @@ import { canLinkAll, canEditLink, dbLinkScopeDeps, linkOrganization } from "./me
 import { parseSuggestion, suggestionUpdate, SUGGESTION_TABLES } from "./message-suggestion";
 import { isSummaryRequest, messageSummaryColumns } from "./message-list";
 import { parseObligationQuery, listObligations, getObligation, type ObligationDeps } from "./organization-obligations";
+import { parseObligationRun, parseObligationRunQuery, recordObligationRun, listObligationRuns, type ObligationRunDeps } from "./obligation-runs";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { registerApiTokenRoutes } from "./api-token-routes";
@@ -60,7 +61,7 @@ import { ObjectStorageService } from "./objectStorage";
 import { calculateEndToComplete } from "./end-to-complete-calculator";
 import { recalculateProjectScheduleForTask } from "./project-rescheduler";
 import { assembleContext } from "./context-assembler";
-import { contextPacks, organizationObligations } from "@shared/schema";
+import { contextPacks, organizationObligations, organizationObligationRuns } from "@shared/schema";
 
 // Phase 5: compute suggested model key from analytics (min 5 completed executions for taskType)
 async function computeSuggestedModelKey(organizationId: string, taskType: string): Promise<string | null> {
@@ -895,6 +896,107 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Get organization obligation error:", error);
       res.status(500).json({ error: "Failed to get obligation" });
+    }
+  });
+
+  // Registro delle esecuzioni di un obbligo (es. la LIPE del 2026-Q3 inviata da una squadra di Botcave), scritto da
+  // chi esegue: nessuna AI interna. Corpo { period, status, outcome?, detail?, agent?, externalRunId?, dueDate?,
+  // protocol?, links?, startedAt?, finishedAt? }; con externalRunId la registrazione è idempotente.
+  const obligationRunDeps: ObligationRunDeps = {
+    async obligation(id) {
+      const [row] = await db
+        .select({
+          organizationId: organizationObligations.organizationId,
+          active: organizationObligations.active,
+          nextDueDate: organizationObligations.nextDueDate,
+        })
+        .from(organizationObligations)
+        .where(eq(organizationObligations.id, id))
+        .limit(1);
+      return row ?? null;
+    },
+    async findByExternalId(obligationId, externalRunId) {
+      const [row] = await db
+        .select()
+        .from(organizationObligationRuns)
+        .where(
+          and(
+            eq(organizationObligationRuns.obligationId, obligationId),
+            eq(organizationObligationRuns.externalRunId, externalRunId),
+          ),
+        )
+        .limit(1);
+      return row ?? null;
+    },
+    async insert(row) {
+      const [created] = await db
+        .insert(organizationObligationRuns)
+        .values(row as typeof organizationObligationRuns.$inferInsert)
+        .onConflictDoNothing()
+        .returning();
+      return created ?? null;
+    },
+    async update(id, values) {
+      // Un'esecuzione conclusa non torna running, anche se due aggiornamenti arrivano insieme
+      const [updated] = await db
+        .update(organizationObligationRuns)
+        .set(values)
+        .where(
+          and(
+            eq(organizationObligationRuns.id, id),
+            values.status === "running" ? eq(organizationObligationRuns.status, "running") : undefined,
+          ),
+        )
+        .returning();
+      return updated ?? null;
+    },
+    list: (obligationId, q) =>
+      db
+        .select()
+        .from(organizationObligationRuns)
+        .where(
+          and(
+            eq(organizationObligationRuns.obligationId, obligationId),
+            q.period ? eq(organizationObligationRuns.period, q.period) : undefined,
+            q.status ? eq(organizationObligationRuns.status, q.status) : undefined,
+          ),
+        )
+        .orderBy(desc(organizationObligationRuns.createdAt)),
+  };
+
+  app.post("/api/obligations/:id/runs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const parsed = parseObligationRun(req.body);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+      const result = await recordObligationRun(obligationRunDeps, {
+        obligationId: req.params.id,
+        userId: req.user!.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+        run: parsed.value,
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Record obligation run error:", error);
+      res.status(500).json({ error: "Failed to record obligation run" });
+    }
+  });
+
+  // Esecuzioni registrate per l'obbligo, dalla più recente; filtri ?period e ?status
+  app.get("/api/obligations/:id/runs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const parsed = parseObligationRunQuery(req.query);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+      const result = await listObligationRuns(obligationRunDeps, {
+        obligationId: req.params.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+        query: parsed.value,
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("List obligation runs error:", error);
+      res.status(500).json({ error: "Failed to list obligation runs" });
     }
   });
 

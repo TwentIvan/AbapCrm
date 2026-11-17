@@ -481,6 +481,31 @@ export async function runStartupMigrations(): Promise<boolean> {
       CREATE INDEX IF NOT EXISTS "organization_obligations_org_due_idx" ON "organization_obligations" ("organization_id", "next_due_date");
     `);
 
+    // Registro delle esecuzioni di un obbligo (POST/GET /api/obligations/:id/runs). Additiva e idempotente.
+    await safeMigrate('organization_obligation_runs', `
+      CREATE TABLE IF NOT EXISTS "organization_obligation_runs" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "obligation_id" uuid NOT NULL REFERENCES "organization_obligations"("id") ON DELETE CASCADE,
+        "organization_id" uuid NOT NULL REFERENCES "organizations"("id"),
+        "user_id" uuid NOT NULL REFERENCES "users"("id"),
+        "period" text NOT NULL,
+        "due_date" date,
+        "agent" text,
+        "external_run_id" text,
+        "status" text NOT NULL,
+        "outcome" text,
+        "detail" text,
+        "protocol" text,
+        "links" jsonb NOT NULL DEFAULT '[]'::jsonb,
+        "started_at" timestamp,
+        "finished_at" timestamp,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "organization_obligation_runs_obligation_idx" ON "organization_obligation_runs" ("obligation_id", "created_at");
+      CREATE UNIQUE INDEX IF NOT EXISTS "organization_obligation_runs_external_run_idx" ON "organization_obligation_runs" ("obligation_id", "external_run_id");
+    `);
+
     client.release();
     return true;
   } catch (error) {
