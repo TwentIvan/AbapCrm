@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useBotcaveObjectContext } from "@/lib/botcave";
+import { startAbapExecutionWithBotcave } from "@/lib/abap-execution";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTableLayout } from "@/lib/user-preferences";
@@ -8,7 +9,7 @@ import Header from "@/components/layout/header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckSquare, Edit, MoreHorizontal, ExternalLink, Clock, CheckCheck } from "lucide-react";
+import { CheckSquare, Edit, MoreHorizontal, ExternalLink, Clock, CheckCheck, Bot } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { Task, Project } from "@shared/schema";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
@@ -260,6 +261,19 @@ export default function TasksPage() {
     console.log('Stack trace:', new Error().stack);
     setEditingTask(task);
     setShowEditDialog(true);
+  };
+
+  // Esecuzione del task ABAP con la squadra Botcave sul nodo locale: se il task è eseguibile si apre il
+  // pannello Botcave col task come contesto, altrimenti si dice perché no.
+  const handleRunWithBotcave = async (task: Task) => {
+    const outcome = await startAbapExecutionWithBotcave({ id: task.id, title: task.title });
+    if (outcome.kind === "blocked") {
+      toast({ title: "Task non eseguibile con Botcave", description: outcome.reasons.join("; "), variant: "destructive" });
+    } else if (outcome.kind === "no-panel") {
+      toast({ title: "Pannello Botcave non disponibile", description: "Lo script del pannello Botcave non è caricato.", variant: "destructive" });
+    } else if (outcome.kind === "error") {
+      toast({ title: "Esecuzione con Botcave non avviata", description: outcome.message, variant: "destructive" });
+    }
   };
 
   // Avvio task reale: il server compone il piano (workflow custom o piano
@@ -558,6 +572,15 @@ export default function TasksPage() {
                 <Edit className="mr-2 h-4 w-4" />
                 Modifica
               </DropdownMenuItem>
+              {task.status !== "completed" && (
+                <DropdownMenuItem
+                  onClick={() => handleRunWithBotcave(task)}
+                  data-testid={`menu-run-botcave-${task.id}`}
+                >
+                  <Bot className="mr-2 h-4 w-4" />
+                  Esegui con Botcave
+                </DropdownMenuItem>
+              )}
               {(task as any).status === "draft" && (
                 <DropdownMenuItem
                   onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "todo" } })}
