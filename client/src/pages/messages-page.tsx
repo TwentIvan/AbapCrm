@@ -21,6 +21,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
+import { FolderSearch } from "lucide-react";
 import { 
   Mail, 
   MailOpen, 
@@ -472,6 +473,19 @@ export default function MessagesPage() {
       });
     },
   });
+
+  // «Analizza progetto» affidato all'agente Botcave: il messaggio aperto è già il contesto del pannello,
+  // l'agente legge GET /api/messages/:id/project-analysis e scrive la proposta. Qui si apre il pannello.
+  const handleAnalyzeWithBotcave = () => {
+    if (!selectedMessage) return;
+    if (!openBotcavePanel("alfred")) {
+      toast({
+        title: "Pannello Botcave non disponibile",
+        description: "L'analisi del progetto con Botcave richiede il pannello: ricarica la pagina o riprova più tardi.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // AI Project Agent mutations
   const analyzeProjectMutation = useMutation({
@@ -943,6 +957,27 @@ export default function MessagesPage() {
                         </TooltipContent>
                       </Tooltip>
                       
+                      {/* «Analizza progetto» con l'agente Botcave */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleAnalyzeWithBotcave}
+                            disabled={!selectedMessage}
+                            variant="outline"
+                            className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-agent/30 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-agent hover:bg-agent/10 transition-all ${
+                              !selectedMessage ? 'opacity-40' : 'opacity-100'
+                            }`}
+                            aria-label="Analizza progetto con Botcave"
+                            data-testid="button-analyze-project-botcave"
+                          >
+                            <FolderSearch className="h-6 w-6 text-agent" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="bg-agent text-white">
+                          <p>{selectedMessage ? 'Analizza progetto con Botcave' : 'Apri un messaggio per analizzarlo con Botcave'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+
                       {/* THU AI Button - Header style with opacity */}
                       <Tooltip>
                         <TooltipTrigger asChild>
