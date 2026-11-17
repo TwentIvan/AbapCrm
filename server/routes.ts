@@ -3,6 +3,7 @@ import { sanitizeTokenPartnerUpdate, tokenContactOrganization, tokenPartnerOrgan
 import { taskExternalRef } from "./task-external-ref";
 import { canLinkAll, canEditLink, dbLinkScopeDeps, linkOrganization } from "./message-link-scope";
 import { parseSuggestion, suggestionUpdate, SUGGESTION_TABLES } from "./message-suggestion";
+import { parseExternalProposal, createExternalProposal } from "./external-proposal";
 import { isSummaryRequest, messageSummaryColumns } from "./message-list";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
@@ -4783,6 +4784,34 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Apply suggestion error:", error);
       res.status(500).json({ error: "Failed to apply suggestion" });
+    }
+  });
+
+  // Proposta su un messaggio scritta da chi chiama (es. un agente di Botcave): nessuna AI interna
+  app.post("/api/messages/:id/proposals", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const parsed = parseExternalProposal(req.body);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+
+      const result = await createExternalProposal(
+        {
+          messageOrg: dbLinkScopeDeps.messageOrg,
+          recordOrg: dbLinkScopeDeps.recordOrg,
+          proposalsByMessage: (messageId, userId) => storage.getProposalsByMessage(messageId, userId),
+          create: (input) => storage.createProposal(input),
+        },
+        {
+          userId: req.user!.id,
+          messageId: req.params.id,
+          organizationIds: await getOrganizationIdsForFilter(req),
+          proposal: parsed.value,
+        },
+      );
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Create external proposal error:", error);
+      res.status(500).json({ error: "Failed to create proposal" });
     }
   });
 
