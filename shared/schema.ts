@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, serial, text, varchar, timestamp, integer, decimal, real, pgEnum, boolean, uuid, time, jsonb, index, uniqueIndex, unique } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, timestamp, integer, decimal, real, pgEnum, boolean, uuid, time, date, jsonb, index, uniqueIndex, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -38,6 +38,29 @@ export const organizations = pgTable("organizations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Obblighi dichiarativi dell'organizzazione: le scadenze ricorrenti verso enti esterni (es. LIPE, F24, Intrastat,
+// 770) che l'organizzazione deve rispettare. Letti via API da chi li automatizza (es. una squadra di Botcave).
+// frequency: monthly | quarterly | semiannual | yearly | once | other.
+export const organizationObligations = pgTable("organization_obligations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }).notNull(),
+  code: text("code").notNull(), // codice breve, unico nell'organizzazione (es. "LIPE")
+  name: text("name").notNull(), // es. "Comunicazione liquidazioni periodiche IVA"
+  description: text("description"),
+  authority: text("authority"), // ente destinatario (es. "Agenzia delle Entrate")
+  frequency: text("frequency").notNull(),
+  dueRule: text("due_rule"), // regola della scadenza in chiaro (es. "entro l'ultimo giorno del secondo mese successivo")
+  nextDueDate: date("next_due_date", { mode: "string" }), // prossima scadenza (YYYY-MM-DD)
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  orgCodeIdx: uniqueIndex("organization_obligations_org_code_idx").on(t.organizationId, t.code),
+  orgDueIdx: index("organization_obligations_org_due_idx").on(t.organizationId, t.nextDueDate),
+}));
+
+export type OrganizationObligation = typeof organizationObligations.$inferSelect;
 
 // ========== AI Gateway Tables ==========
 
