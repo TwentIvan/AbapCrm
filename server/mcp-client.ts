@@ -129,6 +129,8 @@ export interface McpToolInfo {
   description?: string;
   inputSchema?: any;
   classification: "read" | "write";
+  /** Annotazioni MCP dichiarate dal server (readOnlyHint, destructiveHint, …), così come arrivano. */
+  annotations?: Record<string, unknown>;
 }
 
 export interface ConnectResult {
@@ -166,6 +168,7 @@ export async function connectAndListTools(config: McpServerConfig): Promise<Conn
         description: t.description,
         inputSchema: t.inputSchema,
         classification,
+        annotations: (t as { annotations?: Record<string, unknown> }).annotations,
       };
     });
     return { tools, transport: kind };
