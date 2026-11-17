@@ -62,6 +62,13 @@ ambito di organizzazione scelto alla creazione:
 Il perimetro resta l'utente del token: non vede mai più di quanto vede dall'interfaccia. Route vietate e limite di 120 richieste/min valgono per
 entrambi. La colonna nullable arriva con la migrazione d'avvio `api_tokens_organization_nullable` di `server/db.ts`.
 
+**Contratto OpenAPI delle route aperte ai token** — `GET /api/openapi.json` (sessione o token; `server/openapi.ts`): documento OpenAPI 3.1
+generato alla prima richiesta dalle route registrate davvero su Express e filtrato con lo stesso `isDeniedForToken` del middleware, quindi una
+route vietata ai token non compare mai e una route nuova compare da sola. Fuori contratto anche i percorsi non `/api`, `/api/__*` e
+`/api/debug/*`. Ogni operazione ha `operationId`, tag (la risorsa), parametri di percorso, gli header `X-Organization-Id`/`X-Organization-Scope`,
+sicurezza `bearerAuth` e le risposte 401/403/429 del token; i corpi sono oggetti generici. Riassunti e parametri di query curati per le
+operazioni principali stanno in `OPERATION_DOCS`: aggiungerli lì quando si apre ai token una route nuova da usare dagli agenti.
+
 ## Core Features & Design Patterns
 
 -   **Custom Fields & Metadata System**: A metadata-driven extension layer enables dynamic custom fields, entities, event-driven workflows, and role-based permissions, supported by `CustomMetadataService` for caching and validation.
