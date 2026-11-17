@@ -4,6 +4,7 @@ import { taskExternalRef } from "./task-external-ref";
 import { canLinkAll, canEditLink, dbLinkScopeDeps, linkOrganization } from "./message-link-scope";
 import { parseSuggestion, suggestionUpdate, SUGGESTION_TABLES } from "./message-suggestion";
 import { isSummaryRequest, messageSummaryColumns } from "./message-list";
+import { parseAgentRun, recordAgentRun, listAgentRuns, type AgentRunDeps } from "./task-agent-runs";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { registerApiTokenRoutes } from "./api-token-routes";
@@ -34,7 +35,7 @@ import {
   projects, tasks, partners, contacts, projectContacts, notifications, workflows, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals, projectShares,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users, organizations,
-  customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions,
+  customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions, taskAgentRuns,
   dashboardWidgetTemplates, insertDashboardWidgetTemplateSchema,
   skillCatalog, insertSkillCatalogSchema,
   resourceSkills, resourceAvailability,
@@ -1571,6 +1572,77 @@ export function registerRoutes(app: Express): Server {
       res.json(task);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // Registro dell'esito delle esecuzioni di agenti esterni sul task (es. una squadra di Botcave), scritto da chi
+  // esegue: nessuna AI interna. Corpo { agent, status, outcome?, detail?, externalRunId?, links?, startedAt?, finishedAt? }.
+  const agentRunDeps: AgentRunDeps & { list(taskId: string): Promise<any[]> } = {
+    taskOrg: (taskId) => dbLinkScopeDeps.recordOrg("tasks", taskId),
+    async findByExternalId(taskId, externalRunId) {
+      const [row] = await db
+        .select()
+        .from(taskAgentRuns)
+        .where(and(eq(taskAgentRuns.taskId, taskId), eq(taskAgentRuns.externalRunId, externalRunId)))
+        .limit(1);
+      return row ?? null;
+    },
+    async insert(row) {
+      const [created] = await db
+        .insert(taskAgentRuns)
+        .values(row as typeof taskAgentRuns.$inferInsert)
+        .onConflictDoNothing()
+        .returning();
+      return created ?? null;
+    },
+    async update(id, values) {
+      // Un'esecuzione conclusa non torna running, anche se due aggiornamenti arrivano insieme
+      const [updated] = await db
+        .update(taskAgentRuns)
+        .set(values)
+        .where(
+          and(
+            eq(taskAgentRuns.id, id),
+            values.status === "running" ? eq(taskAgentRuns.status, "running") : undefined,
+          ),
+        )
+        .returning();
+      return updated ?? null;
+    },
+    list: (taskId) =>
+      db.select().from(taskAgentRuns).where(eq(taskAgentRuns.taskId, taskId)).orderBy(desc(taskAgentRuns.createdAt)),
+  };
+
+  app.post("/api/tasks/:id/agent-runs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const parsed = parseAgentRun(req.body);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+      const result = await recordAgentRun(agentRunDeps, {
+        taskId: req.params.id,
+        userId: req.user!.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+        run: parsed.value,
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Record task agent run error:", error);
+      res.status(500).json({ error: "Failed to record agent run" });
+    }
+  });
+
+  // Esecuzioni di agenti esterni registrate sul task, dalla più recente
+  app.get("/api/tasks/:id/agent-runs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const result = await listAgentRuns(agentRunDeps, {
+        taskId: req.params.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("List task agent runs error:", error);
+      res.status(500).json({ error: "Failed to list agent runs" });
     }
   });
 
