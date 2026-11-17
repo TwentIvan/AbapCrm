@@ -68,6 +68,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { BarChart3, TrendingUp, Database, Image, Inbox } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Message, Project, Task, Partner } from "@shared/schema";
+import { suggestedLink, type SuggestionType } from "@shared/message-suggestion";
+import { SuggestedLinkPanel } from "@/components/messages/suggested-link-panel";
 import { format } from "date-fns";
 import MessageForm from "@/components/forms/message-form";
 import SimpleChatForm from "@/components/forms/simple-chat-form";
@@ -585,6 +587,12 @@ export default function MessagesPage() {
     };
     
     return fileTypes[ext] || { isImage: false, icon: '📁', type: 'File' };
+  };
+
+  const getSuggestionTargetName = (type: SuggestionType, id: string): string | undefined => {
+    if (type === 'project') return projects.find(p => p.id === id)?.name;
+    if (type === 'task') return tasks.find(t => t.id === id)?.title;
+    return partners.find(p => p.id === id)?.name;
   };
 
   const getLinkedObjectName = (message: Message) => {
@@ -1464,13 +1472,30 @@ export default function MessagesPage() {
                                         {messageProposals.length} {messageProposals.length === 1 ? 'proposta' : 'proposte'} AI
                                       </Badge>
                                     )}
-                                    {message.confidenceScore && (
-                                      <div className="text-xs font-medium">
-                                        <span className={getConfidenceColor(message.confidenceScore ? Number(message.confidenceScore) : 0)}>
-                                          Confidenza: {Math.round((message.confidenceScore ? Number(message.confidenceScore) : 0) * 100)}%
-                                        </span>
-                                      </div>
-                                    )}
+                                    {(() => {
+                                      const suggestion = suggestedLink(message);
+                                      if (suggestion && !suggestion.confirmed) {
+                                        return (
+                                          <Badge
+                                            variant="outline"
+                                            className="text-xs bg-agent/10 border-agent/30 text-agent"
+                                            data-testid={`badge-suggestion-pending-${message.id}`}
+                                          >
+                                            <Sparkles className="h-3 w-3 mr-1" />
+                                            Collegamento da confermare
+                                            {suggestion.confidence !== null && ` · ${Math.round(suggestion.confidence * 100)}%`}
+                                          </Badge>
+                                        );
+                                      }
+                                      if (!message.confidenceScore) return null;
+                                      return (
+                                        <div className="text-xs font-medium">
+                                          <span className={getConfidenceColor(Number(message.confidenceScore))}>
+                                            Confidenza: {Math.round(Number(message.confidenceScore) * 100)}%
+                                          </span>
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 </TableCell>
                                 
@@ -1594,12 +1619,20 @@ export default function MessagesPage() {
                     </div>
                   </div>
 
-                  {/* Collegamenti AI - solo se esistono */}
+                  {/* Collegamento suggerito (da confermare o scartare) oppure oggetto collegato a mano */}
                   {(() => {
+                    const suggestion = suggestedLink(selectedMessage);
+                    if (suggestion) {
+                      return (
+                        <SuggestedLinkPanel
+                          message={selectedMessage}
+                          targetName={getSuggestionTargetName(suggestion.type, suggestion.id)}
+                          onUpdated={(updated) => setSelectedMessage({ ...selectedMessage, ...updated })}
+                        />
+                      );
+                    }
                     const linkedObject = getLinkedObjectName(selectedMessage);
-                    const hasLinks = linkedObject || selectedMessage.confidenceScore || selectedMessage.matchingReason;
-                    
-                    if (!hasLinks) return null;
+                    if (!linkedObject) return null;
                     
                     return (
                       <div 
@@ -1610,24 +1643,10 @@ export default function MessagesPage() {
                         data-testid="email-header-ai-links"
                       >
                         <div className="flex flex-wrap gap-2">
-                          {linkedObject && (
-                            <Badge variant="outline" className="text-sm">
-                              <Link className="h-3 w-3 mr-1" />
-                              {linkedObject.type}: {linkedObject.name}
-                            </Badge>
-                          )}
-                          {selectedMessage.confidenceScore && (
-                            <Badge variant="outline" className="text-sm">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Confidenza: {Math.round((selectedMessage.confidenceScore ? Number(selectedMessage.confidenceScore) : 0) * 100)}%
-                            </Badge>
-                          )}
-                          {selectedMessage.matchingReason && (
-                            <Badge variant="outline" className="text-sm">
-                              <Brain className="h-3 w-3 mr-1" />
-                              {selectedMessage.matchingReason}
-                            </Badge>
-                          )}
+                          <Badge variant="outline" className="text-sm">
+                            <Link className="h-3 w-3 mr-1" />
+                            {linkedObject.type}: {linkedObject.name}
+                          </Badge>
                         </div>
                       </div>
                     );
