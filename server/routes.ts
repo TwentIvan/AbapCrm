@@ -3,7 +3,9 @@ import { registerThuMcpRoutes } from "./thu-mcp-server";
 import { thuMcpDbDeps } from "./thu-mcp-sources";
 import { sanitizeTokenPartnerUpdate, tokenContactOrganization, tokenPartnerOrganization } from "./partner-contact-scope";
 import { taskExternalRef } from "./task-external-ref";
-import { canLinkAll, canEditLink, dbLinkScopeDeps, linkOrganization } from "./message-link-scope";
+import {
+  canEditLink, dbLinkScopeDeps, linkAllOrganization, linkOrganization, linkedRecordOrganizations, linksInScope, messageOrganization,
+} from "./message-link-scope";
 import { parseSuggestion, suggestionUpdate, SUGGESTION_TABLES } from "./message-suggestion";
 import { parseExternalProposal, createExternalProposal } from "./external-proposal";
 import { parseProposalUpdate, updatePendingProposal } from "./proposal-update";
@@ -6240,10 +6242,16 @@ PROCESSO: <testo con punti numerati>`,
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const { tableName, recordId } = req.params;
-      const organizationId = getOrganizationId(req);
-      
-      const linkedMessages = await MessageLogService.getLinkedMessages(tableName, recordId, organizationId);
-      res.json(linkedMessages);
+      // Oggetto in una delle organizzazioni della richiesta; solo collegamenti e messaggi della sua organizzazione
+      const orgIds = await linkedRecordOrganizations(dbLinkScopeDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        table: tableName,
+        recordId,
+      });
+      if (!orgIds) return res.status(404).json({ error: "oggetto non trovato" });
+
+      const linkedMessages = await MessageLogService.getLinkedMessages(tableName, recordId, orgIds);
+      res.json(linksInScope(linkedMessages, orgIds));
     } catch (error) {
       console.error("Get linked messages error:", error);
       res.status(500).json({ error: "Failed to get linked messages" });
@@ -6297,7 +6305,14 @@ PROCESSO: <testo con punti numerati>`,
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const { messageId } = req.params;
-      const links = await MessageLogService.getMessageLinks(messageId);
+      // Messaggio in una delle organizzazioni della richiesta; solo i collegamenti della sua organizzazione
+      const messageOrgId = await messageOrganization(dbLinkScopeDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        messageId,
+      });
+      if (!messageOrgId) return res.status(404).json({ error: "messaggio non trovato" });
+
+      const links = await MessageLogService.getMessageLinks(messageId, messageOrgId);
       res.json(links);
     } catch (error) {
       console.error("Get message links error:", error);
@@ -6310,10 +6325,16 @@ PROCESSO: <testo con punti numerati>`,
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const { tableName, recordId } = req.params;
-      const organizationId = getOrganizationId(req);
-      
-      const linkedMessages = await MessageLogService.getLinkedMessages(tableName, recordId, organizationId);
-      res.json(linkedMessages);
+      // Oggetto in una delle organizzazioni della richiesta; solo collegamenti e messaggi della sua organizzazione
+      const orgIds = await linkedRecordOrganizations(dbLinkScopeDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        table: tableName,
+        recordId,
+      });
+      if (!orgIds) return res.status(404).json({ error: "oggetto non trovato" });
+
+      const linkedMessages = await MessageLogService.getLinkedMessages(tableName, recordId, orgIds);
+      res.json(linksInScope(linkedMessages, orgIds));
     } catch (error) {
       console.error("Get linked messages error:", error);
       res.status(500).json({ error: "Failed to get linked messages" });
@@ -6363,7 +6384,7 @@ PROCESSO: <testo con punti numerati>`,
       const { linkId } = req.params;
       const { notes, linkType } = req.body;
 
-      if (!(await canEditLink(dbLinkScopeDeps, { organizationId: getOrganizationId(req), linkId }))) {
+      if (!(await canEditLink(dbLinkScopeDeps, { organizationIds: await getOrganizationIdsForFilter(req), linkId }))) {
         return res.status(404).json({ error: "messaggio o oggetto non trovato" });
       }
       
@@ -6385,7 +6406,7 @@ PROCESSO: <testo con punti numerati>`,
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const { linkId } = req.params;
-      if (!(await canEditLink(dbLinkScopeDeps, { organizationId: getOrganizationId(req), linkId }))) {
+      if (!(await canEditLink(dbLinkScopeDeps, { organizationIds: await getOrganizationIdsForFilter(req), linkId }))) {
         return res.status(404).json({ error: "messaggio o oggetto non trovato" });
       }
       const success = await MessageLogService.unlinkMessage(linkId, req.user!.id);
@@ -6408,12 +6429,16 @@ PROCESSO: <testo con punti numerati>`,
         return res.status(400).json({ error: "Links array is required" });
       }
 
-      // Tutto o niente: un solo collegamento fuori dall'organizzazione non ne crea nessuno
-      if (!(await canLinkAll(dbLinkScopeDeps, { organizationId: getOrganizationId(req), messageId, links }))) {
-        return res.status(404).json({ error: "messaggio o oggetto non trovato" });
-      }
-      
-      const context = MessageLogService.createContext(req);
+      // Tutto o niente: messaggio in una delle organizzazioni della richiesta e ogni oggetto nella stessa
+      // organizzazione del messaggio, altrimenti non si crea nessun collegamento
+      const linkOrgId = await linkAllOrganization(dbLinkScopeDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        messageId,
+        links,
+      });
+      if (!linkOrgId) return res.status(404).json({ error: "messaggio o oggetto non trovato" });
+
+      const context = { ...MessageLogService.createContext(req), organizationId: linkOrgId };
       const results = await MessageLogService.linkMessageBulk(messageId, links, context, isAutomatic);
       
       res.json(results);
