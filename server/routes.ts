@@ -7,6 +7,7 @@ import { isSummaryRequest, messageSummaryColumns } from "./message-list";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { registerApiTokenRoutes } from "./api-token-routes";
+import { registerOpenApiRoute } from "./openapi";
 import { storage } from "./storage";
 import { db } from "./db";
 import { sql, inArray, eq, and, or, desc, asc, isNull, aliasedTable } from "drizzle-orm";
@@ -572,6 +573,9 @@ export function registerRoutes(app: Express): Server {
 
   // Token API personali (gestione dall'account, solo con la sessione)
   registerApiTokenRoutes(app, storage);
+
+  // Contratto OpenAPI delle route aperte ai token (calcolato alla prima richiesta, a route tutte registrate)
+  registerOpenApiRoute(app);
 
   // Health check endpoint for debugging
   app.get('/api/__health', (req, res) => {
