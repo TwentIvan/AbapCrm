@@ -12,6 +12,7 @@ import { OrganizationProvider } from "@/contexts/organization-context";
 import { ProtectedRoute } from "./lib/protected-route";
 
 import AuthPage from "@/pages/auth-page";
+import ResetPasswordPage from "@/pages/reset-password-page";
 import DashboardPage from "@/pages/dashboard-page";
 import OrganizationsPage from "@/pages/organizations-page";
 import ProjectsPage from "@/pages/projects-page";
@@ -122,6 +123,7 @@ function Router() {
       <ProtectedRoute path="/connection-workflows/:id/edit" component={ConnectionWorkflowsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/login" component={AuthPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route component={NotFound} />
     </Switch>
   );

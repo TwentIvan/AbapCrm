@@ -165,6 +165,56 @@ export class EmailService {
       return false;
     }
   }
+
+  /**
+   * Manda il link per impostare una nuova password (valido 1 ora). Senza SendGrid non manda nulla e
+   * risponde false: il link contiene il token e non va mai scritto nei log.
+   */
+  async sendResetEmail(email: string, firstName: string, token: string): Promise<boolean> {
+    if (!process.env.SENDGRID_API_KEY) {
+      console.error('[EMAIL] SendGrid non configurato: email di reset non inviata');
+      return false;
+    }
+
+    const resetLink = this.resetLink(token);
+    const msg = {
+      to: email,
+      from: this.fromEmail,
+      subject: 'Reimposta la password - The Hub Up',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <p style="color: #333; font-size: 16px;">Ciao ${firstName},</p>
+          <p style="color: #666; font-size: 16px;">
+            Hai chiesto di reimpostare la password di The Hub Up. Il link vale 1 ora.
+          </p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetLink}"
+               style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+              Imposta una nuova password
+            </a>
+          </div>
+          <p style="color: #666; font-size: 14px;">Se il pulsante non funziona, copia questo link nel browser:</p>
+          <p style="color: #007bff; word-break: break-all; font-size: 14px;">${resetLink}</p>
+          <p style="color: #999; font-size: 12px;">Se non hai chiesto tu il reset, ignora questa email: la password resta quella di prima.</p>
+        </div>
+      `,
+      text: `Ciao ${firstName},\n\nHai chiesto di reimpostare la password di The Hub Up. Il link vale 1 ora:\n${resetLink}\n\nSe non hai chiesto tu il reset, ignora questa email.`,
+    };
+
+    try {
+      await sgMail.send(msg);
+      console.log('[EMAIL] Email di reset inviata');
+      return true;
+    } catch (error) {
+      console.error('[EMAIL] Invio dell\'email di reset non riuscito:', (error as Error)?.message);
+      return false;
+    }
+  }
+
+  /** Indirizzo della pagina che imposta la nuova password. */
+  resetLink(token: string): string {
+    return `${this.baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+  }
 }
 
 export const emailService = new EmailService();

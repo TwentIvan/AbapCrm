@@ -264,28 +264,11 @@ export function setupAuth(app: Express) {
       // Save hashed reset token to database (never store raw token)
       await storage.setResetToken(user.id, hashedToken, expiryDate);
       
-      // Send reset email
+      // Email con il link per la nuova password (il token non va mai nei log)
       const userName = user.firstName || user.username || 'Utente';
-      const resetLink = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
-      
-      // Try to send email (graceful fallback if email service unavailable)
-      let emailSent = false;
-      try {
-        // Check if sendResetEmail method exists
-        if (emailService && typeof (emailService as any).sendResetEmail === 'function') {
-          emailSent = await (emailService as any).sendResetEmail(user.email, userName, resetToken);
-        } else {
-          console.log('[AUTH] Reset link generated (token masked for security)');
-          emailSent = true; // Fallback: link generated but not logged
-        }
-      } catch (emailError) {
-        console.error('[AUTH] Failed to send reset email:', emailError);
-        console.log('[AUTH] Reset link generated (token masked for security)');
-        emailSent = true; // Fallback: link generated but not logged
-      }
-
+      const emailSent = await emailService.sendResetEmail(user.email, userName, resetToken);
       if (!emailSent) {
-        console.error('[AUTH] Email service unavailable. Reset link generated (token masked for security)');
+        console.error('[AUTH] Email di reset non inviata: controlla SENDGRID_API_KEY e SENDGRID_FROM_EMAIL');
       }
 
       res.json({ message: "Se l'email esiste nel sistema, riceverai un link per il reset della password." });
