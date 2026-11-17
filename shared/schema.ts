@@ -62,6 +62,34 @@ export const organizationObligations = pgTable("organization_obligations", {
 
 export type OrganizationObligation = typeof organizationObligations.$inferSelect;
 
+// Registro delle esecuzioni di un obbligo dichiarativo: per ogni periodo adempiuto (es. "2026-Q3") chi l'ha eseguito
+// (una squadra di Botcave o una persona), com'è andata, il protocollo dell'invio e i collegamenti al risultato.
+// Scritto via API da chi esegue, nessuna AI interna. status: running | done | blocked | failed.
+export const organizationObligationRuns = pgTable("organization_obligation_runs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  obligationId: uuid("obligation_id").references(() => organizationObligations.id, { onDelete: "cascade" }).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(), // chi ha registrato l'esecuzione
+  period: text("period").notNull(), // periodo adempiuto (es. "2026-10", "2026-Q3", "2026")
+  dueDate: date("due_date", { mode: "string" }), // scadenza del periodo (YYYY-MM-DD)
+  agent: text("agent"), // es. "botcave/sviluppatore"; vuoto se eseguito a mano
+  externalRunId: text("external_run_id"), // id dell'esecuzione nel sistema esterno: rende la registrazione idempotente
+  status: text("status").notNull(),
+  outcome: text("outcome"), // esito in una riga (max 300)
+  detail: text("detail"), // dettaglio (max 20 000)
+  protocol: text("protocol"), // protocollo o ricevuta dell'invio all'ente
+  links: jsonb("links").$type<Array<{ url: string; label?: string }>>().notNull().default([]),
+  startedAt: timestamp("started_at"),
+  finishedAt: timestamp("finished_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  obligationIdx: index("organization_obligation_runs_obligation_idx").on(t.obligationId, t.createdAt),
+  externalRunIdx: uniqueIndex("organization_obligation_runs_external_run_idx").on(t.obligationId, t.externalRunId),
+}));
+
+export type OrganizationObligationRun = typeof organizationObligationRuns.$inferSelect;
+
 // ========== AI Gateway Tables ==========
 
 export const aiProviderStatusEnum = pgEnum("ai_provider_status", ["enabled", "disabled"]);
