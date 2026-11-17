@@ -60,6 +60,13 @@ import { calculateEndToComplete } from "./end-to-complete-calculator";
 import { recalculateProjectScheduleForTask } from "./project-rescheduler";
 import { assembleContext } from "./context-assembler";
 import { contextPacks } from "@shared/schema";
+import {
+  ORGANIZATION_REQUIRED_MESSAGE,
+  pickDefaultOrganizationId,
+  readOrganizationId,
+  requireOrganizationId,
+  resolveSessionOrganization,
+} from "./organization-context";
 
 // Phase 5: compute suggested model key from analytics (min 5 completed executions for taskType)
 async function computeSuggestedModelKey(organizationId: string, taskType: string): Promise<string | null> {
@@ -90,16 +97,20 @@ async function computeSuggestedModelKey(organizationId: string, taskType: string
   }
 }
 
-// Helper function to extract organizationId from request header
+// Organizzazione della richiesta (X-Organization-Id): nessuna organizzazione di ripiego fissa.
+// Senza header lancia MissingOrganizationError (status 400).
 function getOrganizationId(req: any): string {
-  const organizationId = req.headers['x-organization-id'] as string;
-  // Return default organization if header not present
-  return organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be';
+  return requireOrganizationId(req);
 }
 
-// Helper function to safely get organizationId (returns null if not present)
+// Organizzazione della richiesta, null se assente
 function getOptionalOrganizationId(req: any): string | null {
-  return req.headers['x-organization-id'] as string || null;
+  return readOrganizationId(req);
+}
+
+// Risposta delle route che richiedono un'organizzazione quando la richiesta non ne ha
+function sendOrganizationRequired(res: any) {
+  return res.status(400).json({ error: ORGANIZATION_REQUIRED_MESSAGE, code: "organization_required" });
 }
 
 // Helper function to get Personal scope from request header
@@ -499,36 +510,35 @@ export function registerRoutes(app: Express): Server {
   // Ensure a VALID organization context for authenticated requests: if the client
   // didn't send X-Organization-Id, OR sent an org the user is NOT a member of
   // (localStorage stale, org rimossa, id legacy), resolve to the user's Personal
-  // org (or first org). Unico choke point: evita proposte/entità create in org
-  // "fantasma" e quindi invisibili in ogni lista. Cache 60s per non pagare una
-  // query a richiesta.
+  // org (or first org). Se l'utente non ha organizzazioni l'header viene tolto:
+  // nessuna organizzazione di ripiego fissa, le route che la richiedono rispondono 400.
+  // Unico choke point: evita proposte/entità create in org "fantasma" e quindi
+  // invisibili in ogni lista. Cache 60s per non pagare una query a richiesta.
   const orgContextCache = new Map<string, { ids: Set<string>; fallback: string | null; ts: number }>();
   app.use(async (req: any, _res, next) => {
     // Token API: l'organizzazione l'ha già imposta o verificata il middleware del token, senza cache.
     // Token «tutte le mie organizzazioni» senza X-Organization-Id: vale il comportamento predefinito qui sotto.
     if (req.apiToken && (req.apiToken.organizationId || req.headers['x-organization-id'])) return next();
+    if (!(req.isAuthenticated?.() && req.user)) return next();
     try {
-      if (req.isAuthenticated?.() && req.user) {
-        const now = Date.now();
-        let entry = orgContextCache.get(req.user.id);
-        if (!entry || now - entry.ts > 60_000) {
-          const orgs = await storage.getUserOrganizations(req.user.id);
-          entry = {
-            ids: new Set(orgs.map((o: any) => o.id)),
-            fallback: (orgs.find((o: any) => o.name === 'Personal') || orgs[0])?.id ?? null,
-            ts: now,
-          };
-          orgContextCache.set(req.user.id, entry);
-        }
-        const hdr = req.headers['x-organization-id'] as string | undefined;
-        if ((!hdr || !entry.ids.has(hdr)) && entry.fallback) {
-          if (hdr && !entry.ids.has(hdr)) {
-            console.warn(`[ORG] header org ${hdr} non appartiene all'utente ${req.user.id} — uso ${entry.fallback}`);
-          }
-          req.headers['x-organization-id'] = entry.fallback;
-        }
+      const now = Date.now();
+      let entry = orgContextCache.get(req.user.id);
+      if (!entry || now - entry.ts > 60_000) {
+        const orgs = await storage.getUserOrganizations(req.user.id);
+        entry = { ids: new Set(orgs.map((o: any) => o.id)), fallback: pickDefaultOrganizationId(orgs), ts: now };
+        orgContextCache.set(req.user.id, entry);
       }
-    } catch { /* non-fatal — fall back to existing behavior */ }
+      const { organizationId, rejected } = resolveSessionOrganization(readOrganizationId(req), entry.ids, entry.fallback);
+      if (rejected) {
+        console.warn(`[ORG] header org ${rejected} non appartiene all'utente ${req.user.id} — uso ${organizationId ?? 'nessuna'}`);
+      }
+      if (organizationId) req.headers['x-organization-id'] = organizationId;
+      else delete req.headers['x-organization-id'];
+    } catch (error) {
+      // Organizzazione non verificabile: meglio nessuna che una non verificata.
+      console.error(`[ORG] verifica dell'organizzazione fallita per l'utente ${req.user.id}:`, error);
+      delete req.headers['x-organization-id'];
+    }
     next();
   });
 
@@ -887,7 +897,8 @@ export function registerRoutes(app: Express): Server {
   // Business Scenarios
   app.get("/api/business-scenarios", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     const scenarios = await storage.getBusinessScenariosByOrganization(organizationId);
     res.json(scenarios);
   });
@@ -2004,7 +2015,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Get tasks by project
   app.get("/api/tasks/project/:projectId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     const tasks = await storage.getTasksByProject(req.params.projectId, req.user!.id, organizationId);
     res.json(tasks);
   });
@@ -2246,7 +2258,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.get("/api/partners/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     let partner = await storage.getPartner(req.params.id, req.user!.id, organizationId);
     
     // If not found, check if this is the partner associated with the current organization
@@ -3130,7 +3143,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.get("/api/contacts/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     const contact = await storage.getContact(req.params.id, req.user!.id, organizationId);
     if (!contact) return res.sendStatus(404);
     res.json(contact);
@@ -3222,7 +3236,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.get("/api/deals/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     const deal = await storage.getDeal(req.params.id, req.user!.id, organizationId);
     if (!deal) return res.sendStatus(404);
     res.json(deal);
@@ -3299,7 +3314,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.get("/api/quotes/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     const quote = await storage.getQuote(req.params.id, req.user!.id, organizationId);
     if (!quote) return res.sendStatus(404);
     res.json(quote);
@@ -3441,7 +3457,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Quote Items
   app.get("/api/quotes/:quoteId/items", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     const items = await storage.getQuoteItems(req.params.quoteId, req.user!.id, organizationId);
     res.json(items);
   });
@@ -7661,7 +7678,7 @@ PROCESSO: <testo con punti numerati>`,
   // (reason usato SOLO per diagnosi nel 401, mai per logica).
   async function resolveHubupActor(req: any): Promise<{ actor: { userId: string; organizationId: string | null } | null; reason: string }> {
     if (req.isAuthenticated && req.isAuthenticated()) {
-      return { actor: { userId: req.user!.id, organizationId: getOrganizationId(req) }, reason: "session" };
+      return { actor: { userId: req.user!.id, organizationId: getOptionalOrganizationId(req) }, reason: "session" };
     }
     const auth = String(req.headers["authorization"] || "");
     const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
@@ -8897,7 +8914,9 @@ PROCESSO: <testo con punti numerati>`,
     } else if (req.isAuthenticated()) {
       // Autenticazione via sessione
       userId = req.user!.id;
-      organizationId = getOrganizationId(req);
+      const sessionOrgId = getOptionalOrganizationId(req);
+      if (!sessionOrgId) return sendOrganizationRequired(res);
+      organizationId = sessionOrgId;
     } else {
       return res.status(401).json({ 
         error: "Autenticazione richiesta: fornire X-API-Key header o sessione valida" 

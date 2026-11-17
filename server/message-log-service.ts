@@ -2,6 +2,7 @@ import { db } from "./db";
 import { messageLinks, messages, type InsertMessageLink, type MessageLink } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import type { Request } from "express";
+import { requireOrganizationId } from "./organization-context";
 
 interface MessageLinkContext {
   userId: string;
@@ -177,16 +178,10 @@ export class MessageLogService {
   static createContext(req: Request): MessageLinkContext {
     const user = req.user as any;
     
-    // Use the same getOrganizationId function as the routes
-    const getOrganizationId = (r: any): string => {
-      const organizationId = r.headers['x-organization-id'] as string;
-      // Return default organization if header not present
-      return organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be';
-    };
-    
     return {
       userId: user?.id,
-      organizationId: getOrganizationId(req),
+      // Un collegamento appartiene sempre a un'organizzazione: senza header errore 400, nessun ripiego fisso.
+      organizationId: requireOrganizationId(req),
       userAgent: req.get('User-Agent'),
       ipAddress: req.ip || req.connection.remoteAddress,
     };
