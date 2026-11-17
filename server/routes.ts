@@ -15,6 +15,7 @@ import { parseAgentRun, recordAgentRun, listAgentRuns, type AgentRunDeps } from 
 import { parseObligationQuery, listObligations, getObligation, type ObligationDeps } from "./organization-obligations";
 import { parseObligationRun, parseObligationRunQuery, recordObligationRun, listObligationRuns, type ObligationRunDeps } from "./obligation-runs";
 import { readProjectBrief, updateProjectBrief, type ProjectBriefDeps } from "./project-brief";
+import { LIST_SPECS, parseListQuery, sendList, invalidListQuery } from "./list-query";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { registerApiTokenRoutes } from "./api-token-routes";
@@ -1261,6 +1262,8 @@ export function registerRoutes(app: Express): Server {
   // Projects
   app.get("/api/projects", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const listQuery = parseListQuery(req.query as Record<string, unknown>, LIST_SPECS.projects);
+    if (!listQuery.ok) return res.status(400).json(invalidListQuery(listQuery.details));
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
       const currentOrgId = getOrganizationId(req);
@@ -1290,7 +1293,7 @@ export function registerRoutes(app: Express): Server {
         }
       }
       
-      res.json(allProjects);
+      sendList(res, allProjects, listQuery.query, LIST_SPECS.projects);
     } catch (error) {
       console.error("Error fetching projects:", error);
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
@@ -1770,6 +1773,8 @@ export function registerRoutes(app: Express): Server {
   // Tasks
   app.get("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const listQuery = parseListQuery(req.query as Record<string, unknown>, LIST_SPECS.tasks);
+    if (!listQuery.ok) return res.status(400).json(invalidListQuery(listQuery.details));
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
       // Alias for SAP systems table for partner-based lookup
@@ -1822,7 +1827,7 @@ export function registerRoutes(app: Express): Server {
         .leftJoin(users, eq(tasks.assignedTo, users.id))
         .where(inArray(tasks.organizationId, organizationIds))
         .orderBy(tasks.id, desc(tasks.updatedAt));
-      res.json(tasksList);
+      sendList(res, tasksList, listQuery.query, LIST_SPECS.tasks);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }
@@ -2576,6 +2581,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Partners
   app.get("/api/partners", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const listQuery = parseListQuery(req.query as Record<string, unknown>, LIST_SPECS.partners);
+    if (!listQuery.ok) return res.status(400).json(invalidListQuery(listQuery.details));
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
       const organizationId = getOrganizationId(req);
@@ -2612,7 +2619,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         }
       }
       
-      res.json(partnersList);
+      sendList(res, partnersList, listQuery.query, LIST_SPECS.partners);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }
@@ -3320,6 +3327,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Contacts
   app.get("/api/contacts", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const listQuery = parseListQuery(req.query as Record<string, unknown>, LIST_SPECS.contacts);
+    if (!listQuery.ok) return res.status(400).json(invalidListQuery(listQuery.details));
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
       const contactsList = await db.select().from(contacts)
@@ -3327,7 +3336,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
           eq(contacts.userId, req.user!.id),
           inArray(contacts.organizationId, organizationIds)
         ));
-      res.json(contactsList);
+      sendList(res, contactsList, listQuery.query, LIST_SPECS.contacts);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }
@@ -5473,10 +5482,12 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Get all proposals for current organization
   app.get("/api/proposals", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const listQuery = parseListQuery(req.query as Record<string, unknown>, LIST_SPECS.proposals);
+    if (!listQuery.ok) return res.status(400).json(invalidListQuery(listQuery.details));
     try {
       const organizationId = getOrganizationId(req);
       const proposals = await storage.getProposals(req.user!.id, organizationId);
-      res.json(proposals);
+      sendList(res, proposals, listQuery.query, LIST_SPECS.proposals);
     } catch (error) {
       console.error("Get proposals error:", error);
       res.status(500).json({ error: "Failed to get proposals" });
