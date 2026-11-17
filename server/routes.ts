@@ -18,6 +18,7 @@ import { readProjectBrief, updateProjectBrief, type ProjectBriefDeps } from "./p
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { registerApiTokenRoutes } from "./api-token-routes";
+import { registerOpenApiRoute } from "./openapi";
 import { storage } from "./storage";
 import { proposalDiscussionContext } from "./proposal-discussion-context";
 import { db } from "./db";
@@ -600,6 +601,9 @@ export function registerRoutes(app: Express): Server {
 
   // Token API personali (gestione dall'account, solo con la sessione)
   registerApiTokenRoutes(app, storage);
+
+  // Contratto OpenAPI delle route aperte ai token (calcolato alla prima richiesta, a route tutte registrate)
+  registerOpenApiRoute(app);
 
   // Health check endpoint for debugging
   app.get('/api/__health', (req, res) => {
