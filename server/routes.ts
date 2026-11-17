@@ -4330,6 +4330,35 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     res.json(message);
   });
 
+  // «Analizza progetto» con l'agente Botcave: messaggio, allegati, anagrafica dell'organizzazione e proposte esistenti
+  // in una sola lettura, senza AI. La proposta l'agente la scrive con POST /api/messages/:id/proposals.
+  app.get("/api/messages/:id/project-analysis", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const maxChars = parseMaxChars(req.query.maxChars);
+    if (maxChars === null) return res.status(400).json({ error: "maxChars non valido: intero da 1 a 100000" });
+    try {
+      const userId = req.user!.id;
+      const context = await buildProjectAnalysisContext(
+        {
+          getMessage: (id) => storage.getMessage(id, userId),
+          analysisText: (message) => extractAnalysisText(message),
+          attachmentText: (messageId, filename) => AttachmentsService.extractTextContent(messageId, filename),
+          projects: (organizationId) => storage.getProjects(userId, organizationId),
+          partners: (organizationId) => storage.getPartners(userId, organizationId),
+          contacts: (organizationId) => storage.getContacts(userId, organizationId),
+          tasks: (organizationId) => storage.getTasks(userId, organizationId),
+          proposals: (messageId) => storage.getProposalsByMessage(messageId, userId),
+        },
+        { organizationIds: await getOrganizationIdsForFilter(req), messageId: req.params.id, maxChars },
+      );
+      if (!context) return res.status(404).json({ error: "messaggio non trovato" });
+      res.json(context);
+    } catch (error) {
+      console.error("Project analysis context error:", error);
+      res.status(500).json({ error: "Failed to build project analysis context" });
+    }
+  });
+
   app.get("/api/messages/:id/rendered", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
@@ -4753,35 +4782,6 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Apply suggestion error:", error);
       res.status(500).json({ error: "Failed to apply suggestion" });
-    }
-  });
-
-  // «Analizza progetto» con l'agente Botcave: messaggio, allegati, anagrafica dell'organizzazione e proposte esistenti
-  // in una sola lettura, senza AI. La proposta l'agente la scrive con POST /api/messages/:id/proposals.
-  app.get("/api/messages/:id/project-analysis", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    const maxChars = parseMaxChars(req.query.maxChars);
-    if (maxChars === null) return res.status(400).json({ error: "maxChars non valido: intero da 1 a 100000" });
-    try {
-      const userId = req.user!.id;
-      const context = await buildProjectAnalysisContext(
-        {
-          getMessage: (id) => storage.getMessage(id, userId),
-          analysisText: (message) => extractAnalysisText(message),
-          attachmentText: (messageId, filename) => AttachmentsService.extractTextContent(messageId, filename),
-          projects: (organizationId) => storage.getProjects(userId, organizationId),
-          partners: (organizationId) => storage.getPartners(userId, organizationId),
-          contacts: (organizationId) => storage.getContacts(userId, organizationId),
-          tasks: (organizationId) => storage.getTasks(userId, organizationId),
-          proposals: (messageId) => storage.getProposalsByMessage(messageId, userId),
-        },
-        { organizationIds: await getOrganizationIdsForFilter(req), messageId: req.params.id, maxChars },
-      );
-      if (!context) return res.status(404).json({ error: "messaggio non trovato" });
-      res.json(context);
-    } catch (error) {
-      console.error("Project analysis context error:", error);
-      res.status(500).json({ error: "Failed to build project analysis context" });
     }
   });
 
