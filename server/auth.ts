@@ -9,6 +9,7 @@ import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { emailService } from "./email-service";
 import { createApiTokenAuth } from "./api-token-auth";
+import { sessionCookieOptions } from "./session-cookie";
 
 declare global {
   namespace Express {
@@ -70,14 +71,11 @@ export function setupAuth(app: Express) {
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
-    cookie: {
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      secure: false, // Set to true in production with HTTPS
-      httpOnly: true,
-      sameSite: 'lax', // Allow cross-origin cookies for development
-    },
+    // Secure in produzione (override con SESSION_COOKIE_SECURE), httpOnly, sameSite lax, 30 giorni
+    cookie: sessionCookieOptions(),
   };
 
+  // Un solo proxy davanti (Coolify/Traefik): X-Forwarded-Proto dice se la richiesta era HTTPS
   app.set("trust proxy", 1);
   app.use(session(sessionSettings));
   app.use(passport.initialize());
