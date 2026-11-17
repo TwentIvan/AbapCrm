@@ -3665,6 +3665,31 @@ export const aiTaskExecutions = pgTable("ai_task_executions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Registro delle esecuzioni di agenti esterni sul task (es. una squadra di Botcave): chi ha lavorato, come è
+// andata e dove trovare il risultato. Scritto via API da chi esegue, nessuna AI interna.
+// status: running | done | blocked | failed (i tre finali come l'esito dei compiti di Botcave).
+export const taskAgentRuns = pgTable("task_agent_runs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskId: uuid("task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(), // chi ha registrato l'esecuzione
+  agent: text("agent").notNull(), // es. "botcave/sviluppatore"
+  externalRunId: text("external_run_id"), // id dell'esecuzione nel sistema esterno: rende la registrazione idempotente
+  status: text("status").notNull(),
+  outcome: text("outcome"), // esito in una riga (max 300)
+  detail: text("detail"), // dettaglio (max 20 000)
+  links: jsonb("links").$type<Array<{ url: string; label?: string }>>().notNull().default([]), // PR, branch, trasporti...
+  startedAt: timestamp("started_at"),
+  finishedAt: timestamp("finished_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  taskIdx: index("task_agent_runs_task_idx").on(t.taskId, t.createdAt),
+  externalRunIdx: uniqueIndex("task_agent_runs_external_run_idx").on(t.taskId, t.externalRunId),
+}));
+
+export type TaskAgentRun = typeof taskAgentRuns.$inferSelect;
+
 // ========== DevOps Field Mappings System ==========
 // Mapping dinamico valori DevOps → campi del nostro DB
 

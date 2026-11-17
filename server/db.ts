@@ -461,6 +461,28 @@ export async function runStartupMigrations(): Promise<boolean> {
       ALTER TABLE "api_tokens" ALTER COLUMN "organization_id" DROP NOT NULL;
     `);
 
+    // Registro delle esecuzioni di agenti esterni sul task (POST/GET /api/tasks/:id/agent-runs).
+    await safeMigrate('task_agent_runs', `
+      CREATE TABLE IF NOT EXISTS "task_agent_runs" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "task_id" uuid NOT NULL REFERENCES "tasks"("id") ON DELETE CASCADE,
+        "organization_id" uuid NOT NULL REFERENCES "organizations"("id"),
+        "user_id" uuid NOT NULL REFERENCES "users"("id"),
+        "agent" text NOT NULL,
+        "external_run_id" text,
+        "status" text NOT NULL,
+        "outcome" text,
+        "detail" text,
+        "links" jsonb NOT NULL DEFAULT '[]'::jsonb,
+        "started_at" timestamp,
+        "finished_at" timestamp,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "task_agent_runs_task_idx" ON "task_agent_runs" ("task_id", "created_at");
+      CREATE UNIQUE INDEX IF NOT EXISTS "task_agent_runs_external_run_idx" ON "task_agent_runs" ("task_id", "external_run_id");
+    `);
+
     client.release();
     return true;
   } catch (error) {
