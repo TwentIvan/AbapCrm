@@ -56,6 +56,7 @@ describe("isDeniedForToken", () => {
     ["GET", "/api/sap-systems/abc/credentials/active"],
     ["GET", "/api/vpn-credentials/5"],
     ["DELETE", "/api/account/api-tokens/3"],
+    ["GET", "/api/account/api-tokens/3/writes"],
     ["POST", "/api/logout"],
     ["GET", "/API/AI/models"],
     ["GET", "/Api/Sap-Systems/x/Credentials"],

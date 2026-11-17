@@ -19,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import ApiTokenWritesDialog from "./api-token-writes-dialog";
 
 interface ApiTokenItem {
   id: number;
@@ -49,6 +50,7 @@ export default function ApiTokensCard() {
   const [allOrganizations, setAllOrganizations] = useState(false);
   const [created, setCreated] = useState<CreatedToken | null>(null);
   const [toRevoke, setToRevoke] = useState<ApiTokenItem | null>(null);
+  const [activityOf, setActivityOf] = useState<ApiTokenItem | null>(null);
 
   const { data: tokens = [], isLoading } = useQuery<ApiTokenItem[]>({
     queryKey: QUERY_KEY,
@@ -189,7 +191,10 @@ export default function ApiTokensCard() {
                   <TableCell>{formatDate(t.createdAt)}</TableCell>
                   <TableCell>{formatDate(t.expiresAt)}</TableCell>
                   <TableCell>{formatDate(t.lastUsedAt)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right space-x-2 whitespace-nowrap">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setActivityOf(t)}>
+                      Attività
+                    </Button>
                     <Button type="button" variant="outline" size="sm" onClick={() => setToRevoke(t)}>
                       Revoca
                     </Button>
@@ -200,6 +205,8 @@ export default function ApiTokensCard() {
           </Table>
         )}
       </CardContent>
+
+      <ApiTokenWritesDialog token={activityOf} orgName={orgName} onClose={() => setActivityOf(null)} />
 
       <AlertDialog open={!!toRevoke} onOpenChange={(open) => !open && setToRevoke(null)}>
         <AlertDialogContent>
