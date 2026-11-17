@@ -461,6 +461,25 @@ export async function runStartupMigrations(): Promise<boolean> {
       ALTER TABLE "api_tokens" ALTER COLUMN "organization_id" DROP NOT NULL;
     `);
 
+    // Audit delle scritture fatte con un token API (mai corpo né query string). Additiva e idempotente.
+    await safeMigrate('api_token_write_audit', `
+      CREATE TABLE IF NOT EXISTS "api_token_write_audit" (
+        "id" serial PRIMARY KEY,
+        "token_id" integer NOT NULL REFERENCES "api_tokens"("id") ON DELETE CASCADE,
+        "user_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "organization_id" uuid REFERENCES "organizations"("id") ON DELETE SET NULL,
+        "method" text NOT NULL,
+        "path" text NOT NULL,
+        "status_code" integer NOT NULL,
+        "duration_ms" integer NOT NULL,
+        "ip_address" text,
+        "user_agent" text,
+        "created_at" timestamp DEFAULT now() NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS "api_token_write_audit_token_idx" ON "api_token_write_audit" ("token_id", "id");
+      CREATE INDEX IF NOT EXISTS "api_token_write_audit_org_idx" ON "api_token_write_audit" ("organization_id", "created_at");
+    `);
+
     client.release();
     return true;
   } catch (error) {

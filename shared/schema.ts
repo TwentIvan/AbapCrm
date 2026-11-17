@@ -1325,6 +1325,28 @@ export const apiTokens = pgTable("api_tokens", {
 export type ApiTokenRow = typeof apiTokens.$inferSelect;
 export type InsertApiToken = typeof apiTokens.$inferInsert;
 
+// Audit delle scritture (POST/PUT/PATCH/DELETE) fatte con un token API: chi, cosa, con quale esito.
+// Mai il corpo della richiesta né la query string: possono contenere dati o segreti.
+export const apiTokenWriteAudit = pgTable("api_token_write_audit", {
+  id: serial("id").primaryKey(),
+  tokenId: integer("token_id").references(() => apiTokens.id, { onDelete: "cascade" }).notNull(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  // Organizzazione effettiva della richiesta (null se non determinata).
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "set null" }),
+  method: text("method").notNull(),
+  path: text("path").notNull(),
+  statusCode: integer("status_code").notNull(),
+  durationMs: integer("duration_ms").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  apiTokenWriteAuditTokenIdx: index("api_token_write_audit_token_idx").on(table.tokenId, table.id),
+  apiTokenWriteAuditOrgIdx: index("api_token_write_audit_org_idx").on(table.organizationId, table.createdAt),
+}));
+export type ApiTokenWriteAuditRow = typeof apiTokenWriteAudit.$inferSelect;
+export type InsertApiTokenWriteAudit = typeof apiTokenWriteAudit.$inferInsert;
+
 // Transport Request files (cofile and data file)
 export const transportRequestStatusEnum = pgEnum("transport_request_status", ["development", "testing", "quality", "production", "released", "imported"]);
 export const transportRequestTypeEnum = pgEnum("transport_request_type", ["workbench", "customizing", "copy", "relocate"]);

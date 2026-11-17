@@ -9,6 +9,7 @@ import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { emailService } from "./email-service";
 import { createApiTokenAuth } from "./api-token-auth";
+import { createApiTokenWriteAudit } from "./api-token-audit";
 
 declare global {
   namespace Express {
@@ -82,6 +83,10 @@ export function setupAuth(app: Express) {
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Audit delle scritture fatte con un token API: prima del middleware del token, così registra anche
+  // le scritture che quel middleware rifiuta (403, 429). La riga si scrive a risposta conclusa.
+  app.use(createApiTokenWriteAudit({ record: (entry) => storage.recordApiTokenWrite(entry) }));
 
   // Token personali `thu_…`: se presenti vincono sulla sessione (deve stare prima di ogni route)
   app.use(
