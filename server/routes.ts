@@ -2,7 +2,7 @@ import express, { type Express } from "express";
 import { sanitizeTokenPartnerUpdate, tokenContactOrganization, tokenPartnerOrganization } from "./partner-contact-scope";
 import { taskExternalRef } from "./task-external-ref";
 import { canLinkAll, canEditLink, dbLinkScopeDeps, linkOrganization } from "./message-link-scope";
-import { parseSuggestion, suggestionUpdate, SUGGESTION_TABLES } from "./message-suggestion";
+import { parseSuggestion, suggestionUpdate, SUGGESTION_TABLES, parseSuggestionRef, checkSuggestion, rejectUpdate, findLinkTo } from "./message-suggestion";
 import { isSummaryRequest, messageSummaryColumns } from "./message-list";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
@@ -4752,6 +4752,64 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Apply suggestion error:", error);
       res.status(500).json({ error: "Failed to apply suggestion" });
+    }
+  });
+
+  // Conferma del collegamento suggerito (pagina Messaggi): il messaggio resta collegato all'oggetto, il suggerimento
+  // diventa verificato e nasce il collegamento in message_links (se non c'è già). Body: { type, id } visti dal client.
+  app.post("/api/messages/:id/suggestion/confirm", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const ref = parseSuggestionRef(req.body);
+      const message = ref ? await storage.getMessage(req.params.id, req.user!.id) : undefined;
+      const check = checkSuggestion(message, ref);
+      if (!check.ok) return res.status(check.status).json({ error: check.error });
+
+      const linkOrgId = await linkOrganization(dbLinkScopeDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        messageId: req.params.id,
+        table: check.table,
+        recordId: check.suggestion.id,
+      });
+      if (!linkOrgId) return res.status(404).json({ error: "messaggio o oggetto non trovato" });
+
+      let link = findLinkTo(await MessageLogService.getMessageLinks(req.params.id), check.table, check.suggestion.id);
+      if (!link) {
+        const context = { ...MessageLogService.createContext(req), organizationId: linkOrgId };
+        link = await MessageLogService.linkMessage(req.params.id, check.table, check.suggestion.id, context, {
+          isAutomatic: true,
+          notes: check.suggestion.reason ?? undefined,
+        });
+      }
+      const updated = await storage.updateMessage(req.params.id, { isManuallyVerified: true }, req.user!.id);
+      if (!updated) return res.status(404).json({ error: "messaggio non trovato" });
+      res.json({ message: updated, link });
+    } catch (error) {
+      console.error("Confirm suggestion error:", error);
+      res.status(500).json({ error: "Failed to confirm suggestion" });
+    }
+  });
+
+  // Scarto del collegamento suggerito: via oggetto, confidenza e motivo dal messaggio. I collegamenti in message_links
+  // già confermati restano (si tolgono dal pannello collegamenti). Body: { type, id } visti dal client.
+  app.post("/api/messages/:id/suggestion/reject", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const ref = parseSuggestionRef(req.body);
+      const message = ref ? await storage.getMessage(req.params.id, req.user!.id) : undefined;
+      const check = checkSuggestion(message, ref);
+      if (!check.ok) return res.status(check.status).json({ error: check.error });
+
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      if (!message!.organizationId || !organizationIds.includes(message!.organizationId)) {
+        return res.status(404).json({ error: "messaggio non trovato" });
+      }
+      const updated = await storage.updateMessage(req.params.id, rejectUpdate(check.suggestion.type) as any, req.user!.id);
+      if (!updated) return res.status(404).json({ error: "messaggio non trovato" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Reject suggestion error:", error);
+      res.status(500).json({ error: "Failed to reject suggestion" });
     }
   });
 
