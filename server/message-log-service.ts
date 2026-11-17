@@ -1,7 +1,8 @@
 import { db } from "./db";
 import { messageLinks, messages, type InsertMessageLink, type MessageLink } from "@shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import type { Request } from "express";
+import { requireOrganizationId } from "./organization-context";
 
 interface MessageLinkContext {
   userId: string;
@@ -52,19 +53,20 @@ export class MessageLogService {
   }
 
   /**
-   * Get all messages linked to a specific entity
+   * Get all messages linked to a specific entity, only for links in the given organizations
    */
   static async getLinkedMessages(
     tableName: string,
     recordId: string,
-    organizationId: string
+    organizationIds: string[]
   ): Promise<Array<MessageLink & { message: any }>> {
+    if (organizationIds.length === 0) return [];
     try {
       const links = await db.query.messageLinks.findMany({
         where: and(
           eq(messageLinks.linkedTableName, tableName),
           eq(messageLinks.linkedRecordId, recordId),
-          eq(messageLinks.organizationId, organizationId)
+          inArray(messageLinks.organizationId, organizationIds)
         ),
         with: {
           message: {
@@ -121,12 +123,12 @@ export class MessageLogService {
   }
 
   /**
-   * Get all links for a specific message
+   * Get all links for a specific message within one organization
    */
-  static async getMessageLinks(messageId: string): Promise<MessageLink[]> {
+  static async getMessageLinks(messageId: string, organizationId: string): Promise<MessageLink[]> {
     try {
       return await db.query.messageLinks.findMany({
-        where: eq(messageLinks.messageId, messageId),
+        where: and(eq(messageLinks.messageId, messageId), eq(messageLinks.organizationId, organizationId)),
         with: {
           user: {
             columns: {
@@ -177,16 +179,10 @@ export class MessageLogService {
   static createContext(req: Request): MessageLinkContext {
     const user = req.user as any;
     
-    // Use the same getOrganizationId function as the routes
-    const getOrganizationId = (r: any): string => {
-      const organizationId = r.headers['x-organization-id'] as string;
-      // Return default organization if header not present
-      return organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be';
-    };
-    
     return {
       userId: user?.id,
-      organizationId: getOrganizationId(req),
+      // Un collegamento appartiene sempre a un'organizzazione: senza header errore 400, nessun ripiego fisso.
+      organizationId: requireOrganizationId(req),
       userAgent: req.get('User-Agent'),
       ipAddress: req.ip || req.connection.remoteAddress,
     };

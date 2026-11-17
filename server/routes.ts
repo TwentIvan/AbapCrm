@@ -1,22 +1,37 @@
 import express, { type Express } from "express";
+import { registerThuMcpRoutes } from "./thu-mcp-server";
+import { thuMcpDbDeps } from "./thu-mcp-sources";
 import { sanitizeTokenPartnerUpdate, tokenContactOrganization, tokenPartnerOrganization } from "./partner-contact-scope";
 import { taskExternalRef } from "./task-external-ref";
-import { canLinkAll, canEditLink, dbLinkScopeDeps, linkOrganization } from "./message-link-scope";
-import { parseSuggestion, suggestionUpdate, SUGGESTION_TABLES } from "./message-suggestion";
-import { isSummaryRequest, messageSummaryColumns } from "./message-list";
+import { commentCreateInput, commentUpdateInput } from "./comment-input";
+import {
+  canEditLink, dbLinkScopeDeps, linkAllOrganization, linkOrganization, linkedRecordOrganizations, linksInScope, messageOrganization,
+} from "./message-link-scope";
+import { parseSuggestion, suggestionUpdate, SUGGESTION_TABLES, parseSuggestionRef, checkSuggestion, rejectUpdate, findLinkTo } from "./message-suggestion";
+import { parseExternalProposal, createExternalProposal } from "./external-proposal";
+import { parseProposalUpdate, updatePendingProposal } from "./proposal-update";
+import { isSummaryRequest, messageListConditions, messageSummaryColumns, parseMessageListFilters } from "./message-list";
+import { parseAgentRun, recordAgentRun, listAgentRuns, type AgentRunDeps } from "./task-agent-runs";
+import { parseObligationQuery, listObligations, getObligation, type ObligationDeps } from "./organization-obligations";
+import { parseObligationRun, parseObligationRunQuery, recordObligationRun, listObligationRuns, type ObligationRunDeps } from "./obligation-runs";
+import { readProjectBrief, updateProjectBrief, type ProjectBriefDeps } from "./project-brief";
+import { LIST_SPECS, parseListQuery, sendList, invalidListQuery } from "./list-query";
+import { obligationAutomation, parseDueQuery, dueObligations, advanceAfterRun, type AutomationDeps, type DueDeps, type AdvanceDeps } from "./obligation-automation";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { registerApiTokenRoutes } from "./api-token-routes";
+import { registerOpenApiRoute } from "./openapi";
 import { storage } from "./storage";
+import { proposalDiscussionContext } from "./proposal-discussion-context";
 import { db } from "./db";
-import { sql, inArray, eq, and, or, desc, asc, isNull, aliasedTable } from "drizzle-orm";
+import { sql, inArray, eq, and, or, desc, asc, isNull, aliasedTable, gte, lte } from "drizzle-orm";
 import { generateVPNAutomationScript, discoverVPNConnections, discoverAvailableVPNSoftware, testVPNConnection } from "./vpn-automation";
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
 import { 
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, insertContactSchema,
   insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema,
-  insertMessageSchema, insertCommentSchema, insertMessageLinkSchema, insertEmailConfigSchema, insertTimesheetSchema,
+  insertMessageSchema, insertMessageLinkSchema, insertEmailConfigSchema, insertTimesheetSchema,
   insertSalesOrderSchema, insertSalesOrderItemSchema, insertRateAgreementSchema, insertQuoteSchema, insertQuoteItemSchema,
   insertHumanResourceSchema, insertSapSystemSchema, insertSapSystemCredentialsSchema,
   insertVpnConnectionSchema, insertVpnCredentialsSchema, insertTransportRequestSchema,
@@ -34,7 +49,7 @@ import {
   projects, tasks, partners, contacts, projectContacts, notifications, workflows, messages, deals, calendarEvents, salesOrders, rateAgreements, quotes, quoteItems,
   humanResources, sapSystems, systemCredentials, timesheets, comments, proposals, projectShares,
   projectAssignments, projectMilestones, purchaseOrders, vendorInvoices, users, organizations,
-  customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions,
+  customEntities, customFields, sapTransportRequests, timeEntries, aiAbapPatterns, aiTaskExecutions, taskAgentRuns,
   dashboardWidgetTemplates, insertDashboardWidgetTemplateSchema,
   skillCatalog, insertSkillCatalogSchema,
   resourceSkills, resourceAvailability,
@@ -47,19 +62,28 @@ import {
   proposalDiscussions
 } from "@shared/schema";
 import { extractAnalysisText } from "./message-text";
+import { buildProjectAnalysisContext, parseMaxChars } from "./project-analysis-context";
 import { initializeEmailService, getEmailService } from "./imap-service";
 import { AuditService } from "./audit-service";
 import { MessageLogService } from "./message-log-service";
 import { gmailService } from "./gmail-service";
 import { AttachmentsService } from "./attachments-service";
+import { resolveAttachmentText } from "./attachment-text";
 import { EmailForwardCleaner } from './email-forward-cleaner';
 import { CustomMetadataService } from "./custom-metadata-service";
 import { PdfService } from "./pdf-service";
 import { ObjectStorageService } from "./objectStorage";
 import { calculateEndToComplete } from "./end-to-complete-calculator";
 import { recalculateProjectScheduleForTask } from "./project-rescheduler";
-import { assembleContext } from "./context-assembler";
-import { contextPacks } from "@shared/schema";
+import { assembleContextInScope } from "./context-assembler";
+import { contextPacks, organizationObligations, organizationObligationRuns } from "@shared/schema";
+import {
+  ORGANIZATION_REQUIRED_MESSAGE,
+  pickDefaultOrganizationId,
+  readOrganizationId,
+  requireOrganizationId,
+  resolveSessionOrganization,
+} from "./organization-context";
 
 // Phase 5: compute suggested model key from analytics (min 5 completed executions for taskType)
 async function computeSuggestedModelKey(organizationId: string, taskType: string): Promise<string | null> {
@@ -90,16 +114,20 @@ async function computeSuggestedModelKey(organizationId: string, taskType: string
   }
 }
 
-// Helper function to extract organizationId from request header
+// Organizzazione della richiesta (X-Organization-Id): nessuna organizzazione di ripiego fissa.
+// Senza header lancia MissingOrganizationError (status 400).
 function getOrganizationId(req: any): string {
-  const organizationId = req.headers['x-organization-id'] as string;
-  // Return default organization if header not present
-  return organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be';
+  return requireOrganizationId(req);
 }
 
-// Helper function to safely get organizationId (returns null if not present)
+// Organizzazione della richiesta, null se assente
 function getOptionalOrganizationId(req: any): string | null {
-  return req.headers['x-organization-id'] as string || null;
+  return readOrganizationId(req);
+}
+
+// Risposta delle route che richiedono un'organizzazione quando la richiesta non ne ha
+function sendOrganizationRequired(res: any) {
+  return res.status(400).json({ error: ORGANIZATION_REQUIRED_MESSAGE, code: "organization_required" });
 }
 
 // Helper function to get Personal scope from request header
@@ -496,39 +524,42 @@ function getEffectiveDailyHours(availability: Array<{ weeklyHours: number; effec
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
+  // Server MCP di The Hub Up per gli strumenti SAP: solo con token, prima dell'organizzazione di ripiego
+  // (con un token «tutte le mie organizzazioni» l'organizzazione va indicata, mai indovinata).
+  registerThuMcpRoutes(app, thuMcpDbDeps);
+
   // Ensure a VALID organization context for authenticated requests: if the client
   // didn't send X-Organization-Id, OR sent an org the user is NOT a member of
   // (localStorage stale, org rimossa, id legacy), resolve to the user's Personal
-  // org (or first org). Unico choke point: evita proposte/entità create in org
-  // "fantasma" e quindi invisibili in ogni lista. Cache 60s per non pagare una
-  // query a richiesta.
+  // org (or first org). Se l'utente non ha organizzazioni l'header viene tolto:
+  // nessuna organizzazione di ripiego fissa, le route che la richiedono rispondono 400.
+  // Unico choke point: evita proposte/entità create in org "fantasma" e quindi
+  // invisibili in ogni lista. Cache 60s per non pagare una query a richiesta.
   const orgContextCache = new Map<string, { ids: Set<string>; fallback: string | null; ts: number }>();
   app.use(async (req: any, _res, next) => {
     // Token API: l'organizzazione l'ha già imposta o verificata il middleware del token, senza cache.
     // Token «tutte le mie organizzazioni» senza X-Organization-Id: vale il comportamento predefinito qui sotto.
     if (req.apiToken && (req.apiToken.organizationId || req.headers['x-organization-id'])) return next();
+    if (!(req.isAuthenticated?.() && req.user)) return next();
     try {
-      if (req.isAuthenticated?.() && req.user) {
-        const now = Date.now();
-        let entry = orgContextCache.get(req.user.id);
-        if (!entry || now - entry.ts > 60_000) {
-          const orgs = await storage.getUserOrganizations(req.user.id);
-          entry = {
-            ids: new Set(orgs.map((o: any) => o.id)),
-            fallback: (orgs.find((o: any) => o.name === 'Personal') || orgs[0])?.id ?? null,
-            ts: now,
-          };
-          orgContextCache.set(req.user.id, entry);
-        }
-        const hdr = req.headers['x-organization-id'] as string | undefined;
-        if ((!hdr || !entry.ids.has(hdr)) && entry.fallback) {
-          if (hdr && !entry.ids.has(hdr)) {
-            console.warn(`[ORG] header org ${hdr} non appartiene all'utente ${req.user.id} — uso ${entry.fallback}`);
-          }
-          req.headers['x-organization-id'] = entry.fallback;
-        }
+      const now = Date.now();
+      let entry = orgContextCache.get(req.user.id);
+      if (!entry || now - entry.ts > 60_000) {
+        const orgs = await storage.getUserOrganizations(req.user.id);
+        entry = { ids: new Set(orgs.map((o: any) => o.id)), fallback: pickDefaultOrganizationId(orgs), ts: now };
+        orgContextCache.set(req.user.id, entry);
       }
-    } catch { /* non-fatal — fall back to existing behavior */ }
+      const { organizationId, rejected } = resolveSessionOrganization(readOrganizationId(req), entry.ids, entry.fallback);
+      if (rejected) {
+        console.warn(`[ORG] header org ${rejected} non appartiene all'utente ${req.user.id} — uso ${organizationId ?? 'nessuna'}`);
+      }
+      if (organizationId) req.headers['x-organization-id'] = organizationId;
+      else delete req.headers['x-organization-id'];
+    } catch (error) {
+      // Organizzazione non verificabile: meglio nessuna che una non verificata.
+      console.error(`[ORG] verifica dell'organizzazione fallita per l'utente ${req.user.id}:`, error);
+      delete req.headers['x-organization-id'];
+    }
     next();
   });
 
@@ -572,6 +603,9 @@ export function registerRoutes(app: Express): Server {
 
   // Token API personali (gestione dall'account, solo con la sessione)
   registerApiTokenRoutes(app, storage);
+
+  // Contratto OpenAPI delle route aperte ai token (calcolato alla prima richiesta, a route tutte registrate)
+  registerOpenApiRoute(app);
 
   // Health check endpoint for debugging
   app.get('/api/__health', (req, res) => {
@@ -843,6 +877,256 @@ export function registerRoutes(app: Express): Server {
     res.json(organization);
   });
 
+  // Obblighi dichiarativi delle organizzazioni nel perimetro della richiesta (sessione o token), in sola lettura.
+  // Filtri: ?organizationId (nel perimetro, altrimenti 404), ?active=true|false|all, ?frequency, ?dueFrom, ?dueTo
+  // (prossima scadenza, YYYY-MM-DD compresi). Ordine: prossima scadenza (senza scadenza in fondo), poi nome.
+  const obligationDeps: ObligationDeps = {
+    list: (f) =>
+      db
+        .select()
+        .from(organizationObligations)
+        .where(
+          and(
+            inArray(organizationObligations.organizationId, f.organizationIds),
+            f.active === undefined ? undefined : eq(organizationObligations.active, f.active),
+            f.frequency ? eq(organizationObligations.frequency, f.frequency) : undefined,
+            f.dueFrom ? gte(organizationObligations.nextDueDate, f.dueFrom) : undefined,
+            f.dueTo ? lte(organizationObligations.nextDueDate, f.dueTo) : undefined,
+          ),
+        )
+        .orderBy(sql`${organizationObligations.nextDueDate} asc nulls last`, asc(organizationObligations.name)),
+    async findById(id) {
+      const [row] = await db.select().from(organizationObligations).where(eq(organizationObligations.id, id)).limit(1);
+      return row ?? null;
+    },
+  };
+
+  app.get("/api/obligations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const parsed = parseObligationQuery(req.query);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+      const result = await listObligations(obligationDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        query: parsed.value,
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("List organization obligations error:", error);
+      res.status(500).json({ error: "Failed to list obligations" });
+    }
+  });
+
+  // Obblighi automatizzati dalla squadra Botcave: l'agenda (obblighi attivi da adempiere entro ?withinDays, scaduti
+  // compresi, senza quelli già fatti salvo ?includeDone=true) e il pacchetto di un obbligo con la readiness. Solo
+  // lettura, nessuna AI; l'esito va in POST /api/obligations/:id/runs. Registrata prima di /:id.
+  const dueDeps: DueDeps = {
+    activeDueBy: (organizationIds, dueTo) =>
+      db
+        .select()
+        .from(organizationObligations)
+        .where(
+          and(
+            inArray(organizationObligations.organizationId, organizationIds),
+            eq(organizationObligations.active, true),
+            lte(organizationObligations.nextDueDate, dueTo),
+          ),
+        )
+        .orderBy(asc(organizationObligations.nextDueDate), asc(organizationObligations.name)),
+    runsFor: (obligationIds) =>
+      db
+        .select()
+        .from(organizationObligationRuns)
+        .where(inArray(organizationObligationRuns.obligationId, obligationIds))
+        .orderBy(desc(organizationObligationRuns.createdAt)),
+  };
+
+  app.get("/api/obligations/due", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const parsed = parseDueQuery(req.query);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+      const result = await dueObligations(dueDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        query: parsed.value,
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("List due obligations error:", error);
+      res.status(500).json({ error: "Failed to list due obligations" });
+    }
+  });
+
+  const automationDeps: AutomationDeps = {
+    findObligation: (id) => obligationDeps.findById(id) as ReturnType<AutomationDeps["findObligation"]>,
+    runsForDue: (obligationId, dueDate) =>
+      db
+        .select()
+        .from(organizationObligationRuns)
+        .where(and(eq(organizationObligationRuns.obligationId, obligationId), eq(organizationObligationRuns.dueDate, dueDate)))
+        .orderBy(desc(organizationObligationRuns.createdAt)),
+    recentRuns: (obligationId, limit) =>
+      db
+        .select()
+        .from(organizationObligationRuns)
+        .where(eq(organizationObligationRuns.obligationId, obligationId))
+        .orderBy(desc(organizationObligationRuns.createdAt))
+        .limit(limit),
+  };
+
+  app.get("/api/obligations/:id/automation", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const result = await obligationAutomation(automationDeps, {
+        id: req.params.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Obligation automation package error:", error);
+      res.status(500).json({ error: "Failed to get obligation automation package" });
+    }
+  });
+
+  app.get("/api/obligations/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const result = await getObligation(obligationDeps, {
+        id: req.params.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Get organization obligation error:", error);
+      res.status(500).json({ error: "Failed to get obligation" });
+    }
+  });
+
+  // Registro delle esecuzioni di un obbligo (es. la LIPE del 2026-Q3 inviata da una squadra di Botcave), scritto da
+  // chi esegue: nessuna AI interna. Corpo { period, status, outcome?, detail?, agent?, externalRunId?, dueDate?,
+  // protocol?, links?, startedAt?, finishedAt? }; con externalRunId la registrazione è idempotente.
+  const obligationRunDeps: ObligationRunDeps = {
+    async obligation(id) {
+      const [row] = await db
+        .select({
+          organizationId: organizationObligations.organizationId,
+          active: organizationObligations.active,
+          nextDueDate: organizationObligations.nextDueDate,
+        })
+        .from(organizationObligations)
+        .where(eq(organizationObligations.id, id))
+        .limit(1);
+      return row ?? null;
+    },
+    async findByExternalId(obligationId, externalRunId) {
+      const [row] = await db
+        .select()
+        .from(organizationObligationRuns)
+        .where(
+          and(
+            eq(organizationObligationRuns.obligationId, obligationId),
+            eq(organizationObligationRuns.externalRunId, externalRunId),
+          ),
+        )
+        .limit(1);
+      return row ?? null;
+    },
+    async insert(row) {
+      const [created] = await db
+        .insert(organizationObligationRuns)
+        .values(row as typeof organizationObligationRuns.$inferInsert)
+        .onConflictDoNothing()
+        .returning();
+      return created ?? null;
+    },
+    async update(id, values) {
+      // Un'esecuzione conclusa non torna running, anche se due aggiornamenti arrivano insieme
+      const [updated] = await db
+        .update(organizationObligationRuns)
+        .set(values)
+        .where(
+          and(
+            eq(organizationObligationRuns.id, id),
+            values.status === "running" ? eq(organizationObligationRuns.status, "running") : undefined,
+          ),
+        )
+        .returning();
+      return updated ?? null;
+    },
+    list: (obligationId, q) =>
+      db
+        .select()
+        .from(organizationObligationRuns)
+        .where(
+          and(
+            eq(organizationObligationRuns.obligationId, obligationId),
+            q.period ? eq(organizationObligationRuns.period, q.period) : undefined,
+            q.status ? eq(organizationObligationRuns.status, q.status) : undefined,
+          ),
+        )
+        .orderBy(desc(organizationObligationRuns.createdAt)),
+  };
+
+  const obligationAdvanceDeps: AdvanceDeps = {
+    async advance(obligationId, from, to) {
+      const rows = await db
+        .update(organizationObligations)
+        .set({ nextDueDate: to, updatedAt: new Date() })
+        .where(and(eq(organizationObligations.id, obligationId), eq(organizationObligations.nextDueDate, from)))
+        .returning({ id: organizationObligations.id });
+      return rows.length > 0;
+    },
+  };
+
+  app.post("/api/obligations/:id/runs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const parsed = parseObligationRun(req.body);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+      const result = await recordObligationRun(obligationRunDeps, {
+        obligationId: req.params.id,
+        userId: req.user!.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+        run: parsed.value,
+      });
+      // Un'esecuzione done per la scadenza in corso fa avanzare la prossima scadenza secondo la frequenza
+      if (result.status === 200 || result.status === 201) {
+        const ob = await obligationDeps.findById(req.params.id);
+        if (ob) {
+          const advanced = await advanceAfterRun(obligationAdvanceDeps, {
+            obligationId: req.params.id,
+            frequency: String(ob.frequency),
+            nextDueDate: (ob.nextDueDate as string | null) ?? null,
+            run: { status: result.body.status, dueDate: (result.body.dueDate as string | null | undefined) ?? null },
+          });
+          if (advanced !== undefined) res.setHeader("X-Obligation-Next-Due-Date", advanced ?? "none");
+        }
+      }
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Record obligation run error:", error);
+      res.status(500).json({ error: "Failed to record obligation run" });
+    }
+  });
+
+  // Esecuzioni registrate per l'obbligo, dalla più recente; filtri ?period e ?status
+  app.get("/api/obligations/:id/runs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const parsed = parseObligationRunQuery(req.query);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+      const result = await listObligationRuns(obligationRunDeps, {
+        obligationId: req.params.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+        query: parsed.value,
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("List obligation runs error:", error);
+      res.status(500).json({ error: "Failed to list obligation runs" });
+    }
+  });
+
   app.post("/api/organizations", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
@@ -887,7 +1171,8 @@ export function registerRoutes(app: Express): Server {
   // Business Scenarios
   app.get("/api/business-scenarios", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     const scenarios = await storage.getBusinessScenariosByOrganization(organizationId);
     res.json(scenarios);
   });
@@ -1073,6 +1358,8 @@ export function registerRoutes(app: Express): Server {
   // Projects
   app.get("/api/projects", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const listQuery = parseListQuery(req.query as Record<string, unknown>, LIST_SPECS.projects);
+    if (!listQuery.ok) return res.status(400).json(invalidListQuery(listQuery.details));
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
       const currentOrgId = getOrganizationId(req);
@@ -1102,7 +1389,7 @@ export function registerRoutes(app: Express): Server {
         }
       }
       
-      res.json(allProjects);
+      sendList(res, allProjects, listQuery.query, LIST_SPECS.projects);
     } catch (error) {
       console.error("Error fetching projects:", error);
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
@@ -1155,6 +1442,84 @@ export function registerRoutes(app: Express): Server {
       res.json(project);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // Brief del progetto aggiornato dall'agente Botcave dopo ogni esecuzione: lettura (brief, decisioni e task
+  // cambiati dall'ultimo aggiornamento) e scrittura nel context pack, nelle organizzazioni della richiesta
+  // (anche con token; fuori perimetro 404). Nessuna AI interna. Con un token l'autore è "agent".
+  const projectBriefDeps: ProjectBriefDeps = {
+    getProject: async (id) => {
+      const [row] = await db
+        .select({ id: projects.id, organizationId: projects.organizationId, name: projects.name })
+        .from(projects)
+        .where(eq(projects.id, id))
+        .limit(1);
+      return row ?? null;
+    },
+    getPack: async (organizationId, projectId) => {
+      const [row] = await db
+        .select()
+        .from(contextPacks)
+        .where(and(
+          eq(contextPacks.organizationId, organizationId),
+          eq(contextPacks.scopeType, "project"),
+          eq(contextPacks.scopeId, projectId),
+        ))
+        .limit(1);
+      return row ?? null;
+    },
+    getChangedTasks: (projectId, since, limit) =>
+      db
+        .select({ id: tasks.id, projectId: tasks.projectId, title: tasks.title, status: tasks.status, updatedAt: tasks.updatedAt })
+        .from(tasks)
+        .where(since ? and(eq(tasks.projectId, projectId), sql`${tasks.updatedAt} > ${since}`) : eq(tasks.projectId, projectId))
+        .orderBy(desc(tasks.updatedAt))
+        .limit(limit),
+    getTask: async (id) => {
+      const [row] = await db.select({ id: tasks.id, projectId: tasks.projectId }).from(tasks).where(eq(tasks.id, id)).limit(1);
+      return row ?? null;
+    },
+    savePack: async (organizationId, projectId, existingId, values) => {
+      if (existingId) {
+        const [row] = await db.update(contextPacks).set(values).where(eq(contextPacks.id, existingId)).returning();
+        return row;
+      }
+      const [row] = await db
+        .insert(contextPacks)
+        .values({ organizationId, scopeType: "project", scopeId: projectId, glossary: {}, ...values })
+        .returning();
+      return row;
+    },
+  };
+
+  app.get("/api/projects/:id/brief", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const result = await readProjectBrief(projectBriefDeps, {
+        projectId: req.params.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Get project brief error:", error);
+      res.status(500).json({ error: "Failed to read project brief" });
+    }
+  });
+
+  app.put("/api/projects/:id/brief", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const result = await updateProjectBrief(projectBriefDeps, {
+        projectId: req.params.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+        body: req.body,
+        updatedBy: req.apiToken ? "agent" : req.user!.id,
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Update project brief error:", error);
+      res.status(500).json({ error: "Failed to update project brief" });
     }
   });
 
@@ -1504,6 +1869,8 @@ export function registerRoutes(app: Express): Server {
   // Tasks
   app.get("/api/tasks", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const listQuery = parseListQuery(req.query as Record<string, unknown>, LIST_SPECS.tasks);
+    if (!listQuery.ok) return res.status(400).json(invalidListQuery(listQuery.details));
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
       // Alias for SAP systems table for partner-based lookup
@@ -1556,7 +1923,7 @@ export function registerRoutes(app: Express): Server {
         .leftJoin(users, eq(tasks.assignedTo, users.id))
         .where(inArray(tasks.organizationId, organizationIds))
         .orderBy(tasks.id, desc(tasks.updatedAt));
-      res.json(tasksList);
+      sendList(res, tasksList, listQuery.query, LIST_SPECS.tasks);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }
@@ -1574,6 +1941,77 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Registro dell'esito delle esecuzioni di agenti esterni sul task (es. una squadra di Botcave), scritto da chi
+  // esegue: nessuna AI interna. Corpo { agent, status, outcome?, detail?, externalRunId?, links?, startedAt?, finishedAt? }.
+  const agentRunDeps: AgentRunDeps & { list(taskId: string): Promise<any[]> } = {
+    taskOrg: (taskId) => dbLinkScopeDeps.recordOrg("tasks", taskId),
+    async findByExternalId(taskId, externalRunId) {
+      const [row] = await db
+        .select()
+        .from(taskAgentRuns)
+        .where(and(eq(taskAgentRuns.taskId, taskId), eq(taskAgentRuns.externalRunId, externalRunId)))
+        .limit(1);
+      return row ?? null;
+    },
+    async insert(row) {
+      const [created] = await db
+        .insert(taskAgentRuns)
+        .values(row as typeof taskAgentRuns.$inferInsert)
+        .onConflictDoNothing()
+        .returning();
+      return created ?? null;
+    },
+    async update(id, values) {
+      // Un'esecuzione conclusa non torna running, anche se due aggiornamenti arrivano insieme
+      const [updated] = await db
+        .update(taskAgentRuns)
+        .set(values)
+        .where(
+          and(
+            eq(taskAgentRuns.id, id),
+            values.status === "running" ? eq(taskAgentRuns.status, "running") : undefined,
+          ),
+        )
+        .returning();
+      return updated ?? null;
+    },
+    list: (taskId) =>
+      db.select().from(taskAgentRuns).where(eq(taskAgentRuns.taskId, taskId)).orderBy(desc(taskAgentRuns.createdAt)),
+  };
+
+  app.post("/api/tasks/:id/agent-runs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const parsed = parseAgentRun(req.body);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+      const result = await recordAgentRun(agentRunDeps, {
+        taskId: req.params.id,
+        userId: req.user!.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+        run: parsed.value,
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Record task agent run error:", error);
+      res.status(500).json({ error: "Failed to record agent run" });
+    }
+  });
+
+  // Esecuzioni di agenti esterni registrate sul task, dalla più recente
+  app.get("/api/tasks/:id/agent-runs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const result = await listAgentRuns(agentRunDeps, {
+        taskId: req.params.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("List task agent runs error:", error);
+      res.status(500).json({ error: "Failed to list agent runs" });
+    }
+  });
+
   // Get connection info for a task (VPN + SAP)
   app.get("/api/tasks/:id/connection-info", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -1586,6 +2024,76 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error getting task connection info:', error);
       res.status(500).json({ error: "Failed to get connection info" });
+    }
+  });
+
+  // Esecuzione di un task ABAP con una squadra Botcave sul nodo locale: task, progetto, sistema SAP effettivo
+  // (senza host né credenziali), trasporti, commenti e readiness in una lettura, nelle organizzazioni della
+  // richiesta (anche con token). Nessuna AI, nessuna scrittura: l'esito va in POST /api/tasks/:id/agent-runs.
+  app.get("/api/tasks/:id/abap-execution", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { abapExecutionContext } = await import("./abap-execution-context");
+      const { transportRequests } = await import("@shared/schema");
+      // Solo i campi del pacchetto: host, SAProuter e credenziali non escono dal database.
+      const abapSapSystemFields = {
+        id: sapSystems.id,
+        organizationId: sapSystems.organizationId,
+        partnerId: sapSystems.partnerId,
+        name: sapSystems.name,
+        systemId: sapSystems.systemId,
+        systemType: sapSystems.systemType,
+        status: sapSystems.status,
+        systemNumber: sapSystems.systemNumber,
+        sapReleaseVersion: sapSystems.sapReleaseVersion,
+        landscapeType: sapSystems.landscapeType,
+        landscapeLevel: sapSystems.landscapeLevel,
+        connectionType: sapSystems.connectionType,
+        isActive: sapSystems.isActive,
+      };
+      const result = await abapExecutionContext(
+        {
+          getTask: async (id) => {
+            const [row] = await db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+            return row ?? null;
+          },
+          getProject: async (id) => {
+            const [row] = await db
+              .select({
+                id: projects.id,
+                organizationId: projects.organizationId,
+                name: projects.name,
+                description: projects.description,
+                clientId: projects.clientId,
+              })
+              .from(projects)
+              .where(eq(projects.id, id))
+              .limit(1);
+            return row ?? null;
+          },
+          getSapSystem: async (id) => {
+            const [row] = await db.select(abapSapSystemFields).from(sapSystems).where(eq(sapSystems.id, id)).limit(1);
+            return row ?? null;
+          },
+          getPartnerSapSystems: (partnerId) =>
+            db.select(abapSapSystemFields).from(sapSystems).where(eq(sapSystems.partnerId, partnerId)),
+          getTransports: (taskId, projectId) =>
+            db
+              .select()
+              .from(transportRequests)
+              .where(
+                projectId
+                  ? or(eq(transportRequests.taskId, taskId), eq(transportRequests.projectId, projectId))
+                  : eq(transportRequests.taskId, taskId),
+              ),
+          getComments: (taskId) => db.select().from(comments).where(eq(comments.taskId, taskId)),
+        },
+        { taskId: req.params.id, organizationIds: await getOrganizationIdsForFilter(req) },
+      );
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Get ABAP execution context error:", error);
+      res.status(500).json({ error: "Failed to build ABAP execution context" });
     }
   });
 
@@ -2004,7 +2512,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Get tasks by project
   app.get("/api/tasks/project/:projectId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     const tasks = await storage.getTasksByProject(req.params.projectId, req.user!.id, organizationId);
     res.json(tasks);
   });
@@ -2168,6 +2677,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Partners
   app.get("/api/partners", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const listQuery = parseListQuery(req.query as Record<string, unknown>, LIST_SPECS.partners);
+    if (!listQuery.ok) return res.status(400).json(invalidListQuery(listQuery.details));
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
       const organizationId = getOrganizationId(req);
@@ -2204,7 +2715,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
         }
       }
       
-      res.json(partnersList);
+      sendList(res, partnersList, listQuery.query, LIST_SPECS.partners);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }
@@ -2246,7 +2757,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.get("/api/partners/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     let partner = await storage.getPartner(req.params.id, req.user!.id, organizationId);
     
     // If not found, check if this is the partner associated with the current organization
@@ -2911,6 +3423,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Contacts
   app.get("/api/contacts", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const listQuery = parseListQuery(req.query as Record<string, unknown>, LIST_SPECS.contacts);
+    if (!listQuery.ok) return res.status(400).json(invalidListQuery(listQuery.details));
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
       const contactsList = await db.select().from(contacts)
@@ -2918,7 +3432,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
           eq(contacts.userId, req.user!.id),
           inArray(contacts.organizationId, organizationIds)
         ));
-      res.json(contactsList);
+      sendList(res, contactsList, listQuery.query, LIST_SPECS.contacts);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
     }
@@ -3130,7 +3644,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.get("/api/contacts/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     const contact = await storage.getContact(req.params.id, req.user!.id, organizationId);
     if (!contact) return res.sendStatus(404);
     res.json(contact);
@@ -3222,7 +3737,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.get("/api/deals/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     const deal = await storage.getDeal(req.params.id, req.user!.id, organizationId);
     if (!deal) return res.sendStatus(404);
     res.json(deal);
@@ -3299,7 +3815,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.get("/api/quotes/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     const quote = await storage.getQuote(req.params.id, req.user!.id, organizationId);
     if (!quote) return res.sendStatus(404);
     res.json(quote);
@@ -3441,7 +3958,8 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Quote Items
   app.get("/api/quotes/:quoteId/items", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const organizationId = getOrganizationId(req);
+    const organizationId = getOptionalOrganizationId(req);
+    if (!organizationId) return sendOrganizationRequired(res);
     const items = await storage.getQuoteItems(req.params.quoteId, req.user!.id, organizationId);
     res.json(items);
   });
@@ -3835,11 +4353,16 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
     
+    // toTriage=true: solo i messaggi da smistare; since=<ISO>: solo quelli ricevuti dopo (smistamento di Botcave)
+    const parsedFilters = parseMessageListFilters(req.query);
+    if (!parsedFilters.ok) return res.status(400).json({ error: parsedFilters.error });
+
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
       const filter = and(
         eq(messages.userId, req.user!.id),
-        inArray(messages.organizationId, organizationIds)
+        inArray(messages.organizationId, organizationIds),
+        ...messageListConditions(parsedFilters.filters)
       );
       // summary=true: solo i campi di riepilogo (lista leggera per gli inneschi di Botcave)
       const messagesList = isSummaryRequest(req.query)
@@ -4291,6 +4814,36 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Testo estratto di un allegato (Excel, CSV, TXT), per chi analizza il messaggio fuori dall'app (es. Botcave).
+  // Sessione o token API; il messaggio deve stare nel perimetro delle organizzazioni della richiesta.
+  app.get("/api/messages/:messageId/attachments/:filename/text", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const result = await resolveAttachmentText(
+        {
+          async getMessage(id) {
+            const m = await storage.getMessage(id, userId);
+            return m ? { id: m.id, organizationId: m.organizationId ?? null, attachments: m.attachments ?? null } : null;
+          },
+          async readAttachment(messageId, filename) {
+            return (await AttachmentsService.getAttachment(messageId, filename))?.data ?? null;
+          },
+        },
+        {
+          messageId: req.params.messageId,
+          filename: req.params.filename,
+          organizationIds: await getOrganizationIdsForFilter(req),
+          maxChars: req.query.maxChars,
+        },
+      );
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error('Attachment text error:', error);
+      res.status(500).json({ error: "Failed to extract attachment text" });
+    }
+  });
+
   app.get("/api/messages/unread", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const messages = await storage.getUnreadMessages(req.user!.id);
@@ -4327,6 +4880,35 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     const message = await storage.getMessage(req.params.id, req.user!.id);
     if (!message) return res.sendStatus(404);
     res.json(message);
+  });
+
+  // «Analizza progetto» con l'agente Botcave: messaggio, allegati, anagrafica dell'organizzazione e proposte esistenti
+  // in una sola lettura, senza AI. La proposta l'agente la scrive con POST /api/messages/:id/proposals.
+  app.get("/api/messages/:id/project-analysis", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const maxChars = parseMaxChars(req.query.maxChars);
+    if (maxChars === null) return res.status(400).json({ error: "maxChars non valido: intero da 1 a 100000" });
+    try {
+      const userId = req.user!.id;
+      const context = await buildProjectAnalysisContext(
+        {
+          getMessage: (id) => storage.getMessage(id, userId),
+          analysisText: (message) => extractAnalysisText(message),
+          attachmentText: (messageId, filename) => AttachmentsService.extractTextContent(messageId, filename),
+          projects: (organizationId) => storage.getProjects(userId, organizationId),
+          partners: (organizationId) => storage.getPartners(userId, organizationId),
+          contacts: (organizationId) => storage.getContacts(userId, organizationId),
+          tasks: (organizationId) => storage.getTasks(userId, organizationId),
+          proposals: (messageId) => storage.getProposalsByMessage(messageId, userId),
+        },
+        { organizationIds: await getOrganizationIdsForFilter(req), messageId: req.params.id, maxChars },
+      );
+      if (!context) return res.status(404).json({ error: "messaggio non trovato" });
+      res.json(context);
+    } catch (error) {
+      console.error("Project analysis context error:", error);
+      res.status(500).json({ error: "Failed to build project analysis context" });
+    }
   });
 
   app.get("/api/messages/:id/rendered", async (req, res) => {
@@ -4516,12 +5098,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.post("/api/comments", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const input = commentCreateInput(req.body);
+    if ("error" in input) return res.status(400).json({ error: input.error });
     try {
-      const commentData = insertCommentSchema.parse({
-        ...req.body,
-        userId: req.user!.id
-      });
-      const comment = await storage.createComment(commentData);
+      const comment = await storage.createComment({ ...input.data, userId: req.user!.id });
       res.status(201).json(comment);
     } catch (error) {
       console.error("Comment creation error:", error);
@@ -4531,8 +5111,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.put("/api/comments/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const input = commentUpdateInput(req.body);
+    if ("error" in input) return res.status(400).json({ error: input.error });
     try {
-      const comment = await storage.updateComment(req.params.id, req.body, req.user!.id);
+      const comment = await storage.updateComment(req.params.id, input.data, req.user!.id);
       if (!comment) return res.sendStatus(404);
       res.json(comment);
     } catch (error) {
@@ -4755,6 +5337,92 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Proposta su un messaggio scritta da chi chiama (es. un agente di Botcave): nessuna AI interna
+  app.post("/api/messages/:id/proposals", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const parsed = parseExternalProposal(req.body);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+
+      const result = await createExternalProposal(
+        {
+          messageOrg: dbLinkScopeDeps.messageOrg,
+          recordOrg: dbLinkScopeDeps.recordOrg,
+          proposalsByMessage: (messageId, userId) => storage.getProposalsByMessage(messageId, userId),
+          create: (input) => storage.createProposal(input),
+        },
+        {
+          userId: req.user!.id,
+          messageId: req.params.id,
+          organizationIds: await getOrganizationIdsForFilter(req),
+          proposal: parsed.value,
+        },
+      );
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Create external proposal error:", error);
+      res.status(500).json({ error: "Failed to create proposal" });
+      }
+    });
+
+  // Conferma del collegamento suggerito (pagina Messaggi): il messaggio resta collegato all'oggetto, il suggerimento
+  // diventa verificato e nasce il collegamento in message_links (se non c'è già). Body: { type, id } visti dal client.
+  app.post("/api/messages/:id/suggestion/confirm", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const ref = parseSuggestionRef(req.body);
+      const message = ref ? await storage.getMessage(req.params.id, req.user!.id) : undefined;
+      const check = checkSuggestion(message, ref);
+      if (!check.ok) return res.status(check.status).json({ error: check.error });
+
+      const linkOrgId = await linkOrganization(dbLinkScopeDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        messageId: req.params.id,
+        table: check.table,
+        recordId: check.suggestion.id,
+      });
+      if (!linkOrgId) return res.status(404).json({ error: "messaggio o oggetto non trovato" });
+
+      let link = findLinkTo(await MessageLogService.getMessageLinks(req.params.id, linkOrgId), check.table, check.suggestion.id);
+      if (!link) {
+        const context = { ...MessageLogService.createContext(req), organizationId: linkOrgId };
+        link = await MessageLogService.linkMessage(req.params.id, check.table, check.suggestion.id, context, {
+          isAutomatic: true,
+          notes: check.suggestion.reason ?? undefined,
+        });
+      }
+      const updated = await storage.updateMessage(req.params.id, { isManuallyVerified: true }, req.user!.id);
+      if (!updated) return res.status(404).json({ error: "messaggio non trovato" });
+      res.json({ message: updated, link });
+    } catch (error) {
+      console.error("Confirm suggestion error:", error);
+      res.status(500).json({ error: "Failed to confirm suggestion" });
+    }
+  });
+
+  // Scarto del collegamento suggerito: via oggetto, confidenza e motivo dal messaggio. I collegamenti in message_links
+  // già confermati restano (si tolgono dal pannello collegamenti). Body: { type, id } visti dal client.
+  app.post("/api/messages/:id/suggestion/reject", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const ref = parseSuggestionRef(req.body);
+      const message = ref ? await storage.getMessage(req.params.id, req.user!.id) : undefined;
+      const check = checkSuggestion(message, ref);
+      if (!check.ok) return res.status(check.status).json({ error: check.error });
+
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      if (!message!.organizationId || !organizationIds.includes(message!.organizationId)) {
+        return res.status(404).json({ error: "messaggio non trovato" });
+      }
+      const updated = await storage.updateMessage(req.params.id, rejectUpdate(check.suggestion.type) as any, req.user!.id);
+      if (!updated) return res.status(404).json({ error: "messaggio non trovato" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Reject suggestion error:", error);
+      res.status(500).json({ error: "Failed to reject suggestion" });
+    }
+  });
+
   app.post("/api/messages/:id/analyze-project", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
@@ -4910,10 +5578,12 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
   // Get all proposals for current organization
   app.get("/api/proposals", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const listQuery = parseListQuery(req.query as Record<string, unknown>, LIST_SPECS.proposals);
+    if (!listQuery.ok) return res.status(400).json(invalidListQuery(listQuery.details));
     try {
       const organizationId = getOrganizationId(req);
       const proposals = await storage.getProposals(req.user!.id, organizationId);
-      res.json(proposals);
+      sendList(res, proposals, listQuery.query, LIST_SPECS.proposals);
     } catch (error) {
       console.error("Get proposals error:", error);
       res.status(500).json({ error: "Failed to get proposals" });
@@ -5471,6 +6141,68 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     }
   });
 
+  // Aggiorna una proposta in attesa e registra la discussione, scritte da chi chiama (es. un agente di Botcave):
+  // nessuna AI interna. Corpo { proposalData?, modelKey?, discussion?: [{ role, content }] }.
+  app.patch("/api/proposals/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const parsed = parseProposalUpdate(req.body);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+
+      const result = await updatePendingProposal(
+        {
+          getProposal: async (id) => {
+            const [row] = await db.select().from(proposals).where(eq(proposals.id, id)).limit(1);
+            return row ?? null;
+          },
+          recordOrg: dbLinkScopeDeps.recordOrg,
+          save: (input) =>
+            db.transaction(async (tx) => {
+              const now = new Date();
+              const [proposal] = await tx
+                .update(proposals)
+                .set({
+                  ...(input.proposalData ? { proposalData: input.proposalData } : {}),
+                  ...(input.modelKey ? { modelKey: input.modelKey } : {}),
+                  updatedAt: now,
+                })
+                .where(and(eq(proposals.id, input.proposalId), eq(proposals.status, "pending")))
+                .returning();
+              if (!proposal) return null;
+              // Un millisecondo fra una riga e l'altra: la discussione si legge ordinata per createdAt
+              const discussion = input.rows.length
+                ? await tx
+                    .insert(proposalDiscussions)
+                    .values(
+                      input.rows.map((row, i) => ({
+                        proposalId: input.proposalId,
+                        role: row.role,
+                        content: row.content,
+                        proposalDataSnapshot: row.proposalDataSnapshot,
+                        userId: input.userId,
+                        organizationId: input.organizationId,
+                        createdAt: new Date(now.getTime() + i),
+                      })),
+                    )
+                    .returning()
+                : [];
+              return { proposal, discussion };
+            }),
+        },
+        {
+          proposalId: req.params.id,
+          userId: req.user!.id,
+          organizationIds: await getOrganizationIdsForFilter(req),
+          update: parsed.value,
+        },
+      );
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Update proposal error:", error);
+      res.status(500).json({ error: "Failed to update proposal" });
+    }
+  });
+
   // Delete a proposal
   app.delete("/api/proposals/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -5506,6 +6238,47 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Get proposal discussions error:", error);
       res.status(500).json({ error: "Failed to fetch discussions" });
+    }
+  });
+
+  // Contesto per discutere la proposta nel pannello Botcave: proposta, messaggio d'origine e discussione in una
+  // lettura, nelle organizzazioni della richiesta (anche con token). Le risposte l'agente le scrive con PATCH.
+  app.get("/api/proposals/:id/discussion-context", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const result = await proposalDiscussionContext(
+        {
+          getProposal: async (id) => {
+            const [row] = await db.select().from(proposals).where(eq(proposals.id, id)).limit(1);
+            return row ?? null;
+          },
+          getMessage: async (id) => {
+            const [row] = await db
+              .select({
+                id: messages.id,
+                subject: messages.subject,
+                fromEmail: messages.fromEmail,
+                fromName: messages.fromName,
+                receivedAt: messages.receivedAt,
+              })
+              .from(messages)
+              .where(eq(messages.id, id))
+              .limit(1);
+            return row ?? null;
+          },
+          getDiscussion: (proposalId) =>
+            db
+              .select()
+              .from(proposalDiscussions)
+              .where(eq(proposalDiscussions.proposalId, proposalId))
+              .orderBy(asc(proposalDiscussions.createdAt)),
+        },
+        { proposalId: req.params.id, userId: req.user!.id, organizationIds: await getOrganizationIdsForFilter(req) },
+      );
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Get proposal discussion context error:", error);
+      res.status(500).json({ error: "Failed to fetch discussion context" });
     }
   });
 
@@ -5882,10 +6655,16 @@ PROCESSO: <testo con punti numerati>`,
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const { tableName, recordId } = req.params;
-      const organizationId = getOrganizationId(req);
-      
-      const linkedMessages = await MessageLogService.getLinkedMessages(tableName, recordId, organizationId);
-      res.json(linkedMessages);
+      // Oggetto in una delle organizzazioni della richiesta; solo collegamenti e messaggi della sua organizzazione
+      const orgIds = await linkedRecordOrganizations(dbLinkScopeDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        table: tableName,
+        recordId,
+      });
+      if (!orgIds) return res.status(404).json({ error: "oggetto non trovato" });
+
+      const linkedMessages = await MessageLogService.getLinkedMessages(tableName, recordId, orgIds);
+      res.json(linksInScope(linkedMessages, orgIds));
     } catch (error) {
       console.error("Get linked messages error:", error);
       res.status(500).json({ error: "Failed to get linked messages" });
@@ -5939,7 +6718,14 @@ PROCESSO: <testo con punti numerati>`,
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const { messageId } = req.params;
-      const links = await MessageLogService.getMessageLinks(messageId);
+      // Messaggio in una delle organizzazioni della richiesta; solo i collegamenti della sua organizzazione
+      const messageOrgId = await messageOrganization(dbLinkScopeDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        messageId,
+      });
+      if (!messageOrgId) return res.status(404).json({ error: "messaggio non trovato" });
+
+      const links = await MessageLogService.getMessageLinks(messageId, messageOrgId);
       res.json(links);
     } catch (error) {
       console.error("Get message links error:", error);
@@ -5952,10 +6738,16 @@ PROCESSO: <testo con punti numerati>`,
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const { tableName, recordId } = req.params;
-      const organizationId = getOrganizationId(req);
-      
-      const linkedMessages = await MessageLogService.getLinkedMessages(tableName, recordId, organizationId);
-      res.json(linkedMessages);
+      // Oggetto in una delle organizzazioni della richiesta; solo collegamenti e messaggi della sua organizzazione
+      const orgIds = await linkedRecordOrganizations(dbLinkScopeDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        table: tableName,
+        recordId,
+      });
+      if (!orgIds) return res.status(404).json({ error: "oggetto non trovato" });
+
+      const linkedMessages = await MessageLogService.getLinkedMessages(tableName, recordId, orgIds);
+      res.json(linksInScope(linkedMessages, orgIds));
     } catch (error) {
       console.error("Get linked messages error:", error);
       res.status(500).json({ error: "Failed to get linked messages" });
@@ -6005,7 +6797,7 @@ PROCESSO: <testo con punti numerati>`,
       const { linkId } = req.params;
       const { notes, linkType } = req.body;
 
-      if (!(await canEditLink(dbLinkScopeDeps, { organizationId: getOrganizationId(req), linkId }))) {
+      if (!(await canEditLink(dbLinkScopeDeps, { organizationIds: await getOrganizationIdsForFilter(req), linkId }))) {
         return res.status(404).json({ error: "messaggio o oggetto non trovato" });
       }
       
@@ -6027,7 +6819,7 @@ PROCESSO: <testo con punti numerati>`,
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const { linkId } = req.params;
-      if (!(await canEditLink(dbLinkScopeDeps, { organizationId: getOrganizationId(req), linkId }))) {
+      if (!(await canEditLink(dbLinkScopeDeps, { organizationIds: await getOrganizationIdsForFilter(req), linkId }))) {
         return res.status(404).json({ error: "messaggio o oggetto non trovato" });
       }
       const success = await MessageLogService.unlinkMessage(linkId, req.user!.id);
@@ -6050,12 +6842,16 @@ PROCESSO: <testo con punti numerati>`,
         return res.status(400).json({ error: "Links array is required" });
       }
 
-      // Tutto o niente: un solo collegamento fuori dall'organizzazione non ne crea nessuno
-      if (!(await canLinkAll(dbLinkScopeDeps, { organizationId: getOrganizationId(req), messageId, links }))) {
-        return res.status(404).json({ error: "messaggio o oggetto non trovato" });
-      }
-      
-      const context = MessageLogService.createContext(req);
+      // Tutto o niente: messaggio in una delle organizzazioni della richiesta e ogni oggetto nella stessa
+      // organizzazione del messaggio, altrimenti non si crea nessun collegamento
+      const linkOrgId = await linkAllOrganization(dbLinkScopeDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        messageId,
+        links,
+      });
+      if (!linkOrgId) return res.status(404).json({ error: "messaggio o oggetto non trovato" });
+
+      const context = { ...MessageLogService.createContext(req), organizationId: linkOrgId };
       const results = await MessageLogService.linkMessageBulk(messageId, links, context, isAutomatic);
       
       res.json(results);
@@ -7661,7 +8457,7 @@ PROCESSO: <testo con punti numerati>`,
   // (reason usato SOLO per diagnosi nel 401, mai per logica).
   async function resolveHubupActor(req: any): Promise<{ actor: { userId: string; organizationId: string | null } | null; reason: string }> {
     if (req.isAuthenticated && req.isAuthenticated()) {
-      return { actor: { userId: req.user!.id, organizationId: getOrganizationId(req) }, reason: "session" };
+      return { actor: { userId: req.user!.id, organizationId: getOptionalOrganizationId(req) }, reason: "session" };
     }
     const auth = String(req.headers["authorization"] || "");
     const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
@@ -8897,7 +9693,9 @@ PROCESSO: <testo con punti numerati>`,
     } else if (req.isAuthenticated()) {
       // Autenticazione via sessione
       userId = req.user!.id;
-      organizationId = getOrganizationId(req);
+      const sessionOrgId = getOptionalOrganizationId(req);
+      if (!sessionOrgId) return sendOrganizationRequired(res);
+      organizationId = sessionOrgId;
     } else {
       return res.status(401).json({ 
         error: "Autenticazione richiesta: fornire X-API-Key header o sessione valida" 
@@ -12607,11 +13405,14 @@ ISTRUZIONI:
     }
   });
 
-  // GET /api/tasks/:id/assembled-context — preview assembled context for a task
+  // GET /api/tasks/:id/assembled-context — anteprima del contesto assemblato del task,
+  // solo per un task di un'organizzazione nel perimetro della richiesta (altrimenti 404)
   app.get("/api/tasks/:id/assembled-context", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
     try {
-      const ctx = await assembleContext({ taskId: req.params.id, tokenBudget: 8000 });
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      const ctx = await assembleContextInScope({ taskId: req.params.id, tokenBudget: 8000, organizationIds });
+      if (!ctx) return res.status(404).json({ error: "Task not found" });
       return res.json(ctx);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });

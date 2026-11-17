@@ -461,6 +461,92 @@ export async function runStartupMigrations(): Promise<boolean> {
       ALTER TABLE "api_tokens" ALTER COLUMN "organization_id" DROP NOT NULL;
     `);
 
+    // Registro delle esecuzioni di agenti esterni sul task (POST/GET /api/tasks/:id/agent-runs).
+    await safeMigrate('task_agent_runs', `
+      CREATE TABLE IF NOT EXISTS "task_agent_runs" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "task_id" uuid NOT NULL REFERENCES "tasks"("id") ON DELETE CASCADE,
+        "organization_id" uuid NOT NULL REFERENCES "organizations"("id"),
+        "user_id" uuid NOT NULL REFERENCES "users"("id"),
+        "agent" text NOT NULL,
+        "external_run_id" text,
+        "status" text NOT NULL,
+        "outcome" text,
+        "detail" text,
+        "links" jsonb NOT NULL DEFAULT '[]'::jsonb,
+        "started_at" timestamp,
+        "finished_at" timestamp,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "task_agent_runs_task_idx" ON "task_agent_runs" ("task_id", "created_at");
+      CREATE UNIQUE INDEX IF NOT EXISTS "task_agent_runs_external_run_idx" ON "task_agent_runs" ("task_id", "external_run_id");
+    `);
+
+    // Obblighi dichiarativi dell'organizzazione (GET /api/obligations). Additiva e idempotente.
+    await safeMigrate('organization_obligations', `
+      CREATE TABLE IF NOT EXISTS "organization_obligations" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "organization_id" uuid NOT NULL REFERENCES "organizations"("id") ON DELETE CASCADE,
+        "code" text NOT NULL,
+        "name" text NOT NULL,
+        "description" text,
+        "authority" text,
+        "frequency" text NOT NULL,
+        "due_rule" text,
+        "next_due_date" date,
+        "active" boolean NOT NULL DEFAULT true,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS "organization_obligations_org_code_idx" ON "organization_obligations" ("organization_id", "code");
+      CREATE INDEX IF NOT EXISTS "organization_obligations_org_due_idx" ON "organization_obligations" ("organization_id", "next_due_date");
+    `);
+
+    // Registro delle esecuzioni di un obbligo (POST/GET /api/obligations/:id/runs). Additiva e idempotente.
+    await safeMigrate('organization_obligation_runs', `
+      CREATE TABLE IF NOT EXISTS "organization_obligation_runs" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "obligation_id" uuid NOT NULL REFERENCES "organization_obligations"("id") ON DELETE CASCADE,
+        "organization_id" uuid NOT NULL REFERENCES "organizations"("id"),
+        "user_id" uuid NOT NULL REFERENCES "users"("id"),
+        "period" text NOT NULL,
+        "due_date" date,
+        "agent" text,
+        "external_run_id" text,
+        "status" text NOT NULL,
+        "outcome" text,
+        "detail" text,
+        "protocol" text,
+        "links" jsonb NOT NULL DEFAULT '[]'::jsonb,
+        "started_at" timestamp,
+        "finished_at" timestamp,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "organization_obligation_runs_obligation_idx" ON "organization_obligation_runs" ("obligation_id", "created_at");
+      CREATE UNIQUE INDEX IF NOT EXISTS "organization_obligation_runs_external_run_idx" ON "organization_obligation_runs" ("obligation_id", "external_run_id");
+    `);
+
+    // Audit delle scritture fatte con un token API (mai corpo né query string). Additiva e idempotente.
+    await safeMigrate('api_token_write_audit', `
+      CREATE TABLE IF NOT EXISTS "api_token_write_audit" (
+        "id" serial PRIMARY KEY,
+        "token_id" integer NOT NULL REFERENCES "api_tokens"("id") ON DELETE CASCADE,
+        "user_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "organization_id" uuid REFERENCES "organizations"("id") ON DELETE SET NULL,
+        "method" text NOT NULL,
+        "path" text NOT NULL,
+        "status_code" integer NOT NULL,
+        "duration_ms" integer NOT NULL,
+        "ip_address" text,
+        "user_agent" text,
+        "created_at" timestamp DEFAULT now() NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS "api_token_write_audit_token_idx" ON "api_token_write_audit" ("token_id", "id");
+      CREATE INDEX IF NOT EXISTS "api_token_write_audit_org_idx" ON "api_token_write_audit" ("organization_id", "created_at");
+    `);
+
     client.release();
     return true;
   } catch (error) {

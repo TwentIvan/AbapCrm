@@ -5,7 +5,7 @@ import {
   vpnSoftware, vpnSystems, discoveredVpnSoftware, discoveredVpnConfigurations, organizations, userOrganizations, organizationInvitations,
   emailVerificationTokens, organizationDomains, emailFeedbacks, customFeedbackReasons, emailTrainingSelections, proposals,
   sapTransportRequests, sapTransportTasks, sapTransportObjects, sapObjectContent, businessScenarios, projectShares,
-  apiTokens, type ApiTokenRow,
+  apiTokens, type ApiTokenRow, apiTokenWriteAudit, type ApiTokenWriteAuditRow, type InsertApiTokenWriteAudit,
   customEntities, customFields, entityCustomValues,
   chatRooms, chatMessages, chatParticipants, chatRoomEntities,
   calendars, aiLearningPatterns, devopsFieldMappings,
@@ -79,7 +79,7 @@ import {
   taskSkillRequirements, type TaskSkillRequirement, type InsertTaskSkillRequirement
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, isNotNull, inArray, isNull, gt } from "drizzle-orm";
+import { eq, and, desc, asc, isNotNull, inArray, isNull, gt, lt } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import MemoryStore from "memorystore";
@@ -605,6 +605,9 @@ export interface IStorage {
   revokeApiToken(userId: string, id: number): Promise<boolean>;
   findActiveApiTokenByHash(hash: string, now: Date): Promise<ApiTokenRow | undefined>;
   touchApiTokenLastUsed(id: number, now: Date): Promise<void>;
+  getApiTokenOfUser(userId: string, id: number): Promise<ApiTokenRow | undefined>;
+  recordApiTokenWrite(entry: InsertApiTokenWriteAudit): Promise<void>;
+  listApiTokenWrites(tokenId: number, opts: { limit: number; beforeId?: number }): Promise<ApiTokenWriteAuditRow[]>;
 
   sessionStore: session.Store;
 }
@@ -641,6 +644,26 @@ export class DatabaseStorage implements IStorage {
 
   async touchApiTokenLastUsed(id: number, now: Date): Promise<void> {
     await db.update(apiTokens).set({ lastUsedAt: now }).where(eq(apiTokens.id, id));
+  }
+
+  /** Token dell'utente, anche revocato o scaduto (serve a consultarne l'audit). */
+  async getApiTokenOfUser(userId: string, id: number): Promise<ApiTokenRow | undefined> {
+    const [row] = await db.select().from(apiTokens)
+      .where(and(eq(apiTokens.id, id), eq(apiTokens.userId, userId)))
+      .limit(1);
+    return row;
+  }
+
+  async recordApiTokenWrite(entry: InsertApiTokenWriteAudit): Promise<void> {
+    await db.insert(apiTokenWriteAudit).values(entry);
+  }
+
+  /** Scritture del token, dalla più recente; `beforeId` per la pagina successiva. */
+  async listApiTokenWrites(tokenId: number, opts: { limit: number; beforeId?: number }): Promise<ApiTokenWriteAuditRow[]> {
+    const where = opts.beforeId
+      ? and(eq(apiTokenWriteAudit.tokenId, tokenId), lt(apiTokenWriteAudit.id, opts.beforeId))
+      : eq(apiTokenWriteAudit.tokenId, tokenId);
+    return db.select().from(apiTokenWriteAudit).where(where).orderBy(desc(apiTokenWriteAudit.id)).limit(opts.limit);
   }
 
   constructor() {

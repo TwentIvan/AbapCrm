@@ -7,14 +7,16 @@ import FormContainer, { useFormRouting } from "./form-container";
 import TaskForm from "./task-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageHistory } from "@/components/ui/message-history";
+import { CommentsPanel } from "@/components/ui/comments-panel";
 import AuditHistory from "@/components/ui/audit-history";
+import AgentRunsHistory from "@/components/ui/agent-runs-history";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Edit, MessageSquare, History, Brain, AlertTriangle, Zap, CheckCircle2, XCircle, ShieldAlert, ShieldCheck, ShieldX, Loader2, FileText, ExternalLink, CheckCheck, Wifi, Bot, User, GitBranch, AlertCircle, RotateCcw } from "lucide-react";
+import { Edit, MessageSquare, MessageSquareText, History, Brain, AlertTriangle, Zap, CheckCircle2, XCircle, ShieldAlert, ShieldCheck, ShieldX, Loader2, FileText, ExternalLink, CheckCheck, Wifi, Bot, User, GitBranch, AlertCircle, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Task } from "@shared/schema";
 
@@ -916,7 +918,7 @@ export default function TaskFormContainer({
     >
       {isEditing ? (
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="details" className="flex items-center space-x-2">
               <Edit className="h-4 w-4" />
               <span>Dettagli</span>
@@ -928,6 +930,10 @@ export default function TaskFormContainer({
             <TabsTrigger value="messages" className="flex items-center space-x-2">
               <MessageSquare className="h-4 w-4" />
               <span>Messaggi</span>
+            </TabsTrigger>
+            <TabsTrigger value="comments" className="flex items-center space-x-2" data-testid="tab-comments">
+              <MessageSquareText className="h-4 w-4" />
+              <span>Commenti</span>
             </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center space-x-2">
               <History className="h-4 w-4" />
@@ -967,7 +973,12 @@ export default function TaskFormContainer({
             />
           </TabsContent>
 
-          <TabsContent value="history" className="mt-6">
+          <TabsContent value="comments" className="mt-6">
+            <CommentsPanel target="task" recordId={(task as Task)?.id || ""} title="Commenti sul task" />
+          </TabsContent>
+
+          <TabsContent value="history" className="mt-6 space-y-6">
+            <AgentRunsHistory taskId={(task as Task)?.id || ""} />
             <AuditHistory
               tableName="tasks"
               recordId={(task as Task)?.id || ""}

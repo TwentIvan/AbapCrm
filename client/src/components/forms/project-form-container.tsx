@@ -8,13 +8,14 @@ import FormContainer, { useFormRouting } from "./form-container";
 import ProjectForm from "./project-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageHistory } from "@/components/ui/message-history";
+import { CommentsPanel } from "@/components/ui/comments-panel";
 import AuditHistory from "@/components/ui/audit-history";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Edit, MessageSquare, History, Brain, Loader2, Trash2, Save, RefreshCw } from "lucide-react";
+import { Edit, MessageSquare, MessageSquareText, History, Brain, Loader2, Trash2, Save, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Project } from "@shared/schema";
 
@@ -79,6 +80,11 @@ function ContextPackPanel({ projectId }: { projectId: string }) {
       {pack?.updatedAt && (
         <p className="text-xs text-muted-foreground">
           Ultimo aggiornamento: {new Date(pack.updatedAt).toLocaleString("it-IT")}
+          {pack.updatedBy === "agent" && (
+            <Badge variant="secondary" className="ml-2 text-[10px]" data-testid="badge-brief-agent">
+              dall'agente Botcave
+            </Badge>
+          )}
         </p>
       )}
 
@@ -132,7 +138,7 @@ function ContextPackPanel({ projectId }: { projectId: string }) {
             <div className="space-y-2 text-sm">
               {pack?.brief
                 ? <p className="whitespace-pre-wrap">{pack.brief}</p>
-                : <p className="text-muted-foreground italic">Nessun brief. L'AI aggiorna questo campo automaticamente.</p>}
+                : <p className="text-muted-foreground italic">Nessun brief. L'agente Botcave lo aggiorna dopo ogni esecuzione.</p>}
               {pack?.conventions && (
                 <>
                   <p className="text-xs font-medium text-muted-foreground mt-2">Convenzioni:</p>
@@ -308,7 +314,7 @@ export default function ProjectFormContainer({
       {isEditing ? (
         // Editing mode with tabs (details, messages, history)
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="details" className="flex items-center space-x-2">
               <Edit className="h-4 w-4" />
               <span>Dettagli</span>
@@ -320,6 +326,10 @@ export default function ProjectFormContainer({
             <TabsTrigger value="messages" className="flex items-center space-x-2">
               <MessageSquare className="h-4 w-4" />
               <span>Messaggi</span>
+            </TabsTrigger>
+            <TabsTrigger value="comments" className="flex items-center space-x-2" data-testid="tab-comments">
+              <MessageSquareText className="h-4 w-4" />
+              <span>Commenti</span>
             </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center space-x-2">
               <History className="h-4 w-4" />
@@ -347,6 +357,10 @@ export default function ProjectFormContainer({
             />
           </TabsContent>
           
+          <TabsContent value="comments" className="mt-6">
+            <CommentsPanel target="project" recordId={(project as Project)?.id || ""} title="Commenti sul progetto" />
+          </TabsContent>
+
           <TabsContent value="history" className="mt-6">
             <AuditHistory 
               tableName="projects" 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useBotcaveObjectContext } from "@/lib/botcave";
+import { openBotcavePanel, useBotcaveObjectContext } from "@/lib/botcave";
 import { AiModelPickerDialog } from "@/components/dialogs/ai-model-picker-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DOMPurify from 'dompurify';
@@ -16,10 +16,12 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CommentsPanel } from "@/components/ui/comments-panel";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
+import { FolderSearch } from "lucide-react";
 import { 
   Mail, 
   MailOpen, 
@@ -65,9 +67,11 @@ import {
   Video
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { BarChart3, TrendingUp, Database, Image, Inbox } from "lucide-react";
+import { BarChart3, TrendingUp, Database, Image, Inbox, Shuffle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Message, Project, Task, Partner } from "@shared/schema";
+import { suggestedLink, type SuggestionType } from "@shared/message-suggestion";
+import { SuggestedLinkPanel } from "@/components/messages/suggested-link-panel";
 import { format } from "date-fns";
 import MessageForm from "@/components/forms/message-form";
 import SimpleChatForm from "@/components/forms/simple-chat-form";
@@ -170,17 +174,32 @@ export default function MessagesPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  // Contesto per Botcave: un messaggio che è un work item di DevOps si presenta come tale.
+  // Contesto per Botcave: un messaggio che è un work item di DevOps si presenta come tale, gli altri come
+  // messaggio (id e oggetto), così lo Smistatore di Botcave sa quale email smistare.
   const botcaveWorkItem = (selectedMessage as any)?.externalMetadata?.workItemId as string | number | undefined;
   useBotcaveObjectContext(
-    selectedMessage && botcaveWorkItem != null
-      ? {
-          page: "workitem",
-          id: botcaveWorkItem,
-          title: (selectedMessage as any).externalMetadata?.workItemTitle ?? selectedMessage.subject,
-        }
-      : null,
+    !selectedMessage
+      ? null
+      : botcaveWorkItem != null
+        ? {
+            page: "workitem",
+            id: botcaveWorkItem,
+            title: (selectedMessage as any).externalMetadata?.workItemTitle ?? selectedMessage.subject,
+          }
+        : { page: "message", id: selectedMessage.id, title: selectedMessage.subject },
   );
+
+  // Smistamento affidato all'agente Botcave: il contesto è già il messaggio aperto, qui si apre il pannello.
+  const handleTriageWithBotcave = () => {
+    if (!selectedMessage) return;
+    if (!openBotcavePanel("alfred")) {
+      toast({
+        title: "Pannello Botcave non disponibile",
+        description: "Lo smistamento delle email lo fa l'agente Botcave: ricarica la pagina o riprova più tardi.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Reset thread content visibility when message changes
   useEffect(() => {
@@ -455,6 +474,19 @@ export default function MessagesPage() {
     },
   });
 
+  // «Analizza progetto» affidato all'agente Botcave: il messaggio aperto è già il contesto del pannello,
+  // l'agente legge GET /api/messages/:id/project-analysis e scrive la proposta. Qui si apre il pannello.
+  const handleAnalyzeWithBotcave = () => {
+    if (!selectedMessage) return;
+    if (!openBotcavePanel("alfred")) {
+      toast({
+        title: "Pannello Botcave non disponibile",
+        description: "L'analisi del progetto con Botcave richiede il pannello: ricarica la pagina o riprova più tardi.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // AI Project Agent mutations
   const analyzeProjectMutation = useMutation({
     mutationFn: async ({ messageId, modelKey }: { messageId: string; modelKey?: string }) => {
@@ -585,6 +617,12 @@ export default function MessagesPage() {
     };
     
     return fileTypes[ext] || { isImage: false, icon: '📁', type: 'File' };
+  };
+
+  const getSuggestionTargetName = (type: SuggestionType, id: string): string | undefined => {
+    if (type === 'project') return projects.find(p => p.id === id)?.name;
+    if (type === 'task') return tasks.find(t => t.id === id)?.title;
+    return partners.find(p => p.id === id)?.name;
   };
 
   const getLinkedObjectName = (message: Message) => {
@@ -919,6 +957,27 @@ export default function MessagesPage() {
                         </TooltipContent>
                       </Tooltip>
                       
+                      {/* «Analizza progetto» con l'agente Botcave */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleAnalyzeWithBotcave}
+                            disabled={!selectedMessage}
+                            variant="outline"
+                            className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-agent/30 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-agent hover:bg-agent/10 transition-all ${
+                              !selectedMessage ? 'opacity-40' : 'opacity-100'
+                            }`}
+                            aria-label="Analizza progetto con Botcave"
+                            data-testid="button-analyze-project-botcave"
+                          >
+                            <FolderSearch className="h-6 w-6 text-agent" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="bg-agent text-white">
+                          <p>{selectedMessage ? 'Analizza progetto con Botcave' : 'Apri un messaggio per analizzarlo con Botcave'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+
                       {/* THU AI Button - Header style with opacity */}
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -963,6 +1022,27 @@ export default function MessagesPage() {
                         </TooltipContent>
                       </Tooltip>
                       
+                      {/* Smistamento con l'agente Botcave */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleTriageWithBotcave}
+                            disabled={!selectedMessage}
+                            variant="outline"
+                            className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-agent/30 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-agent hover:bg-agent/10 transition-all ${
+                              !selectedMessage ? 'opacity-40' : 'opacity-100'
+                            }`}
+                            aria-label="Smista con Botcave"
+                            data-testid="button-triage-botcave"
+                          >
+                            <Shuffle className="h-6 w-6 text-agent" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="bg-agent text-white">
+                          <p>{selectedMessage ? 'Smista con Botcave' : 'Apri un messaggio per smistarlo con Botcave'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+
                       {/* Delete Selected Button */}
                       <AlertDialog>
                         <Tooltip>
@@ -1464,13 +1544,30 @@ export default function MessagesPage() {
                                         {messageProposals.length} {messageProposals.length === 1 ? 'proposta' : 'proposte'} AI
                                       </Badge>
                                     )}
-                                    {message.confidenceScore && (
-                                      <div className="text-xs font-medium">
-                                        <span className={getConfidenceColor(message.confidenceScore ? Number(message.confidenceScore) : 0)}>
-                                          Confidenza: {Math.round((message.confidenceScore ? Number(message.confidenceScore) : 0) * 100)}%
-                                        </span>
-                                      </div>
-                                    )}
+                                    {(() => {
+                                      const suggestion = suggestedLink(message);
+                                      if (suggestion && !suggestion.confirmed) {
+                                        return (
+                                          <Badge
+                                            variant="outline"
+                                            className="text-xs bg-agent/10 border-agent/30 text-agent"
+                                            data-testid={`badge-suggestion-pending-${message.id}`}
+                                          >
+                                            <Sparkles className="h-3 w-3 mr-1" />
+                                            Collegamento da confermare
+                                            {suggestion.confidence !== null && ` · ${Math.round(suggestion.confidence * 100)}%`}
+                                          </Badge>
+                                        );
+                                      }
+                                      if (!message.confidenceScore) return null;
+                                      return (
+                                        <div className="text-xs font-medium">
+                                          <span className={getConfidenceColor(Number(message.confidenceScore))}>
+                                            Confidenza: {Math.round(Number(message.confidenceScore) * 100)}%
+                                          </span>
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 </TableCell>
                                 
@@ -1594,12 +1691,20 @@ export default function MessagesPage() {
                     </div>
                   </div>
 
-                  {/* Collegamenti AI - solo se esistono */}
+                  {/* Collegamento suggerito (da confermare o scartare) oppure oggetto collegato a mano */}
                   {(() => {
+                    const suggestion = suggestedLink(selectedMessage);
+                    if (suggestion) {
+                      return (
+                        <SuggestedLinkPanel
+                          message={selectedMessage}
+                          targetName={getSuggestionTargetName(suggestion.type, suggestion.id)}
+                          onUpdated={(updated) => setSelectedMessage({ ...selectedMessage, ...updated })}
+                        />
+                      );
+                    }
                     const linkedObject = getLinkedObjectName(selectedMessage);
-                    const hasLinks = linkedObject || selectedMessage.confidenceScore || selectedMessage.matchingReason;
-                    
-                    if (!hasLinks) return null;
+                    if (!linkedObject) return null;
                     
                     return (
                       <div 
@@ -1610,24 +1715,10 @@ export default function MessagesPage() {
                         data-testid="email-header-ai-links"
                       >
                         <div className="flex flex-wrap gap-2">
-                          {linkedObject && (
-                            <Badge variant="outline" className="text-sm">
-                              <Link className="h-3 w-3 mr-1" />
-                              {linkedObject.type}: {linkedObject.name}
-                            </Badge>
-                          )}
-                          {selectedMessage.confidenceScore && (
-                            <Badge variant="outline" className="text-sm">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Confidenza: {Math.round((selectedMessage.confidenceScore ? Number(selectedMessage.confidenceScore) : 0) * 100)}%
-                            </Badge>
-                          )}
-                          {selectedMessage.matchingReason && (
-                            <Badge variant="outline" className="text-sm">
-                              <Brain className="h-3 w-3 mr-1" />
-                              {selectedMessage.matchingReason}
-                            </Badge>
-                          )}
+                          <Badge variant="outline" className="text-sm">
+                            <Link className="h-3 w-3 mr-1" />
+                            {linkedObject.type}: {linkedObject.name}
+                          </Badge>
                         </div>
                       </div>
                     );
@@ -3066,6 +3157,17 @@ export default function MessagesPage() {
                     </div>
                   );
                 })()}
+
+                {/* Commenti sul messaggio */}
+                <div className="flex-shrink-0 border-t p-6">
+                  <CommentsPanel
+                    key={selectedMessage.id}
+                    target="message"
+                    recordId={selectedMessage.id}
+                    title="Commenti sul messaggio"
+                    compact
+                  />
+                </div>
               </div>
             )}
           </CardContent>

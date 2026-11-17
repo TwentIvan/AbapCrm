@@ -23,6 +23,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import type { Proposal } from "@shared/schema";
 import { useOrganization } from "@/contexts/organization-context";
+import { openBotcavePanel, useBotcaveObjectContext } from "@/lib/botcave";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -134,6 +135,13 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// Titolo della proposta per il pannello Botcave: il progetto o il partner proposto, altrimenti la data.
+function proposalTitle(proposal: Proposal): string {
+  const pd = proposal.proposalData as any;
+  const name = pd?.project?.name || pd?.partner?.name;
+  return name ? `Proposta: ${name}` : `Proposta del ${format(new Date(proposal.createdAt), "dd/MM/yyyy HH:mm")}`;
+}
+
 // ── Page Component ───────────────────────────────────────────────────────────
 
 export default function ProposalsPage() {
@@ -182,15 +190,46 @@ export default function ProposalsPage() {
     queryKey: ["/api/proposals", selectedProposal?.id, "discussions"],
     queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!selectedProposal,
-    refetchInterval: false,
+    // Con il dettaglio aperto su una proposta in attesa la discussione si rilegge: le risposte dell'agente
+    // Botcave (PATCH /api/proposals/:id) arrivano da fuori e compaiono qui senza ricaricare.
+    refetchInterval: showDetailDialog && selectedProposal?.status === "pending" ? 5000 : false,
   });
+
+  // Contesto per Botcave: la proposta aperta nel dettaglio, così l'agente sa quale proposta discutere.
+  useBotcaveObjectContext(
+    showDetailDialog && selectedProposal
+      ? { page: "proposal", id: selectedProposal.id, title: proposalTitle(selectedProposal) }
+      : null,
+  );
+
+  const canDiscussWithBotcave =
+    !!selectedProposal && selectedProposal.status === "pending" && !(selectedProposal.proposalData as any)?.processing;
+
+  // «Discuti con Botcave»: la proposta è già il contesto del pannello; l'agente legge
+  // GET /api/proposals/:id/discussion-context e scrive risposte e revisioni con PATCH /api/proposals/:id.
+  const handleDiscussWithBotcave = () => {
+    if (!canDiscussWithBotcave) return;
+    setDetailTab("discussion");
+    if (!openBotcavePanel("alfred")) {
+      toast({
+        title: "Pannello Botcave non disponibile",
+        description: "La discussione con Botcave richiede il pannello: ricarica la pagina o riprova più tardi.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // ── Sync selected proposal with latest data ──
 
   useEffect(() => {
     if (selectedProposal && proposals.length > 0) {
       const updated = proposals.find(p => p.id === selectedProposal.id);
-      if (updated && JSON.stringify(updated.proposalData) !== JSON.stringify(selectedProposal.proposalData)) {
+      // Anche updatedAt: una revisione dell'agente può cambiare solo il modello (modelKey)
+      if (
+        updated &&
+        (String(updated.updatedAt) !== String(selectedProposal.updatedAt) ||
+          JSON.stringify(updated.proposalData) !== JSON.stringify(selectedProposal.proposalData))
+      ) {
         setSelectedProposal(updated);
       }
     }
@@ -811,6 +850,25 @@ export default function ProposalsPage() {
 
                 <TabsContent value="discussion" className="mt-0">
                   <div className="flex flex-col h-[520px]">
+                    {canDiscussWithBotcave && (
+                      <div
+                        className="flex items-center justify-between gap-3 mb-3 rounded-lg border border-agent/30 bg-agent/5 px-3 py-2"
+                        data-testid="botcave-discussion-banner"
+                      >
+                        <p className="text-xs text-muted-foreground">
+                          Puoi discutere la proposta anche con l'agente Botcave: le sue risposte e le revisioni compaiono qui.
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 gap-1.5 border-agent/40 text-agent hover:bg-agent/10 hover:text-agent"
+                          onClick={handleDiscussWithBotcave}
+                          data-testid="button-discuss-proposal-botcave"
+                        >
+                          <Bot className="w-4 h-4" />Discuti con Botcave
+                        </Button>
+                      </div>
+                    )}
                     <ScrollArea className="flex-1 pr-2">
                       {isLoadingDiscussions ? (
                         <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin" /></div>
@@ -818,7 +876,11 @@ export default function ProposalsPage() {
                         <div className="text-center py-12 text-muted-foreground">
                           <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
                           <p className="font-medium">Nessuna discussione</p>
-                          <p className="text-sm mt-1">Scrivi un messaggio per discutere la proposta con l'AI.</p>
+                          <p className="text-sm mt-1">
+                            {canDiscussWithBotcave
+                              ? "Scrivi un messaggio per discutere la proposta con l'AI, oppure apri la discussione con Botcave."
+                              : "Scrivi un messaggio per discutere la proposta con l'AI."}
+                          </p>
                         </div>
                       ) : (
                         <div className="space-y-3 pb-2">

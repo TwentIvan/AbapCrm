@@ -2,6 +2,7 @@ import { db } from "./db";
 import { auditLogs, type InsertAuditLog } from "@shared/schema";
 import { eq, and, inArray, lt, desc, sql } from "drizzle-orm";
 import type { Request } from "express";
+import { readOrganizationId } from "./organization-context";
 
 type AuditableData = Record<string, any>;
 
@@ -68,15 +69,17 @@ export class AuditService {
       const excludeFields = ['id', 'updatedAt', 'createdAt', 'created_at', 'updated_at'];
       const fieldsToTrack = changedFields.filter(field => !excludeFields.includes(field));
       
+      // audit_trail è per organizzazione: senza organizzazione non si scrive nulla (mai un'organizzazione fissa).
+      if (!context.organizationId) {
+        console.warn(`[AUDIT] ${action} ${tableName}:${recordId} senza organizzazione — non registrato`);
+        return;
+      }
+
       if (action === "UPDATE" && fieldsToTrack.length > 0 && oldValues && newValues) {
         for (const field of fieldsToTrack) {
           const oldValue = oldValues[field] || null;
           const newValue = newValues[field] || null;
           
-          // organizationId should always be provided in context
-          if (!context.organizationId) {
-            throw new Error('organizationId is required for audit logging');
-          }
           await db.execute(sql.raw(`
             INSERT INTO audit_trail (record_id, table_name, field_name, old_value, new_value, user_id, organization_id)
             VALUES ('${recordId}', '${tableName}', '${field}', '${String(oldValue)}', '${String(newValue)}', '${context.userId}', '${context.organizationId}')
@@ -122,16 +125,10 @@ export class AuditService {
   static createContext(req: Request): AuditContext {
     const user = req.user as any;
     
-    // Use the same getOrganizationId function as the routes
-    const getOrganizationId = (r: any): string => {
-      const organizationId = r.headers['x-organization-id'] as string;
-      // Return default organization if header not present
-      return organizationId || '4ca22699-5fd4-4030-8bb5-4e7cef9ce8be';
-    };
-    
     return {
       userId: user?.id,
-      organizationId: getOrganizationId(req),
+      // Nessuna organizzazione di ripiego: senza header l'audit resta senza organizzazione.
+      organizationId: readOrganizationId(req) ?? undefined,
       userAgent: req.get('User-Agent'),
       ipAddress: req.ip || req.connection.remoteAddress,
     };

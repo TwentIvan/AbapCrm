@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, serial, text, varchar, timestamp, integer, decimal, real, pgEnum, boolean, uuid, time, jsonb, index, uniqueIndex, unique } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, timestamp, integer, decimal, real, pgEnum, boolean, uuid, time, date, jsonb, index, uniqueIndex, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -38,6 +38,57 @@ export const organizations = pgTable("organizations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Obblighi dichiarativi dell'organizzazione: le scadenze ricorrenti verso enti esterni (es. LIPE, F24, Intrastat,
+// 770) che l'organizzazione deve rispettare. Letti via API da chi li automatizza (es. una squadra di Botcave).
+// frequency: monthly | quarterly | semiannual | yearly | once | other.
+export const organizationObligations = pgTable("organization_obligations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }).notNull(),
+  code: text("code").notNull(), // codice breve, unico nell'organizzazione (es. "LIPE")
+  name: text("name").notNull(), // es. "Comunicazione liquidazioni periodiche IVA"
+  description: text("description"),
+  authority: text("authority"), // ente destinatario (es. "Agenzia delle Entrate")
+  frequency: text("frequency").notNull(),
+  dueRule: text("due_rule"), // regola della scadenza in chiaro (es. "entro l'ultimo giorno del secondo mese successivo")
+  nextDueDate: date("next_due_date", { mode: "string" }), // prossima scadenza (YYYY-MM-DD)
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  orgCodeIdx: uniqueIndex("organization_obligations_org_code_idx").on(t.organizationId, t.code),
+  orgDueIdx: index("organization_obligations_org_due_idx").on(t.organizationId, t.nextDueDate),
+}));
+
+export type OrganizationObligation = typeof organizationObligations.$inferSelect;
+
+// Registro delle esecuzioni di un obbligo dichiarativo: per ogni periodo adempiuto (es. "2026-Q3") chi l'ha eseguito
+// (una squadra di Botcave o una persona), com'è andata, il protocollo dell'invio e i collegamenti al risultato.
+// Scritto via API da chi esegue, nessuna AI interna. status: running | done | blocked | failed.
+export const organizationObligationRuns = pgTable("organization_obligation_runs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  obligationId: uuid("obligation_id").references(() => organizationObligations.id, { onDelete: "cascade" }).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(), // chi ha registrato l'esecuzione
+  period: text("period").notNull(), // periodo adempiuto (es. "2026-10", "2026-Q3", "2026")
+  dueDate: date("due_date", { mode: "string" }), // scadenza del periodo (YYYY-MM-DD)
+  agent: text("agent"), // es. "botcave/sviluppatore"; vuoto se eseguito a mano
+  externalRunId: text("external_run_id"), // id dell'esecuzione nel sistema esterno: rende la registrazione idempotente
+  status: text("status").notNull(),
+  outcome: text("outcome"), // esito in una riga (max 300)
+  detail: text("detail"), // dettaglio (max 20 000)
+  protocol: text("protocol"), // protocollo o ricevuta dell'invio all'ente
+  links: jsonb("links").$type<Array<{ url: string; label?: string }>>().notNull().default([]),
+  startedAt: timestamp("started_at"),
+  finishedAt: timestamp("finished_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  obligationIdx: index("organization_obligation_runs_obligation_idx").on(t.obligationId, t.createdAt),
+  externalRunIdx: uniqueIndex("organization_obligation_runs_external_run_idx").on(t.obligationId, t.externalRunId),
+}));
+
+export type OrganizationObligationRun = typeof organizationObligationRuns.$inferSelect;
 
 // ========== AI Gateway Tables ==========
 
@@ -1324,6 +1375,28 @@ export const apiTokens = pgTable("api_tokens", {
 }));
 export type ApiTokenRow = typeof apiTokens.$inferSelect;
 export type InsertApiToken = typeof apiTokens.$inferInsert;
+
+// Audit delle scritture (POST/PUT/PATCH/DELETE) fatte con un token API: chi, cosa, con quale esito.
+// Mai il corpo della richiesta né la query string: possono contenere dati o segreti.
+export const apiTokenWriteAudit = pgTable("api_token_write_audit", {
+  id: serial("id").primaryKey(),
+  tokenId: integer("token_id").references(() => apiTokens.id, { onDelete: "cascade" }).notNull(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  // Organizzazione effettiva della richiesta (null se non determinata).
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "set null" }),
+  method: text("method").notNull(),
+  path: text("path").notNull(),
+  statusCode: integer("status_code").notNull(),
+  durationMs: integer("duration_ms").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  apiTokenWriteAuditTokenIdx: index("api_token_write_audit_token_idx").on(table.tokenId, table.id),
+  apiTokenWriteAuditOrgIdx: index("api_token_write_audit_org_idx").on(table.organizationId, table.createdAt),
+}));
+export type ApiTokenWriteAuditRow = typeof apiTokenWriteAudit.$inferSelect;
+export type InsertApiTokenWriteAudit = typeof apiTokenWriteAudit.$inferInsert;
 
 // Transport Request files (cofile and data file)
 export const transportRequestStatusEnum = pgEnum("transport_request_status", ["development", "testing", "quality", "production", "released", "imported"]);
@@ -3664,6 +3737,31 @@ export const aiTaskExecutions = pgTable("ai_task_executions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Registro delle esecuzioni di agenti esterni sul task (es. una squadra di Botcave): chi ha lavorato, come è
+// andata e dove trovare il risultato. Scritto via API da chi esegue, nessuna AI interna.
+// status: running | done | blocked | failed (i tre finali come l'esito dei compiti di Botcave).
+export const taskAgentRuns = pgTable("task_agent_runs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskId: uuid("task_id").references(() => tasks.id, { onDelete: "cascade" }).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id).notNull(),
+  userId: uuid("user_id").references(() => users.id).notNull(), // chi ha registrato l'esecuzione
+  agent: text("agent").notNull(), // es. "botcave/sviluppatore"
+  externalRunId: text("external_run_id"), // id dell'esecuzione nel sistema esterno: rende la registrazione idempotente
+  status: text("status").notNull(),
+  outcome: text("outcome"), // esito in una riga (max 300)
+  detail: text("detail"), // dettaglio (max 20 000)
+  links: jsonb("links").$type<Array<{ url: string; label?: string }>>().notNull().default([]), // PR, branch, trasporti...
+  startedAt: timestamp("started_at"),
+  finishedAt: timestamp("finished_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  taskIdx: index("task_agent_runs_task_idx").on(t.taskId, t.createdAt),
+  externalRunIdx: uniqueIndex("task_agent_runs_external_run_idx").on(t.taskId, t.externalRunId),
+}));
+
+export type TaskAgentRun = typeof taskAgentRuns.$inferSelect;
 
 // ========== DevOps Field Mappings System ==========
 // Mapping dinamico valori DevOps → campi del nostro DB
