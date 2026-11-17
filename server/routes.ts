@@ -5072,7 +5072,7 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
       });
       if (!linkOrgId) return res.status(404).json({ error: "messaggio o oggetto non trovato" });
 
-      let link = findLinkTo(await MessageLogService.getMessageLinks(req.params.id), check.table, check.suggestion.id);
+      let link = findLinkTo(await MessageLogService.getMessageLinks(req.params.id, linkOrgId), check.table, check.suggestion.id);
       if (!link) {
         const context = { ...MessageLogService.createContext(req), organizationId: linkOrgId };
         link = await MessageLogService.linkMessage(req.params.id, check.table, check.suggestion.id, context, {
