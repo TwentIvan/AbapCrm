@@ -14,6 +14,7 @@ import { isSummaryRequest, messageListConditions, messageSummaryColumns, parseMe
 import { parseAgentRun, recordAgentRun, listAgentRuns, type AgentRunDeps } from "./task-agent-runs";
 import { parseObligationQuery, listObligations, getObligation, type ObligationDeps } from "./organization-obligations";
 import { parseObligationRun, parseObligationRunQuery, recordObligationRun, listObligationRuns, type ObligationRunDeps } from "./obligation-runs";
+import { readProjectBrief, updateProjectBrief, type ProjectBriefDeps } from "./project-brief";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { registerApiTokenRoutes } from "./api-token-routes";
@@ -1327,6 +1328,84 @@ export function registerRoutes(app: Express): Server {
       res.json(project);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid request' });
+    }
+  });
+
+  // Brief del progetto aggiornato dall'agente Botcave dopo ogni esecuzione: lettura (brief, decisioni e task
+  // cambiati dall'ultimo aggiornamento) e scrittura nel context pack, nelle organizzazioni della richiesta
+  // (anche con token; fuori perimetro 404). Nessuna AI interna. Con un token l'autore è "agent".
+  const projectBriefDeps: ProjectBriefDeps = {
+    getProject: async (id) => {
+      const [row] = await db
+        .select({ id: projects.id, organizationId: projects.organizationId, name: projects.name })
+        .from(projects)
+        .where(eq(projects.id, id))
+        .limit(1);
+      return row ?? null;
+    },
+    getPack: async (organizationId, projectId) => {
+      const [row] = await db
+        .select()
+        .from(contextPacks)
+        .where(and(
+          eq(contextPacks.organizationId, organizationId),
+          eq(contextPacks.scopeType, "project"),
+          eq(contextPacks.scopeId, projectId),
+        ))
+        .limit(1);
+      return row ?? null;
+    },
+    getChangedTasks: (projectId, since, limit) =>
+      db
+        .select({ id: tasks.id, projectId: tasks.projectId, title: tasks.title, status: tasks.status, updatedAt: tasks.updatedAt })
+        .from(tasks)
+        .where(since ? and(eq(tasks.projectId, projectId), sql`${tasks.updatedAt} > ${since}`) : eq(tasks.projectId, projectId))
+        .orderBy(desc(tasks.updatedAt))
+        .limit(limit),
+    getTask: async (id) => {
+      const [row] = await db.select({ id: tasks.id, projectId: tasks.projectId }).from(tasks).where(eq(tasks.id, id)).limit(1);
+      return row ?? null;
+    },
+    savePack: async (organizationId, projectId, existingId, values) => {
+      if (existingId) {
+        const [row] = await db.update(contextPacks).set(values).where(eq(contextPacks.id, existingId)).returning();
+        return row;
+      }
+      const [row] = await db
+        .insert(contextPacks)
+        .values({ organizationId, scopeType: "project", scopeId: projectId, glossary: {}, ...values })
+        .returning();
+      return row;
+    },
+  };
+
+  app.get("/api/projects/:id/brief", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const result = await readProjectBrief(projectBriefDeps, {
+        projectId: req.params.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Get project brief error:", error);
+      res.status(500).json({ error: "Failed to read project brief" });
+    }
+  });
+
+  app.put("/api/projects/:id/brief", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const result = await updateProjectBrief(projectBriefDeps, {
+        projectId: req.params.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+        body: req.body,
+        updatedBy: req.apiToken ? "agent" : req.user!.id,
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Update project brief error:", error);
+      res.status(500).json({ error: "Failed to update project brief" });
     }
   });
 

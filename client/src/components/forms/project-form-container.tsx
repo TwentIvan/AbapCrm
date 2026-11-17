@@ -80,6 +80,11 @@ function ContextPackPanel({ projectId }: { projectId: string }) {
       {pack?.updatedAt && (
         <p className="text-xs text-muted-foreground">
           Ultimo aggiornamento: {new Date(pack.updatedAt).toLocaleString("it-IT")}
+          {pack.updatedBy === "agent" && (
+            <Badge variant="secondary" className="ml-2 text-[10px]" data-testid="badge-brief-agent">
+              dall'agente Botcave
+            </Badge>
+          )}
         </p>
       )}
 
@@ -133,7 +138,7 @@ function ContextPackPanel({ projectId }: { projectId: string }) {
             <div className="space-y-2 text-sm">
               {pack?.brief
                 ? <p className="whitespace-pre-wrap">{pack.brief}</p>
-                : <p className="text-muted-foreground italic">Nessun brief. L'AI aggiorna questo campo automaticamente.</p>}
+                : <p className="text-muted-foreground italic">Nessun brief. L'agente Botcave lo aggiorna dopo ogni esecuzione.</p>}
               {pack?.conventions && (
                 <>
                   <p className="text-xs font-medium text-muted-foreground mt-2">Convenzioni:</p>
