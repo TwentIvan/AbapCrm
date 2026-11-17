@@ -1,4 +1,6 @@
 import express, { type Express } from "express";
+import { registerThuMcpRoutes } from "./thu-mcp-server";
+import { thuMcpDbDeps } from "./thu-mcp-sources";
 import { sanitizeTokenPartnerUpdate, tokenContactOrganization, tokenPartnerOrganization } from "./partner-contact-scope";
 import { taskExternalRef } from "./task-external-ref";
 import { canLinkAll, canEditLink, dbLinkScopeDeps, linkOrganization } from "./message-link-scope";
@@ -495,6 +497,10 @@ function getEffectiveDailyHours(availability: Array<{ weeklyHours: number; effec
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
+
+  // Server MCP di The Hub Up per gli strumenti SAP: solo con token, prima dell'organizzazione di ripiego
+  // (con un token «tutte le mie organizzazioni» l'organizzazione va indicata, mai indovinata).
+  registerThuMcpRoutes(app, thuMcpDbDeps);
 
   // Ensure a VALID organization context for authenticated requests: if the client
   // didn't send X-Organization-Id, OR sent an org the user is NOT a member of
