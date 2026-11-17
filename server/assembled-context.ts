@@ -6,6 +6,8 @@
 // - i context pack si leggono solo dell'organizzazione del task, con lo scope giusto
 //   (pack del progetto per i progetti, pack «organization» per l'organizzazione).
 // Con `organizationIds` (perimetro della richiesta) un task fuori perimetro non viene assemblato.
+// Subito dopo il task entra lo storico delle esecuzioni degli agenti esterni (task_agent_runs), dalla più recente:
+// chi riprende il task sa cosa è già stato fatto, con quale esito e dove trovare il risultato.
 // Logica pura con dipendenze iniettate; l'accesso al database è in context-assembler.ts.
 
 import { countTokens } from "./tokens";
@@ -40,6 +42,17 @@ export interface ContextPackData {
   conventions?: string | null;
 }
 
+export interface ContextAgentRun {
+  agent: string;
+  status: string;
+  outcome?: string | null;
+  detail?: string | null;
+  links?: { url: string; label?: string }[] | null;
+  startedAt?: Date | string | null;
+  finishedAt?: Date | string | null;
+  createdAt?: Date | string | null;
+}
+
 export interface AssembledContextDeps {
   getTask(id: string): Promise<ContextTask | null>;
   getProject(id: string): Promise<ContextProject | null>;
@@ -47,11 +60,49 @@ export interface AssembledContextDeps {
   getProjectPack(organizationId: string, projectId: string): Promise<ContextPackData | null>;
   /** Pack con scope «organization» dell'organizzazione. */
   getOrganizationPack(organizationId: string): Promise<ContextPackData | null>;
+  /** Ultime esecuzioni di agenti esterni sul task nell'organizzazione indicata, dalla più recente. */
+  getAgentRuns?(organizationId: string, taskId: string, limit: number): Promise<ContextAgentRun[]>;
 }
 
 export const EMPTY_CONTEXT: AssembledContext = { text: "", sections: [], tokensUsed: 0 };
 
 const MAX_PROJECT_DEPTH = 6;
+export const MAX_CONTEXT_RUNS = 5;
+const RUNS_BUDGET = 1500;
+const RUN_DETAIL_CHARS = 600;
+
+const STATUS_LABEL: Record<string, string> = {
+  running: "in corso",
+  done: "completata",
+  blocked: "bloccata",
+  failed: "fallita",
+};
+
+function formatWhen(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 16).replace("T", " ");
+}
+
+/** Sezione dello storico delle esecuzioni degli agenti esterni (testo markdown), vuota se non ce ne sono. */
+export function formatAgentRuns(runs: ContextAgentRun[]): string {
+  if (!runs.length) return "";
+  let sec = `## STORICO ESECUZIONI AGENTI (${runs.length === 1 ? "ultima" : `ultime ${runs.length}`}, dalla più recente)\n`;
+  for (const run of runs) {
+    const when = formatWhen(run.finishedAt) ?? formatWhen(run.startedAt) ?? formatWhen(run.createdAt);
+    const status = STATUS_LABEL[run.status] ?? run.status;
+    sec += `- ${when ? `[${when} UTC] ` : ""}${run.agent} — ${status}${run.outcome ? `: ${run.outcome}` : ""}\n`;
+    const detail = run.detail?.trim();
+    if (detail) {
+      const short = detail.length > RUN_DETAIL_CHARS ? detail.slice(0, RUN_DETAIL_CHARS) + "…" : detail;
+      sec += `  ${short.replace(/\s*\n\s*/g, " ")}\n`;
+    }
+    const links = Array.isArray(run.links) ? run.links : [];
+    if (links.length) sec += `  Collegamenti: ${links.map(l => (l.label ? `${l.label} ${l.url}` : l.url)).join(", ")}\n`;
+  }
+  return sec;
+}
 
 function truncateToTokens(text: string, maxTokens: number): string {
   if (countTokens(text) <= maxTokens) return text;
@@ -91,6 +142,18 @@ export async function buildAssembledContext(
   sections.push({ label: "task", tokens: countTokens(taskSection), text: taskSection });
 
   let remainingBudget = tokenBudget;
+
+  // ── 1b. Storico delle esecuzioni degli agenti esterni (max 1500 token) ────
+  if (deps.getAgentRuns && remainingBudget > 100) {
+    const runs = await deps.getAgentRuns(orgId, taskRow.id, MAX_CONTEXT_RUNS);
+    const sec = formatAgentRuns(runs.slice(0, MAX_CONTEXT_RUNS));
+    if (sec) {
+      const truncated = truncateToTokens(sec, Math.min(RUNS_BUDGET, remainingBudget));
+      const tkns = countTokens(truncated);
+      sections.push({ label: "esecuzioni-agenti", tokens: tkns, text: truncated });
+      remainingBudget -= tkns;
+    }
+  }
 
   // ── 2. Catena dei progetti, solo dell'organizzazione del task ─────────────
   const projectChain: ContextProject[] = [];

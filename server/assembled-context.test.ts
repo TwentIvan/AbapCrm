@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
   buildAssembledContext,
+  formatAgentRuns,
+  MAX_CONTEXT_RUNS,
   type AssembledContextDeps,
+  type ContextAgentRun,
   type ContextPackData,
   type ContextProject,
   type ContextTask,
@@ -12,8 +15,9 @@ function makeDeps(data: {
   projects?: ContextProject[];
   projectPacks?: { organizationId: string; projectId: string; pack: ContextPackData }[];
   orgPacks?: { organizationId: string; pack: ContextPackData }[];
+  runs?: (ContextAgentRun & { organizationId: string; taskId: string })[];
 }) {
-  const calls = { projectPacks: [] as string[], orgPacks: [] as string[] };
+  const calls = { projectPacks: [] as string[], orgPacks: [] as string[], runs: [] as string[] };
   const deps: AssembledContextDeps = {
     getTask: async id => data.tasks?.find(t => t.id === id) ?? null,
     getProject: async id => data.projects?.find(p => p.id === id) ?? null,
@@ -24,6 +28,10 @@ function makeDeps(data: {
     getOrganizationPack: async org => {
       calls.orgPacks.push(org);
       return data.orgPacks?.find(p => p.organizationId === org)?.pack ?? null;
+    },
+    getAgentRuns: async (org, taskId, limit) => {
+      calls.runs.push(`${org}/${taskId}/${limit}`);
+      return (data.runs ?? []).filter(r => r.organizationId === org && r.taskId === taskId).slice(0, limit);
     },
   };
   return { deps, calls };
@@ -145,5 +153,84 @@ describe("buildAssembledContext: solo dati dell'organizzazione del task", () => 
     });
     const ctx = await buildAssembledContext(deps, { taskId: "t1" });
     expect(ctx?.sections.map(s => s.label)).toEqual(["task", "progetto:Stampe", "progetto-padre-L1:Cliente"]);
+  });
+});
+
+describe("buildAssembledContext: storico delle esecuzioni degli agenti esterni", () => {
+  const run = (over: Partial<ContextAgentRun & { organizationId: string; taskId: string }> = {}) => ({
+    organizationId: "o1",
+    taskId: "t1",
+    agent: "botcave/sviluppatore",
+    status: "done",
+    outcome: "PR aperta",
+    finishedAt: new Date("2026-11-17T10:30:00Z"),
+    ...over,
+  });
+
+  it("subito dopo il task, dalla più recente, con esito, dettaglio e collegamenti", async () => {
+    const { deps, calls } = makeDeps({
+      tasks: [task],
+      projects: [{ ...p1, parentProjectId: null }],
+      runs: [
+        run({ status: "blocked", outcome: "Manca il trasporto", detail: "Serve\nil numero di trasporto", finishedAt: new Date("2026-11-17T12:00:00Z") }),
+        run({ links: [{ url: "https://github.com/x/y/pull/1", label: "PR #1" }, { url: "https://example.com/b" }] }),
+      ],
+    });
+    const ctx = await buildAssembledContext(deps, { taskId: "t1", organizationIds: ["o1"] });
+    expect(ctx?.sections.map(s => s.label)).toEqual(["task", "esecuzioni-agenti", "progetto:Stampe"]);
+    expect(ctx?.text).toContain("## STORICO ESECUZIONI AGENTI (ultime 2, dalla più recente)");
+    expect(ctx?.text).toContain("- [2026-11-17 12:00 UTC] botcave/sviluppatore — bloccata: Manca il trasporto");
+    expect(ctx?.text).toContain("  Serve il numero di trasporto");
+    expect(ctx?.text).toContain("- [2026-11-17 10:30 UTC] botcave/sviluppatore — completata: PR aperta");
+    expect(ctx?.text).toContain("Collegamenti: PR #1 https://github.com/x/y/pull/1, https://example.com/b");
+    expect(ctx!.text.indexOf("bloccata")).toBeLessThan(ctx!.text.indexOf("completata"));
+    expect(calls.runs).toEqual([`o1/t1/${MAX_CONTEXT_RUNS}`]);
+  });
+
+  it("solo esecuzioni dell'organizzazione del task", async () => {
+    const { deps } = makeDeps({ tasks: [task], runs: [run({ organizationId: "o2", outcome: "Segreto o2" })] });
+    const ctx = await buildAssembledContext(deps, { taskId: "t1", organizationIds: ["o1", "o2"] });
+    expect(ctx?.sections.map(s => s.label)).toEqual(["task"]);
+    expect(ctx?.text).not.toContain("Segreto o2");
+  });
+
+  it("task fuori perimetro → lo storico non si legge", async () => {
+    const { deps, calls } = makeDeps({ tasks: [task], runs: [run()] });
+    expect(await buildAssembledContext(deps, { taskId: "t1", organizationIds: ["o2"] })).toBeNull();
+    expect(calls.runs).toEqual([]);
+  });
+
+  it("al massimo le ultime esecuzioni previste, anche se la lettura ne restituisce di più", async () => {
+    const runs = Array.from({ length: 8 }, (_, i) => run({ outcome: `esito ${i}` }));
+    const { deps } = makeDeps({ tasks: [task] });
+    deps.getAgentRuns = async () => runs;
+    const ctx = await buildAssembledContext(deps, { taskId: "t1" });
+    expect(ctx?.text).toContain(`esito ${MAX_CONTEXT_RUNS - 1}`);
+    expect(ctx?.text).not.toContain(`esito ${MAX_CONTEXT_RUNS}`);
+  });
+
+  it("senza la lettura dello storico (dipendenza assente) → contesto come prima", async () => {
+    const { deps } = makeDeps({ tasks: [task] });
+    delete deps.getAgentRuns;
+    const ctx = await buildAssembledContext(deps, { taskId: "t1" });
+    expect(ctx?.sections.map(s => s.label)).toEqual(["task"]);
+  });
+});
+
+describe("formatAgentRuns", () => {
+  it("nessuna esecuzione → stringa vuota", () => {
+    expect(formatAgentRuns([])).toBe("");
+  });
+
+  it("esecuzione in corso senza esito, data di inizio come stringa", () => {
+    const text = formatAgentRuns([{ agent: "botcave/revisore", status: "running", startedAt: "2026-11-17T09:05:00.000Z" }]);
+    expect(text).toContain("(ultima, dalla più recente)");
+    expect(text).toContain("- [2026-11-17 09:05 UTC] botcave/revisore — in corso\n");
+  });
+
+  it("dettaglio lungo accorciato", () => {
+    const text = formatAgentRuns([{ agent: "a", status: "failed", outcome: "errore", detail: "x".repeat(2000) }]);
+    expect(text).toContain("x".repeat(600) + "…");
+    expect(text).not.toContain("x".repeat(601));
   });
 });

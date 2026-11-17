@@ -3,8 +3,8 @@
 // La logica è in assembled-context.ts; qui ci sono solo le letture dal database.
 
 import { db } from "./db";
-import { and, eq, isNull } from "drizzle-orm";
-import { tasks, projects, contextPacks } from "@shared/schema";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { tasks, projects, contextPacks, taskAgentRuns } from "@shared/schema";
 import {
   buildAssembledContext,
   EMPTY_CONTEXT,
@@ -49,6 +49,12 @@ const dbDeps: AssembledContextDeps = {
       ))
       .limit(1);
     return row ?? null;
+  },
+  getAgentRuns(organizationId, taskId, limit) {
+    return db.select().from(taskAgentRuns)
+      .where(and(eq(taskAgentRuns.organizationId, organizationId), eq(taskAgentRuns.taskId, taskId)))
+      .orderBy(desc(taskAgentRuns.createdAt))
+      .limit(limit);
   },
 };
 
