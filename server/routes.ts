@@ -6,6 +6,7 @@ import { parseSuggestion, suggestionUpdate, SUGGESTION_TABLES } from "./message-
 import { isSummaryRequest, messageSummaryColumns } from "./message-list";
 import { parseObligationQuery, listObligations, getObligation, type ObligationDeps } from "./organization-obligations";
 import { parseObligationRun, parseObligationRunQuery, recordObligationRun, listObligationRuns, type ObligationRunDeps } from "./obligation-runs";
+import { obligationAutomation, parseDueQuery, dueObligations, advanceAfterRun, type AutomationDeps, type DueDeps, type AdvanceDeps } from "./obligation-automation";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { registerApiTokenRoutes } from "./api-token-routes";
@@ -885,6 +886,77 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Obblighi automatizzati dalla squadra Botcave: l'agenda (obblighi attivi da adempiere entro ?withinDays, scaduti
+  // compresi, senza quelli già fatti salvo ?includeDone=true) e il pacchetto di un obbligo con la readiness. Solo
+  // lettura, nessuna AI; l'esito va in POST /api/obligations/:id/runs. Registrata prima di /:id.
+  const dueDeps: DueDeps = {
+    activeDueBy: (organizationIds, dueTo) =>
+      db
+        .select()
+        .from(organizationObligations)
+        .where(
+          and(
+            inArray(organizationObligations.organizationId, organizationIds),
+            eq(organizationObligations.active, true),
+            lte(organizationObligations.nextDueDate, dueTo),
+          ),
+        )
+        .orderBy(asc(organizationObligations.nextDueDate), asc(organizationObligations.name)),
+    runsFor: (obligationIds) =>
+      db
+        .select()
+        .from(organizationObligationRuns)
+        .where(inArray(organizationObligationRuns.obligationId, obligationIds))
+        .orderBy(desc(organizationObligationRuns.createdAt)),
+  };
+
+  app.get("/api/obligations/due", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const parsed = parseDueQuery(req.query);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+      const result = await dueObligations(dueDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        query: parsed.value,
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("List due obligations error:", error);
+      res.status(500).json({ error: "Failed to list due obligations" });
+    }
+  });
+
+  const automationDeps: AutomationDeps = {
+    findObligation: (id) => obligationDeps.findById(id) as ReturnType<AutomationDeps["findObligation"]>,
+    runsForDue: (obligationId, dueDate) =>
+      db
+        .select()
+        .from(organizationObligationRuns)
+        .where(and(eq(organizationObligationRuns.obligationId, obligationId), eq(organizationObligationRuns.dueDate, dueDate)))
+        .orderBy(desc(organizationObligationRuns.createdAt)),
+    recentRuns: (obligationId, limit) =>
+      db
+        .select()
+        .from(organizationObligationRuns)
+        .where(eq(organizationObligationRuns.obligationId, obligationId))
+        .orderBy(desc(organizationObligationRuns.createdAt))
+        .limit(limit),
+  };
+
+  app.get("/api/obligations/:id/automation", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const result = await obligationAutomation(automationDeps, {
+        id: req.params.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Obligation automation package error:", error);
+      res.status(500).json({ error: "Failed to get obligation automation package" });
+    }
+  });
+
   app.get("/api/obligations/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
@@ -964,6 +1036,17 @@ export function registerRoutes(app: Express): Server {
         .orderBy(desc(organizationObligationRuns.createdAt)),
   };
 
+  const obligationAdvanceDeps: AdvanceDeps = {
+    async advance(obligationId, from, to) {
+      const rows = await db
+        .update(organizationObligations)
+        .set({ nextDueDate: to, updatedAt: new Date() })
+        .where(and(eq(organizationObligations.id, obligationId), eq(organizationObligations.nextDueDate, from)))
+        .returning({ id: organizationObligations.id });
+      return rows.length > 0;
+    },
+  };
+
   app.post("/api/obligations/:id/runs", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
@@ -975,6 +1058,19 @@ export function registerRoutes(app: Express): Server {
         organizationIds: await getOrganizationIdsForFilter(req),
         run: parsed.value,
       });
+      // Un'esecuzione done per la scadenza in corso fa avanzare la prossima scadenza secondo la frequenza
+      if (result.status === 200 || result.status === 201) {
+        const ob = await obligationDeps.findById(req.params.id);
+        if (ob) {
+          const advanced = await advanceAfterRun(obligationAdvanceDeps, {
+            obligationId: req.params.id,
+            frequency: String(ob.frequency),
+            nextDueDate: (ob.nextDueDate as string | null) ?? null,
+            run: { status: result.body.status, dueDate: (result.body.dueDate as string | null | undefined) ?? null },
+          });
+          if (advanced !== undefined) res.setHeader("X-Obligation-Next-Due-Date", advanced ?? "none");
+        }
+      }
       res.status(result.status).json(result.body);
     } catch (error) {
       console.error("Record obligation run error:", error);
