@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useBotcaveObjectContext } from "@/lib/botcave";
+import { openBotcavePanel, useBotcaveObjectContext } from "@/lib/botcave";
 import { AiModelPickerDialog } from "@/components/dialogs/ai-model-picker-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DOMPurify from 'dompurify';
@@ -66,6 +66,7 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { BarChart3, TrendingUp, Database, Image, Inbox } from "lucide-react";
+import { FolderSearch } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Message, Project, Task, Partner } from "@shared/schema";
 import { format } from "date-fns";
@@ -170,16 +171,19 @@ export default function MessagesPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  // Contesto per Botcave: un messaggio che è un work item di DevOps si presenta come tale.
+  // Contesto per Botcave: un messaggio che è un work item di DevOps si presenta come tale, gli altri come
+  // messaggio (id e oggetto), così lo Smistatore di Botcave sa quale email smistare.
   const botcaveWorkItem = (selectedMessage as any)?.externalMetadata?.workItemId as string | number | undefined;
   useBotcaveObjectContext(
-    selectedMessage && botcaveWorkItem != null
-      ? {
-          page: "workitem",
-          id: botcaveWorkItem,
-          title: (selectedMessage as any).externalMetadata?.workItemTitle ?? selectedMessage.subject,
-        }
-      : null,
+    !selectedMessage
+      ? null
+      : botcaveWorkItem != null
+        ? {
+            page: "workitem",
+            id: botcaveWorkItem,
+            title: (selectedMessage as any).externalMetadata?.workItemTitle ?? selectedMessage.subject,
+          }
+        : { page: "message", id: selectedMessage.id, title: selectedMessage.subject },
   );
 
   // Reset thread content visibility when message changes
@@ -454,6 +458,19 @@ export default function MessagesPage() {
       });
     },
   });
+
+  // «Analizza progetto» affidato all'agente Botcave: il messaggio aperto è già il contesto del pannello,
+  // l'agente legge GET /api/messages/:id/project-analysis e scrive la proposta. Qui si apre il pannello.
+  const handleAnalyzeWithBotcave = () => {
+    if (!selectedMessage) return;
+    if (!openBotcavePanel("alfred")) {
+      toast({
+        title: "Pannello Botcave non disponibile",
+        description: "L'analisi del progetto con Botcave richiede il pannello: ricarica la pagina o riprova più tardi.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // AI Project Agent mutations
   const analyzeProjectMutation = useMutation({
@@ -919,6 +936,27 @@ export default function MessagesPage() {
                         </TooltipContent>
                       </Tooltip>
                       
+                      {/* «Analizza progetto» con l'agente Botcave */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleAnalyzeWithBotcave}
+                            disabled={!selectedMessage}
+                            variant="outline"
+                            className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-agent/30 bg-background dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-agent hover:bg-agent/10 transition-all ${
+                              !selectedMessage ? 'opacity-40' : 'opacity-100'
+                            }`}
+                            aria-label="Analizza progetto con Botcave"
+                            data-testid="button-analyze-project-botcave"
+                          >
+                            <FolderSearch className="h-6 w-6 text-agent" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="bg-agent text-white">
+                          <p>{selectedMessage ? 'Analizza progetto con Botcave' : 'Apri un messaggio per analizzarlo con Botcave'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+
                       {/* THU AI Button - Header style with opacity */}
                       <Tooltip>
                         <TooltipTrigger asChild>
