@@ -59,7 +59,7 @@ import { PdfService } from "./pdf-service";
 import { ObjectStorageService } from "./objectStorage";
 import { calculateEndToComplete } from "./end-to-complete-calculator";
 import { recalculateProjectScheduleForTask } from "./project-rescheduler";
-import { assembleContext } from "./context-assembler";
+import { assembleContextInScope } from "./context-assembler";
 import { contextPacks } from "@shared/schema";
 
 // Phase 5: compute suggested model key from analytics (min 5 completed executions for taskType)
@@ -12679,11 +12679,14 @@ ISTRUZIONI:
     }
   });
 
-  // GET /api/tasks/:id/assembled-context — preview assembled context for a task
+  // GET /api/tasks/:id/assembled-context — anteprima del contesto assemblato del task,
+  // solo per un task di un'organizzazione nel perimetro della richiesta (altrimenti 404)
   app.get("/api/tasks/:id/assembled-context", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
     try {
-      const ctx = await assembleContext({ taskId: req.params.id, tokenBudget: 8000 });
+      const organizationIds = await getOrganizationIdsForFilter(req);
+      const ctx = await assembleContextInScope({ taskId: req.params.id, tokenBudget: 8000, organizationIds });
+      if (!ctx) return res.status(404).json({ error: "Task not found" });
       return res.json(ctx);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
