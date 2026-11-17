@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { storage } from './storage';
-import * as XLSX from 'xlsx';
+import { extractAttachmentText } from './attachment-text';
 
 export class AttachmentsService {
   private static attachmentsDir = path.join(process.cwd(), 'stored_attachments');
@@ -81,36 +81,14 @@ export class AttachmentsService {
   }
 
   /**
-   * Extracts readable text from an attachment file.
-   * Supports .xlsx, .xls (Excel) and .txt/.csv files.
+   * Extracts readable text from an attachment file (see extractAttachmentText).
    * Returns null if the file doesn't exist or is not extractable.
    */
   static async extractTextContent(messageId: string, filename: string): Promise<string | null> {
     try {
       const result = await this.getAttachment(messageId, filename);
       if (!result) return null;
-
-      const ext = path.extname(filename).toLowerCase();
-
-      if (ext === '.xlsx' || ext === '.xls') {
-        const workbook = XLSX.read(result.data, { type: 'buffer' });
-        const lines: string[] = [];
-        for (const sheetName of workbook.SheetNames) {
-          const sheet = workbook.Sheets[sheetName];
-          const csv = XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
-          if (csv.trim()) {
-            lines.push(`=== Sheet: ${sheetName} ===`);
-            lines.push(csv.trim());
-          }
-        }
-        return lines.length > 0 ? lines.join('\n') : null;
-      }
-
-      if (ext === '.csv' || ext === '.txt') {
-        return result.data.toString('utf-8');
-      }
-
-      return null;
+      return extractAttachmentText(result.data, filename);
     } catch (err) {
       console.error(`[ATTACHMENTS] extractTextContent failed for ${filename}:`, err);
       return null;
