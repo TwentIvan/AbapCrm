@@ -52,6 +52,7 @@ import { AuditService } from "./audit-service";
 import { MessageLogService } from "./message-log-service";
 import { gmailService } from "./gmail-service";
 import { AttachmentsService } from "./attachments-service";
+import { resolveAttachmentText } from "./attachment-text";
 import { EmailForwardCleaner } from './email-forward-cleaner';
 import { CustomMetadataService } from "./custom-metadata-service";
 import { PdfService } from "./pdf-service";
@@ -4288,6 +4289,36 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error('Attachment download error:', error);
       res.status(500).json({ error: "Failed to download attachment" });
+    }
+  });
+
+  // Testo estratto di un allegato (Excel, CSV, TXT), per chi analizza il messaggio fuori dall'app (es. Botcave).
+  // Sessione o token API; il messaggio deve stare nel perimetro delle organizzazioni della richiesta.
+  app.get("/api/messages/:messageId/attachments/:filename/text", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const userId = req.user!.id;
+      const result = await resolveAttachmentText(
+        {
+          async getMessage(id) {
+            const m = await storage.getMessage(id, userId);
+            return m ? { id: m.id, organizationId: m.organizationId ?? null, attachments: m.attachments ?? null } : null;
+          },
+          async readAttachment(messageId, filename) {
+            return (await AttachmentsService.getAttachment(messageId, filename))?.data ?? null;
+          },
+        },
+        {
+          messageId: req.params.messageId,
+          filename: req.params.filename,
+          organizationIds: await getOrganizationIdsForFilter(req),
+          maxChars: req.query.maxChars,
+        },
+      );
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error('Attachment text error:', error);
+      res.status(500).json({ error: "Failed to extract attachment text" });
     }
   });
 
