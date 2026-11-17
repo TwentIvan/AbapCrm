@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch, LayoutDashboard, Brain, Cpu, Workflow } from "lucide-react";
+import { Code, BarChart3, FolderOpen, CheckSquare, Handshake, Building, Calendar, Clock, User, LogOut, FolderTree, Mail, DollarSign, Users, FileText, Server, Key, Shield, Wifi, Radar, Plus, Minus, Settings, Sparkles, Contact, Network, GitBranch, LayoutDashboard, Brain, Cpu, Workflow, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import htuLogo from "@assets/HTU-logo-512_(1)_1782240207188.png";
 
@@ -12,6 +12,7 @@ const getDefaultAnagraficheDirectItems = (t: any) => [
   { id: "ana1", name: t("nav.partners"), href: "/partners", icon: Handshake, testId: "nav-partners" },
   { id: "ana2", name: "Risorse", href: "/human-resources", icon: Users, testId: "nav-human-resources" },
   { id: "ana3", name: "Catalogo Skills", href: "/skill-catalog", icon: FolderTree, testId: "nav-skill-catalog" },
+  { id: "ana4", name: "Obblighi dichiarativi", href: "/obligations", icon: CalendarClock, testId: "nav-obligations" },
 ];
 
 // Systems group (nested under Anagrafiche)
