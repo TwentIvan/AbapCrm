@@ -8,6 +8,7 @@ import TaskForm from "./task-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageHistory } from "@/components/ui/message-history";
 import AuditHistory from "@/components/ui/audit-history";
+import AgentRunsHistory from "@/components/ui/agent-runs-history";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -967,7 +968,8 @@ export default function TaskFormContainer({
             />
           </TabsContent>
 
-          <TabsContent value="history" className="mt-6">
+          <TabsContent value="history" className="mt-6 space-y-6">
+            <AgentRunsHistory taskId={(task as Task)?.id || ""} />
             <AuditHistory
               tableName="tasks"
               recordId={(task as Task)?.id || ""}
