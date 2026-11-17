@@ -10,7 +10,7 @@ import {
 import { parseSuggestion, suggestionUpdate, SUGGESTION_TABLES, parseSuggestionRef, checkSuggestion, rejectUpdate, findLinkTo } from "./message-suggestion";
 import { parseExternalProposal, createExternalProposal } from "./external-proposal";
 import { parseProposalUpdate, updatePendingProposal } from "./proposal-update";
-import { isSummaryRequest, messageSummaryColumns } from "./message-list";
+import { isSummaryRequest, messageListConditions, messageSummaryColumns, parseMessageListFilters } from "./message-list";
 import { parseAgentRun, recordAgentRun, listAgentRuns, type AgentRunDeps } from "./task-agent-runs";
 import { parseObligationQuery, listObligations, getObligation, type ObligationDeps } from "./organization-obligations";
 import { parseObligationRun, parseObligationRunQuery, recordObligationRun, listObligationRuns, type ObligationRunDeps } from "./obligation-runs";
@@ -4076,11 +4076,16 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
     
+    // toTriage=true: solo i messaggi da smistare; since=<ISO>: solo quelli ricevuti dopo (smistamento di Botcave)
+    const parsedFilters = parseMessageListFilters(req.query);
+    if (!parsedFilters.ok) return res.status(400).json({ error: parsedFilters.error });
+
     try {
       const organizationIds = await getOrganizationIdsForFilter(req);
       const filter = and(
         eq(messages.userId, req.user!.id),
-        inArray(messages.organizationId, organizationIds)
+        inArray(messages.organizationId, organizationIds),
+        ...messageListConditions(parsedFilters.filters)
       );
       // summary=true: solo i campi di riepilogo (lista leggera per gli inneschi di Botcave)
       const messagesList = isSummaryRequest(req.query)
