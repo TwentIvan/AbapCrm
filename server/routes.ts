@@ -18,6 +18,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { registerApiTokenRoutes } from "./api-token-routes";
 import { storage } from "./storage";
+import { proposalDiscussionContext } from "./proposal-discussion-context";
 import { db } from "./db";
 import { sql, inArray, eq, and, or, desc, asc, isNull, aliasedTable, gte, lte } from "drizzle-orm";
 import { generateVPNAutomationScript, discoverVPNConnections, discoverAvailableVPNSoftware, testVPNConnection } from "./vpn-automation";
@@ -5960,6 +5961,47 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
     } catch (error) {
       console.error("Get proposal discussions error:", error);
       res.status(500).json({ error: "Failed to fetch discussions" });
+    }
+  });
+
+  // Contesto per discutere la proposta nel pannello Botcave: proposta, messaggio d'origine e discussione in una
+  // lettura, nelle organizzazioni della richiesta (anche con token). Le risposte l'agente le scrive con PATCH.
+  app.get("/api/proposals/:id/discussion-context", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const result = await proposalDiscussionContext(
+        {
+          getProposal: async (id) => {
+            const [row] = await db.select().from(proposals).where(eq(proposals.id, id)).limit(1);
+            return row ?? null;
+          },
+          getMessage: async (id) => {
+            const [row] = await db
+              .select({
+                id: messages.id,
+                subject: messages.subject,
+                fromEmail: messages.fromEmail,
+                fromName: messages.fromName,
+                receivedAt: messages.receivedAt,
+              })
+              .from(messages)
+              .where(eq(messages.id, id))
+              .limit(1);
+            return row ?? null;
+          },
+          getDiscussion: (proposalId) =>
+            db
+              .select()
+              .from(proposalDiscussions)
+              .where(eq(proposalDiscussions.proposalId, proposalId))
+              .orderBy(asc(proposalDiscussions.createdAt)),
+        },
+        { proposalId: req.params.id, userId: req.user!.id, organizationIds: await getOrganizationIdsForFilter(req) },
+      );
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Get proposal discussion context error:", error);
+      res.status(500).json({ error: "Failed to fetch discussion context" });
     }
   });
 
