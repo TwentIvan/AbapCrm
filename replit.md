@@ -62,6 +62,14 @@ ambito di organizzazione scelto alla creazione:
 Il perimetro resta l'utente del token: non vede mai più di quanto vede dall'interfaccia. Route vietate e limite di 120 richieste/min valgono per
 entrambi. La colonna nullable arriva con la migrazione d'avvio `api_tokens_organization_nullable` di `server/db.ts`.
 
+**Audit delle scritture con token** — `server/api-token-audit.ts`, montato in `auth.ts` prima del middleware del token: ogni
+POST/PUT/PATCH/DELETE autenticata con un token lascia una riga in `api_token_write_audit` (token, utente, organizzazione effettiva della
+richiesta, metodo, percorso senza query string, esito HTTP, durata, IP, user agent). Mai il corpo né la query string. Entrano anche le scritture
+rifiutate dal middleware del token (403 route vietata, 429) e quelle chiuse dal client prima della risposta (esito 499); le letture e le
+scritture di sessione no. Un errore dell'audit non cambia la risposta. Il proprietario le consulta con la sessione da
+`GET /api/account/api-tokens/:id/writes?limit=&before=` (dalla più recente, `limit` 1-200, `nextBefore` per la pagina successiva, anche per
+token revocati) o da Account → Token API → «Attività». Tabella creata dalla migrazione d'avvio `api_token_write_audit`.
+
 ## Core Features & Design Patterns
 
 -   **Custom Fields & Metadata System**: A metadata-driven extension layer enables dynamic custom fields, entities, event-driven workflows, and role-based permissions, supported by `CustomMetadataService` for caching and validation.
