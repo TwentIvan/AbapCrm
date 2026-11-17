@@ -9,12 +9,13 @@ import { parseExternalProposal, createExternalProposal } from "./external-propos
 import { parseProposalUpdate, updatePendingProposal } from "./proposal-update";
 import { isSummaryRequest, messageSummaryColumns } from "./message-list";
 import { parseAgentRun, recordAgentRun, listAgentRuns, type AgentRunDeps } from "./task-agent-runs";
+import { parseObligationQuery, listObligations, getObligation, type ObligationDeps } from "./organization-obligations";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { registerApiTokenRoutes } from "./api-token-routes";
 import { storage } from "./storage";
 import { db } from "./db";
-import { sql, inArray, eq, and, or, desc, asc, isNull, aliasedTable } from "drizzle-orm";
+import { sql, inArray, eq, and, or, desc, asc, isNull, aliasedTable, gte, lte } from "drizzle-orm";
 import { generateVPNAutomationScript, discoverVPNConnections, discoverAvailableVPNSoftware, testVPNConnection } from "./vpn-automation";
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
@@ -65,7 +66,7 @@ import { ObjectStorageService } from "./objectStorage";
 import { calculateEndToComplete } from "./end-to-complete-calculator";
 import { recalculateProjectScheduleForTask } from "./project-rescheduler";
 import { assembleContext } from "./context-assembler";
-import { contextPacks } from "@shared/schema";
+import { contextPacks, organizationObligations } from "@shared/schema";
 
 // Phase 5: compute suggested model key from analytics (min 5 completed executions for taskType)
 async function computeSuggestedModelKey(organizationId: string, taskType: string): Promise<string | null> {
@@ -851,6 +852,60 @@ export function registerRoutes(app: Express): Server {
     const organization = await storage.getOrganization(req.params.id);
     if (!organization) return res.sendStatus(404);
     res.json(organization);
+  });
+
+  // Obblighi dichiarativi delle organizzazioni nel perimetro della richiesta (sessione o token), in sola lettura.
+  // Filtri: ?organizationId (nel perimetro, altrimenti 404), ?active=true|false|all, ?frequency, ?dueFrom, ?dueTo
+  // (prossima scadenza, YYYY-MM-DD compresi). Ordine: prossima scadenza (senza scadenza in fondo), poi nome.
+  const obligationDeps: ObligationDeps = {
+    list: (f) =>
+      db
+        .select()
+        .from(organizationObligations)
+        .where(
+          and(
+            inArray(organizationObligations.organizationId, f.organizationIds),
+            f.active === undefined ? undefined : eq(organizationObligations.active, f.active),
+            f.frequency ? eq(organizationObligations.frequency, f.frequency) : undefined,
+            f.dueFrom ? gte(organizationObligations.nextDueDate, f.dueFrom) : undefined,
+            f.dueTo ? lte(organizationObligations.nextDueDate, f.dueTo) : undefined,
+          ),
+        )
+        .orderBy(sql`${organizationObligations.nextDueDate} asc nulls last`, asc(organizationObligations.name)),
+    async findById(id) {
+      const [row] = await db.select().from(organizationObligations).where(eq(organizationObligations.id, id)).limit(1);
+      return row ?? null;
+    },
+  };
+
+  app.get("/api/obligations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const parsed = parseObligationQuery(req.query);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+      const result = await listObligations(obligationDeps, {
+        organizationIds: await getOrganizationIdsForFilter(req),
+        query: parsed.value,
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("List organization obligations error:", error);
+      res.status(500).json({ error: "Failed to list obligations" });
+    }
+  });
+
+  app.get("/api/obligations/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const result = await getObligation(obligationDeps, {
+        id: req.params.id,
+        organizationIds: await getOrganizationIdsForFilter(req),
+      });
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Get organization obligation error:", error);
+      res.status(500).json({ error: "Failed to get obligation" });
+    }
   });
 
   app.post("/api/organizations", async (req, res) => {

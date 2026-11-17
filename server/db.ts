@@ -483,6 +483,26 @@ export async function runStartupMigrations(): Promise<boolean> {
       CREATE UNIQUE INDEX IF NOT EXISTS "task_agent_runs_external_run_idx" ON "task_agent_runs" ("task_id", "external_run_id");
     `);
 
+    // Obblighi dichiarativi dell'organizzazione (GET /api/obligations). Additiva e idempotente.
+    await safeMigrate('organization_obligations', `
+      CREATE TABLE IF NOT EXISTS "organization_obligations" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "organization_id" uuid NOT NULL REFERENCES "organizations"("id") ON DELETE CASCADE,
+        "code" text NOT NULL,
+        "name" text NOT NULL,
+        "description" text,
+        "authority" text,
+        "frequency" text NOT NULL,
+        "due_rule" text,
+        "next_due_date" date,
+        "active" boolean NOT NULL DEFAULT true,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS "organization_obligations_org_code_idx" ON "organization_obligations" ("organization_id", "code");
+      CREATE INDEX IF NOT EXISTS "organization_obligations_org_due_idx" ON "organization_obligations" ("organization_id", "next_due_date");
+    `);
+
     client.release();
     return true;
   } catch (error) {
