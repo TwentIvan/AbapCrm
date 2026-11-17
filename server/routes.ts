@@ -3,6 +3,7 @@ import { registerThuMcpRoutes } from "./thu-mcp-server";
 import { thuMcpDbDeps } from "./thu-mcp-sources";
 import { sanitizeTokenPartnerUpdate, tokenContactOrganization, tokenPartnerOrganization } from "./partner-contact-scope";
 import { taskExternalRef } from "./task-external-ref";
+import { commentCreateInput, commentUpdateInput } from "./comment-input";
 import {
   canEditLink, dbLinkScopeDeps, linkAllOrganization, linkOrganization, linkedRecordOrganizations, linksInScope, messageOrganization,
 } from "./message-link-scope";
@@ -25,7 +26,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { 
   insertProjectSchema, insertTaskSchema, insertPartnerSchema, insertContactSchema,
   insertDealSchema, insertCalendarEventSchema, insertPlanningWindowSchema, insertTimeEntrySchema,
-  insertMessageSchema, insertCommentSchema, insertMessageLinkSchema, insertEmailConfigSchema, insertTimesheetSchema,
+  insertMessageSchema, insertMessageLinkSchema, insertEmailConfigSchema, insertTimesheetSchema,
   insertSalesOrderSchema, insertSalesOrderItemSchema, insertRateAgreementSchema, insertQuoteSchema, insertQuoteItemSchema,
   insertHumanResourceSchema, insertSapSystemSchema, insertSapSystemCredentialsSchema,
   insertVpnConnectionSchema, insertVpnCredentialsSchema, insertTransportRequestSchema,
@@ -4786,12 +4787,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.post("/api/comments", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const input = commentCreateInput(req.body);
+    if ("error" in input) return res.status(400).json({ error: input.error });
     try {
-      const commentData = insertCommentSchema.parse({
-        ...req.body,
-        userId: req.user!.id
-      });
-      const comment = await storage.createComment(commentData);
+      const comment = await storage.createComment({ ...input.data, userId: req.user!.id });
       res.status(201).json(comment);
     } catch (error) {
       console.error("Comment creation error:", error);
@@ -4801,8 +4800,10 @@ Validato il: ${vpnConnection.scriptValidatedAt ? new Date(vpnConnection.scriptVa
 
   app.put("/api/comments/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const input = commentUpdateInput(req.body);
+    if ("error" in input) return res.status(400).json({ error: input.error });
     try {
-      const comment = await storage.updateComment(req.params.id, req.body, req.user!.id);
+      const comment = await storage.updateComment(req.params.id, input.data, req.user!.id);
       if (!comment) return res.sendStatus(404);
       res.json(comment);
     } catch (error) {

@@ -16,6 +16,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CommentsPanel } from "@/components/ui/comments-panel";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
@@ -3066,6 +3067,17 @@ export default function MessagesPage() {
                     </div>
                   );
                 })()}
+
+                {/* Commenti sul messaggio */}
+                <div className="flex-shrink-0 border-t p-6">
+                  <CommentsPanel
+                    key={selectedMessage.id}
+                    target="message"
+                    recordId={selectedMessage.id}
+                    title="Commenti sul messaggio"
+                    compact
+                  />
+                </div>
               </div>
             )}
           </CardContent>

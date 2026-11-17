@@ -8,13 +8,14 @@ import FormContainer, { useFormRouting } from "./form-container";
 import ProjectForm from "./project-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageHistory } from "@/components/ui/message-history";
+import { CommentsPanel } from "@/components/ui/comments-panel";
 import AuditHistory from "@/components/ui/audit-history";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Edit, MessageSquare, History, Brain, Loader2, Trash2, Save, RefreshCw } from "lucide-react";
+import { Edit, MessageSquare, MessageSquareText, History, Brain, Loader2, Trash2, Save, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Project } from "@shared/schema";
 
@@ -308,7 +309,7 @@ export default function ProjectFormContainer({
       {isEditing ? (
         // Editing mode with tabs (details, messages, history)
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="details" className="flex items-center space-x-2">
               <Edit className="h-4 w-4" />
               <span>Dettagli</span>
@@ -320,6 +321,10 @@ export default function ProjectFormContainer({
             <TabsTrigger value="messages" className="flex items-center space-x-2">
               <MessageSquare className="h-4 w-4" />
               <span>Messaggi</span>
+            </TabsTrigger>
+            <TabsTrigger value="comments" className="flex items-center space-x-2" data-testid="tab-comments">
+              <MessageSquareText className="h-4 w-4" />
+              <span>Commenti</span>
             </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center space-x-2">
               <History className="h-4 w-4" />
@@ -347,6 +352,10 @@ export default function ProjectFormContainer({
             />
           </TabsContent>
           
+          <TabsContent value="comments" className="mt-6">
+            <CommentsPanel target="project" recordId={(project as Project)?.id || ""} title="Commenti sul progetto" />
+          </TabsContent>
+
           <TabsContent value="history" className="mt-6">
             <AuditHistory 
               tableName="projects" 
